@@ -34,11 +34,8 @@ export class HeaderComponent {
 
   async search(query: string): Promise<void> {
     await this.searchInput.fill(query);
-    // Click the submit button which is more reliable than pressing Enter in webkit
     const submitButton = this.page.getByRole('button', { name: /submit search/i });
-    await submitButton.click();
-    // Wait for URL to update with search query
-    await expect(this.page).toHaveURL(/\/search\?q=/);
+    await Promise.all([this.page.waitForURL(/\/search\?q=/), submitButton.click()]);
   }
 
   async goToHome(): Promise<void> {
@@ -121,10 +118,7 @@ export class SearchPage {
 
   async search(query: string): Promise<void> {
     await this.searchInput.fill(query);
-    // Standard Playwright form submission via Enter key
-    await this.searchInput.press('Enter');
-    // Wait for URL to update with search query
-    await expect(this.page).toHaveURL(/q=/);
+    await Promise.all([this.page.waitForURL(/q=/), this.searchInput.press('Enter')]);
   }
 
   async openFilters(): Promise<void> {
