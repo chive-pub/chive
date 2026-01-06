@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FileText, Plus, Clock, CheckCircle, XCircle, Filter } from 'lucide-react';
@@ -32,6 +32,37 @@ import { LoginPrompt } from '@/components/auth';
  * Lists all proposals with filtering by status and type.
  */
 export default function ProposalsPage() {
+  return (
+    <Suspense fallback={<ProposalsLoadingSkeleton />}>
+      <ProposalsContent />
+    </Suspense>
+  );
+}
+
+function ProposalsLoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72 mt-2" />
+        </div>
+        <Skeleton className="h-10 w-32" />
+      </div>
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-[150px]" />
+        <Skeleton className="h-10 w-[150px]" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProposalsContent() {
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get('status') as ProposalStatus | null;
 
