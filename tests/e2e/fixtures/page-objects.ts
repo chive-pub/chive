@@ -118,7 +118,11 @@ export class SearchPage {
 
   async search(query: string): Promise<void> {
     await this.searchInput.fill(query);
-    await Promise.all([this.page.waitForURL(/q=/), this.searchInput.press('Enter')]);
+    // Use form.requestSubmit() for reliable cross-browser form submission
+    await Promise.all([
+      this.page.waitForURL(/q=/),
+      this.searchInput.evaluate((input) => input.closest('form')?.requestSubmit()),
+    ]);
   }
 
   async openFilters(): Promise<void> {
