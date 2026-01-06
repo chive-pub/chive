@@ -1,0 +1,174 @@
+{
+  "description": "Preprint indexing pipeline with PDF extraction and field computation",
+  "processors": [
+    {
+      "attachment": {
+        "field": "pdf_base64",
+        "target_field": "pdf_content",
+        "indexed_chars": 100000,
+        "indexed_chars_field": "max_chars",
+        "properties": ["content", "language", "content_length"],
+        "remove_binary": true,
+        "ignore_missing": true,
+        "on_failure": [
+          {
+            "set": {
+              "field": "pdf_extraction_error",
+              "value": "Failed to extract PDF content: {{ _ingest.on_failure_message }}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rename": {
+        "field": "pdf_content.content",
+        "target_field": "full_text",
+        "ignore_missing": true
+      }
+    },
+    {
+      "rename": {
+        "field": "pdf_content.language",
+        "target_field": "detected_language",
+        "ignore_missing": true
+      }
+    },
+    {
+      "remove": {
+        "field": ["pdf_base64", "pdf_content"],
+        "ignore_missing": true
+      }
+    },
+    {
+      "set": {
+        "field": "indexed_at",
+        "value": "{{_ingest.timestamp}}"
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "ctx.author_count = ctx.authors != null ? ctx.authors.length : 0",
+        "on_failure": [
+          {
+            "set": {
+              "field": "author_count",
+              "value": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "ctx.keyword_count = ctx.keywords != null ? ctx.keywords.length : 0",
+        "on_failure": [
+          {
+            "set": {
+              "field": "keyword_count",
+              "value": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if (ctx.created_at != null) { try { def parsed = ZonedDateTime.parse(ctx.created_at); ctx.year_published = parsed.getYear(); } catch (Exception e) { ctx.year_published = 0; } } else { ctx.year_published = 0; }",
+        "on_failure": [
+          {
+            "set": {
+              "field": "year_published",
+              "value": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if (ctx.field_nodes != null && ctx.field_nodes.length > 0) { ctx.primary_field = ctx.field_nodes[0]; }",
+        "on_failure": [
+          {
+            "set": {
+              "field": "primary_field",
+              "value": ""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "if (ctx.tags != null) { ctx.tag_count = ctx.tags.length; } else { ctx.tag_count = 0; }",
+        "on_failure": [
+          {
+            "set": {
+              "field": "tag_count",
+              "value": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "long now = new Date().getTime(); long created; try { created = ZonedDateTime.parse(ctx.created_at).toInstant().toEpochMilli(); } catch (Exception e) { created = now; } long ageMs = now - created; double ageDays = ageMs / (1000.0 * 60 * 60 * 24); ctx.freshness = Math.exp(-ageDays / 365.0);",
+        "on_failure": [
+          {
+            "set": {
+              "field": "freshness",
+              "value": 1.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "script": {
+        "lang": "painless",
+        "source": "double citationScore = Math.log(1 + (ctx.citation_count != null ? ctx.citation_count : 0)); double endorsementScore = Math.log(1 + (ctx.endorsement_count != null ? ctx.endorsement_count : 0)); double freshnessBoost = ctx.freshness != null ? ctx.freshness : 1.0; ctx.rank_score = citationScore + (endorsementScore * 0.5) + (freshnessBoost * 2.0);",
+        "on_failure": [
+          {
+            "set": {
+              "field": "rank_score",
+              "value": 1.0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "on_failure": [
+    {
+      "set": {
+        "field": "_index",
+        "value": "failed-preprints-{now/d}"
+      }
+    },
+    {
+      "set": {
+        "field": "error.message",
+        "value": "{{ _ingest.on_failure_message }}"
+      }
+    },
+    {
+      "set": {
+        "field": "error.pipeline",
+        "value": "preprint-processing"
+      }
+    },
+    {
+      "set": {
+        "field": "error.timestamp",
+        "value": "{{_ingest.timestamp}}"
+      }
+    }
+  ]
+}

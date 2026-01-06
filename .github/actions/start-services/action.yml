@@ -1,0 +1,58 @@
+name: 'Start Test Services'
+description: 'Starts Elasticsearch and Neo4j via Docker Compose with health checks'
+
+inputs:
+  services:
+    description: 'Services to start: "all", "elasticsearch", "neo4j", or comma-separated list'
+    required: false
+    default: 'all'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Start services via Docker Compose
+      shell: bash
+      run: |
+        SERVICES="${{ inputs.services }}"
+        if [ "$SERVICES" = "all" ]; then
+          docker compose -f docker/docker-compose.yml up -d elasticsearch neo4j
+        else
+          # Convert comma-separated to space-separated
+          SERVICES_LIST=$(echo "$SERVICES" | tr ',' ' ')
+          docker compose -f docker/docker-compose.yml up -d $SERVICES_LIST
+        fi
+
+    - name: Wait for Elasticsearch
+      if: contains(inputs.services, 'elasticsearch') || inputs.services == 'all'
+      shell: bash
+      run: |
+        echo "Waiting for Elasticsearch to be ready..."
+        for i in {1..60}; do
+          if curl -sf http://localhost:9200/_cluster/health | grep -q '"status"'; then
+            echo "Elasticsearch is ready"
+            exit 0
+          fi
+          echo "Attempt $i/60 - Elasticsearch not ready yet..."
+          sleep 2
+        done
+        echo "ERROR: Elasticsearch failed to start within 120 seconds"
+        docker compose -f docker/docker-compose.yml logs elasticsearch
+        exit 1
+
+    - name: Wait for Neo4j
+      if: contains(inputs.services, 'neo4j') || inputs.services == 'all'
+      shell: bash
+      run: |
+        echo "Waiting for Neo4j to be ready..."
+        for i in {1..45}; do
+          if docker compose -f docker/docker-compose.yml exec -T neo4j \
+             cypher-shell -u neo4j -p chive_test_password 'RETURN 1' 2>/dev/null; then
+            echo "Neo4j is ready"
+            exit 0
+          fi
+          echo "Attempt $i/45 - Neo4j not ready yet..."
+          sleep 2
+        done
+        echo "ERROR: Neo4j failed to start within 90 seconds"
+        docker compose -f docker/docker-compose.yml logs neo4j
+        exit 1

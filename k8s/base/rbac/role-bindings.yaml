@@ -1,0 +1,52 @@
+# RBAC RoleBindings for Chive components
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chive-appview-rolebinding
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-appview
+    app.kubernetes.io/part-of: chive
+subjects:
+  - kind: ServiceAccount
+    name: chive-appview
+    namespace: chive
+roleRef:
+  kind: Role
+  name: chive-appview-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chive-indexer-rolebinding
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/part-of: chive
+subjects:
+  - kind: ServiceAccount
+    name: chive-indexer
+    namespace: chive
+roleRef:
+  kind: Role
+  name: chive-indexer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chive-frontend-rolebinding
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-frontend
+    app.kubernetes.io/part-of: chive
+subjects:
+  - kind: ServiceAccount
+    name: chive-frontend
+    namespace: chive
+roleRef:
+  kind: Role
+  name: chive-frontend-role
+  apiGroup: rbac.authorization.k8s.io

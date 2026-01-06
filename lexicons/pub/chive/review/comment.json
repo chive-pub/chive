@@ -1,0 +1,41 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.review.comment",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Review comment on preprint",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["preprintUri", "content", "createdAt"],
+        "properties": {
+          "preprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Reviewed preprint URI"
+          },
+          "content": {
+            "type": "string",
+            "description": "Review comment text",
+            "maxLength": 10000
+          },
+          "lineNumber": {
+            "type": "integer",
+            "description": "Line number for inline comments",
+            "minimum": 1
+          },
+          "parentComment": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Parent comment for threading"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

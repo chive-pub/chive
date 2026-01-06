@@ -1,0 +1,93 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: chive-staging
+
+resources:
+  - ../../base
+
+namePrefix: staging-
+
+commonLabels:
+  environment: staging
+
+# Override images with staging tags
+images:
+  - name: chive
+    newTag: staging
+  - name: chive-frontend
+    newTag: staging
+
+patches:
+  # 2 replicas for staging
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target:
+      kind: Deployment
+      name: chive-frontend
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  # Moderate resources for staging
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+
+  - target:
+      kind: Deployment
+      name: chive-indexer
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+
+  # HPA with conservative scaling
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: chive-appview-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 5
+
+  # PDB minimum available
+  - target:
+      kind: PodDisruptionBudget
+      name: chive-appview-pdb
+    patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 1
+
+configMapGenerator:
+  - name: chive-staging-config
+    behavior: merge
+    literals:
+      - NODE_ENV=staging
+      - LOG_LEVEL=info

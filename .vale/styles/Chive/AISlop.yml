@@ -1,0 +1,33 @@
+# Chive AI slop detection rule
+# Flags overused words that often indicate AI-generated content
+
+extends: existence
+message: "Avoid '%s'. Use precise, specific language instead."
+level: warning
+ignorecase: true
+tokens:
+  - robust
+  - comprehensive
+  - leverage
+  - utilize
+  - cutting-edge
+  - seamless
+  - empower
+  - holistic
+  - synergy
+  - paradigm
+  - best-in-class
+  - state-of-the-art
+  - groundbreaking
+  - revolutionize
+  - game-changing
+  - next-generation
+  - transformative
+  - unprecedented
+  - innovative
+  - streamline
+  - optimize
+  - facilitate
+  - enable
+  - ensure
+  - enhance

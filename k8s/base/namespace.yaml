@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chive
+  labels:
+    app.kubernetes.io/name: chive
+    app.kubernetes.io/part-of: chive
+    # Enable Linkerd service mesh injection when ready
+    # linkerd.io/inject: enabled
+    # Enable Prometheus service discovery
+    prometheus.io/scrape: "true"

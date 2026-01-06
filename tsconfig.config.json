@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "composite": false
+  },
+  "include": ["*.config.ts", "*.config.js", "vitest.*.config.ts", "playwright.config.ts"],
+  "exclude": ["node_modules"]
+}

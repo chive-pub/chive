@@ -1,0 +1,124 @@
+# High Availability values for chive.
+# Usage: helm install chive ./chive -f values.yaml -f values-ha.yaml
+
+# =============================================================================
+# AppView (API Server): HA Configuration
+# =============================================================================
+appview:
+  replicaCount: 3
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  pdb:
+    enabled: true
+    minAvailable: 2
+
+  affinity:
+    enabled: true
+
+# =============================================================================
+# Indexer: HA Configuration
+# =============================================================================
+indexer:
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# =============================================================================
+# Frontend: HA Configuration
+# =============================================================================
+frontend:
+  replicaCount: 2
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# =============================================================================
+# Databases: Production Sizes
+# =============================================================================
+postgresql:
+  primary:
+    persistence:
+      size: 50Gi
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "2Gi"
+      limits:
+        cpu: "4000m"
+        memory: "4Gi"
+
+redis:
+  master:
+    persistence:
+      size: 10Gi
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+
+elasticsearch:
+  replicas: 3
+  minimumMasterNodes: 2
+  esJavaOpts: "-Xmx2g -Xms2g"
+  resources:
+    requests:
+      cpu: "2000m"
+      memory: "4Gi"
+    limits:
+      cpu: "4000m"
+      memory: "8Gi"
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 100Gi
+
+neo4j:
+  neo4j:
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "2Gi"
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
+  volumes:
+    data:
+      defaultStorageClass:
+        requests:
+          storage: 50Gi

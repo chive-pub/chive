@@ -1,0 +1,2760 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Chive API",
+    "description": "Decentralized preprint server built on AT Protocol. Chive provides XRPC endpoints following ATProto conventions and REST endpoints for compatibility.",
+    "version": "0.1.0",
+    "contact": {
+      "name": "Chive",
+      "url": "https://chive.pub",
+      "email": "contact@chive.pub"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.chive.pub",
+      "description": "Production API"
+    },
+    {
+      "url": "http://localhost:3001",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "preprint", "description": "Preprint submission and retrieval" },
+    { "name": "review", "description": "Peer review and comments" },
+    { "name": "endorsement", "description": "Endorsements and contributions" },
+    { "name": "graph", "description": "Knowledge graph and taxonomy" },
+    { "name": "tag", "description": "User-generated tags" },
+    { "name": "governance", "description": "Community governance" },
+    { "name": "metrics", "description": "Usage metrics and trending" },
+    { "name": "discovery", "description": "Recommendations and related content" },
+    { "name": "claiming", "description": "Authorship claims and verification" },
+    { "name": "backlink", "description": "ATProto app references" },
+    { "name": "activity", "description": "User activity and feeds" },
+    { "name": "import", "description": "External source imports" },
+    { "name": "actor", "description": "User profiles and settings" },
+    { "name": "author", "description": "Author profiles" },
+    { "name": "sync", "description": "PDS synchronization" },
+    { "name": "health", "description": "Health checks" }
+  ],
+  "paths": {
+    "/xrpc/pub.chive.preprint.getSubmission": {
+      "get": {
+        "operationId": "pub_chive_preprint_getSubmission",
+        "summary": "Get a preprint submission by URI",
+        "tags": ["preprint"],
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "AT URI of the preprint (at://did/pub.chive.preprint.submission/rkey)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preprint submission details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreprintSubmission"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.preprint.searchSubmissions": {
+      "get": {
+        "operationId": "pub_chive_preprint_searchSubmissions",
+        "summary": "Search preprints with full-text and faceted search",
+        "tags": ["preprint"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Search query"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25, "minimum": 1, "maximum": 100 },
+            "description": "Maximum results to return"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Pagination cursor"
+          },
+          {
+            "name": "field",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by field ID"
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Filter by date range start"
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Filter by date range end"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.preprint.listByAuthor": {
+      "get": {
+        "operationId": "pub_chive_preprint_listByAuthor",
+        "summary": "List preprints by author DID",
+        "tags": ["preprint"],
+        "parameters": [
+          {
+            "name": "author",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Author DID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Author's preprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preprints": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/PreprintSubmission" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.review.getThread": {
+      "get": {
+        "operationId": "pub_chive_review_getThread",
+        "summary": "Get a review thread with replies",
+        "tags": ["review"],
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Review AT URI"
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 },
+            "description": "Maximum thread depth"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review thread",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReviewThread" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.review.listForPreprint": {
+      "get": {
+        "operationId": "pub_chive_review_listForPreprint",
+        "summary": "List reviews for a preprint",
+        "tags": ["review"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reviews": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Review" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.endorsement.getSummary": {
+      "get": {
+        "operationId": "pub_chive_endorsement_getSummary",
+        "summary": "Get endorsement summary for a preprint",
+        "tags": ["endorsement"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Endorsement summary with counts by contribution type",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EndorsementSummary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.endorsement.listForPreprint": {
+      "get": {
+        "operationId": "pub_chive_endorsement_listForPreprint",
+        "summary": "List endorsements for a preprint",
+        "tags": ["endorsement"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Endorsements list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "endorsements": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Endorsement" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.endorsement.getUserEndorsement": {
+      "get": {
+        "operationId": "pub_chive_endorsement_getUserEndorsement",
+        "summary": "Get user's endorsement for a preprint",
+        "tags": ["endorsement"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "userDid",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's endorsement or null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [{ "$ref": "#/components/schemas/Endorsement" }, { "type": "null" }]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.getField": {
+      "get": {
+        "operationId": "pub_chive_graph_getField",
+        "summary": "Get a field from the knowledge graph",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Field ID (e.g., 'cs.ai')"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Field details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Field" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.listFields": {
+      "get": {
+        "operationId": "pub_chive_graph_listFields",
+        "summary": "List fields in the knowledge graph",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "parent",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Parent field ID to list children"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fields list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fields": { "type": "array", "items": { "$ref": "#/components/schemas/Field" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.searchAuthorities": {
+      "get": {
+        "operationId": "pub_chive_graph_searchAuthorities",
+        "summary": "Search authority records",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["person", "organization", "concept", "place"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authority search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authorities": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Authority" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.getAuthority": {
+      "get": {
+        "operationId": "pub_chive_graph_getAuthority",
+        "summary": "Get an authority record",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authority record",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Authority" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.browseFaceted": {
+      "get": {
+        "operationId": "pub_chive_graph_browseFaceted",
+        "summary": "Browse knowledge graph with faceted navigation",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "facet",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["personality", "matter", "energy", "space", "time"]
+            },
+            "description": "PMEST facet to browse"
+          },
+          {
+            "name": "parent",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Faceted browse results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "facets": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Facet" }
+                    },
+                    "items": { "type": "array", "items": { "$ref": "#/components/schemas/Field" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.getFieldPreprints": {
+      "get": {
+        "operationId": "pub_chive_graph_getFieldPreprints",
+        "summary": "Get preprints for a field",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "fieldId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Field preprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preprints": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/PreprintSubmission" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.tag.search": {
+      "get": {
+        "operationId": "pub_chive_tag_search",
+        "summary": "Search tags",
+        "tags": ["tag"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tags": { "type": "array", "items": { "$ref": "#/components/schemas/Tag" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.tag.listForPreprint": {
+      "get": {
+        "operationId": "pub_chive_tag_listForPreprint",
+        "summary": "List tags for a preprint",
+        "tags": ["tag"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tags with usage counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tags": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TagWithCount" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.tag.getTrending": {
+      "get": {
+        "operationId": "pub_chive_tag_getTrending",
+        "summary": "Get trending tags",
+        "tags": ["tag"],
+        "parameters": [
+          {
+            "name": "field",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by field"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trending tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tags": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TrendingTag" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.tag.getSuggestions": {
+      "get": {
+        "operationId": "pub_chive_tag_getSuggestions",
+        "summary": "Get tag suggestions based on content",
+        "tags": ["tag"],
+        "parameters": [
+          {
+            "name": "text",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Text content to analyze"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suggested tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Tag" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.tag.getDetail": {
+      "get": {
+        "operationId": "pub_chive_tag_getDetail",
+        "summary": "Get tag details with related preprints",
+        "tags": ["tag"],
+        "parameters": [
+          {
+            "name": "tag",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TagDetail" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.listProposals": {
+      "get": {
+        "operationId": "pub_chive_governance_listProposals",
+        "summary": "List governance proposals",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "in-discussion", "voting", "approved", "rejected"]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["field", "facet", "authority", "tag-promotion"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proposals list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "proposals": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Proposal" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.getProposal": {
+      "get": {
+        "operationId": "pub_chive_governance_getProposal",
+        "summary": "Get a governance proposal",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proposal details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Proposal" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.listVotes": {
+      "get": {
+        "operationId": "pub_chive_governance_listVotes",
+        "summary": "List votes on a proposal",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Votes list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "votes": { "type": "array", "items": { "$ref": "#/components/schemas/Vote" } },
+                    "summary": { "$ref": "#/components/schemas/VoteSummary" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.getUserVote": {
+      "get": {
+        "operationId": "pub_chive_governance_getUserVote",
+        "summary": "Get user's vote on a proposal",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "userDid",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's vote or null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [{ "$ref": "#/components/schemas/Vote" }, { "type": "null" }]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.getPendingCount": {
+      "get": {
+        "operationId": "pub_chive_governance_getPendingCount",
+        "summary": "Get count of pending proposals",
+        "tags": ["governance"],
+        "responses": {
+          "200": {
+            "description": "Pending counts by type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": { "type": "integer" },
+                    "byType": {
+                      "type": "object",
+                      "additionalProperties": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.metrics.getMetrics": {
+      "get": {
+        "operationId": "pub_chive_metrics_getMetrics",
+        "summary": "Get metrics for a preprint",
+        "tags": ["metrics"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preprint metrics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PreprintMetrics" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.metrics.getViewCount": {
+      "get": {
+        "operationId": "pub_chive_metrics_getViewCount",
+        "summary": "Get view count for a preprint",
+        "tags": ["metrics"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "View count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.metrics.getTrending": {
+      "get": {
+        "operationId": "pub_chive_metrics_getTrending",
+        "summary": "Get trending preprints",
+        "tags": ["metrics"],
+        "parameters": [
+          {
+            "name": "field",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by field"
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["day", "week", "month"], "default": "week" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trending preprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preprints": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TrendingPreprint" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.metrics.recordView": {
+      "post": {
+        "operationId": "pub_chive_metrics_recordView",
+        "summary": "Record a view event",
+        "tags": ["metrics"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["preprintUri"],
+                "properties": {
+                  "preprintUri": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "View recorded" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.metrics.recordDownload": {
+      "post": {
+        "operationId": "pub_chive_metrics_recordDownload",
+        "summary": "Record a download event",
+        "tags": ["metrics"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["preprintUri"],
+                "properties": {
+                  "preprintUri": { "type": "string" },
+                  "version": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Download recorded" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.metrics.recordSearchClick": {
+      "post": {
+        "operationId": "pub_chive_metrics_recordSearchClick",
+        "summary": "Record a search result click",
+        "tags": ["metrics"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["preprintUri", "query", "position"],
+                "properties": {
+                  "preprintUri": { "type": "string" },
+                  "query": { "type": "string" },
+                  "position": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Click recorded" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.metrics.recordDwellTime": {
+      "post": {
+        "operationId": "pub_chive_metrics_recordDwellTime",
+        "summary": "Record time spent on a preprint",
+        "tags": ["metrics"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["preprintUri", "durationMs"],
+                "properties": {
+                  "preprintUri": { "type": "string" },
+                  "durationMs": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Dwell time recorded" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.discovery.getRecommendations": {
+      "get": {
+        "operationId": "pub_chive_discovery_getRecommendations",
+        "summary": "Get personalized recommendations",
+        "tags": ["discovery"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recommended preprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preprints": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/RecommendedPreprint" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.discovery.getSimilar": {
+      "get": {
+        "operationId": "pub_chive_discovery_getSimilar",
+        "summary": "Get similar preprints",
+        "tags": ["discovery"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Similar preprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preprints": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SimilarPreprint" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.discovery.getCitations": {
+      "get": {
+        "operationId": "pub_chive_discovery_getCitations",
+        "summary": "Get citation graph for a preprint",
+        "tags": ["discovery"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["citing", "cited", "both"], "default": "both" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Citation data",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CitationGraph" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.discovery.getEnrichment": {
+      "get": {
+        "operationId": "pub_chive_discovery_getEnrichment",
+        "summary": "Get enrichment data for a preprint",
+        "tags": ["discovery"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Enrichment data from external sources",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Enrichment" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.discovery.recordInteraction": {
+      "post": {
+        "operationId": "pub_chive_discovery_recordInteraction",
+        "summary": "Record user interaction for recommendations",
+        "tags": ["discovery"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["preprintUri", "interactionType"],
+                "properties": {
+                  "preprintUri": { "type": "string" },
+                  "interactionType": {
+                    "type": "string",
+                    "enum": ["view", "save", "cite", "share", "dismiss"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Interaction recorded" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.startClaim": {
+      "post": {
+        "operationId": "pub_chive_claiming_startClaim",
+        "summary": "Start an authorship claim",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["preprintUri"],
+                "properties": {
+                  "preprintUri": { "type": "string" },
+                  "authorPosition": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Claim started",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Claim" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.getClaim": {
+      "get": {
+        "operationId": "pub_chive_claiming_getClaim",
+        "summary": "Get claim status",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claim details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Claim" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.completeClaim": {
+      "post": {
+        "operationId": "pub_chive_claiming_completeClaim",
+        "summary": "Complete a claim with evidence",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["claimId"],
+                "properties": {
+                  "claimId": { "type": "string" },
+                  "evidence": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/ClaimEvidence" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Claim completed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Claim" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.collectEvidence": {
+      "post": {
+        "operationId": "pub_chive_claiming_collectEvidence",
+        "summary": "Collect evidence from external sources",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["claimId", "source"],
+                "properties": {
+                  "claimId": { "type": "string" },
+                  "source": {
+                    "type": "string",
+                    "enum": ["orcid", "semantic-scholar", "openreview", "openalex"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Evidence collected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "evidence": { "$ref": "#/components/schemas/ClaimEvidence" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.approveClaim": {
+      "post": {
+        "operationId": "pub_chive_claiming_approveClaim",
+        "summary": "Approve a claim (admin)",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["claimId"],
+                "properties": {
+                  "claimId": { "type": "string" },
+                  "note": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Claim approved" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.rejectClaim": {
+      "post": {
+        "operationId": "pub_chive_claiming_rejectClaim",
+        "summary": "Reject a claim (admin)",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["claimId", "reason"],
+                "properties": {
+                  "claimId": { "type": "string" },
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Claim rejected" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.getUserClaims": {
+      "get": {
+        "operationId": "pub_chive_claiming_getUserClaims",
+        "summary": "Get user's claims",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "userDid",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's claims",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "claims": { "type": "array", "items": { "$ref": "#/components/schemas/Claim" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.findClaimable": {
+      "get": {
+        "operationId": "pub_chive_claiming_findClaimable",
+        "summary": "Find claimable preprints for a user",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "orcid",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claimable preprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preprints": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ClaimablePreprint" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.autocomplete": {
+      "get": {
+        "operationId": "pub_chive_claiming_autocomplete",
+        "summary": "Autocomplete author names",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Author suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/AuthorSuggestion" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.searchPreprints": {
+      "get": {
+        "operationId": "pub_chive_claiming_searchPreprints",
+        "summary": "Search preprints for claiming",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "authorName",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preprints": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ClaimablePreprint" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.getSuggestions": {
+      "get": {
+        "operationId": "pub_chive_claiming_getSuggestions",
+        "summary": "Get claim suggestions for user",
+        "tags": ["claiming"],
+        "responses": {
+          "200": {
+            "description": "Suggested claimable preprints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ClaimablePreprint" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.backlink.list": {
+      "get": {
+        "operationId": "pub_chive_backlink_list",
+        "summary": "List backlinks to a preprint",
+        "tags": ["backlink"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["bluesky", "chive", "all"], "default": "all" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backlinks list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "backlinks": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Backlink" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.backlink.create": {
+      "post": {
+        "operationId": "pub_chive_backlink_create",
+        "summary": "Create a backlink",
+        "tags": ["backlink"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["preprintUri", "sourceUri"],
+                "properties": {
+                  "preprintUri": { "type": "string" },
+                  "sourceUri": { "type": "string" },
+                  "sourceType": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Backlink created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Backlink" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.backlink.delete": {
+      "post": {
+        "operationId": "pub_chive_backlink_delete",
+        "summary": "Delete a backlink",
+        "tags": ["backlink"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["backlinkId"],
+                "properties": {
+                  "backlinkId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Backlink deleted" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.backlink.getCounts": {
+      "get": {
+        "operationId": "pub_chive_backlink_getCounts",
+        "summary": "Get backlink counts",
+        "tags": ["backlink"],
+        "parameters": [
+          {
+            "name": "preprintUri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backlink counts by source",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": { "type": "integer" },
+                    "bluesky": { "type": "integer" },
+                    "chive": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.activity.getActivityFeed": {
+      "get": {
+        "operationId": "pub_chive_activity_getActivityFeed",
+        "summary": "Get user's activity feed",
+        "tags": ["activity"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activity feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "activities": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Activity" }
+                    },
+                    "cursor": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.activity.logActivity": {
+      "post": {
+        "operationId": "pub_chive_activity_logActivity",
+        "summary": "Log an activity event",
+        "tags": ["activity"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type", "targetUri"],
+                "properties": {
+                  "type": { "type": "string" },
+                  "targetUri": { "type": "string" },
+                  "metadata": { "type": "object" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Activity logged" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.activity.getCorrelationMetrics": {
+      "get": {
+        "operationId": "pub_chive_activity_getCorrelationMetrics",
+        "summary": "Get activity correlation metrics",
+        "tags": ["activity"],
+        "responses": {
+          "200": {
+            "description": "Correlation metrics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CorrelationMetrics" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.activity.markFailed": {
+      "post": {
+        "operationId": "pub_chive_activity_markFailed",
+        "summary": "Mark an activity as failed",
+        "tags": ["activity"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["activityId", "reason"],
+                "properties": {
+                  "activityId": { "type": "string" },
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Activity marked as failed" }
+        }
+      }
+    },
+    "/xrpc/pub.chive.import.search": {
+      "get": {
+        "operationId": "pub_chive_import_search",
+        "summary": "Search external sources for import",
+        "tags": ["import"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["arxiv", "biorxiv", "medrxiv", "osf", "zenodo"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 25 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Import search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ImportResult" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.import.exists": {
+      "get": {
+        "operationId": "pub_chive_import_exists",
+        "summary": "Check if external preprint exists in Chive",
+        "tags": ["import"],
+        "parameters": [
+          {
+            "name": "externalId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "External ID (e.g., arxiv:2301.00001)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existence check result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exists": { "type": "boolean" },
+                    "uri": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.import.get": {
+      "get": {
+        "operationId": "pub_chive_import_get",
+        "summary": "Get import metadata",
+        "tags": ["import"],
+        "parameters": [
+          {
+            "name": "externalId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Import metadata",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ImportMetadata" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.actor.getMyProfile": {
+      "get": {
+        "operationId": "pub_chive_actor_getMyProfile",
+        "summary": "Get current user's profile",
+        "tags": ["actor"],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserProfile" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.actor.autocompleteOrcid": {
+      "get": {
+        "operationId": "pub_chive_actor_autocompleteOrcid",
+        "summary": "Autocomplete ORCID lookup",
+        "tags": ["actor"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ORCID suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/OrcidResult" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.actor.discoverAuthorIds": {
+      "get": {
+        "operationId": "pub_chive_actor_discoverAuthorIds",
+        "summary": "Discover author IDs from external sources",
+        "tags": ["actor"],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Discovered author IDs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orcid": { "type": "string" },
+                    "semanticScholarId": { "type": "string" },
+                    "openAlexId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.actor.autocompleteAffiliation": {
+      "get": {
+        "operationId": "pub_chive_actor_autocompleteAffiliation",
+        "summary": "Autocomplete institution names",
+        "tags": ["actor"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Institution suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "affiliations": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Affiliation" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.actor.autocompleteKeyword": {
+      "get": {
+        "operationId": "pub_chive_actor_autocompleteKeyword",
+        "summary": "Autocomplete research keywords",
+        "tags": ["actor"],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Keyword suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "keywords": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.author.getProfile": {
+      "get": {
+        "operationId": "pub_chive_author_getProfile",
+        "summary": "Get author profile by DID",
+        "tags": ["author"],
+        "parameters": [
+          {
+            "name": "did",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Author profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthorProfile" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.sync.checkStaleness": {
+      "get": {
+        "operationId": "pub_chive_sync_checkStaleness",
+        "summary": "Check if indexed data is stale",
+        "tags": ["sync"],
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Staleness check result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "isStale": { "type": "boolean" },
+                    "lastSynced": { "type": "string", "format": "date-time" },
+                    "pdsRevision": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.sync.verify": {
+      "get": {
+        "operationId": "pub_chive_sync_verify",
+        "summary": "Verify record matches PDS",
+        "tags": ["sync"],
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "matches": { "type": "boolean" },
+                    "differences": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.sync.refreshRecord": {
+      "post": {
+        "operationId": "pub_chive_sync_refreshRecord",
+        "summary": "Force refresh from PDS",
+        "tags": ["sync"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["uri"],
+                "properties": {
+                  "uri": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Record refreshed" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "summary": "Liveness probe",
+        "tags": ["health"],
+        "responses": {
+          "200": {
+            "description": "Service is alive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["ok"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "readinessCheck",
+        "summary": "Readiness probe",
+        "tags": ["health"],
+        "responses": {
+          "200": {
+            "description": "Service is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "checks": { "type": "object" }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is not ready"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PreprintSubmission": {
+        "type": "object",
+        "required": ["uri", "title", "authors", "createdAt"],
+        "properties": {
+          "uri": { "type": "string", "description": "AT URI" },
+          "cid": { "type": "string", "description": "Content ID" },
+          "title": { "type": "string" },
+          "abstract": { "type": "string" },
+          "authors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Author" }
+          },
+          "fields": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "keywords": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "doi": { "type": "string" },
+          "pdfBlobRef": { "$ref": "#/components/schemas/BlobRef" },
+          "version": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "indexedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Author": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "did": { "type": "string" },
+          "orcid": { "type": "string" },
+          "affiliation": { "type": "string" }
+        }
+      },
+      "BlobRef": {
+        "type": "object",
+        "required": ["$type", "ref", "mimeType", "size"],
+        "properties": {
+          "$type": { "type": "string", "const": "blob" },
+          "ref": { "type": "string", "description": "CID of the blob" },
+          "mimeType": { "type": "string" },
+          "size": { "type": "integer" }
+        }
+      },
+      "SearchResults": {
+        "type": "object",
+        "properties": {
+          "preprints": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PreprintSubmission" }
+          },
+          "cursor": { "type": "string" },
+          "total": { "type": "integer" },
+          "facets": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "$ref": "#/components/schemas/FacetValue" }
+            }
+          }
+        }
+      },
+      "FacetValue": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string" },
+          "count": { "type": "integer" }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "required": ["uri", "preprintUri", "authorDid", "createdAt"],
+        "properties": {
+          "uri": { "type": "string" },
+          "preprintUri": { "type": "string" },
+          "authorDid": { "type": "string" },
+          "text": { "type": "string" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "parentUri": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ReviewThread": {
+        "type": "object",
+        "properties": {
+          "root": { "$ref": "#/components/schemas/Review" },
+          "replies": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ReviewThread" }
+          }
+        }
+      },
+      "Endorsement": {
+        "type": "object",
+        "required": ["uri", "preprintUri", "endorserDid", "contributionTypes", "createdAt"],
+        "properties": {
+          "uri": { "type": "string" },
+          "preprintUri": { "type": "string" },
+          "endorserDid": { "type": "string" },
+          "contributionTypes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "CRediT taxonomy roles"
+          },
+          "statement": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EndorsementSummary": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "byContributionType": {
+            "type": "object",
+            "additionalProperties": { "type": "integer" }
+          }
+        }
+      },
+      "Field": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "parentId": { "type": "string" },
+          "preprintCount": { "type": "integer" },
+          "wikidataId": { "type": "string" }
+        }
+      },
+      "Authority": {
+        "type": "object",
+        "required": ["id", "name", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["person", "organization", "concept", "place"] },
+          "wikidataId": { "type": "string" },
+          "lcshId": { "type": "string" },
+          "viafId": { "type": "string" }
+        }
+      },
+      "Facet": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["personality", "matter", "energy", "space", "time"]
+          },
+          "itemCount": { "type": "integer" }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "required": ["tag"],
+        "properties": {
+          "tag": { "type": "string" },
+          "normalizedTag": { "type": "string" }
+        }
+      },
+      "TagWithCount": {
+        "type": "object",
+        "properties": {
+          "tag": { "type": "string" },
+          "count": { "type": "integer" },
+          "isPromoted": { "type": "boolean" }
+        }
+      },
+      "TrendingTag": {
+        "type": "object",
+        "properties": {
+          "tag": { "type": "string" },
+          "count": { "type": "integer" },
+          "growth": { "type": "number" }
+        }
+      },
+      "TagDetail": {
+        "type": "object",
+        "properties": {
+          "tag": { "type": "string" },
+          "totalUsage": { "type": "integer" },
+          "relatedTags": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "Proposal": {
+        "type": "object",
+        "required": ["id", "type", "status", "proposerDid", "createdAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["field", "facet", "authority", "tag-promotion"] },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in-discussion", "voting", "approved", "rejected"]
+          },
+          "proposerDid": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "data": { "type": "object" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "votingEndsAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Vote": {
+        "type": "object",
+        "required": ["proposalId", "voterDid", "vote", "createdAt"],
+        "properties": {
+          "proposalId": { "type": "string" },
+          "voterDid": { "type": "string" },
+          "vote": { "type": "string", "enum": ["approve", "reject", "abstain"] },
+          "weight": { "type": "number" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "VoteSummary": {
+        "type": "object",
+        "properties": {
+          "totalVotes": { "type": "integer" },
+          "approveWeight": { "type": "number" },
+          "rejectWeight": { "type": "number" },
+          "abstainWeight": { "type": "number" },
+          "quorumMet": { "type": "boolean" }
+        }
+      },
+      "PreprintMetrics": {
+        "type": "object",
+        "properties": {
+          "views": { "type": "integer" },
+          "downloads": { "type": "integer" },
+          "citations": { "type": "integer" },
+          "endorsements": { "type": "integer" },
+          "reviews": { "type": "integer" },
+          "altmetricScore": { "type": "number" }
+        }
+      },
+      "TrendingPreprint": {
+        "type": "object",
+        "properties": {
+          "preprint": { "$ref": "#/components/schemas/PreprintSubmission" },
+          "score": { "type": "number" },
+          "viewsInPeriod": { "type": "integer" }
+        }
+      },
+      "RecommendedPreprint": {
+        "type": "object",
+        "properties": {
+          "preprint": { "$ref": "#/components/schemas/PreprintSubmission" },
+          "score": { "type": "number" },
+          "reasons": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "SimilarPreprint": {
+        "type": "object",
+        "properties": {
+          "preprint": { "$ref": "#/components/schemas/PreprintSubmission" },
+          "similarity": { "type": "number" }
+        }
+      },
+      "CitationGraph": {
+        "type": "object",
+        "properties": {
+          "citing": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PreprintSubmission" }
+          },
+          "citedBy": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PreprintSubmission" }
+          }
+        }
+      },
+      "Enrichment": {
+        "type": "object",
+        "properties": {
+          "semanticScholar": { "type": "object" },
+          "openAlex": { "type": "object" },
+          "crossref": { "type": "object" }
+        }
+      },
+      "Claim": {
+        "type": "object",
+        "required": ["id", "preprintUri", "claimantDid", "status", "createdAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "preprintUri": { "type": "string" },
+          "claimantDid": { "type": "string" },
+          "authorPosition": { "type": "integer" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "evidence-collection", "review", "approved", "rejected"]
+          },
+          "evidence": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ClaimEvidence" }
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ClaimEvidence": {
+        "type": "object",
+        "required": ["source", "type"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["orcid", "semantic-scholar", "openreview", "openalex", "manual"]
+          },
+          "type": { "type": "string" },
+          "data": { "type": "object" },
+          "confidence": { "type": "number" }
+        }
+      },
+      "ClaimablePreprint": {
+        "type": "object",
+        "properties": {
+          "preprint": { "$ref": "#/components/schemas/PreprintSubmission" },
+          "matchedAuthor": { "type": "string" },
+          "confidence": { "type": "number" }
+        }
+      },
+      "AuthorSuggestion": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "orcid": { "type": "string" },
+          "affiliation": { "type": "string" },
+          "preprintCount": { "type": "integer" }
+        }
+      },
+      "Backlink": {
+        "type": "object",
+        "required": ["id", "preprintUri", "sourceUri", "sourceType", "createdAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "preprintUri": { "type": "string" },
+          "sourceUri": { "type": "string" },
+          "sourceType": {
+            "type": "string",
+            "enum": ["bluesky-post", "bluesky-quote", "chive-review", "chive-endorsement"]
+          },
+          "authorDid": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Activity": {
+        "type": "object",
+        "required": ["id", "type", "actorDid", "targetUri", "createdAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "actorDid": { "type": "string" },
+          "targetUri": { "type": "string" },
+          "metadata": { "type": "object" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CorrelationMetrics": {
+        "type": "object",
+        "properties": {
+          "engagementToEndorsement": { "type": "number" },
+          "viewToDownload": { "type": "number" },
+          "searchToClick": { "type": "number" }
+        }
+      },
+      "ImportResult": {
+        "type": "object",
+        "properties": {
+          "externalId": { "type": "string" },
+          "source": { "type": "string" },
+          "title": { "type": "string" },
+          "authors": { "type": "array", "items": { "type": "string" } },
+          "abstract": { "type": "string" },
+          "existsInChive": { "type": "boolean" },
+          "chiveUri": { "type": "string" }
+        }
+      },
+      "ImportMetadata": {
+        "type": "object",
+        "properties": {
+          "externalId": { "type": "string" },
+          "source": { "type": "string" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "did": { "type": "string" },
+          "handle": { "type": "string" },
+          "displayName": { "type": "string" },
+          "orcid": { "type": "string" },
+          "affiliation": { "type": "string" },
+          "researchInterests": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "AuthorProfile": {
+        "type": "object",
+        "properties": {
+          "did": { "type": "string" },
+          "handle": { "type": "string" },
+          "displayName": { "type": "string" },
+          "orcid": { "type": "string" },
+          "affiliation": { "type": "string" },
+          "preprintCount": { "type": "integer" },
+          "endorsementCount": { "type": "integer" },
+          "reviewCount": { "type": "integer" }
+        }
+      },
+      "OrcidResult": {
+        "type": "object",
+        "properties": {
+          "orcid": { "type": "string" },
+          "name": { "type": "string" },
+          "affiliation": { "type": "string" }
+        }
+      },
+      "Affiliation": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "rorId": { "type": "string" },
+          "country": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "requestId": { "type": "string" },
+              "field": { "type": "string" },
+              "retryAfter": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request - Validation error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not Found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Too Many Requests - Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "ATProto service authentication JWT"
+      }
+    }
+  }
+}

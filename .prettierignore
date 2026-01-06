@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.turbo/
+.next/
+out/
+coverage/
+test-results/
+playwright-report/
+*.lock
+pnpm-lock.yaml
+
+# Generated code
+src/lexicons/validators/

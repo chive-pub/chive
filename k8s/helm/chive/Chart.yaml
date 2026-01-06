@@ -1,0 +1,18 @@
+apiVersion: v2
+name: chive
+description: Chive - Decentralized Preprint Server on AT Protocol
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - atproto
+  - preprint
+  - science
+  - decentralized
+home: https://github.com/chive-pub/chive
+sources:
+  - https://github.com/chive-pub/chive
+maintainers:
+  - name: Aaron Steven White
+    email: contact@chive.pub
+    url: https://github.com/aaronstevenwhite

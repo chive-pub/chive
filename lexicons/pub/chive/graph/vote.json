@@ -1,0 +1,34 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.vote",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Vote on field proposal",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["proposalUri", "vote", "createdAt"],
+        "properties": {
+          "proposalUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Proposal being voted on"
+          },
+          "vote": {
+            "type": "string",
+            "knownValues": ["approve", "reject"]
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

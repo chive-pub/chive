@@ -1,0 +1,127 @@
+# ServiceMonitor for Chive Indexer (Firehose Consumer)
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: chive-indexer
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/component: indexer
+    app.kubernetes.io/part-of: chive
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: chive-indexer
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - chive
+---
+# PrometheusRule for Indexer alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: chive-indexer-alerts
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/part-of: chive
+    release: prometheus
+spec:
+  groups:
+    - name: chive-indexer
+      rules:
+        # Firehose lag
+        - alert: ChiveFirehoseLag
+          expr: |
+            chive_firehose_cursor_lag_seconds > 300
+          for: 5m
+          labels:
+            severity: warning
+            service: indexer
+          annotations:
+            summary: "Chive firehose consumer is lagging"
+            description: "Firehose cursor is {{ $value | humanizeDuration }} behind"
+
+        # Critical firehose lag
+        - alert: ChiveFirehoseLagCritical
+          expr: |
+            chive_firehose_cursor_lag_seconds > 1800
+          for: 5m
+          labels:
+            severity: critical
+            service: indexer
+          annotations:
+            summary: "Chive firehose consumer is critically lagging"
+            description: "Firehose cursor is {{ $value | humanizeDuration }} behind (30+ minutes)"
+
+        # Firehose disconnected
+        - alert: ChiveFirehoseDisconnected
+          expr: |
+            chive_firehose_connection_status == 0
+          for: 2m
+          labels:
+            severity: critical
+            service: indexer
+          annotations:
+            summary: "Chive firehose disconnected"
+            description: "No active connection to ATProto relay"
+
+        # High indexing failure rate
+        - alert: ChiveIndexingHighFailureRate
+          expr: |
+            sum(rate(chive_indexing_errors_total[5m]))
+            /
+            sum(rate(chive_indexing_events_total[5m]))
+            > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            service: indexer
+          annotations:
+            summary: "High indexing failure rate"
+            description: "Indexing failure rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+        # Dead letter queue growing
+        - alert: ChiveDLQGrowing
+          expr: |
+            increase(chive_dlq_entries_total[1h]) > 100
+          for: 10m
+          labels:
+            severity: warning
+            service: indexer
+          annotations:
+            summary: "Dead letter queue is growing"
+            description: "{{ $value | humanize }} events added to DLQ in the last hour"
+
+        # Indexer not running
+        - alert: ChiveIndexerDown
+          expr: |
+            absent(up{job="chive-indexer"}) == 1
+          for: 2m
+          labels:
+            severity: critical
+            service: indexer
+          annotations:
+            summary: "Chive indexer is down"
+            description: "No indexer metrics being scraped"
+
+        # Slow indexing
+        - alert: ChiveSlowIndexing
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(chive_indexing_duration_seconds_bucket[5m])) by (le)
+            ) > 5
+          for: 10m
+          labels:
+            severity: warning
+            service: indexer
+          annotations:
+            summary: "Slow indexing performance"
+            description: "P95 indexing duration is {{ $value | humanizeDuration }} (threshold: 5s)"

@@ -1,0 +1,63 @@
+# Casbin RBAC policies for Chive
+#
+# Format: p, role, resource_type, action
+# p = permission policy
+# g = user-role assignment
+# g2 = role hierarchy
+
+# Role hierarchy (higher role includes lower role permissions)
+g2, admin, moderator
+g2, moderator, authority-editor
+g2, authority-editor, author
+g2, author, reader
+
+# Admin permissions (full access)
+p, admin, *, *
+
+# Moderator permissions
+p, moderator, preprint, read
+p, moderator, preprint, moderate
+p, moderator, review, read
+p, moderator, review, moderate
+p, moderator, endorsement, read
+p, moderator, endorsement, moderate
+p, moderator, tag, read
+p, moderator, tag, moderate
+p, moderator, field_node, read
+p, moderator, user, read
+
+# Authority-editor permissions (knowledge graph)
+p, authority-editor, field_node, read
+p, authority-editor, field_node, create
+p, authority-editor, field_node, update
+p, authority-editor, field_node, approve
+p, authority-editor, authority, read
+p, authority-editor, authority, create
+p, authority-editor, authority, update
+p, authority-editor, authority, approve
+p, authority-editor, facet, read
+p, authority-editor, facet, create
+p, authority-editor, facet, update
+
+# Author permissions
+p, author, preprint, read
+p, author, preprint, create
+p, author, review, read
+p, author, review, create
+p, author, endorsement, read
+p, author, endorsement, create
+p, author, tag, read
+p, author, tag, create
+p, author, field_node, read
+p, author, authority, read
+p, author, facet, read
+
+# Reader permissions (default for authenticated users)
+p, reader, preprint, read
+p, reader, review, read
+p, reader, endorsement, read
+p, reader, tag, read
+p, reader, field_node, read
+p, reader, authority, read
+p, reader, facet, read
+p, reader, user, read

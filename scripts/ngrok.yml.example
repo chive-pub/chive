@@ -1,0 +1,20 @@
+# ==============================================================================
+# ngrok Configuration Template
+# ==============================================================================
+# Copy this file to ngrok.yml to customize your ngrok setup:
+#   cp scripts/ngrok.yml.example scripts/ngrok.yml
+#
+# Note: scripts/ngrok.yml is gitignored to protect your authtoken.
+# ==============================================================================
+
+version: "2"
+
+# Uncomment and add your authtoken for persistent URLs
+# authtoken: your-ngrok-authtoken-here
+
+tunnels:
+  chive-web:
+    addr: 3000
+    proto: http
+    # Uncomment for custom subdomain (requires paid plan)
+    # subdomain: chive-dev

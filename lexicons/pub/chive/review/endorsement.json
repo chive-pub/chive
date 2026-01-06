@@ -1,0 +1,57 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.review.endorsement",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Endorsement of one or more contribution types in a preprint",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["preprintUri", "contributions", "createdAt"],
+        "properties": {
+          "preprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the preprint being endorsed"
+          },
+          "contributions": {
+            "type": "array",
+            "description": "Set of contribution types being endorsed (min 1, no duplicates)",
+            "minLength": 1,
+            "maxLength": 15,
+            "items": {
+              "type": "string",
+              "knownValues": [
+                "methodological",
+                "analytical",
+                "theoretical",
+                "empirical",
+                "conceptual",
+                "technical",
+                "data",
+                "replication",
+                "reproducibility",
+                "synthesis",
+                "interdisciplinary",
+                "pedagogical",
+                "visualization",
+                "societal-impact",
+                "clinical"
+              ]
+            }
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "Optional comment explaining the endorsement"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

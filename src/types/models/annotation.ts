@@ -1,0 +1,445 @@
+/**
+ * Annotation domain models following W3C Web Annotation Data Model.
+ *
+ * @remarks
+ * This module defines domain models for W3C-compliant text annotations.
+ * Annotations support:
+ * - Text span targeting (TextQuoteSelector + TextPositionSelector)
+ * - Rich text bodies with embedded references (FOVEA GlossItem pattern)
+ * - Entity linking to Wikidata, authorities, and knowledge graph
+ *
+ * @see {@link https://www.w3.org/TR/annotation-model/ | W3C Web Annotation Data Model}
+ *
+ * @packageDocumentation
+ * @public
+ */
+
+import type { AtUri, CID, DID, Timestamp } from '../atproto.js';
+
+// =============================================================================
+// W3C WEB ANNOTATION: TARGET SELECTORS
+// =============================================================================
+
+/**
+ * W3C TextQuoteSelector for resilient text matching.
+ *
+ * @remarks
+ * Identifies text by copying the exact phrase plus surrounding context.
+ * This allows matching even if the document is slightly modified.
+ *
+ * @see {@link https://www.w3.org/TR/annotation-model/#text-quote-selector | W3C TextQuoteSelector}
+ *
+ * @public
+ */
+export interface TextQuoteSelector {
+  /** Selector type identifier */
+  readonly type: 'TextQuoteSelector';
+  /** The exact text that was selected */
+  readonly exact: string;
+  /** Context before the selection (up to 32 chars) */
+  readonly prefix?: string;
+  /** Context after the selection (up to 32 chars) */
+  readonly suffix?: string;
+}
+
+/**
+ * W3C TextPositionSelector for precise character-based targeting.
+ *
+ * @remarks
+ * Uses character offsets within the normalized text of a resource.
+ * The first character is position 0. Start is inclusive, end is exclusive.
+ *
+ * @see {@link https://www.w3.org/TR/annotation-model/#text-position-selector | W3C TextPositionSelector}
+ *
+ * @public
+ */
+export interface TextPositionSelector {
+  /** Selector type identifier */
+  readonly type: 'TextPositionSelector';
+  /** Starting character offset (inclusive) */
+  readonly start: number;
+  /** Ending character offset (exclusive) */
+  readonly end: number;
+  /** PDF page number (1-indexed) */
+  readonly pageNumber: number;
+}
+
+/**
+ * Combined text span target using W3C SpecificResource pattern.
+ *
+ * @remarks
+ * Combines TextQuoteSelector (for resilience) with TextPositionSelector
+ * (for precise highlighting) to maximize the chances of finding the
+ * annotated text across document changes.
+ *
+ * @public
+ */
+export interface TextSpanTarget {
+  /** AT-URI of the preprint being annotated */
+  readonly source: AtUri;
+  /** Primary selector using text quote matching */
+  readonly selector: TextQuoteSelector;
+  /** Optional position selector for precise highlighting */
+  readonly refinedBy?: TextPositionSelector;
+}
+
+// =============================================================================
+// ANNOTATION BODY: FOVEA GLOSSITEM PATTERN
+// =============================================================================
+
+/**
+ * Plain text content in an annotation body.
+ *
+ * @public
+ */
+export interface TextBodyItem {
+  readonly type: 'text';
+  /** The text content */
+  readonly content: string;
+}
+
+/**
+ * Reference to a Wikidata entity.
+ *
+ * @public
+ */
+export interface WikidataRefBodyItem {
+  readonly type: 'wikidataRef';
+  /** Wikidata Q-identifier (e.g., 'Q76') */
+  readonly qid: string;
+  /** Human-readable label */
+  readonly label: string;
+  /** Full Wikidata URL */
+  readonly url?: string;
+}
+
+/**
+ * Reference to a Chive authority record.
+ *
+ * @public
+ */
+export interface AuthorityRefBodyItem {
+  readonly type: 'authorityRef';
+  /** AT-URI of the authority record */
+  readonly uri: AtUri;
+  /** Authorized form of the term */
+  readonly label: string;
+}
+
+/**
+ * Reference to a knowledge graph field.
+ *
+ * @public
+ */
+export interface FieldRefBodyItem {
+  readonly type: 'fieldRef';
+  /** AT-URI or ID of the field */
+  readonly uri: AtUri;
+  /** Field display name */
+  readonly label: string;
+}
+
+/**
+ * Reference to a PMEST/FAST facet value.
+ *
+ * @public
+ */
+export interface FacetRefBodyItem {
+  readonly type: 'facetRef';
+  /** Facet dimension (personality, matter, energy, space, time, person, organization, event, work, form-genre) */
+  readonly dimension: string;
+  /** Facet value */
+  readonly value: string;
+}
+
+/**
+ * Reference to another preprint.
+ *
+ * @public
+ */
+export interface PreprintRefBodyItem {
+  readonly type: 'preprintRef';
+  /** AT-URI of the referenced preprint */
+  readonly uri: AtUri;
+  /** Preprint title */
+  readonly title: string;
+}
+
+/**
+ * Reference to another annotation (for cross-referencing).
+ *
+ * @public
+ */
+export interface AnnotationRefBodyItem {
+  readonly type: 'annotationRef';
+  /** AT-URI of the referenced annotation */
+  readonly uri: AtUri;
+  /** Short excerpt from the referenced annotation */
+  readonly excerpt: string;
+}
+
+/**
+ * Reference to an author/researcher.
+ *
+ * @public
+ */
+export interface AuthorRefBodyItem {
+  readonly type: 'authorRef';
+  /** Author's DID */
+  readonly did: DID;
+  /** Author's display name */
+  readonly displayName: string;
+}
+
+/**
+ * Union type for all annotation body item types.
+ *
+ * @remarks
+ * Follows the FOVEA GlossItem pattern for rich text with embedded references.
+ * Use trigger characters in the editor:
+ * - `@wikidata:` for Wikidata entities
+ * - `@authority:` for authority records
+ * - `@field:` for knowledge graph fields
+ * - `@facet:` for PMEST/FAST facets
+ * - `@preprint:` for other preprints
+ * - `^` for other annotations
+ *
+ * @public
+ */
+export type AnnotationBodyItem =
+  | TextBodyItem
+  | WikidataRefBodyItem
+  | AuthorityRefBodyItem
+  | FieldRefBodyItem
+  | FacetRefBodyItem
+  | PreprintRefBodyItem
+  | AnnotationRefBodyItem
+  | AuthorRefBodyItem;
+
+/**
+ * Rich text annotation body with embedded references.
+ *
+ * @remarks
+ * The body is an ordered list of items that can be text or references.
+ * When rendered, text items are displayed inline and references are
+ * rendered as interactive chips.
+ *
+ * @public
+ */
+export interface AnnotationBody {
+  /** Body type identifier */
+  readonly type: 'RichText';
+  /** Ordered list of text and reference items */
+  readonly items: readonly AnnotationBodyItem[];
+  /** MIME type for the gloss format */
+  readonly format: 'application/x-chive-gloss+json';
+}
+
+// =============================================================================
+// ENTITY LINKING
+// =============================================================================
+
+/**
+ * Wikidata entity link.
+ *
+ * @public
+ */
+export interface WikidataEntityLink {
+  readonly type: 'wikidata';
+  /** Wikidata Q-identifier */
+  readonly qid: string;
+  /** Human-readable label */
+  readonly label: string;
+  /** Full Wikidata URL */
+  readonly url: string;
+}
+
+/**
+ * Authority record entity link.
+ *
+ * @public
+ */
+export interface AuthorityEntityLink {
+  readonly type: 'authority';
+  /** AT-URI of the authority record */
+  readonly uri: AtUri;
+  /** Authorized (preferred) form */
+  readonly authorizedForm: string;
+  /** Alternative forms that map to this authority */
+  readonly variantForms?: readonly string[];
+}
+
+/**
+ * Knowledge graph field entity link.
+ *
+ * @public
+ */
+export interface FieldEntityLink {
+  readonly type: 'field';
+  /** Field AT-URI or ID */
+  readonly uri: AtUri;
+  /** Field name */
+  readonly label: string;
+  /** Breadcrumb path to root */
+  readonly hierarchy?: readonly string[];
+}
+
+/**
+ * Author entity link.
+ *
+ * @public
+ */
+export interface AuthorEntityLink {
+  readonly type: 'author';
+  /** Author's DID */
+  readonly did: DID;
+  /** Display name */
+  readonly displayName: string;
+  /** ORCID identifier if available */
+  readonly orcid?: string;
+}
+
+/**
+ * Preprint entity link.
+ *
+ * @public
+ */
+export interface PreprintEntityLink {
+  readonly type: 'preprint';
+  /** Preprint AT-URI */
+  readonly uri: AtUri;
+  /** Preprint title */
+  readonly title: string;
+}
+
+/**
+ * Union type for all entity link types.
+ *
+ * @remarks
+ * Entity links associate a text span directly with a knowledge graph entity.
+ * This is separate from the annotation body - it represents what the span IS,
+ * not what someone is saying ABOUT it.
+ *
+ * @public
+ */
+export type EntityLinkType =
+  | WikidataEntityLink
+  | AuthorityEntityLink
+  | FieldEntityLink
+  | AuthorEntityLink
+  | PreprintEntityLink;
+
+/**
+ * A span-to-entity link associating selected text with a knowledge graph entity.
+ *
+ * @remarks
+ * This is different from an annotation body reference. A SpanEntityLink says
+ * "this text span refers to this entity" (identification), while body references
+ * are part of a comment about the text.
+ *
+ * @public
+ */
+export interface SpanEntityLink {
+  /** The text span being linked */
+  readonly target: TextSpanTarget;
+  /** The entity the span refers to */
+  readonly linkedEntity: EntityLinkType;
+  /** Confidence score (0-1) */
+  readonly confidence?: number;
+  /** DID of the user who created the link */
+  readonly createdBy: DID;
+  /** Timestamp of creation */
+  readonly createdAt: Timestamp;
+}
+
+// =============================================================================
+// ANNOTATION MOTIVATIONS (W3C)
+// =============================================================================
+
+/**
+ * W3C Web Annotation motivation types.
+ *
+ * @see {@link https://www.w3.org/TR/annotation-model/#motivation-and-purpose | W3C Motivations}
+ *
+ * @public
+ */
+export type AnnotationMotivation =
+  /** General review comment */
+  | 'commenting'
+  /** Highlight without text body */
+  | 'highlighting'
+  /** Identify/link span to entity */
+  | 'identifying'
+  /** Link to external resource */
+  | 'linking'
+  /** Question about the text */
+  | 'questioning'
+  /** Reply to another annotation */
+  | 'replying';
+
+// =============================================================================
+// COMPLETE ANNOTATION STRUCTURE
+// =============================================================================
+
+/**
+ * Complete annotation structure following W3C Web Annotation model.
+ *
+ * @remarks
+ * Annotations are stored in the user's PDS and indexed by Chive.
+ * They combine:
+ * - Target: What text span is being annotated (optional for general reviews)
+ * - Entity Link: What entity the span represents (optional)
+ * - Body: Rich text comment with embedded references
+ * - Motivation: Why the annotation was made
+ * - Threading: Link to parent annotation for replies
+ *
+ * @public
+ */
+export interface Annotation {
+  /** AT-URI of the annotation in the user's PDS */
+  readonly uri: AtUri;
+
+  /** Content hash (CID) for verification */
+  readonly cid: CID;
+
+  /** AT-URI of the annotated preprint */
+  readonly preprintUri: AtUri;
+
+  /** Target text span (undefined for general reviews) */
+  readonly target?: TextSpanTarget;
+
+  /** Entity link for the span (optional) */
+  readonly entityLink?: EntityLinkType;
+
+  /** Rich text body with references */
+  readonly body: AnnotationBody;
+
+  /** Why the annotation was made */
+  readonly motivation: AnnotationMotivation;
+
+  /** Parent annotation URI for threading */
+  readonly parentAnnotationUri?: AtUri;
+
+  /** DID of the annotation creator */
+  readonly creator: DID;
+
+  /** Annotation creation timestamp */
+  readonly createdAt: Timestamp;
+
+  /** Last update timestamp */
+  readonly updatedAt?: Timestamp;
+}
+
+/**
+ * Thread metadata for annotations.
+ *
+ * @public
+ */
+export interface AnnotationThread {
+  /** Nesting depth (0 = top-level) */
+  readonly depth: number;
+  /** Parent annotation URI */
+  readonly parentUri?: AtUri;
+  /** Number of direct replies */
+  readonly replyCount: number;
+}

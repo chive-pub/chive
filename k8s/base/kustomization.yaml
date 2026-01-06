@@ -1,0 +1,57 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: chive-base
+
+namespace: chive
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: chive
+
+resources:
+  # Namespace
+  - namespace.yaml
+
+  # RBAC
+  - rbac/service-accounts.yaml
+  - rbac/roles.yaml
+  - rbac/role-bindings.yaml
+
+  # AppView (API)
+  - appview/deployment.yaml
+  - appview/service.yaml
+  - appview/configmap.yaml
+  - appview/hpa.yaml
+  - appview/pdb.yaml
+
+  # Indexer (Firehose Consumer)
+  - indexer/deployment.yaml
+  - indexer/service.yaml
+  - indexer/configmap.yaml
+  - indexer/pdb.yaml
+
+  # Frontend
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+  - frontend/hpa.yaml
+  - frontend/pdb.yaml
+
+  # Ingress
+  - ingress/ingress.yaml
+  - ingress/certificate.yaml
+
+  # Databases (optional, comment out if using external DBs)
+  - databases/postgresql.yaml
+  - databases/redis.yaml
+  - databases/elasticsearch.yaml
+  - databases/neo4j.yaml
+
+# Images can be overridden in overlays
+images:
+  - name: chive
+    newTag: latest
+  - name: chive-frontend
+    newTag: latest

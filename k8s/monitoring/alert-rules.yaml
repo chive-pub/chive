@@ -1,0 +1,325 @@
+# Prometheus Alert Rules for Chive
+#
+# Defines alerting rules for Chive services based on SLOs.
+# Alerts are sent to Alertmanager for routing to PagerDuty/Slack.
+#
+# Usage:
+#   kubectl apply -f alert-rules.yaml
+#
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: chive-alerts
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: alerting
+    prometheus: chive
+    role: alert-rules
+spec:
+  groups:
+    # Service Health Alerts (RED Method)
+    - name: chive-service-health
+      interval: 30s
+      rules:
+        # High Error Rate (5xx)
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(rate(chive_http_requests_total{status=~"5.."}[5m]))
+              /
+              sum(rate(chive_http_requests_total[5m]))
+            ) > 0.01
+          for: 5m
+          labels:
+            severity: critical
+            team: backend
+          annotations:
+            summary: "High error rate on Chive AppView"
+            description: "Error rate is {{ $value | humanizePercentage }} (threshold: 1%)"
+            runbook_url: "https://docs.chive.pub/runbooks/high-error-rate"
+            dashboard_url: "https://grafana.chive.pub/d/chive-service-health"
+
+        # High Latency (p95 > 2s)
+        - alert: HighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(chive_http_request_duration_seconds_bucket[5m])) by (le)
+            ) > 2
+          for: 10m
+          labels:
+            severity: warning
+            team: backend
+          annotations:
+            summary: "High request latency on Chive AppView"
+            description: "p95 latency is {{ $value | humanizeDuration }}"
+            runbook_url: "https://docs.chive.pub/runbooks/high-latency"
+            dashboard_url: "https://grafana.chive.pub/d/chive-service-health"
+
+        # Low Request Rate (traffic drop)
+        - alert: LowRequestRate
+          expr: |
+            sum(rate(chive_http_requests_total[5m])) < 0.1
+            and
+            hour() >= 8 and hour() <= 20
+          for: 15m
+          labels:
+            severity: warning
+            team: backend
+          annotations:
+            summary: "Low request rate on Chive AppView"
+            description: "Request rate is {{ $value | humanize }} req/s during business hours"
+            runbook_url: "https://docs.chive.pub/runbooks/low-traffic"
+
+    # Firehose Consumer Alerts
+    - name: chive-firehose
+      interval: 30s
+      rules:
+        # Firehose Lag (>5 minutes)
+        - alert: FirehoseLag
+          expr: chive_firehose_cursor_lag_seconds > 300
+          for: 5m
+          labels:
+            severity: warning
+            team: backend
+          annotations:
+            summary: "Firehose consumer is lagging"
+            description: "Firehose lag is {{ $value | humanizeDuration }}"
+            runbook_url: "https://docs.chive.pub/runbooks/firehose-lag"
+            dashboard_url: "https://grafana.chive.pub/d/chive-firehose"
+
+        # Critical Firehose Lag (>30 minutes)
+        - alert: FirehoseLagCritical
+          expr: chive_firehose_cursor_lag_seconds > 1800
+          for: 5m
+          labels:
+            severity: critical
+            team: backend
+          annotations:
+            summary: "Firehose consumer is critically lagging"
+            description: "Firehose lag is {{ $value | humanizeDuration }} (>30 minutes)"
+            runbook_url: "https://docs.chive.pub/runbooks/firehose-lag-critical"
+            dashboard_url: "https://grafana.chive.pub/d/chive-firehose"
+
+        # No Active Firehose Connections
+        - alert: FirehoseDisconnected
+          expr: chive_firehose_active_connections == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: backend
+          annotations:
+            summary: "Firehose consumer disconnected"
+            description: "No active firehose connections"
+            runbook_url: "https://docs.chive.pub/runbooks/firehose-disconnected"
+
+    # Database Alerts
+    - name: chive-database
+      interval: 30s
+      rules:
+        # PostgreSQL Connection Pool Exhausted
+        - alert: PostgreSQLConnectionPoolExhausted
+          expr: |
+            chive_database_connections_active{database="postgresql"}
+            /
+            100  # Assuming max pool size of 100
+            > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            team: database
+          annotations:
+            summary: "PostgreSQL connection pool nearly exhausted"
+            description: "Active connections: {{ $value | humanizePercentage }} of pool"
+            runbook_url: "https://docs.chive.pub/runbooks/pg-pool-exhausted"
+            dashboard_url: "https://grafana.chive.pub/d/chive-database"
+
+        # Elasticsearch Slow Queries
+        - alert: ElasticsearchSlowQueries
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(chive_database_query_duration_seconds_bucket{database="elasticsearch"}[5m])) by (le)
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+            team: search
+          annotations:
+            summary: "Elasticsearch queries are slow"
+            description: "p95 query duration is {{ $value | humanizeDuration }}"
+            runbook_url: "https://docs.chive.pub/runbooks/es-slow-queries"
+            dashboard_url: "https://grafana.chive.pub/d/chive-database"
+
+        # Redis Connection Issues
+        - alert: RedisConnectionIssues
+          expr: |
+            increase(chive_database_query_duration_seconds_count{database="redis",operation="error"}[5m]) > 10
+          for: 5m
+          labels:
+            severity: warning
+            team: infrastructure
+          annotations:
+            summary: "Redis connection issues detected"
+            description: "{{ $value }} Redis errors in the last 5 minutes"
+            runbook_url: "https://docs.chive.pub/runbooks/redis-issues"
+
+    # Infrastructure Alerts
+    - name: chive-infrastructure
+      interval: 30s
+      rules:
+        # OTEL Collector Down
+        - alert: OTELCollectorDown
+          expr: up{job="otel-collector"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            team: infrastructure
+          annotations:
+            summary: "OpenTelemetry Collector is down"
+            description: "OTEL Collector is not responding"
+            runbook_url: "https://docs.chive.pub/runbooks/otel-collector-down"
+
+        # High Memory Usage
+        - alert: HighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{namespace="chive"}
+              /
+              container_spec_memory_limit_bytes{namespace="chive"}
+            ) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+            team: infrastructure
+          annotations:
+            summary: "High memory usage in Chive namespace"
+            description: "Container {{ $labels.container }} is using {{ $value | humanizePercentage }} of memory limit"
+            runbook_url: "https://docs.chive.pub/runbooks/high-memory"
+
+        # Pod Restarts
+        - alert: PodRestarts
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="chive"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            team: infrastructure
+          annotations:
+            summary: "Pod {{ $labels.pod }} has restarted multiple times"
+            description: "{{ $value }} restarts in the last hour"
+            runbook_url: "https://docs.chive.pub/runbooks/pod-restarts"
+
+    # Preprint Indexing Alerts
+    - name: chive-indexing
+      interval: 30s
+      rules:
+        # High Indexing Failure Rate
+        - alert: HighIndexingFailureRate
+          expr: |
+            (
+              sum(rate(chive_preprints_indexed_total{status="error"}[5m]))
+              /
+              sum(rate(chive_preprints_indexed_total[5m]))
+            ) > 0.05
+          for: 10m
+          labels:
+            severity: warning
+            team: backend
+          annotations:
+            summary: "High preprint indexing failure rate"
+            description: "Indexing failure rate is {{ $value | humanizePercentage }}"
+            runbook_url: "https://docs.chive.pub/runbooks/indexing-failures"
+            dashboard_url: "https://grafana.chive.pub/d/chive-firehose"
+
+        # Slow Indexing
+        - alert: SlowIndexing
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(chive_preprint_indexing_duration_seconds_bucket[5m])) by (le)
+            ) > 5
+          for: 10m
+          labels:
+            severity: warning
+            team: backend
+          annotations:
+            summary: "Preprint indexing is slow"
+            description: "p95 indexing duration is {{ $value | humanizeDuration }}"
+            runbook_url: "https://docs.chive.pub/runbooks/slow-indexing"
+
+---
+# Alertmanager Configuration (optional - reference)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: alerting
+data:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+      slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+    route:
+      receiver: 'slack-notifications'
+      group_by: ['alertname', 'severity', 'team']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+
+      routes:
+        # Critical alerts go to PagerDuty
+        - match:
+            severity: critical
+          receiver: 'pagerduty'
+          continue: true
+
+        # All alerts also go to Slack
+        - match_re:
+            severity: critical|warning
+          receiver: 'slack-notifications'
+
+    receivers:
+      - name: 'pagerduty'
+        pagerduty_configs:
+          - service_key: '${PAGERDUTY_SERVICE_KEY}'
+            severity: '{{ .CommonLabels.severity }}'
+            description: '{{ .CommonAnnotations.summary }}'
+            details:
+              description: '{{ .CommonAnnotations.description }}'
+              runbook: '{{ .CommonAnnotations.runbook_url }}'
+
+      - name: 'slack-notifications'
+        slack_configs:
+          - channel: '#chive-alerts'
+            username: 'Prometheus'
+            icon_emoji: ':prometheus:'
+            title: '{{ .GroupLabels.alertname }}'
+            text: |
+              {{ range .Alerts }}
+              *{{ .Annotations.summary }}*
+              {{ .Annotations.description }}
+              Severity: {{ .Labels.severity }}
+              Team: {{ .Labels.team }}
+              {{ if .Annotations.runbook_url }}Runbook: {{ .Annotations.runbook_url }}{{ end }}
+              {{ if .Annotations.dashboard_url }}Dashboard: {{ .Annotations.dashboard_url }}{{ end }}
+              {{ end }}
+            send_resolved: true
+
+    inhibit_rules:
+      # Inhibit warning alerts if critical alert for same alertname is firing
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname']
+
+      # Inhibit all alerts if OTELCollectorDown (can't collect metrics)
+      - source_match:
+          alertname: 'OTELCollectorDown'
+        target_match_re:
+          alertname: '.+'
+        equal: []

@@ -1,0 +1,27 @@
+{{- if and .Values.appview.enabled .Values.appview.pdb.enabled -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "chive.fullname" . }}-appview
+  labels:
+    {{- include "chive.appview.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.appview.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "chive.appview.selectorLabels" . | nindent 6 }}
+{{- end }}
+---
+{{- if and .Values.indexer.enabled .Values.indexer.pdb.enabled -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "chive.fullname" . }}-indexer
+  labels:
+    {{- include "chive.indexer.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.indexer.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "chive.indexer.selectorLabels" . | nindent 6 }}
+{{- end }}

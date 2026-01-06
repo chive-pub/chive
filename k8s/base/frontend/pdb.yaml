@@ -1,0 +1,14 @@
+# PodDisruptionBudget for Frontend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chive-frontend-pdb
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-frontend
+    app.kubernetes.io/part-of: chive
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: chive-frontend

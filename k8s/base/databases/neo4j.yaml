@@ -1,0 +1,117 @@
+# Neo4j Single Instance (Community Edition)
+# For production HA, use Neo4j Causal Cluster (Enterprise)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neo4j-config
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: chive
+data:
+  NEO4J_PLUGINS: '["apoc"]'
+  # Memory configuration for small server
+  NEO4J_server_memory_heap_initial__size: "256m"
+  NEO4J_server_memory_heap_max__size: "512m"
+  NEO4J_server_memory_pagecache_size: "256m"
+  NEO4J_dbms_memory_transaction_total_max: "256m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: neo4j
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: chive
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: neo4j
+  ports:
+    - name: http
+      port: 7474
+      targetPort: 7474
+    - name: bolt
+      port: 7687
+      targetPort: 7687
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neo4j
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: neo4j
+    app.kubernetes.io/part-of: chive
+spec:
+  serviceName: neo4j
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: neo4j
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: neo4j
+        app.kubernetes.io/part-of: chive
+    spec:
+      securityContext:
+        fsGroup: 7474
+      containers:
+        - name: neo4j
+          image: neo4j:5-community
+          ports:
+            - name: http
+              containerPort: 7474
+            - name: bolt
+              containerPort: 7687
+          env:
+            - name: NEO4J_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: chive-secrets
+                  key: NEO4J_AUTH
+          envFrom:
+            - configMapRef:
+                name: neo4j-config
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: logs
+              mountPath: /logs
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+      volumes:
+        - name: logs
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

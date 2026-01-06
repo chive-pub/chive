@@ -1,0 +1,152 @@
+{{- if .Values.appview.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chive.fullname" . }}-appview
+  labels:
+    {{- include "chive.appview.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.appview.autoscaling.enabled }}
+  replicas: {{ .Values.appview.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "chive.appview.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "chive.appview.selectorLabels" . | nindent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: appview
+          image: {{ include "chive.image" .Values.appview.image }}
+          imagePullPolicy: {{ .Values.appview.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.global.environment | quote }}
+            - name: PORT
+              value: "3000"
+            - name: OTEL_SERVICE_NAME
+              value: "chive-appview"
+            - name: LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            - name: ATPROTO_RELAY_URL
+              value: {{ .Values.config.atproto.relayUrl | quote }}
+            - name: ATPROTO_PDS_URL
+              value: {{ .Values.config.atproto.pdsUrl | quote }}
+            - name: CHIVE_GOVERNANCE_DID
+              value: {{ .Values.config.atproto.governanceDid | quote }}
+            - name: RATE_LIMIT_FAIL_MODE
+              value: {{ .Values.config.rateLimitFailMode | quote }}
+            - name: STALENESS_THRESHOLD_MS
+              value: {{ .Values.config.stalenessThresholdMs | quote }}
+            {{- if .Values.config.otel.enabled }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.config.otel.endpoint | quote }}
+            {{- end }}
+            {{- if .Values.postgresql.enabled }}
+            - name: POSTGRES_HOST
+              value: {{ include "chive.fullname" . }}-postgresql
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chive.secretsName" . }}
+                  key: POSTGRES_PASSWORD
+            {{- end }}
+            {{- if .Values.redis.enabled }}
+            - name: REDIS_HOST
+              value: {{ include "chive.fullname" . }}-redis-master
+            - name: REDIS_PORT
+              value: "6379"
+            {{- end }}
+            {{- if .Values.elasticsearch.enabled }}
+            - name: ELASTICSEARCH_URL
+              value: http://{{ include "chive.fullname" . }}-elasticsearch:9200
+            {{- end }}
+            {{- if .Values.neo4j.enabled }}
+            - name: NEO4J_URI
+              value: bolt://{{ include "chive.fullname" . }}-neo4j:7687
+            - name: NEO4J_USER
+              value: "neo4j"
+            - name: NEO4J_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chive.secretsName" . }}
+                  key: NEO4J_PASSWORD
+            {{- end }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chive.secretsName" . }}
+                  key: JWT_SECRET
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chive.secretsName" . }}
+                  key: SESSION_SECRET
+          resources:
+            {{- toYaml .Values.appview.resources | nindent 12 }}
+          {{- with .Values.appview.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.appview.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- if .Values.appview.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "chive.appview.selectorLabels" . | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
+      {{- with .Values.appview.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.appview.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 30
+{{- end }}

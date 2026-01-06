@@ -1,0 +1,152 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.profile",
+  "defs": {
+    "affiliation": {
+      "type": "object",
+      "description": "Institutional affiliation with optional ROR ID",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Organization name",
+          "maxLength": 200
+        },
+        "rorId": {
+          "type": "string",
+          "description": "ROR ID (e.g., https://ror.org/02mhbdp94)",
+          "maxLength": 50
+        }
+      }
+    },
+    "keyword": {
+      "type": "object",
+      "description": "Research keyword with optional authority IDs",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Keyword label",
+          "maxLength": 100
+        },
+        "fastId": {
+          "type": "string",
+          "description": "FAST subject heading ID",
+          "maxLength": 20
+        },
+        "wikidataId": {
+          "type": "string",
+          "description": "Wikidata entity ID (e.g., Q12345)",
+          "maxLength": 20
+        }
+      }
+    },
+    "main": {
+      "type": "record",
+      "description": "Chive-specific author profile",
+      "key": "self",
+      "record": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "avatar": {
+            "type": "blob",
+            "accept": ["image/png", "image/jpeg"],
+            "maxSize": 1048576
+          },
+          "orcid": {
+            "type": "string",
+            "description": "ORCID identifier",
+            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$"
+          },
+          "affiliations": {
+            "type": "array",
+            "description": "Current institutional affiliations with optional ROR IDs",
+            "items": {
+              "type": "ref",
+              "ref": "#affiliation"
+            },
+            "maxLength": 10
+          },
+          "fields": {
+            "type": "array",
+            "description": "Research field IDs",
+            "items": {
+              "type": "string"
+            },
+            "maxLength": 20
+          },
+          "nameVariants": {
+            "type": "array",
+            "description": "Alternative name forms for paper matching (e.g., maiden name, transliterations, initials like 'J. Smith')",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "maxLength": 20
+          },
+          "previousAffiliations": {
+            "type": "array",
+            "description": "Past institutional affiliations that may appear on older papers",
+            "items": {
+              "type": "ref",
+              "ref": "#affiliation"
+            },
+            "maxLength": 20
+          },
+          "researchKeywords": {
+            "type": "array",
+            "description": "Research topics and keywords with optional authority IDs",
+            "items": {
+              "type": "ref",
+              "ref": "#keyword"
+            },
+            "maxLength": 50
+          },
+          "semanticScholarId": {
+            "type": "string",
+            "description": "Semantic Scholar author ID",
+            "maxLength": 50
+          },
+          "openAlexId": {
+            "type": "string",
+            "description": "OpenAlex author ID (e.g., A5023888391)",
+            "maxLength": 50
+          },
+          "googleScholarId": {
+            "type": "string",
+            "description": "Google Scholar profile ID",
+            "maxLength": 50
+          },
+          "arxivAuthorId": {
+            "type": "string",
+            "description": "arXiv author identifier",
+            "maxLength": 100
+          },
+          "openReviewId": {
+            "type": "string",
+            "description": "OpenReview profile ID",
+            "maxLength": 100
+          },
+          "dblpId": {
+            "type": "string",
+            "description": "DBLP author identifier (e.g., homepages/s/JohnSmith)",
+            "maxLength": 200
+          },
+          "scopusAuthorId": {
+            "type": "string",
+            "description": "Scopus author ID",
+            "maxLength": 50
+          }
+        }
+      }
+    }
+  }
+}

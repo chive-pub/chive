@@ -1,0 +1,228 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.review.entityLink",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Link from a text span in a preprint to a knowledge graph entity",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["preprintUri", "target", "linkedEntity", "createdAt"],
+        "properties": {
+          "preprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the preprint containing the linked text"
+          },
+          "target": {
+            "type": "ref",
+            "ref": "#textSpanTarget",
+            "description": "Text span being linked to an entity"
+          },
+          "linkedEntity": {
+            "type": "ref",
+            "ref": "#entityLinkType",
+            "description": "The entity being linked to"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence score for the link (0.0-1.0)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "textSpanTarget": {
+      "type": "object",
+      "description": "W3C Web Annotation target for text spans",
+      "required": ["source", "selector"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the source document"
+        },
+        "selector": {
+          "type": "ref",
+          "ref": "#textQuoteSelector",
+          "description": "Primary selector for resilient text matching"
+        },
+        "refinedBy": {
+          "type": "ref",
+          "ref": "#textPositionSelector",
+          "description": "Optional position selector for precise targeting"
+        }
+      }
+    },
+    "textQuoteSelector": {
+      "type": "object",
+      "description": "W3C TextQuoteSelector for resilient text matching",
+      "required": ["type", "exact"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextQuoteSelector"
+        },
+        "exact": {
+          "type": "string",
+          "description": "The exact text to match"
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Text immediately before the match"
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Text immediately after the match"
+        }
+      }
+    },
+    "textPositionSelector": {
+      "type": "object",
+      "description": "W3C TextPositionSelector for character-based targeting",
+      "required": ["type", "start", "end", "pageNumber"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextPositionSelector"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Start character offset"
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "End character offset"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Page number in the document"
+        }
+      }
+    },
+    "entityLinkType": {
+      "type": "union",
+      "description": "Union of all entity link types",
+      "refs": ["#wikidataLink", "#authorityLink", "#fieldLink", "#authorLink", "#preprintLink"]
+    },
+    "wikidataLink": {
+      "type": "object",
+      "description": "Link to a Wikidata entity",
+      "required": ["type", "qid", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "wikidata"
+        },
+        "qid": {
+          "type": "string",
+          "description": "Wikidata QID (e.g., Q42)"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the entity"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the Wikidata page"
+        }
+      }
+    },
+    "authorityLink": {
+      "type": "object",
+      "description": "Link to an authority record",
+      "required": ["type", "uri", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "authority"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the authority record"
+        },
+        "label": {
+          "type": "string",
+          "description": "Authorized form of the name"
+        }
+      }
+    },
+    "fieldLink": {
+      "type": "object",
+      "description": "Link to a knowledge graph field",
+      "required": ["type", "uri", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "field"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the field node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Field name"
+        }
+      }
+    },
+    "authorLink": {
+      "type": "object",
+      "description": "Link to an author",
+      "required": ["type", "did", "displayName"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "author"
+        },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author's DID"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Author's display name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "Author's ORCID (if available)"
+        }
+      }
+    },
+    "preprintLink": {
+      "type": "object",
+      "description": "Link to another preprint",
+      "required": ["type", "uri", "title"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "preprint"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the preprint"
+        },
+        "title": {
+          "type": "string",
+          "description": "Preprint title"
+        }
+      }
+    }
+  }
+}

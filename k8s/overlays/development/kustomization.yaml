@@ -1,0 +1,115 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: chive-dev
+
+resources:
+  - ../../base
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
+
+# Override images with dev tags
+images:
+  - name: chive
+    newTag: dev
+  - name: chive-frontend
+    newTag: dev
+
+patches:
+  # Reduce replicas for development
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: chive-frontend
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  # Reduce resources for development
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+  - target:
+      kind: Deployment
+      name: chive-indexer
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+  # Reduce database storage for development
+  - target:
+      kind: StatefulSet
+      name: postgresql
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 1Gi
+  - target:
+      kind: StatefulSet
+      name: redis
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 1Gi
+  - target:
+      kind: StatefulSet
+      name: elasticsearch
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 5Gi
+  - target:
+      kind: StatefulSet
+      name: neo4j
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 1Gi
+
+  # Use development log level
+  - target:
+      kind: ConfigMap
+      name: chive-config
+    patch: |-
+      - op: replace
+        path: /data/LOG_LEVEL
+        value: debug
+
+# Disable HPA and PDB in development
+patchesStrategicMerge:
+  - delete-hpa.yaml
+  - delete-pdb.yaml
+
+configMapGenerator:
+  - name: chive-dev-config
+    behavior: merge
+    literals:
+      - NODE_ENV=development

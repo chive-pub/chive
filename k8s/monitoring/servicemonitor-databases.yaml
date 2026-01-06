@@ -1,0 +1,173 @@
+# ServiceMonitors for Database exporters
+# Requires database exporters to be deployed
+---
+# PostgreSQL Exporter ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgresql-exporter
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: postgresql-exporter
+    app.kubernetes.io/part-of: chive
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - chive
+---
+# Redis Exporter ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-exporter
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/part-of: chive
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - chive
+---
+# Elasticsearch Exporter ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: elasticsearch-exporter
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: elasticsearch-exporter
+    app.kubernetes.io/part-of: chive
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: elasticsearch-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - chive
+---
+# Database PrometheusRules
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: chive-database-alerts
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-databases
+    app.kubernetes.io/part-of: chive
+    release: prometheus
+spec:
+  groups:
+    - name: chive-databases
+      rules:
+        # PostgreSQL connection pool exhaustion
+        - alert: PostgreSQLConnectionPoolExhausted
+          expr: |
+            pg_stat_activity_count{datname="chive"}
+            /
+            pg_settings_max_connections > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            service: postgresql
+          annotations:
+            summary: "PostgreSQL connection pool nearly exhausted"
+            description: "Connection usage is {{ $value | humanizePercentage }} of max"
+
+        # PostgreSQL slow queries
+        - alert: PostgreSQLSlowQueries
+          expr: |
+            rate(pg_stat_statements_mean_exec_time_ms[5m]) > 1000
+          for: 10m
+          labels:
+            severity: warning
+            service: postgresql
+          annotations:
+            summary: "PostgreSQL slow queries detected"
+            description: "Average query time is {{ $value | humanize }}ms"
+
+        # Redis memory usage
+        - alert: RedisHighMemoryUsage
+          expr: |
+            redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            service: redis
+          annotations:
+            summary: "Redis memory usage high"
+            description: "Memory usage is {{ $value | humanizePercentage }} of max"
+
+        # Redis connection issues
+        - alert: RedisConnectionIssues
+          expr: |
+            increase(redis_rejected_connections_total[5m]) > 10
+          for: 5m
+          labels:
+            severity: warning
+            service: redis
+          annotations:
+            summary: "Redis rejecting connections"
+            description: "{{ $value | humanize }} connections rejected in 5 minutes"
+
+        # Elasticsearch cluster health
+        - alert: ElasticsearchClusterUnhealthy
+          expr: |
+            elasticsearch_cluster_health_status{color="red"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            service: elasticsearch
+          annotations:
+            summary: "Elasticsearch cluster is red"
+            description: "Cluster health is red - data may be unavailable"
+
+        # Elasticsearch slow queries
+        - alert: ElasticsearchSlowQueries
+          expr: |
+            rate(elasticsearch_indices_search_query_time_seconds[5m])
+            /
+            rate(elasticsearch_indices_search_query_total[5m])
+            > 1
+          for: 10m
+          labels:
+            severity: warning
+            service: elasticsearch
+          annotations:
+            summary: "Elasticsearch slow queries"
+            description: "Average query time is {{ $value | humanizeDuration }}"
+
+        # Neo4j connection issues
+        - alert: Neo4jConnectionPoolExhausted
+          expr: |
+            neo4j_dbms_pool_bolt_in_use
+            /
+            neo4j_dbms_pool_bolt_max_size > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            service: neo4j
+          annotations:
+            summary: "Neo4j connection pool nearly exhausted"
+            description: "Connection usage is {{ $value | humanizePercentage }} of max"

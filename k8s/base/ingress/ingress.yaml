@@ -1,0 +1,93 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chive-ingress
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive
+    app.kubernetes.io/part-of: chive
+  annotations:
+    # cert-manager annotation for auto TLS
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # NGINX Ingress annotations
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - chive.example.com
+        - api.chive.example.com
+      secretName: chive-tls
+  rules:
+    # Frontend (main domain)
+    - host: chive.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: chive-frontend
+                port:
+                  number: 3000
+    # API subdomain
+    - host: api.chive.example.com
+      http:
+        paths:
+          # Health check endpoints (no rate limiting)
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: chive-appview
+                port:
+                  number: 3000
+          - path: /ready
+            pathType: Exact
+            backend:
+              service:
+                name: chive-appview
+                port:
+                  number: 3000
+          # XRPC endpoints
+          - path: /xrpc
+            pathType: Prefix
+            backend:
+              service:
+                name: chive-appview
+                port:
+                  number: 3000
+          # REST API
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: chive-appview
+                port:
+                  number: 3000
+          # OpenAPI documentation
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: chive-appview
+                port:
+                  number: 3000
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: chive-appview
+                port:
+                  number: 3000

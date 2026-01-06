@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chive-indexer
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/component: indexer
+    app.kubernetes.io/part-of: chive
+spec:
+  # Single replica - cursor management requires single consumer
+  # For HA, implement leader election (lease-based)
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: chive-indexer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: chive-indexer
+        app.kubernetes.io/component: indexer
+        app.kubernetes.io/part-of: chive
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: chive-indexer
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: indexer
+          image: chive:latest
+          imagePullPolicy: IfNotPresent
+          command: ["node", "--enable-source-maps", "dist/indexer.js"]
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: OTEL_SERVICE_NAME
+              value: "chive-indexer"
+            # Leader election identity
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          envFrom:
+            - configMapRef:
+                name: chive-config
+            - secretRef:
+                name: chive-secrets
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          # No liveness probe - long-running process
+          # Use metrics/logs for monitoring instead
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      # Allow time for graceful shutdown (cursor flush)
+      terminationGracePeriodSeconds: 60

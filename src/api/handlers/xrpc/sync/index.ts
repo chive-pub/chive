@@ -1,0 +1,28 @@
+/**
+ * Sync XRPC endpoints.
+ *
+ * @remarks
+ * Exports all PDS sync-related XRPC endpoint definitions.
+ *
+ * @packageDocumentation
+ * @public
+ */
+
+import { checkStalenessEndpoint } from './checkStaleness.js';
+import { refreshRecordEndpoint } from './refreshRecord.js';
+import { verifySyncEndpoint } from './verify.js';
+
+export { checkStalenessEndpoint, checkStalenessHandler } from './checkStaleness.js';
+export { refreshRecordEndpoint, refreshRecordHandler } from './refreshRecord.js';
+export { verifySyncEndpoint, verifySyncHandler } from './verify.js';
+
+/**
+ * All sync endpoints.
+ *
+ * @public
+ */
+export const syncEndpoints = [
+  checkStalenessEndpoint,
+  refreshRecordEndpoint,
+  verifySyncEndpoint,
+] as const;

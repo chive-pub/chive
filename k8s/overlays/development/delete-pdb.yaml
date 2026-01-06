@@ -1,0 +1,19 @@
+# Delete PDB resources in development
+# PDB is not needed with single replicas
+$patch: delete
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chive-appview-pdb
+---
+$patch: delete
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chive-frontend-pdb
+---
+$patch: delete
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chive-indexer-pdb

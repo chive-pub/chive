@@ -1,0 +1,13 @@
+# Delete HPA resources in development
+# HPA is not needed with single replicas
+$patch: delete
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: chive-appview-hpa
+---
+$patch: delete
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: chive-frontend-hpa

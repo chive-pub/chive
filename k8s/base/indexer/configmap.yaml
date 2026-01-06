@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chive-indexer-config
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/part-of: chive
+data:
+  # Indexer-specific configuration
+  # Queue settings
+  INDEXER_QUEUE_CONCURRENCY: "10"
+  INDEXER_MAX_QUEUE_DEPTH: "1000"
+  INDEXER_CURSOR_FLUSH_INTERVAL_MS: "5000"
+
+  # Retry settings
+  INDEXER_MAX_RETRIES: "3"
+  INDEXER_RETRY_DELAY_MS: "1000"
+
+  # DLQ settings
+  INDEXER_DLQ_ENABLED: "true"
+  INDEXER_DLQ_MAX_AGE_DAYS: "7"

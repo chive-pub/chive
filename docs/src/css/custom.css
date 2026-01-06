@@ -1,0 +1,107 @@
+/**
+ * Chive documentation theme customizations.
+ * Based on Docusaurus default theme with Chive branding.
+ */
+
+:root {
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Improve code block readability */
+.prism-code {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Navbar styling */
+.navbar {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Footer links */
+.footer__link-item {
+  font-size: 0.875rem;
+}
+
+/* Table styling */
+table {
+  display: table;
+  width: 100%;
+}
+
+th {
+  font-weight: 600;
+}
+
+/* Sidebar category labels */
+.menu__link--sublist {
+  font-weight: 500;
+}
+
+/* API reference styling */
+.api-method {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+}
+
+.api-method-get {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.api-method-post {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.api-method-put {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.api-method-delete {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+[data-theme='dark'] .api-method-get {
+  background-color: #166534;
+  color: #dcfce7;
+}
+
+[data-theme='dark'] .api-method-post {
+  background-color: #1e40af;
+  color: #dbeafe;
+}
+
+[data-theme='dark'] .api-method-put {
+  background-color: #92400e;
+  color: #fef3c7;
+}
+
+[data-theme='dark'] .api-method-delete {
+  background-color: #991b1b;
+  color: #fee2e2;
+}

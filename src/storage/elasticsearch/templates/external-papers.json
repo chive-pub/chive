@@ -1,0 +1,108 @@
+{
+  "index_patterns": ["external-papers-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "refresh_interval": "10s",
+      "max_result_window": 10000,
+      "analysis": {
+        "analyzer": {
+          "paper_analyzer": {
+            "type": "custom",
+            "tokenizer": "standard",
+            "char_filter": ["html_strip"],
+            "filter": ["lowercase", "asciifolding", "porter_stem", "academic_stopwords"]
+          },
+          "name_analyzer": {
+            "type": "custom",
+            "tokenizer": "keyword",
+            "filter": ["lowercase", "asciifolding"]
+          },
+          "ngram_analyzer": {
+            "type": "custom",
+            "tokenizer": "standard",
+            "filter": ["lowercase", "asciifolding", "ngram_filter"]
+          }
+        },
+        "filter": {
+          "academic_stopwords": {
+            "type": "stop",
+            "stopwords": "_english_"
+          },
+          "ngram_filter": {
+            "type": "edge_ngram",
+            "min_gram": 3,
+            "max_gram": 20
+          }
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "id": {
+          "type": "keyword"
+        },
+        "source": {
+          "type": "keyword"
+        },
+        "external_id": {
+          "type": "keyword"
+        },
+        "title": {
+          "type": "text",
+          "analyzer": "paper_analyzer",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 512
+            },
+            "suggest": {
+              "type": "completion"
+            },
+            "ngram": {
+              "type": "text",
+              "analyzer": "ngram_analyzer"
+            }
+          }
+        },
+        "abstract": {
+          "type": "text",
+          "analyzer": "paper_analyzer"
+        },
+        "authors": {
+          "type": "text",
+          "analyzer": "name_analyzer",
+          "fields": {
+            "keyword": {
+              "type": "keyword"
+            }
+          }
+        },
+        "url": {
+          "type": "keyword",
+          "index": false
+        },
+        "pdf_url": {
+          "type": "keyword",
+          "index": false
+        },
+        "publication_date": {
+          "type": "date"
+        },
+        "categories": {
+          "type": "keyword"
+        },
+        "doi": {
+          "type": "keyword"
+        },
+        "indexed_at": {
+          "type": "date"
+        },
+        "year_published": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

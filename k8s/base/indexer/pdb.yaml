@@ -1,0 +1,15 @@
+# PodDisruptionBudget for Indexer
+# Must always have at least 1 running for firehose continuity
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chive-indexer-pdb
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/part-of: chive
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: chive-indexer

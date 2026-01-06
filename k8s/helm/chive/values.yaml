@@ -1,0 +1,293 @@
+# Default values for chive.
+# This is a YAML-formatted file.
+# Use values-ha.yaml overlay for high-availability configuration.
+
+# =============================================================================
+# Global Settings
+# =============================================================================
+global:
+  # Environment: development, staging, production
+  environment: production
+
+  # Image registry (leave empty for Docker Hub)
+  imageRegistry: ""
+
+  # Image pull secrets (for private registries)
+  imagePullSecrets: []
+
+# =============================================================================
+# AppView (API Server)
+# =============================================================================
+appview:
+  enabled: true
+
+  replicaCount: 1
+
+  image:
+    repository: chive
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod Disruption Budget
+  pdb:
+    enabled: false
+    minAvailable: 1
+
+  # Liveness and readiness probes
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Pod anti-affinity
+  affinity:
+    enabled: false
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+# =============================================================================
+# Indexer (Firehose Consumer)
+# =============================================================================
+indexer:
+  enabled: true
+
+  # Always 1 replica for cursor management
+  replicaCount: 1
+
+  image:
+    repository: chive
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  command:
+    - node
+    - "--enable-source-maps"
+    - dist/indexer.js
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+  # PDB for indexer
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+# =============================================================================
+# Frontend (Next.js)
+# =============================================================================
+frontend:
+  enabled: true
+
+  replicaCount: 1
+
+  image:
+    repository: chive-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+# =============================================================================
+# Ingress
+# =============================================================================
+ingress:
+  enabled: true
+  className: nginx
+
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+
+  hosts:
+    - host: chive.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: api.chive.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: appview
+
+  tls:
+    - secretName: chive-tls
+      hosts:
+        - chive.example.com
+        - api.chive.example.com
+
+# =============================================================================
+# Databases
+# =============================================================================
+# Set enabled: false to use external databases
+
+postgresql:
+  enabled: true
+  auth:
+    database: chive
+    username: chive
+    # existingSecret: chive-secrets
+    # secretKeys:
+    #   adminPasswordKey: POSTGRES_PASSWORD
+    #   userPasswordKey: POSTGRES_PASSWORD
+  primary:
+    persistence:
+      size: 10Gi
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "2000m"
+        memory: "1Gi"
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 5Gi
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "300Mi"
+
+elasticsearch:
+  enabled: true
+  replicas: 1
+  minimumMasterNodes: 1
+  esJavaOpts: "-Xmx512m -Xms512m"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "768Mi"
+    limits:
+      cpu: "2000m"
+      memory: "1Gi"
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 20Gi
+
+neo4j:
+  enabled: true
+  neo4j:
+    edition: community
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+  volumes:
+    data:
+      mode: defaultStorageClass
+      defaultStorageClass:
+        requests:
+          storage: 10Gi
+
+# =============================================================================
+# Configuration
+# =============================================================================
+config:
+  # ATProto configuration
+  atproto:
+    relayUrl: "wss://bsky.network"
+    pdsUrl: "https://bsky.social"
+    governanceDid: "did:plc:chive-governance"
+
+  # Application
+  logLevel: info
+  rateLimitFailMode: closed
+  stalenessThresholdMs: "604800000"
+
+  # OpenTelemetry
+  otel:
+    enabled: true
+    endpoint: "http://otel-collector:4318"
+
+# =============================================================================
+# Secrets
+# =============================================================================
+secrets:
+  # If using existing secrets, set name here
+  existingSecret: ""
+
+  # Or provide values directly (not recommended for production)
+  # These will be ignored if existingSecret is set
+  postgresPassword: ""
+  neo4jAuth: ""
+  jwtSecret: ""
+  sessionSecret: ""
+
+# =============================================================================
+# Service Monitor (for Prometheus)
+# =============================================================================
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  interval: 30s
+  scrapeTimeout: 10s

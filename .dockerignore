@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+.next
+.turbo
+
+# Development files
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Test files
+tests
+coverage
+playwright-report
+test-results
+
+# Documentation
+*.md
+docs
+design
+.claude
+
+# Docker files (avoid recursive context)
+docker/docker-compose*.yml
+docker/.env*
+
+# Misc
+.env*
+*.log
+.DS_Store
+Thumbs.db
+
+# Keep these in context
+!package.json
+!pnpm-lock.yaml
+!tsconfig.json
+!docker/Dockerfile

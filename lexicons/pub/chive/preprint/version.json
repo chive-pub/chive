@@ -1,0 +1,39 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.preprint.version",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Preprint version metadata",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["preprintUri", "versionNumber", "changes", "createdAt"],
+        "properties": {
+          "preprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "URI of preprint record"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "previousVersionUri": {
+            "type": "string",
+            "format": "at-uri"
+          },
+          "changes": {
+            "type": "string",
+            "description": "Changelog describing changes",
+            "maxLength": 2000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

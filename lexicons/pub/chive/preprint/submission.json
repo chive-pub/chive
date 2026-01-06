@@ -1,0 +1,89 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.preprint.submission",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A scholarly preprint submission record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["title", "abstract", "pdf", "license", "createdAt"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Preprint title",
+            "maxLength": 500
+          },
+          "abstract": {
+            "type": "string",
+            "description": "Abstract or summary",
+            "maxLength": 5000
+          },
+          "pdf": {
+            "type": "blob",
+            "description": "PDF blob reference",
+            "accept": ["application/pdf"],
+            "maxSize": 52428800
+          },
+          "supplementary": {
+            "type": "array",
+            "description": "Supplementary materials",
+            "items": {
+              "type": "blob",
+              "maxSize": 104857600
+            },
+            "maxLength": 10
+          },
+          "coAuthors": {
+            "type": "array",
+            "description": "Co-author DIDs",
+            "items": {
+              "type": "string",
+              "format": "did"
+            },
+            "maxLength": 50
+          },
+          "keywords": {
+            "type": "array",
+            "description": "Author-provided keywords",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "maxLength": 20
+          },
+          "facets": {
+            "type": "array",
+            "description": "10-dimensional faceted classification",
+            "items": {
+              "type": "ref",
+              "ref": "pub.chive.graph.facet"
+            },
+            "maxLength": 30
+          },
+          "version": {
+            "type": "integer",
+            "description": "Version number (1-indexed)",
+            "minimum": 1
+          },
+          "previousVersion": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Previous version URI"
+          },
+          "license": {
+            "type": "string",
+            "description": "SPDX license identifier",
+            "knownValues": ["CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "MIT", "Apache-2.0"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Creation timestamp"
+          }
+        }
+      }
+    }
+  }
+}

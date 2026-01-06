@@ -1,0 +1,553 @@
+/**
+ * PDS sync service for staleness detection and re-indexing.
+ *
+ * @remarks
+ * Detects when AppView indexes are stale compared to PDS source of truth
+ * and triggers refresh operations to maintain eventual consistency.
+ *
+ * Background job checks records not synced recently (configurable threshold),
+ * fetches current versions from PDSes, compares CIDs, and re-indexes if changed.
+ *
+ * @packageDocumentation
+ * @public
+ */
+
+import type { IPolicy } from 'cockatiel';
+import type { Pool } from 'pg';
+
+import type { AtUri, CID, DID } from '../../types/atproto.js';
+import { DatabaseError, NotFoundError, ValidationError } from '../../types/errors.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
+import type { IRepository } from '../../types/interfaces/repository.interface.js';
+import type { IStorageBackend, StoredPreprint } from '../../types/interfaces/storage.interface.js';
+import type { Result } from '../../types/result.js';
+
+/**
+ * PDS sync service configuration.
+ *
+ * @public
+ */
+export interface PDSSyncServiceOptions {
+  /**
+   * PostgreSQL connection pool for direct queries.
+   */
+  readonly pool: Pool;
+
+  /**
+   * Storage backend for querying indexed records.
+   */
+  readonly storage: IStorageBackend;
+
+  /**
+   * Repository interface for fetching from user PDSes.
+   */
+  readonly repository: IRepository;
+
+  /**
+   * Resilience policy (circuit breaker + retry) for PDS calls.
+   */
+  readonly resiliencePolicy: IPolicy;
+
+  /**
+   * Logger for sync events.
+   */
+  readonly logger: ILogger;
+
+  /**
+   * Default staleness threshold in milliseconds.
+   *
+   * @defaultValue 604800000 (7 days)
+   */
+  readonly defaultMaxAge?: number;
+
+  /**
+   * Maximum records to check per batch.
+   *
+   * @defaultValue 100
+   */
+  readonly batchSize?: number;
+}
+
+/**
+ * Staleness detection result.
+ *
+ * @public
+ */
+export interface StalenessCheckResult {
+  /**
+   * Record URI.
+   */
+  readonly uri: AtUri;
+
+  /**
+   * Whether index is stale (PDS has newer version).
+   */
+  readonly isStale: boolean;
+
+  /**
+   * CID in Chive's index.
+   */
+  readonly indexedCID: CID;
+
+  /**
+   * CID from PDS (if fetched successfully).
+   */
+  readonly pdsCID?: CID;
+
+  /**
+   * Error if PDS fetch failed.
+   */
+  readonly error?: NotFoundError | ValidationError | DatabaseError;
+}
+
+/**
+ * Refresh result.
+ *
+ * @public
+ */
+export interface RefreshResult {
+  /**
+   * Whether refresh was attempted.
+   */
+  readonly refreshed: boolean;
+
+  /**
+   * Whether content changed.
+   */
+  readonly changed: boolean;
+
+  /**
+   * Previous CID (from index).
+   */
+  readonly previousCID: CID;
+
+  /**
+   * Current CID (from PDS).
+   */
+  readonly currentCID: CID;
+
+  /**
+   * Error if refresh failed.
+   */
+  readonly error?: NotFoundError | ValidationError | DatabaseError;
+}
+
+/**
+ * PDS sync service implementation.
+ *
+ * @remarks
+ * Staleness detection process:
+ * 1. Query storage for records not synced recently
+ * 2. Fetch current version from user's PDS
+ * 3. Compare CIDs
+ * 4. Re-index if changed, update timestamp if unchanged
+ * 5. Process in batches to avoid overwhelming PDSes
+ *
+ * @example
+ * ```typescript
+ * import { circuitBreaker, retry, wrap } from 'cockatiel';
+ *
+ * const resiliencePolicy = wrap(
+ *   retry(exponentialBackoff({ maxAttempts: 3 })),
+ *   circuitBreaker(consecutiveBreaker(5))
+ * );
+ *
+ * const service = new PDSSyncService({
+ *   storage,
+ *   repository,
+ *   resiliencePolicy,
+ *   logger,
+ *   defaultMaxAge: 7 * 24 * 60 * 60 * 1000,
+ *   batchSize: 100
+ * });
+ *
+ * // Background job (cron)
+ * setInterval(async () => {
+ *   const stale = await service.detectStaleRecords();
+ *   for (const uri of stale) {
+ *     const result = await service.refreshRecord(uri);
+ *     if (result.ok && result.value.changed) {
+ *       console.log(`Re-indexed: ${uri}`);
+ *     }
+ *   }
+ * }, 3600000); // Hourly
+ * ```
+ *
+ * @public
+ */
+export class PDSSyncService {
+  private readonly pool: Pool;
+  private readonly storage: IStorageBackend;
+  private readonly repository: IRepository;
+  private readonly resiliencePolicy: IPolicy;
+  private readonly logger: ILogger;
+  private readonly defaultMaxAge: number;
+  private readonly batchSize: number;
+
+  constructor(options: PDSSyncServiceOptions) {
+    this.pool = options.pool;
+    this.storage = options.storage;
+    this.repository = options.repository;
+    this.resiliencePolicy = options.resiliencePolicy;
+    this.logger = options.logger;
+    this.defaultMaxAge = options.defaultMaxAge ?? 7 * 24 * 60 * 60 * 1000;
+    this.batchSize = options.batchSize ?? 100;
+  }
+
+  /**
+   * Detects stale records needing refresh.
+   *
+   * @param maxAge - Maximum age in milliseconds
+   * @returns Array of stale record URIs
+   *
+   * @remarks
+   * Returns records not synced within threshold. Queries preprints_index
+   * for records where last_synced_at is older than the cutoff.
+   *
+   * @public
+   */
+  async detectStaleRecords(maxAge?: number): Promise<readonly AtUri[]> {
+    const threshold = maxAge ?? this.defaultMaxAge;
+    const cutoff = new Date(Date.now() - threshold);
+
+    this.logger.info('Detecting stale records', {
+      cutoff: cutoff.toISOString(),
+      threshold,
+      batchSize: this.batchSize,
+    });
+
+    try {
+      const result = await this.pool.query<{ uri: string }>(
+        `SELECT uri
+         FROM preprints_index
+         WHERE last_synced_at < $1
+         ORDER BY last_synced_at ASC
+         LIMIT $2`,
+        [cutoff, this.batchSize]
+      );
+
+      const staleUris = result.rows.map((row) => row.uri as AtUri);
+
+      this.logger.info('Found stale records', { count: staleUris.length });
+
+      return staleUris;
+    } catch (error) {
+      this.logger.error(
+        'Failed to detect stale records',
+        error instanceof Error ? error : undefined
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Refreshes record from PDS, re-indexing if content changed.
+   *
+   * @param uri - Record URI to refresh
+   * @returns Refresh result with change detection
+   *
+   * @remarks
+   * Fetches current record from PDS with resilience (circuit breaker + retry).
+   * Compares CIDs. If changed, updates storage and sync timestamp.
+   * If unchanged, updates sync timestamp only.
+   *
+   * @throws {@link NotFoundError}
+   * When record is not found in index.
+   *
+   * @throws {@link DatabaseError}
+   * When PDS fetch or storage update fails.
+   *
+   * @example
+   * ```typescript
+   * const result = await service.refreshRecord(uri);
+   *
+   * if (result.ok) {
+   *   if (result.value.changed) {
+   *     console.log(`Re-indexed: ${result.value.previousCID} → ${result.value.currentCID}`);
+   *   }
+   * } else {
+   *   console.error('Refresh failed:', result.error.message);
+   * }
+   * ```
+   *
+   * @public
+   */
+  async refreshRecord(
+    uri: AtUri
+  ): Promise<Result<RefreshResult, NotFoundError | ValidationError | DatabaseError>> {
+    this.logger.info('Refreshing record from PDS', { uri });
+
+    try {
+      const indexed = await this.storage.getPreprint(uri);
+
+      if (!indexed) {
+        return {
+          ok: false,
+          error: new NotFoundError('preprint', uri),
+        };
+      }
+
+      const pdsRecord = await this.fetchFromPDS(uri);
+
+      if (pdsRecord.ok === false) {
+        return {
+          ok: false,
+          error: pdsRecord.error,
+        };
+      }
+
+      const fresh = pdsRecord.value;
+      const cidsMatch = fresh.cid === indexed.cid;
+
+      if (!cidsMatch) {
+        this.logger.info('Content changed, re-indexing', {
+          uri,
+          oldCID: indexed.cid,
+          newCID: fresh.cid,
+        });
+
+        const updatedPreprint: StoredPreprint = {
+          uri: fresh.uri,
+          cid: fresh.cid,
+          author: fresh.author,
+          title: indexed.title,
+          abstract: indexed.abstract,
+          pdfBlobRef: indexed.pdfBlobRef,
+          previousVersionUri: indexed.previousVersionUri,
+          versionNotes: indexed.versionNotes,
+          license: indexed.license,
+          pdsUrl: indexed.pdsUrl,
+          indexedAt: new Date(),
+          createdAt: indexed.createdAt,
+        };
+
+        const storeResult = await this.storage.storePreprint(updatedPreprint);
+
+        if (storeResult.ok === false) {
+          return {
+            ok: false,
+            error:
+              storeResult.error instanceof DatabaseError
+                ? storeResult.error
+                : new DatabaseError('WRITE', 'Failed to store preprint'),
+          };
+        }
+
+        await this.storage.trackPDSSource(uri, indexed.pdsUrl, new Date());
+
+        return {
+          ok: true,
+          value: {
+            refreshed: true,
+            changed: true,
+            previousCID: indexed.cid,
+            currentCID: fresh.cid,
+          },
+        };
+      } else {
+        this.logger.debug('No changes detected, updating sync timestamp', { uri });
+
+        await this.storage.trackPDSSource(uri, indexed.pdsUrl, new Date());
+
+        return {
+          ok: true,
+          value: {
+            refreshed: true,
+            changed: false,
+            previousCID: indexed.cid,
+            currentCID: fresh.cid,
+          },
+        };
+      }
+    } catch (error) {
+      this.logger.error('Failed to refresh record', error instanceof Error ? error : undefined, {
+        uri,
+      });
+
+      if (error instanceof NotFoundError || error instanceof DatabaseError) {
+        return {
+          ok: false,
+          error,
+        };
+      }
+
+      return {
+        ok: false,
+        error: new DatabaseError('QUERY', 'Failed to refresh record from PDS'),
+      };
+    }
+  }
+
+  /**
+   * Checks if record is stale (needs refresh).
+   *
+   * @param uri - Record URI
+   * @returns Staleness check result
+   *
+   * @remarks
+   * Wrapper around {@link IStorageBackend.isStale} with enhanced result.
+   * Optionally fetches from PDS to get current CID.
+   *
+   * @example
+   * ```typescript
+   * const result = await service.checkStaleness(uri);
+   *
+   * if (result.isStale) {
+   *   await service.refreshRecord(uri);
+   * }
+   * ```
+   *
+   * @public
+   */
+  async checkStaleness(uri: AtUri): Promise<StalenessCheckResult> {
+    try {
+      const indexed = await this.storage.getPreprint(uri);
+
+      if (!indexed) {
+        throw new NotFoundError('preprint', uri);
+      }
+
+      const isStale = await this.storage.isStale(uri);
+
+      if (!isStale) {
+        return {
+          uri,
+          isStale: false,
+          indexedCID: indexed.cid,
+        };
+      }
+
+      const pdsRecord = await this.fetchFromPDS(uri);
+
+      if (pdsRecord.ok === false) {
+        return {
+          uri,
+          isStale: true,
+          indexedCID: indexed.cid,
+          error: pdsRecord.error,
+        };
+      }
+
+      return {
+        uri,
+        isStale: pdsRecord.value.cid !== indexed.cid,
+        indexedCID: indexed.cid,
+        pdsCID: pdsRecord.value.cid,
+      };
+    } catch (error) {
+      return {
+        uri,
+        isStale: false,
+        indexedCID: '' as CID,
+        error:
+          error instanceof DatabaseError
+            ? error
+            : new DatabaseError('QUERY', 'Failed to check staleness'),
+      };
+    }
+  }
+
+  /**
+   * Tracks PDS update after indexing new record.
+   *
+   * @param uri - Record URI
+   * @param cid - New CID
+   * @param pdsUrl - PDS endpoint
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Called by indexing pipeline after successfully indexing a record
+   * from the firehose to track sync state.
+   *
+   * @public
+   */
+  async trackPDSUpdate(uri: AtUri, cid: CID, pdsUrl: string): Promise<Result<void, DatabaseError>> {
+    this.logger.debug('Tracking PDS update', { uri, cid, pdsUrl });
+
+    try {
+      const result = await this.storage.trackPDSSource(uri, pdsUrl, new Date());
+
+      if (result.ok === false) {
+        return {
+          ok: false,
+          error: new DatabaseError('WRITE', result.error.message),
+        };
+      }
+
+      return { ok: true, value: undefined };
+    } catch (error) {
+      return {
+        ok: false,
+        error: new DatabaseError(
+          'WRITE',
+          error instanceof Error ? error.message : 'Failed to track PDS update'
+        ),
+      };
+    }
+  }
+
+  /**
+   * Fetches record from PDS with resilience.
+   *
+   * @param uri - Record URI
+   * @returns Repository record from PDS
+   *
+   * @remarks
+   * Uses {@link IRepository.getRecord} with resilience policy
+   * (circuit breaker + retry). Handles 404 (record deleted) and
+   * network errors gracefully.
+   *
+   * @private
+   */
+  private async fetchFromPDS<T = unknown>(
+    uri: AtUri
+  ): Promise<
+    Result<
+      { readonly uri: AtUri; readonly cid: CID; readonly author: DID; readonly value: T },
+      NotFoundError | ValidationError | DatabaseError
+    >
+  > {
+    try {
+      const record = await this.resiliencePolicy.execute(async () => {
+        return await this.repository.getRecord<T>(uri);
+      });
+
+      if (!record) {
+        return {
+          ok: false,
+          error: new NotFoundError('record', uri),
+        };
+      }
+
+      if (!record.uri || !record.cid || !record.author) {
+        return {
+          ok: false,
+          error: new ValidationError(
+            'Invalid record from PDS: missing uri, cid, or author',
+            'record'
+          ),
+        };
+      }
+
+      return {
+        ok: true,
+        value: {
+          uri: record.uri,
+          cid: record.cid,
+          author: record.author,
+          value: record.value,
+        },
+      };
+    } catch (error) {
+      this.logger.error('PDS fetch failed', error instanceof Error ? error : undefined, { uri });
+
+      return {
+        ok: false,
+        error:
+          error instanceof DatabaseError
+            ? error
+            : new DatabaseError('FETCH', 'Failed to fetch from PDS'),
+      };
+    }
+  }
+}

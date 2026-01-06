@@ -1,0 +1,65 @@
+{
+  "name": "@chive/docs",
+  "version": "0.0.1",
+  "private": true,
+  "author": {
+    "name": "Aaron Steven White",
+    "url": "https://aaronstevenwhite.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chive-pub/chive.git",
+    "directory": "docs"
+  },
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "build": "npm run gen-api-docs && docusaurus build",
+    "swizzle": "docusaurus swizzle",
+    "deploy": "docusaurus deploy",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve",
+    "write-translations": "docusaurus write-translations",
+    "write-heading-ids": "docusaurus write-heading-ids",
+    "typecheck": "tsc",
+    "gen-api-docs": "docusaurus gen-api-docs all",
+    "clean-api-docs": "docusaurus clean-api-docs all",
+    "export-openapi": "./scripts/export-openapi.sh"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.7.0",
+    "@docusaurus/preset-classic": "^3.7.0",
+    "@docusaurus/theme-mermaid": "^3.7.0",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.1.0",
+    "docusaurus-plugin-openapi-docs": "^4.5.1",
+    "docusaurus-plugin-typedoc": "1.2.1",
+    "docusaurus-theme-openapi-docs": "^4.5.1",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typedoc": "^0.27.9",
+    "typedoc-plugin-markdown": "4.4.1"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "^3.7.0",
+    "@docusaurus/tsconfig": "^3.7.0",
+    "@docusaurus/types": "^3.7.0",
+    "typescript": "~5.5.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0"
+  }
+}

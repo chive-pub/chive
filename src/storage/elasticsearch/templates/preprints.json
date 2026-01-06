@@ -1,0 +1,359 @@
+{
+  "index_patterns": ["preprints"],
+  "data_stream": {},
+  "priority": 500,
+  "template": {
+    "settings": {
+      "number_of_shards": 5,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "preprints_ilm_policy",
+      "refresh_interval": "5s",
+      "max_result_window": 10000,
+      "analysis": {
+        "analyzer": {
+          "preprint_analyzer": {
+            "type": "custom",
+            "tokenizer": "standard",
+            "char_filter": ["html_strip"],
+            "filter": [
+              "lowercase",
+              "asciifolding",
+              "porter_stem",
+              "academic_stopwords",
+              "academic_synonym"
+            ]
+          },
+          "keyword_analyzer": {
+            "type": "keyword",
+            "filter": ["lowercase"]
+          },
+          "name_analyzer": {
+            "type": "custom",
+            "tokenizer": "keyword",
+            "filter": ["lowercase", "asciifolding"]
+          },
+          "ngram_analyzer": {
+            "type": "custom",
+            "tokenizer": "standard",
+            "filter": ["lowercase", "asciifolding", "ngram_filter"]
+          }
+        },
+        "filter": {
+          "academic_stopwords": {
+            "type": "stop",
+            "stopwords": "_english_"
+          },
+          "academic_synonym": {
+            "type": "synonym",
+            "synonyms": [
+              "ml, machine learning",
+              "ai, artificial intelligence",
+              "nlp, natural language processing",
+              "dl, deep learning",
+              "nn, neural network, neural networks",
+              "cnn, convolutional neural network",
+              "rnn, recurrent neural network",
+              "lstm, long short-term memory",
+              "bert, bidirectional encoder representations",
+              "gpt, generative pre-trained transformer",
+              "covid-19, coronavirus, sars-cov-2",
+              "dna, deoxyribonucleic acid",
+              "rna, ribonucleic acid"
+            ]
+          },
+          "ngram_filter": {
+            "type": "edge_ngram",
+            "min_gram": 3,
+            "max_gram": 20
+          }
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "uri": {
+          "type": "keyword"
+        },
+        "cid": {
+          "type": "keyword"
+        },
+        "rkey": {
+          "type": "keyword"
+        },
+        "title": {
+          "type": "text",
+          "analyzer": "preprint_analyzer",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "suggest": {
+              "type": "completion"
+            },
+            "ngram": {
+              "type": "text",
+              "analyzer": "ngram_analyzer"
+            }
+          }
+        },
+        "abstract": {
+          "type": "text",
+          "analyzer": "preprint_analyzer"
+        },
+        "full_text": {
+          "type": "text",
+          "analyzer": "preprint_analyzer",
+          "index": true,
+          "store": false,
+          "norms": false
+        },
+        "authors": {
+          "type": "nested",
+          "properties": {
+            "did": {
+              "type": "keyword"
+            },
+            "name": {
+              "type": "text",
+              "analyzer": "name_analyzer",
+              "fields": {
+                "keyword": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "orcid": {
+              "type": "keyword"
+            },
+            "affiliation": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "order": {
+              "type": "integer"
+            }
+          }
+        },
+        "field_nodes": {
+          "type": "keyword"
+        },
+        "primary_field": {
+          "type": "keyword"
+        },
+        "keywords": {
+          "type": "keyword"
+        },
+        "facets": {
+          "properties": {
+            "matter": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "energy": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "space": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "time": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "personality": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "person": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "organization": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "event": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "work": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            },
+            "form_genre": {
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "text",
+                  "analyzer": "preprint_analyzer"
+                }
+              }
+            }
+          }
+        },
+        "authorities": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "preprint_analyzer"
+            }
+          }
+        },
+        "authority_uris": {
+          "type": "keyword"
+        },
+        "tags": {
+          "type": "keyword",
+          "fields": {
+            "text": {
+              "type": "text",
+              "analyzer": "preprint_analyzer"
+            }
+          }
+        },
+        "tag_count": {
+          "type": "integer"
+        },
+        "doi": {
+          "type": "keyword"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "previous_version": {
+          "type": "keyword"
+        },
+        "license": {
+          "type": "keyword"
+        },
+        "citation_count": {
+          "type": "integer"
+        },
+        "endorsement_count": {
+          "type": "integer"
+        },
+        "view_count": {
+          "type": "integer"
+        },
+        "download_count": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "date"
+        },
+        "updated_at": {
+          "type": "date"
+        },
+        "indexed_at": {
+          "type": "date"
+        },
+        "language": {
+          "type": "keyword"
+        },
+        "pdf_metadata": {
+          "properties": {
+            "page_count": {
+              "type": "integer"
+            },
+            "file_size": {
+              "type": "long"
+            },
+            "content_type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "pdf_blob_ref": {
+          "properties": {
+            "cid": {
+              "type": "keyword"
+            },
+            "mime_type": {
+              "type": "keyword"
+            },
+            "size": {
+              "type": "long"
+            }
+          }
+        },
+        "author_count": {
+          "type": "integer"
+        },
+        "keyword_count": {
+          "type": "integer"
+        },
+        "year_published": {
+          "type": "integer"
+        },
+        "rank_score": {
+          "type": "float"
+        },
+        "freshness": {
+          "type": "float"
+        },
+        "pds_url": {
+          "type": "keyword"
+        },
+        "pds_endpoint": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

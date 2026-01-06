@@ -1,0 +1,30 @@
+# HorizontalPodAutoscaler for Frontend
+# Disabled by default (replicas: 1 in deployment)
+# Enable via production overlay
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: chive-frontend-hpa
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-frontend
+    app.kubernetes.io/part-of: chive
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: chive-frontend
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 60

@@ -1,0 +1,79 @@
+name: Performance Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL for performance tests (defaults to local stack)'
+        required: false
+        default: 'http://localhost:3001'
+
+env:
+  CI: true
+  POSTGRES_HOST: localhost
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: chive
+  POSTGRES_PASSWORD: chive_test_password
+  POSTGRES_DB: chive_test
+  DATABASE_URL: postgresql://chive:chive_test_password@localhost:5432/chive_test
+  REDIS_URL: redis://localhost:6379
+  ELASTICSEARCH_URL: http://localhost:9200
+  NEO4J_URI: bolt://localhost:7687
+  NEO4J_USER: neo4j
+  NEO4J_PASSWORD: chive_test_password
+
+jobs:
+  performance:
+    name: k6 Load Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: chive_test
+          POSTGRES_USER: chive
+          POSTGRES_PASSWORD: chive_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+      - uses: ./.github/actions/start-services
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+
+      - name: Run performance tests
+        run: pnpm test:performance
+        env:
+          K6_TARGET_URL: ${{ inputs.target_url }}
+
+      - name: Performance summary
+        if: always()
+        run: |
+          echo "## Performance Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Target URL: ${{ inputs.target_url }}" >> $GITHUB_STEP_SUMMARY

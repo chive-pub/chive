@@ -1,0 +1,121 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.preprint.searchSubmissions",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Search preprints with faceted filters",
+      "parameters": {
+        "type": "params",
+        "required": ["q"],
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "author": {
+            "type": "string",
+            "format": "did",
+            "description": "Filter by author DID"
+          },
+          "facets": {
+            "type": "array",
+            "description": "Facet dimension filters (JSON-encoded)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25
+          },
+          "cursor": {
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["hits"],
+          "properties": {
+            "hits": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#searchHit"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "facetAggregations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#facetAggregation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "searchHit": {
+      "type": "object",
+      "required": ["uri", "score"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "score": {
+          "type": "number"
+        },
+        "highlight": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "abstract": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "facetAggregation": {
+      "type": "object",
+      "required": ["dimension", "values"],
+      "properties": {
+        "dimension": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["value", "count"],
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

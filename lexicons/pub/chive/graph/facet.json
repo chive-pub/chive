@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.facet",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "10-dimensional faceted classification value (PMEST + FAST)",
+      "required": ["dimension", "value"],
+      "properties": {
+        "dimension": {
+          "type": "string",
+          "knownValues": [
+            "personality",
+            "matter",
+            "energy",
+            "space",
+            "time",
+            "form",
+            "topical",
+            "geographic",
+            "chronological",
+            "event"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "authorityRecordId": {
+          "type": "string",
+          "description": "Reference to authority record"
+        }
+      }
+    }
+  }
+}

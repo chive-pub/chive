@@ -1,0 +1,53 @@
+# RBAC Roles for Chive components
+---
+# Role for AppView - read secrets, configmaps
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: chive-appview-role
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-appview
+    app.kubernetes.io/part-of: chive
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+# Role for Indexer - read/write for leader election
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: chive-indexer-role
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/part-of: chive
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  # Leader election via coordination.k8s.io/v1
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+# Role for Frontend - minimal read-only access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: chive-frontend-role
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-frontend
+    app.kubernetes.io/part-of: chive
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]

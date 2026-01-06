@@ -1,0 +1,130 @@
+# PostgreSQL Backup CronJob
+# Runs daily pg_dump and stores in PVC or S3-compatible storage
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-backup-scripts
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: postgresql-backup
+    app.kubernetes.io/part-of: chive
+data:
+  backup.sh: |
+    #!/bin/bash
+    set -e
+
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_FILE="chive_${TIMESTAMP}.sql.gz"
+    BACKUP_PATH="/backups/${BACKUP_FILE}"
+
+    echo "[$(date)] Starting PostgreSQL backup..."
+
+    # Run pg_dump with compression
+    PGPASSWORD="${POSTGRES_PASSWORD}" pg_dump \
+      -h "${POSTGRES_HOST}" \
+      -p "${POSTGRES_PORT}" \
+      -U "${POSTGRES_USER}" \
+      -d "${POSTGRES_DB}" \
+      --format=custom \
+      --compress=9 \
+      --file="${BACKUP_PATH}"
+
+    echo "[$(date)] Backup completed: ${BACKUP_FILE}"
+
+    # Verify backup
+    pg_restore --list "${BACKUP_PATH}" > /dev/null
+    echo "[$(date)] Backup verified successfully"
+
+    # Upload to S3 if configured
+    if [ -n "${S3_BUCKET}" ]; then
+      echo "[$(date)] Uploading to S3..."
+      aws s3 cp "${BACKUP_PATH}" "s3://${S3_BUCKET}/postgresql/${BACKUP_FILE}"
+      echo "[$(date)] Upload complete"
+    fi
+
+    # Cleanup old local backups (keep last 7)
+    cd /backups
+    ls -t chive_*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm -f
+    echo "[$(date)] Cleanup complete"
+
+    echo "[$(date)] Backup job finished"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-backups
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: postgresql-backup
+    app.kubernetes.io/part-of: chive
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgresql-backup
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: postgresql-backup
+    app.kubernetes.io/part-of: chive
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgresql-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              command: ["/bin/bash", "/scripts/backup.sh"]
+              env:
+                - name: POSTGRES_HOST
+                  value: "postgresql.chive.svc.cluster.local"
+                - name: POSTGRES_PORT
+                  value: "5432"
+                - name: POSTGRES_DB
+                  value: "chive"
+                - name: POSTGRES_USER
+                  value: "chive"
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: chive-secrets
+                      key: POSTGRES_PASSWORD
+                # Optional S3 configuration
+                - name: S3_BUCKET
+                  value: ""
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backups
+                  mountPath: /backups
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: postgresql-backup-scripts
+                defaultMode: 0755
+            - name: backups
+              persistentVolumeClaim:
+                claimName: postgresql-backups

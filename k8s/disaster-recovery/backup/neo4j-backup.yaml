@@ -1,0 +1,113 @@
+# Neo4j Backup CronJob
+# Uses neo4j-admin backup for consistent backups
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neo4j-backup-scripts
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: neo4j-backup
+    app.kubernetes.io/part-of: chive
+data:
+  backup.sh: |
+    #!/bin/bash
+    set -e
+
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_DIR="/backups/neo4j_${TIMESTAMP}"
+
+    echo "[$(date)] Starting Neo4j backup..."
+
+    # For Neo4j Community Edition, use database dump
+    # Neo4j Enterprise would use neo4j-admin backup
+
+    # Create backup using cypher-shell dump (Community Edition approach)
+    mkdir -p "${BACKUP_DIR}"
+
+    # Export graph data
+    cypher-shell -u neo4j -p "${NEO4J_PASSWORD}" \
+      -a "bolt://${NEO4J_HOST}:7687" \
+      "CALL apoc.export.graphml.all('${BACKUP_DIR}/graph.graphml', {})"
+
+    # Compress backup
+    cd /backups
+    tar -czf "neo4j_${TIMESTAMP}.tar.gz" "neo4j_${TIMESTAMP}"
+    rm -rf "${BACKUP_DIR}"
+
+    echo "[$(date)] Backup created: neo4j_${TIMESTAMP}.tar.gz"
+
+    # Cleanup old backups (keep last 7)
+    ls -t neo4j_*.tar.gz 2>/dev/null | tail -n +8 | xargs -r rm -f
+
+    echo "[$(date)] Neo4j backup complete"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: neo4j-backups
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: neo4j-backup
+    app.kubernetes.io/part-of: chive
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: neo4j-backup
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: neo4j-backup
+    app.kubernetes.io/part-of: chive
+spec:
+  schedule: "0 4 * * *"  # Daily at 4 AM UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: neo4j-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: neo4j:5-community
+              command: ["/bin/bash", "/scripts/backup.sh"]
+              env:
+                - name: NEO4J_HOST
+                  value: "neo4j.chive.svc.cluster.local"
+                - name: NEO4J_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: chive-secrets
+                      key: NEO4J_PASSWORD
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backups
+                  mountPath: /backups
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: neo4j-backup-scripts
+                defaultMode: 0755
+            - name: backups
+              persistentVolumeClaim:
+                claimName: neo4j-backups

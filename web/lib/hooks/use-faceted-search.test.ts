@@ -1,0 +1,349 @@
+import { renderHook, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import { createWrapper } from '@/tests/test-utils';
+import { createMockFacetedSearchResponse } from '@/tests/mock-data';
+
+import {
+  facetedSearchKeys,
+  useFacetedSearch,
+  useFacetCounts,
+  countTotalFilters,
+  isFacetSelected,
+  addFacetValue,
+  removeFacetValue,
+  toggleFacetValue,
+  clearDimensionFilters,
+  clearAllFilters,
+} from './use-faceted-search';
+
+// Mock functions using vi.hoisted for proper hoisting
+const { mockApiGet } = vi.hoisted(() => ({
+  mockApiGet: vi.fn(),
+}));
+
+vi.mock('@/lib/api/client', () => ({
+  api: {
+    GET: mockApiGet,
+  },
+}));
+
+describe('facetedSearchKeys', () => {
+  it('generates all key', () => {
+    expect(facetedSearchKeys.all).toEqual(['faceted-search']);
+  });
+
+  it('generates search key with params', () => {
+    const params = { matter: ['physics'], energy: ['classification'] };
+    expect(facetedSearchKeys.search(params)).toEqual(['faceted-search', params]);
+  });
+
+  it('generates counts key with params', () => {
+    const params = { personality: ['research'] };
+    expect(facetedSearchKeys.counts(params)).toEqual(['faceted-search', 'counts', params]);
+  });
+});
+
+describe('useFacetedSearch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('performs faceted search with single dimension', async () => {
+    const mockResponse = createMockFacetedSearchResponse();
+    mockApiGet.mockResolvedValueOnce({
+      data: mockResponse,
+      error: undefined,
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useFacetedSearch({ matter: ['physics'] }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockResponse);
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
+      params: {
+        query: expect.objectContaining({ matter: ['physics'] }),
+      },
+    });
+  });
+
+  it('performs faceted search with multiple dimensions', async () => {
+    const mockResponse = createMockFacetedSearchResponse();
+    mockApiGet.mockResolvedValueOnce({
+      data: mockResponse,
+      error: undefined,
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () =>
+        useFacetedSearch({
+          matter: ['physics'],
+          energy: ['classification'],
+          person: ['einstein'],
+        }),
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
+      params: {
+        query: expect.objectContaining({
+          matter: ['physics'],
+          energy: ['classification'],
+          person: ['einstein'],
+        }),
+      },
+    });
+  });
+
+  it('performs faceted search with text query', async () => {
+    const mockResponse = createMockFacetedSearchResponse();
+    mockApiGet.mockResolvedValueOnce({
+      data: mockResponse,
+      error: undefined,
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useFacetedSearch({ q: 'machine learning', matter: ['computer-science'] }),
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
+      params: {
+        query: expect.objectContaining({
+          q: 'machine learning',
+          matter: ['computer-science'],
+        }),
+      },
+    });
+  });
+
+  it('is disabled when no filters are set', () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useFacetedSearch({}), { wrapper: Wrapper });
+
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+
+  it('is enabled when limit is set even without filters', async () => {
+    const mockResponse = createMockFacetedSearchResponse();
+    mockApiGet.mockResolvedValueOnce({
+      data: mockResponse,
+      error: undefined,
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useFacetedSearch({ limit: 10 }), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockApiGet).toHaveBeenCalled();
+  });
+
+  it('throws error when API returns error', async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'Search failed' },
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useFacetedSearch({ matter: ['invalid'] }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error?.message).toBe('Search failed');
+  });
+});
+
+describe('useFacetCounts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('fetches facet counts', async () => {
+    const mockResponse = createMockFacetedSearchResponse();
+    mockApiGet.mockResolvedValueOnce({
+      data: mockResponse,
+      error: undefined,
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useFacetCounts({ matter: ['physics'] }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockResponse.facets);
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
+      params: {
+        query: expect.objectContaining({
+          matter: ['physics'],
+          limit: 0,
+        }),
+      },
+    });
+  });
+
+  it('fetches counts with empty filters', async () => {
+    const mockResponse = createMockFacetedSearchResponse();
+    mockApiGet.mockResolvedValueOnce({
+      data: mockResponse,
+      error: undefined,
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useFacetCounts(), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
+      params: {
+        query: expect.objectContaining({
+          limit: 0,
+        }),
+      },
+    });
+  });
+});
+
+describe('countTotalFilters', () => {
+  it('counts filters across all dimensions', () => {
+    expect(
+      countTotalFilters({
+        matter: ['physics', 'chemistry'],
+        person: ['einstein'],
+      })
+    ).toBe(3);
+  });
+
+  it('returns 0 for empty filters', () => {
+    expect(countTotalFilters({})).toBe(0);
+  });
+
+  it('handles undefined dimension values', () => {
+    expect(
+      countTotalFilters({
+        matter: ['physics'],
+        energy: undefined,
+      })
+    ).toBe(1);
+  });
+});
+
+describe('isFacetSelected', () => {
+  it('returns true when facet is selected', () => {
+    const filters = { matter: ['physics', 'chemistry'] };
+    expect(isFacetSelected(filters, 'matter', 'physics')).toBe(true);
+  });
+
+  it('returns false when facet is not selected', () => {
+    const filters = { matter: ['physics'] };
+    expect(isFacetSelected(filters, 'matter', 'chemistry')).toBe(false);
+  });
+
+  it('returns false for empty dimension', () => {
+    const filters = {};
+    expect(isFacetSelected(filters, 'matter', 'physics')).toBe(false);
+  });
+});
+
+describe('addFacetValue', () => {
+  it('adds value to existing dimension', () => {
+    const filters = { matter: ['physics'] };
+    const result = addFacetValue(filters, 'matter', 'chemistry');
+    expect(result.matter).toEqual(['physics', 'chemistry']);
+  });
+
+  it('creates new dimension array', () => {
+    const filters = {};
+    const result = addFacetValue(filters, 'matter', 'physics');
+    expect(result.matter).toEqual(['physics']);
+  });
+
+  it('does not duplicate existing value', () => {
+    const filters = { matter: ['physics'] };
+    const result = addFacetValue(filters, 'matter', 'physics');
+    expect(result.matter).toEqual(['physics']);
+  });
+
+  it('preserves other dimensions', () => {
+    const filters = { matter: ['physics'], person: ['einstein'] };
+    const result = addFacetValue(filters, 'matter', 'chemistry');
+    expect(result.person).toEqual(['einstein']);
+  });
+});
+
+describe('removeFacetValue', () => {
+  it('removes value from dimension', () => {
+    const filters = { matter: ['physics', 'chemistry'] };
+    const result = removeFacetValue(filters, 'matter', 'physics');
+    expect(result.matter).toEqual(['chemistry']);
+  });
+
+  it('sets dimension to undefined when empty', () => {
+    const filters = { matter: ['physics'] };
+    const result = removeFacetValue(filters, 'matter', 'physics');
+    expect(result.matter).toBeUndefined();
+  });
+
+  it('handles non-existent value', () => {
+    const filters = { matter: ['physics'] };
+    const result = removeFacetValue(filters, 'matter', 'chemistry');
+    expect(result.matter).toEqual(['physics']);
+  });
+});
+
+describe('toggleFacetValue', () => {
+  it('adds value when not selected', () => {
+    const filters = { matter: ['physics'] };
+    const result = toggleFacetValue(filters, 'matter', 'chemistry');
+    expect(result.matter).toEqual(['physics', 'chemistry']);
+  });
+
+  it('removes value when selected', () => {
+    const filters = { matter: ['physics', 'chemistry'] };
+    const result = toggleFacetValue(filters, 'matter', 'physics');
+    expect(result.matter).toEqual(['chemistry']);
+  });
+});
+
+describe('clearDimensionFilters', () => {
+  it('clears specific dimension', () => {
+    const filters = { matter: ['physics'], person: ['einstein'] };
+    const result = clearDimensionFilters(filters, 'matter');
+    expect(result.matter).toBeUndefined();
+    expect(result.person).toEqual(['einstein']);
+  });
+});
+
+describe('clearAllFilters', () => {
+  it('returns empty object', () => {
+    expect(clearAllFilters()).toEqual({});
+  });
+});

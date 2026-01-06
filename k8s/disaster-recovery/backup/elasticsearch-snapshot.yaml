@@ -1,0 +1,114 @@
+# Elasticsearch Snapshot Lifecycle Management
+# Uses repository snapshots for backup
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-snapshot-scripts
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: elasticsearch-backup
+    app.kubernetes.io/part-of: chive
+data:
+  setup-repository.sh: |
+    #!/bin/bash
+    set -e
+
+    ES_URL="${ELASTICSEARCH_URL:-http://elasticsearch:9200}"
+
+    echo "[$(date)] Setting up snapshot repository..."
+
+    # Create filesystem repository
+    curl -X PUT "${ES_URL}/_snapshot/chive_backups" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "type": "fs",
+        "settings": {
+          "location": "/backups",
+          "compress": true
+        }
+      }'
+
+    echo "[$(date)] Repository setup complete"
+
+  snapshot.sh: |
+    #!/bin/bash
+    set -e
+
+    ES_URL="${ELASTICSEARCH_URL:-http://elasticsearch:9200}"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    SNAPSHOT_NAME="snapshot_${TIMESTAMP}"
+
+    echo "[$(date)] Creating Elasticsearch snapshot: ${SNAPSHOT_NAME}"
+
+    # Create snapshot
+    curl -X PUT "${ES_URL}/_snapshot/chive_backups/${SNAPSHOT_NAME}?wait_for_completion=true" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "indices": "chive-*",
+        "ignore_unavailable": true,
+        "include_global_state": false
+      }'
+
+    echo "[$(date)] Snapshot created successfully"
+
+    # List snapshots
+    curl -s "${ES_URL}/_snapshot/chive_backups/_all" | jq '.snapshots | length' | xargs -I {} echo "[$(date)] Total snapshots: {}"
+
+    # Delete old snapshots (keep last 7)
+    SNAPSHOTS=$(curl -s "${ES_URL}/_snapshot/chive_backups/_all" | jq -r '.snapshots | sort_by(.start_time) | .[:-7] | .[].snapshot')
+    for snap in $SNAPSHOTS; do
+      echo "[$(date)] Deleting old snapshot: $snap"
+      curl -X DELETE "${ES_URL}/_snapshot/chive_backups/${snap}"
+    done
+
+    echo "[$(date)] Snapshot job complete"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: elasticsearch-snapshot
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: elasticsearch-backup
+    app.kubernetes.io/part-of: chive
+spec:
+  schedule: "0 3 * * *"  # Daily at 3 AM UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: elasticsearch-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: snapshot
+              image: curlimages/curl:8.5.0
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  apk add --no-cache jq bash
+                  bash /scripts/snapshot.sh
+              env:
+                - name: ELASTICSEARCH_URL
+                  value: "http://elasticsearch.chive.svc.cluster.local:9200"
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "128Mi"
+          volumes:
+            - name: scripts
+              configMap:
+                name: elasticsearch-snapshot-scripts
+                defaultMode: 0755

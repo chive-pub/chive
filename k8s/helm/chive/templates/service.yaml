@@ -1,0 +1,54 @@
+{{- if .Values.appview.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chive.fullname" . }}-appview
+  labels:
+    {{- include "chive.appview.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.appview.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.appview.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "chive.appview.selectorLabels" . | nindent 4 }}
+{{- end }}
+---
+{{- if .Values.frontend.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chive.fullname" . }}-frontend
+  labels:
+    {{- include "chive.frontend.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "chive.frontend.selectorLabels" . | nindent 4 }}
+{{- end }}
+---
+{{- if .Values.indexer.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chive.fullname" . }}-indexer
+  labels:
+    {{- include "chive.indexer.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    {{- include "chive.indexer.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,20 @@
+# Headless service for indexer (used for leader election)
+apiVersion: v1
+kind: Service
+metadata:
+  name: chive-indexer
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-indexer
+    app.kubernetes.io/component: indexer
+    app.kubernetes.io/part-of: chive
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: chive-indexer
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP

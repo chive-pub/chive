@@ -1,0 +1,89 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.discoverySettings",
+  "defs": {
+    "forYouSignals": {
+      "type": "object",
+      "description": "Configuration for For You feed signals",
+      "properties": {
+        "fields": {
+          "type": "boolean",
+          "description": "Show papers from user's research fields",
+          "default": true
+        },
+        "citations": {
+          "type": "boolean",
+          "description": "Show papers citing user's work",
+          "default": true
+        },
+        "collaborators": {
+          "type": "boolean",
+          "description": "Show papers from collaborators",
+          "default": true
+        },
+        "trending": {
+          "type": "boolean",
+          "description": "Show trending papers in user's fields",
+          "default": true
+        }
+      }
+    },
+    "relatedPapersSignals": {
+      "type": "object",
+      "description": "Configuration for related papers panel signals",
+      "properties": {
+        "citations": {
+          "type": "boolean",
+          "description": "Show citation-based relationships",
+          "default": true
+        },
+        "topics": {
+          "type": "boolean",
+          "description": "Show topic/concept-based relationships",
+          "default": true
+        }
+      }
+    },
+    "main": {
+      "type": "record",
+      "description": "User discovery preferences for personalized recommendations",
+      "key": "self",
+      "record": {
+        "type": "object",
+        "properties": {
+          "enablePersonalization": {
+            "type": "boolean",
+            "description": "Enable personalized recommendations based on profile",
+            "default": true
+          },
+          "enableForYouFeed": {
+            "type": "boolean",
+            "description": "Show the For You personalized feed",
+            "default": true
+          },
+          "forYouSignals": {
+            "type": "ref",
+            "ref": "#forYouSignals",
+            "description": "Signals to use for For You recommendations"
+          },
+          "relatedPapersSignals": {
+            "type": "ref",
+            "ref": "#relatedPapersSignals",
+            "description": "Signals to use for related papers"
+          },
+          "citationNetworkDisplay": {
+            "type": "string",
+            "description": "How to display citation network",
+            "knownValues": ["hidden", "preview", "expanded"],
+            "default": "preview"
+          },
+          "showRecommendationReasons": {
+            "type": "boolean",
+            "description": "Show explanations for why papers are recommended",
+            "default": true
+          }
+        }
+      }
+    }
+  }
+}

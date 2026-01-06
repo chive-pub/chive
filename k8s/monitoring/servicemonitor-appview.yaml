@@ -1,0 +1,129 @@
+# ServiceMonitor for Chive AppView (API Server)
+# Requires Prometheus Operator to be installed
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: chive-appview
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-appview
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: chive
+    # Label for Prometheus to discover this ServiceMonitor
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: chive-appview
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      # Optional: Filter metrics
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "chive_.*"
+          action: keep
+  namespaceSelector:
+    matchNames:
+      - chive
+---
+# PrometheusRule for AppView alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: chive-appview-alerts
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-appview
+    app.kubernetes.io/part-of: chive
+    release: prometheus
+spec:
+  groups:
+    - name: chive-appview
+      rules:
+        # High error rate
+        - alert: ChiveAppViewHighErrorRate
+          expr: |
+            sum(rate(chive_http_requests_total{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(chive_http_requests_total[5m])) by (service)
+            > 0.01
+          for: 5m
+          labels:
+            severity: warning
+            service: appview
+          annotations:
+            summary: "High error rate on Chive AppView"
+            description: "Error rate is {{ $value | humanizePercentage }} (threshold: 1%)"
+
+        # High latency
+        - alert: ChiveAppViewHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(chive_http_request_duration_seconds_bucket[5m])) by (le, service)
+            ) > 2
+          for: 5m
+          labels:
+            severity: warning
+            service: appview
+          annotations:
+            summary: "High latency on Chive AppView"
+            description: "P95 latency is {{ $value | humanizeDuration }} (threshold: 2s)"
+
+        # Pod restarts
+        - alert: ChiveAppViewPodRestarts
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace="chive",
+              container="appview"
+            }[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            service: appview
+          annotations:
+            summary: "Chive AppView pod restarts"
+            description: "Pod {{ $labels.pod }} has restarted {{ $value | humanize }} times in the last hour"
+
+        # Memory usage
+        - alert: ChiveAppViewHighMemoryUsage
+          expr: |
+            container_memory_usage_bytes{
+              namespace="chive",
+              container="appview"
+            }
+            /
+            container_spec_memory_limit_bytes{
+              namespace="chive",
+              container="appview"
+            } > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            service: appview
+          annotations:
+            summary: "High memory usage on Chive AppView"
+            description: "Memory usage is {{ $value | humanizePercentage }} of limit"
+
+        # HPA at max replicas
+        - alert: ChiveAppViewHPAMaxReplicas
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{
+              namespace="chive",
+              horizontalpodautoscaler="chive-appview-hpa"
+            }
+            ==
+            kube_horizontalpodautoscaler_spec_max_replicas{
+              namespace="chive",
+              horizontalpodautoscaler="chive-appview-hpa"
+            }
+          for: 15m
+          labels:
+            severity: warning
+            service: appview
+          annotations:
+            summary: "Chive AppView HPA at maximum replicas"
+            description: "HPA has been at max replicas ({{ $value }}) for 15 minutes"

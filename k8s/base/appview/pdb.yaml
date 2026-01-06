@@ -1,0 +1,15 @@
+# PodDisruptionBudget for AppView
+# Ensures at least 1 pod is available during disruptions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chive-appview-pdb
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive-appview
+    app.kubernetes.io/part-of: chive
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: chive-appview

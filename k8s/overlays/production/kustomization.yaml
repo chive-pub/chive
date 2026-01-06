@@ -1,0 +1,161 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: chive
+
+resources:
+  - ../../base
+  - secrets.yaml
+
+commonLabels:
+  environment: production
+
+# Override images with production tags
+images:
+  - name: chive
+    newTag: latest
+  - name: chive-frontend
+    newTag: latest
+
+patches:
+  # Production replicas
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+  - target:
+      kind: Deployment
+      name: chive-frontend
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  # Full production resources
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+
+  - target:
+      kind: Deployment
+      name: chive-indexer
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+
+  - target:
+      kind: Deployment
+      name: chive-frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
+  # HPA for production scaling
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: chive-appview-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20
+
+  # PDB for high availability
+  - target:
+      kind: PodDisruptionBudget
+      name: chive-appview-pdb
+    patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 2
+
+  # Pod anti-affinity to spread across nodes
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: chive-appview
+                  topologyKey: kubernetes.io/hostname
+
+  # Topology spread constraints for zone distribution
+  - target:
+      kind: Deployment
+      name: chive-appview
+    patch: |-
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints
+        value:
+          - maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: chive-appview
+
+  # Production storage sizes
+  - target:
+      kind: StatefulSet
+      name: postgresql
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 50Gi
+  - target:
+      kind: StatefulSet
+      name: elasticsearch
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 100Gi
+  - target:
+      kind: StatefulSet
+      name: neo4j
+    patch: |-
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 20Gi
+
+configMapGenerator:
+  - name: chive-prod-config
+    behavior: merge
+    literals:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
