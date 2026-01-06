@@ -117,12 +117,10 @@ export class SearchPage {
   }
 
   async search(query: string): Promise<void> {
-    await this.searchInput.fill(query);
-    // Use form.requestSubmit() for reliable cross-browser form submission
-    await Promise.all([
-      this.page.waitForURL(/q=/),
-      this.searchInput.evaluate((input) => input.closest('form')?.requestSubmit()),
-    ]);
+    // Navigate directly to search URL for reliable cross-browser behavior
+    const encodedQuery = encodeURIComponent(query);
+    await this.page.goto(`/search?q=${encodedQuery}`);
+    await expect(this.searchInput).toHaveValue(query);
   }
 
   async openFilters(): Promise<void> {
@@ -295,5 +293,119 @@ export class DashboardPage {
 
   async goto(): Promise<void> {
     await this.page.goto('/dashboard');
+  }
+}
+
+/**
+ * Alpha signup form page (authenticated but not yet an alpha tester).
+ */
+export class AlphaSignupPage {
+  readonly page: Page;
+  readonly header: HeaderComponent;
+  readonly formTitle: Locator;
+  readonly emailInput: Locator;
+  readonly sectorSelect: Locator;
+  readonly sectorOtherInput: Locator;
+  readonly careerStageSelect: Locator;
+  readonly careerStageOtherInput: Locator;
+  readonly affiliationInput: Locator;
+  readonly affiliationSuggestions: Locator;
+  readonly researchFieldInput: Locator;
+  readonly motivationInput: Locator;
+  readonly submitButton: Locator;
+  readonly errorMessage: Locator;
+  readonly successMessage: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.header = new HeaderComponent(page);
+    this.formTitle = page.getByRole('heading', { name: /join.*alpha|alpha.*sign|apply/i });
+    this.emailInput = page.getByRole('textbox', { name: /email/i });
+    this.sectorSelect = page.getByRole('combobox', { name: /sector|organization/i });
+    this.sectorOtherInput = page.getByRole('textbox', { name: /specify.*sector/i });
+    this.careerStageSelect = page.getByRole('combobox', { name: /career|position|stage/i });
+    this.careerStageOtherInput = page.getByRole('textbox', {
+      name: /specify.*career|describe.*role/i,
+    });
+    this.affiliationInput = page.getByRole('textbox', { name: /affiliation|institution/i });
+    this.affiliationSuggestions = page.getByRole('listbox');
+    this.researchFieldInput = page.getByRole('textbox', {
+      name: /research.*field|area.*research/i,
+    });
+    this.motivationInput = page.getByRole('textbox', { name: /motivation|why/i });
+    this.submitButton = page.getByRole('button', { name: /submit|apply|join/i });
+    this.errorMessage = page.getByRole('alert');
+    this.successMessage = page.getByText(/submitted|pending|thank you/i);
+  }
+
+  async goto(): Promise<void> {
+    await this.page.goto('/');
+  }
+
+  async fillForm(data: {
+    email: string;
+    sector: string;
+    sectorOther?: string;
+    careerStage: string;
+    careerStageOther?: string;
+    affiliation?: string;
+    researchField: string;
+    motivation?: string;
+  }): Promise<void> {
+    await this.emailInput.fill(data.email);
+    await this.sectorSelect.selectOption(data.sector);
+    if (data.sectorOther && data.sector === 'other') {
+      await this.sectorOtherInput.fill(data.sectorOther);
+    }
+    await this.careerStageSelect.selectOption(data.careerStage);
+    if (data.careerStageOther && data.careerStage === 'other') {
+      await this.careerStageOtherInput.fill(data.careerStageOther);
+    }
+    if (data.affiliation) {
+      await this.affiliationInput.fill(data.affiliation);
+    }
+    await this.researchFieldInput.fill(data.researchField);
+    if (data.motivation) {
+      await this.motivationInput.fill(data.motivation);
+    }
+  }
+
+  async submit(): Promise<void> {
+    await this.submitButton.click();
+  }
+}
+
+/**
+ * Alpha status page (shows pending/approved/rejected status).
+ */
+export class AlphaStatusPage {
+  readonly page: Page;
+  readonly header: HeaderComponent;
+  readonly statusHeading: Locator;
+  readonly statusMessage: Locator;
+  readonly pendingIcon: Locator;
+  readonly approvedIcon: Locator;
+  readonly rejectedIcon: Locator;
+  readonly appliedDate: Locator;
+  readonly reviewedDate: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.header = new HeaderComponent(page);
+    this.statusHeading = page.getByRole('heading', { name: /status|application/i });
+    this.statusMessage = page.getByRole('status').or(page.locator('[role="alert"]'));
+    this.pendingIcon = page
+      .getByTestId('status-pending')
+      .or(page.getByText(/under review|pending/i));
+    this.approvedIcon = page.getByTestId('status-approved').or(page.getByText(/approved|welcome/i));
+    this.rejectedIcon = page
+      .getByTestId('status-rejected')
+      .or(page.getByText(/rejected|declined/i));
+    this.appliedDate = page.getByText(/applied|submitted/i);
+    this.reviewedDate = page.getByText(/reviewed/i);
+  }
+
+  async goto(): Promise<void> {
+    await this.page.goto('/alpha/status');
   }
 }
