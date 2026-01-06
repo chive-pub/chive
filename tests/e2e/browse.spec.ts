@@ -47,14 +47,14 @@ test.describe('Browse page', () => {
 
   test('search input filters results', async ({ page }) => {
     // Use the browse page search input (not header search)
-    // Target the search input in main content to avoid webkit flakiness
     const mainContent = page.locator('main');
     const searchInput = mainContent.locator('input[type="search"]');
+    await expect(searchInput).toBeVisible();
+    await searchInput.click();
     await searchInput.fill('quantum');
-    await searchInput.press('Enter');
 
-    // URL should update with search query
-    await expect(page).toHaveURL(/q=quantum/);
+    // Wait for navigation after pressing Enter
+    await Promise.all([page.waitForURL(/q=quantum/), searchInput.press('Enter')]);
   });
 
   test('URL parameters are preserved on navigation', async ({ page }) => {

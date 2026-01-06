@@ -72,8 +72,9 @@ test.describe('Share Menu Dropdown', () => {
     expect(clipboardText).toContain('/preprints/');
   });
 
-  test('Copy link shows success toast', async ({ page, context }) => {
-    // Grant clipboard permissions for the copy operation to succeed
+  test('Copy link shows success toast', async ({ page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Clipboard API not supported in Firefox/WebKit headless');
+
     await context.grantPermissions(['clipboard-write', 'clipboard-read']);
 
     await navigateToFirstPreprint(page);
