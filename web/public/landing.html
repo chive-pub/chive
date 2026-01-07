@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chive - Decentralized Preprints</title>
+  <meta name="description" content="A next-generation preprint server built on AT Protocol.">
+  <style>
+    :root {
+      --green: #157200;
+      --green-light: #4ade80;
+      --bg: #fafafa;
+      --text: #171717;
+      --muted: #737373;
+      --border: #e5e5e5;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0a0a0a;
+        --text: #fafafa;
+        --muted: #a3a3a3;
+        --border: #262626;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      text-align: center;
+    }
+    .hero { max-width: 600px; }
+    .logo {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 32px;
+      border-radius: 20px;
+    }
+    h1 {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .tagline {
+      font-size: 24px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .description {
+      font-size: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(21, 114, 0, 0.1);
+      border: 1px solid rgba(21, 114, 0, 0.2);
+      color: var(--green);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 32px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .badge { color: var(--green-light); }
+    }
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--green);
+      color: white;
+    }
+    .btn-primary:hover { background: #125f00; }
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { background: var(--border); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="hero">
+      <img src="/chive-logo.svg" alt="Chive" class="logo">
+      <h1>Chive</h1>
+      <p class="tagline">Decentralized Preprints</p>
+      <p class="description">
+        A next-generation preprint server built on AT Protocol.
+        Share your research with full data sovereignty, open federation,
+        and community governance.
+      </p>
+      <div class="badge">
+        <span class="pulse"></span>
+        Alpha Coming Soon
+      </div>
+      <div class="buttons">
+        <a href="https://docs.chive.pub" class="btn btn-primary" target="_blank" rel="noopener">
+          Read the Docs
+        </a>
+        <a href="https://github.com/chive-pub/chive" class="btn btn-outline" target="_blank" rel="noopener">
+          GitHub
+        </a>
+        <a href="https://bsky.app/profile/chive.pub" class="btn btn-outline" target="_blank" rel="noopener">
+          Bluesky
+        </a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

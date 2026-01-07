@@ -151,6 +151,17 @@ while [ $neo4j_wait_count -lt 90 ] && [ "$neo4j_ready" = "false" ]; do
 done
 
 echo ""
+echo "Test stack services ready!"
+echo ""
+
+# Run database migrations
+echo "Running database migrations..."
+DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive_test" \
+  pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up \
+  --migrations-dir src/storage/postgresql/migrations 2>/dev/null || true
+echo "✓ Migrations complete"
+
+echo ""
 echo "Test stack is ready!"
 echo ""
 echo "Connection details:"

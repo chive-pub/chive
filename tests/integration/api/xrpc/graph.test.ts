@@ -37,6 +37,7 @@ import type { IGraphDatabase } from '@/types/interfaces/graph.interface.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '@/types/interfaces/storage.interface.js';
 
+import { createMockAuthzService, createMockAlphaService } from '../../../helpers/mock-services.js';
 import type {
   FieldDetail,
   AuthoritySearchResponse,
@@ -369,6 +370,8 @@ describe('XRPC Graph Endpoints Integration', () => {
       pdsSyncService: createMockPDSSyncService(),
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
+      authzService: createMockAuthzService(),
+      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

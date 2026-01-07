@@ -666,6 +666,84 @@ export type ReviewThreadInfo = ReviewThread;
 export type ReviewWithThread = ReviewThread;
 
 // -----------------------------------------------------------------------------
+// Alpha Types
+// -----------------------------------------------------------------------------
+
+/**
+ * Alpha application status.
+ */
+export type AlphaApplicationStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+/**
+ * Sector/organization type for alpha applications.
+ */
+export type AlphaSector =
+  | 'academia'
+  | 'industry'
+  | 'government'
+  | 'nonprofit'
+  | 'healthcare'
+  | 'independent'
+  | 'other';
+
+/**
+ * Career stage/position for alpha applications.
+ */
+export type AlphaCareerStage =
+  | 'undergraduate'
+  | 'graduate-masters'
+  | 'graduate-phd'
+  | 'postdoc'
+  | 'research-staff'
+  | 'junior-faculty'
+  | 'senior-faculty'
+  | 'research-admin'
+  | 'librarian'
+  | 'science-communicator'
+  | 'policy-professional'
+  | 'retired'
+  | 'other';
+
+/**
+ * Affiliation for alpha applications.
+ */
+export interface AlphaAffiliation {
+  name: string;
+  rorId?: string;
+}
+
+/**
+ * Alpha status check response.
+ */
+export interface AlphaStatusResponse {
+  status: AlphaApplicationStatus;
+  appliedAt?: string;
+  reviewedAt?: string;
+}
+
+/**
+ * Alpha application input.
+ */
+export interface AlphaApplyInput {
+  email: string;
+  sector: AlphaSector;
+  sectorOther?: string;
+  careerStage: AlphaCareerStage;
+  careerStageOther?: string;
+  affiliation?: AlphaAffiliation;
+  researchField: string;
+  motivation?: string;
+}
+
+/**
+ * Alpha application response.
+ */
+export interface AlphaApplyResponse {
+  id: string;
+  status: 'pending';
+}
+
+// -----------------------------------------------------------------------------
 // Re-exports for Compatibility
 // -----------------------------------------------------------------------------
 

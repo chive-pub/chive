@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LayoutDashboard, FileText, MessageSquare, ThumbsUp, Settings, Upload } from 'lucide-react';
 
+import { AlphaGate } from '@/components/alpha';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { SidebarLayout, SidebarSection } from '@/components/layout';
 
@@ -56,14 +57,16 @@ function DashboardNav() {
  *
  * @remarks
  * Uses the SidebarLayout component for consistent sidebar styling.
- * Protected by AuthGuard - requires authentication.
+ * Protected by AuthGuard (requires authentication) and AlphaGate (requires alpha approval).
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <SidebarLayout sidebar={<DashboardNav />} stickyNavigation>
-        {children}
-      </SidebarLayout>
+      <AlphaGate>
+        <SidebarLayout sidebar={<DashboardNav />} stickyNavigation>
+          {children}
+        </SidebarLayout>
+      </AlphaGate>
     </AuthGuard>
   );
 }

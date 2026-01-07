@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { AlphaGate } from '@/components/alpha';
+import { AuthGuard } from '@/components/auth/auth-guard';
 import { PageContainer } from '@/components/layout';
 
 /**
@@ -16,11 +18,16 @@ export const metadata: Metadata = {
  *
  * @remarks
  * Uses a narrow container for form content.
+ * Protected by AuthGuard (requires authentication) and AlphaGate (requires alpha approval).
  */
 export default function SubmitLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PageContainer variant="narrow" as="main">
-      {children}
-    </PageContainer>
+    <AuthGuard>
+      <AlphaGate>
+        <PageContainer variant="narrow" as="main">
+          {children}
+        </PageContainer>
+      </AlphaGate>
+    </AuthGuard>
   );
 }

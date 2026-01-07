@@ -16,6 +16,7 @@ import { container } from 'tsyringe';
 
 import { createServer, type ServerConfig } from './api/server.js';
 import { ATRepository } from './atproto/repository/at-repository.js';
+import { AuthorizationService } from './auth/authorization/authorization-service.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
 import { PinoLogger } from './observability/logger.js';
 import {
@@ -29,6 +30,7 @@ import {
   ImportScheduler,
 } from './plugins/index.js';
 import { ActivityService } from './services/activity/activity-service.js';
+import { AlphaApplicationService } from './services/alpha/alpha-application-service.js';
 import { BacklinkService } from './services/backlink/backlink-service.js';
 import { CDNAdapter } from './services/blob-proxy/cdn-adapter.js';
 import { CIDVerifier } from './services/blob-proxy/cid-verifier.js';
@@ -417,6 +419,18 @@ function createServices(
     citationGraph
   );
 
+  // Create authorization service for role-based access control
+  const authzService = new AuthorizationService({
+    redis,
+    logger,
+  });
+
+  // Create alpha application service
+  const alphaService = new AlphaApplicationService({
+    pool: pgPool,
+    logger,
+  });
+
   return {
     preprintService,
     searchService,
@@ -432,6 +446,9 @@ function createServices(
     relevanceLogger,
     activityService,
     discoveryService,
+    rankingService,
+    authzService,
+    alphaService,
     redis,
     logger,
     serviceDid: config.serviceDid,

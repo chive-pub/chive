@@ -1,0 +1,67 @@
+name: Deploy Docs
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and pnpm
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build documentation
+        run: pnpm --filter @chive/docs build
+
+      - name: Deploy to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DOCS_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docs/build/*"
+          target: "/tmp/docs-deploy"
+          strip_components: 2
+
+      - name: Restart docs container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DOCS_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            # Replace old docs with new build
+            sudo rm -rf /opt/chive/docs/build
+            sudo mv /tmp/docs-deploy /opt/chive/docs/build
+            sudo chown -R www-data:www-data /opt/chive/docs/build
+
+            # Restart docs container if using Docker
+            cd /opt/chive/docker
+            if docker compose -f docker-compose.prod.yml ps chive-docs | grep -q "Up"; then
+              docker compose -f docker-compose.prod.yml restart chive-docs
+            fi
+
+            echo "Documentation deployed successfully!"
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -sf https://docs.${{ vars.DOMAIN }}/ || echo "Docs health check failed"

@@ -46,6 +46,7 @@ import type {
 } from '@/types/interfaces/search.interface.js';
 import type { Preprint } from '@/types/models/preprint.js';
 
+import { createMockAuthzService, createMockAlphaService } from '../helpers/mock-services.js';
 import type {
   PreprintResponse,
   PreprintListResponse,
@@ -481,6 +482,8 @@ describe('API Layer ATProto Compliance', () => {
       pdsSyncService: createMockPDSSyncService(),
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
+      authzService: createMockAuthzService(),
+      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

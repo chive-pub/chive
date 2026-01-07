@@ -23,8 +23,9 @@ import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Redis } from 'ioredis';
 
-import { ServiceAuthVerifier } from '../auth/service-auth/index.js';
+import { ServiceAuthVerifier, type IServiceAuthVerifier } from '../auth/service-auth/index.js';
 import type { ActivityService } from '../services/activity/activity-service.js';
+import type { AlphaApplicationService } from '../services/alpha/alpha-application-service.js';
 import type { BacklinkService } from '../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../services/claiming/claiming-service.js';
@@ -39,6 +40,7 @@ import type { RankingService } from '../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../services/search/relevance-logger.js';
 import type { SearchService } from '../services/search/search-service.js';
 import type { TagManager } from '../storage/neo4j/tag-manager.js';
+import type { IAuthorizationService } from '../types/interfaces/authorization.interface.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
 
 import { CORS_CONFIG, HEALTH_PATHS } from './config.js';
@@ -157,6 +159,22 @@ export interface ServerConfig {
    * @defaultValue 'https://plc.directory'
    */
   readonly plcDirectoryUrl?: string;
+
+  /**
+   * Authorization service for role management.
+   */
+  readonly authzService: IAuthorizationService;
+
+  /**
+   * Alpha application service.
+   */
+  readonly alphaService: AlphaApplicationService;
+
+  /**
+   * Optional custom service auth verifier for testing.
+   * If not provided, a default verifier is created using serviceDid.
+   */
+  readonly serviceAuthVerifier?: IServiceAuthVerifier;
 }
 
 /**
@@ -196,14 +214,16 @@ export interface ServerConfig {
 export function createServer(config: ServerConfig): Hono<ChiveEnv> {
   const app = new Hono<ChiveEnv>();
 
-  // Initialize ATProto service auth verifier
-  const serviceAuthVerifier = new ServiceAuthVerifier({
-    logger: config.logger,
-    config: {
-      serviceDid: config.serviceDid,
-      plcDirectoryUrl: config.plcDirectoryUrl,
-    },
-  });
+  // Use injected verifier (for testing) or create default one
+  const serviceAuthVerifier =
+    config.serviceAuthVerifier ??
+    new ServiceAuthVerifier({
+      logger: config.logger,
+      config: {
+        serviceDid: config.serviceDid,
+        plcDirectoryUrl: config.plcDirectoryUrl,
+      },
+    });
 
   // 1. Security headers (first, applied to all responses)
   app.use('*', secureHeaders());
@@ -242,6 +262,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
     });
     c.set('redis', config.redis);
     c.set('logger', config.logger);
+    c.set('alphaService', config.alphaService);
     await next();
   });
 
@@ -249,7 +270,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
   app.use('*', requestContext());
 
   // 5. ATProto service auth (optional; sets user if valid token present)
-  app.use('*', authenticateServiceAuth(serviceAuthVerifier));
+  app.use('*', authenticateServiceAuth(serviceAuthVerifier, config.authzService));
 
   // 6. Rate limiting (skip for health checks)
   app.use(

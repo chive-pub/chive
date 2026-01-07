@@ -32,6 +32,7 @@ import { getRedisConfig } from '@/storage/redis/structures.js';
 import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
+import { createMockAuthzService, createMockAlphaService } from '../../helpers/mock-services.js';
 import type { RateLimitResponse } from '../../types/api-responses.js';
 
 /**
@@ -323,6 +324,8 @@ describe('API Rate Limiting Integration', () => {
       pdsSyncService: createMockPDSSyncService(),
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
+      authzService: createMockAuthzService(),
+      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

@@ -12,7 +12,8 @@
  * @packageDocumentation
  */
 
-import { runner } from 'node-pg-migrate';
+import { execSync } from 'child_process';
+
 import { Pool } from 'pg';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
@@ -335,14 +336,24 @@ describe('PostgreSQL Schema', () => {
   });
 
   describe('Migration Reversibility', () => {
-    it('latest migration can be rolled back', async () => {
+    it('separate-bluesky-counts migration can be rolled back', async () => {
       const migrationConfig = getMigrationConfig();
 
-      // Latest migration is separate-bluesky-counts (1734700000000)
+      // Test rollback of separate-bluesky-counts migration (1734700000000)
       // This migration adds bluesky_post_count, bluesky_embed_count, other_count columns
       // and removes the combined bluesky_count column
 
-      // Verify new columns exist before rollback
+      // First, roll back alpha-applications (the latest) to get to separate-bluesky-counts
+      // Use execSync with tsx to support TypeScript migrations
+      execSync(
+        `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
+        {
+          env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
+          stdio: 'pipe',
+        }
+      );
+
+      // Verify new columns exist before rolling back separate-bluesky-counts
       const beforeResult = await pool.query<{ column_name: string }>(
         `
         SELECT column_name
@@ -355,17 +366,14 @@ describe('PostgreSQL Schema', () => {
 
       expect(beforeResult.rows).toHaveLength(3);
 
-      // Rollback latest migration
-      await runner({
-        databaseUrl: migrationConfig.databaseUrl,
-        dir: migrationConfig.dir,
-        direction: 'down',
-        count: 1,
-        migrationsTable: migrationConfig.migrationsTable,
-        log: () => {
-          // Suppress migration logs in tests
-        },
-      });
+      // Rollback separate-bluesky-counts migration
+      execSync(
+        `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
+        {
+          env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
+          stdio: 'pipe',
+        }
+      );
 
       // Verify new columns are dropped and old column is restored
       const afterResult = await pool.query<{ column_name: string }>(
@@ -403,16 +411,14 @@ describe('PostgreSQL Schema', () => {
 
       expect(indexResult.rows.length).toBeGreaterThan(0);
 
-      // Re-apply migration for other tests
-      await runner({
-        databaseUrl: migrationConfig.databaseUrl,
-        dir: migrationConfig.dir,
-        direction: 'up',
-        migrationsTable: migrationConfig.migrationsTable,
-        log: () => {
-          // Suppress migration logs in tests
-        },
-      });
+      // Re-apply all migrations for other tests
+      execSync(
+        `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir ${migrationConfig.dir}`,
+        {
+          env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
+          stdio: 'pipe',
+        }
+      );
     });
   });
 });

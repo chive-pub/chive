@@ -53,6 +53,91 @@ services:
       - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}"
 
   # ---------------------------------------------------------------------------
+  # Chive Web Frontend (Next.js)
+  # ---------------------------------------------------------------------------
+  chive-web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
+    image: chive-web:${CHIVE_VERSION:-latest}
+    container_name: chive-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      chive-api:
+        condition: service_healthy
+    networks:
+      - chive-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.web.loadbalancer.server.port=3001"
+
+  # ---------------------------------------------------------------------------
+  # Governance PDS (Bluesky PDS for community governance records)
+  # ---------------------------------------------------------------------------
+  governance-pds:
+    image: ghcr.io/bluesky-social/pds:latest
+    container_name: chive-governance-pds
+    restart: unless-stopped
+    environment:
+      PDS_HOSTNAME: governance.${DOMAIN}
+      PDS_DATA_DIRECTORY: /pds
+      PDS_BLOBSTORE_DISK_LOCATION: /pds/blocks
+      PDS_DID_PLC_URL: https://plc.directory
+      PDS_BSKY_APP_VIEW_URL: https://api.bsky.app
+      PDS_BSKY_APP_VIEW_DID: did:web:api.bsky.app
+      PDS_REPORT_SERVICE_URL: https://mod.bsky.app
+      PDS_REPORT_SERVICE_DID: did:plc:ar7c4by46qjdydhdevvrndac
+      PDS_CRAWLERS: https://bsky.network
+      PDS_JWT_SECRET: ${GOVERNANCE_PDS_JWT_SECRET:?GOVERNANCE_PDS_JWT_SECRET is required}
+      PDS_ADMIN_PASSWORD: ${GOVERNANCE_PDS_ADMIN_PASSWORD:?GOVERNANCE_PDS_ADMIN_PASSWORD is required}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${GOVERNANCE_PDS_ROTATION_KEY:?GOVERNANCE_PDS_ROTATION_KEY is required}
+    volumes:
+      - governance_pds_data:/pds
+    networks:
+      - chive-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/xrpc/_health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.governance-pds.rule=Host(`governance.${DOMAIN}`)"
+      - "traefik.http.routers.governance-pds.entrypoints=websecure"
+      - "traefik.http.routers.governance-pds.tls.certresolver=letsencrypt"
+      - "traefik.http.services.governance-pds.loadbalancer.server.port=3000"
+
+  # ---------------------------------------------------------------------------
   # Chive Documentation (Docusaurus)
   # ---------------------------------------------------------------------------
   chive-docs:
@@ -86,6 +171,24 @@ services:
       - "traefik.http.services.docs.loadbalancer.server.port=80"
 
   # ---------------------------------------------------------------------------
+  # Database Migrations (runs once before API starts)
+  # ---------------------------------------------------------------------------
+  chive-migrate:
+    image: chive:${CHIVE_VERSION:-latest}
+    container_name: chive-migrate
+    command: ["sh", "-c", "pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir src/storage/postgresql/migrations"]
+    env_file:
+      - .env.production
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-chive}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-chive}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chive-network
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
   # Chive API (AppView)
   # ---------------------------------------------------------------------------
   chive-api:
@@ -107,6 +210,8 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+      chive-migrate:
+        condition: service_completed_successfully
     networks:
       - chive-network
     deploy:
@@ -154,6 +259,8 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      chive-migrate:
+        condition: service_completed_successfully
     networks:
       - chive-network
     deploy:
@@ -447,6 +554,8 @@ services:
 volumes:
   traefik_certs:
     name: chive_traefik_certs
+  governance_pds_data:
+    name: chive_governance_pds_data
   postgres_data:
     name: chive_postgres_data
   redis_data:

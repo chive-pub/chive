@@ -30,6 +30,14 @@ export type DID = `did:${string}:${string}`;
 export type Handle = string;
 
 /**
+ * Alpha application status.
+ *
+ * @remarks
+ * Indicates the user's alpha tester application status.
+ */
+export type AlphaStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+/**
  * Authenticated user information.
  *
  * @remarks
@@ -53,6 +61,12 @@ export interface ChiveUser {
 
   /** User's PDS endpoint */
   pdsEndpoint: string;
+
+  /** Whether user has alpha tester access */
+  isAlphaTester?: boolean;
+
+  /** User's alpha application status */
+  alphaStatus?: AlphaStatus;
 }
 
 /**

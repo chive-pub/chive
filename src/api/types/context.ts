@@ -12,6 +12,7 @@
 import type { Redis } from 'ioredis';
 
 import type { ActivityService } from '../../services/activity/activity-service.js';
+import type { AlphaApplicationService } from '../../services/alpha/alpha-application-service.js';
 import type { BacklinkService } from '../../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
@@ -83,6 +84,11 @@ export interface AuthenticatedUser {
   readonly isPremium: boolean;
 
   /**
+   * Alpha tester flag for alpha access gating.
+   */
+  readonly isAlphaTester: boolean;
+
+  /**
    * User's granted scopes.
    */
   readonly scopes?: readonly string[];
@@ -149,6 +155,11 @@ export interface ChiveEnv {
      * Logger instance with request context.
      */
     logger: ILogger;
+
+    /**
+     * Alpha application service.
+     */
+    alphaService: AlphaApplicationService;
 
     /**
      * Authenticated user (undefined if anonymous).

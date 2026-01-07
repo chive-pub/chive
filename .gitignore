@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+playwright-report/
+tests/e2e/test-results/
+tests/e2e/.auth/
+
+# Build outputs
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Docusaurus
+docs/.docusaurus/
+docs/build/
+docs/code-reference/
+docs/api-docs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+web/.env.local
+
+# Development scripts (user-specific config)
+scripts/ngrok.yml
+/tmp/chive-tunnel-url.env
+/tmp/lt-output.txt
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# VS Code
+.vscode/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# K6 results
+k6-results/
+
+# Claude Code
+.claude/
+
+# Other
+notes/
