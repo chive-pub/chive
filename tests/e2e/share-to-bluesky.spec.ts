@@ -543,7 +543,11 @@ test.describe('Accessibility', () => {
     await expect(closeButton).toBeVisible();
   });
 
-  test('Dialog can be navigated with keyboard', async ({ page }) => {
+  test('Dialog can be navigated with keyboard', async ({ page, browserName }) => {
+    // Skip on webkit due to known keyboard focus differences in webkit
+    // See: https://bugs.webkit.org/show_bug.cgi?id=22261
+    test.skip(browserName === 'webkit', 'Webkit has different keyboard focus behavior');
+
     await navigateToFirstPreprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();

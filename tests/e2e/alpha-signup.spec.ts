@@ -324,7 +324,11 @@ test.describe('Alpha Signup Flow', () => {
         expect(accessibleName).toBeTruthy();
       });
 
-      test('landing page is keyboard navigable', async ({ page }) => {
+      test('landing page is keyboard navigable', async ({ page, browserName }) => {
+        // Skip on webkit due to known keyboard focus differences in webkit
+        // See: https://bugs.webkit.org/show_bug.cgi?id=22261
+        test.skip(browserName === 'webkit', 'Webkit has different keyboard focus behavior');
+
         const landingPage = new AlphaLandingPage(page);
         await landingPage.goto();
 
