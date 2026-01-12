@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MentionPopover, type ActorSuggestion } from './mention-popover';
 import type { AutocompleteTrigger } from './bluesky-composer';
@@ -134,13 +134,18 @@ describe('MentionPopover', () => {
     const firstItem = screen.getByRole('option', { selected: true });
     expect(firstItem).toHaveTextContent('Alice');
 
-    // Press arrow down
-    fireEvent.keyDown(document, { key: 'ArrowDown' });
-
-    await waitFor(() => {
-      const selectedItem = screen.getByRole('option', { selected: true });
-      expect(selectedItem).toHaveTextContent('Bob');
+    // Press arrow down - wrap in act for proper React state update scheduling
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'ArrowDown' });
     });
+
+    await waitFor(
+      () => {
+        const selectedItem = screen.getByRole('option', { selected: true });
+        expect(selectedItem).toHaveTextContent('Bob');
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('selects with Enter key', async () => {
@@ -159,16 +164,21 @@ describe('MentionPopover', () => {
 
   it('closes on Escape key', async () => {
     const onClose = vi.fn();
+    const user = userEvent.setup();
 
     render(<MentionPopover trigger={baseTrigger} onSelect={() => {}} onClose={onClose} />);
 
+    // Wait for suggestions to load
     await waitFor(() => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
 
-    fireEvent.keyDown(document, { key: 'Escape' });
+    // Use userEvent which properly handles React state updates
+    await user.keyboard('{Escape}');
 
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 
   it('positions popover at trigger position', async () => {

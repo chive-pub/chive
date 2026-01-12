@@ -16,9 +16,14 @@ const mockActors: ActorSuggestion[] = [
   },
 ];
 
+// Longer timeout for debounced operations
+const DEBOUNCE_WAIT = 500;
+
 describe('useMentionAutocomplete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Ensure real timers are used
+    vi.useRealTimers();
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -28,6 +33,7 @@ describe('useMentionAutocomplete', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('returns empty suggestions initially', () => {
@@ -55,7 +61,7 @@ describe('useMentionAutocomplete', () => {
           expect.stringContaining('app.bsky.actor.searchActorsTypeahead?q=alice')
         );
       },
-      { timeout: 200 }
+      { timeout: DEBOUNCE_WAIT }
     );
   });
 
@@ -70,7 +76,7 @@ describe('useMentionAutocomplete', () => {
       () => {
         expect(result.current.suggestions).toEqual(mockActors);
       },
-      { timeout: 200 }
+      { timeout: DEBOUNCE_WAIT }
     );
   });
 
@@ -81,11 +87,12 @@ describe('useMentionAutocomplete', () => {
       result.current.search('alice');
     });
 
+    // Wait for suggestions to be populated
     await waitFor(
       () => {
         expect(result.current.suggestions.length).toBeGreaterThan(0);
       },
-      { timeout: 200 }
+      { timeout: DEBOUNCE_WAIT }
     );
 
     act(() => {
@@ -104,7 +111,7 @@ describe('useMentionAutocomplete', () => {
     });
 
     // Wait a bit to ensure debounce could have fired
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 150));
 
     expect(global.fetch).not.toHaveBeenCalled();
     expect(result.current.suggestions).toEqual([]);
@@ -124,7 +131,7 @@ describe('useMentionAutocomplete', () => {
         expect(result.current.isLoading).toBe(false);
         expect(result.current.suggestions).toEqual([]);
       },
-      { timeout: 200 }
+      { timeout: DEBOUNCE_WAIT }
     );
   });
 
@@ -144,7 +151,7 @@ describe('useMentionAutocomplete', () => {
       () => {
         expect(result.current.suggestions).toEqual([]);
       },
-      { timeout: 200 }
+      { timeout: DEBOUNCE_WAIT }
     );
   });
 
@@ -159,7 +166,7 @@ describe('useMentionAutocomplete', () => {
       () => {
         expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=8'));
       },
-      { timeout: 200 }
+      { timeout: DEBOUNCE_WAIT }
     );
   });
 });

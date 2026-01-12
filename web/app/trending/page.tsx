@@ -112,7 +112,7 @@ export default function TrendingPage() {
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      {preprint.author.displayName ?? preprint.author.handle}
+                      {preprint.authors.map((a) => a.name).join(', ') || 'Unknown Author'}
                     </span>
                     <span>{new Date(preprint.createdAt).toLocaleDateString()}</span>
                   </div>

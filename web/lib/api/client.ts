@@ -158,6 +158,52 @@ function extractLxmFromUrl(url: string): string | undefined {
 }
 
 /**
+ * Check if running in E2E test mode.
+ *
+ * @remarks
+ * E2E test mode is detected when:
+ * - NEXT_PUBLIC_E2E_TEST=true environment variable is set
+ * - OR localStorage has 'chive_session_metadata' without a real OAuth session
+ */
+function isE2ETestMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  // Check environment flag
+  if (process.env.NEXT_PUBLIC_E2E_TEST === 'true') return true;
+  // Also check for E2E marker in localStorage
+  return localStorage.getItem('chive_e2e_skip_oauth') === 'true';
+}
+
+/**
+ * Get E2E test user DID from localStorage session metadata.
+ */
+function getE2ETestUserDid(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const metadata = localStorage.getItem('chive_session_metadata');
+    if (!metadata) return null;
+    const parsed = JSON.parse(metadata);
+    return parsed?.did ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get E2E test user handle from localStorage session metadata.
+ */
+function getE2ETestUserHandle(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const metadata = localStorage.getItem('chive_session_metadata');
+    if (!metadata) return null;
+    const parsed = JSON.parse(metadata);
+    return parsed?.handle ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Service auth middleware for openapi-fetch.
  *
  * @remarks
@@ -168,6 +214,10 @@ function extractLxmFromUrl(url: string): string | undefined {
  * 4. Adds JWT to Authorization header
  * 5. Chive backend verifies JWT against user's DID document
  *
+ * **E2E Testing Support:**
+ * When in E2E test mode (no real OAuth), sends X-E2E-Auth-Did header instead
+ * of a real JWT. The backend accepts this when ENABLE_E2E_AUTH_BYPASS=true.
+ *
  * @see {@link https://docs.bsky.app/docs/advanced-guides/service-auth | ATProto Service Auth}
  */
 const serviceAuthMiddleware: Middleware = {
@@ -175,6 +225,38 @@ const serviceAuthMiddleware: Middleware = {
     // Only add auth in browser context
     if (typeof window === 'undefined') {
       return request;
+    }
+
+    // E2E test mode: use X-E2E-Auth-Did header instead of real OAuth
+    if (isE2ETestMode()) {
+      const e2eDid = getE2ETestUserDid();
+      const e2eHandle = getE2ETestUserHandle();
+
+      if (e2eDid) {
+        const headers = new Headers(request.headers);
+        headers.set('X-E2E-Auth-Did', e2eDid);
+        if (e2eHandle) {
+          headers.set('X-E2E-Auth-Handle', e2eHandle);
+        }
+
+        const requestInit: RequestInit & { duplex?: 'half' } = {
+          method: request.method,
+          headers,
+          body: request.body,
+          mode: request.mode,
+          credentials: request.credentials,
+          cache: request.cache,
+          redirect: request.redirect,
+          referrer: request.referrer,
+          integrity: request.integrity,
+        };
+
+        if (request.body) {
+          requestInit.duplex = 'half';
+        }
+
+        return new Request(request.url, requestInit);
+      }
     }
 
     const agent = getCurrentAgent();

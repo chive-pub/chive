@@ -108,7 +108,7 @@ export function SearchAutocomplete({
                     type: 'preprint',
                     id: preprint.uri,
                     label: preprint.title,
-                    sublabel: preprint.author.displayName ?? preprint.author.handle,
+                    sublabel: preprint.authors[0]?.name,
                     href: `/preprints/${encodeURIComponent(preprint.uri)}`,
                   }}
                   onSelect={onSelect}
@@ -120,15 +120,15 @@ export function SearchAutocomplete({
           {/* Author suggestions */}
           {authors.length > 0 && (
             <SuggestionGroup title="Authors" icon={<User className="h-4 w-4" />}>
-              {authors.slice(0, 3).map((author) => (
+              {authors.slice(0, 3).map((author, index) => (
                 <SuggestionItem
-                  key={author.did}
+                  key={author.did ?? `author-${index}`}
                   suggestion={{
                     type: 'author',
-                    id: author.did,
+                    id: author.did ?? '',
                     label: author.displayName ?? author.handle ?? author.did,
                     sublabel: author.handle,
-                    href: `/authors/${encodeURIComponent(author.did)}`,
+                    href: author.did ? `/authors/${encodeURIComponent(author.did)}` : '#',
                   }}
                   onSelect={onSelect}
                 />

@@ -3,7 +3,7 @@ import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 
 import { Providers } from '@/components/providers';
-import { SiteHeader } from '@/components/navigation';
+import { ConditionalHeader } from '@/components/conditional-header';
 import { SkipLink } from '@/components/skip-link';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/globals.css';
@@ -25,6 +25,10 @@ export const metadata: Metadata = {
     'scholarly communication',
   ],
   authors: [{ name: 'Aaron Steven White', url: 'https://chive.pub' }],
+  icons: {
+    icon: '/chive-logo.svg',
+    apple: '/chive-logo.svg',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -55,7 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <SkipLink />
           <div className="relative flex min-h-screen flex-col">
-            <SiteHeader />
+            <ConditionalHeader />
             <main id="main-content" className="flex-1" tabIndex={-1}>
               {children}
             </main>

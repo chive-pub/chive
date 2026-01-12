@@ -174,6 +174,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/xrpc/pub.chive.alpha.apply': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Submit an alpha tester application */
+    post: operations['pub_chive_alpha_apply'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.alpha.checkStatus': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Check alpha tester application status */
+    get: operations['pub_chive_alpha_checkStatus'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/xrpc/pub.chive.author.getProfile': {
     parameters: {
       query?: never;
@@ -474,6 +508,57 @@ export interface paths {
     put?: never;
     /** Start a claim from an external search result (imports on demand) */
     post: operations['pub_chive_claiming_startClaimFromExternal'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.contribution.listTypes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List CRediT-based contribution types */
+    get: operations['pub_chive_contribution_listTypes'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.contribution.getType': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a contribution type by ID */
+    get: operations['pub_chive_contribution_getType'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.contribution.searchTypes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search contribution types by label or description */
+    get: operations['pub_chive_contribution_searchTypes'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -2137,6 +2222,172 @@ export interface operations {
       };
     };
   };
+  pub_chive_alpha_apply: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /**
+           * Format: email
+           * @description Contact email for notifications
+           */
+          email: string;
+          /**
+           * @description Organization type
+           * @enum {string}
+           */
+          sector:
+            | 'academia'
+            | 'industry'
+            | 'government'
+            | 'nonprofit'
+            | 'healthcare'
+            | 'independent'
+            | 'other';
+          /** @description Custom sector if "other" selected */
+          sectorOther?: string;
+          /**
+           * @description Career stage/position
+           * @enum {string}
+           */
+          careerStage:
+            | 'undergraduate'
+            | 'graduate-masters'
+            | 'graduate-phd'
+            | 'postdoc'
+            | 'research-staff'
+            | 'junior-faculty'
+            | 'senior-faculty'
+            | 'research-admin'
+            | 'librarian'
+            | 'science-communicator'
+            | 'policy-professional'
+            | 'retired'
+            | 'other';
+          /** @description Custom career stage if "other" selected */
+          careerStageOther?: string;
+          /** @description Institutional affiliation (optional) */
+          affiliation?: {
+            /** @description Institution name */
+            name: string;
+            /**
+             * Format: uri
+             * @description ROR ID URL
+             */
+            rorId?: string;
+          };
+          /** @description Primary research field or discipline */
+          researchField: string;
+          /** @description Optional motivation statement */
+          motivation?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** Format: uuid */
+            applicationId: string;
+            /** @enum {string} */
+            status: 'none' | 'pending' | 'approved' | 'rejected';
+            /** Format: date-time */
+            createdAt: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_alpha_checkStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @enum {string} */
+            status: 'none' | 'pending' | 'approved' | 'rejected';
+            /** Format: date-time */
+            appliedAt?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
   pub_chive_author_getProfile: {
     parameters: {
       query: {
@@ -3039,6 +3290,20 @@ export interface operations {
               createdAt: string;
               /** Format: date-time */
               expiresAt?: string;
+              paper: {
+                source: string;
+                externalId: string;
+                externalUrl: string;
+                title: string;
+                authors: {
+                  name: string;
+                  orcid?: string;
+                  affiliation?: string;
+                  email?: string;
+                }[];
+                publicationDate?: string;
+                doi?: string;
+              };
             }[];
             cursor?: string;
             hasMore: boolean;
@@ -3561,6 +3826,235 @@ export interface operations {
               /** Format: date-time */
               expiresAt?: string;
             };
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_contribution_listTypes: {
+    parameters: {
+      query: {
+        limit: number;
+        cursor?: string;
+        status?: 'established' | 'provisional' | 'deprecated';
+        search?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            types: {
+              /** @description AT Protocol URI (at://did/collection/rkey) */
+              uri: string;
+              id: string;
+              label: string;
+              description: string;
+              /**
+               * @description Contribution type status
+               * @enum {string}
+               */
+              status: 'established' | 'provisional' | 'deprecated';
+            }[];
+            total: number;
+            hasMore: boolean;
+            cursor?: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_contribution_getType: {
+    parameters: {
+      query: {
+        id: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description AT URI of contribution type record */
+            uri: string;
+            /** @description Type identifier (e.g., "conceptualization") */
+            id: string;
+            /** @description Human-readable label */
+            label: string;
+            /** @description Detailed description */
+            description: string;
+            /** @description External ontology links */
+            externalMappings: {
+              /**
+               * @description External ontology system
+               * @enum {string}
+               */
+              system: 'credit' | 'cro' | 'scoro' | 'pro';
+              /** @description Identifier in external system */
+              identifier: string;
+              /**
+               * Format: uri
+               * @description Full URI in external system
+               */
+              uri?: string;
+              /**
+               * @description Semantic match type
+               * @enum {string}
+               */
+              matchType?: 'exact-match' | 'close-match' | 'broad-match' | 'narrow-match';
+            }[];
+            /**
+             * @description Contribution type status
+             * @enum {string}
+             */
+            status: 'established' | 'provisional' | 'deprecated';
+            /** @description Proposal that created this type */
+            proposalUri?: string;
+            /** @description Type that supersedes this one */
+            deprecatedBy?: string;
+            /**
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Last update timestamp
+             */
+            updatedAt?: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_contribution_searchTypes: {
+    parameters: {
+      query: {
+        q: string;
+        limit: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            types: {
+              /** @description AT Protocol URI (at://did/collection/rkey) */
+              uri: string;
+              id: string;
+              label: string;
+              description: string;
+              /**
+               * @description Contribution type status
+               * @enum {string}
+               */
+              status: 'established' | 'provisional' | 'deprecated';
+            }[];
+            total: number;
           };
         };
       };
@@ -4330,6 +4824,7 @@ export interface operations {
       query: {
         limit: number;
         cursor?: string;
+        category?: 'field' | 'contribution-type' | 'facet' | 'organization' | 'reconciliation';
         status?: 'pending' | 'approved' | 'rejected' | 'expired';
         type?: 'create' | 'update' | 'merge' | 'delete';
         fieldId?: string;
@@ -4363,6 +4858,8 @@ export interface operations {
                 parentId?: string;
                 mergeTargetId?: string;
                 wikidataId?: string;
+                /** @description PMEST/FAST facet dimension for facet proposals */
+                dimension?: string;
               };
               rationale: string;
               /** @enum {string} */
@@ -4456,6 +4953,8 @@ export interface operations {
               parentId?: string;
               mergeTargetId?: string;
               wikidataId?: string;
+              /** @description PMEST/FAST facet dimension for facet proposals */
+              dimension?: string;
             };
             rationale: string;
             /** @enum {string} */
@@ -5066,28 +5565,60 @@ export interface operations {
               title: string;
               /** @description Preprint abstract */
               abstract: string;
-              /** @description Author information */
-              author: {
-                /** @description Author DID */
-                did: string;
-                /** @description Author handle */
-                handle?: string;
+              /** @description All authors with contributions */
+              authors: {
+                /** @description Author DID if they have an ATProto account */
+                did?: string;
                 /** @description Author display name */
-                displayName?: string;
-                /** @description Author avatar URL */
-                avatar?: string;
-              };
-              /** @description Co-authors */
-              coAuthors?: {
-                /** @description Author DID */
-                did: string;
-                /** @description Author handle */
+                name: string;
+                /** @description ORCID identifier */
+                orcid?: string;
+                /**
+                 * Format: email
+                 * @description Contact email
+                 */
+                email?: string;
+                /** @description Position in author list (1-indexed) */
+                order: number;
+                /** @description Author affiliations */
+                affiliations: {
+                  /** @description Organization name */
+                  name: string;
+                  /** @description ROR ID */
+                  rorId?: string;
+                  /** @description Department or division */
+                  department?: string;
+                }[];
+                /** @description CRediT-based contributions */
+                contributions: {
+                  /** @description AT-URI to contribution type */
+                  typeUri: string;
+                  /** @description Contribution type ID */
+                  typeId?: string;
+                  /** @description Human-readable label */
+                  typeLabel?: string;
+                  /**
+                   * @description Contribution degree
+                   * @enum {string}
+                   */
+                  degree: 'lead' | 'equal' | 'supporting';
+                }[];
+                /** @description Whether this is a corresponding author */
+                isCorrespondingAuthor: boolean;
+                /** @description Whether author is highlighted (co-first, co-last) */
+                isHighlighted: boolean;
+                /** @description Author handle if available */
                 handle?: string;
-                /** @description Author display name */
-                displayName?: string;
-                /** @description Author avatar URL */
-                avatar?: string;
+                /**
+                 * Format: uri
+                 * @description Avatar URL if available
+                 */
+                avatarUrl?: string;
               }[];
+              /** @description DID of human user who submitted */
+              submittedBy: string;
+              /** @description Paper DID if paper has its own PDS */
+              paperDid?: string;
               /** @description Subject fields */
               fields?: {
                 /** @description Field ID */
@@ -5117,29 +5648,32 @@ export interface operations {
               source: {
                 /**
                  * Format: uri
-                 * @description PDS endpoint URL
+                 * @description User PDS endpoint
                  */
                 pdsEndpoint: string;
-                /** @description Record URL */
+                /**
+                 * Format: uri
+                 * @description Direct URL to fetch authoritative record
+                 */
                 recordUrl: string;
-                /** @description Blob URL */
+                /**
+                 * Format: uri
+                 * @description Direct URL to fetch PDF blob from PDS
+                 */
                 blobUrl?: string;
                 /**
                  * Format: date-time
-                 * @description Last verification
+                 * @description Last time Chive verified with PDS
                  */
                 lastVerifiedAt?: string;
-                /** @description Staleness flag */
+                /** @description True if not verified in > 7 days */
                 stale: boolean;
               };
               /** @description Relevance score */
               score?: number;
               /** @description Search highlights */
               highlights?: {
-                /** @description Highlighted title */
-                title?: string;
-                /** @description Highlighted abstract */
-                abstract?: string;
+                [key: string]: string[];
               };
             }[];
             /** @description Available facet refinements */
@@ -5795,34 +6329,60 @@ export interface operations {
               title: string;
               /** @description Truncated abstract */
               abstract: string;
-              /** @description Primary author */
-              author: {
-                /** @description Decentralized Identifier */
-                did: string;
-                /** @description Author handle */
+              /** @description All authors with contributions */
+              authors: {
+                /** @description Author DID if they have an ATProto account */
+                did?: string;
+                /** @description Author display name */
+                name: string;
+                /** @description ORCID identifier */
+                orcid?: string;
+                /**
+                 * Format: email
+                 * @description Contact email
+                 */
+                email?: string;
+                /** @description Position in author list (1-indexed) */
+                order: number;
+                /** @description Author affiliations */
+                affiliations: {
+                  /** @description Organization name */
+                  name: string;
+                  /** @description ROR ID */
+                  rorId?: string;
+                  /** @description Department or division */
+                  department?: string;
+                }[];
+                /** @description CRediT-based contributions */
+                contributions: {
+                  /** @description AT-URI to contribution type */
+                  typeUri: string;
+                  /** @description Contribution type ID */
+                  typeId?: string;
+                  /** @description Human-readable label */
+                  typeLabel?: string;
+                  /**
+                   * @description Contribution degree
+                   * @enum {string}
+                   */
+                  degree: 'lead' | 'equal' | 'supporting';
+                }[];
+                /** @description Whether this is a corresponding author */
+                isCorrespondingAuthor: boolean;
+                /** @description Whether author is highlighted (co-first, co-last) */
+                isHighlighted: boolean;
+                /** @description Author handle if available */
                 handle?: string;
-                /** @description Display name */
-                displayName?: string;
                 /**
                  * Format: uri
-                 * @description Avatar URL
+                 * @description Avatar URL if available
                  */
-                avatar?: string;
-              };
-              /** @description Co-authors */
-              coAuthors?: {
-                /** @description Decentralized Identifier */
-                did: string;
-                /** @description Author handle */
-                handle?: string;
-                /** @description Display name */
-                displayName?: string;
-                /**
-                 * Format: uri
-                 * @description Avatar URL
-                 */
-                avatar?: string;
+                avatarUrl?: string;
               }[];
+              /** @description DID of human user who submitted */
+              submittedBy: string;
+              /** @description Paper DID if paper has its own PDS */
+              paperDid?: string;
               /** @description Subject fields */
               fields?: {
                 /** @description Field ID */
@@ -5884,6 +6444,8 @@ export interface operations {
               viewsInWindow: number;
               /** @description Trending rank */
               rank: number;
+              /** @description Velocity indicator: >0 accelerating, <0 decelerating (compared to baseline) */
+              velocity?: number;
             }[];
             /**
              * @default 7d
@@ -6342,35 +6904,61 @@ export interface operations {
             title: string;
             /** @description Full abstract */
             abstract: string;
-            /** @description Primary author */
-            author: {
-              /** @description Decentralized Identifier */
-              did: string;
-              /** @description Author handle */
+            /** @description All authors with contributions */
+            authors: {
+              /** @description Author DID if they have an ATProto account */
+              did?: string;
+              /** @description Author display name */
+              name: string;
+              /** @description ORCID identifier */
+              orcid?: string;
+              /**
+               * Format: email
+               * @description Contact email
+               */
+              email?: string;
+              /** @description Position in author list (1-indexed) */
+              order: number;
+              /** @description Author affiliations */
+              affiliations: {
+                /** @description Organization name */
+                name: string;
+                /** @description ROR ID */
+                rorId?: string;
+                /** @description Department or division */
+                department?: string;
+              }[];
+              /** @description CRediT-based contributions */
+              contributions: {
+                /** @description AT-URI to contribution type */
+                typeUri: string;
+                /** @description Contribution type ID */
+                typeId?: string;
+                /** @description Human-readable label */
+                typeLabel?: string;
+                /**
+                 * @description Contribution degree
+                 * @enum {string}
+                 */
+                degree: 'lead' | 'equal' | 'supporting';
+              }[];
+              /** @description Whether this is a corresponding author */
+              isCorrespondingAuthor: boolean;
+              /** @description Whether author is highlighted (co-first, co-last) */
+              isHighlighted: boolean;
+              /** @description Author handle if available */
               handle?: string;
-              /** @description Display name */
-              displayName?: string;
               /**
                * Format: uri
-               * @description Avatar URL
+               * @description Avatar URL if available
                */
-              avatar?: string;
-            };
-            /** @description Co-authors */
-            coAuthors?: {
-              /** @description Decentralized Identifier */
-              did: string;
-              /** @description Author handle */
-              handle?: string;
-              /** @description Display name */
-              displayName?: string;
-              /**
-               * Format: uri
-               * @description Avatar URL
-               */
-              avatar?: string;
+              avatarUrl?: string;
             }[];
-            /** @description PDF document blob reference */
+            /** @description DID of human user who submitted */
+            submittedBy: string;
+            /** @description Paper DID if paper has its own PDS */
+            paperDid?: string;
+            /** @description Document blob reference */
             document: {
               /** @constant */
               $type: 'blob';
@@ -6381,16 +6969,46 @@ export interface operations {
               /** @description Size in bytes */
               size: number;
             };
-            /** @description Supplementary files */
+            /** @description Document format (pdf, docx, etc.) */
+            documentFormat?: string;
+            /** @description Supplementary materials */
             supplementary?: {
-              /** @constant */
-              $type: 'blob';
-              /** @description CID of blob */
-              ref: string;
-              /** @description MIME type */
-              mimeType: string;
-              /** @description Size in bytes */
-              size: number;
+              /** @description Blob reference */
+              blob: {
+                /** @constant */
+                $type: 'blob';
+                /** @description CID of blob */
+                ref: string;
+                /** @description MIME type */
+                mimeType: string;
+                /** @description Size in bytes */
+                size: number;
+              };
+              /** @description Display label */
+              label: string;
+              /** @description Material description */
+              description?: string;
+              /**
+               * @description Material category
+               * @enum {string}
+               */
+              category:
+                | 'appendix'
+                | 'figure'
+                | 'table'
+                | 'dataset'
+                | 'code'
+                | 'notebook'
+                | 'video'
+                | 'audio'
+                | 'presentation'
+                | 'protocol'
+                | 'questionnaire'
+                | 'other';
+              /** @description Auto-detected format */
+              detectedFormat?: string;
+              /** @description Display order */
+              order: number;
             }[];
             /** @description Subject fields */
             fields?: {
@@ -6535,34 +7153,60 @@ export interface operations {
               title: string;
               /** @description Truncated abstract */
               abstract: string;
-              /** @description Primary author */
-              author: {
-                /** @description Decentralized Identifier */
-                did: string;
-                /** @description Author handle */
+              /** @description All authors with contributions */
+              authors: {
+                /** @description Author DID if they have an ATProto account */
+                did?: string;
+                /** @description Author display name */
+                name: string;
+                /** @description ORCID identifier */
+                orcid?: string;
+                /**
+                 * Format: email
+                 * @description Contact email
+                 */
+                email?: string;
+                /** @description Position in author list (1-indexed) */
+                order: number;
+                /** @description Author affiliations */
+                affiliations: {
+                  /** @description Organization name */
+                  name: string;
+                  /** @description ROR ID */
+                  rorId?: string;
+                  /** @description Department or division */
+                  department?: string;
+                }[];
+                /** @description CRediT-based contributions */
+                contributions: {
+                  /** @description AT-URI to contribution type */
+                  typeUri: string;
+                  /** @description Contribution type ID */
+                  typeId?: string;
+                  /** @description Human-readable label */
+                  typeLabel?: string;
+                  /**
+                   * @description Contribution degree
+                   * @enum {string}
+                   */
+                  degree: 'lead' | 'equal' | 'supporting';
+                }[];
+                /** @description Whether this is a corresponding author */
+                isCorrespondingAuthor: boolean;
+                /** @description Whether author is highlighted (co-first, co-last) */
+                isHighlighted: boolean;
+                /** @description Author handle if available */
                 handle?: string;
-                /** @description Display name */
-                displayName?: string;
                 /**
                  * Format: uri
-                 * @description Avatar URL
+                 * @description Avatar URL if available
                  */
-                avatar?: string;
-              };
-              /** @description Co-authors */
-              coAuthors?: {
-                /** @description Decentralized Identifier */
-                did: string;
-                /** @description Author handle */
-                handle?: string;
-                /** @description Display name */
-                displayName?: string;
-                /**
-                 * Format: uri
-                 * @description Avatar URL
-                 */
-                avatar?: string;
+                avatarUrl?: string;
               }[];
+              /** @description DID of human user who submitted */
+              submittedBy: string;
+              /** @description Paper DID if paper has its own PDS */
+              paperDid?: string;
               /** @description Subject fields */
               fields?: {
                 /** @description Field ID */
@@ -6708,34 +7352,60 @@ export interface operations {
               title: string;
               /** @description Truncated abstract */
               abstract: string;
-              /** @description Primary author */
-              author: {
-                /** @description Decentralized Identifier */
-                did: string;
-                /** @description Author handle */
+              /** @description All authors with contributions */
+              authors: {
+                /** @description Author DID if they have an ATProto account */
+                did?: string;
+                /** @description Author display name */
+                name: string;
+                /** @description ORCID identifier */
+                orcid?: string;
+                /**
+                 * Format: email
+                 * @description Contact email
+                 */
+                email?: string;
+                /** @description Position in author list (1-indexed) */
+                order: number;
+                /** @description Author affiliations */
+                affiliations: {
+                  /** @description Organization name */
+                  name: string;
+                  /** @description ROR ID */
+                  rorId?: string;
+                  /** @description Department or division */
+                  department?: string;
+                }[];
+                /** @description CRediT-based contributions */
+                contributions: {
+                  /** @description AT-URI to contribution type */
+                  typeUri: string;
+                  /** @description Contribution type ID */
+                  typeId?: string;
+                  /** @description Human-readable label */
+                  typeLabel?: string;
+                  /**
+                   * @description Contribution degree
+                   * @enum {string}
+                   */
+                  degree: 'lead' | 'equal' | 'supporting';
+                }[];
+                /** @description Whether this is a corresponding author */
+                isCorrespondingAuthor: boolean;
+                /** @description Whether author is highlighted (co-first, co-last) */
+                isHighlighted: boolean;
+                /** @description Author handle if available */
                 handle?: string;
-                /** @description Display name */
-                displayName?: string;
                 /**
                  * Format: uri
-                 * @description Avatar URL
+                 * @description Avatar URL if available
                  */
-                avatar?: string;
-              };
-              /** @description Co-authors */
-              coAuthors?: {
-                /** @description Decentralized Identifier */
-                did: string;
-                /** @description Author handle */
-                handle?: string;
-                /** @description Display name */
-                displayName?: string;
-                /**
-                 * Format: uri
-                 * @description Avatar URL
-                 */
-                avatar?: string;
+                avatarUrl?: string;
               }[];
+              /** @description DID of human user who submitted */
+              submittedBy: string;
+              /** @description Paper DID if paper has its own PDS */
+              paperDid?: string;
               /** @description Subject fields */
               fields?: {
                 /** @description Field ID */

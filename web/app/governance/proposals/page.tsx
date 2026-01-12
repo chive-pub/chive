@@ -10,8 +10,10 @@ import {
   useProposals,
   STATUS_LABELS,
   TYPE_LABELS,
+  CATEGORY_LABELS,
   type ProposalStatus,
   type ProposalType,
+  type ProposalCategory,
 } from '@/lib/hooks/use-governance';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,12 +67,17 @@ function ProposalsLoadingSkeleton() {
 function ProposalsContent() {
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get('status') as ProposalStatus | null;
+  const initialCategory = searchParams.get('category') as ProposalCategory | null;
 
+  const [categoryFilter, setCategoryFilter] = useState<ProposalCategory | 'all'>(
+    initialCategory ?? 'all'
+  );
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'all'>(initialStatus ?? 'all');
   const [typeFilter, setTypeFilter] = useState<ProposalType | 'all'>('all');
 
   const isAuthenticated = useIsAuthenticated();
   const { data, isLoading, error } = useProposals({
+    category: categoryFilter === 'all' ? undefined : categoryFilter,
     status: statusFilter === 'all' ? undefined : statusFilter,
     type: typeFilter === 'all' ? undefined : typeFilter,
     limit: 50,
@@ -123,11 +130,25 @@ function ProposalsContent() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Filter:</span>
         </div>
+
+        <Select
+          value={categoryFilter}
+          onValueChange={(v) => setCategoryFilter(v as ProposalCategory | 'all')}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="field">Knowledge Graph Field</SelectItem>
+            <SelectItem value="contribution-type">Contribution Type</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Select
           value={statusFilter}
@@ -147,22 +168,23 @@ function ProposalsContent() {
 
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as ProposalType | 'all')}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Type" />
+            <SelectValue placeholder="Action" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="all">All actions</SelectItem>
             <SelectItem value="create">Create</SelectItem>
             <SelectItem value="update">Update</SelectItem>
             <SelectItem value="merge">Merge</SelectItem>
-            <SelectItem value="delete">Delete</SelectItem>
+            <SelectItem value="delete">Delete/Deprecate</SelectItem>
           </SelectContent>
         </Select>
 
-        {(statusFilter !== 'all' || typeFilter !== 'all') && (
+        {(categoryFilter !== 'all' || statusFilter !== 'all' || typeFilter !== 'all') && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
+              setCategoryFilter('all');
               setStatusFilter('all');
               setTypeFilter('all');
             }}
@@ -243,9 +265,9 @@ function ProposalsContent() {
           <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No proposals found</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            {statusFilter !== 'all' || typeFilter !== 'all'
+            {categoryFilter !== 'all' || statusFilter !== 'all' || typeFilter !== 'all'
               ? 'Try adjusting your filters'
-              : 'Be the first to propose a knowledge graph change'}
+              : 'Be the first to propose a change'}
           </p>
           {isAuthenticated && (
             <Button className="mt-4" asChild>

@@ -35,12 +35,13 @@ export async function generateMetadata({ params }: PreprintPageProps): Promise<M
     const preprint = data as unknown as {
       title: string;
       abstract: string;
-      author: { displayName?: string; handle?: string; did?: string };
+      authors: Array<{ name: string; handle?: string; did?: string }>;
       createdAt: string;
       fields?: Array<{ label: string }>;
     };
-    const authorName = preprint.author.displayName ?? preprint.author.handle ?? 'Unknown';
-    const authorHandle = preprint.author.handle ?? '';
+    const firstAuthor = preprint.authors[0];
+    const authorName = firstAuthor?.name ?? 'Unknown';
+    const authorHandle = firstAuthor?.handle ?? '';
     const fieldLabels = preprint.fields?.map((f) => f.label).slice(0, 3) ?? [];
 
     // Build OG image URL with query params for the preprint template

@@ -1,13 +1,16 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FileText, MessageSquare, ThumbsUp, Plus } from 'lucide-react';
 
 import { useCurrentUser } from '@/lib/auth';
 import { usePreprintsByAuthor } from '@/lib/hooks/use-preprint';
+import { useUserClaims } from '@/lib/hooks/use-claiming';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ForYouFeed } from '@/components/discovery/for-you-feed';
 
 /**
  * Dashboard overview page.
@@ -18,8 +21,46 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function DashboardPage() {
   const user = useCurrentUser();
   const { data: preprints, isLoading } = usePreprintsByAuthor({ did: user?.did ?? '' });
+  const { data: claims } = useUserClaims({ did: user?.did ?? '' });
 
   const preprintCount = preprints?.preprints?.length ?? 0;
+
+  // Check if user has claimed papers (from API or localStorage for testing)
+  const hasClaimedPapersFromApi = (claims?.claims?.length ?? 0) > 0;
+  // Check if user has linked accounts (ORCID, Semantic Scholar, etc.)
+  const hasLinkedAccountsFromApi = !!(user?.orcid || user?.semanticScholarId);
+
+  // Support localStorage override for E2E testing
+  const [hasLinkedAccounts, setHasLinkedAccounts] = useState(hasLinkedAccountsFromApi);
+  const [hasClaimedPapers, setHasClaimedPapers] = useState(hasClaimedPapersFromApi);
+
+  useEffect(() => {
+    // Check localStorage for test profile state
+    const testProfile = localStorage.getItem('chive:userProfile');
+    if (testProfile) {
+      try {
+        const profile = JSON.parse(testProfile);
+        if (profile.hasLinkedAccounts !== undefined) {
+          setHasLinkedAccounts(profile.hasLinkedAccounts);
+        } else {
+          setHasLinkedAccounts(hasLinkedAccountsFromApi);
+        }
+        if (profile.hasClaimedPapers !== undefined) {
+          setHasClaimedPapers(profile.hasClaimedPapers);
+        } else {
+          setHasClaimedPapers(hasClaimedPapersFromApi);
+        }
+      } catch {
+        // Invalid JSON, use API values
+        setHasLinkedAccounts(hasLinkedAccountsFromApi);
+        setHasClaimedPapers(hasClaimedPapersFromApi);
+      }
+    } else {
+      // No test profile, use API values
+      setHasLinkedAccounts(hasLinkedAccountsFromApi);
+      setHasClaimedPapers(hasClaimedPapersFromApi);
+    }
+  }, [hasLinkedAccountsFromApi, hasClaimedPapersFromApi]);
 
   return (
     <div className="space-y-8">
@@ -78,18 +119,18 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Activity Placeholder */}
-      <Card role="feed" aria-label="Recent activity">
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Your latest interactions on Chive</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Activity feed coming soon
-          </p>
-        </CardContent>
-      </Card>
+      {/* For You Feed - Personalized Recommendations */}
+      <section role="region" aria-label="For You recommendations">
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold tracking-tight">For You</h2>
+          <p className="text-muted-foreground">Personalized paper recommendations</p>
+        </div>
+        <ForYouFeed
+          isAuthenticated={!!user}
+          hasLinkedAccounts={hasLinkedAccounts}
+          hasClaimedPapers={hasClaimedPapers}
+        />
+      </section>
     </div>
   );
 }

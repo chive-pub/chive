@@ -41,11 +41,270 @@ export type SearchPreprintsResponse = SuccessResponseJSON<
   operations['pub_chive_preprint_searchSubmissions']
 >;
 
-/** Preprint object from API responses */
-export type Preprint = GetPreprintResponse['preprint'];
+/**
+ * Preprint object from API responses.
+ *
+ * @remarks
+ * Uses the new unified authors array model. The generated type is overridden
+ * here until the OpenAPI schema is regenerated.
+ */
+export interface Preprint {
+  uri: string;
+  cid: string;
+  title: string;
+  abstract: string;
+  submittedBy: string;
+  paperDid?: string;
+  authors: PreprintAuthor[];
+  fields?: FieldRef[];
+  keywords?: string[];
+  source?: PreprintSource;
+  license?: string;
+  doi?: string;
+  document?: BlobRef;
+  documentFormat?: DocumentFormat;
+  versions?: PreprintVersion[];
+  metrics?: PreprintMetrics;
+  publicationStatus?: PublicationStatus;
+  publishedVersion?: PublishedVersion;
+  externalIds?: ExternalIds;
+  relatedWorks?: RelatedWork[];
+  repositories?: Repositories;
+  funding?: FundingSource[];
+  conferencePresentation?: ConferencePresentation;
+  supplementaryMaterials?: SupplementaryItem[];
+  createdAt: string;
+  updatedAt?: string;
+}
 
-/** Preprint summary in list/search results */
-export type PreprintSummary = ListPreprintsResponse['preprints'][number];
+// -----------------------------------------------------------------------------
+// Document & Publication Types
+// -----------------------------------------------------------------------------
+
+/**
+ * Supported document formats.
+ */
+export type DocumentFormat =
+  | 'pdf'
+  | 'docx'
+  | 'html'
+  | 'markdown'
+  | 'latex'
+  | 'jupyter'
+  | 'odt'
+  | 'rtf'
+  | 'epub'
+  | 'txt';
+
+/**
+ * Publication lifecycle status.
+ */
+export type PublicationStatus =
+  | 'preprint'
+  | 'under_review'
+  | 'revision_requested'
+  | 'accepted'
+  | 'in_press'
+  | 'published'
+  | 'retracted';
+
+/**
+ * Published version metadata.
+ */
+export interface PublishedVersion {
+  doi?: string;
+  url?: string;
+  publishedAt?: string;
+  journal?: string;
+  journalAbbreviation?: string;
+  journalIssn?: string;
+  publisher?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  articleNumber?: string;
+  eLocationId?: string;
+  accessType?: 'open_access' | 'green_oa' | 'gold_oa' | 'hybrid_oa' | 'bronze_oa' | 'closed';
+  licenseUrl?: string;
+}
+
+/**
+ * External persistent identifiers.
+ */
+export interface ExternalIds {
+  arxivId?: string;
+  pmid?: string;
+  pmcid?: string;
+  ssrnId?: string;
+  osf?: string;
+  zenodoDoi?: string;
+  openAlexId?: string;
+  semanticScholarId?: string;
+  coreSid?: string;
+  magId?: string;
+}
+
+/**
+ * Related work with DataCite relation type.
+ */
+export interface RelatedWork {
+  identifier: string;
+  identifierType:
+    | 'doi'
+    | 'arxiv'
+    | 'pmid'
+    | 'pmcid'
+    | 'url'
+    | 'urn'
+    | 'handle'
+    | 'isbn'
+    | 'issn'
+    | 'at-uri';
+  relationType: string;
+  title?: string;
+  description?: string;
+}
+
+/**
+ * Code repository reference.
+ */
+export interface CodeRepository {
+  url?: string;
+  platform?:
+    | 'github'
+    | 'gitlab'
+    | 'bitbucket'
+    | 'codeberg'
+    | 'sourcehut'
+    | 'software_heritage'
+    | 'other';
+  label?: string;
+  archiveUrl?: string;
+  swhid?: string;
+}
+
+/**
+ * Data repository reference.
+ */
+export interface DataRepository {
+  url?: string;
+  doi?: string;
+  platform?: 'zenodo' | 'figshare' | 'dryad' | 'osf' | 'dataverse' | 'mendeley_data' | 'other';
+  label?: string;
+  accessStatement?: string;
+}
+
+/**
+ * Pre-registration reference.
+ */
+export interface Preregistration {
+  url?: string;
+  platform?: 'osf' | 'aspredicted' | 'clinicaltrials' | 'prospero' | 'other';
+  registrationDate?: string;
+}
+
+/**
+ * Protocol reference.
+ */
+export interface Protocol {
+  url?: string;
+  doi?: string;
+  platform?: 'protocols_io' | 'bio_protocol' | 'other';
+}
+
+/**
+ * Material/reagent reference.
+ */
+export interface Material {
+  url?: string;
+  rrid?: string;
+  label?: string;
+}
+
+/**
+ * Repository links for code, data, and materials.
+ */
+export interface Repositories {
+  code?: CodeRepository[];
+  data?: DataRepository[];
+  preregistration?: Preregistration;
+  protocols?: Protocol[];
+  materials?: Material[];
+}
+
+/**
+ * Funding source.
+ */
+export interface FundingSource {
+  funderName?: string;
+  funderDoi?: string;
+  funderRor?: string;
+  grantNumber?: string;
+  grantTitle?: string;
+  grantUrl?: string;
+}
+
+/**
+ * Conference presentation information.
+ */
+export interface ConferencePresentation {
+  conferenceName?: string;
+  conferenceAcronym?: string;
+  conferenceUrl?: string;
+  conferenceLocation?: string;
+  presentationDate?: string;
+  presentationType?: 'oral' | 'poster' | 'keynote' | 'workshop' | 'demo' | 'other';
+  proceedingsDoi?: string;
+}
+
+/**
+ * Supplementary material category.
+ */
+export type SupplementaryCategory =
+  | 'appendix'
+  | 'figure'
+  | 'table'
+  | 'dataset'
+  | 'code'
+  | 'notebook'
+  | 'video'
+  | 'audio'
+  | 'presentation'
+  | 'protocol'
+  | 'questionnaire'
+  | 'other';
+
+/**
+ * Supplementary material item.
+ */
+export interface SupplementaryItem {
+  blobRef?: BlobRef;
+  label: string;
+  description?: string;
+  category?: SupplementaryCategory;
+  detectedFormat?: string;
+  order?: number;
+}
+
+/**
+ * Preprint summary in list/search results.
+ *
+ * @remarks
+ * Uses the new unified authors array model.
+ */
+export interface PreprintSummary {
+  uri: string;
+  cid: string;
+  title: string;
+  abstract: string;
+  submittedBy: string;
+  paperDid?: string;
+  authors: PreprintAuthor[];
+  fields?: FieldRef[];
+  source?: PreprintSource;
+  createdAt: string;
+  metrics?: PreprintMetrics;
+}
 
 // -----------------------------------------------------------------------------
 // Author Types
@@ -63,8 +322,84 @@ export type AuthorProfile = GetProfileResponse['profile'];
 /** Author metrics from API */
 export type AuthorMetrics = GetProfileResponse['metrics'];
 
-/** Author object embedded in preprint responses */
-export type Author = PreprintSummary['author'];
+/**
+ * Preprint author with CRediT contributions.
+ *
+ * @remarks
+ * This type represents the new author model with:
+ * - Optional DID (supports external collaborators)
+ * - Multiple affiliations per author
+ * - CRediT-based contribution types with degree modifiers
+ * - Corresponding author and highlighted (co-first/co-last) flags
+ */
+export interface PreprintAuthor {
+  /** Optional DID - undefined for external collaborators */
+  did?: string;
+  /** Display name (required for all) */
+  name: string;
+  /** ORCID identifier */
+  orcid?: string;
+  /** Contact email */
+  email?: string;
+  /** 1-indexed author position */
+  order: number;
+  /** Author affiliations */
+  affiliations: AuthorAffiliation[];
+  /** CRediT contributions */
+  contributions: AuthorContribution[];
+  /** Is this the corresponding author? */
+  isCorrespondingAuthor: boolean;
+  /** Is this a highlighted author (co-first, co-last)? */
+  isHighlighted: boolean;
+  /** Handle (optional, from ATProto profile) */
+  handle?: string;
+  /** Avatar URL if available */
+  avatarUrl?: string;
+}
+
+/**
+ * Author affiliation with optional ROR identifier.
+ */
+export interface AuthorAffiliation {
+  /** Institution name */
+  name: string;
+  /** ROR identifier */
+  rorId?: string;
+  /** Department */
+  department?: string;
+}
+
+/**
+ * Author contribution with CRediT type and degree.
+ */
+export interface AuthorContribution {
+  /** AT-URI to contribution type in Governance PDS */
+  typeUri: string;
+  /** Type identifier (e.g., "conceptualization") */
+  typeId?: string;
+  /** Human-readable label */
+  typeLabel?: string;
+  /** Contribution degree */
+  degree: 'lead' | 'equal' | 'supporting';
+}
+
+/**
+ * Authenticated user author (for reviews, endorsements, etc.).
+ *
+ * @remarks
+ * Unlike PreprintAuthor, this type requires a DID because the author
+ * must be an authenticated user. Used for reviews, comments, endorsements.
+ */
+export interface Author {
+  /** Decentralized Identifier (required for authenticated users) */
+  did: string;
+  /** AT Protocol handle */
+  handle?: string;
+  /** Display name */
+  displayName?: string;
+  /** Avatar URL */
+  avatar?: string;
+}
 
 /** Affiliation type */
 export type Affiliation = NonNullable<AuthorProfile['affiliations']>[number];
@@ -285,13 +620,27 @@ export type ExternalId = NonNullable<AuthorityRecord['externalIds']>[number];
 // Search Types
 // -----------------------------------------------------------------------------
 
-/** Response from pub.chive.preprint.searchSubmissions */
+/**
+ * Search results response from search or faceted browse endpoints.
+ *
+ * @remarks
+ * Both SearchPreprintsResponse and FacetedSearchResponse use the unified
+ * author model with `authors` array.
+ */
 export type SearchResultsResponse = SearchPreprintsResponse | FacetedSearchResponse;
 
-/** Search hit with score and highlights (extends PreprintSummary) */
-export type SearchHit =
-  | SearchPreprintsResponse['hits'][number]
-  | FacetedSearchResponse['hits'][number];
+/**
+ * Search hit with score and highlights.
+ *
+ * @remarks
+ * Extends PreprintSummary with search-specific fields like score and highlights.
+ */
+export interface SearchHit extends PreprintSummary {
+  /** Search relevance score */
+  score?: number;
+  /** Highlighted text snippets */
+  highlights?: Record<string, string[]>;
+}
 
 /** Search highlight for matched text */
 export type SearchHighlight = NonNullable<SearchPreprintsResponse['hits'][number]['highlights']>;
@@ -340,6 +689,37 @@ export type ClaimEvidenceType = Claim['evidence'][number]['type'];
 
 /** Claim request (alias for Claim) */
 export type ClaimRequest = Claim;
+
+/**
+ * Paper details embedded in claim response.
+ *
+ * @remarks
+ * Added to claims when fetching user claims for comprehensive display.
+ */
+export interface ClaimPaperDetails {
+  source: string;
+  externalId: string;
+  externalUrl: string;
+  title: string;
+  authors: Array<{
+    name: string;
+    orcid?: string;
+    affiliation?: string;
+    email?: string;
+  }>;
+  publicationDate?: string;
+  doi?: string;
+}
+
+/**
+ * Claim with paper details for display.
+ *
+ * @remarks
+ * Extended claim type returned by getUserClaims endpoint.
+ */
+export type ClaimRequestWithPaper = ClaimRequest & {
+  paper: ClaimPaperDetails;
+};
 
 /** Claimable preprint from findClaimable */
 export type ClaimablePreprint = FindClaimableResponse['preprints'][number];
@@ -394,11 +774,245 @@ export type ConsensusProgress = NonNullable<Proposal['consensusProgress']>;
 /** Vote object from API */
 export type Vote = VotesResponse['votes'][number];
 
-/** Vote value */
+/** Vote action (includes request-changes) */
+export type VoteAction = Vote['vote'];
+
+/** Vote value (alias for vote, excludes request-changes) */
 export type VoteValue = Vote['value'];
 
 /** Voter role */
 export type VoterRole = Vote['voterRole'];
+
+/**
+ * Proposal category - the type of entity being proposed.
+ *
+ * @remarks
+ * Categories represent what is being created/modified:
+ * - field: Knowledge graph field proposals
+ * - contribution-type: CRediT contribution type proposals
+ * - facet: PMEST/FAST facet dimension proposals
+ * - organization: Research organization/institution proposals
+ * - reconciliation: External knowledge base reconciliation proposals
+ */
+export type ProposalCategory =
+  | 'field'
+  | 'contribution-type'
+  | 'facet'
+  | 'organization'
+  | 'reconciliation';
+
+// -----------------------------------------------------------------------------
+// Facet Types (PMEST + FAST Classification)
+// -----------------------------------------------------------------------------
+
+/**
+ * PMEST facet dimension - Ranganathan's Colon Classification.
+ *
+ * @remarks
+ * The five fundamental categories:
+ * - personality: What the subject is fundamentally about (entities)
+ * - matter: What it's made of or relates to (materials, properties)
+ * - energy: How it operates or acts (processes, methods)
+ * - space: Where it occurs (geographic, institutional)
+ * - time: When it occurs (temporal aspects)
+ */
+export type PMESTDimension = 'personality' | 'matter' | 'energy' | 'space' | 'time';
+
+/**
+ * FAST entity facet - Library of Congress FAST schema.
+ *
+ * @remarks
+ * Derived from LCSH for entity-based facets:
+ * - person: Named individuals
+ * - organization: Corporations, institutions, groups
+ * - event: Named events, conferences
+ * - work: Named works (books, films, etc.)
+ * - form-genre: Document types and formats
+ */
+export type FASTEntityFacet = 'person' | 'organization' | 'event' | 'work' | 'form-genre';
+
+/**
+ * Combined facet dimension type.
+ */
+export type FacetDimension = PMESTDimension | FASTEntityFacet;
+
+/**
+ * Facet value - a specific term within a facet dimension.
+ */
+export interface FacetValue {
+  id: string;
+  label: string;
+  dimension: FacetDimension;
+  description?: string;
+  externalMappings?: ExternalMapping[];
+  parentId?: string;
+  status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+}
+
+/**
+ * Facet proposal changes.
+ */
+export interface FacetProposalChanges {
+  label?: string;
+  description?: string;
+  dimension?: FacetDimension;
+  parentId?: string;
+  externalMappings?: ExternalMapping[];
+}
+
+// -----------------------------------------------------------------------------
+// Organization Types (Research Institutions)
+// -----------------------------------------------------------------------------
+
+/**
+ * Organization type classification.
+ */
+export type OrganizationType =
+  | 'university'
+  | 'research-lab'
+  | 'funding-body'
+  | 'publisher'
+  | 'consortium'
+  | 'hospital'
+  | 'government'
+  | 'nonprofit'
+  | 'company'
+  | 'other';
+
+/**
+ * Research organization/institution.
+ */
+export interface Organization {
+  id: string;
+  uri: string;
+  name: string;
+  type: OrganizationType;
+  rorId?: string;
+  wikidataId?: string;
+  country?: string;
+  city?: string;
+  website?: string;
+  aliases?: string[];
+  parentId?: string;
+  status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+}
+
+/**
+ * Organization proposal changes.
+ */
+export interface OrganizationProposalChanges {
+  name?: string;
+  type?: OrganizationType;
+  rorId?: string;
+  wikidataId?: string;
+  country?: string;
+  city?: string;
+  website?: string;
+  aliases?: string[];
+  parentId?: string;
+}
+
+// -----------------------------------------------------------------------------
+// Reconciliation Types (External Knowledge Base Linking)
+// -----------------------------------------------------------------------------
+
+/**
+ * External knowledge base system.
+ */
+export type ReconciliationSystem =
+  | 'wikidata'
+  | 'ror'
+  | 'orcid'
+  | 'openalex'
+  | 'crossref'
+  | 'arxiv'
+  | 'semantic-scholar'
+  | 'pubmed'
+  | 'credit'
+  | 'cro'
+  | 'lcsh'
+  | 'fast'
+  | 'other';
+
+/**
+ * Match type for reconciliation mappings.
+ *
+ * @remarks
+ * Based on SKOS mapping relations:
+ * - exact-match: Equivalent concepts
+ * - close-match: Very similar, interchangeable in some contexts
+ * - broader-match: Target is broader than source
+ * - narrower-match: Target is narrower than source
+ * - related-match: Associated but not equivalent
+ */
+export type ReconciliationMatchType =
+  | 'exact-match'
+  | 'close-match'
+  | 'broader-match'
+  | 'narrower-match'
+  | 'related-match';
+
+/**
+ * Method used to establish reconciliation.
+ */
+export type ReconciliationMethod = 'automatic' | 'expert-validation' | 'community-vote';
+
+/**
+ * Chive entity type that can be reconciled.
+ */
+export type ReconcilableEntityType =
+  | 'field'
+  | 'contribution-type'
+  | 'facet'
+  | 'organization'
+  | 'author'
+  | 'preprint';
+
+/**
+ * Reconciliation mapping between Chive entity and external system.
+ */
+export interface Reconciliation {
+  id: string;
+  uri: string;
+  sourceType: ReconcilableEntityType;
+  sourceUri: string;
+  sourceLabel: string;
+  targetSystem: ReconciliationSystem;
+  targetId: string;
+  targetUri: string;
+  targetLabel?: string;
+  matchType: ReconciliationMatchType;
+  method: ReconciliationMethod;
+  confidence?: number;
+  validatedBy?: string;
+  status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+  createdAt: string;
+}
+
+/**
+ * Reconciliation proposal changes.
+ */
+export interface ReconciliationProposalChanges {
+  sourceType?: ReconcilableEntityType;
+  sourceUri?: string;
+  targetSystem?: ReconciliationSystem;
+  targetId?: string;
+  targetUri?: string;
+  targetLabel?: string;
+  matchType?: ReconciliationMatchType;
+  method?: ReconciliationMethod;
+  confidence?: number;
+}
+
+/**
+ * External mapping to external ontology/knowledge base.
+ */
+export interface ExternalMapping {
+  system: string;
+  identifier: string;
+  uri: string;
+  matchType?: ReconciliationMatchType;
+}
 
 // -----------------------------------------------------------------------------
 // Trending/Metrics Types

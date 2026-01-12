@@ -40,8 +40,8 @@ export function OAuthCallbackContent() {
         const result = await initializeOAuth();
 
         if (result) {
-          // Success: redirect to dashboard.
-          router.push('/dashboard');
+          // Success: redirect to landing page which handles alpha status routing
+          router.push('/');
         } else {
           // No callback params found or session already exists
           // Check if there's a code parameter. If so, there was an error
@@ -50,8 +50,8 @@ export function OAuthCallbackContent() {
             setError('Failed to complete authentication. Please try again.');
             setIsProcessing(false);
           } else {
-            // No callback params, just redirect to dashboard
-            router.push('/dashboard');
+            // No callback params, just redirect to landing page
+            router.push('/');
           }
         }
       } catch (err) {

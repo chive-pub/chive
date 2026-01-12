@@ -14,6 +14,9 @@ import {
   PreprintVersionTimeline,
   PDFDownloadButton,
   AnnotatedPDFViewerSkeleton,
+  PublicationBadge,
+  SupplementaryPanel,
+  FundingPanel,
 } from '@/components/preprints';
 
 // Dynamic import to prevent SSR issues with pdfjs-dist browser globals
@@ -286,7 +289,7 @@ export function PreprintDetailContent({ uri }: PreprintDetailContentProps) {
         url: `${typeof window !== 'undefined' ? window.location.origin : ''}/preprints/${encodeURIComponent(uri)}`,
         title: preprint.title,
         description: preprint.abstract.slice(0, 200),
-        ogImageUrl: `/api/og?type=preprint&uri=${encodeURIComponent(uri)}&title=${encodeURIComponent(preprint.title.slice(0, 200))}&author=${encodeURIComponent(preprint.author.displayName ?? preprint.author.handle ?? '')}&handle=${encodeURIComponent(preprint.author.handle ?? '')}`,
+        ogImageUrl: `/api/og?type=preprint&uri=${encodeURIComponent(uri)}&title=${encodeURIComponent(preprint.title.slice(0, 200))}&author=${encodeURIComponent(preprint.authors[0]?.name ?? '')}&handle=${encodeURIComponent(preprint.authors[0]?.handle ?? '')}`,
       }
     : null;
 
@@ -336,9 +339,18 @@ export function PreprintDetailContent({ uri }: PreprintDetailContentProps) {
   }
 
   return (
-    <article className="space-y-8">
+    <article className="space-y-8 overflow-x-hidden">
       {/* Header with title, authors, metadata */}
       <PreprintHeader preprint={preprint} />
+
+      {/* Publication status badge */}
+      {preprint.publicationStatus && preprint.publicationStatus !== 'preprint' && (
+        <PublicationBadge
+          status={preprint.publicationStatus}
+          publishedVersion={preprint.publishedVersion}
+          variant="card"
+        />
+      )}
 
       {/* Version selector (if multiple versions) */}
       {preprint.versions && preprint.versions.length > 1 && (
@@ -388,12 +400,14 @@ export function PreprintDetailContent({ uri }: PreprintDetailContentProps) {
 
           {/* Quick actions */}
           <div className="flex flex-wrap gap-4">
-            <PDFDownloadButton
-              blobRef={preprint.document}
-              pdsEndpoint={preprint.source.pdsEndpoint}
-              did={preprint.author.did}
-              filename={`${preprint.title}.pdf`}
-            />
+            {preprint.document && (
+              <PDFDownloadButton
+                blobRef={preprint.document}
+                pdsEndpoint={preprint.source?.pdsEndpoint}
+                did={preprint.paperDid ?? preprint.submittedBy}
+                filename={`${preprint.title}.pdf`}
+              />
+            )}
 
             {/* Endorse button */}
             {isAuthenticated ? (
@@ -495,13 +509,15 @@ export function PreprintDetailContent({ uri }: PreprintDetailContentProps) {
                   {showAnnotationSidebar ? 'Hide annotations' : 'Show annotations'}
                 </Button>
                 <div className="flex gap-2">
-                  <PDFDownloadButton
-                    blobRef={preprint.document}
-                    pdsEndpoint={preprint.source.pdsEndpoint}
-                    did={preprint.author.did}
-                    filename={`${preprint.title}.pdf`}
-                    className="h-8 text-xs"
-                  />
+                  {preprint.document && (
+                    <PDFDownloadButton
+                      blobRef={preprint.document}
+                      pdsEndpoint={preprint.source?.pdsEndpoint}
+                      did={preprint.paperDid ?? preprint.submittedBy}
+                      filename={`${preprint.title}.pdf`}
+                      className="h-8 text-xs"
+                    />
+                  )}
                   {shareContent && (
                     <ShareMenu
                       content={shareContent}
@@ -517,17 +533,23 @@ export function PreprintDetailContent({ uri }: PreprintDetailContentProps) {
                   )}
                 </div>
               </div>
-              <AnnotatedPDFViewer
-                blobRef={preprint.document}
-                pdsEndpoint={preprint.source.pdsEndpoint}
-                did={preprint.author.did}
-                preprintUri={uri}
-                onAnnotationSelect={handleAnnotationSelect}
-                onAddReview={handleAddInlineReview}
-                onLinkEntity={handleLinkEntity}
-                scrollToAnnotationUri={selectedAnnotationUri ?? undefined}
-                className="min-h-[600px]"
-              />
+              {preprint.document ? (
+                <AnnotatedPDFViewer
+                  blobRef={preprint.document}
+                  pdsEndpoint={preprint.source?.pdsEndpoint}
+                  did={preprint.paperDid ?? preprint.submittedBy}
+                  preprintUri={uri}
+                  onAnnotationSelect={handleAnnotationSelect}
+                  onAddReview={handleAddInlineReview}
+                  onLinkEntity={handleLinkEntity}
+                  scrollToAnnotationUri={selectedAnnotationUri ?? undefined}
+                  className="min-h-[600px]"
+                />
+              ) : (
+                <div className="flex min-h-[600px] items-center justify-center rounded-lg border border-dashed">
+                  <p className="text-muted-foreground">No PDF document available</p>
+                </div>
+              )}
             </div>
 
             {/* Annotation sidebar */}
@@ -775,6 +797,51 @@ export function PreprintDetailContent({ uri }: PreprintDetailContentProps) {
           <TagManager preprintUri={uri} editable={isAuthenticated} />
 
           <Separator />
+
+          {/* Funding sources */}
+          {preprint.funding && preprint.funding.length > 0 && (
+            <>
+              <FundingPanel
+                funding={preprint.funding
+                  .filter((f): f is typeof f & { funderName: string } => !!f.funderName)
+                  .map((f) => ({
+                    funderName: f.funderName,
+                    funderDoi: f.funderDoi,
+                    funderRor: f.funderRor,
+                    grantNumber: f.grantNumber,
+                    grantTitle: f.grantTitle,
+                    grantUrl: f.grantUrl,
+                  }))}
+                variant="card"
+              />
+              <Separator />
+            </>
+          )}
+
+          {/* Supplementary materials */}
+          {preprint.supplementaryMaterials && preprint.supplementaryMaterials.length > 0 && (
+            <>
+              <SupplementaryPanel
+                items={preprint.supplementaryMaterials.map((item, index) => {
+                  const did = preprint.paperDid ?? preprint.submittedBy;
+                  const blobCid = item.blobRef?.ref;
+                  const downloadUrl =
+                    blobCid && preprint.source?.pdsEndpoint
+                      ? `${preprint.source.pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobCid)}`
+                      : undefined;
+                  return {
+                    id: blobCid ?? `supp-${index}`,
+                    label: item.label,
+                    description: item.description,
+                    category: item.category ?? 'other',
+                    format: item.detectedFormat,
+                    downloadUrl,
+                  };
+                })}
+              />
+              <Separator />
+            </>
+          )}
 
           {/* Linked resources (GitHub, Zenodo, etc.) */}
           <IntegrationPanel preprintUri={uri} />

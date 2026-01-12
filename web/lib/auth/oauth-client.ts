@@ -558,6 +558,41 @@ export function setE2EMockAgent(userDid: string, userHandle: string): void {
             return { success: true };
           },
         },
+        server: {
+          // Mock getServiceAuth: returns a mock service auth JWT.
+          // This is used by getServiceAuthToken() for authenticated API calls.
+          getServiceAuth: async (_params: {
+            aud: string;
+            lxm?: string;
+          }): Promise<{ data: { token: string } }> => {
+            // Create a mock JWT with valid structure (header.payload.signature)
+            // The payload includes: iss (user DID), aud (service DID), exp (expiration)
+            const header = btoa(JSON.stringify({ alg: 'ES256', typ: 'JWT' }))
+              .replace(/\+/g, '-')
+              .replace(/\//g, '_')
+              .replace(/=+$/, '');
+            const payload = btoa(
+              JSON.stringify({
+                iss: userDid,
+                aud: _params.aud,
+                lxm: _params.lxm,
+                exp: Math.floor(Date.now() / 1000) + 60, // 60 seconds from now
+                iat: Math.floor(Date.now() / 1000),
+              })
+            )
+              .replace(/\+/g, '-')
+              .replace(/\//g, '_')
+              .replace(/=+$/, '');
+            const signature = 'mock-e2e-signature';
+            const mockJwt = `${header}.${payload}.${signature}`;
+
+            return {
+              data: {
+                token: mockJwt,
+              },
+            };
+          },
+        },
       },
     },
 

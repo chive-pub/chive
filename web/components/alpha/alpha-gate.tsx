@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-import { useIsAuthenticated } from '@/lib/auth';
+import { useAuth, useIsAuthenticated } from '@/lib/auth';
 import { useAlphaStatus } from '@/lib/hooks/use-alpha-status';
+import { APIError } from '@/lib/errors';
 
 /**
  * Props for AlphaGate component.
@@ -42,19 +43,37 @@ interface AlphaGateProps {
  */
 export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateProps) {
   const router = useRouter();
+  const { logout } = useAuth();
   const isAuthenticated = useIsAuthenticated();
   const {
     data: alphaStatus,
     isLoading,
     isError,
+    error,
   } = useAlphaStatus({
     enabled: isAuthenticated,
   });
 
+  // Check if error is an authentication error (401)
+  const isAuthError = error instanceof APIError && error.statusCode === 401;
+
   useEffect(() => {
-    // If unauthenticated and not allowed, redirect to login
+    // If unauthenticated and not allowed, redirect to landing page
     if (!isAuthenticated && !allowUnauthenticated) {
-      router.replace('/login');
+      router.replace('/');
+      return;
+    }
+
+    // Handle 401 errors by logging out and redirecting to landing
+    if (isAuthenticated && isError && isAuthError) {
+      logout();
+      router.replace('/');
+      return;
+    }
+
+    // Handle other errors by redirecting to landing page
+    if (isAuthenticated && isError && !isAuthError) {
+      router.replace('/');
       return;
     }
 
@@ -62,10 +81,25 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
     if (isAuthenticated && !isLoading && !isError) {
       // Only approved users can access protected routes
       if (alphaStatus?.status !== 'approved') {
-        router.replace('/');
+        // Redirect to apply or pending based on status
+        if (alphaStatus?.status === 'none' || !alphaStatus) {
+          router.replace('/apply');
+        } else {
+          // pending or rejected go to pending page
+          router.replace('/pending');
+        }
       }
     }
-  }, [isAuthenticated, isLoading, isError, alphaStatus, allowUnauthenticated, router]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    isError,
+    isAuthError,
+    alphaStatus,
+    allowUnauthenticated,
+    router,
+    logout,
+  ]);
 
   // Allow unauthenticated users through if configured
   if (!isAuthenticated) {
@@ -81,7 +115,7 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
     return <AlphaGateLoading />;
   }
 
-  // If error fetching status, redirect to homepage
+  // Show loading while redirecting on error
   if (isError) {
     return <AlphaGateLoading />;
   }
