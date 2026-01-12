@@ -81,22 +81,42 @@ export async function listByAuthorHandler(
     preprints: results.preprints.map((p) => {
       // Extract rkey for record URL
       const rkey = p.uri.split('/').pop() ?? '';
-      const recordUrl = `${p.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(p.author)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
+      // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
+      const recordOwner = p.paperDid ?? p.submittedBy;
+      const recordUrl = `${p.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
 
       return {
         uri: p.uri,
         cid: p.cid,
         title: p.title,
         abstract: p.abstract.substring(0, 500), // Truncate for list view
-        author: {
-          did: p.author,
+        authors: p.authors.map((author) => ({
+          did: author.did,
+          name: author.name,
+          orcid: author.orcid,
+          email: author.email,
+          order: author.order,
+          affiliations: author.affiliations.map((aff) => ({
+            name: aff.name,
+            rorId: aff.rorId,
+            department: aff.department,
+          })),
+          contributions: author.contributions.map((contrib) => ({
+            typeUri: contrib.typeUri,
+            typeId: contrib.typeId,
+            typeLabel: contrib.typeLabel,
+            degree: contrib.degree,
+          })),
+          isCorrespondingAuthor: author.isCorrespondingAuthor,
+          isHighlighted: author.isHighlighted,
           handle: undefined as string | undefined,
-          displayName: undefined as string | undefined,
-        },
-        coAuthors: undefined as
-          | { did: string; handle?: string; displayName?: string }[]
+          avatarUrl: undefined as string | undefined,
+        })),
+        submittedBy: p.submittedBy,
+        paperDid: p.paperDid,
+        fields: undefined as
+          | { id?: string; uri: string; name: string; parentUri?: string }[]
           | undefined,
-        fields: undefined as { uri: string; name: string; parentUri?: string }[] | undefined,
         license: p.license,
         createdAt: p.createdAt.toISOString(),
         indexedAt: p.indexedAt.toISOString(),

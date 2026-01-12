@@ -19,6 +19,7 @@
 import type { MiddlewareHandler } from 'hono';
 
 import type { IServiceAuthVerifier } from '../../auth/service-auth/index.js';
+import type { DID } from '../../types/atproto.js';
 import { AuthenticationError, AuthorizationError } from '../../types/errors.js';
 import type { IAuthorizationService } from '../../types/interfaces/authorization.interface.js';
 import type { ChiveEnv, AuthenticatedUser } from '../types/context.js';
@@ -51,6 +52,11 @@ function extractBearerToken(header: string | undefined): string | null {
  * By default, authentication is optional - requests without tokens
  * continue as anonymous. Use `requireAuth()` for mandatory auth.
  *
+ * **E2E Testing Support:**
+ * When `ENABLE_E2E_AUTH_BYPASS=true` and the `X-E2E-Auth-Did` header is set,
+ * authentication is bypassed and the user is set from the header. This is
+ * standard practice for E2E testing OAuth-protected APIs.
+ *
  * @example
  * ```typescript
  * const verifier = new ServiceAuthVerifier({
@@ -72,6 +78,32 @@ export function authenticateServiceAuth(
   authzService: IAuthorizationService
 ): MiddlewareHandler<ChiveEnv> {
   return async (c, next) => {
+    // E2E test bypass: when enabled, accept X-E2E-Auth-Did header
+    // This is standard practice for E2E testing OAuth-protected APIs
+    const e2eAuthBypass = process.env.ENABLE_E2E_AUTH_BYPASS === 'true';
+    const e2eAuthDid = c.req.header('x-e2e-auth-did');
+
+    if (e2eAuthBypass && e2eAuthDid) {
+      const logger = c.get('logger');
+      logger.debug('E2E auth bypass: setting user from header', { did: e2eAuthDid });
+
+      // Create authenticated user with alpha tester access for E2E tests
+      const user: AuthenticatedUser = {
+        did: e2eAuthDid as DID,
+        handle: c.req.header('x-e2e-auth-handle'),
+        isAdmin: c.req.header('x-e2e-auth-admin') === 'true',
+        isPremium: false,
+        isAlphaTester: true, // E2E test users are always alpha testers
+        scopes: [],
+        sessionId: undefined,
+        tokenId: undefined,
+      };
+
+      c.set('user', user);
+      await next();
+      return;
+    }
+
     const authHeader = c.req.header('authorization');
     const token = extractBearerToken(authHeader);
 

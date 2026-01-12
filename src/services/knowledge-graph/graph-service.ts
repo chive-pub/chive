@@ -15,6 +15,7 @@ import { DatabaseError } from '../../types/errors.js';
 import type { Facet, IGraphDatabase } from '../../types/interfaces/graph.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
+import type { PreprintAuthor } from '../../types/models/author.js';
 import type { Result } from '../../types/result.js';
 import type { RecordMetadata } from '../preprint/preprint-service.js';
 
@@ -140,19 +141,6 @@ export interface AuthoritySearchQuery {
 }
 
 /**
- * Author information for faceted browse results.
- *
- * @public
- * @since 0.2.0
- */
-export interface FacetedAuthor {
-  readonly did: string;
-  readonly handle?: string;
-  readonly displayName?: string;
-  readonly avatar?: string;
-}
-
-/**
  * Source PDS information for faceted browse results.
  *
  * @public
@@ -170,7 +158,7 @@ export interface FacetedSource {
  * Faceted browse preprint summary.
  *
  * @remarks
- * Matches the frontend PreprintSummary shape for compatibility with SearchResults component.
+ * Uses the unified PreprintAuthor model for compatibility with SearchResults component.
  *
  * @public
  * @since 0.1.0
@@ -180,7 +168,9 @@ export interface FacetedPreprintSummary {
   readonly cid: string;
   readonly title: string;
   readonly abstract: string;
-  readonly author: FacetedAuthor;
+  readonly authors: readonly PreprintAuthor[];
+  readonly submittedBy: DID;
+  readonly paperDid?: DID;
   readonly fields?: readonly { uri: string; name: string; id?: string; parentUri?: string }[];
   readonly license: string;
   readonly keywords?: readonly string[];
@@ -836,20 +826,27 @@ export class KnowledgeGraphService {
       for (const uri of paginatedUris) {
         const preprint = await this._storage.getPreprint(uri as AtUri);
         if (preprint) {
+          // Determine which DID owns the record (paper's DID if set, otherwise submitter's)
+          const recordOwner = preprint.paperDid ?? preprint.submittedBy;
           // Build record URL from AT URI
-          const recordUrl = `${preprint.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${preprint.author}&collection=pub.chive.preprint.submission&rkey=${(preprint.uri as string).split('/').pop()}`;
+          const recordUrl = `${preprint.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${recordOwner}&collection=pub.chive.preprint.submission&rkey=${(preprint.uri as string).split('/').pop()}`;
 
           preprints.push({
             uri: preprint.uri,
             cid: preprint.cid,
             title: preprint.title,
             abstract: preprint.abstract,
-            author: {
-              did: preprint.author,
-              // handle and displayName would be resolved from profile service
-              // For now, we omit them and let the frontend handle missing values
-            },
+            authors: preprint.authors,
+            submittedBy: preprint.submittedBy,
+            paperDid: preprint.paperDid,
+            fields: preprint.fields?.map((f) => ({
+              uri: f.uri,
+              name: f.name,
+              id: f.id,
+              parentUri: f.parentUri,
+            })),
             license: preprint.license ?? 'CC-BY-4.0',
+            keywords: preprint.keywords,
             createdAt: preprint.createdAt,
             indexedAt: preprint.indexedAt,
             source: {

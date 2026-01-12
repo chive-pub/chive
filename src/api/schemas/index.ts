@@ -168,6 +168,43 @@ export {
   type EndorsementsResponse,
 } from './endorsement.js';
 
+// Contribution type schemas (CRediT governance)
+export {
+  contributionMappingSystemSchema,
+  semanticMatchTypeSchema,
+  contributionExternalMappingSchema,
+  contributionTypeStatusSchema,
+  contributionTypeSchema as creditContributionTypeSchema,
+  contributionTypeSummarySchema,
+  listContributionTypesParamsSchema,
+  listContributionTypesResponseSchema,
+  getContributionTypeParamsSchema,
+  contributionProposalTypeSchema,
+  contributionProposalStatusSchema,
+  proposalVoteTallySchema,
+  contributionTypeProposalSchema,
+  contributionProposalSummarySchema,
+  listContributionProposalsParamsSchema,
+  listContributionProposalsResponseSchema,
+  getContributionProposalParamsSchema,
+  searchContributionTypesParamsSchema,
+  searchContributionTypesResponseSchema,
+  type ContributionExternalMapping,
+  type ContributionTypeResponse,
+  type ContributionTypeSummary,
+  type ListContributionTypesParams,
+  type ListContributionTypesResponse,
+  type GetContributionTypeParams,
+  type ProposalVoteTally,
+  type ContributionTypeProposalResponse,
+  type ContributionProposalSummary,
+  type ListContributionProposalsParams,
+  type ListContributionProposalsResponse,
+  type GetContributionProposalParams,
+  type SearchContributionTypesParams,
+  type SearchContributionTypesResponse,
+} from './contribution.js';
+
 // Discovery schemas
 export {
   recommendationExplanationSchema,

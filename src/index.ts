@@ -56,6 +56,7 @@ import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
 import { CitationGraph } from './storage/neo4j/citation-graph.js';
 import { Neo4jConnection } from './storage/neo4j/connection.js';
+import { ContributionTypeManager } from './storage/neo4j/contribution-type-manager.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
 import { getDatabaseConfig } from './storage/postgresql/config.js';
@@ -130,7 +131,7 @@ function loadConfig(): EnvConfig {
     postgresPort: parseInt(process.env.POSTGRES_PORT ?? '5432', 10),
     postgresDb: process.env.POSTGRES_DB ?? 'chive',
     postgresUser: process.env.POSTGRES_USER ?? 'chive',
-    postgresPassword: process.env.POSTGRES_PASSWORD ?? 'chive_local_password',
+    postgresPassword: process.env.POSTGRES_PASSWORD ?? 'chive_test_password',
 
     // Redis
     redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379',
@@ -143,7 +144,7 @@ function loadConfig(): EnvConfig {
     // Neo4j
     neo4jUri: process.env.NEO4J_URI ?? 'bolt://localhost:7687',
     neo4jUser: process.env.NEO4J_USER ?? 'neo4j',
-    neo4jPassword: process.env.NEO4J_PASSWORD ?? 'chive_local_password',
+    neo4jPassword: process.env.NEO4J_PASSWORD ?? 'chive_test_password',
 
     // Security
     jwtSecret: process.env.JWT_SECRET ?? 'dev-jwt-secret-not-for-production',
@@ -367,6 +368,9 @@ function createServices(
   const facetUsageHistoryRepository = new FacetUsageHistoryRepository(pgPool, logger);
   tagManager.setFacetHistoryRepository(facetUsageHistoryRepository);
 
+  // Create contribution type manager
+  const contributionTypeManager = new ContributionTypeManager(neo4jConnection);
+
   // Create backlink service
   const backlinkService = new BacklinkService(logger, pgPool);
 
@@ -439,6 +443,7 @@ function createServices(
     blobProxyService,
     reviewService,
     tagManager,
+    contributionTypeManager,
     backlinkService,
     claimingService,
     importService,

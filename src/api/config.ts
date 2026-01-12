@@ -137,6 +137,10 @@ export const CORS_CONFIG = {
     'Accept',
     'Accept-Language',
     'Bypass-Tunnel-Reminder',
+    // E2E test auth bypass headers (only processed when ENABLE_E2E_AUTH_BYPASS=true)
+    'X-E2E-Auth-Did',
+    'X-E2E-Auth-Handle',
+    'X-E2E-Auth-Admin',
   ],
 
   /**

@@ -26,6 +26,7 @@ import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';
 import type { SearchService } from '../../services/search/search-service.js';
+import type { ContributionTypeManager } from '../../storage/neo4j/contribution-type-manager.js';
 import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type { DID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
@@ -45,6 +46,7 @@ export interface ChiveServices {
   readonly blobProxy: BlobProxyService;
   readonly review: ReviewService;
   readonly tagManager: TagManager;
+  readonly contributionTypeManager: ContributionTypeManager;
   readonly backlink: BacklinkService;
   readonly claiming: ClaimingService;
   readonly import: ImportService;

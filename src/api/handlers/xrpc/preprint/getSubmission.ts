@@ -81,11 +81,39 @@ export async function getSubmissionHandler(
   const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
   const isStale = result.indexedAt.getTime() < stalenessThreshold;
 
+  // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
+  const recordOwner = result.paperDid ?? result.submittedBy;
+
   // Build record URL for direct PDS access
-  const recordUrl = `${result.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(result.author)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
+  const recordUrl = `${result.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
 
   // Build blob URL for direct PDS access
-  const blobUrl = `${result.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(result.author)}&cid=${result.pdfBlobRef.ref}`;
+  const blobUrl = `${result.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(recordOwner)}&cid=${result.documentBlobRef.ref}`;
+
+  // Map authors to response format
+  const authorsResponse = result.authors.map((author) => ({
+    did: author.did,
+    name: author.name,
+    orcid: author.orcid,
+    email: author.email,
+    order: author.order,
+    affiliations: author.affiliations.map((aff) => ({
+      name: aff.name,
+      rorId: aff.rorId,
+      department: aff.department,
+    })),
+    contributions: author.contributions.map((contrib) => ({
+      typeUri: contrib.typeUri,
+      typeId: contrib.typeId,
+      typeLabel: contrib.typeLabel,
+      degree: contrib.degree,
+    })),
+    isCorrespondingAuthor: author.isCorrespondingAuthor,
+    isHighlighted: author.isHighlighted,
+    // Handle/avatar would be resolved from identity service
+    handle: undefined,
+    avatarUrl: undefined,
+  }));
 
   // Map stored preprint to response format
   const response: PreprintResponse = {
@@ -93,19 +121,29 @@ export async function getSubmissionHandler(
     cid: result.cid,
     title: result.title,
     abstract: result.abstract,
-    author: {
-      did: result.author,
-      handle: undefined, // Would be resolved from identity service
-      displayName: undefined,
-    },
-    coAuthors: undefined,
+    authors: authorsResponse,
+    submittedBy: result.submittedBy,
+    paperDid: result.paperDid,
     document: {
       $type: 'blob',
-      ref: result.pdfBlobRef.ref,
-      mimeType: result.pdfBlobRef.mimeType,
-      size: result.pdfBlobRef.size,
+      ref: result.documentBlobRef.ref,
+      mimeType: result.documentBlobRef.mimeType,
+      size: result.documentBlobRef.size,
     },
-    supplementary: undefined,
+    documentFormat: result.documentFormat,
+    supplementary: result.supplementaryMaterials?.map((item) => ({
+      blob: {
+        $type: 'blob',
+        ref: item.blobRef.ref,
+        mimeType: item.blobRef.mimeType,
+        size: item.blobRef.size,
+      },
+      label: item.label,
+      description: item.description,
+      category: item.category,
+      detectedFormat: item.detectedFormat,
+      order: item.order,
+    })),
     fields: undefined,
     keywords: result.keywords ? [...result.keywords] : undefined,
     license: result.license,

@@ -58,12 +58,14 @@ export async function getFieldPreprintsHandler(
   const preprintsWithViews = await Promise.all(
     browseResult.preprints.map(async (p) => {
       const viewCount = await metrics.getViewCount(p.uri);
+      // Get primary author (first in order) for display
+      const primaryAuthor = p.authors.find((a) => a.order === 1) ?? p.authors[0];
       return {
         uri: p.uri as string,
         title: p.title,
         abstract: p.abstract?.slice(0, 500), // Truncate abstract for summary
-        authorDid: p.author.did,
-        authorName: p.author.displayName,
+        authorDid: primaryAuthor?.did ?? p.submittedBy,
+        authorName: primaryAuthor?.name,
         createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : String(p.createdAt),
         pdsUrl: p.source.pdsEndpoint,
         views: viewCount,

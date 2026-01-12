@@ -41,6 +41,10 @@ export type GetTrendingParams = z.infer<typeof getTrendingParamsSchema>;
 const trendingEntrySchema = preprintSummarySchema.extend({
   viewsInWindow: z.number().int().describe('Views in the selected window'),
   rank: z.number().int().describe('Trending rank'),
+  velocity: z
+    .number()
+    .optional()
+    .describe('Velocity indicator: >0 accelerating, <0 decelerating (compared to baseline)'),
 });
 
 /**
@@ -111,7 +115,9 @@ export async function getTrendingHandler(
 
       // Extract rkey for record URL
       const rkey = preprintData.uri.split('/').pop() ?? '';
-      const recordUrl = `${preprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(preprintData.author)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
+      // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
+      const recordOwner = preprintData.paperDid ?? preprintData.submittedBy;
+      const recordUrl = `${preprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
 
       // Calculate staleness using configured threshold
       const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
@@ -121,15 +127,33 @@ export async function getTrendingHandler(
         cid: preprintData.cid,
         title: preprintData.title,
         abstract: preprintData.abstract.substring(0, 500),
-        author: {
-          did: preprintData.author,
+        authors: preprintData.authors.map((author) => ({
+          did: author.did,
+          name: author.name,
+          orcid: author.orcid,
+          email: author.email,
+          order: author.order,
+          affiliations: author.affiliations.map((aff) => ({
+            name: aff.name,
+            rorId: aff.rorId,
+            department: aff.department,
+          })),
+          contributions: author.contributions.map((contrib) => ({
+            typeUri: contrib.typeUri,
+            typeId: contrib.typeId,
+            typeLabel: contrib.typeLabel,
+            degree: contrib.degree,
+          })),
+          isCorrespondingAuthor: author.isCorrespondingAuthor,
+          isHighlighted: author.isHighlighted,
           handle: undefined as string | undefined,
-          displayName: undefined as string | undefined,
-        },
-        coAuthors: undefined as
-          | { did: string; handle?: string; displayName?: string }[]
+          avatarUrl: undefined as string | undefined,
+        })),
+        submittedBy: preprintData.submittedBy,
+        paperDid: preprintData.paperDid,
+        fields: undefined as
+          | { id?: string; uri: string; name: string; parentUri?: string }[]
           | undefined,
-        fields: undefined as { uri: string; name: string; parentUri?: string }[] | undefined,
         license: preprintData.license,
         createdAt: preprintData.createdAt.toISOString(),
         indexedAt: preprintData.indexedAt.toISOString(),
@@ -149,6 +173,7 @@ export async function getTrendingHandler(
           : undefined,
         viewsInWindow: entry.score,
         rank: index + 1,
+        velocity: entry.velocity,
       };
     })
   );
