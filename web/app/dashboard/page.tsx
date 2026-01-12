@@ -21,14 +21,15 @@ import { ForYouFeed } from '@/components/discovery/for-you-feed';
 export default function DashboardPage() {
   const user = useCurrentUser();
   const { data: preprints, isLoading } = usePreprintsByAuthor({ did: user?.did ?? '' });
-  const { data: claims } = useUserClaims({ did: user?.did ?? '' });
+  const { data: claims } = useUserClaims();
 
   const preprintCount = preprints?.preprints?.length ?? 0;
 
   // Check if user has claimed papers (from API or localStorage for testing)
-  const hasClaimedPapersFromApi = (claims?.claims?.length ?? 0) > 0;
+  const hasClaimedPapersFromApi = (claims?.pages?.[0]?.claims?.length ?? 0) > 0;
   // Check if user has linked accounts (ORCID, Semantic Scholar, etc.)
-  const hasLinkedAccountsFromApi = !!(user?.orcid || user?.semanticScholarId);
+  // TODO: Add orcid/semanticScholarId to ChiveUser type when implementing account linking
+  const hasLinkedAccountsFromApi = false;
 
   // Support localStorage override for E2E testing
   const [hasLinkedAccounts, setHasLinkedAccounts] = useState(hasLinkedAccountsFromApi);
