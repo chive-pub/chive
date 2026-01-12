@@ -179,7 +179,7 @@ describe('ATProto Database Compliance', () => {
         FROM information_schema.columns
         WHERE table_schema = 'public'
           AND table_name = 'preprints_index'
-          AND column_name IN ('pdf_blob_cid', 'pdf_blob_mime_type', 'pdf_blob_size')
+          AND column_name IN ('document_blob_cid', 'document_blob_mime_type', 'document_blob_size')
       `);
 
       expect(result.rows).toHaveLength(3);
@@ -385,10 +385,10 @@ describe('ATProto Database Compliance', () => {
         await client.query(
           `
           INSERT INTO preprints_index (
-            uri, cid, author_did, title, abstract,
-            pdf_blob_cid, pdf_blob_mime_type, pdf_blob_size,
-            pds_url, indexed_at, created_at, license
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10)
+            uri, cid, submitted_by, authors, title, abstract,
+            document_blob_cid, document_blob_mime_type, document_blob_size,
+            document_format, publication_status, pds_url, indexed_at, created_at, license
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW(), $13)
           ON CONFLICT (uri) DO UPDATE SET
             title = EXCLUDED.title
         `,
@@ -396,11 +396,22 @@ describe('ATProto Database Compliance', () => {
             testUri,
             'bafytest',
             'did:plc:test',
+            JSON.stringify([
+              {
+                did: 'did:plc:test',
+                name: 'Test Author',
+                order: 1,
+                affiliations: [],
+                contributions: [],
+              },
+            ]),
             'Test Upsert',
             'Abstract',
             'bafyblob',
             'application/pdf',
             1024,
+            'pdf',
+            'preprint',
             'https://pds.test',
             'CC-BY-4.0',
           ]
@@ -421,7 +432,7 @@ describe('ATProto Database Compliance', () => {
 
     it('indexes exist for query performance', async () => {
       const requiredIndexes = [
-        { table: 'preprints_index', column: 'author_did' },
+        { table: 'preprints_index', column: 'submitted_by' },
         { table: 'preprints_index', column: 'created_at' },
         { table: 'preprints_index', column: 'pds_url' },
         { table: 'reviews_index', column: 'preprint_uri' },
@@ -453,11 +464,22 @@ describe('ATProto Database Compliance', () => {
           `at://did:plc:test/pub.chive.preprint.submission/batch-${i}`,
           'bafytest',
           'did:plc:test',
+          JSON.stringify([
+            {
+              did: 'did:plc:test',
+              name: 'Test Author',
+              order: 1,
+              affiliations: [],
+              contributions: [],
+            },
+          ]),
           `Batch Test ${i}`,
           'Abstract',
           'bafyblob',
           'application/pdf',
           1024,
+          'pdf',
+          'preprint',
           'https://pds.test',
           'CC-BY-4.0',
         ]);
@@ -465,16 +487,16 @@ describe('ATProto Database Compliance', () => {
         const placeholders = values
           .map(
             (_, i) =>
-              `($${i * 10 + 1}, $${i * 10 + 2}, $${i * 10 + 3}, $${i * 10 + 4}, $${i * 10 + 5}, $${i * 10 + 6}, $${i * 10 + 7}, $${i * 10 + 8}, $${i * 10 + 9}, NOW(), NOW(), $${i * 10 + 10})`
+              `($${i * 13 + 1}, $${i * 13 + 2}, $${i * 13 + 3}, $${i * 13 + 4}, $${i * 13 + 5}, $${i * 13 + 6}, $${i * 13 + 7}, $${i * 13 + 8}, $${i * 13 + 9}, $${i * 13 + 10}, $${i * 13 + 11}, $${i * 13 + 12}, NOW(), NOW(), $${i * 13 + 13})`
           )
           .join(', ');
 
         await client.query(
           `
           INSERT INTO preprints_index (
-            uri, cid, author_did, title, abstract,
-            pdf_blob_cid, pdf_blob_mime_type, pdf_blob_size,
-            pds_url, indexed_at, created_at, license
+            uri, cid, submitted_by, authors, title, abstract,
+            document_blob_cid, document_blob_mime_type, document_blob_size,
+            document_format, publication_status, pds_url, indexed_at, created_at, license
           ) VALUES ${placeholders}
           ON CONFLICT (uri) DO NOTHING
         `,
@@ -503,21 +525,32 @@ describe('ATProto Database Compliance', () => {
         await client.query(
           `
           INSERT INTO preprints_index (
-            uri, cid, author_did, title, abstract,
-            pdf_blob_cid, pdf_blob_mime_type, pdf_blob_size,
-            pds_url, indexed_at, created_at, license
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10)
+            uri, cid, submitted_by, authors, title, abstract,
+            document_blob_cid, document_blob_mime_type, document_blob_size,
+            document_format, publication_status, pds_url, indexed_at, created_at, license
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW(), $13)
           ON CONFLICT (uri) DO NOTHING
         `,
           [
             testUri,
             'bafytest',
             'did:plc:test',
+            JSON.stringify([
+              {
+                did: 'did:plc:test',
+                name: 'Test Author',
+                order: 1,
+                affiliations: [],
+                contributions: [],
+              },
+            ]),
             'PDS Tracking Test',
             'Abstract',
             'bafyblob',
             'application/pdf',
             1024,
+            'pdf',
+            'preprint',
             'https://old-pds.test',
             'CC-BY-4.0',
           ]
@@ -548,12 +581,12 @@ describe('ATProto Database Compliance', () => {
         {
           name: 'Index semantics (_index naming)',
           query: `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%_index'`,
-          expected: 5,
+          expected: 6,
         },
         {
           name: 'PDS source tracking',
           query: `SELECT COUNT(*) as count FROM information_schema.columns WHERE table_schema = 'public' AND table_name LIKE '%_index' AND column_name = 'pds_url'`,
-          expected: 5,
+          expected: 6,
         },
         {
           name: 'No blob data',

@@ -122,7 +122,7 @@ describe('usePreprints', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches a list of preprints', async () => {
+  it('fetches a list of preprints with search query', async () => {
     const mockData = {
       preprints: [createMockPreprintSummary(), createMockPreprintSummary()],
       cursor: 'next',
@@ -135,7 +135,9 @@ describe('usePreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprints(), { wrapper: Wrapper });
+    const { result } = renderHook(() => usePreprints({ q: 'machine learning' }), {
+      wrapper: Wrapper,
+    });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -143,7 +145,7 @@ describe('usePreprints', () => {
 
     expect(result.current.data).toEqual(mockData);
     expect(mockApiGet).toHaveBeenCalledWith('/api/v1/preprints', {
-      params: { query: expect.objectContaining({}) },
+      params: { query: expect.objectContaining({ q: 'machine learning' }) },
     });
   });
 
@@ -155,7 +157,7 @@ describe('usePreprints', () => {
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
-      () => usePreprints({ limit: 10, cursor: 'abc', field: 'physics' }),
+      () => usePreprints({ q: 'physics research', limit: 10, cursor: 'abc' }),
       { wrapper: Wrapper }
     );
 
@@ -164,7 +166,13 @@ describe('usePreprints', () => {
     });
 
     expect(mockApiGet).toHaveBeenCalledWith('/api/v1/preprints', {
-      params: { query: expect.objectContaining({ limit: 10, cursor: 'abc', field: 'physics' }) },
+      params: {
+        query: expect.objectContaining({
+          q: 'physics research',
+          limit: 10,
+          cursor: 'abc',
+        }),
+      },
     });
   });
 
@@ -175,13 +183,20 @@ describe('usePreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprints(), { wrapper: Wrapper });
+    const { result } = renderHook(() => usePreprints({ q: 'test query' }), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
 
     expect(result.current.error?.message).toBe('Server error');
+  });
+
+  it('is disabled when search query is empty', () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => usePreprints(), { wrapper: Wrapper });
+
+    expect(result.current.fetchStatus).toBe('idle');
   });
 });
 

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback } from 'react';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { AuthorChip } from './author-chip';
+import { AuthorChipList } from './author-chip';
 import { FieldBadgeList } from './field-badge';
 import { StaticAbstract } from './preprint-abstract';
 import { PreprintSource } from './preprint-source';
@@ -83,7 +83,9 @@ export function PreprintCard({
               <h3 className="line-clamp-2">{preprint.title}</h3>
             </Link>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <AuthorChip author={preprint.author} size="sm" />
+              {preprint.authors.length > 0 && (
+                <AuthorChipList authors={preprint.authors} max={3} size="sm" showBadges={false} />
+              )}
               <span className="text-xs text-muted-foreground">
                 {formatDate(preprint.createdAt, { relative: true })}
               </span>
@@ -136,7 +138,7 @@ function CompactPreprintCard({ preprint, className }: CompactPreprintCardProps) 
           <h4 className="line-clamp-1">{preprint.title}</h4>
         </Link>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{preprint.author.displayName ?? preprint.author.handle}</span>
+          <span>{preprint.authors[0]?.name ?? preprint.authors[0]?.handle ?? 'Unknown'}</span>
           <span>·</span>
           <span>{formatDate(preprint.createdAt, { relative: true })}</span>
         </div>
@@ -185,7 +187,9 @@ function FeaturedPreprintCard({ preprint, onPrefetch, className }: FeaturedPrepr
           <h3 className="line-clamp-2">{preprint.title}</h3>
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <AuthorChip author={preprint.author} showAvatar />
+          {preprint.authors.length > 0 && (
+            <AuthorChipList authors={preprint.authors} max={5} showBadges />
+          )}
           <span className="text-sm text-muted-foreground">{formatDate(preprint.createdAt)}</span>
         </div>
       </CardHeader>

@@ -6,6 +6,7 @@
 
 export {
   ServiceAuthVerifier,
+  type IServiceAuthVerifier,
   type ServiceAuthVerifierConfig,
   type ServiceAuthVerifierOptions,
   type ServiceAuthResult,

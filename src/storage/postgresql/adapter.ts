@@ -35,7 +35,7 @@
  *   author: toDID('did:plc:abc')!,
  *   title: 'Neural Networks in Biology',
  *   abstract: 'This paper explores...',
- *   pdfBlobRef: {
+ *   documentBlobRef: {
  *     $type: 'blob',
  *     ref: toCID('bafyreib...')!,
  *     mimeType: 'application/pdf',
@@ -124,7 +124,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
    *   author: toDID('did:plc:abc')!,
    *   title: 'Neural Networks in Biology',
    *   abstract: 'This paper explores...',
-   *   pdfBlobRef: {
+   *   documentBlobRef: {
    *     $type: 'blob',
    *     ref: toCID('bafyreib...')!,
    *     mimeType: 'application/pdf',

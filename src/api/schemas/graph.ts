@@ -11,7 +11,8 @@
 
 import { z } from 'zod';
 
-import { paginationQuerySchema, searchQuerySchema } from './common.js';
+import { paginationQuerySchema, searchQuerySchema, didSchema } from './common.js';
+import { preprintAuthorRefSchema, preprintSourceInfoSchema, fieldRefSchema } from './preprint.js';
 
 /**
  * External identifier schema.
@@ -258,7 +259,7 @@ export const facetValueSchema = z.object({
  * Preprint summary for faceted browse results.
  *
  * @remarks
- * Matches the frontend PreprintSummary shape expected by SearchResults component.
+ * Uses the unified author model matching PreprintSummary.
  *
  * @public
  */
@@ -267,57 +268,17 @@ export const facetedPreprintSummarySchema = z.object({
   cid: z.string().describe('CID of indexed version'),
   title: z.string().describe('Preprint title'),
   abstract: z.string().describe('Preprint abstract'),
-  author: z
-    .object({
-      did: z.string().describe('Author DID'),
-      handle: z.string().optional().describe('Author handle'),
-      displayName: z.string().optional().describe('Author display name'),
-      avatar: z.string().optional().describe('Author avatar URL'),
-    })
-    .describe('Author information'),
-  coAuthors: z
-    .array(
-      z.object({
-        did: z.string().describe('Author DID'),
-        handle: z.string().optional().describe('Author handle'),
-        displayName: z.string().optional().describe('Author display name'),
-        avatar: z.string().optional().describe('Author avatar URL'),
-      })
-    )
-    .optional()
-    .describe('Co-authors'),
-  fields: z
-    .array(
-      z.object({
-        id: z.string().optional().describe('Field ID'),
-        uri: z.string().describe('Field URI'),
-        name: z.string().describe('Field name'),
-        parentUri: z.string().optional().describe('Parent field URI'),
-      })
-    )
-    .optional()
-    .describe('Subject fields'),
+  authors: z.array(preprintAuthorRefSchema).describe('All authors with contributions'),
+  submittedBy: didSchema.describe('DID of human user who submitted'),
+  paperDid: didSchema.optional().describe('Paper DID if paper has its own PDS'),
+  fields: z.array(fieldRefSchema).optional().describe('Subject fields'),
   license: z.string().describe('License identifier'),
   keywords: z.array(z.string()).optional().describe('Keywords'),
   createdAt: z.string().datetime().describe('Creation timestamp'),
   indexedAt: z.string().datetime().describe('Index timestamp'),
-  source: z
-    .object({
-      pdsEndpoint: z.string().url().describe('PDS endpoint URL'),
-      recordUrl: z.string().describe('Record URL'),
-      blobUrl: z.string().optional().describe('Blob URL'),
-      lastVerifiedAt: z.string().datetime().optional().describe('Last verification'),
-      stale: z.boolean().describe('Staleness flag'),
-    })
-    .describe('Source PDS information'),
+  source: preprintSourceInfoSchema.describe('Source PDS information'),
   score: z.number().optional().describe('Relevance score'),
-  highlights: z
-    .object({
-      title: z.string().optional().describe('Highlighted title'),
-      abstract: z.string().optional().describe('Highlighted abstract'),
-    })
-    .optional()
-    .describe('Search highlights'),
+  highlights: z.record(z.string(), z.array(z.string())).optional().describe('Search highlights'),
 });
 
 /**

@@ -1,9 +1,17 @@
 import { render, screen, waitFor } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { vi, beforeEach, describe, it, expect } from 'vitest';
-import { AnnotatedPDFViewer, AnnotatedPDFViewerSkeleton } from './pdf-viewer-annotated';
 import { createMockBlobRef, createMockInlineReview, createMockAuthor } from '@/tests/mock-data';
 import { mockHighlighterUtils } from '@/__mocks__/react-pdf-highlighter-extended';
+
+// Mock react-pdf-highlighter-extended with our test implementation
+// This is needed because the real library requires browser PDF APIs not available in jsdom
+vi.mock(
+  'react-pdf-highlighter-extended',
+  () => import('@/__mocks__/react-pdf-highlighter-extended')
+);
+
+import { AnnotatedPDFViewer, AnnotatedPDFViewerSkeleton } from './pdf-viewer-annotated';
 
 // =============================================================================
 // MOCKS

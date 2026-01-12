@@ -2,7 +2,16 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
-import type { Preprint } from '@/lib/api/schema';
+import type { Preprint, PreprintSummary } from '@/lib/api/schema';
+
+/**
+ * Response from the listByAuthor endpoint.
+ */
+interface PreprintsByAuthorResponse {
+  preprints: PreprintSummary[];
+  cursor?: string;
+  hasMore: boolean;
+}
 
 /**
  * Query key factory for preprint queries.
@@ -203,9 +212,9 @@ interface UsePreprintsByAuthorParams {
  * @throws {Error} When the author preprints API request fails
  */
 export function usePreprintsByAuthor(params: UsePreprintsByAuthorParams) {
-  return useQuery({
+  return useQuery<PreprintsByAuthorResponse>({
     queryKey: preprintKeys.byAuthor(params.did),
-    queryFn: async () => {
+    queryFn: async (): Promise<PreprintsByAuthorResponse> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.preprint.listByAuthor', {
         params: { query: { ...params, limit: params.limit ?? 20, sort: 'date' as const } },
       });
@@ -216,7 +225,8 @@ export function usePreprintsByAuthor(params: UsePreprintsByAuthorParams) {
           '/xrpc/pub.chive.preprint.listByAuthor'
         );
       }
-      return data!;
+      // Cast to our local types - backend returns the new author format
+      return data as unknown as PreprintsByAuthorResponse;
     },
     enabled: !!params.did,
   });

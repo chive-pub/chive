@@ -191,15 +191,40 @@ export class Neo4jConnection {
    * const field = result.records[0]?.get('f');
    * ```
    */
+  /**
+   * Convert numeric parameters to Neo4j integers.
+   *
+   * Neo4j requires integer values for SKIP and LIMIT clauses.
+   * JavaScript numbers may be represented as floats internally.
+   *
+   * @param params - Query parameters
+   * @returns Parameters with numbers converted to Neo4j integers
+   */
+  private convertNumericParams(params: Record<string, unknown>): Record<string, unknown> {
+    const converted: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        // Convert to Neo4j integer for SKIP/LIMIT compatibility
+        converted[key] = neo4j.int(Math.floor(value));
+      } else {
+        converted[key] = value;
+      }
+    }
+    return converted;
+  }
+
   async executeQuery<T extends Record<string, unknown> = Record<string, unknown>>(
     query: string,
     params: Record<string, unknown> = {},
     database?: string
   ): Promise<QueryResult<T>> {
+    // Convert numeric parameters to Neo4j integers
+    const convertedParams = this.convertNumericParams(params);
+
     return this.executeWithRetry(async () => {
       const session = this.getSession(database);
       try {
-        return await session.run<T>(query, params);
+        return await session.run<T>(query, convertedParams);
       } finally {
         await session.close();
       }

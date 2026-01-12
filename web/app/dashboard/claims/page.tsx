@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Search,
@@ -35,7 +35,82 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { PreprintSearchAutocomplete } from '@/components/search';
-import type { ClaimRequest, ClaimStatus } from '@/lib/api/schema';
+import type { ClaimRequestWithPaper, ClaimStatus } from '@/lib/api/schema';
+
+// =============================================================================
+// CLAIMED PAPERS CONTEXT
+// =============================================================================
+
+/**
+ * Context for tracking papers that have been claimed in this session.
+ *
+ * @remarks
+ * Since the ClaimRequest API doesn't return source/externalId, we track
+ * claimed papers locally to show "Already Claimed" status on paper cards.
+ */
+interface ClaimedPapersContextValue {
+  /** Set of claimed paper keys (format: "source:externalId") */
+  claimedPapers: Set<string>;
+  /** Mark a paper as claimed */
+  markAsClaimed: (source: string, externalId: string) => void;
+  /** Check if a paper is claimed */
+  isClaimed: (source: string, externalId: string) => boolean;
+}
+
+const ClaimedPapersContext = createContext<ClaimedPapersContextValue | null>(null);
+
+function useClaimedPapers() {
+  const context = useContext(ClaimedPapersContext);
+  if (!context) {
+    throw new Error('useClaimedPapers must be used within ClaimedPapersProvider');
+  }
+  return context;
+}
+
+function ClaimedPapersProvider({ children }: { children: React.ReactNode }) {
+  const [claimedPapers, setClaimedPapers] = useState<Set<string>>(new Set());
+  const [initialized, setInitialized] = useState(false);
+
+  // Fetch user claims to initialize the claimed papers set
+  const { data: claimsData } = useUserClaims({ enabled: true });
+
+  // Initialize claimed papers from user's existing claims
+  useEffect(() => {
+    if (claimsData && !initialized) {
+      const allClaims = claimsData.pages.flatMap((p) => p.claims);
+      const claimedKeys = new Set<string>();
+      for (const claim of allClaims) {
+        if (claim.paper) {
+          claimedKeys.add(`${claim.paper.source}:${claim.paper.externalId}`);
+        }
+      }
+      if (claimedKeys.size > 0) {
+        setClaimedPapers(claimedKeys);
+      }
+      setInitialized(true);
+    }
+  }, [claimsData, initialized]);
+
+  const markAsClaimed = useCallback((source: string, externalId: string) => {
+    const key = `${source}:${externalId}`;
+    setClaimedPapers((prev) => new Set(prev).add(key));
+  }, []);
+
+  const isClaimed = useCallback(
+    (source: string, externalId: string) => {
+      const key = `${source}:${externalId}`;
+      return claimedPapers.has(key);
+    },
+    [claimedPapers]
+  );
+
+  const value = useMemo(
+    () => ({ claimedPapers, markAsClaimed, isClaimed }),
+    [claimedPapers, markAsClaimed, isClaimed]
+  );
+
+  return <ClaimedPapersContext.Provider value={value}>{children}</ClaimedPapersContext.Provider>;
+}
 
 /**
  * Claims dashboard page.
@@ -45,38 +120,41 @@ import type { ClaimRequest, ClaimStatus } from '@/lib/api/schema';
  */
 export default function ClaimsPage() {
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Claim Preprints</h1>
-        <p className="text-muted-foreground">
-          Claim ownership of your preprints from external repositories like arXiv, bioRxiv, and more
-        </p>
+    <ClaimedPapersProvider>
+      <div className="space-y-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Claim Preprints</h1>
+          <p className="text-muted-foreground">
+            Claim ownership of your preprints from external repositories like arXiv, bioRxiv, and
+            more
+          </p>
+        </div>
+
+        <Tabs defaultValue="suggestions" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="suggestions" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Suggested For You
+            </TabsTrigger>
+            <TabsTrigger value="search">Find Claimable</TabsTrigger>
+            <TabsTrigger value="my-claims">My Claims</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="suggestions" className="space-y-6">
+            <PaperSuggestions />
+          </TabsContent>
+
+          <TabsContent value="search" className="space-y-6">
+            <ClaimableSearch />
+          </TabsContent>
+
+          <TabsContent value="my-claims" className="space-y-6">
+            <UserClaims />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <Tabs defaultValue="suggestions" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="suggestions" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Suggested For You
-          </TabsTrigger>
-          <TabsTrigger value="search">Find Claimable</TabsTrigger>
-          <TabsTrigger value="my-claims">My Claims</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="suggestions" className="space-y-6">
-          <PaperSuggestions />
-        </TabsContent>
-
-        <TabsContent value="search" className="space-y-6">
-          <ClaimableSearch />
-        </TabsContent>
-
-        <TabsContent value="my-claims" className="space-y-6">
-          <UserClaims />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </ClaimedPapersProvider>
   );
 }
 
@@ -276,13 +354,23 @@ function ProfileInfoCard({
  * Card for a suggested paper with match score.
  */
 function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
+  const { isClaimed, markAsClaimed } = useClaimedPapers();
   const startClaim = useStartClaimFromExternal();
 
+  const alreadyClaimed = isClaimed(paper.source, paper.externalId);
+
   const handleClaim = () => {
-    startClaim.mutate({
-      source: paper.source as ImportSource,
-      externalId: paper.externalId,
-    });
+    startClaim.mutate(
+      {
+        source: paper.source as ImportSource,
+        externalId: paper.externalId,
+      },
+      {
+        onSuccess: () => {
+          markAsClaimed(paper.source, paper.externalId);
+        },
+      }
+    );
   };
 
   // Format author names
@@ -298,7 +386,7 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
   };
 
   return (
-    <Card>
+    <Card className={alreadyClaimed ? 'opacity-75' : undefined}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 min-w-0">
@@ -310,12 +398,19 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <Badge variant="secondary">{getSourceDisplayName(paper.source as ImportSource)}</Badge>
-            <Badge
-              variant="outline"
-              className={`text-xs font-medium ${getScoreColor(paper.matchScore)}`}
-            >
-              {paper.matchScore}% match
-            </Badge>
+            {alreadyClaimed ? (
+              <Badge variant="outline" className="text-xs font-medium text-green-600 bg-green-50">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Claimed
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className={`text-xs font-medium ${getScoreColor(paper.matchScore)}`}
+              >
+                {paper.matchScore}% match
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -348,23 +443,44 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
                 </a>
               </Button>
             )}
-            <Button onClick={handleClaim} disabled={startClaim.isPending}>
-              {startClaim.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Claiming...
-                </>
-              ) : (
-                <>
-                  Claim Paper <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+            {alreadyClaimed ? (
+              <Button variant="outline" disabled>
+                <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+                Already Claimed
+              </Button>
+            ) : (
+              <Button onClick={handleClaim} disabled={startClaim.isPending}>
+                {startClaim.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Claiming...
+                  </>
+                ) : (
+                  <>
+                    Claim Paper <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
 
+        {/* Success message */}
+        {alreadyClaimed && (
+          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>
+              Claim started! Go to{' '}
+              <Link href="/dashboard/claims" className="underline font-medium">
+                My Claims
+              </Link>{' '}
+              to continue verification.
+            </span>
+          </div>
+        )}
+
         {/* Error message */}
-        {startClaim.isError && (
+        {startClaim.isError && !alreadyClaimed && (
           <p className="text-sm text-destructive">
             Failed to start claim: {startClaim.error.message}
           </p>
@@ -570,13 +686,23 @@ function ClaimableSearch() {
  * Card for an external preprint from federated search.
  */
 function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
+  const { isClaimed, markAsClaimed } = useClaimedPapers();
   const startClaim = useStartClaimFromExternal();
 
+  const alreadyClaimed = isClaimed(preprint.source, preprint.externalId);
+
   const handleClaim = () => {
-    startClaim.mutate({
-      source: preprint.source,
-      externalId: preprint.externalId,
-    });
+    startClaim.mutate(
+      {
+        source: preprint.source,
+        externalId: preprint.externalId,
+      },
+      {
+        onSuccess: () => {
+          markAsClaimed(preprint.source, preprint.externalId);
+        },
+      }
+    );
   };
 
   // Format author names
@@ -585,7 +711,7 @@ function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
   const additionalAuthors = authorNames.length > 3 ? ` +${authorNames.length - 3} more` : '';
 
   return (
-    <Card>
+    <Card className={alreadyClaimed ? 'opacity-75' : undefined}>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 min-w-0">
@@ -595,9 +721,15 @@ function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
               {additionalAuthors}
             </CardDescription>
           </div>
-          <Badge variant="secondary" className="shrink-0">
-            {getSourceDisplayName(preprint.source)}
-          </Badge>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <Badge variant="secondary">{getSourceDisplayName(preprint.source)}</Badge>
+            {alreadyClaimed && (
+              <Badge variant="outline" className="text-xs font-medium text-green-600 bg-green-50">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Claimed
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -632,23 +764,44 @@ function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
                 </a>
               </Button>
             )}
-            <Button onClick={handleClaim} disabled={startClaim.isPending}>
-              {startClaim.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                <>
-                  Claim This Paper <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+            {alreadyClaimed ? (
+              <Button variant="outline" disabled>
+                <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+                Already Claimed
+              </Button>
+            ) : (
+              <Button onClick={handleClaim} disabled={startClaim.isPending}>
+                {startClaim.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    Claim This Paper <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
 
+        {/* Success message */}
+        {alreadyClaimed && (
+          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>
+              Claim started! Go to{' '}
+              <Link href="/dashboard/claims" className="underline font-medium">
+                My Claims
+              </Link>{' '}
+              to continue verification.
+            </span>
+          </div>
+        )}
+
         {/* Error message */}
-        {startClaim.isError && (
+        {startClaim.isError && !alreadyClaimed && (
           <p className="text-sm text-destructive">
             Failed to start claim: {startClaim.error.message}
           </p>
@@ -728,30 +881,51 @@ function UserClaims() {
 }
 
 /**
- * Card for displaying a claim.
+ * Card for displaying a claim with full paper details.
  */
-function ClaimCard({ claim }: { claim: ClaimRequest }) {
+function ClaimCard({ claim }: { claim: ClaimRequestWithPaper }) {
   const statusConfig = getStatusConfig(claim.status);
+  const paper = claim.paper;
+
+  // Format author names
+  const authorNames = paper.authors.map((a) => a.name);
+  const displayAuthors = authorNames.slice(0, 3).join(', ');
+  const additionalAuthors = authorNames.length > 3 ? ` +${authorNames.length - 3} more` : '';
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">Claim #{claim.id}</CardTitle>
-            <CardDescription>
-              Started {new Date(claim.createdAt).toLocaleDateString()}
+          <div className="space-y-1 min-w-0">
+            <CardTitle className="text-lg line-clamp-2">{paper.title}</CardTitle>
+            <CardDescription className="line-clamp-1">
+              {displayAuthors}
+              {additionalAuthors}
             </CardDescription>
           </div>
-          <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <Badge variant="secondary">{getSourceDisplayName(paper.source as ImportSource)}</Badge>
+            <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Status description */}
         <div className="flex items-center gap-2">
           <statusConfig.icon className={`h-4 w-4 ${statusConfig.color}`} />
           <span className="text-sm">{statusConfig.description}</span>
         </div>
 
+        {/* Paper metadata */}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+          {paper.doi && <span className="font-mono text-xs">DOI: {paper.doi}</span>}
+          {paper.publicationDate && (
+            <span>Published: {new Date(paper.publicationDate).toLocaleDateString()}</span>
+          )}
+          <span>Claimed: {new Date(claim.createdAt).toLocaleDateString()}</span>
+        </div>
+
+        {/* Evidence section */}
         {claim.evidence.length > 0 && (
           <div className="space-y-2">
             <p className="text-sm font-medium">Verification Evidence</p>
@@ -768,6 +942,7 @@ function ClaimCard({ claim }: { claim: ClaimRequest }) {
           </div>
         )}
 
+        {/* Rejection reason */}
         {claim.rejectionReason && (
           <div className="bg-destructive/10 p-3 rounded-md">
             <p className="text-sm font-medium text-destructive">Rejection Reason</p>
@@ -775,27 +950,34 @@ function ClaimCard({ claim }: { claim: ClaimRequest }) {
           </div>
         )}
 
-        {claim.canonicalUri && (
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            <Link
-              href={`/preprints/${encodeURIComponent(claim.canonicalUri)}`}
-              className="text-sm text-primary hover:underline"
-            >
-              View claimed preprint →
-            </Link>
-          </div>
-        )}
+        {/* Actions */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {paper.externalUrl && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={paper.externalUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Source
+              </a>
+            </Button>
+          )}
 
-        {claim.status === 'pending' && claim.evidence.length === 0 && (
-          <div className="flex gap-2">
+          {claim.canonicalUri && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/preprints/${encodeURIComponent(claim.canonicalUri)}`}>
+                <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                View on Chive
+              </Link>
+            </Button>
+          )}
+
+          {claim.status === 'pending' && claim.evidence.length === 0 && (
             <Button asChild>
               <Link href={`/dashboard/claims/${claim.id}`}>
                 Continue Verification <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );

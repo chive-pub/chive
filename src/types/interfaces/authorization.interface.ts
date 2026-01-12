@@ -24,7 +24,13 @@ import type { AtUri, DID } from '../atproto.js';
  *
  * @public
  */
-export type Role = 'admin' | 'moderator' | 'authority-editor' | 'author' | 'reader';
+export type Role =
+  | 'admin'
+  | 'moderator'
+  | 'authority-editor'
+  | 'author'
+  | 'reader'
+  | 'alpha-tester';
 
 /**
  * Resource types for authorization.

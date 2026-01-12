@@ -7,22 +7,36 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
 import type { StoredPreprint } from '@/types/interfaces/storage.interface.js';
+import type { PreprintAuthor } from '@/types/models/author.js';
 import { isOk, isErr } from '@/types/result.js';
+
+const mockAuthor: PreprintAuthor = {
+  did: 'did:plc:abc123' as never,
+  name: 'Test Author',
+  order: 1,
+  affiliations: [],
+  contributions: [],
+  isCorrespondingAuthor: true,
+  isHighlighted: false,
+};
 
 // Mock preprint fixture
 function createMockPreprint(): StoredPreprint {
   return {
     uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never,
     cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,
-    author: 'did:plc:abc123' as never,
+    authors: [mockAuthor],
+    submittedBy: 'did:plc:abc123' as never,
     title: 'Neural Networks in Biology',
     abstract: 'This paper explores the application of neural networks to biological systems.',
-    pdfBlobRef: {
+    documentBlobRef: {
       $type: 'blob',
       ref: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,
       mimeType: 'application/pdf',
       size: 2048576,
     },
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     license: 'CC-BY-4.0',
     pdsUrl: 'https://pds.example.com',
     indexedAt: new Date('2024-01-01T00:00:00Z'),
@@ -80,12 +94,15 @@ describe('PostgreSQLAdapter', () => {
       const mockRow = {
         uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
         cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
-        author_did: 'did:plc:abc123',
+        authors: JSON.stringify([mockAuthor]),
+        submitted_by: 'did:plc:abc123',
+        paper_did: null,
         title: 'Neural Networks in Biology',
         abstract: 'This paper explores the application of neural networks to biological systems.',
-        pdf_blob_cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
-        pdf_blob_mime_type: 'application/pdf',
-        pdf_blob_size: 2048576,
+        document_blob_cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
+        document_blob_mime_type: 'application/pdf',
+        document_blob_size: 2048576,
+        license: 'CC-BY-4.0',
         pds_url: 'https://pds.example.com',
         indexed_at: new Date('2024-01-01T00:00:00Z'),
         created_at: new Date('2024-01-01T00:00:00Z'),
@@ -101,7 +118,7 @@ describe('PostgreSQLAdapter', () => {
       expect(result).not.toBeNull();
       expect(result?.uri).toBe('at://did:plc:abc123/pub.chive.preprint.submission/xyz789');
       expect(result?.title).toBe('Neural Networks in Biology');
-      expect(result?.pdfBlobRef.$type).toBe('blob');
+      expect(result?.documentBlobRef.$type).toBe('blob');
     });
 
     it('should return null when preprint not found', async () => {
@@ -130,12 +147,15 @@ describe('PostgreSQLAdapter', () => {
       const mockRow = {
         uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
         cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
-        author_did: 'did:plc:abc123',
+        authors: JSON.stringify([mockAuthor]),
+        submitted_by: 'did:plc:abc123',
+        paper_did: null,
         title: 'Neural Networks in Biology',
         abstract: 'This paper explores the application of neural networks to biological systems.',
-        pdf_blob_cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
-        pdf_blob_mime_type: 'application/pdf',
-        pdf_blob_size: 2048576,
+        document_blob_cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
+        document_blob_mime_type: 'application/pdf',
+        document_blob_size: 2048576,
+        license: 'CC-BY-4.0',
         pds_url: 'https://pds.example.com',
         indexed_at: new Date('2024-01-01T00:00:00Z'),
         created_at: new Date('2024-01-01T00:00:00Z'),
@@ -147,7 +167,8 @@ describe('PostgreSQLAdapter', () => {
       const results = await adapter.getPreprintsByAuthor('did:plc:abc123' as never);
 
       expect(results).toHaveLength(1);
-      expect(results[0]?.author).toBe('did:plc:abc123');
+      expect(results[0]?.submittedBy).toBe('did:plc:abc123');
+      expect(results[0]?.authors[0]?.did).toBe('did:plc:abc123');
 
       // Verify query contains ORDER BY and LIMIT
       const call = queryMock.mock.calls[0];

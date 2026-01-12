@@ -85,7 +85,7 @@ describe('Lexicon Code Generation Pipeline', () => {
     const validData = {
       title: 'Test Preprint',
       abstract: 'Abstract',
-      pdf: {
+      document: {
         $type: 'blob',
         ref: {
           $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
@@ -93,6 +93,17 @@ describe('Lexicon Code Generation Pipeline', () => {
         mimeType: 'application/pdf',
         size: 1000,
       },
+      authors: [
+        {
+          name: 'Test Author',
+          order: 1,
+          affiliations: [],
+          contributions: [],
+          isCorrespondingAuthor: true,
+          isHighlighted: false,
+        },
+      ],
+      submittedBy: 'did:plc:abc123',
       license: 'CC-BY-4.0',
       createdAt: new Date().toISOString(),
     };

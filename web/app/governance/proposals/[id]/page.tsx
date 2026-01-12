@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ThumbsUp, ThumbsDown, MinusCircle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ThumbsUp, ThumbsDown, MinusCircle } from 'lucide-react';
 
 import { useIsAuthenticated, useCurrentUser } from '@/lib/auth';
 import {
@@ -18,6 +18,7 @@ import {
   VOTE_WEIGHTS,
   CONSENSUS_THRESHOLD,
   MINIMUM_VOTES,
+  type VoteAction,
   type VoteValue,
 } from '@/lib/hooks/use-governance';
 import { Button } from '@/components/ui/button';
@@ -95,17 +96,14 @@ export default function ProposalDetailPage() {
     }
   };
 
-  const getVoteIcon = (vote: VoteValue) => {
+  const getVoteIcon = (vote: VoteAction) => {
     switch (vote) {
       case 'approve':
         return ThumbsUp;
       case 'reject':
         return ThumbsDown;
       case 'abstain':
-        return MinusCircle;
       case 'request-changes':
-        return MessageSquare;
-      default:
         return MinusCircle;
     }
   };

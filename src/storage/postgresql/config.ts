@@ -93,7 +93,7 @@ export interface DatabaseConfig extends PoolConfig {
  * - `POSTGRES_PORT` - Database port (default: 5432)
  * - `POSTGRES_DB` - Database name (default: chive)
  * - `POSTGRES_USER` - Database user (default: chive)
- * - `POSTGRES_PASSWORD` - Database password (default: chive_local_password)
+ * - `POSTGRES_PASSWORD` - Database password (default: chive_test_password)
  * - `POSTGRES_MAX_CONNECTIONS` - Max pool size (default: 10)
  *
  * @example
@@ -117,13 +117,12 @@ export interface DatabaseConfig extends PoolConfig {
  */
 export function getDatabaseConfig(): DatabaseConfig {
   // Default to local development credentials (docker-compose.local.yml)
-  // Test environment should set POSTGRES_PASSWORD=chive_test_password explicitly
   return {
     host: process.env.POSTGRES_HOST ?? 'localhost',
     port: parseInt(process.env.POSTGRES_PORT ?? '5432', 10),
     database: process.env.POSTGRES_DB ?? 'chive',
     user: process.env.POSTGRES_USER ?? 'chive',
-    password: process.env.POSTGRES_PASSWORD ?? 'chive_local_password',
+    password: process.env.POSTGRES_PASSWORD ?? 'chive_test_password',
     max: parseInt(process.env.POSTGRES_MAX_CONNECTIONS ?? '10', 10),
     connectionTimeoutMillis: 30000,
     idleTimeoutMillis: 10000,

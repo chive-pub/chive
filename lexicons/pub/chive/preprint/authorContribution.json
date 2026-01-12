@@ -1,0 +1,106 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.preprint.authorContribution",
+  "defs": {
+    "affiliation": {
+      "type": "object",
+      "description": "Author affiliation with optional ROR ID and department",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Organization name",
+          "maxLength": 300
+        },
+        "rorId": {
+          "type": "string",
+          "description": "ROR ID (e.g., https://ror.org/02mhbdp94)",
+          "maxLength": 100
+        },
+        "department": {
+          "type": "string",
+          "description": "Department or division within organization",
+          "maxLength": 200
+        }
+      }
+    },
+    "contribution": {
+      "type": "object",
+      "description": "Author contribution with type and degree",
+      "required": ["typeUri"],
+      "properties": {
+        "typeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI to contribution type from knowledge graph"
+        },
+        "degree": {
+          "type": "string",
+          "knownValues": ["lead", "equal", "supporting"],
+          "description": "Contribution degree modifier",
+          "default": "equal"
+        }
+      }
+    },
+    "main": {
+      "type": "object",
+      "description": "Author entry with full contribution metadata",
+      "required": ["name", "order"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID if they have an ATProto account"
+        },
+        "name": {
+          "type": "string",
+          "description": "Author display name (required even if DID present)",
+          "maxLength": 200
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier (format: 0000-0000-0000-000X)",
+          "maxLength": 19
+        },
+        "email": {
+          "type": "string",
+          "description": "Contact email (for external authors)",
+          "maxLength": 254
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Position in author list (1-indexed)"
+        },
+        "affiliations": {
+          "type": "array",
+          "description": "Author affiliations",
+          "items": {
+            "type": "ref",
+            "ref": "#affiliation"
+          },
+          "maxLength": 10
+        },
+        "contributions": {
+          "type": "array",
+          "description": "CRediT-based contribution types",
+          "items": {
+            "type": "ref",
+            "ref": "#contribution"
+          },
+          "maxLength": 14
+        },
+        "isCorrespondingAuthor": {
+          "type": "boolean",
+          "description": "Whether this is a corresponding author",
+          "default": false
+        },
+        "isHighlighted": {
+          "type": "boolean",
+          "description": "Whether this author is highlighted (co-first, co-last)",
+          "default": false
+        }
+      }
+    }
+  }
+}

@@ -120,6 +120,17 @@ export interface TrendingEntry {
    * Trending score (views in time window).
    */
   readonly score: number;
+
+  /**
+   * Velocity indicator showing acceleration vs baseline.
+   *
+   * @remarks
+   * Calculated as (daily_avg_in_window / daily_avg_in_longer_window) - 1.
+   * Positive means accelerating (getting more attention than average).
+   * Negative means decelerating (attention dropping off).
+   * Undefined if insufficient data for comparison.
+   */
+  readonly velocity?: number;
 }
 
 /**
@@ -470,18 +481,21 @@ export class MetricsService {
     try {
       const now = Date.now();
 
-      // Calculate time range
-      const windowMs = {
-        '24h': 86400 * 1000,
-        '7d': 86400 * 7 * 1000,
-        '30d': 86400 * 30 * 1000,
+      // Calculate time range and baseline for velocity
+      const windowConfig = {
+        '24h': { ms: 86400 * 1000, days: 1, baseline: '7d' as const, baselineDays: 7 },
+        '7d': { ms: 86400 * 7 * 1000, days: 7, baseline: '30d' as const, baselineDays: 30 },
+        '30d': { ms: 86400 * 30 * 1000, days: 30, baseline: null, baselineDays: 0 },
       }[window];
 
-      const minScore = now - windowMs;
+      const minScore = now - windowConfig.ms;
+      const baselineMinScore = windowConfig.baseline
+        ? now - { '7d': 86400 * 7 * 1000, '30d': 86400 * 30 * 1000 }[windowConfig.baseline]
+        : 0;
 
       // Scan for all view counter keys to find URIs
       let cursor = '0';
-      const uriScores: { uri: AtUri; score: number }[] = [];
+      const uriScores: { uri: AtUri; score: number; velocity?: number }[] = [];
 
       do {
         const result = await this.redis.scan(
@@ -499,12 +513,20 @@ export class MetricsService {
           continue;
         }
 
-        // For each URI, count views in time window
+        // For each URI, count views in time window and baseline (for velocity)
         const pipeline = this.redis.pipeline();
 
         for (const key of keys) {
           const uri = key.replace(`${this.keyPrefix}views:`, '');
           pipeline.zcount(this.buildKey(`views:${window}`, uri), minScore, now);
+          // Also get baseline count for velocity calculation
+          if (windowConfig.baseline) {
+            pipeline.zcount(
+              this.buildKey(`views:${windowConfig.baseline}`, uri),
+              baselineMinScore,
+              now
+            );
+          }
         }
 
         const counts = await pipeline.exec();
@@ -513,19 +535,43 @@ export class MetricsService {
           continue;
         }
 
+        // Parse results - stride depends on whether we're fetching baseline
+        const stride = windowConfig.baseline ? 2 : 1;
+
         for (let i = 0; i < keys.length; i++) {
           const key = keys[i];
-          const count = counts[i];
+          const countResult = counts[i * stride];
 
-          if (!key || !count || count?.[0] !== null) {
+          if (!key || !countResult || countResult?.[0] !== null) {
             continue;
           }
 
           const uri = key.replace(`${this.keyPrefix}views:`, '') as AtUri;
-          const score = typeof count[1] === 'number' ? count[1] : 0;
+          const score = typeof countResult[1] === 'number' ? countResult[1] : 0;
 
           if (score > 0) {
-            uriScores.push({ uri, score });
+            let velocity: number | undefined;
+
+            // Calculate velocity if baseline data is available
+            if (windowConfig.baseline) {
+              const baselineResult = counts[i * stride + 1];
+              const baselineScore =
+                baselineResult?.[0] === null && typeof baselineResult?.[1] === 'number'
+                  ? baselineResult[1]
+                  : 0;
+
+              if (baselineScore > 0) {
+                // Calculate daily averages
+                const dailyAvgCurrent = score / windowConfig.days;
+                const dailyAvgBaseline = baselineScore / windowConfig.baselineDays;
+
+                // Velocity = (current daily avg / baseline daily avg) - 1
+                // >0 means accelerating, <0 means decelerating
+                velocity = dailyAvgCurrent / dailyAvgBaseline - 1;
+              }
+            }
+
+            uriScores.push({ uri, score, velocity });
           }
         }
       } while (cursor !== '0');

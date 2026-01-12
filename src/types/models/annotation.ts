@@ -43,11 +43,128 @@ export interface TextQuoteSelector {
 }
 
 /**
- * W3C TextPositionSelector for precise character-based targeting.
+ * Supported document formats for annotations.
+ *
+ * @public
+ */
+export type DocumentFormat =
+  | 'pdf'
+  | 'docx'
+  | 'html'
+  | 'markdown'
+  | 'latex'
+  | 'jupyter'
+  | 'odt'
+  | 'rtf'
+  | 'epub'
+  | 'txt';
+
+/**
+ * Document format capabilities hint.
+ *
+ * @remarks
+ * Indicates which targeting features are available for a given document format.
+ * Used by viewers to determine how to resolve selectors.
+ *
+ * @public
+ */
+export interface DocumentFormatHint {
+  /** Document format */
+  readonly format: DocumentFormat;
+  /** Whether the format has discrete pages (PDF, EPUB) */
+  readonly hasPages: boolean;
+  /** Whether the format has semantic sections (HTML, Markdown, LaTeX) */
+  readonly hasSections: boolean;
+  /** Whether the format has cells (Jupyter notebooks) */
+  readonly hasCells: boolean;
+  /** Whether the format has line numbers (code, LaTeX) */
+  readonly hasLineNumbers: boolean;
+}
+
+/**
+ * Document format capability mappings.
+ *
+ * @public
+ */
+export const DOCUMENT_FORMAT_HINTS: Record<DocumentFormat, DocumentFormatHint> = {
+  pdf: {
+    format: 'pdf',
+    hasPages: true,
+    hasSections: false,
+    hasCells: false,
+    hasLineNumbers: false,
+  },
+  docx: {
+    format: 'docx',
+    hasPages: true,
+    hasSections: true,
+    hasCells: false,
+    hasLineNumbers: false,
+  },
+  html: {
+    format: 'html',
+    hasPages: false,
+    hasSections: true,
+    hasCells: false,
+    hasLineNumbers: false,
+  },
+  markdown: {
+    format: 'markdown',
+    hasPages: false,
+    hasSections: true,
+    hasCells: false,
+    hasLineNumbers: true,
+  },
+  latex: {
+    format: 'latex',
+    hasPages: false,
+    hasSections: true,
+    hasCells: false,
+    hasLineNumbers: true,
+  },
+  jupyter: {
+    format: 'jupyter',
+    hasPages: false,
+    hasSections: false,
+    hasCells: true,
+    hasLineNumbers: true,
+  },
+  odt: { format: 'odt', hasPages: true, hasSections: true, hasCells: false, hasLineNumbers: false },
+  rtf: {
+    format: 'rtf',
+    hasPages: false,
+    hasSections: false,
+    hasCells: false,
+    hasLineNumbers: false,
+  },
+  epub: {
+    format: 'epub',
+    hasPages: true,
+    hasSections: true,
+    hasCells: false,
+    hasLineNumbers: false,
+  },
+  txt: {
+    format: 'txt',
+    hasPages: false,
+    hasSections: false,
+    hasCells: false,
+    hasLineNumbers: true,
+  },
+};
+
+/**
+ * W3C TextPositionSelector extended for multi-format documents.
  *
  * @remarks
  * Uses character offsets within the normalized text of a resource.
  * The first character is position 0. Start is inclusive, end is exclusive.
+ *
+ * Extended fields support different document formats:
+ * - pageNumber: For PDF, DOCX, EPUB (1-indexed)
+ * - sectionId: For HTML/Markdown/LaTeX headings
+ * - cellId: For Jupyter notebook cells
+ * - lineNumber/columnStart/columnEnd: For code in Markdown, LaTeX, Jupyter
  *
  * @see {@link https://www.w3.org/TR/annotation-model/#text-position-selector | W3C TextPositionSelector}
  *
@@ -60,8 +177,18 @@ export interface TextPositionSelector {
   readonly start: number;
   /** Ending character offset (exclusive) */
   readonly end: number;
-  /** PDF page number (1-indexed) */
-  readonly pageNumber: number;
+  /** Page number for paginated formats (PDF, DOCX, EPUB) - 1-indexed */
+  readonly pageNumber?: number;
+  /** Section ID for structured documents (HTML heading id, Markdown heading slug) */
+  readonly sectionId?: string;
+  /** Cell ID for Jupyter notebooks */
+  readonly cellId?: string;
+  /** Line number for code-based formats - 1-indexed */
+  readonly lineNumber?: number;
+  /** Starting column for code spans - 0-indexed */
+  readonly columnStart?: number;
+  /** Ending column for code spans - 0-indexed */
+  readonly columnEnd?: number;
 }
 
 /**

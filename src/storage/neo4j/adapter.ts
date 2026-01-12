@@ -977,7 +977,12 @@ export class Neo4jAdapter implements IGraphDatabase {
       fp: Record<string, string | number | Date>;
     }>(query, params);
 
-    const proposals = result.records.map((record) => this.mapFieldProposal(record.get('fp')));
+    // Neo4j Node objects have properties in .properties; use that to get plain object.
+    const proposals = result.records.map((record) => {
+      const node = record.get('fp');
+      const props = (node.properties ?? node) as Record<string, string | number | Date>;
+      return this.mapFieldProposal(props);
+    });
 
     const hasMore = proposals.length > (filters.limit ?? 50);
     if (hasMore) {
@@ -1037,7 +1042,10 @@ export class Neo4jAdapter implements IGraphDatabase {
       return null;
     }
 
-    return this.mapFieldProposal(record.get('fp'));
+    // Neo4j Node objects have properties in .properties; extract that to get plain object.
+    const node = record.get('fp');
+    const props = (node.properties ?? node) as Record<string, string | number | Date>;
+    return this.mapFieldProposal(props);
   }
 
   /**
@@ -1057,7 +1065,11 @@ export class Neo4jAdapter implements IGraphDatabase {
       v: Record<string, string | Date>;
     }>(query, { proposalUri });
 
-    return result.records.map((record) => this.mapVoteToInterface(record.get('v')));
+    return result.records.map((record) => {
+      const node = record.get('v');
+      const props = (node.properties ?? node) as Record<string, string | Date>;
+      return this.mapVoteToInterface(props);
+    });
   }
 
   /**

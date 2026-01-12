@@ -9,7 +9,172 @@
  * @public
  */
 
-import type { BlobRef, DID } from '../atproto.js';
+import type { AtUri, BlobRef, DID } from '../atproto.js';
+
+// =============================================================================
+// Preprint Author Models (for submission records)
+// =============================================================================
+
+/**
+ * Contribution degree modifier for author contributions.
+ *
+ * @remarks
+ * Following CRediT taxonomy conventions:
+ * - `lead`: Primary responsibility for this contribution
+ * - `equal`: Shared responsibility equally with others
+ * - `supporting`: Assisted with this contribution
+ *
+ * @public
+ */
+export type ContributionDegree = 'lead' | 'equal' | 'supporting';
+
+/**
+ * Author affiliation with optional ROR ID and department.
+ *
+ * @remarks
+ * Used in preprint submission records to capture author affiliations.
+ *
+ * @public
+ */
+export interface PreprintAuthorAffiliation {
+  /**
+   * Organization name.
+   */
+  readonly name: string;
+
+  /**
+   * ROR ID (e.g., "https://ror.org/02mhbdp94").
+   *
+   * @see {@link https://ror.org/ | Research Organization Registry}
+   */
+  readonly rorId?: string;
+
+  /**
+   * Department or division within organization.
+   */
+  readonly department?: string;
+}
+
+/**
+ * Author contribution with type URI and degree.
+ *
+ * @remarks
+ * Links to contribution types in the Governance PDS knowledge graph.
+ * Based on CRediT (Contributor Roles Taxonomy) standard.
+ *
+ * @see {@link https://credit.niso.org/ | CRediT}
+ * @public
+ */
+export interface PreprintAuthorContribution {
+  /**
+   * AT-URI to contribution type from knowledge graph.
+   *
+   * @example "at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization"
+   */
+  readonly typeUri: AtUri;
+
+  /**
+   * Contribution type ID (for display convenience).
+   *
+   * @example "conceptualization"
+   */
+  readonly typeId?: string;
+
+  /**
+   * Human-readable label.
+   *
+   * @example "Conceptualization"
+   */
+  readonly typeLabel?: string;
+
+  /**
+   * Contribution degree modifier.
+   */
+  readonly degree: ContributionDegree;
+}
+
+/**
+ * Full author entry for preprint submissions.
+ *
+ * @remarks
+ * Represents an author in a preprint submission record. Supports both
+ * ATProto users (with DID) and external collaborators (without DID).
+ *
+ * @public
+ */
+export interface PreprintAuthor {
+  /**
+   * Author DID if they have an ATProto account.
+   *
+   * @remarks
+   * Optional for external collaborators who don't have ATProto accounts.
+   */
+  readonly did?: DID;
+
+  /**
+   * Author display name (required for all authors).
+   */
+  readonly name: string;
+
+  /**
+   * ATProto handle (e.g., "alice.bsky.social").
+   *
+   * @remarks
+   * Only present for ATProto users, resolved from DID.
+   */
+  readonly handle?: string;
+
+  /**
+   * Avatar URL for the author.
+   *
+   * @remarks
+   * URL to author's avatar image. For ATProto users, this is resolved
+   * from their PDS blob storage. For external authors, may be empty.
+   */
+  readonly avatarUrl?: string;
+
+  /**
+   * ORCID identifier.
+   *
+   * @remarks
+   * Format: "0000-0002-1825-0097" (without "https://orcid.org/" prefix)
+   */
+  readonly orcid?: string;
+
+  /**
+   * Contact email (for external authors).
+   */
+  readonly email?: string;
+
+  /**
+   * Position in author list (1-indexed).
+   */
+  readonly order: number;
+
+  /**
+   * Author affiliations.
+   */
+  readonly affiliations: readonly PreprintAuthorAffiliation[];
+
+  /**
+   * CRediT-based contributions.
+   */
+  readonly contributions: readonly PreprintAuthorContribution[];
+
+  /**
+   * Whether this is a corresponding author.
+   */
+  readonly isCorrespondingAuthor: boolean;
+
+  /**
+   * Whether this author is highlighted (co-first, co-last).
+   */
+  readonly isHighlighted: boolean;
+}
+
+// =============================================================================
+// Author Profile Models (for actor profiles)
+// =============================================================================
 
 /**
  * Institutional affiliation with optional ROR ID.

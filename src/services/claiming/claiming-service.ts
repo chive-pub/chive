@@ -84,6 +84,35 @@ interface ClaimRequestRow {
 }
 
 /**
+ * Database row type for claim requests joined with imported_preprints.
+ */
+interface ClaimRequestWithPaperRow extends ClaimRequestRow {
+  paper_source: string;
+  paper_external_id: string;
+  paper_external_url: string;
+  paper_title: string;
+  paper_authors: string; // JSON string
+  paper_publication_date: Date | null;
+  paper_doi: string | null;
+}
+
+/**
+ * Claim request with paper details for display.
+ */
+export interface ClaimRequestWithPaper extends ClaimRequest {
+  /** Paper details from imported_preprints */
+  paper: {
+    source: ImportSource;
+    externalId: string;
+    externalUrl: string;
+    title: string;
+    authors: readonly ExternalAuthor[];
+    publicationDate?: string;
+    doi?: string;
+  };
+}
+
+/**
  * Evidence weights for confidence scoring.
  *
  * @remarks
@@ -497,6 +526,57 @@ export class ClaimingService implements IClaimingService {
     );
 
     return result.rows.map((row) => this.rowToClaimRequest(row));
+  }
+
+  /**
+   * Gets user claims with paper details for display.
+   *
+   * @param claimantDid - DID of the claimant
+   * @returns Claims with paper information
+   */
+  async getUserClaimsWithPaper(claimantDid: string): Promise<readonly ClaimRequestWithPaper[]> {
+    const result = await this.db.query<ClaimRequestWithPaperRow>(
+      `SELECT
+         cr.*,
+         ip.source AS paper_source,
+         ip.external_id AS paper_external_id,
+         ip.external_url AS paper_external_url,
+         ip.title AS paper_title,
+         ip.authors AS paper_authors,
+         ip.publication_date AS paper_publication_date,
+         ip.doi AS paper_doi
+       FROM claim_requests cr
+       JOIN imported_preprints ip ON cr.import_id = ip.id
+       WHERE cr.claimant_did = $1
+       ORDER BY cr.created_at DESC`,
+      [claimantDid]
+    );
+
+    return result.rows.map((row) => this.rowToClaimRequestWithPaper(row));
+  }
+
+  /**
+   * Converts a database row with paper info to ClaimRequestWithPaper.
+   */
+  private rowToClaimRequestWithPaper(row: ClaimRequestWithPaperRow): ClaimRequestWithPaper {
+    const claim = this.rowToClaimRequest(row);
+    const authors: readonly ExternalAuthor[] =
+      typeof row.paper_authors === 'string'
+        ? (JSON.parse(row.paper_authors) as ExternalAuthor[])
+        : ((row.paper_authors as ExternalAuthor[] | undefined) ?? []);
+
+    return {
+      ...claim,
+      paper: {
+        source: row.paper_source,
+        externalId: row.paper_external_id,
+        externalUrl: row.paper_external_url,
+        title: row.paper_title,
+        authors,
+        publicationDate: row.paper_publication_date?.toISOString().split('T')[0],
+        doi: row.paper_doi ?? undefined,
+      },
+    };
   }
 
   /**

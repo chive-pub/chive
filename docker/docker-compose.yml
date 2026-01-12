@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     container_name: chive-postgres
     environment:
-      POSTGRES_DB: chive_test
+      POSTGRES_DB: chive
       POSTGRES_USER: chive
       POSTGRES_PASSWORD: chive_test_password
     ports:

@@ -8,7 +8,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { Agent } from '@atproto/api';
 import {
   uploadBlob,
-  uploadPdfDocument,
+  uploadDocument,
   createPreprintRecord,
   createFieldProposalRecord,
   createVoteRecord,
@@ -72,6 +72,37 @@ function createMockFile(name: string, type: string, size: number = 1024): File {
   return file;
 }
 
+/**
+ * Create a complete author reference for testing.
+ */
+function createTestAuthor(
+  overrides: Partial<{
+    did: string;
+    order: number;
+    name: string;
+    affiliations: { name: string; rorId?: string; department?: string }[];
+    contributions: {
+      typeUri: string;
+      typeId?: string;
+      typeLabel?: string;
+      degree: 'lead' | 'equal' | 'supporting';
+    }[];
+    isCorrespondingAuthor: boolean;
+    isHighlighted: boolean;
+  }> = {}
+) {
+  return {
+    did: 'did:plc:author1',
+    order: 1,
+    name: 'Test Author',
+    affiliations: [],
+    contributions: [],
+    isCorrespondingAuthor: false,
+    isHighlighted: false,
+    ...overrides,
+  };
+}
+
 // =============================================================================
 // TESTS
 // =============================================================================
@@ -97,35 +128,49 @@ describe('uploadBlob', () => {
   });
 });
 
-describe('uploadPdfDocument', () => {
+describe('uploadDocument', () => {
   it('uploads a PDF file', async () => {
     const agent = createMockAgent();
     const file = createMockFile('paper.pdf', 'application/pdf');
 
-    const result = await uploadPdfDocument(agent, file);
+    const result = await uploadDocument(agent, file);
 
     expect(result.blobRef).toBeDefined();
     expect(result.mimeType).toBe('application/pdf');
   });
 
-  it('throws error for non-PDF files', async () => {
+  it('uploads a DOCX file', async () => {
     const agent = createMockAgent();
-    const file = createMockFile('image.png', 'image/png');
+    const file = createMockFile(
+      'paper.docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
 
-    await expect(uploadPdfDocument(agent, file)).rejects.toThrow('File must be a PDF');
+    const result = await uploadDocument(agent, file);
+
+    expect(result.blobRef).toBeDefined();
+  });
+
+  it('uploads a Markdown file', async () => {
+    const agent = createMockAgent();
+    const file = createMockFile('paper.md', 'text/markdown');
+
+    const result = await uploadDocument(agent, file);
+
+    expect(result.blobRef).toBeDefined();
   });
 });
 
 describe('createPreprintRecord', () => {
   it('creates a preprint record in user PDS', async () => {
     const agent = createMockAgent();
-    const pdfFile = createMockFile('paper.pdf', 'application/pdf');
+    const documentFile = createMockFile('paper.pdf', 'application/pdf');
 
     const result = await createPreprintRecord(agent, {
-      pdfFile,
+      documentFile,
       title: 'Test Paper',
       abstract: 'This is a test abstract that is long enough to pass validation.',
-      authors: [{ did: 'did:plc:author1', order: 1, name: 'Test Author' }],
+      authors: [createTestAuthor()],
       fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
       license: 'cc-by-4.0',
     });
@@ -141,13 +186,13 @@ describe('createPreprintRecord', () => {
 
   it('includes optional fields when provided', async () => {
     const agent = createMockAgent();
-    const pdfFile = createMockFile('paper.pdf', 'application/pdf');
+    const documentFile = createMockFile('paper.pdf', 'application/pdf');
 
     await createPreprintRecord(agent, {
-      pdfFile,
+      documentFile,
       title: 'Test Paper',
       abstract: 'This is a test abstract that is long enough to pass validation.',
-      authors: [{ did: 'did:plc:author1', order: 1 }],
+      authors: [createTestAuthor()],
       fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
       keywords: ['machine learning', 'ai'],
       license: 'cc-by-4.0',
@@ -159,16 +204,37 @@ describe('createPreprintRecord', () => {
     expect(createRecordCall.record.license).toBe('cc-by-4.0');
   });
 
+  it('creates a preprint record with DOCX document', async () => {
+    const agent = createMockAgent();
+    const documentFile = createMockFile(
+      'paper.docx',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
+
+    const result = await createPreprintRecord(agent, {
+      documentFile,
+      documentFormat: 'docx',
+      title: 'Test Paper',
+      abstract: 'This is a test abstract that is long enough to pass validation.',
+      authors: [createTestAuthor()],
+      fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
+      license: 'cc-by-4.0',
+    });
+
+    expect(result.uri).toContain('pub.chive.preprint.submission');
+    expect(result.cid).toBeDefined();
+  });
+
   it('throws error when not authenticated', async () => {
     const agent = createMockAgent({ authenticated: false });
-    const pdfFile = createMockFile('paper.pdf', 'application/pdf');
+    const documentFile = createMockFile('paper.pdf', 'application/pdf');
 
     await expect(
       createPreprintRecord(agent, {
-        pdfFile,
+        documentFile,
         title: 'Test',
         abstract: 'This is a test abstract that is long enough to pass validation.',
-        authors: [{ did: 'did:plc:author1', order: 1 }],
+        authors: [createTestAuthor()],
         fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
         license: 'cc-by-4.0',
       })

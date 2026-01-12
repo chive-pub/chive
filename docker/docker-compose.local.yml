@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: chive
       POSTGRES_USER: chive
-      POSTGRES_PASSWORD: chive_local_password
+      POSTGRES_PASSWORD: chive_test_password
     ports:
       - "5432:5432"
     volumes:
@@ -54,7 +54,7 @@ services:
     image: neo4j:5-community
     container_name: chive-neo4j
     environment:
-      NEO4J_AUTH: neo4j/chive_local_password
+      NEO4J_AUTH: neo4j/chive_test_password
     ports:
       - "7474:7474"
       - "7687:7687"

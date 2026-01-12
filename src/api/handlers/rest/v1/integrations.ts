@@ -274,27 +274,40 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
     return c.json({ error: 'Preprint not found' }, 404);
   }
 
-  // Get supplementary links from preprint
-  // Note: The preprint model stores these in the Lexicon record
-  // They may be in pdfBlobRef.supplementaryLinks or a dedicated field
+  // Get supplementary links from preprint repositories field
   const supplementaryLinks: string[] = [];
 
-  // Check if preprint has a supplementaryLinks field (from the Lexicon schema)
-  // This depends on how the preprint record is structured
-  const preprintRecord = preprint as unknown as {
-    supplementaryLinks?: readonly string[];
-    codeRepository?: string;
-    dataRepository?: string;
-  };
-
-  if (preprintRecord.supplementaryLinks) {
-    supplementaryLinks.push(...preprintRecord.supplementaryLinks);
-  }
-  if (preprintRecord.codeRepository) {
-    supplementaryLinks.push(preprintRecord.codeRepository);
-  }
-  if (preprintRecord.dataRepository) {
-    supplementaryLinks.push(preprintRecord.dataRepository);
+  // Extract URLs from repositories field (new structured format)
+  if (preprint.repositories) {
+    // Code repositories
+    if (preprint.repositories.code) {
+      for (const repo of preprint.repositories.code) {
+        if (repo.url) supplementaryLinks.push(repo.url);
+        if (repo.archiveUrl) supplementaryLinks.push(repo.archiveUrl);
+      }
+    }
+    // Data repositories
+    if (preprint.repositories.data) {
+      for (const repo of preprint.repositories.data) {
+        if (repo.url) supplementaryLinks.push(repo.url);
+      }
+    }
+    // Pre-registration
+    if (preprint.repositories.preregistration?.url) {
+      supplementaryLinks.push(preprint.repositories.preregistration.url);
+    }
+    // Protocols
+    if (preprint.repositories.protocols) {
+      for (const protocol of preprint.repositories.protocols) {
+        if (protocol.url) supplementaryLinks.push(protocol.url);
+      }
+    }
+    // Materials
+    if (preprint.repositories.materials) {
+      for (const material of preprint.repositories.materials) {
+        if (material.url) supplementaryLinks.push(material.url);
+      }
+    }
   }
 
   // If no supplementary links, return empty response

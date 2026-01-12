@@ -7,15 +7,30 @@
  * - Facet extraction and formatting
  * - Author information normalization
  * - BlobRef metadata extraction (no blob data)
+ * - Publication metadata (status, published version, external IDs)
+ * - Repository links (code, data, protocols)
+ * - Supplementary materials
  * - PDS tracking for ATProto compliance
  * - Optional enrichment data (citations, endorsements)
  *
  * @packageDocumentation
  */
 
-import type { AtUri, BlobRef, DID } from '../../types/atproto.js';
+import type { AtUri, BlobRef } from '../../types/atproto.js';
 import type { Facet } from '../../types/interfaces/graph.interface.js';
-import type { Preprint } from '../../types/models/preprint.js';
+import type { PreprintAuthor } from '../../types/models/author.js';
+import type {
+  DocumentFormat,
+  ExternalIds,
+  Preprint,
+  PublicationStatus,
+  PublishedVersion,
+  RelatedWork,
+  Repositories,
+  SupplementaryMaterial,
+  FundingSource,
+  ConferencePresentation,
+} from '../../types/models/preprint.js';
 
 /**
  * Indexable preprint document for Elasticsearch.
@@ -35,6 +50,8 @@ export interface IndexablePreprintDocument {
   readonly title: string;
   readonly abstract: string;
   readonly authors?: readonly AuthorDocument[];
+  readonly submitted_by: string;
+  readonly paper_did?: string;
   readonly field_nodes?: readonly string[];
   readonly primary_field?: string;
   readonly keywords?: readonly string[];
@@ -54,11 +71,61 @@ export interface IndexablePreprintDocument {
   readonly created_at: string;
   readonly updated_at?: string;
   readonly language?: string;
-  readonly pdf_metadata?: PdfMetadata;
-  readonly pdf_blob_ref?: BlobRefDocument;
-  readonly pdf_base64?: string;
+
+  // Document metadata (format-agnostic)
+  readonly document_format: DocumentFormat;
+  readonly document_metadata?: DocumentMetadata;
+  readonly document_blob_ref?: BlobRefDocument;
+  readonly document_base64?: string;
+
+  // Supplementary materials
+  readonly supplementary_materials?: readonly SupplementaryMaterialDocument[];
+  readonly supplementary_count?: number;
+
+  // Publication metadata
+  readonly publication_status: PublicationStatus;
+  readonly published_version?: PublishedVersionDocument;
+  readonly external_ids?: ExternalIdsDocument;
+  readonly related_works?: readonly RelatedWorkDocument[];
+
+  // Repository links
+  readonly repositories?: RepositoriesDocument;
+  readonly has_code_repository?: boolean;
+  readonly has_data_repository?: boolean;
+
+  // Funding
+  readonly funding?: readonly FundingSourceDocument[];
+  readonly funder_names?: readonly string[];
+
+  // Conference
+  readonly conference_presentation?: ConferencePresentationDocument;
+
+  // PDS tracking
   readonly pds_url: string;
   readonly pds_endpoint?: string;
+}
+
+/**
+ * Author affiliation document for nested mapping.
+ *
+ * @public
+ */
+export interface AuthorAffiliationDocument {
+  readonly name: string;
+  readonly rorId?: string;
+  readonly department?: string;
+}
+
+/**
+ * Author contribution document for nested mapping.
+ *
+ * @public
+ */
+export interface AuthorContributionDocument {
+  readonly typeUri: string;
+  readonly typeId?: string;
+  readonly typeLabel?: string;
+  readonly degree: string;
 }
 
 /**
@@ -67,10 +134,14 @@ export interface IndexablePreprintDocument {
  * @public
  */
 export interface AuthorDocument {
-  readonly did: string;
+  readonly did?: string;
   readonly name: string;
   readonly orcid?: string;
-  readonly affiliation?: string;
+  readonly email?: string;
+  readonly affiliations: readonly AuthorAffiliationDocument[];
+  readonly contributions: readonly AuthorContributionDocument[];
+  readonly isCorrespondingAuthor: boolean;
+  readonly isHighlighted: boolean;
   readonly order: number;
 }
 
@@ -97,12 +168,13 @@ export interface FacetDocument {
 }
 
 /**
- * PDF metadata.
+ * Document metadata (format-agnostic).
  *
  * @public
  */
-export interface PdfMetadata {
+export interface DocumentMetadata {
   readonly page_count?: number;
+  readonly word_count?: number;
   readonly file_size: number;
   readonly content_type: string;
 }
@@ -116,6 +188,128 @@ export interface BlobRefDocument {
   readonly cid: string;
   readonly mime_type: string;
   readonly size: number;
+}
+
+/**
+ * Supplementary material document for nested mapping.
+ *
+ * @public
+ */
+export interface SupplementaryMaterialDocument {
+  readonly blob_cid: string;
+  readonly label: string;
+  readonly description?: string;
+  readonly category: string;
+  readonly detected_format?: string;
+  readonly order: number;
+}
+
+/**
+ * Published version document.
+ *
+ * @public
+ */
+export interface PublishedVersionDocument {
+  readonly doi?: string;
+  readonly url?: string;
+  readonly published_at?: string;
+  readonly journal?: string;
+  readonly journal_abbreviation?: string;
+  readonly journal_issn?: string;
+  readonly publisher?: string;
+  readonly volume?: string;
+  readonly issue?: string;
+  readonly pages?: string;
+  readonly article_number?: string;
+  readonly access_type?: string;
+}
+
+/**
+ * External identifiers document.
+ *
+ * @public
+ */
+export interface ExternalIdsDocument {
+  readonly arxiv_id?: string;
+  readonly pmid?: string;
+  readonly pmcid?: string;
+  readonly ssrn_id?: string;
+  readonly osf?: string;
+  readonly zenodo_doi?: string;
+  readonly openalex_id?: string;
+  readonly semantic_scholar_id?: string;
+}
+
+/**
+ * Related work document.
+ *
+ * @public
+ */
+export interface RelatedWorkDocument {
+  readonly identifier: string;
+  readonly identifier_type: string;
+  readonly relation_type: string;
+  readonly title?: string;
+}
+
+/**
+ * Code repository document.
+ *
+ * @public
+ */
+export interface CodeRepositoryDocument {
+  readonly url?: string;
+  readonly platform?: string;
+  readonly label?: string;
+  readonly swhid?: string;
+}
+
+/**
+ * Data repository document.
+ *
+ * @public
+ */
+export interface DataRepositoryDocument {
+  readonly url?: string;
+  readonly doi?: string;
+  readonly platform?: string;
+  readonly label?: string;
+}
+
+/**
+ * Repositories document.
+ *
+ * @public
+ */
+export interface RepositoriesDocument {
+  readonly code?: readonly CodeRepositoryDocument[];
+  readonly data?: readonly DataRepositoryDocument[];
+  readonly has_preregistration?: boolean;
+  readonly has_protocols?: boolean;
+}
+
+/**
+ * Funding source document.
+ *
+ * @public
+ */
+export interface FundingSourceDocument {
+  readonly funder_name?: string;
+  readonly funder_doi?: string;
+  readonly funder_ror?: string;
+  readonly grant_number?: string;
+}
+
+/**
+ * Conference presentation document.
+ *
+ * @public
+ */
+export interface ConferencePresentationDocument {
+  readonly conference_name?: string;
+  readonly conference_acronym?: string;
+  readonly presentation_type?: string;
+  readonly presentation_date?: string;
 }
 
 /**
@@ -133,7 +327,7 @@ export interface EnrichmentData {
   readonly viewCount?: number;
   readonly downloadCount?: number;
   readonly tags?: readonly string[];
-  readonly pdfBase64?: string;
+  readonly documentBase64?: string;
 }
 
 /**
@@ -180,7 +374,9 @@ export function mapPreprintToDocument(
     rkey: extractRkey(preprint.uri),
     title: preprint.title,
     abstract: preprint.abstract,
-    authors: mapAuthors(preprint.author, preprint.coAuthors),
+    authors: mapAuthors(preprint.authors),
+    submitted_by: preprint.submittedBy,
+    paper_did: preprint.paperDid,
     field_nodes: extractFieldNodes(preprint.facets),
     primary_field: extractPrimaryField(preprint.facets),
     keywords: preprint.keywords ? [...preprint.keywords] : undefined,
@@ -189,7 +385,7 @@ export function mapPreprintToDocument(
     authority_uris: extractAuthorityUris(preprint.facets),
     tags: enrichment?.tags ? [...enrichment.tags] : undefined,
     tag_count: enrichment?.tags?.length ?? 0,
-    doi: undefined,
+    doi: preprint.publishedVersion?.doi,
     version: preprint.version,
     previous_version: preprint.previousVersionUri,
     license: preprint.license,
@@ -199,9 +395,36 @@ export function mapPreprintToDocument(
     download_count: enrichment?.downloadCount ?? 0,
     created_at: timestampToIso(preprint.createdAt),
     updated_at: preprint.updatedAt ? timestampToIso(preprint.updatedAt) : undefined,
-    pdf_metadata: mapPdfMetadata(preprint.pdfBlobRef),
-    pdf_blob_ref: mapBlobRef(preprint.pdfBlobRef),
-    pdf_base64: enrichment?.pdfBase64,
+
+    // Document metadata (format-agnostic)
+    document_format: preprint.documentFormat,
+    document_metadata: mapDocumentMetadata(preprint.documentBlobRef),
+    document_blob_ref: mapBlobRef(preprint.documentBlobRef),
+    document_base64: enrichment?.documentBase64,
+
+    // Supplementary materials
+    supplementary_materials: mapSupplementaryMaterials(preprint.supplementaryMaterials),
+    supplementary_count: preprint.supplementaryMaterials?.length ?? 0,
+
+    // Publication metadata
+    publication_status: preprint.publicationStatus,
+    published_version: mapPublishedVersion(preprint.publishedVersion),
+    external_ids: mapExternalIds(preprint.externalIds),
+    related_works: mapRelatedWorks(preprint.relatedWorks),
+
+    // Repository links
+    repositories: mapRepositories(preprint.repositories),
+    has_code_repository: hasCodeRepository(preprint.repositories),
+    has_data_repository: hasDataRepository(preprint.repositories),
+
+    // Funding
+    funding: mapFunding(preprint.funding),
+    funder_names: extractFunderNames(preprint.funding),
+
+    // Conference
+    conference_presentation: mapConferencePresentation(preprint.conferencePresentation),
+
+    // PDS tracking
     pds_url: pdsUrl,
     pds_endpoint: extractPdsEndpoint(pdsUrl),
   };
@@ -231,37 +454,35 @@ function extractRkey(uri: AtUri): string {
 }
 
 /**
- * Maps author DID(s) to author documents.
+ * Maps preprint authors to author documents.
  *
- * @param primaryAuthor - Primary author DID
- * @param coAuthors - Co-author DIDs
+ * @param authors - Array of preprint authors
  * @returns Array of author documents
  *
  * @remarks
- * Author names are not available in the Preprint model.
- * They must be enriched from author profile service.
- * For now, we use DID as placeholder name.
+ * Now uses the full author data from the Preprint model.
  */
-function mapAuthors(primaryAuthor: DID, coAuthors?: readonly DID[]): readonly AuthorDocument[] {
-  const authors: AuthorDocument[] = [
-    {
-      did: primaryAuthor,
-      name: primaryAuthor,
-      order: 0,
-    },
-  ];
-
-  if (coAuthors) {
-    coAuthors.forEach((did, index) => {
-      authors.push({
-        did,
-        name: did,
-        order: index + 1,
-      });
-    });
-  }
-
-  return authors;
+function mapAuthors(authors: readonly PreprintAuthor[]): readonly AuthorDocument[] {
+  return authors.map((author) => ({
+    did: author.did,
+    name: author.name,
+    orcid: author.orcid,
+    email: author.email,
+    affiliations: author.affiliations.map((aff) => ({
+      name: aff.name,
+      rorId: aff.rorId,
+      department: aff.department,
+    })),
+    contributions: author.contributions.map((contrib) => ({
+      typeUri: contrib.typeUri,
+      typeId: contrib.typeId,
+      typeLabel: contrib.typeLabel,
+      degree: contrib.degree,
+    })),
+    isCorrespondingAuthor: author.isCorrespondingAuthor,
+    isHighlighted: author.isHighlighted,
+    order: author.order,
+  }));
 }
 
 /**
@@ -357,12 +578,12 @@ function extractAuthorityUris(facets: readonly Facet[]): readonly string[] | und
 }
 
 /**
- * Maps BlobRef to PDF metadata.
+ * Maps BlobRef to document metadata.
  *
- * @param blobRef - PDF BlobRef
- * @returns PDF metadata
+ * @param blobRef - Document BlobRef
+ * @returns Document metadata
  */
-function mapPdfMetadata(blobRef: BlobRef): PdfMetadata {
+function mapDocumentMetadata(blobRef: BlobRef): DocumentMetadata {
   return {
     file_size: blobRef.size,
     content_type: blobRef.mimeType,
@@ -384,6 +605,193 @@ function mapBlobRef(blobRef: BlobRef): BlobRefDocument {
     cid: blobRef.ref,
     mime_type: blobRef.mimeType,
     size: blobRef.size,
+  };
+}
+
+/**
+ * Maps supplementary materials to document structure.
+ *
+ * @param materials - Supplementary materials array
+ * @returns Supplementary material documents
+ */
+function mapSupplementaryMaterials(
+  materials?: readonly SupplementaryMaterial[]
+): readonly SupplementaryMaterialDocument[] | undefined {
+  if (!materials || materials.length === 0) return undefined;
+
+  return materials.map((m) => ({
+    blob_cid: m.blobRef.ref,
+    label: m.label,
+    description: m.description,
+    category: m.category,
+    detected_format: m.detectedFormat,
+    order: m.order,
+  }));
+}
+
+/**
+ * Maps published version to document structure.
+ *
+ * @param version - Published version
+ * @returns Published version document
+ */
+function mapPublishedVersion(version?: PublishedVersion): PublishedVersionDocument | undefined {
+  if (!version) return undefined;
+
+  return {
+    doi: version.doi,
+    url: version.url,
+    published_at: version.publishedAt ? timestampToIso(version.publishedAt) : undefined,
+    journal: version.journal,
+    journal_abbreviation: version.journalAbbreviation,
+    journal_issn: version.journalIssn,
+    publisher: version.publisher,
+    volume: version.volume,
+    issue: version.issue,
+    pages: version.pages,
+    article_number: version.articleNumber,
+    access_type: version.accessType,
+  };
+}
+
+/**
+ * Maps external IDs to document structure.
+ *
+ * @param ids - External identifiers
+ * @returns External IDs document
+ */
+function mapExternalIds(ids?: ExternalIds): ExternalIdsDocument | undefined {
+  if (!ids) return undefined;
+
+  return {
+    arxiv_id: ids.arxivId,
+    pmid: ids.pmid,
+    pmcid: ids.pmcid,
+    ssrn_id: ids.ssrnId,
+    osf: ids.osf,
+    zenodo_doi: ids.zenodoDoi,
+    openalex_id: ids.openAlexId,
+    semantic_scholar_id: ids.semanticScholarId,
+  };
+}
+
+/**
+ * Maps related works to document structure.
+ *
+ * @param works - Related works array
+ * @returns Related work documents
+ */
+function mapRelatedWorks(
+  works?: readonly RelatedWork[]
+): readonly RelatedWorkDocument[] | undefined {
+  if (!works || works.length === 0) return undefined;
+
+  return works.map((w) => ({
+    identifier: w.identifier,
+    identifier_type: w.identifierType,
+    relation_type: w.relationType,
+    title: w.title,
+  }));
+}
+
+/**
+ * Maps repositories to document structure.
+ *
+ * @param repos - Repositories
+ * @returns Repositories document
+ */
+function mapRepositories(repos?: Repositories): RepositoriesDocument | undefined {
+  if (!repos) return undefined;
+
+  return {
+    code: repos.code?.map((c) => ({
+      url: c.url,
+      platform: c.platform,
+      label: c.label,
+      swhid: c.swhid,
+    })),
+    data: repos.data?.map((d) => ({
+      url: d.url,
+      doi: d.doi,
+      platform: d.platform,
+      label: d.label,
+    })),
+    has_preregistration: repos.preregistration !== undefined,
+    has_protocols: repos.protocols !== undefined && repos.protocols.length > 0,
+  };
+}
+
+/**
+ * Checks if preprint has a code repository.
+ *
+ * @param repos - Repositories
+ * @returns True if code repository exists
+ */
+function hasCodeRepository(repos?: Repositories): boolean {
+  return repos?.code !== undefined && repos.code.length > 0;
+}
+
+/**
+ * Checks if preprint has a data repository.
+ *
+ * @param repos - Repositories
+ * @returns True if data repository exists
+ */
+function hasDataRepository(repos?: Repositories): boolean {
+  return repos?.data !== undefined && repos.data.length > 0;
+}
+
+/**
+ * Maps funding sources to document structure.
+ *
+ * @param funding - Funding sources array
+ * @returns Funding source documents
+ */
+function mapFunding(
+  funding?: readonly FundingSource[]
+): readonly FundingSourceDocument[] | undefined {
+  if (!funding || funding.length === 0) return undefined;
+
+  return funding.map((f) => ({
+    funder_name: f.funderName,
+    funder_doi: f.funderDoi,
+    funder_ror: f.funderRor,
+    grant_number: f.grantNumber,
+  }));
+}
+
+/**
+ * Extracts funder names for faceting.
+ *
+ * @param funding - Funding sources array
+ * @returns Funder names
+ */
+function extractFunderNames(funding?: readonly FundingSource[]): readonly string[] | undefined {
+  if (!funding || funding.length === 0) return undefined;
+
+  const names = funding.map((f) => f.funderName).filter((n): n is string => n !== undefined);
+
+  return names.length > 0 ? names : undefined;
+}
+
+/**
+ * Maps conference presentation to document structure.
+ *
+ * @param presentation - Conference presentation
+ * @returns Conference presentation document
+ */
+function mapConferencePresentation(
+  presentation?: ConferencePresentation
+): ConferencePresentationDocument | undefined {
+  if (!presentation) return undefined;
+
+  return {
+    conference_name: presentation.conferenceName,
+    conference_acronym: presentation.conferenceAcronym,
+    presentation_type: presentation.presentationType,
+    presentation_date: presentation.presentationDate
+      ? timestampToIso(presentation.presentationDate)
+      : undefined,
   };
 }
 

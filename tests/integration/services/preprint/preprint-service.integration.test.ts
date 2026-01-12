@@ -30,6 +30,7 @@ import type {
   ISearchEngine,
   IndexablePreprintDocument,
 } from '@/types/interfaces/search.interface.js';
+import type { PreprintAuthor } from '@/types/models/author.js';
 import type { Preprint } from '@/types/models/preprint.js';
 
 // Test constants
@@ -161,23 +162,36 @@ function createSearchEngine(client: Client): ISearchEngine {
  * Creates test preprint record.
  */
 function createTestPreprint(overrides: Partial<Preprint> = {}): Preprint {
+  const testAuthor: PreprintAuthor = {
+    did: TEST_AUTHOR,
+    name: 'Test Integration Author',
+    order: 1,
+    affiliations: [],
+    contributions: [],
+    isCorrespondingAuthor: true,
+    isHighlighted: false,
+  };
+
   return {
     $type: 'pub.chive.preprint.submission',
     uri: overrides.uri ?? createTestUri('default'),
     cid: overrides.cid ?? createTestCid('default'),
-    author: TEST_AUTHOR,
+    authors: overrides.authors ?? [testAuthor],
+    submittedBy: TEST_AUTHOR,
     title: overrides.title ?? 'Test Preprint Title',
     abstract: overrides.abstract ?? 'This is a test abstract for the preprint.',
     keywords: overrides.keywords ?? ['test', 'integration'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
     version: overrides.version ?? 1,
     license: overrides.license ?? 'CC-BY-4.0',
-    pdfBlobRef: overrides.pdfBlobRef ?? {
+    documentBlobRef: overrides.documentBlobRef ?? {
       $type: 'blob',
       ref: 'bafyreibtest123' as CID,
       mimeType: 'application/pdf',
       size: 1024000,
     },
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     createdAt: overrides.createdAt ?? (Date.now() as Timestamp),
     ...overrides,
   } as Preprint;
@@ -283,7 +297,8 @@ describe('PreprintService Integration', () => {
       const stored = await storage.getPreprint(uri);
       expect(stored).not.toBeNull();
       expect(stored?.title).toBe('PostgreSQL Test Preprint');
-      expect(stored?.author).toBe(TEST_AUTHOR);
+      expect(stored?.submittedBy).toBe(TEST_AUTHOR);
+      expect(stored?.authors[0]?.did).toBe(TEST_AUTHOR);
       expect(stored?.pdsUrl).toBe(TEST_PDS_URL);
     });
 
@@ -452,7 +467,7 @@ describe('PreprintService Integration', () => {
       const uri = createTestUri('blobref1');
       const cid = createTestCid('blobref1');
       const preprint = createTestPreprint({
-        pdfBlobRef: {
+        documentBlobRef: {
           $type: 'blob',
           ref: 'bafyreiblob123' as CID,
           mimeType: 'application/pdf',
@@ -465,13 +480,13 @@ describe('PreprintService Integration', () => {
       const stored = await storage.getPreprint(uri);
 
       // Verify BlobRef structure stored
-      expect(stored?.pdfBlobRef).toBeDefined();
-      expect(stored?.pdfBlobRef?.$type).toBe('blob');
-      expect(stored?.pdfBlobRef?.ref).toBeDefined();
-      expect(stored?.pdfBlobRef?.mimeType).toBe('application/pdf');
+      expect(stored?.documentBlobRef).toBeDefined();
+      expect(stored?.documentBlobRef?.$type).toBe('blob');
+      expect(stored?.documentBlobRef?.ref).toBeDefined();
+      expect(stored?.documentBlobRef?.mimeType).toBe('application/pdf');
 
       // Verify no blob data fields exist
-      const blobRefKeys = Object.keys(stored?.pdfBlobRef ?? {});
+      const blobRefKeys = Object.keys(stored?.documentBlobRef ?? {});
       expect(blobRefKeys).not.toContain('data');
       expect(blobRefKeys).not.toContain('content');
       expect(blobRefKeys).not.toContain('buffer');

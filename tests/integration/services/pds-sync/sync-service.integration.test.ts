@@ -26,6 +26,7 @@ import type { AtUri, CID, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IRepository, RepositoryRecord } from '@/types/interfaces/repository.interface.js';
 import type { StoredPreprint } from '@/types/interfaces/storage.interface.js';
+import type { PreprintAuthor } from '@/types/models/author.js';
 
 // Test constants
 const TEST_AUTHOR = 'did:plc:synctestauthor' as DID;
@@ -86,18 +87,31 @@ function createTestStoredPreprint(
   cid: CID,
   overrides: Partial<StoredPreprint> = {}
 ): StoredPreprint {
+  const testAuthor: PreprintAuthor = {
+    did: TEST_AUTHOR,
+    name: 'Test Sync Author',
+    order: 1,
+    affiliations: [],
+    contributions: [],
+    isCorrespondingAuthor: true,
+    isHighlighted: false,
+  };
+
   return {
     uri,
     cid,
-    author: TEST_AUTHOR,
+    authors: [testAuthor],
+    submittedBy: TEST_AUTHOR,
     title: 'Test Preprint for Sync',
     abstract: 'This is a test abstract for sync testing.',
-    pdfBlobRef: {
+    documentBlobRef: {
       $type: 'blob',
       ref: 'bafyreisyncblob123' as CID,
       mimeType: 'application/pdf',
       size: 1024000,
     },
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     license: 'CC-BY-4.0',
     pdsUrl: TEST_PDS_URL,
     indexedAt: new Date(),
@@ -121,10 +135,10 @@ describe('PDSSyncService Integration', () => {
   });
 
   beforeEach(async () => {
-    // Clean up test data: delete by author DID pattern
+    // Clean up test data: delete by submitted_by DID pattern
     const client = await pool.connect();
     try {
-      await client.query(`DELETE FROM preprints_index WHERE author_did = $1`, [TEST_AUTHOR]);
+      await client.query(`DELETE FROM preprints_index WHERE submitted_by = $1`, [TEST_AUTHOR]);
     } finally {
       client.release();
     }

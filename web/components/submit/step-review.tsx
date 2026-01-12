@@ -71,6 +71,22 @@ function ReviewSection({ title, icon, children }: ReviewSectionProps) {
  * @param props - Component props
  * @returns Review step element
  */
+/**
+ * Format display labels.
+ */
+const FORMAT_LABELS: Record<string, string> = {
+  pdf: 'PDF',
+  docx: 'Word Document',
+  html: 'HTML',
+  markdown: 'Markdown',
+  latex: 'LaTeX',
+  jupyter: 'Jupyter Notebook',
+  odt: 'OpenDocument',
+  rtf: 'Rich Text',
+  epub: 'EPUB',
+  txt: 'Plain Text',
+};
+
 export function StepReview({
   form,
   isSubmitting: _isSubmitting,
@@ -80,7 +96,8 @@ export function StepReview({
   const values = form.getValues();
 
   const {
-    pdfFile,
+    documentFile,
+    documentFormat,
     supplementaryFiles = [],
     title,
     abstract,
@@ -144,9 +161,14 @@ export function StepReview({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm">Primary Document</span>
-            {pdfFile ? (
+            {documentFile ? (
               <span className="text-sm font-medium">
-                {pdfFile.name} ({formatSize(pdfFile.size)})
+                {documentFile.name} ({formatSize(documentFile.size)})
+                {documentFormat && (
+                  <Badge variant="secondary" className="ml-2">
+                    {FORMAT_LABELS[documentFormat] ?? documentFormat.toUpperCase()}
+                  </Badge>
+                )}
               </span>
             ) : (
               <span className="text-sm text-destructive">Not uploaded</span>
@@ -216,7 +238,7 @@ export function StepReview({
               <div key={author.did} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">
-                    {author.displayName || author.handle || author.did}
+                    {author.name || author.handle || author.did}
                   </span>
                   {index === 0 && (
                     <Badge variant="secondary" className="text-xs">
@@ -254,9 +276,9 @@ export function StepReview({
       <section className="rounded-lg border border-muted bg-muted/30 p-4">
         <h4 className="font-medium mb-2">What Happens Next</h4>
         <ul className="text-sm text-muted-foreground space-y-1 list-inside list-disc">
-          <li>Your PDF will be uploaded to your Personal Data Server (PDS)</li>
+          <li>Your document will be uploaded to your Personal Data Server (PDS)</li>
           <li>A preprint record will be created in your PDS repository</li>
-          <li>Chive will index your preprint within a few minutes</li>
+          <li>Chive will extract and index the text for full-text search</li>
           <li>Your preprint will appear in search and browse results</li>
           <li>You can update or version your preprint at any time</li>
         </ul>

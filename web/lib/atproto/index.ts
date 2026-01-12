@@ -17,7 +17,7 @@ export {
   type VoteRecord,
   // Blob upload
   uploadBlob,
-  uploadPdfDocument,
+  uploadDocument,
   // Preprint records
   createPreprintRecord,
   // Governance records

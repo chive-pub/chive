@@ -28,7 +28,7 @@ export {
   type IndexablePreprintDocument,
   type AuthorDocument,
   type FacetDocument,
-  type PdfMetadata,
+  type DocumentMetadata,
   type BlobRefDocument,
   type EnrichmentData,
 } from './document-mapper.js';

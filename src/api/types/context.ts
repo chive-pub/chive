@@ -12,6 +12,7 @@
 import type { Redis } from 'ioredis';
 
 import type { ActivityService } from '../../services/activity/activity-service.js';
+import type { AlphaApplicationService } from '../../services/alpha/alpha-application-service.js';
 import type { BacklinkService } from '../../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
@@ -25,6 +26,7 @@ import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';
 import type { SearchService } from '../../services/search/search-service.js';
+import type { ContributionTypeManager } from '../../storage/neo4j/contribution-type-manager.js';
 import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type { DID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
@@ -44,6 +46,7 @@ export interface ChiveServices {
   readonly blobProxy: BlobProxyService;
   readonly review: ReviewService;
   readonly tagManager: TagManager;
+  readonly contributionTypeManager: ContributionTypeManager;
   readonly backlink: BacklinkService;
   readonly claiming: ClaimingService;
   readonly import: ImportService;
@@ -81,6 +84,11 @@ export interface AuthenticatedUser {
    * Premium tier flag for enhanced rate limits.
    */
   readonly isPremium: boolean;
+
+  /**
+   * Alpha tester flag for alpha access gating.
+   */
+  readonly isAlphaTester: boolean;
 
   /**
    * User's granted scopes.
@@ -149,6 +157,11 @@ export interface ChiveEnv {
      * Logger instance with request context.
      */
     logger: ILogger;
+
+    /**
+     * Alpha application service.
+     */
+    alphaService: AlphaApplicationService;
 
     /**
      * Authenticated user (undefined if anonymous).

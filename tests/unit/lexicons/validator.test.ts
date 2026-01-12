@@ -44,7 +44,7 @@ describe('LexiconValidator', () => {
         title: 'Frequency, acceptability, and selection: A case study of clause-embedding',
         abstract:
           'We investigate the relationship between distributional frequency and acceptability for clause-embedding verbs using the MegaAcceptability dataset.',
-        pdf: {
+        document: {
           $type: 'blob',
           ref: {
             $link: 'bafkreihgv2crvahfy7lp2o7q7igdv3kd7eaeyyfuwepqwvr24bxq6vhgcy',
@@ -52,6 +52,18 @@ describe('LexiconValidator', () => {
           mimeType: 'application/pdf',
           size: 1024000,
         },
+        authors: [
+          {
+            did: 'did:plc:abc123',
+            name: 'Jane Smith',
+            order: 1,
+            affiliations: [{ name: 'University of Example' }],
+            contributions: [],
+            isCorrespondingAuthor: true,
+            isHighlighted: false,
+          },
+        ],
+        submittedBy: 'did:plc:abc123',
         license: 'CC-BY-4.0',
         createdAt: new Date().toISOString(),
       };

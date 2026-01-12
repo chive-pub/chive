@@ -67,10 +67,11 @@ test.describe('Preprint submission', () => {
     // Should show step indicators in the progress navigation
     const progressNav = page.getByRole('navigation', { name: 'Progress' });
     await expect(progressNav.getByText('Files', { exact: true })).toBeVisible();
+    await expect(progressNav.getByText('Supplementary', { exact: true })).toBeVisible();
     await expect(progressNav.getByText('Metadata', { exact: true })).toBeVisible();
 
     // Should show the file upload area (first step of wizard)
-    await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
   });
 
   test.describe('submission wizard steps', () => {
@@ -78,7 +79,7 @@ test.describe('Preprint submission', () => {
       await page.goto('/submit');
 
       // Wait for wizard to load
-      await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
 
       // Click Next without uploading a file
       const nextButton = page.getByRole('button', { name: 'Next', exact: true });
@@ -86,14 +87,14 @@ test.describe('Preprint submission', () => {
 
       // Should stay on files step (validation prevents navigation without file)
       // Verify dropzone is still visible (we're still on files step)
-      await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
     });
 
     test('uploads PDF file and shows preview', async ({ page }) => {
       await page.goto('/submit');
 
       // Wait for file dropzone to be ready
-      await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
 
       // Create and upload a test PDF; use first file input (primary document).
       const primaryDocSection = page.locator('section').filter({ hasText: /primary document/i });
@@ -124,7 +125,11 @@ test.describe('Preprint submission', () => {
         buffer: pdfBuffer,
       });
 
-      // Click Next to proceed to metadata step
+      // Click Next to proceed to Supplementary step
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
+      await expect(page.getByRole('heading', { name: /supplementary materials/i })).toBeVisible();
+
+      // Click Next to proceed to Metadata step
       await page.getByRole('button', { name: 'Next', exact: true }).click();
 
       // Should be on metadata step; check for title input or metadata heading.
@@ -146,7 +151,11 @@ test.describe('Preprint submission', () => {
         buffer: createTestPdfBuffer(),
       });
 
-      // Go to metadata step
+      // Go to Supplementary step
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
+      await expect(page.getByRole('heading', { name: /supplementary materials/i })).toBeVisible();
+
+      // Go to Metadata step
       await page.getByRole('button', { name: 'Next', exact: true }).click();
 
       // Fill required metadata (wait for title input to be visible first)
@@ -158,11 +167,11 @@ test.describe('Preprint submission', () => {
           'This is a test abstract that needs to be at least 50 characters long for validation purposes.'
         );
 
-      // Go to authors step
+      // Go to Authors step
       await page.getByRole('button', { name: 'Next', exact: true }).click();
 
       // Should show authors step; verify the main Authors heading (level 3 in content area).
-      const authorsHeading = page.getByRole('heading', { name: 'Authors', level: 3 });
+      const authorsHeading = page.getByRole('heading', { name: 'Authors', exact: true, level: 3 });
       await expect(authorsHeading).toBeVisible();
     });
 
@@ -178,7 +187,11 @@ test.describe('Preprint submission', () => {
         buffer: createTestPdfBuffer(),
       });
 
-      // Files -> Metadata
+      // Files -> Supplementary
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
+      await expect(page.getByRole('heading', { name: /supplementary materials/i })).toBeVisible();
+
+      // Supplementary -> Metadata
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       await expect(page.getByLabel(/title/i)).toBeVisible();
       await page.getByLabel(/title/i).fill('Test Preprint');
@@ -191,16 +204,19 @@ test.describe('Preprint submission', () => {
       // Metadata -> Authors
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       // Wait for authors step to load
-      await expect(page.getByRole('heading', { name: 'Authors', level: 3 })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Authors', exact: true, level: 3 })
+      ).toBeVisible();
       // Wait for primary author to be added and author count to update
-      // The count "1/20 authors" indicates form state has the author
-      await expect(page.getByText('1/20 authors')).toBeVisible();
+      await expect(page.getByText(/1\/\d+ authors/)).toBeVisible();
 
       // Authors -> Fields
       await page.getByRole('button', { name: 'Next', exact: true }).click();
 
       // Wait for Authors heading to disappear (confirming navigation)
-      await expect(page.getByRole('heading', { name: 'Authors', level: 3 })).not.toBeVisible({
+      await expect(
+        page.getByRole('heading', { name: 'Authors', exact: true, level: 3 })
+      ).not.toBeVisible({
         timeout: 10000,
       });
 
@@ -221,7 +237,11 @@ test.describe('Preprint submission', () => {
         buffer: createTestPdfBuffer(),
       });
 
-      // Files -> Metadata
+      // Files -> Supplementary
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
+      await expect(page.getByRole('heading', { name: /supplementary materials/i })).toBeVisible();
+
+      // Supplementary -> Metadata
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       await expect(page.getByLabel(/title/i)).toBeVisible();
       await page.getByLabel(/title/i).fill('Test Preprint for Review');
@@ -234,14 +254,18 @@ test.describe('Preprint submission', () => {
       // Metadata -> Authors
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       // Wait for authors step to load
-      await expect(page.getByRole('heading', { name: 'Authors', level: 3 })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Authors', exact: true, level: 3 })
+      ).toBeVisible();
       // Wait for primary author to be added and author count to update
-      await expect(page.getByText('1/20 authors')).toBeVisible();
+      await expect(page.getByText(/1\/\d+ authors/)).toBeVisible();
 
       // Authors -> Fields (skip adding co-authors, primary author auto-added)
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       // Wait for fields step to load
-      await expect(page.getByRole('heading', { name: 'Authors', level: 3 })).not.toBeVisible({
+      await expect(
+        page.getByRole('heading', { name: 'Authors', exact: true, level: 3 })
+      ).not.toBeVisible({
         timeout: 10000,
       });
       await expect(page.getByRole('heading', { name: 'Research Fields', level: 3 })).toBeVisible();
@@ -268,7 +292,7 @@ async function navigateToReviewStep(page: Page) {
   await page.goto('/submit');
 
   // Wait for dropzone to be visible
-  await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
 
   // Step 1: Upload PDF
   const primaryDocSection = page.locator('section').filter({ hasText: /primary document/i });
@@ -282,19 +306,25 @@ async function navigateToReviewStep(page: Page) {
   // Verify file was uploaded
   await expect(page.getByText('test-preprint.pdf')).toBeVisible();
 
-  // Next -> Metadata
+  // Next -> Supplementary
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: /supplementary materials/i, level: 3 })
+  ).toBeVisible();
+
+  // Skip Supplementary (optional step) -> Metadata
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByLabel(/title/i)).toBeVisible();
 
-  // Step 2: Fill metadata
+  // Step 3: Fill metadata
   await page.getByLabel(/title/i).fill(FORM_DATA.validTitle);
   await page.getByLabel(/abstract/i).fill(FORM_DATA.validAbstract);
 
   // Next -> Authors
   await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('1/20 authors')).toBeVisible();
+  await expect(page.getByText(/1\/\d+ authors/)).toBeVisible();
 
-  // Step 3: Authors (primary auto-added)
+  // Step 4: Authors (primary auto-added)
   // Next -> Fields
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Research Fields', level: 3 })).toBeVisible();
@@ -336,6 +366,10 @@ async function navigateToReviewStep(page: Page) {
     );
   }
 
+  // Next -> Publication
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /publication status/i, level: 3 })).toBeVisible();
+
   // Next -> Review
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.locator('[data-testid="preview-step"]')).toBeVisible();
@@ -348,7 +382,7 @@ async function navigateToAuthorsStep(page: Page) {
   await page.goto('/submit');
 
   // Wait for dropzone to be visible
-  await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
 
   // Upload file
   const primaryDocSection = page.locator('section').filter({ hasText: /primary document/i });
@@ -362,7 +396,13 @@ async function navigateToAuthorsStep(page: Page) {
   // Verify file was uploaded
   await expect(page.getByText('test.pdf')).toBeVisible();
 
-  // Navigate to metadata
+  // Navigate to Supplementary
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: /supplementary materials/i, level: 3 })
+  ).toBeVisible();
+
+  // Skip Supplementary -> Metadata
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByLabel(/title/i)).toBeVisible();
 
@@ -372,7 +412,7 @@ async function navigateToAuthorsStep(page: Page) {
 
   // Navigate to authors
   await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('1/20 authors')).toBeVisible();
+  await expect(page.getByText(/1\/\d+ authors/)).toBeVisible();
 }
 
 /**
@@ -382,7 +422,7 @@ async function navigateToMetadataStep(page: Page) {
   await page.goto('/submit');
 
   // Wait for dropzone to be visible
-  await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
 
   // Upload file
   const primaryDocSection = page.locator('section').filter({ hasText: /primary document/i });
@@ -396,12 +436,18 @@ async function navigateToMetadataStep(page: Page) {
   // Verify file was uploaded
   await expect(page.getByText('test.pdf')).toBeVisible();
 
-  // Navigate to metadata
+  // Navigate to Supplementary
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: /supplementary materials/i, level: 3 })
+  ).toBeVisible();
+
+  // Skip Supplementary -> Metadata
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByLabel(/title/i)).toBeVisible();
 }
 
-test.describe('Step 5: Review and Submit', () => {
+test.describe('Step 7: Review and Submit', () => {
   test('displays submission summary with preview-step testid', async ({ page }) => {
     await navigateToReviewStep(page);
     await expect(page.locator('[data-testid="preview-step"]')).toBeVisible();
@@ -441,10 +487,12 @@ test.describe('Step 5: Review and Submit', () => {
     await expect(page.getByText('Linguistics')).toBeVisible();
   });
 
-  test('Back button returns to Fields step', async ({ page }) => {
+  test('Back button returns to Publication step', async ({ page }) => {
     await navigateToReviewStep(page);
     await page.getByRole('button', { name: /back/i }).click();
-    await expect(page.getByRole('heading', { name: 'Research Fields', level: 3 })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /publication status/i, level: 3 })
+    ).toBeVisible();
   });
 
   test('Submit button triggers submission process', async ({ page }) => {
@@ -469,37 +517,51 @@ test.describe('Step 5: Review and Submit', () => {
 test.describe('Co-Author Management', () => {
   test('displays author form with data-testid', async ({ page }) => {
     await navigateToAuthorsStep(page);
+    // Click Add Author button to show the form
+    await page.getByRole('button', { name: 'Add Author' }).click();
     await expect(page.locator('[data-testid="author-form"]')).toBeVisible();
   });
 
   test('can add co-author by entering valid DID', async ({ page }) => {
     await navigateToAuthorsStep(page);
 
+    // Click Add Author button to show the form
+    await page.getByRole('button', { name: 'Add Author' }).click();
+
     // Wait for author form and inputs
     const authorForm = page.locator('[data-testid="author-form"]');
     await expect(authorForm).toBeVisible();
+
+    // Switch to ATProto User mode (form defaults to External Collaborator)
+    await authorForm.getByRole('radio', { name: /atproto user/i }).click();
 
     const didInput = authorForm.getByPlaceholder('did:plc:...');
     const nameInput = authorForm.getByPlaceholder('Jane Doe');
     await expect(didInput).toBeVisible();
 
-    // Fill the form and click Add Author
+    // Fill the form and submit
     await didInput.fill(FORM_DATA.validDid);
     await nameInput.fill('Test Co-Author');
     await authorForm.getByRole('button', { name: 'Add Author' }).click();
 
     // Wait for the new author card to appear
     await expect(page.locator('[data-testid="author-card-1"]')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('2/20 authors')).toBeVisible();
+    await expect(page.getByText(/2\/\d+ authors/)).toBeVisible();
   });
 
   test('shows validation error for invalid DID format', async ({ page }) => {
     await navigateToAuthorsStep(page);
 
+    // Click Add Author button to show the form
+    await page.getByRole('button', { name: 'Add Author' }).click();
+
     const authorForm = page.locator('[data-testid="author-form"]');
     await expect(authorForm).toBeVisible();
 
-    // Fill invalid DID and click Add Author
+    // Switch to ATProto User mode (form defaults to External Collaborator)
+    await authorForm.getByRole('radio', { name: /atproto user/i }).click();
+
+    // Fill invalid DID and click Add Author in form
     await authorForm.getByPlaceholder('did:plc:...').fill(FORM_DATA.invalidDid);
     await authorForm.getByRole('button', { name: 'Add Author' }).click();
 
@@ -510,11 +572,18 @@ test.describe('Co-Author Management', () => {
   test('can add ORCID for co-author', async ({ page }) => {
     await navigateToAuthorsStep(page);
 
+    // Click Add Author button to show the form
+    await page.getByRole('button', { name: 'Add Author' }).click();
+
     const authorForm = page.locator('[data-testid="author-form"]');
     await expect(authorForm).toBeVisible();
 
-    // Fill DID and ORCID
+    // Switch to ATProto User mode (form defaults to External Collaborator)
+    await authorForm.getByRole('radio', { name: /atproto user/i }).click();
+
+    // Fill DID, Name, and ORCID (Name is required for ATProto User)
     await authorForm.getByPlaceholder('did:plc:...').fill(FORM_DATA.validDid);
+    await authorForm.getByPlaceholder('Jane Doe').fill('Test Co-Author');
     await authorForm.getByPlaceholder('0000-0002-1825-0097').fill(FORM_DATA.validOrcid);
     await authorForm.getByRole('button', { name: 'Add Author' }).click();
 
@@ -533,21 +602,28 @@ test.describe('Co-Author Management', () => {
   test('can remove co-author after adding', async ({ page }) => {
     await navigateToAuthorsStep(page);
 
+    // Click Add Author button to show the form
+    await page.getByRole('button', { name: 'Add Author' }).click();
+
     const authorForm = page.locator('[data-testid="author-form"]');
     await expect(authorForm).toBeVisible();
 
-    // Add co-author
+    // Switch to ATProto User mode (form defaults to External Collaborator)
+    await authorForm.getByRole('radio', { name: /atproto user/i }).click();
+
+    // Add co-author - both DID and Name are required
     await authorForm.getByPlaceholder('did:plc:...').fill(FORM_DATA.validDid);
+    await authorForm.getByPlaceholder('Jane Doe').fill('Test Co-Author');
     await authorForm.getByRole('button', { name: 'Add Author' }).click();
 
     // Wait for the author to be added
     await expect(page.locator('[data-testid="author-card-1"]')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('2/20 authors')).toBeVisible();
+    await expect(page.getByText(/2\/\d+ authors/)).toBeVisible();
 
     // Remove the second author
     const secondCard = page.locator('[data-testid="author-card-1"]');
     await secondCard.getByRole('button', { name: /remove/i }).click();
-    await expect(page.getByText('1/20 authors')).toBeVisible();
+    await expect(page.getByText(/1\/\d+ authors/)).toBeVisible();
   });
 });
 

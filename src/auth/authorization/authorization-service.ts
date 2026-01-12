@@ -97,11 +97,12 @@ const DEFAULT_CONFIG: Required<AuthorizationServiceConfig> = {
  * Role hierarchy for permission inheritance.
  */
 const ROLE_HIERARCHY: Record<Role, readonly Role[]> = {
-  admin: ['admin', 'moderator', 'authority-editor', 'author', 'reader'],
+  admin: ['admin', 'moderator', 'authority-editor', 'author', 'reader', 'alpha-tester'],
   moderator: ['moderator', 'authority-editor', 'author', 'reader'],
   'authority-editor': ['authority-editor', 'author', 'reader'],
   author: ['author', 'reader'],
   reader: ['reader'],
+  'alpha-tester': ['alpha-tester', 'author', 'reader'],
 };
 
 /**
@@ -167,6 +168,22 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'authority:read',
     'facet:read',
     'user:read',
+  ],
+  'alpha-tester': [
+    'preprint:read',
+    'preprint:create',
+    'preprint:update',
+    'review:read',
+    'review:create',
+    'endorsement:read',
+    'endorsement:create',
+    'tag:read',
+    'tag:create',
+    'field_node:read',
+    'authority:read',
+    'facet:read',
+    'user:read',
+    'user:update',
   ],
 };
 
@@ -541,7 +558,14 @@ export class AuthorizationService implements IAuthorizationService {
    */
   private getRolesWithPermission(resource: string, action: string): Role[] {
     const roles: Role[] = [];
-    const allRoles: Role[] = ['admin', 'moderator', 'authority-editor', 'author', 'reader'];
+    const allRoles: Role[] = [
+      'admin',
+      'moderator',
+      'authority-editor',
+      'author',
+      'reader',
+      'alpha-tester',
+    ];
 
     for (const role of allRoles) {
       const permissions = ROLE_PERMISSIONS[role] ?? [];

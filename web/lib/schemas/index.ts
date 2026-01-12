@@ -11,10 +11,11 @@
 // Preprint submission schemas
 export {
   // Constants
-  MAX_PDF_SIZE_BYTES,
+  MAX_DOCUMENT_SIZE_BYTES,
   MAX_SUPPLEMENTARY_SIZE_BYTES,
+  SUPPORTED_DOCUMENT_FORMATS,
   SUPPORTED_LICENSES,
-  SUPPLEMENTARY_TYPES,
+  SUPPLEMENTARY_CATEGORIES,
   EXTERNAL_LINK_TYPES,
   PMEST_DIMENSIONS,
   FAST_FACET_TYPES,
@@ -25,7 +26,8 @@ export {
   authorRefSchema,
   fieldNodeRefSchema,
   facetValueSchema,
-  supplementaryBlobSchema,
+  supplementaryMaterialSchema,
+  supplementaryMaterialInputSchema,
   externalLinkSchema,
   fundingSourceSchema,
   externalIdentifierSchema,
@@ -43,7 +45,8 @@ export {
   type AuthorRef,
   type FieldNodeRef,
   type FacetValue,
-  type SupplementaryBlob,
+  type SupplementaryMaterial,
+  type SupplementaryMaterialInput,
   type ExternalLink,
   type FundingSource,
   type ExternalIdentifier,

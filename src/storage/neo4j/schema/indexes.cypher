@@ -59,3 +59,10 @@ FOR (a:AuthorityRecord) ON EACH [a.authorizedForm, a.variantForms, a.scopeNote];
 // Full-text search index for tags
 CREATE FULLTEXT INDEX tagTextIndex IF NOT EXISTS
 FOR (t:UserTag) ON EACH [t.normalizedForm, t.rawForm];
+
+// Contribution type indexes
+CREATE INDEX contribution_type_status_idx IF NOT EXISTS
+FOR (ct:ContributionType) ON (ct.status);
+
+CREATE INDEX contribution_type_label_idx IF NOT EXISTS
+FOR (ct:ContributionType) ON (ct.label);

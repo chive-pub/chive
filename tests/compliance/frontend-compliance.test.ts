@@ -46,6 +46,7 @@ const PDS_WRITE_EXCLUDED_PATHS = [
   'lib/schemas',
   'lib/hooks',
   'lib/auth',
+  'components/governance', // User-initiated governance proposal writes to user's own PDS
 ];
 
 function findTsFiles(dir: string, files: string[] = []): string[] {

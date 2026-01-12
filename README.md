@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A decentralized preprint server built on AT Protocol</strong>
+  <strong>A decentralized eprint server built on AT Protocol</strong>
 </p>
 
 <p align="center">
@@ -25,9 +25,9 @@
 
 ## What is Chive?
 
-Chive is a scholarly preprint platform where researchers own their work. Built on [AT Protocol](https://atproto.com/), all content lives in user-controlled Personal Data Servers (PDSes), not on Chive's servers.
+Chive is a scholarly eprint platform where researchers own their work. It is built on [AT Protocol](https://atproto.com/), so all user content lives in user-controlled Personal Data Servers (PDSes), not on Chive's servers.
 
-**Key principle**: If Chive's entire database disappears tomorrow, you lose nothing. Your preprints, reviews, and endorsements remain in your PDS, accessible via any ATProto-compatible AppView.
+**Key principle**: If Chive's entire database disappears tomorrow, you lose nothing. Your eprints, reviews, and endorsements remain in your PDS, accessible via any ATProto-compatible AppView.
 
 ### Features
 
@@ -46,7 +46,7 @@ Chive operates as an **AppView** in the AT Protocol ecosystem:
 User → User's PDS (creates record) → Relay (firehose) → Chive AppView (indexes)
 ```
 
-- Users publish preprints to their own PDSes
+- Users publish eprints to their own PDSes
 - Chive indexes content from the ATProto firehose
 - All search and discovery happens through Chive
 - Users can switch AppViews without losing data

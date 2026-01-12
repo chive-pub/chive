@@ -16,6 +16,18 @@
  */
 
 import type { AtUri, BlobRef, CID, DID } from '../atproto.js';
+import type { PreprintAuthor } from '../models/author.js';
+import type {
+  ConferencePresentation,
+  DocumentFormat,
+  ExternalIds,
+  FundingSource,
+  PublicationStatus,
+  PublishedVersion,
+  RelatedWork,
+  Repositories,
+  SupplementaryMaterial,
+} from '../models/preprint.js';
 import type { Result } from '../result.js';
 
 /**
@@ -43,9 +55,32 @@ export interface StoredPreprint {
   readonly cid: CID;
 
   /**
-   * Author's DID.
+   * All authors with contributions, affiliations, and metadata.
+   *
+   * @remarks
+   * Unified author list including primary and co-authors.
+   * Order is determined by each author's `order` property.
    */
-  readonly author: DID;
+  readonly authors: readonly PreprintAuthor[];
+
+  /**
+   * DID of the human user who submitted this preprint.
+   *
+   * @remarks
+   * Always set to the human who performed the submission.
+   * May or may not appear in the authors list.
+   */
+  readonly submittedBy: DID;
+
+  /**
+   * DID of the paper's own account (if paper has its own PDS).
+   *
+   * @remarks
+   * Optional field for paper-centric account model.
+   * When set, blobs and the record itself live in the paper's PDS.
+   * When undefined, they live in the submitter's PDS.
+   */
+  readonly paperDid?: DID;
 
   /**
    * Preprint title.
@@ -64,13 +99,31 @@ export interface StoredPreprint {
   readonly abstract: string;
 
   /**
-   * Blob reference to PDF in user's PDS.
+   * Blob reference to primary document in user's PDS.
    *
    * @remarks
-   * This is a BlobRef (CID pointer), not blob data. The actual PDF remains
-   * in the user's PDS.
+   * This is a BlobRef (CID pointer), not blob data. The actual document
+   * remains in the user's PDS. Supports multiple formats (PDF, DOCX,
+   * HTML, Markdown, LaTeX, Jupyter, etc.).
    */
-  readonly pdfBlobRef: BlobRef;
+  readonly documentBlobRef: BlobRef;
+
+  /**
+   * Detected or user-specified document format.
+   *
+   * @remarks
+   * Auto-detected from MIME type and magic bytes. Defaults to 'pdf'.
+   */
+  readonly documentFormat: DocumentFormat;
+
+  /**
+   * Supplementary materials attached to this preprint.
+   *
+   * @remarks
+   * Additional files (appendices, figures, data, code, notebooks).
+   * Each item has metadata including category and display order.
+   */
+  readonly supplementaryMaterials?: readonly SupplementaryMaterial[];
 
   /**
    * AT URI of previous version (if this is an update).
@@ -97,11 +150,82 @@ export interface StoredPreprint {
   readonly keywords?: readonly string[];
 
   /**
+   * Research field references from the knowledge graph.
+   *
+   * @remarks
+   * Links to field nodes in the knowledge graph for categorization.
+   */
+  readonly fields?: readonly {
+    readonly uri: string;
+    readonly name: string;
+    readonly id?: string;
+    readonly parentUri?: string;
+  }[];
+
+  /**
    * License (SPDX identifier).
    *
    * @example "CC-BY-4.0", "MIT", "Apache-2.0"
    */
   readonly license: string;
+
+  /**
+   * Current publication status.
+   *
+   * @remarks
+   * Tracks progression from preprint through review to publication.
+   * Defaults to 'preprint' for new submissions.
+   */
+  readonly publicationStatus: PublicationStatus;
+
+  /**
+   * Link to the published version (Version of Record).
+   *
+   * @remarks
+   * Populated when preprint has been published in a journal.
+   */
+  readonly publishedVersion?: PublishedVersion;
+
+  /**
+   * External persistent identifiers.
+   *
+   * @remarks
+   * Links to external systems (arXiv, PubMed, SSRN, OpenAlex, etc.)
+   */
+  readonly externalIds?: ExternalIds;
+
+  /**
+   * Related works.
+   *
+   * @remarks
+   * Links to related preprints, datasets, software, and prior versions
+   * using DataCite-compatible relation types.
+   */
+  readonly relatedWorks?: readonly RelatedWork[];
+
+  /**
+   * Linked repositories.
+   *
+   * @remarks
+   * Code, data, protocols, and materials repositories.
+   */
+  readonly repositories?: Repositories;
+
+  /**
+   * Funding sources.
+   *
+   * @remarks
+   * Links to CrossRef Funder Registry and ROR for standardized IDs.
+   */
+  readonly funding?: readonly FundingSource[];
+
+  /**
+   * Conference presentation.
+   *
+   * @remarks
+   * Information about conference where this work was presented.
+   */
+  readonly conferencePresentation?: ConferencePresentation;
 
   /**
    * URL of the user's PDS where this preprint lives.
@@ -198,12 +322,14 @@ export interface IStorageBackend {
    *   author: toDID('did:plc:abc')!,
    *   title: 'Neural Networks in Biology',
    *   abstract: 'This paper explores...',
-   *   pdfBlobRef: {
+   *   documentBlobRef: {
    *     $type: 'blob',
    *     ref: toCID('bafyreib...')!,
    *     mimeType: 'application/pdf',
    *     size: 2048576
    *   },
+   *   documentFormat: 'pdf',
+   *   publicationStatus: 'preprint',
    *   pdsUrl: 'https://pds.example.com',
    *   indexedAt: new Date(),
    *   createdAt: new Date()

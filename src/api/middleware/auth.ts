@@ -18,8 +18,10 @@
 
 import type { MiddlewareHandler } from 'hono';
 
-import type { ServiceAuthVerifier } from '../../auth/service-auth/index.js';
+import type { IServiceAuthVerifier } from '../../auth/service-auth/index.js';
+import type { DID } from '../../types/atproto.js';
 import { AuthenticationError, AuthorizationError } from '../../types/errors.js';
+import type { IAuthorizationService } from '../../types/interfaces/authorization.interface.js';
 import type { ChiveEnv, AuthenticatedUser } from '../types/context.js';
 
 /**
@@ -50,6 +52,11 @@ function extractBearerToken(header: string | undefined): string | null {
  * By default, authentication is optional - requests without tokens
  * continue as anonymous. Use `requireAuth()` for mandatory auth.
  *
+ * **E2E Testing Support:**
+ * When `ENABLE_E2E_AUTH_BYPASS=true` and the `X-E2E-Auth-Did` header is set,
+ * authentication is bypassed and the user is set from the header. This is
+ * standard practice for E2E testing OAuth-protected APIs.
+ *
  * @example
  * ```typescript
  * const verifier = new ServiceAuthVerifier({
@@ -57,18 +64,46 @@ function extractBearerToken(header: string | undefined): string | null {
  *   config: { serviceDid: 'did:web:chive.pub' },
  * });
  *
- * app.use('*', authenticateServiceAuth(verifier));
+ * app.use('*', authenticateServiceAuth(verifier, authzService));
  * ```
  *
  * @param verifier - ATProto service auth verifier
+ * @param authzService - Authorization service for role lookup
  * @returns Hono middleware handler
  *
  * @public
  */
 export function authenticateServiceAuth(
-  verifier: ServiceAuthVerifier
+  verifier: IServiceAuthVerifier,
+  authzService: IAuthorizationService
 ): MiddlewareHandler<ChiveEnv> {
   return async (c, next) => {
+    // E2E test bypass: when enabled, accept X-E2E-Auth-Did header
+    // This is standard practice for E2E testing OAuth-protected APIs
+    const e2eAuthBypass = process.env.ENABLE_E2E_AUTH_BYPASS === 'true';
+    const e2eAuthDid = c.req.header('x-e2e-auth-did');
+
+    if (e2eAuthBypass && e2eAuthDid) {
+      const logger = c.get('logger');
+      logger.debug('E2E auth bypass: setting user from header', { did: e2eAuthDid });
+
+      // Create authenticated user with alpha tester access for E2E tests
+      const user: AuthenticatedUser = {
+        did: e2eAuthDid as DID,
+        handle: c.req.header('x-e2e-auth-handle'),
+        isAdmin: c.req.header('x-e2e-auth-admin') === 'true',
+        isPremium: false,
+        isAlphaTester: true, // E2E test users are always alpha testers
+        scopes: [],
+        sessionId: undefined,
+        tokenId: undefined,
+      };
+
+      c.set('user', user);
+      await next();
+      return;
+    }
+
     const authHeader = c.req.header('authorization');
     const token = extractBearerToken(authHeader);
 
@@ -97,13 +132,18 @@ export function authenticateServiceAuth(
       }
 
       // Build authenticated user from service auth result
-      // Note: Service auth JWTs don't have scopes; all authenticated users
-      // have base permissions. Admin/premium status should be looked up separately.
+      // Look up roles from authorization service (Redis-backed)
+      const roles = await authzService.getRoles(result.did);
+      const isAdmin = roles.includes('admin');
+      const isAlphaTester = roles.includes('alpha-tester') || isAdmin;
+      const isPremium = roles.includes('premium' as never) || isAdmin;
+
       const user: AuthenticatedUser = {
         did: result.did,
         handle: undefined, // Service auth doesn't include handle
-        isAdmin: false, // TODO: Look up from user registry
-        isPremium: false, // TODO: Look up from user registry
+        isAdmin,
+        isPremium,
+        isAlphaTester,
         scopes: [], // Service auth doesn't use scopes
         sessionId: undefined, // Service auth is stateless
         tokenId: undefined, // Service auth JWTs may have jti
@@ -182,6 +222,39 @@ export function requireAdmin(): MiddlewareHandler<ChiveEnv> {
 
     if (!user.isAdmin) {
       throw new AuthorizationError('Admin access required', 'admin');
+    }
+
+    await next();
+  };
+}
+
+/**
+ * Middleware that requires alpha tester role.
+ *
+ * @remarks
+ * Throws AuthorizationError if user is not an alpha tester.
+ * Admins are automatically granted alpha tester access.
+ * Should be applied after `authenticateServiceAuth()` and `requireAuth()`.
+ *
+ * @example
+ * ```typescript
+ * app.use('/xrpc/pub.chive.preprint.*', requireAuth(), requireAlphaTester());
+ * ```
+ *
+ * @returns Hono middleware handler
+ *
+ * @public
+ */
+export function requireAlphaTester(): MiddlewareHandler<ChiveEnv> {
+  return async (c, next) => {
+    const user = c.get('user');
+
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
+
+    if (!user.isAlphaTester) {
+      throw new AuthorizationError('Alpha tester access required', 'alpha-tester');
     }
 
     await next();

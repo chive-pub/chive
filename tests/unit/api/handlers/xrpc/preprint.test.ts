@@ -14,6 +14,7 @@ import type { PreprintView } from '@/services/preprint/preprint-service.js';
 import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
 import { NotFoundError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
+import type { PreprintAuthor } from '@/types/models/author.js';
 
 const createMockLogger = (): ILogger => ({
   debug: vi.fn(),
@@ -23,20 +24,33 @@ const createMockLogger = (): ILogger => ({
   child: vi.fn().mockReturnThis(),
 });
 
+const mockAuthor: PreprintAuthor = {
+  did: 'did:plc:author123' as DID,
+  name: 'Test Author',
+  order: 1,
+  affiliations: [],
+  contributions: [],
+  isCorrespondingAuthor: true,
+  isHighlighted: false,
+};
+
 const createMockPreprint = (overrides?: Partial<PreprintView>): PreprintView => ({
   uri: 'at://did:plc:author123/pub.chive.preprint.submission/abc123' as AtUri,
   cid: 'bafyreiabc123' as CID,
   title: 'Quantum Computing Advances',
   abstract: 'This paper presents advances in quantum computing...',
-  author: 'did:plc:author123' as DID,
+  authors: [mockAuthor],
+  submittedBy: 'did:plc:author123' as DID,
   license: 'CC-BY-4.0',
   pdsUrl: 'https://bsky.social',
-  pdfBlobRef: {
+  documentBlobRef: {
     $type: 'blob',
     ref: 'bafkreipdf123' as CID,
     mimeType: 'application/pdf',
     size: 1024000,
   },
+  documentFormat: 'pdf',
+  publicationStatus: 'preprint',
   createdAt: new Date('2024-01-15T10:00:00Z'),
   indexedAt: new Date('2024-01-15T10:05:00Z'),
   versions: [

@@ -75,7 +75,7 @@ describe('useField', () => {
   it('fetches field by ID', async () => {
     const mockField = createMockFieldDetail();
     mockApiGet.mockResolvedValueOnce({
-      data: { field: mockField },
+      data: mockField,
       error: undefined,
     });
 
@@ -102,7 +102,7 @@ describe('useField', () => {
   it('fetches field with relationships', async () => {
     const mockField = createMockFieldDetail();
     mockApiGet.mockResolvedValueOnce({
-      data: { field: mockField },
+      data: mockField,
       error: undefined,
     });
 

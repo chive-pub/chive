@@ -37,12 +37,12 @@ test.describe('404 Handling', () => {
 test.describe('Form Validation', () => {
   test('submit wizard prevents navigation without required fields', async ({ page }) => {
     await page.goto('/submit');
-    await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
 
     // Try clicking Next without uploading a file
     await page.getByRole('button', { name: 'Next', exact: true }).click();
 
     // Should stay on files step; dropzone still visible.
-    await expect(page.getByRole('button', { name: /drop your pdf/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /drop your document/i })).toBeVisible();
   });
 });

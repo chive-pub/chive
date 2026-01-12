@@ -1,0 +1,96 @@
+name: Deploy App
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            cd /opt/chive
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Create .env.production from secrets
+            cat > docker/.env.production << 'ENVEOF'
+            DOMAIN=${{ vars.DOMAIN }}
+            ACME_EMAIL=${{ vars.ACME_EMAIL }}
+            CHIVE_VERSION=latest
+
+            # Database credentials
+            POSTGRES_DB=chive
+            POSTGRES_USER=chive
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            NEO4J_USER=neo4j
+            NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}
+
+            # Redis
+            REDIS_URL=redis://redis:6379
+
+            # Application secrets
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+
+            # Governance PDS
+            GOVERNANCE_PDS_JWT_SECRET=${{ secrets.GOVERNANCE_PDS_JWT_SECRET }}
+            GOVERNANCE_PDS_ADMIN_PASSWORD=${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }}
+            GOVERNANCE_PDS_ROTATION_KEY=${{ secrets.GOVERNANCE_PDS_ROTATION_KEY }}
+
+            # Database URLs
+            DATABASE_URL=postgresql://chive:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/chive
+            REDIS_URL=redis://redis:6379
+            ELASTICSEARCH_URL=http://elasticsearch:9200
+            NEO4J_URL=bolt://neo4j:7687
+
+            # ATProto
+            ATPROTO_SERVICE_DID=${{ vars.ATPROTO_SERVICE_DID }}
+            ATPROTO_RELAY_URL=wss://bsky.network
+            ENVEOF
+
+            # Build and deploy
+            cd docker
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml build --no-cache chive-web
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Cleanup old images
+            docker system prune -f
+
+            echo "Deployment complete!"
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Wait for services to be healthy
+            sleep 30
+
+            # Check API health
+            curl -sf https://${{ vars.DOMAIN }}/api/health || echo "API health check failed"
+
+            # Check web health
+            curl -sf https://${{ vars.DOMAIN }}/ || echo "Web health check failed"
+
+            echo "Health checks complete"

@@ -151,13 +151,25 @@ export class PreprintService {
       const storeResult = await this.storage.storePreprint({
         uri: metadata.uri,
         cid: metadata.cid,
-        author: record.author,
+        authors: record.authors,
+        submittedBy: record.submittedBy,
+        paperDid: record.paperDid,
         title: record.title,
         abstract: record.abstract,
-        pdfBlobRef: record.pdfBlobRef,
+        documentBlobRef: record.documentBlobRef,
+        documentFormat: record.documentFormat,
+        supplementaryMaterials: record.supplementaryMaterials,
         previousVersionUri: record.previousVersionUri,
         versionNotes: record.versionNotes,
+        keywords: record.keywords,
         license: record.license,
+        publicationStatus: record.publicationStatus,
+        publishedVersion: record.publishedVersion,
+        externalIds: record.externalIds,
+        relatedWorks: record.relatedWorks,
+        repositories: record.repositories,
+        funding: record.funding,
+        conferencePresentation: record.conferencePresentation,
         pdsUrl: metadata.pdsUrl,
         indexedAt: metadata.indexedAt,
         createdAt: new Date(record.createdAt),
@@ -172,8 +184,11 @@ export class PreprintService {
 
       await this.storage.trackPDSSource(metadata.uri, metadata.pdsUrl, metadata.indexedAt);
 
-      const authorDoc = await this.identity.resolveDID(record.author);
-      const authorName = authorDoc?.alsoKnownAs?.[0] ?? record.author;
+      // Get primary author (first in list, or by order)
+      const primaryAuthor = record.authors.find((a) => a.order === 1) ?? record.authors[0];
+      const authorDid = primaryAuthor?.did ?? record.submittedBy;
+      const authorDoc = authorDid ? await this.identity.resolveDID(authorDid) : undefined;
+      const authorName = authorDoc?.alsoKnownAs?.[0] ?? primaryAuthor?.name ?? record.submittedBy;
 
       const subjects = record.facets
         .filter((f) => f.dimension === 'matter' || f.dimension === 'personality')
@@ -181,7 +196,7 @@ export class PreprintService {
 
       await this.search.indexPreprint({
         uri: metadata.uri,
-        author: record.author,
+        author: authorDid ?? record.submittedBy,
         authorName,
         title: record.title,
         abstract: record.abstract,
@@ -293,11 +308,13 @@ export class PreprintService {
         return { ok: false, error: new DatabaseError('QUERY', `Preprint not found: ${uri}`) };
       }
 
-      const pdsUrl = await this.identity.getPDSEndpoint(record.value.author);
+      // Determine which DID owns the record (paper's DID if set, otherwise submitter's)
+      const recordOwner = record.value.paperDid ?? record.value.submittedBy;
+      const pdsUrl = await this.identity.getPDSEndpoint(recordOwner);
       if (!pdsUrl) {
         return {
           ok: false,
-          error: new DatabaseError('QUERY', `PDS endpoint not found for: ${record.value.author}`),
+          error: new DatabaseError('QUERY', `PDS endpoint not found for: ${recordOwner}`),
         };
       }
 

@@ -5,19 +5,22 @@
  *
  * @remarks
  * Step 1 of the submission wizard. Handles:
- * - Primary PDF document upload
- * - Optional supplementary files
+ * - Primary document upload (PDF, DOCX, HTML, Markdown, LaTeX, Jupyter, etc.)
+ * - Auto-detection of document format
+ *
+ * Supplementary materials are handled in the next step (step-supplementary).
  *
  * @packageDocumentation
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, FileCheck } from 'lucide-react';
 
 import { FileDropzone, type SelectedFile } from '@/components/forms';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { PreprintFormValues } from './submission-wizard';
+import type { PreprintFormValues, DocumentFormatValue } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -37,22 +40,79 @@ export interface StepFilesProps {
 // CONSTANTS
 // =============================================================================
 
-const PDF_ACCEPT = {
+/**
+ * Accepted MIME types for primary document upload.
+ * Supports all manuscript formats.
+ */
+const DOCUMENT_ACCEPT = {
+  // Tier 1 - Essential (95%+ of submissions)
   'application/pdf': ['.pdf'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  'text/html': ['.html', '.htm'],
+  'text/markdown': ['.md', '.markdown'],
+  'text/x-markdown': ['.md', '.markdown'],
+
+  // Tier 2 - Important (40%+ in specialized fields)
+  'text/x-tex': ['.tex'],
+  'application/x-tex': ['.tex', '.latex'],
+  'application/x-ipynb+json': ['.ipynb'],
+  'application/vnd.oasis.opendocument.text': ['.odt'],
+
+  // Tier 3 - Supplementary formats
+  'application/rtf': ['.rtf'],
+  'text/rtf': ['.rtf'],
+  'application/epub+zip': ['.epub'],
+  'text/plain': ['.txt'],
 };
 
-const SUPPLEMENTARY_ACCEPT = {
-  'application/pdf': ['.pdf'],
-  'application/zip': ['.zip'],
-  'text/csv': ['.csv'],
-  'application/json': ['.json'],
-  'image/png': ['.png'],
-  'image/jpeg': ['.jpg', '.jpeg'],
+const MAX_DOCUMENT_SIZE = 52428800; // 50MB
+
+/**
+ * Maps file extensions to document formats.
+ */
+const EXTENSION_TO_FORMAT: Record<string, DocumentFormatValue> = {
+  pdf: 'pdf',
+  docx: 'docx',
+  html: 'html',
+  htm: 'html',
+  md: 'markdown',
+  markdown: 'markdown',
+  tex: 'latex',
+  latex: 'latex',
+  ipynb: 'jupyter',
+  odt: 'odt',
+  rtf: 'rtf',
+  epub: 'epub',
+  txt: 'txt',
 };
 
-const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50MB
-const MAX_SUPPLEMENTARY_SIZE = 100 * 1024 * 1024; // 100MB per file
-const MAX_SUPPLEMENTARY_FILES = 10;
+/**
+ * Format display labels.
+ */
+const FORMAT_LABELS: Record<DocumentFormatValue, string> = {
+  pdf: 'PDF',
+  docx: 'Word Document',
+  html: 'HTML',
+  markdown: 'Markdown',
+  latex: 'LaTeX',
+  jupyter: 'Jupyter Notebook',
+  odt: 'OpenDocument',
+  rtf: 'Rich Text',
+  epub: 'EPUB',
+  txt: 'Plain Text',
+};
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Detects document format from filename.
+ */
+function detectFormatFromFilename(filename: string): DocumentFormatValue | undefined {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  return ext ? EXTENSION_TO_FORMAT[ext] : undefined;
+}
 
 // =============================================================================
 // COMPONENT
@@ -65,61 +125,46 @@ const MAX_SUPPLEMENTARY_FILES = 10;
  * @returns File upload step element
  */
 export function StepFiles({ form, className }: StepFilesProps) {
-  const pdfFile = form.watch('pdfFile');
-  const watchedSupplementaryFiles = form.watch('supplementaryFiles');
-  const supplementaryFiles = useMemo(
-    () => watchedSupplementaryFiles ?? [],
-    [watchedSupplementaryFiles]
-  );
+  const documentFile = form.watch('documentFile');
+  const documentFormat = form.watch('documentFormat');
 
-  // Handle primary PDF selection
-  const handlePdfSelect = useCallback(
+  // Auto-detect format when file changes
+  useEffect(() => {
+    if (documentFile) {
+      const detected = detectFormatFromFilename(documentFile.name);
+      if (detected && detected !== documentFormat) {
+        form.setValue('documentFormat', detected, { shouldValidate: true });
+      }
+    } else if (documentFormat) {
+      form.setValue('documentFormat', undefined, { shouldValidate: true });
+    }
+  }, [documentFile, documentFormat, form]);
+
+  // Handle primary document selection
+  const handleDocumentSelect = useCallback(
     (files: SelectedFile[]) => {
       const validFile = files.find((f) => f.isValid);
       if (validFile) {
-        form.setValue('pdfFile', validFile.file, { shouldValidate: true });
+        form.setValue('documentFile', validFile.file, { shouldValidate: true });
       }
     },
     [form]
   );
 
-  // Handle PDF removal
-  const handlePdfRemove = useCallback(() => {
-    form.setValue('pdfFile', undefined, { shouldValidate: true });
+  // Handle document removal
+  const handleDocumentRemove = useCallback(() => {
+    form.setValue('documentFile', undefined, { shouldValidate: true });
+    form.setValue('documentFormat', undefined, { shouldValidate: true });
   }, [form]);
 
-  // Handle supplementary file selection
-  const handleSupplementarySelect = useCallback(
-    (files: SelectedFile[]) => {
-      const validFiles = files.filter((f) => f.isValid).map((f) => f.file);
-      form.setValue('supplementaryFiles', [...supplementaryFiles, ...validFiles], {
-        shouldValidate: true,
-      });
-    },
-    [form, supplementaryFiles]
-  );
-
-  // Handle supplementary file removal
-  const handleSupplementaryRemove = useCallback(
-    (file: SelectedFile) => {
-      const updated = supplementaryFiles.filter((f) => f !== file.file);
-      form.setValue('supplementaryFiles', updated, { shouldValidate: true });
-    },
-    [form, supplementaryFiles]
-  );
-
-  // Convert File array to SelectedFile array for display
-  const supplementarySelectedFiles: SelectedFile[] = supplementaryFiles.map((file) => ({
-    file,
-    isValid: true,
-  }));
-
-  // PDF selected files for display
-  const pdfSelectedFiles: SelectedFile[] = pdfFile ? [{ file: pdfFile, isValid: true }] : [];
+  // Document selected files for display
+  const documentSelectedFiles: SelectedFile[] = documentFile
+    ? [{ file: documentFile, isValid: true }]
+    : [];
 
   return (
     <div className={cn('space-y-8', className)}>
-      {/* Primary PDF */}
+      {/* Primary Document */}
       <section className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -127,62 +172,59 @@ export function StepFiles({ form, className }: StepFilesProps) {
             Primary Document
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload your preprint as a PDF file. Maximum file size is 50MB.
+            Upload your preprint manuscript. Supports PDF, Word, HTML, Markdown, LaTeX, Jupyter
+            notebooks, and more. Maximum file size is 50MB.
           </p>
         </div>
 
         <FileDropzone
-          accept={PDF_ACCEPT}
-          maxSize={MAX_PDF_SIZE}
+          accept={DOCUMENT_ACCEPT}
+          maxSize={MAX_DOCUMENT_SIZE}
           maxFiles={1}
-          selectedFiles={pdfSelectedFiles}
-          onFileSelect={handlePdfSelect}
-          onFileRemove={handlePdfRemove}
-          placeholder="Drop your PDF here or click to browse"
-          helpText="PDF format only, max 50MB"
+          selectedFiles={documentSelectedFiles}
+          onFileSelect={handleDocumentSelect}
+          onFileRemove={handleDocumentRemove}
+          placeholder="Drop your document here or click to browse"
+          helpText="PDF, DOCX, HTML, MD, TEX, IPYNB, ODT, RTF, EPUB, TXT accepted"
         />
 
-        {form.formState.errors.pdfFile && (
+        {/* Detected format indicator */}
+        {documentFormat && (
+          <div className="flex items-center gap-2">
+            <FileCheck className="h-4 w-4 text-green-500" />
+            <span className="text-sm text-muted-foreground">Detected format:</span>
+            <Badge variant="secondary">{FORMAT_LABELS[documentFormat]}</Badge>
+          </div>
+        )}
+
+        {form.formState.errors.documentFile && (
           <p className="text-sm text-destructive" data-testid="validation-error">
-            {form.formState.errors.pdfFile.message}
+            {form.formState.errors.documentFile.message}
           </p>
         )}
       </section>
 
-      {/* Supplementary Files */}
-      <section className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Supplementary Materials
-            <span className="text-sm font-normal text-muted-foreground">(optional)</span>
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add any supporting files such as data, code, or additional figures. Maximum 10 files,
-            100MB each.
-          </p>
-        </div>
-
-        <FileDropzone
-          accept={SUPPLEMENTARY_ACCEPT}
-          maxSize={MAX_SUPPLEMENTARY_SIZE}
-          maxFiles={MAX_SUPPLEMENTARY_FILES}
-          selectedFiles={supplementarySelectedFiles}
-          onFileSelect={handleSupplementarySelect}
-          onFileRemove={handleSupplementaryRemove}
-          placeholder="Drop supplementary files here or click to browse"
-          helpText="PDF, ZIP, CSV, JSON, PNG, JPG accepted"
-        />
-      </section>
-
       {/* File Requirements */}
       <section className="rounded-lg border border-muted bg-muted/30 p-4">
+        <h4 className="font-medium mb-2">Supported Document Formats</h4>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-muted-foreground mb-4">
+          <div>
+            <strong>Tier 1:</strong> PDF, DOCX, HTML, Markdown
+          </div>
+          <div>
+            <strong>Tier 2:</strong> LaTeX, Jupyter, ODT
+          </div>
+          <div>
+            <strong>Tier 3:</strong> RTF, EPUB, Plain Text
+          </div>
+        </div>
         <h4 className="font-medium mb-2">File Requirements</h4>
         <ul className="text-sm text-muted-foreground space-y-1 list-inside list-disc">
-          <li>PDF must be readable and not password-protected</li>
+          <li>Documents should not be password-protected</li>
           <li>All text should be selectable (not scanned images)</li>
-          <li>Figures and tables should be embedded in the document</li>
-          <li>Maximum file size: 50MB for primary, 100MB per supplementary file</li>
+          <li>LaTeX files should compile without errors</li>
+          <li>Jupyter notebooks should include all outputs</li>
+          <li>Maximum file size: 50MB</li>
         </ul>
       </section>
     </div>

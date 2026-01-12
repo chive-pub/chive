@@ -25,6 +25,7 @@ export interface TestUser {
   handle?: string;
   isAdmin?: boolean;
   isPremium?: boolean;
+  isAlphaTester?: boolean;
 }
 
 /**
@@ -37,6 +38,7 @@ export const TEST_USERS = {
     handle: 'testuser.test',
     isAdmin: false,
     isPremium: false,
+    isAlphaTester: true,
   } as TestUser,
 
   /** Admin user */
@@ -45,6 +47,7 @@ export const TEST_USERS = {
     handle: 'admin.test',
     isAdmin: true,
     isPremium: true,
+    isAlphaTester: true,
   } as TestUser,
 
   /** Premium user */
@@ -53,6 +56,7 @@ export const TEST_USERS = {
     handle: 'premium.test',
     isAdmin: false,
     isPremium: true,
+    isAlphaTester: true,
   } as TestUser,
 } as const;
 
@@ -89,6 +93,7 @@ export function createTestAuthMiddleware(user: TestUser | null): MiddlewareHandl
         handle: user.handle,
         isAdmin: user.isAdmin ?? false,
         isPremium: user.isPremium ?? false,
+        isAlphaTester: user.isAlphaTester ?? true,
         scopes: [],
         sessionId: 'test-session-id',
         tokenId: 'test-token-id',
@@ -151,6 +156,7 @@ export function createHeaderBasedTestAuthMiddleware(): MiddlewareHandler<ChiveEn
         handle: undefined,
         isAdmin: testUserDid.includes('admin'),
         isPremium: testUserDid.includes('premium'),
+        isAlphaTester: testUserDid.includes('alpha') || testUserDid.includes('admin'),
         scopes: [],
         sessionId: 'test-session-id',
         tokenId: 'test-token-id',

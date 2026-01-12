@@ -59,12 +59,14 @@ export function generatePreprint(did) {
     abstract: `This is a test abstract for performance benchmarking. Timestamp: ${timestamp}`,
     keywords: ['performance', 'test', 'benchmark'],
     facets: [],
-    pdfBlobRef: {
+    documentBlobRef: {
       $type: 'blob',
       ref: generateCid(),
       mimeType: 'application/pdf',
       size: 1024000 + Math.floor(Math.random() * 5000000),
     },
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     createdAt: new Date().toISOString(),
   };
 }

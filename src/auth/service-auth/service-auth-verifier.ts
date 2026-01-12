@@ -84,6 +84,25 @@ export interface ServiceAuthResult {
 }
 
 /**
+ * Interface for service auth verification.
+ *
+ * @remarks
+ * Allows injection of mock verifiers for testing.
+ *
+ * @public
+ */
+export interface IServiceAuthVerifier {
+  /**
+   * Verifies a service auth JWT.
+   *
+   * @param jwt - The JWT string
+   * @param lxm - Optional expected lexicon method
+   * @returns Verification result or null if invalid
+   */
+  verify(jwt: string, lxm?: string): Promise<ServiceAuthResult | null>;
+}
+
+/**
  * ATProto Service Auth JWT Verifier.
  *
  * @remarks
@@ -108,7 +127,7 @@ export interface ServiceAuthResult {
  *
  * @public
  */
-export class ServiceAuthVerifier {
+export class ServiceAuthVerifier implements IServiceAuthVerifier {
   private readonly logger: ILogger;
   private readonly config: ServiceAuthVerifierConfig;
   private readonly idResolver: IdResolver;

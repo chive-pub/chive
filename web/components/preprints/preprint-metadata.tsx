@@ -15,7 +15,7 @@ export interface PreprintMetadataProps {
   /** Keywords */
   keywords?: string[];
   /** License identifier */
-  license: string;
+  license?: string;
   /** DOI (if assigned) */
   doi?: string;
   /** Display layout */
@@ -151,7 +151,7 @@ export function KeywordList({ keywords, max = 10, className }: KeywordListProps)
  */
 export interface LicenseBadgeProps {
   /** License identifier (e.g., "CC-BY-4.0") */
-  license: string;
+  license?: string;
   /** Whether to show the full license name */
   showName?: boolean;
   /** Additional CSS classes */
@@ -162,6 +162,7 @@ export interface LicenseBadgeProps {
  * Displays a license badge with optional link to license details.
  */
 export function LicenseBadge({ license, showName = false, className }: LicenseBadgeProps) {
+  if (!license) return null;
   const licenseInfo = getLicenseInfo(license);
 
   return (

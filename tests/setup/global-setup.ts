@@ -15,7 +15,9 @@
 
 /* eslint-disable no-console */
 
-import { runner } from 'node-pg-migrate';
+import { execSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import {
   createElasticsearchClient,
@@ -23,6 +25,9 @@ import {
 } from '../../src/storage/elasticsearch/setup.js';
 import { createNeo4jDriver, setupNeo4j } from '../../src/storage/neo4j/setup.js';
 import { getMigrationConfig } from '../../src/storage/postgresql/config.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '../..');
 
 /**
  * Global setup function.
@@ -33,23 +38,26 @@ import { getMigrationConfig } from '../../src/storage/postgresql/config.js';
 export default async function setup(): Promise<void> {
   console.log('🔧 Running global test setup...');
 
-  // PostgreSQL migrations
+  // PostgreSQL migrations - use tsx to support TypeScript migrations
   try {
     const migrationConfig = getMigrationConfig();
-    await runner({
-      databaseUrl: migrationConfig.databaseUrl,
-      dir: migrationConfig.dir,
-      direction: 'up',
-      migrationsTable: migrationConfig.migrationsTable,
-      createMigrationsSchema: true,
-      log: () => {
-        // Suppress migration logs
-      },
-    });
+    execSync(
+      `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir ${migrationConfig.dir}`,
+      {
+        cwd: rootDir,
+        env: {
+          ...process.env,
+          DATABASE_URL: migrationConfig.databaseUrl,
+        },
+        stdio: 'pipe',
+      }
+    );
     console.log('✓ PostgreSQL migrations complete');
   } catch (error) {
     if (error instanceof Error && error.message.includes('Another migration is already running')) {
       console.log('✓ PostgreSQL migrations already running or complete');
+    } else if (error instanceof Error && error.message.includes('No migrations')) {
+      console.log('✓ PostgreSQL migrations already up to date');
     } else {
       throw error;
     }

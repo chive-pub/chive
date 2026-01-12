@@ -28,11 +28,20 @@ export const proposalStatusSchema = z.enum(['pending', 'approved', 'rejected', '
 
 export const proposalTypeSchema = z.enum(['create', 'update', 'merge', 'delete']);
 
+export const proposalCategorySchema = z.enum([
+  'field',
+  'contribution-type',
+  'facet',
+  'organization',
+  'reconciliation',
+]);
+
 export const voteValueSchema = z.enum(['approve', 'reject', 'abstain', 'request-changes']);
 
 export type VoterRole = z.infer<typeof voterRoleSchema>;
 export type ProposalStatus = z.infer<typeof proposalStatusSchema>;
 export type ProposalType = z.infer<typeof proposalTypeSchema>;
+export type ProposalCategory = z.infer<typeof proposalCategorySchema>;
 export type VoteValue = z.infer<typeof voteValueSchema>;
 
 // =============================================================================
@@ -46,6 +55,7 @@ export const proposalChangesSchema = z.object({
   parentId: z.string().optional(),
   mergeTargetId: z.string().optional(),
   wikidataId: z.string().optional(),
+  dimension: z.string().optional().describe('PMEST/FAST facet dimension for facet proposals'),
 });
 
 export type ProposalChanges = z.infer<typeof proposalChangesSchema>;
@@ -109,6 +119,7 @@ export type Vote = z.infer<typeof voteSchema>;
 // =============================================================================
 
 export const listProposalsParamsSchema = paginationQuerySchema.extend({
+  category: proposalCategorySchema.optional().describe('Filter by proposal category'),
   status: proposalStatusSchema.optional(),
   type: proposalTypeSchema.optional(),
   fieldId: z.string().optional(),
@@ -177,7 +188,11 @@ export const getUserVoteParamsSchema = z.object({
 
 export type GetUserVoteParams = z.infer<typeof getUserVoteParamsSchema>;
 
-export const getPendingCountParamsSchema = z.object({}).optional();
+export const getPendingCountParamsSchema = z
+  .object({
+    category: proposalCategorySchema.optional().describe('Filter by proposal category'),
+  })
+  .optional();
 
 export type GetPendingCountParams = z.infer<typeof getPendingCountParamsSchema>;
 

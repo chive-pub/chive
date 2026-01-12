@@ -2292,7 +2292,22 @@
             "items": { "type": "string" }
           },
           "doi": { "type": "string" },
-          "pdfBlobRef": { "$ref": "#/components/schemas/BlobRef" },
+          "documentBlobRef": { "$ref": "#/components/schemas/BlobRef" },
+          "documentFormat": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "docx",
+              "html",
+              "markdown",
+              "latex",
+              "jupyter",
+              "odt",
+              "rtf",
+              "epub",
+              "txt"
+            ]
+          },
           "version": { "type": "integer" },
           "createdAt": { "type": "string", "format": "date-time" },
           "indexedAt": { "type": "string", "format": "date-time" }

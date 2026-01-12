@@ -25,7 +25,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @param c - Hono context
  * @param params - Parameters
- * @returns User's claims
+ * @returns User's claims with paper details
  *
  * @public
  */
@@ -46,12 +46,13 @@ export async function getUserClaimsHandler(
     status: params.status,
   });
 
-  const allClaims = await claiming.getUserClaims(user.did);
+  // Fetch claims with paper details
+  const allClaims = await claiming.getUserClaimsWithPaper(user.did);
 
   // Filter by status if provided
-  let filteredClaims = allClaims;
+  let filteredClaims = [...allClaims];
   if (params.status) {
-    filteredClaims = allClaims.filter((c) => c.status === params.status);
+    filteredClaims = filteredClaims.filter((c) => c.status === params.status);
   }
 
   // Apply pagination
@@ -76,6 +77,20 @@ export async function getUserClaimsHandler(
       reviewedAt: claim.reviewedAt?.toISOString(),
       createdAt: claim.createdAt.toISOString(),
       expiresAt: claim.expiresAt?.toISOString(),
+      paper: {
+        source: claim.paper.source,
+        externalId: claim.paper.externalId,
+        externalUrl: claim.paper.externalUrl,
+        title: claim.paper.title,
+        authors: claim.paper.authors.map((a) => ({
+          name: a.name,
+          orcid: a.orcid,
+          affiliation: a.affiliation,
+          email: a.email,
+        })),
+        publicationDate: claim.paper.publicationDate,
+        doi: claim.paper.doi,
+      },
     })),
     cursor: hasMore ? (startIndex + limit).toString() : undefined,
     hasMore,

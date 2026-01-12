@@ -197,9 +197,32 @@ export type GetUserClaimsParams = z.infer<typeof getUserClaimsParamsSchema>;
 
 /**
  * Response for getting user's claims.
+ *
+ * @remarks
+ * Returns claims with full paper details for comprehensive display.
+ * Uses inline paper schema since claimRequestWithPaperSchema is defined later.
  */
 export const getUserClaimsResponseSchema = z.object({
-  claims: z.array(claimRequestSchema),
+  claims: z.array(
+    claimRequestSchema.extend({
+      paper: z.object({
+        source: z.string(),
+        externalId: z.string(),
+        externalUrl: z.string(),
+        title: z.string(),
+        authors: z.array(
+          z.object({
+            name: z.string(),
+            orcid: z.string().optional(),
+            affiliation: z.string().optional(),
+            email: z.string().optional(),
+          })
+        ),
+        publicationDate: z.string().optional(),
+        doi: z.string().optional(),
+      }),
+    })
+  ),
   cursor: z.string().optional(),
   hasMore: z.boolean(),
 });
@@ -362,6 +385,30 @@ export const externalPreprintAuthorSchema = z.object({
 });
 
 export type ExternalPreprintAuthor = z.infer<typeof externalPreprintAuthorSchema>;
+
+/**
+ * Paper details embedded in claim response.
+ */
+export const claimPaperDetailsSchema = z.object({
+  source: importSourceSchema.describe('Source system'),
+  externalId: z.string().describe('Source-specific identifier'),
+  externalUrl: z.string().url().describe('URL to the preprint'),
+  title: z.string().describe('Preprint title'),
+  authors: z.array(externalPreprintAuthorSchema).describe('Author list'),
+  publicationDate: z.string().optional().describe('Publication date'),
+  doi: z.string().optional().describe('DOI if assigned'),
+});
+
+export type ClaimPaperDetails = z.infer<typeof claimPaperDetailsSchema>;
+
+/**
+ * Claim request with paper details for display.
+ */
+export const claimRequestWithPaperSchema = claimRequestSchema.extend({
+  paper: claimPaperDetailsSchema.describe('Paper details from import'),
+});
+
+export type ClaimRequestWithPaper = z.infer<typeof claimRequestWithPaperSchema>;
 
 /**
  * External preprint schema.

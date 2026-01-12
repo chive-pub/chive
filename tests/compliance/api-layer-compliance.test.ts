@@ -46,6 +46,11 @@ import type {
 } from '@/types/interfaces/search.interface.js';
 import type { Preprint } from '@/types/models/preprint.js';
 
+import {
+  createMockAuthzService,
+  createMockAlphaService,
+  createMockContributionTypeManager,
+} from '../helpers/mock-services.js';
 import type {
   PreprintResponse,
   PreprintListResponse,
@@ -379,19 +384,32 @@ function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Prep
     $type: 'pub.chive.preprint.submission',
     uri,
     cid: overrides.cid ?? createTestCid('default'),
-    author: TEST_AUTHOR,
+    authors: overrides.authors ?? [
+      {
+        did: TEST_AUTHOR,
+        name: 'Compliance Test Author',
+        order: 1,
+        affiliations: [{ name: 'ATProto Compliance Lab' }],
+        contributions: [],
+        isCorrespondingAuthor: true,
+        isHighlighted: false,
+      },
+    ],
+    submittedBy: TEST_AUTHOR,
     title: overrides.title ?? 'ATProto Compliance Test Preprint',
     abstract: overrides.abstract ?? 'This preprint tests ATProto compliance requirements.',
     keywords: overrides.keywords ?? ['compliance', 'atproto', 'test'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
     version: overrides.version ?? 1,
     license: overrides.license ?? 'CC-BY-4.0',
-    pdfBlobRef: overrides.pdfBlobRef ?? {
+    documentBlobRef: overrides.documentBlobRef ?? {
       $type: 'blob',
       ref: 'bafyreibcompliance123' as CID,
       mimeType: 'application/pdf',
       size: 1024000,
     },
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     createdAt: overrides.createdAt ?? (Date.now() as Timestamp),
     ...overrides,
   } as Preprint;
@@ -475,12 +493,15 @@ describe('API Layer ATProto Compliance', () => {
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
       tagManager: createMockTagManager(),
+      contributionTypeManager: createMockContributionTypeManager(),
       backlinkService: createMockBacklinkService(),
       claimingService: createMockClaimingService(),
       importService: createMockImportService(),
       pdsSyncService: createMockPDSSyncService(),
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
+      authzService: createMockAuthzService(),
+      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',
@@ -547,13 +568,23 @@ describe('API Layer ATProto Compliance', () => {
       const uri = createTestUri('pds1');
       const cid = createTestCid('pds1');
       const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const indexResult = await preprintService.indexPreprint(
+        preprint,
+        createTestMetadata(uri, cid)
+      );
+
+      if (!indexResult.ok) {
+        throw new Error(`Failed to index preprint: ${indexResult.error.message}`);
+      }
 
       const res = await makeRequest(
         `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
-      expect(res.status).toBe(200);
+      if (res.status !== 200) {
+        const errorBody = await res.json();
+        throw new Error(`Expected 200 but got ${res.status}: ${JSON.stringify(errorBody)}`);
+      }
       const body = (await res.json()) as PreprintResponse;
 
       // CRITICAL: source field MUST be present
@@ -719,7 +750,7 @@ describe('API Layer ATProto Compliance', () => {
       const uri = createTestUri('blobref1');
       const cid = createTestCid('blobref1');
       const preprint = createTestPreprint(uri, {
-        pdfBlobRef: {
+        documentBlobRef: {
           $type: 'blob',
           ref: 'bafyreiblobreftest' as CID,
           mimeType: 'application/pdf',
@@ -977,7 +1008,7 @@ describe('API Layer ATProto Compliance', () => {
       const uri = createTestUri('exitblob1');
       const cid = createTestCid('exitblob1');
       const preprint = createTestPreprint(uri, {
-        pdfBlobRef: {
+        documentBlobRef: {
           $type: 'blob',
           ref: 'bafyreiexit123' as CID,
           mimeType: 'application/pdf',

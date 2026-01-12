@@ -105,7 +105,8 @@ const storedPreprint: StoredPreprint = {
   author: record.author,
   title: record.title,
   abstract: record.abstract,
-  pdfBlobRef: record.pdfBlobRef, // CID reference only
+  documentBlobRef: record.document, // CID reference only
+  documentFormat: 'pdf',
   pdsUrl: metadata.pdsUrl, // Track source PDS
   indexedAt: new Date(),
 };

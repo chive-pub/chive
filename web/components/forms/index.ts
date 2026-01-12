@@ -18,3 +18,86 @@ export {
   type SelectedFile,
   type AcceptedFileTypes,
 } from './file-dropzone';
+
+// Autocomplete components
+export {
+  AutocompleteInput,
+  type AutocompleteInputProps,
+  useAutocompleteSearch,
+} from './autocomplete-input';
+
+export {
+  DoiAutocomplete,
+  type DoiAutocompleteProps,
+  type CrossRefWork,
+  useExtractPublicationMetadata,
+} from './doi-autocomplete';
+
+export {
+  FunderAutocomplete,
+  type FunderAutocompleteProps,
+  type CrossRefFunder,
+} from './funder-autocomplete';
+
+export {
+  JournalAutocomplete,
+  type JournalAutocompleteProps,
+  type CrossRefJournal,
+} from './journal-autocomplete';
+
+export {
+  OrcidAutocomplete,
+  type OrcidAutocompleteProps,
+  type OrcidPerson,
+} from './orcid-autocomplete';
+
+export {
+  ArxivAutocomplete,
+  type ArxivAutocompleteProps,
+  type ArxivEntry,
+} from './arxiv-autocomplete';
+
+export {
+  PubmedAutocomplete,
+  type PubmedAutocompleteProps,
+  type PubmedEntry,
+} from './pubmed-autocomplete';
+
+export {
+  GithubRepoAutocomplete,
+  type GithubRepoAutocompleteProps,
+  type GithubRepo,
+} from './github-repo-autocomplete';
+
+export {
+  ZenodoAutocomplete,
+  type ZenodoAutocompleteProps,
+  type ZenodoRecord,
+  type ZenodoRecordType,
+} from './zenodo-autocomplete';
+
+export {
+  ConferenceAutocomplete,
+  type ConferenceAutocompleteProps,
+  type Conference,
+} from './conference-autocomplete';
+
+export {
+  AffiliationInput,
+  type AffiliationInputProps,
+  type AuthorAffiliation,
+} from './affiliation-input';
+
+export {
+  ContributionTypeSelector,
+  type ContributionTypeSelectorProps,
+  type ContributionType,
+  type SelectedContribution,
+  type ContributionDegree,
+} from './contribution-type-selector';
+
+export {
+  PreprintAuthorEditor,
+  type PreprintAuthorEditorProps,
+  type PreprintAuthorFormData,
+} from './preprint-author-editor';
