@@ -132,18 +132,20 @@ export default defineConfig({
         // Enable E2E auth bypass to allow testing without real OAuth tokens
         // This is standard practice for E2E testing OAuth-protected APIs
         ENABLE_E2E_AUTH_BYPASS: 'true',
-        // Database credentials matching test docker containers
-        POSTGRES_USER: 'chive',
-        POSTGRES_PASSWORD: 'chive_test_password',
-        POSTGRES_DB: 'chive',
-        POSTGRES_HOST: '127.0.0.1',
-        POSTGRES_PORT: '5432',
-        DATABASE_URL: 'postgresql://chive:chive_test_password@127.0.0.1:5432/chive',
-        NEO4J_USER: 'neo4j',
-        NEO4J_PASSWORD: 'chive_test_password',
-        NEO4J_URI: 'bolt://127.0.0.1:7687',
-        REDIS_URL: 'redis://127.0.0.1:6379',
-        ELASTICSEARCH_URL: 'http://127.0.0.1:9200',
+        // Database credentials - use env vars if set (CI), otherwise defaults for local
+        POSTGRES_USER: process.env.POSTGRES_USER ?? 'chive',
+        POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD ?? 'chive_test_password',
+        POSTGRES_DB: process.env.POSTGRES_DB ?? 'chive',
+        POSTGRES_HOST: process.env.POSTGRES_HOST ?? '127.0.0.1',
+        POSTGRES_PORT: process.env.POSTGRES_PORT ?? '5432',
+        DATABASE_URL:
+          process.env.DATABASE_URL ??
+          `postgresql://${process.env.POSTGRES_USER ?? 'chive'}:${process.env.POSTGRES_PASSWORD ?? 'chive_test_password'}@${process.env.POSTGRES_HOST ?? '127.0.0.1'}:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB ?? 'chive'}`,
+        NEO4J_USER: process.env.NEO4J_USER ?? 'neo4j',
+        NEO4J_PASSWORD: process.env.NEO4J_PASSWORD ?? 'chive_test_password',
+        NEO4J_URI: process.env.NEO4J_URI ?? 'bolt://127.0.0.1:7687',
+        REDIS_URL: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
+        ELASTICSEARCH_URL: process.env.ELASTICSEARCH_URL ?? 'http://127.0.0.1:9200',
       },
     },
     {
