@@ -18,7 +18,7 @@
  *
  * // Track PDS source when indexing a record
  * await tracker.trackSource(
- *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+ *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
  *   'https://pds.example.com',
  *   new Date()
  * );
@@ -91,7 +91,7 @@ export class PDSTracker {
    * @returns Result indicating success or failure
    *
    * @remarks
-   * Updates the `pds_url` and `indexed_at` fields in the preprints_index table.
+   * Updates the `pds_url` and `indexed_at` fields in the eprints_index table.
    * Should be called every time a record is indexed or re-indexed.
    *
    * **ATProto Compliance:** Essential for detecting when index is stale
@@ -100,7 +100,7 @@ export class PDSTracker {
    * @example
    * ```typescript
    * const result = await tracker.trackSource(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   'https://pds.example.com',
    *   new Date()
    * );
@@ -115,7 +115,7 @@ export class PDSTracker {
   async trackSource(uri: AtUri, pdsUrl: string, lastSynced: Date): Promise<Result<void, Error>> {
     try {
       const query = new UpdateBuilder<PDSTrackingRow>()
-        .table('preprints_index')
+        .table('eprints_index')
         .set({
           pds_url: pdsUrl,
           indexed_at: lastSynced,
@@ -150,7 +150,7 @@ export class PDSTracker {
    * @example
    * ```typescript
    * const pdsUrl = await tracker.getPDSUrl(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
    * if (pdsUrl) {
@@ -163,7 +163,7 @@ export class PDSTracker {
   async getPDSUrl(uri: AtUri): Promise<string | null> {
     try {
       const result = await this.pool.query<{ pds_url: string }>(
-        'SELECT pds_url FROM preprints_index WHERE uri = $1',
+        'SELECT pds_url FROM eprints_index WHERE uri = $1',
         [uri]
       );
 
@@ -191,7 +191,7 @@ export class PDSTracker {
    * @example
    * ```typescript
    * const lastSync = await tracker.getLastSyncTime(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
    * if (lastSync) {
@@ -205,7 +205,7 @@ export class PDSTracker {
   async getLastSyncTime(uri: AtUri): Promise<Date | null> {
     try {
       const result = await this.pool.query<{ indexed_at: Date }>(
-        'SELECT indexed_at FROM preprints_index WHERE uri = $1',
+        'SELECT indexed_at FROM eprints_index WHERE uri = $1',
         [uri]
       );
 

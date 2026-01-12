@@ -430,7 +430,7 @@ export class PrometheusMetrics implements IMetrics {
    * // With labels
    * metrics.observeHistogram('http_request_duration_seconds', duration, {
    *   method: 'GET',
-   *   endpoint: '/api/preprints',
+   *   endpoint: '/api/eprints',
    *   status: '200',
    * });
    *

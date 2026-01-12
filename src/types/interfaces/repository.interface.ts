@@ -46,8 +46,8 @@ export interface RepositoryRecord<T = unknown> {
    * Record value (schema-specific data).
    *
    * @remarks
-   * Type varies by collection NSID. For example, `pub.chive.preprint.submission`
-   * yields preprint data, while `pub.chive.review.comment` yields review data.
+   * Type varies by collection NSID. For example, `pub.chive.eprint.submission`
+   * yields eprint data, while `pub.chive.review.comment` yields review data.
    */
   readonly value: T;
 
@@ -142,8 +142,8 @@ export interface IRepository {
    *
    * @example
    * ```typescript
-   * const record = await repository.getRecord<PreprintRecord>(
-   *   toAtUri('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')!
+   * const record = await repository.getRecord<EprintRecord>(
+   *   toAtUri('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')!
    * );
    *
    * if (record) {
@@ -170,14 +170,14 @@ export interface IRepository {
    *
    * @example
    * ```typescript
-   * const preprints = repository.listRecords<PreprintRecord>(
+   * const eprints = repository.listRecords<EprintRecord>(
    *   toDID('did:plc:abc123')!,
-   *   toNSID('pub.chive.preprint.submission')!,
+   *   toNSID('pub.chive.eprint.submission')!,
    *   { limit: 10 }
    * );
    *
-   * for await (const record of preprints) {
-   *   console.log('Preprint:', record.value.title);
+   * for await (const record of eprints) {
+   *   console.log('Eprint:', record.value.title);
    * }
    * ```
    *

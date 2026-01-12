@@ -3,7 +3,7 @@
  *
  * @remarks
  * Starts a claim directly from an external search result.
- * Imports the preprint on-demand if not already imported.
+ * Imports the eprint on-demand if not already imported.
  *
  * @packageDocumentation
  * @public
@@ -29,11 +29,11 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  * @returns Created claim request
  *
  * @remarks
- * Implements "import on demand" - only imports the preprint when
+ * Implements "import on demand" - only imports the eprint when
  * a user actually wants to claim it.
  *
  * Flow:
- * 1. Check if preprint already imported
+ * 1. Check if eprint already imported
  * 2. If not, fetch from external source and import
  * 3. Create claim request
  *
@@ -48,7 +48,7 @@ export async function startClaimFromExternalHandler(
   const { claiming } = c.get('services');
 
   if (!user) {
-    throw new AuthenticationError('Authentication required to claim preprints');
+    throw new AuthenticationError('Authentication required to claim eprints');
   }
 
   logger.info('Starting claim from external', {

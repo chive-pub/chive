@@ -1,5 +1,5 @@
 /**
- * Zod validator for pub.chive.preprint.searchSubmissions
+ * Zod validator for pub.chive.eprint.searchSubmissions
  *
  * @remarks
  * Generated from Lexicon schema. DO NOT EDIT manually.
@@ -14,11 +14,11 @@ import { z } from 'zod';
 
 
 /**
- * Zod schema for pub.chive.preprint.searchSubmissions query parameters.
+ * Zod schema for pub.chive.eprint.searchSubmissions query parameters.
  *
  * @internal
  */
-export const preprintSearchSubmissionsParamsSchema = z.object({
+export const eprintSearchSubmissionsParamsSchema = z.object({
   q: z.string(),
   author: z.string().refine((val) => /^did:[a-z]+:[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid DID format" }).optional(),
   facets: z.array(z.string()).optional(),
@@ -27,26 +27,26 @@ export const preprintSearchSubmissionsParamsSchema = z.object({
 });
 
 /**
- * Zod schema for pub.chive.preprint.searchSubmissions query output.
+ * Zod schema for pub.chive.eprint.searchSubmissions query output.
  *
  * @internal
  */
-export const preprintSearchSubmissionsOutputSchema = z.object({
+export const eprintSearchSubmissionsOutputSchema = z.object({
   hits: z.array(z.object({ uri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }), score: z.number(), highlight: z.object({ title: z.array(z.string()).optional(), abstract: z.array(z.string()).optional() }).optional() })),
   cursor: z.string().optional(),
   facetAggregations: z.array(z.object({ dimension: z.string(), values: z.array(z.object({ value: z.string(), count: z.number().int() })) })).optional(),
 });
 
 /**
- * Type for pub.chive.preprint.searchSubmissions query parameters.
+ * Type for pub.chive.eprint.searchSubmissions query parameters.
  *
  * @public
  */
-export type PreprintSearchSubmissionsParams = z.infer<typeof preprintSearchSubmissionsParamsSchema>;
+export type EprintSearchSubmissionsParams = z.infer<typeof eprintSearchSubmissionsParamsSchema>;
 
 /**
- * Type for pub.chive.preprint.searchSubmissions query output.
+ * Type for pub.chive.eprint.searchSubmissions query output.
  *
  * @public
  */
-export type PreprintSearchSubmissionsOutput = z.infer<typeof preprintSearchSubmissionsOutputSchema>;
+export type EprintSearchSubmissionsOutput = z.infer<typeof eprintSearchSubmissionsOutputSchema>;

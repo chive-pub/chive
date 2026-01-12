@@ -4,7 +4,7 @@
  * @remarks
  * This module provides an abstract base class for plugins that index
  * backlinks from other ATProto applications (Semble, Leaflet, WhiteWind,
- * Bluesky) that reference Chive preprints.
+ * Bluesky) that reference Chive eprints.
  *
  * All backlinks follow ATProto compliance:
  * - Indexed from firehose (rebuildable by replay)
@@ -76,7 +76,7 @@ export interface FirehoseRecord {
  * Base class for plugins that track backlinks from ATProto ecosystem.
  *
  * @remarks
- * Provides common functionality for tracking references to Chive preprints
+ * Provides common functionality for tracking references to Chive eprints
  * from other ATProto applications:
  * - Firehose record filtering
  * - Backlink service integration
@@ -86,7 +86,7 @@ export interface FirehoseRecord {
  * Subclasses must implement:
  * - `trackedCollection` - ATProto collection to filter for
  * - `sourceType` - Type identifier for backlinks
- * - `extractPreprintRefs()` - Extracts preprint AT-URIs from records
+ * - `extractEprintRefs()` - Extracts eprint AT-URIs from records
  *
  * Subclasses may override:
  * - `extractContext()` - Extracts context (title, description) from records
@@ -99,10 +99,10 @@ export interface FirehoseRecord {
  *   readonly trackedCollection = 'xyz.semble.collection';
  *   readonly sourceType: BacklinkSourceType = 'semble.collection';
  *
- *   extractPreprintRefs(record: unknown): string[] {
+ *   extractEprintRefs(record: unknown): string[] {
  *     const collection = record as SembleCollection;
  *     return collection.items
- *       .filter(item => item.uri?.includes('pub.chive.preprint'))
+ *       .filter(item => item.uri?.includes('pub.chive.eprint'))
  *       .map(item => item.uri);
  *   }
  * }
@@ -204,7 +204,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * @param record - Record data
    *
    * @remarks
-   * Extracts preprint references and creates backlinks.
+   * Extracts eprint references and creates backlinks.
    */
   async handleRecord(uri: string, record: Record<string, unknown>): Promise<void> {
     // Check if we should process this record
@@ -212,10 +212,10 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
       return;
     }
 
-    // Extract preprint references
-    const preprintRefs = this.extractPreprintRefs(record);
+    // Extract eprint references
+    const eprintRefs = this.extractEprintRefs(record);
 
-    if (preprintRefs.length === 0) {
+    if (eprintRefs.length === 0) {
       return;
     }
 
@@ -223,13 +223,13 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
     const context = this.extractContext(record);
 
     // Create backlinks for each reference
-    for (const targetUri of preprintRefs) {
+    for (const targetUri of eprintRefs) {
       await this.createBacklink(uri, targetUri, context);
     }
 
     this.logger.debug('Processed backlinks from record', {
       uri,
-      targetCount: preprintRefs.length,
+      targetCount: eprintRefs.length,
     });
   }
 
@@ -262,7 +262,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * Creates a backlink.
    *
    * @param sourceUri - AT-URI of the source record
-   * @param targetUri - AT-URI of the target preprint
+   * @param targetUri - AT-URI of the target eprint
    * @param context - Optional context (title, description)
    *
    * @returns Created backlink
@@ -297,26 +297,26 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
   }
 
   /**
-   * Extracts preprint AT-URIs from a record.
+   * Extracts eprint AT-URIs from a record.
    *
    * @param record - Record data
-   * @returns Array of preprint AT-URIs referenced in the record
+   * @returns Array of eprint AT-URIs referenced in the record
    *
    * @remarks
    * Must be implemented by subclasses. Should extract all AT-URIs
-   * that reference Chive preprints (pub.chive.preprint.submission).
+   * that reference Chive eprints (pub.chive.eprint.submission).
    *
    * @example
    * ```typescript
-   * extractPreprintRefs(record: unknown): string[] {
+   * extractEprintRefs(record: unknown): string[] {
    *   const collection = record as SembleCollection;
    *   return collection.items
-   *     .filter(item => isPreprintUri(item.uri))
+   *     .filter(item => isEprintUri(item.uri))
    *     .map(item => item.uri);
    * }
    * ```
    */
-  abstract extractPreprintRefs(record: unknown): string[];
+  abstract extractEprintRefs(record: unknown): string[];
 
   /**
    * Extracts context from a record.
@@ -366,17 +366,17 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
   }
 
   /**
-   * Checks if a URI is a Chive preprint URI.
+   * Checks if a URI is a Chive eprint URI.
    *
    * @param uri - AT-URI to check
-   * @returns True if the URI references a Chive preprint
+   * @returns True if the URI references a Chive eprint
    *
    * @remarks
-   * Helper method for filtering URIs in `extractPreprintRefs()`.
+   * Helper method for filtering URIs in `extractEprintRefs()`.
    */
-  protected isPreprintUri(uri: string | undefined | null): uri is string {
+  protected isEprintUri(uri: string | undefined | null): uri is string {
     if (!uri) return false;
-    return uri.includes('pub.chive.preprint.submission');
+    return uri.includes('pub.chive.eprint.submission');
   }
 
   /**
@@ -394,8 +394,8 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
     const atUriPattern = /at:\/\/[a-zA-Z0-9:.]+\/[a-zA-Z0-9.]+\/[a-zA-Z0-9]+/g;
     const matches = text.match(atUriPattern) ?? [];
 
-    // Filter for Chive preprint URIs
-    return matches.filter((uri) => this.isPreprintUri(uri));
+    // Filter for Chive eprint URIs
+    return matches.filter((uri) => this.isEprintUri(uri));
   }
 
   /**

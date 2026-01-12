@@ -106,14 +106,14 @@ export interface IndexManagerConfig {
   /**
    * Default index name.
    *
-   * @defaultValue 'preprints'
+   * @defaultValue 'eprints'
    */
   readonly indexName?: string;
 
   /**
    * Ingest pipeline ID.
    *
-   * @defaultValue 'preprint-processing'
+   * @defaultValue 'eprint-processing'
    */
   readonly pipelineId?: string;
 
@@ -165,8 +165,8 @@ export interface IndexManagerConfig {
  * @public
  */
 export const DEFAULT_INDEX_MANAGER_CONFIG: Required<IndexManagerConfig> = {
-  indexName: 'preprints',
-  pipelineId: 'preprint-processing',
+  indexName: 'eprints',
+  pipelineId: 'eprint-processing',
   bulkChunkSize: 500,
   maxRetries: 3,
   refresh: false,

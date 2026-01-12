@@ -34,7 +34,7 @@ import type { ImportService } from '../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../services/metrics/metrics-service.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
-import type { PreprintService } from '../services/preprint/preprint-service.js';
+import type { EprintService } from '../services/eprint/eprint-service.js';
 import type { ReviewService } from '../services/review/review-service.js';
 import type { RankingService } from '../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../services/search/relevance-logger.js';
@@ -59,9 +59,9 @@ import type { ChiveEnv } from './types/context.js';
  */
 export interface ServerConfig {
   /**
-   * Preprint service instance.
+   * Eprint service instance.
    */
-  readonly preprintService: PreprintService;
+  readonly eprintService: EprintService;
 
   /**
    * Search service instance.
@@ -198,7 +198,7 @@ export interface ServerConfig {
  * @example
  * ```typescript
  * const app = createServer({
- *   preprintService,
+ *   eprintService,
  *   searchService,
  *   metricsService,
  *   graphService,
@@ -250,7 +250,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
   // 3. Inject services into context
   app.use('*', async (c, next) => {
     c.set('services', {
-      preprint: config.preprintService,
+      eprint: config.eprintService,
       search: config.searchService,
       metrics: config.metricsService,
       graph: config.graphService,

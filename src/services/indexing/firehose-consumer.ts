@@ -29,7 +29,7 @@
  *   relay: 'wss://bsky.network',
  *   cursor: await cursorManager.getCurrentCursor(),
  *   filter: {
- *     collections: ['pub.chive.preprint.submission']
+ *     collections: ['pub.chive.eprint.submission']
  *   }
  * });
  *
@@ -216,7 +216,7 @@ export class FirehoseConsumer implements IEventStreamConsumer {
    *   relay: 'wss://bsky.network',
    *   cursor: await cursorManager.getCurrentCursor()?.seq,
    *   filter: {
-   *     collections: ['pub.chive.preprint.submission']
+   *     collections: ['pub.chive.eprint.submission']
    *   }
    * });
    *

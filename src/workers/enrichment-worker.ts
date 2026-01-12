@@ -1,18 +1,18 @@
 /**
- * Enrichment worker for background preprint enrichment.
+ * Enrichment worker for background eprint enrichment.
  *
  * @remarks
- * Background worker using BullMQ for async preprint enrichment.
+ * Background worker using BullMQ for async eprint enrichment.
  * Fetches metadata from Semantic Scholar and OpenAlex, indexes
- * citations to Neo4j, and updates preprint records.
+ * citations to Neo4j, and updates eprint records.
  *
  * **Processing Flow:**
- * 1. Receive enrichment job with preprint URI/DOI/arXiv ID
+ * 1. Receive enrichment job with eprint URI/DOI/arXiv ID
  * 2. Fetch data from Semantic Scholar (citations, influence)
  * 3. Fetch data from OpenAlex (concepts, topics)
  * 4. Index Chive-to-Chive citations in Neo4j
- * 5. Update preprint record with enrichment data
- * 6. Emit `preprint.enriched` event
+ * 5. Update eprint record with enrichment data
+ * 6. Emit `eprint.enriched` event
  *
  * **ATProto Compliance:**
  * - Read-only external API access
@@ -32,7 +32,7 @@
  *
  * // Queue enrichment job
  * await EnrichmentWorker.enqueue(queue, {
- *   uri: 'at://did:plc:example/pub.chive.preprint.submission/abc',
+ *   uri: 'at://did:plc:example/pub.chive.eprint.submission/abc',
  *   doi: '10.1234/example',
  * });
  * ```
@@ -55,7 +55,7 @@ import type { ILogger } from '../types/interfaces/logger.interface.js';
 /**
  * Queue names.
  */
-export const ENRICHMENT_QUEUE_NAME = 'preprint-enrichment';
+export const ENRICHMENT_QUEUE_NAME = 'eprint-enrichment';
 
 /**
  * Job priority levels.
@@ -63,7 +63,7 @@ export const ENRICHMENT_QUEUE_NAME = 'preprint-enrichment';
 export const EnrichmentPriority = {
   /** User-triggered (claimed paper) - highest priority */
   CLAIMED: 1,
-  /** Recently indexed preprint */
+  /** Recently indexed eprint */
   INDEXED: 5,
   /** Background re-enrichment */
   BACKGROUND: 10,
@@ -76,7 +76,7 @@ export const EnrichmentPriority = {
  */
 export interface EnrichmentJobData {
   /**
-   * AT-URI of the preprint to enrich.
+   * AT-URI of the eprint to enrich.
    */
   readonly uri: AtUri;
 
@@ -91,12 +91,12 @@ export interface EnrichmentJobData {
   readonly arxivId?: string;
 
   /**
-   * Preprint title for text-based classification.
+   * Eprint title for text-based classification.
    */
   readonly title?: string;
 
   /**
-   * Preprint abstract for text-based classification.
+   * Eprint abstract for text-based classification.
    */
   readonly abstract?: string;
 
@@ -191,7 +191,7 @@ export interface EnrichmentMetrics {
 }
 
 /**
- * Enrichment worker for background preprint enrichment.
+ * Enrichment worker for background eprint enrichment.
  *
  * @remarks
  * Processes enrichment jobs asynchronously using BullMQ.
@@ -288,7 +288,7 @@ export class EnrichmentWorker {
       });
 
       // Emit enrichment event
-      this.eventBus.emit('preprint.enriched', {
+      this.eventBus.emit('eprint.enriched', {
         uri: job.data.uri,
         result,
         source: job.data.source ?? 'indexed',
@@ -329,7 +329,7 @@ export class EnrichmentWorker {
     });
 
     // Call discovery service for enrichment
-    const result = await this.discoveryService.enrichPreprint({
+    const result = await this.discoveryService.enrichEprint({
       uri,
       doi,
       arxivId,
@@ -345,7 +345,7 @@ export class EnrichmentWorker {
   }
 
   /**
-   * Enqueues a preprint for enrichment.
+   * Enqueues a eprint for enrichment.
    *
    * @param job - Enrichment job data
    * @returns Job ID
@@ -353,7 +353,7 @@ export class EnrichmentWorker {
    * @example
    * ```typescript
    * const jobId = await worker.enqueue({
-   *   uri: preprintUri,
+   *   uri: eprintUri,
    *   doi: '10.1234/example',
    *   source: 'indexed',
    * });
@@ -479,8 +479,8 @@ export class EnrichmentWorker {
  *
  * // In indexing pipeline
  * await EnrichmentWorker.enqueueJob(queue, {
- *   uri: preprintUri,
- *   doi: preprint.doi,
+ *   uri: eprintUri,
+ *   doi: eprint.doi,
  *   source: 'indexed',
  * });
  * ```

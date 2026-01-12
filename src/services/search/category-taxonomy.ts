@@ -2,7 +2,7 @@
  * Academic category taxonomy for ranking.
  *
  * @remarks
- * Comprehensive taxonomy mapping for academic preprint categorization,
+ * Comprehensive taxonomy mapping for academic eprint categorization,
  * including arXiv, LingBuzz, PsyArXiv, and cross-source mappings.
  *
  * **Data Sources:**
@@ -972,7 +972,7 @@ export const ARXIV_TAXONOMY: Record<string, CategoryInfo> = {
  * LingBuzz category taxonomy.
  *
  * @remarks
- * Categories used on LingBuzz linguistics preprint server.
+ * Categories used on LingBuzz linguistics eprint server.
  */
 export const LINGBUZZ_TAXONOMY: Record<string, CategoryInfo> = {
   'linguistics.syntax': {

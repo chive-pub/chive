@@ -121,7 +121,7 @@ export function getPluginManager(): PluginManager {
  * @example
  * ```typescript
  * const eventBus = getEventBus();
- * eventBus.emit('preprint.indexed', { uri, title });
+ * eventBus.emit('eprint.indexed', { uri, title });
  * ```
  *
  * @public

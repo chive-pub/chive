@@ -2,11 +2,11 @@
  * WhiteWind backlinks tracking plugin.
  *
  * @remarks
- * Tracks references to Chive preprints from WhiteWind blog posts.
+ * Tracks references to Chive eprints from WhiteWind blog posts.
  * WhiteWind (https://whitewind.pages.dev) is an ATProto-based blogging
  * platform that allows users to write long-form content.
  *
- * When a WhiteWind blog post mentions or embeds a Chive preprint,
+ * When a WhiteWind blog post mentions or embeds a Chive eprint,
  * this plugin creates a backlink for aggregation and discovery.
  *
  * Blog entry schema: com.whitewind.blog.entry
@@ -59,7 +59,7 @@ interface WhiteWindEmbed {
  * WhiteWind backlinks tracking plugin.
  *
  * @remarks
- * Tracks preprint references in WhiteWind blog posts via firehose
+ * Tracks eprint references in WhiteWind blog posts via firehose
  * and creates backlinks for discovery and aggregation.
  *
  * Extracts references from:
@@ -99,7 +99,7 @@ export class WhiteWindBacklinksPlugin extends BacklinkTrackingPlugin {
     id: 'pub.chive.plugin.whitewind-backlinks',
     name: 'WhiteWind Backlinks',
     version: '0.1.0',
-    description: 'Tracks references to Chive preprints from WhiteWind blog posts',
+    description: 'Tracks references to Chive eprints from WhiteWind blog posts',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -112,17 +112,17 @@ export class WhiteWindBacklinksPlugin extends BacklinkTrackingPlugin {
   };
 
   /**
-   * Extracts preprint AT-URIs from a WhiteWind blog entry.
+   * Extracts eprint AT-URIs from a WhiteWind blog entry.
    *
    * @param record - WhiteWind entry record
-   * @returns Array of preprint AT-URIs
+   * @returns Array of eprint AT-URIs
    */
-  extractPreprintRefs(record: unknown): string[] {
+  extractEprintRefs(record: unknown): string[] {
     const entry = record as WhiteWindEntry;
     const refs: string[] = [];
 
     // Check embedded record
-    if (entry.embed && this.isPreprintUri(entry.embed.uri)) {
+    if (entry.embed && this.isEprintUri(entry.embed.uri)) {
       refs.push(entry.embed.uri);
     }
 

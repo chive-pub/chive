@@ -59,7 +59,7 @@ export type ContributionType = z.infer<typeof contributionTypeSchema>;
  */
 export const endorsementSchema = z.object({
   uri: atUriSchema.describe('Endorsement AT-URI'),
-  preprintUri: atUriSchema.describe('Endorsed preprint AT-URI'),
+  eprintUri: atUriSchema.describe('Endorsed eprint AT-URI'),
   endorser: authorRefSchema.describe('Endorser'),
   contributions: z.array(contributionTypeSchema).min(1).describe('Contribution types'),
   comment: z.string().max(1000).optional().describe('Optional comment'),
@@ -93,22 +93,22 @@ export const endorsementSummarySchema = z.object({
 export type EndorsementSummary = z.infer<typeof endorsementSummarySchema>;
 
 /**
- * List endorsements for preprint params schema.
+ * List endorsements for eprint params schema.
  *
  * @public
  */
-export const listEndorsementsForPreprintParamsSchema = paginationQuerySchema.extend({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+export const listEndorsementsForEprintParamsSchema = paginationQuerySchema.extend({
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
   contributionType: contributionTypeSchema.optional().describe('Filter by contribution type'),
 });
 
 /**
- * List endorsements for preprint params type.
+ * List endorsements for eprint params type.
  *
  * @public
  */
-export type ListEndorsementsForPreprintParams = z.infer<
-  typeof listEndorsementsForPreprintParamsSchema
+export type ListEndorsementsForEprintParams = z.infer<
+  typeof listEndorsementsForEprintParamsSchema
 >;
 
 /**
@@ -117,7 +117,7 @@ export type ListEndorsementsForPreprintParams = z.infer<
  * @public
  */
 export const getEndorsementSummaryParamsSchema = z.object({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
 });
 
 /**
@@ -133,7 +133,7 @@ export type GetEndorsementSummaryParams = z.infer<typeof getEndorsementSummaryPa
  * @public
  */
 export const getUserEndorsementParamsSchema = z.object({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
   userDid: didSchema.describe('User DID'),
 });
 
@@ -150,7 +150,7 @@ export type GetUserEndorsementParams = z.infer<typeof getUserEndorsementParamsSc
  * @public
  */
 export const createEndorsementInputSchema = z.object({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
   contributions: z.array(contributionTypeSchema).min(1).describe('Contribution types'),
   comment: z.string().max(1000).optional().describe('Optional comment'),
 });

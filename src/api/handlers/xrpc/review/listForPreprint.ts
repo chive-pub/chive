@@ -1,8 +1,8 @@
 /**
- * XRPC handler for pub.chive.review.listForPreprint.
+ * XRPC handler for pub.chive.review.listForEprint.
  *
  * @remarks
- * Lists reviews for a specific preprint with optional filtering.
+ * Lists reviews for a specific eprint with optional filtering.
  *
  * @packageDocumentation
  * @public
@@ -13,9 +13,9 @@ import type { Context } from 'hono';
 import type { ReviewThread as ServiceReviewThread } from '../../../../services/review/review-service.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import {
-  listReviewsForPreprintParamsSchema,
+  listReviewsForEprintParamsSchema,
   reviewsResponseSchema,
-  type ListReviewsForPreprintParams,
+  type ListReviewsForEprintParams,
   type ReviewsResponse,
 } from '../../../schemas/review.js';
 import type { Review } from '../../../schemas/review.js';
@@ -39,7 +39,7 @@ function flattenThreads(threads: readonly ServiceReviewThread[]): Review[] {
         did: root.author,
         handle: 'unknown', // Handle would need DID resolution
       },
-      preprintUri: root.subject,
+      eprintUri: root.subject,
       content: root.text,
       body: undefined,
       target: undefined,
@@ -64,7 +64,7 @@ function flattenThreads(threads: readonly ServiceReviewThread[]): Review[] {
 }
 
 /**
- * Handler for pub.chive.review.listForPreprint query.
+ * Handler for pub.chive.review.listForEprint query.
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters
@@ -72,15 +72,15 @@ function flattenThreads(threads: readonly ServiceReviewThread[]): Review[] {
  *
  * @public
  */
-export async function listForPreprintHandler(
+export async function listForEprintHandler(
   c: Context<ChiveEnv>,
-  params: ListReviewsForPreprintParams
+  params: ListReviewsForEprintParams
 ): Promise<ReviewsResponse> {
   const logger = c.get('logger');
   const reviewService = c.get('services').review;
 
-  logger.debug('Listing reviews for preprint', {
-    preprintUri: params.preprintUri,
+  logger.debug('Listing reviews for eprint', {
+    eprintUri: params.eprintUri,
     motivation: params.motivation,
     inlineOnly: params.inlineOnly,
     limit: params.limit,
@@ -88,7 +88,7 @@ export async function listForPreprintHandler(
   });
 
   // Get threaded reviews and flatten them
-  const threads = await reviewService.getReviews(params.preprintUri as AtUri);
+  const threads = await reviewService.getReviews(params.eprintUri as AtUri);
   const allReviews = flattenThreads(threads);
 
   // Apply pagination
@@ -115,8 +115,8 @@ export async function listForPreprintHandler(
     total,
   };
 
-  logger.info('Reviews listed for preprint', {
-    preprintUri: params.preprintUri,
+  logger.info('Reviews listed for eprint', {
+    eprintUri: params.eprintUri,
     count: response.reviews.length,
   });
 
@@ -124,18 +124,18 @@ export async function listForPreprintHandler(
 }
 
 /**
- * Endpoint definition for pub.chive.review.listForPreprint.
+ * Endpoint definition for pub.chive.review.listForEprint.
  *
  * @public
  */
-export const listForPreprintEndpoint: XRPCEndpoint<ListReviewsForPreprintParams, ReviewsResponse> =
+export const listForEprintEndpoint: XRPCEndpoint<ListReviewsForEprintParams, ReviewsResponse> =
   {
-    method: 'pub.chive.review.listForPreprint' as never,
+    method: 'pub.chive.review.listForEprint' as never,
     type: 'query',
-    description: 'List reviews for a preprint',
-    inputSchema: listReviewsForPreprintParamsSchema,
+    description: 'List reviews for a eprint',
+    inputSchema: listReviewsForEprintParamsSchema,
     outputSchema: reviewsResponseSchema,
-    handler: listForPreprintHandler,
+    handler: listForEprintHandler,
     auth: 'none',
     rateLimit: 'anonymous',
   };

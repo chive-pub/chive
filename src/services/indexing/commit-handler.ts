@@ -25,7 +25,7 @@
  *   commit: 'bafyrei...',
  *   blocks: Uint8Array(...),  // CAR file bytes
  *   ops: [
- *     { action: 'create', path: 'pub.chive.preprint.submission/xyz', cid: 'bafyrei...' }
+ *     { action: 'create', path: 'pub.chive.eprint.submission/xyz', cid: 'bafyrei...' }
  *   ]
  * });
  *
@@ -334,7 +334,7 @@ export class CommitHandler {
    *
    * @remarks
    * Path format: `collection/rkey`
-   * Example: `pub.chive.preprint.submission/3kj5h2k3j5h`
+   * Example: `pub.chive.eprint.submission/3kj5h2k3j5h`
    *
    * @throws {Error}
    * Thrown if path format is invalid.
@@ -342,8 +342,8 @@ export class CommitHandler {
    * @example
    * ```typescript
    * const handler = new CommitHandler();
-   * const { collection, rkey } = handler.parsePath('pub.chive.preprint.submission/abc123');
-   * // collection: 'pub.chive.preprint.submission'
+   * const { collection, rkey } = handler.parsePath('pub.chive.eprint.submission/abc123');
+   * // collection: 'pub.chive.eprint.submission'
    * // rkey: 'abc123'
    * ```
    *

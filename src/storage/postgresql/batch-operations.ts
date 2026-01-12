@@ -25,7 +25,7 @@
 
 import type { Pool, PoolClient } from 'pg';
 
-import type { StoredPreprint } from '../../types/interfaces/storage.interface.js';
+import type { StoredEprint } from '../../types/interfaces/storage.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
 
 import { withTransaction } from './transaction.js';
@@ -157,8 +157,8 @@ export type BatchProgressCallback = (processed: number, total: number) => void;
  * const pool = createPool(config);
  * const batch = new BatchOperations(pool);
  *
- * // Bulk insert preprints
- * const result = await batch.batchInsertPreprints(preprints, {
+ * // Bulk insert eprints
+ * const result = await batch.batchInsertEprints(eprints, {
  *   batchSize: 500,
  *   continueOnError: true,
  *   onProgress: (processed, total) => {
@@ -193,15 +193,15 @@ export class BatchOperations {
   }
 
   /**
-   * Batch insert preprints with automatic chunking.
+   * Batch insert eprints with automatic chunking.
    *
-   * @param preprints - Preprints to insert
+   * @param eprints - Eprints to insert
    * @param config - Batch operation configuration
    * @param onProgress - Optional progress callback
    * @returns Result with success/failure counts
    *
    * @remarks
-   * Inserts preprints in batches using multi-row INSERT statements.
+   * Inserts eprints in batches using multi-row INSERT statements.
    * Each batch executes in its own transaction for atomicity.
    *
    * Failed rows are logged but don't prevent other rows from being inserted
@@ -209,7 +209,7 @@ export class BatchOperations {
    *
    * @example
    * ```typescript
-   * const result = await batch.batchInsertPreprints(preprints, {
+   * const result = await batch.batchInsertEprints(eprints, {
    *   batchSize: 500,
    *   onProgress: (processed, total) => {
    *     console.log(`Progress: ${processed}/${total}`);
@@ -219,24 +219,24 @@ export class BatchOperations {
    *
    * @public
    */
-  async batchInsertPreprints(
-    preprints: readonly StoredPreprint[],
+  async batchInsertEprints(
+    eprints: readonly StoredEprint[],
     config?: BatchConfig,
     onProgress?: BatchProgressCallback
-  ): Promise<Result<BatchResult<StoredPreprint>, Error>> {
+  ): Promise<Result<BatchResult<StoredEprint>, Error>> {
     const startTime = Date.now();
     const mergedConfig = { ...this.defaultConfig, ...config };
-    const failures: BatchFailure<StoredPreprint>[] = [];
+    const failures: BatchFailure<StoredEprint>[] = [];
     let successCount = 0;
 
     try {
-      const chunks = this.chunkArray(preprints, mergedConfig.batchSize);
+      const chunks = this.chunkArray(eprints, mergedConfig.batchSize);
 
       for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
         const chunk = chunks[chunkIndex];
         if (!chunk) continue;
 
-        const chunkResult = await this.insertPreprintChunk(chunk, mergedConfig, chunkIndex);
+        const chunkResult = await this.insertEprintChunk(chunk, mergedConfig, chunkIndex);
 
         if (chunkResult.ok) {
           successCount += chunkResult.value.successCount;
@@ -256,14 +256,14 @@ export class BatchOperations {
         }
 
         if (onProgress) {
-          onProgress(successCount + failures.length, preprints.length);
+          onProgress(successCount + failures.length, eprints.length);
         }
       }
 
       return Ok({
         successCount,
         failureCount: failures.length,
-        totalCount: preprints.length,
+        totalCount: eprints.length,
         failures,
         durationMs: Date.now() - startTime,
       });
@@ -275,7 +275,7 @@ export class BatchOperations {
   }
 
   /**
-   * Batch update preprint PDS tracking information.
+   * Batch update eprint PDS tracking information.
    *
    * @param updates - Array of URI and PDS tracking updates
    * @param config - Batch operation configuration
@@ -283,12 +283,12 @@ export class BatchOperations {
    * @returns Result with success/failure counts
    *
    * @remarks
-   * Updates PDS tracking information for multiple preprints efficiently.
+   * Updates PDS tracking information for multiple eprints efficiently.
    * Uses batched UPDATE statements with WHERE IN clauses.
    *
    * @example
    * ```typescript
-   * const updates = preprints.map(p => ({
+   * const updates = eprints.map(p => ({
    *   uri: p.uri,
    *   pdsUrl: p.pdsUrl,
    *   lastSynced: new Date()
@@ -355,20 +355,20 @@ export class BatchOperations {
   }
 
   /**
-   * Inserts a chunk of preprints in a single transaction.
+   * Inserts a chunk of eprints in a single transaction.
    *
-   * @param chunk - Preprints to insert
+   * @param chunk - Eprints to insert
    * @param config - Batch configuration
    * @param chunkIndex - Index of this chunk
    * @returns Result with success/failure counts for chunk
    *
    * @internal
    */
-  private async insertPreprintChunk(
-    chunk: readonly StoredPreprint[],
+  private async insertEprintChunk(
+    chunk: readonly StoredEprint[],
     config: Required<BatchConfig>,
     chunkIndex: number
-  ): Promise<Result<{ successCount: number; failures: BatchFailure<StoredPreprint>[] }, Error>> {
+  ): Promise<Result<{ successCount: number; failures: BatchFailure<StoredEprint>[] }, Error>> {
     let attempt = 0;
 
     while (attempt < config.maxRetries) {
@@ -377,7 +377,7 @@ export class BatchOperations {
       const result = await withTransaction(
         this.pool,
         async (client) => {
-          return this.executePreprintInsert(client, chunk, chunkIndex, config);
+          return this.executeEprintInsert(client, chunk, chunkIndex, config);
         },
         {
           isolationLevel: 'READ COMMITTED',
@@ -402,43 +402,43 @@ export class BatchOperations {
   }
 
   /**
-   * Executes preprint insert within a transaction.
+   * Executes eprint insert within a transaction.
    *
    * @param client - Database client
-   * @param chunk - Preprints to insert
+   * @param chunk - Eprints to insert
    * @param chunkIndex - Chunk index for error reporting
    * @param config - Batch configuration
    * @returns Success/failure counts
    *
    * @internal
    */
-  private async executePreprintInsert(
+  private async executeEprintInsert(
     client: PoolClient,
-    chunk: readonly StoredPreprint[],
+    chunk: readonly StoredEprint[],
     chunkIndex: number,
     config: Required<BatchConfig>
-  ): Promise<{ successCount: number; failures: BatchFailure<StoredPreprint>[] }> {
-    const failures: BatchFailure<StoredPreprint>[] = [];
+  ): Promise<{ successCount: number; failures: BatchFailure<StoredEprint>[] }> {
+    const failures: BatchFailure<StoredEprint>[] = [];
     let successCount = 0;
 
     if (config.continueOnError) {
       for (let i = 0; i < chunk.length; i++) {
-        const preprint = chunk[i];
-        if (!preprint) continue;
+        const eprint = chunk[i];
+        if (!eprint) continue;
 
         try {
-          await this.insertSinglePreprint(client, preprint);
+          await this.insertSingleEprint(client, eprint);
           successCount++;
         } catch (error) {
           failures.push({
-            item: preprint,
+            item: eprint,
             error: error instanceof Error ? error : new Error(String(error)),
             index: chunkIndex * config.batchSize + i,
           });
         }
       }
     } else {
-      await this.insertMultiplePreprints(client, chunk);
+      await this.insertMultipleEprints(client, chunk);
       successCount = chunk.length;
     }
 
@@ -446,16 +446,16 @@ export class BatchOperations {
   }
 
   /**
-   * Inserts a single preprint with UPSERT.
+   * Inserts a single eprint with UPSERT.
    *
    * @param client - Database client
-   * @param preprint - Preprint to insert
+   * @param eprint - Eprint to insert
    *
    * @internal
    */
-  private async insertSinglePreprint(client: PoolClient, preprint: StoredPreprint): Promise<void> {
+  private async insertSingleEprint(client: PoolClient, eprint: StoredEprint): Promise<void> {
     const query = `
-      INSERT INTO preprints_index (
+      INSERT INTO eprints_index (
         uri, cid, authors, submitted_by, paper_did, title, abstract,
         document_blob_cid, document_blob_mime_type, document_blob_size,
         document_format, keywords, license, publication_status,
@@ -493,42 +493,42 @@ export class BatchOperations {
     `;
 
     const params = [
-      preprint.uri,
-      preprint.cid,
-      JSON.stringify(preprint.authors),
-      preprint.submittedBy,
-      preprint.paperDid ?? null,
-      preprint.title,
-      preprint.abstract,
-      preprint.documentBlobRef.ref,
-      preprint.documentBlobRef.mimeType,
-      preprint.documentBlobRef.size,
-      preprint.documentFormat,
-      preprint.keywords ? JSON.stringify(preprint.keywords) : null,
-      preprint.license,
-      preprint.publicationStatus,
-      preprint.previousVersionUri ?? null,
-      preprint.versionNotes ?? null,
-      preprint.supplementaryMaterials ? JSON.stringify(preprint.supplementaryMaterials) : null,
-      preprint.publishedVersion ? JSON.stringify(preprint.publishedVersion) : null,
-      preprint.externalIds ? JSON.stringify(preprint.externalIds) : null,
-      preprint.relatedWorks ? JSON.stringify(preprint.relatedWorks) : null,
-      preprint.repositories ? JSON.stringify(preprint.repositories) : null,
-      preprint.funding ? JSON.stringify(preprint.funding) : null,
-      preprint.conferencePresentation ? JSON.stringify(preprint.conferencePresentation) : null,
-      preprint.pdsUrl,
-      preprint.indexedAt,
-      preprint.createdAt,
+      eprint.uri,
+      eprint.cid,
+      JSON.stringify(eprint.authors),
+      eprint.submittedBy,
+      eprint.paperDid ?? null,
+      eprint.title,
+      eprint.abstract,
+      eprint.documentBlobRef.ref,
+      eprint.documentBlobRef.mimeType,
+      eprint.documentBlobRef.size,
+      eprint.documentFormat,
+      eprint.keywords ? JSON.stringify(eprint.keywords) : null,
+      eprint.license,
+      eprint.publicationStatus,
+      eprint.previousVersionUri ?? null,
+      eprint.versionNotes ?? null,
+      eprint.supplementaryMaterials ? JSON.stringify(eprint.supplementaryMaterials) : null,
+      eprint.publishedVersion ? JSON.stringify(eprint.publishedVersion) : null,
+      eprint.externalIds ? JSON.stringify(eprint.externalIds) : null,
+      eprint.relatedWorks ? JSON.stringify(eprint.relatedWorks) : null,
+      eprint.repositories ? JSON.stringify(eprint.repositories) : null,
+      eprint.funding ? JSON.stringify(eprint.funding) : null,
+      eprint.conferencePresentation ? JSON.stringify(eprint.conferencePresentation) : null,
+      eprint.pdsUrl,
+      eprint.indexedAt,
+      eprint.createdAt,
     ];
 
     await client.query(query, params);
   }
 
   /**
-   * Inserts multiple preprints in a single statement.
+   * Inserts multiple eprints in a single statement.
    *
    * @param client - Database client
-   * @param preprints - Preprints to insert
+   * @param eprints - Eprints to insert
    *
    * @remarks
    * Uses multi-row INSERT for better performance.
@@ -536,18 +536,18 @@ export class BatchOperations {
    *
    * @internal
    */
-  private async insertMultiplePreprints(
+  private async insertMultipleEprints(
     client: PoolClient,
-    preprints: readonly StoredPreprint[]
+    eprints: readonly StoredEprint[]
   ): Promise<void> {
-    if (preprints.length === 0) return;
+    if (eprints.length === 0) return;
 
     const values: unknown[] = [];
     const valueClauses: string[] = [];
     let paramIndex = 1;
     const paramsPerRow = 26;
 
-    for (const preprint of preprints) {
+    for (const eprint of eprints) {
       const placeholders = Array.from(
         { length: paramsPerRow },
         (_, i) => `$${paramIndex + i}`
@@ -555,39 +555,39 @@ export class BatchOperations {
       valueClauses.push(`(${placeholders})`);
 
       values.push(
-        preprint.uri,
-        preprint.cid,
-        JSON.stringify(preprint.authors),
-        preprint.submittedBy,
-        preprint.paperDid ?? null,
-        preprint.title,
-        preprint.abstract,
-        preprint.documentBlobRef.ref,
-        preprint.documentBlobRef.mimeType,
-        preprint.documentBlobRef.size,
-        preprint.documentFormat,
-        preprint.keywords ? JSON.stringify(preprint.keywords) : null,
-        preprint.license,
-        preprint.publicationStatus,
-        preprint.previousVersionUri ?? null,
-        preprint.versionNotes ?? null,
-        preprint.supplementaryMaterials ? JSON.stringify(preprint.supplementaryMaterials) : null,
-        preprint.publishedVersion ? JSON.stringify(preprint.publishedVersion) : null,
-        preprint.externalIds ? JSON.stringify(preprint.externalIds) : null,
-        preprint.relatedWorks ? JSON.stringify(preprint.relatedWorks) : null,
-        preprint.repositories ? JSON.stringify(preprint.repositories) : null,
-        preprint.funding ? JSON.stringify(preprint.funding) : null,
-        preprint.conferencePresentation ? JSON.stringify(preprint.conferencePresentation) : null,
-        preprint.pdsUrl,
-        preprint.indexedAt,
-        preprint.createdAt
+        eprint.uri,
+        eprint.cid,
+        JSON.stringify(eprint.authors),
+        eprint.submittedBy,
+        eprint.paperDid ?? null,
+        eprint.title,
+        eprint.abstract,
+        eprint.documentBlobRef.ref,
+        eprint.documentBlobRef.mimeType,
+        eprint.documentBlobRef.size,
+        eprint.documentFormat,
+        eprint.keywords ? JSON.stringify(eprint.keywords) : null,
+        eprint.license,
+        eprint.publicationStatus,
+        eprint.previousVersionUri ?? null,
+        eprint.versionNotes ?? null,
+        eprint.supplementaryMaterials ? JSON.stringify(eprint.supplementaryMaterials) : null,
+        eprint.publishedVersion ? JSON.stringify(eprint.publishedVersion) : null,
+        eprint.externalIds ? JSON.stringify(eprint.externalIds) : null,
+        eprint.relatedWorks ? JSON.stringify(eprint.relatedWorks) : null,
+        eprint.repositories ? JSON.stringify(eprint.repositories) : null,
+        eprint.funding ? JSON.stringify(eprint.funding) : null,
+        eprint.conferencePresentation ? JSON.stringify(eprint.conferencePresentation) : null,
+        eprint.pdsUrl,
+        eprint.indexedAt,
+        eprint.createdAt
       );
 
       paramIndex += paramsPerRow;
     }
 
     const query = `
-      INSERT INTO preprints_index (
+      INSERT INTO eprints_index (
         uri, cid, authors, submitted_by, paper_did, title, abstract,
         document_blob_cid, document_blob_mime_type, document_blob_size,
         document_format, keywords, license, publication_status,
@@ -628,7 +628,7 @@ export class BatchOperations {
   }
 
   /**
-   * Updates PDS tracking for a chunk of preprints.
+   * Updates PDS tracking for a chunk of eprints.
    *
    * @param chunk - Updates to apply
    * @param config - Batch configuration
@@ -730,7 +730,7 @@ export class BatchOperations {
   }
 
   /**
-   * Updates PDS tracking for a single preprint.
+   * Updates PDS tracking for a single eprint.
    *
    * @param client - Database client
    * @param update - Update to apply
@@ -742,7 +742,7 @@ export class BatchOperations {
     update: { uri: string; pdsUrl: string; lastSynced: Date }
   ): Promise<void> {
     const query = `
-      UPDATE preprints_index
+      UPDATE eprints_index
       SET pds_url = $2, indexed_at = $3
       WHERE uri = $1
     `;
@@ -751,7 +751,7 @@ export class BatchOperations {
   }
 
   /**
-   * Updates PDS tracking for multiple preprints using CASE statement.
+   * Updates PDS tracking for multiple eprints using CASE statement.
    *
    * @param client - Database client
    * @param updates - Updates to apply
@@ -781,7 +781,7 @@ export class BatchOperations {
     }
 
     const query = `
-      UPDATE preprints_index
+      UPDATE eprints_index
       SET
         pds_url = CASE ${pdsUrlCases.join(' ')} END,
         indexed_at = CASE ${syncedAtCases.join(' ')} END

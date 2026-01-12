@@ -16,7 +16,7 @@
  *
  * @remarks
  * This structure represents a paper from an external archive in the search index.
- * Unlike ATProto preprints (which are user-owned), these are cached metadata
+ * Unlike ATProto eprints (which are user-owned), these are cached metadata
  * from external sources.
  *
  * @public

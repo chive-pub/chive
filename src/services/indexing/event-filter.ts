@@ -7,13 +7,13 @@
  *
  * The filter uses NSID (Namespaced Identifier) matching to determine
  * which events to process. NSIDs follow the format:
- * `domain.namespace.collection` (e.g., "pub.chive.preprint.submission")
+ * `domain.namespace.collection` (e.g., "pub.chive.eprint.submission")
  *
  * @example
  * ```typescript
  * const filter = new EventFilter({
  *   collections: [
- *     'pub.chive.preprint.submission',
+ *     'pub.chive.eprint.submission',
  *     'pub.chive.review.comment'
  *   ]
  * });
@@ -49,7 +49,7 @@ export interface EventFilterOptions {
    * ```typescript
    * {
    *   collections: [
-   *     'pub.chive.preprint.submission',
+   *     'pub.chive.eprint.submission',
    *     'pub.chive.review.comment'
    *   ]
    * }
@@ -113,7 +113,7 @@ export class EventFilter {
    * ```typescript
    * const filter = new EventFilter();
    *
-   * const op1 = { path: 'pub.chive.preprint.submission/abc123' };
+   * const op1 = { path: 'pub.chive.eprint.submission/abc123' };
    * filter.shouldProcess(op1); // true
    *
    * const op2 = { path: 'app.bsky.feed.post/xyz789' };
@@ -153,13 +153,13 @@ export class EventFilter {
    *
    * @remarks
    * Operation paths follow the format: `collection/rkey`
-   * Example: `pub.chive.preprint.submission/3kj5h2k3j5h`
+   * Example: `pub.chive.eprint.submission/3kj5h2k3j5h`
    *
    * @example
    * ```typescript
    * const filter = new EventFilter();
-   * const collection = filter.extractCollection('pub.chive.preprint.submission/abc123');
-   * // Returns: 'pub.chive.preprint.submission'
+   * const collection = filter.extractCollection('pub.chive.eprint.submission/abc123');
+   * // Returns: 'pub.chive.eprint.submission'
    * ```
    *
    * @public

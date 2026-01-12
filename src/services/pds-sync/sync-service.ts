@@ -19,7 +19,7 @@ import type { AtUri, CID, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError, ValidationError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IRepository } from '../../types/interfaces/repository.interface.js';
-import type { IStorageBackend, StoredPreprint } from '../../types/interfaces/storage.interface.js';
+import type { IStorageBackend, StoredEprint } from '../../types/interfaces/storage.interface.js';
 import type { Result } from '../../types/result.js';
 
 /**
@@ -201,7 +201,7 @@ export class PDSSyncService {
    * @returns Array of stale record URIs
    *
    * @remarks
-   * Returns records not synced within threshold. Queries preprints_index
+   * Returns records not synced within threshold. Queries eprints_index
    * for records where last_synced_at is older than the cutoff.
    *
    * @public
@@ -219,7 +219,7 @@ export class PDSSyncService {
     try {
       const result = await this.pool.query<{ uri: string }>(
         `SELECT uri
-         FROM preprints_index
+         FROM eprints_index
          WHERE last_synced_at < $1
          ORDER BY last_synced_at ASC
          LIMIT $2`,
@@ -278,12 +278,12 @@ export class PDSSyncService {
     this.logger.info('Refreshing record from PDS', { uri });
 
     try {
-      const indexed = await this.storage.getPreprint(uri);
+      const indexed = await this.storage.getEprint(uri);
 
       if (!indexed) {
         return {
           ok: false,
-          error: new NotFoundError('preprint', uri),
+          error: new NotFoundError('eprint', uri),
         };
       }
 
@@ -306,7 +306,7 @@ export class PDSSyncService {
           newCID: fresh.cid,
         });
 
-        const updatedPreprint: StoredPreprint = {
+        const updatedEprint: StoredEprint = {
           uri: fresh.uri,
           cid: fresh.cid,
           authors: indexed.authors,
@@ -333,7 +333,7 @@ export class PDSSyncService {
           createdAt: indexed.createdAt,
         };
 
-        const storeResult = await this.storage.storePreprint(updatedPreprint);
+        const storeResult = await this.storage.storeEprint(updatedEprint);
 
         if (storeResult.ok === false) {
           return {
@@ -341,7 +341,7 @@ export class PDSSyncService {
             error:
               storeResult.error instanceof DatabaseError
                 ? storeResult.error
-                : new DatabaseError('WRITE', 'Failed to store preprint'),
+                : new DatabaseError('WRITE', 'Failed to store eprint'),
           };
         }
 
@@ -413,10 +413,10 @@ export class PDSSyncService {
    */
   async checkStaleness(uri: AtUri): Promise<StalenessCheckResult> {
     try {
-      const indexed = await this.storage.getPreprint(uri);
+      const indexed = await this.storage.getEprint(uri);
 
       if (!indexed) {
-        throw new NotFoundError('preprint', uri);
+        throw new NotFoundError('eprint', uri);
       }
 
       const isStale = await this.storage.isStale(uri);

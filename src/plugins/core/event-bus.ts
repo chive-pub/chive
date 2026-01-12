@@ -6,7 +6,7 @@
  * EventEmitter2 with wildcard support, error isolation, and async handling.
  *
  * Event naming convention:
- * - `preprint.*` - Preprint lifecycle events
+ * - `eprint.*` - Eprint lifecycle events
  * - `review.*` - Review lifecycle events
  * - `plugin.*` - Plugin lifecycle events
  * - `system.*` - System-wide events
@@ -31,7 +31,7 @@ type EventEmitter2Instance = InstanceType<typeof EventEmitter2>;
  */
 const EMITTER_OPTIONS = {
   /**
-   * Enable wildcard event patterns (e.g., 'preprint.*').
+   * Enable wildcard event patterns (e.g., 'eprint.*').
    */
   wildcard: true,
 
@@ -89,7 +89,7 @@ interface HandlerEntry {
  * @remarks
  * Provides a pub/sub event system for plugin hooks built on EventEmitter2.
  * Features include:
- * - Wildcard event patterns (`preprint.*`)
+ * - Wildcard event patterns (`eprint.*`)
  * - Namespace delimiter (`.`)
  * - Error isolation per handler
  * - Handler cleanup tracking
@@ -99,16 +99,16 @@ interface HandlerEntry {
  * ```typescript
  * const eventBus = container.resolve(PluginEventBus);
  *
- * // Subscribe to all preprint events
- * eventBus.on('preprint.*', (data) => {
- *   console.log('Preprint event:', data);
+ * // Subscribe to all eprint events
+ * eventBus.on('eprint.*', (data) => {
+ *   console.log('Eprint event:', data);
  * });
  *
  * // Emit specific event
- * eventBus.emit('preprint.indexed', { uri, title });
+ * eventBus.emit('eprint.indexed', { uri, title });
  *
  * // Emit and wait for all handlers
- * await eventBus.emitAsync('preprint.indexed', { uri, title });
+ * await eventBus.emitAsync('eprint.indexed', { uri, title });
  * ```
  *
  * @public
@@ -152,7 +152,7 @@ export class PluginEventBus implements IPluginEventBus {
   /**
    * Subscribes to an event.
    *
-   * @param event - Event name or pattern (supports wildcards like 'preprint.*')
+   * @param event - Event name or pattern (supports wildcards like 'eprint.*')
    * @param handler - Event handler function
    *
    * @remarks
@@ -162,13 +162,13 @@ export class PluginEventBus implements IPluginEventBus {
    * @example
    * ```typescript
    * // Subscribe to specific event
-   * eventBus.on('preprint.indexed', (data) => {
+   * eventBus.on('eprint.indexed', (data) => {
    *   console.log('Indexed:', data.uri);
    * });
    *
-   * // Subscribe to all preprint events
-   * eventBus.on('preprint.*', (data) => {
-   *   console.log('Preprint event:', data);
+   * // Subscribe to all eprint events
+   * eventBus.on('eprint.*', (data) => {
+   *   console.log('Eprint event:', data);
    * });
    * ```
    *
@@ -288,9 +288,9 @@ export class PluginEventBus implements IPluginEventBus {
    *
    * @example
    * ```typescript
-   * eventBus.emit('preprint.indexed', {
-   *   uri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz',
-   *   title: 'My Preprint',
+   * eventBus.emit('eprint.indexed', {
+   *   uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
+   *   title: 'My Eprint',
    * });
    * ```
    *
@@ -314,9 +314,9 @@ export class PluginEventBus implements IPluginEventBus {
    *
    * @example
    * ```typescript
-   * await eventBus.emitAsync('preprint.indexed', {
-   *   uri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz',
-   *   title: 'My Preprint',
+   * await eventBus.emitAsync('eprint.indexed', {
+   *   uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
+   *   title: 'My Eprint',
    * });
    * console.log('All handlers completed');
    * ```
@@ -338,10 +338,10 @@ export class PluginEventBus implements IPluginEventBus {
    * @example
    * ```typescript
    * const handler = (data) => console.log(data);
-   * eventBus.on('preprint.indexed', handler);
+   * eventBus.on('eprint.indexed', handler);
    *
    * // Later...
-   * eventBus.off('preprint.indexed', handler);
+   * eventBus.off('eprint.indexed', handler);
    * ```
    *
    * @public

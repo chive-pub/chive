@@ -1,8 +1,8 @@
 /**
- * LingBuzz integration plugin for linguistics preprints.
+ * LingBuzz integration plugin for linguistics eprints.
  *
  * @remarks
- * Imports linguistics preprints from LingBuzz (https://lingbuzz.net).
+ * Imports linguistics eprints from LingBuzz (https://lingbuzz.net).
  *
  * Since LingBuzz has no official API, this plugin uses a hybrid approach:
  * - Primary: Unofficial RSS feed from Feedburner for recent papers
@@ -13,7 +13,7 @@
  * ATProto Compliance:
  * - All imported data is AppView cache (ephemeral, rebuildable)
  * - Never writes to user PDSes
- * - Users claim preprints by creating records in THEIR PDS
+ * - Users claim eprints by creating records in THEIR PDS
  *
  * @packageDocumentation
  * @public
@@ -25,7 +25,7 @@ import { parseDocument } from 'htmlparser2';
 
 import { PluginError } from '../../types/errors.js';
 import type {
-  ExternalPreprint,
+  ExternalEprint,
   FetchOptions,
   IPluginManifest,
   IPluginContext,
@@ -99,8 +99,8 @@ interface RssItem {
  * LingBuzz integration plugin.
  *
  * @remarks
- * Fetches linguistics preprints from LingBuzz via RSS feed and imports them
- * into the Chive AppView cache. Users can claim preprints they authored.
+ * Fetches linguistics eprints from LingBuzz via RSS feed and imports them
+ * into the Chive AppView cache. Users can claim eprints they authored.
  *
  * Extends ImportingPlugin for standardized import/claiming workflow.
  *
@@ -140,7 +140,7 @@ export class LingBuzzPlugin extends ImportingPlugin {
     id: 'pub.chive.plugin.lingbuzz',
     name: 'LingBuzz Integration',
     version: '0.1.0',
-    description: 'Imports linguistics preprints from LingBuzz via RSS feed with claiming support',
+    description: 'Imports linguistics eprints from LingBuzz via RSS feed with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -236,18 +236,18 @@ export class LingBuzzPlugin extends ImportingPlugin {
   }
 
   /**
-   * Fetches preprints from LingBuzz RSS feed.
+   * Fetches eprints from LingBuzz RSS feed.
    *
    * @param options - Fetch options (limit, cursor)
-   * @returns Async iterable of external preprints
+   * @returns Async iterable of external eprints
    */
-  async *fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint> {
+  async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
     // Apply rate limiting for respectful crawling
     await this.rateLimit();
 
     const response = await fetch(this.RSS_FEED_URL, {
       headers: {
-        'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+        'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
         Accept: 'application/rss+xml, application/xml, text/xml',
       },
     });
@@ -267,9 +267,9 @@ export class LingBuzzPlugin extends ImportingPlugin {
 
       const paper = this.rssItemToPaper(item);
       if (paper) {
-        // Convert to ExternalPreprint format
-        const preprint = this.paperToExternalPreprint(paper);
-        yield preprint;
+        // Convert to ExternalEprint format
+        const eprint = this.paperToExternalEprint(paper);
+        yield eprint;
         count++;
       }
     }
@@ -281,7 +281,7 @@ export class LingBuzzPlugin extends ImportingPlugin {
    * @param externalId - LingBuzz paper ID
    * @returns Full URL to the paper
    */
-  buildPreprintUrl(externalId: string): string {
+  buildEprintUrl(externalId: string): string {
     return `${this.BASE_URL}/lingbuzz/${externalId}`;
   }
 
@@ -307,9 +307,9 @@ export class LingBuzzPlugin extends ImportingPlugin {
   }
 
   /**
-   * Converts a LingBuzz paper to ExternalPreprint format.
+   * Converts a LingBuzz paper to ExternalEprint format.
    */
-  private paperToExternalPreprint(paper: LingBuzzPaper): ExternalPreprint {
+  private paperToExternalEprint(paper: LingBuzzPaper): ExternalEprint {
     return {
       externalId: paper.id,
       url: paper.url,
@@ -472,7 +472,7 @@ export class LingBuzzPlugin extends ImportingPlugin {
     try {
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'text/html',
         },
       });

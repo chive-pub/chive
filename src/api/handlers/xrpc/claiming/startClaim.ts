@@ -2,7 +2,7 @@
  * Handler for pub.chive.claiming.startClaim.
  *
  * @remarks
- * Initiates a claim request for an imported preprint.
+ * Initiates a claim request for an imported eprint.
  * Requires authentication.
  *
  * @packageDocumentation
@@ -75,7 +75,7 @@ export async function startClaimHandler(
 export const startClaimEndpoint: XRPCEndpoint<StartClaimParams, StartClaimResponse> = {
   method: 'pub.chive.claiming.startClaim' as never,
   type: 'procedure',
-  description: 'Start a claim request for an imported preprint',
+  description: 'Start a claim request for an imported eprint',
   inputSchema: startClaimParamsSchema,
   outputSchema: startClaimResponseSchema,
   handler: startClaimHandler,

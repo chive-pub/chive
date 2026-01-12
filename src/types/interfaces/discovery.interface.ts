@@ -1,5 +1,5 @@
 /**
- * Discovery service interfaces for enhanced preprint recommendations.
+ * Discovery service interfaces for enhanced eprint recommendations.
  *
  * @remarks
  * This module defines interfaces for Chive's discovery system, which provides:
@@ -7,7 +7,7 @@
  * - Citation graph traversal for related paper discovery
  * - Concept-based similarity matching
  *
- * **Critical Constraint**: All discovery features recommend only preprints
+ * **Critical Constraint**: All discovery features recommend only eprints
  * indexed in Chive, not external papers. External APIs (S2, OpenAlex) are
  * used strictly as enrichment signals.
  *
@@ -35,14 +35,14 @@ import type { RankableItem } from './ranking.interface.js';
 // =============================================================================
 
 /**
- * Input data for preprint enrichment.
+ * Input data for eprint enrichment.
  *
  * @public
  * @since 0.1.0
  */
 export interface EnrichmentInput {
   /**
-   * AT-URI of the preprint to enrich.
+   * AT-URI of the eprint to enrich.
    */
   readonly uri: AtUri;
 
@@ -57,7 +57,7 @@ export interface EnrichmentInput {
   readonly arxivId?: string;
 
   /**
-   * Preprint title (for text classification fallback).
+   * Eprint title (for text classification fallback).
    */
   readonly title: string;
 
@@ -68,14 +68,14 @@ export interface EnrichmentInput {
 }
 
 /**
- * Result of preprint enrichment from external sources.
+ * Result of eprint enrichment from external sources.
  *
  * @public
  * @since 0.1.0
  */
 export interface EnrichmentResult {
   /**
-   * AT-URI of the enriched preprint.
+   * AT-URI of the enriched eprint.
    */
   readonly uri: AtUri;
 
@@ -278,12 +278,12 @@ export interface UnifiedPaperMetadata {
 }
 
 /**
- * Options for finding related preprints.
+ * Options for finding related eprints.
  *
  * @public
  * @since 0.1.0
  */
-export interface RelatedPreprintOptions {
+export interface RelatedEprintOptions {
   /**
    * Maximum number of results.
    *
@@ -296,7 +296,7 @@ export interface RelatedPreprintOptions {
    *
    * @defaultValue ['citations', 'concepts', 'semantic']
    */
-  readonly signals?: readonly RelatedPreprintSignal[];
+  readonly signals?: readonly RelatedEprintSignal[];
 
   /**
    * Minimum similarity score (0-1).
@@ -312,12 +312,12 @@ export interface RelatedPreprintOptions {
 }
 
 /**
- * Signals used for finding related preprints.
+ * Signals used for finding related eprints.
  *
  * @public
  * @since 0.1.0
  */
-export type RelatedPreprintSignal =
+export type RelatedEprintSignal =
   | 'citations' // Co-citation and bibliographic coupling
   | 'concepts' // OpenAlex concept overlap
   | 'semantic' // SPECTER2 embedding similarity
@@ -325,14 +325,14 @@ export type RelatedPreprintSignal =
   | 'topics'; // OpenAlex topic overlap
 
 /**
- * Related preprint with relationship metadata.
+ * Related eprint with relationship metadata.
  *
  * @public
  * @since 0.1.0
  */
-export interface RelatedPreprint extends RankableItem {
+export interface RelatedEprint extends RankableItem {
   /**
-   * AT-URI of the related preprint.
+   * AT-URI of the related eprint.
    */
   readonly uri: AtUri;
 
@@ -344,7 +344,7 @@ export interface RelatedPreprint extends RankableItem {
   /**
    * Type of relationship.
    */
-  readonly relationshipType: RelatedPreprintRelationship;
+  readonly relationshipType: RelatedEprintRelationship;
 
   /**
    * Human-readable explanation.
@@ -364,12 +364,12 @@ export interface RelatedPreprint extends RankableItem {
 }
 
 /**
- * Type of relationship between preprints.
+ * Type of relationship between eprints.
  *
  * @public
  * @since 0.1.0
  */
-export type RelatedPreprintRelationship =
+export type RelatedEprintRelationship =
   | 'cites' // Source cites target
   | 'cited-by' // Source is cited by target
   | 'co-cited' // Frequently cited together
@@ -430,7 +430,7 @@ export type RecommendationSignal =
  */
 export interface RecommendationResult {
   /**
-   * Recommended preprints.
+   * Recommended eprints.
    */
   readonly recommendations: readonly ScoredRecommendation[];
 
@@ -453,7 +453,7 @@ export interface RecommendationResult {
  */
 export interface ScoredRecommendation extends RankableItem {
   /**
-   * AT-URI of the recommended preprint.
+   * AT-URI of the recommended eprint.
    */
   readonly uri: AtUri;
 
@@ -559,9 +559,9 @@ export interface UserInteraction {
   readonly type: UserInteractionType;
 
   /**
-   * AT-URI of the preprint.
+   * AT-URI of the eprint.
    */
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
 
   /**
    * ID of the recommendation that led here (if applicable).
@@ -581,9 +581,9 @@ export interface UserInteraction {
  * @since 0.1.0
  */
 export type UserInteractionType =
-  | 'view' // Viewed preprint details
+  | 'view' // Viewed eprint details
   | 'click' // Clicked on recommendation
-  | 'endorse' // Endorsed the preprint
+  | 'endorse' // Endorsed the eprint
   | 'dismiss' // Dismissed recommendation
   | 'claim' // Claimed authorship
   | 'save'; // Saved to reading list
@@ -592,10 +592,10 @@ export type UserInteractionType =
  * Discovery service interface.
  *
  * @remarks
- * Orchestrates preprint enrichment and discovery using external APIs
+ * Orchestrates eprint enrichment and discovery using external APIs
  * (Semantic Scholar, OpenAlex) and internal data (citation graph, search).
  *
- * **Critical Constraint**: All methods return only preprints indexed in Chive.
+ * **Critical Constraint**: All methods return only eprints indexed in Chive.
  * External APIs are used as enrichment signals, not as sources of recommendations.
  *
  * Follows the ClaimingService pattern:
@@ -611,9 +611,9 @@ export type UserInteractionType =
  *   { limit: 10, signals: ['fields', 'citations'] }
  * );
  *
- * // Find related preprints
- * const related = await discoveryService.findRelatedPreprints(
- *   preprintUri,
+ * // Find related eprints
+ * const related = await discoveryService.findRelatedEprints(
+ *   eprintUri,
  *   { limit: 5, signals: ['citations', 'concepts'] }
  * );
  * ```
@@ -623,16 +623,16 @@ export type UserInteractionType =
  */
 export interface IDiscoveryService {
   /**
-   * Enriches a preprint with data from Semantic Scholar and OpenAlex.
+   * Enriches a eprint with data from Semantic Scholar and OpenAlex.
    *
-   * @param preprint - Preprint to enrich
+   * @param eprint - Eprint to enrich
    * @returns Enrichment result with external data
    *
    * @remarks
    * Fetches citation data, concepts, and topics from external APIs.
    * Stores Chive-to-Chive citations in Neo4j for graph queries.
    */
-  enrichPreprint(preprint: EnrichmentInput): Promise<EnrichmentResult>;
+  enrichEprint(eprint: EnrichmentInput): Promise<EnrichmentResult>;
 
   /**
    * Looks up paper metadata from external sources.
@@ -646,20 +646,20 @@ export interface IDiscoveryService {
   lookupPaper(identifier: PaperIdentifier): Promise<UnifiedPaperMetadata | null>;
 
   /**
-   * Finds related Chive preprints using multiple signals.
+   * Finds related Chive eprints using multiple signals.
    *
-   * @param preprintUri - AT-URI of the source preprint
+   * @param eprintUri - AT-URI of the source eprint
    * @param options - Query options
-   * @returns Related preprints with relationship metadata
+   * @returns Related eprints with relationship metadata
    *
    * @remarks
    * Combines citation graph, concept overlap, and semantic similarity
-   * to find related preprints. All results are from Chive's index.
+   * to find related eprints. All results are from Chive's index.
    */
-  findRelatedPreprints(
-    preprintUri: AtUri,
-    options?: RelatedPreprintOptions
-  ): Promise<readonly RelatedPreprint[]>;
+  findRelatedEprints(
+    eprintUri: AtUri,
+    options?: RelatedEprintOptions
+  ): Promise<readonly RelatedEprint[]>;
 
   /**
    * Gets personalized recommendations for a user.
@@ -715,12 +715,12 @@ export interface IDiscoveryService {
  */
 export interface CitationRelationship {
   /**
-   * AT-URI of the citing preprint.
+   * AT-URI of the citing eprint.
    */
   readonly citingUri: AtUri;
 
   /**
-   * AT-URI of the cited preprint.
+   * AT-URI of the cited eprint.
    */
   readonly citedUri: AtUri;
 
@@ -796,7 +796,7 @@ export interface CitationQueryResult {
  */
 export interface CoCitedPaper extends RankableItem {
   /**
-   * AT-URI of the co-cited preprint.
+   * AT-URI of the co-cited eprint.
    */
   readonly uri: AtUri;
 
@@ -815,20 +815,20 @@ export interface CoCitedPaper extends RankableItem {
  * Citation graph interface for Neo4j storage.
  *
  * @remarks
- * Manages citations between Chive preprints in Neo4j. Only stores
+ * Manages citations between Chive eprints in Neo4j. Only stores
  * citations where BOTH papers are indexed in Chive (not all external citations).
  *
  * All data is rebuildable from external sources (ATProto compliant).
  *
  * @example
  * ```typescript
- * // Index citations for a preprint
+ * // Index citations for a eprint
  * await citationGraph.upsertCitationsBatch([
  *   { citingUri, citedUri, isInfluential: true, source: 'semantic-scholar' },
  * ]);
  *
  * // Find co-cited papers
- * const coCited = await citationGraph.findCoCitedPapers(preprintUri, 3);
+ * const coCited = await citationGraph.findCoCitedPapers(eprintUri, 3);
  * ```
  *
  * @public
@@ -841,33 +841,33 @@ export interface ICitationGraph {
    * @param citations - Citations to upsert
    *
    * @remarks
-   * Creates or updates CITES edges between Preprint nodes.
+   * Creates or updates CITES edges between Eprint nodes.
    * Deduplicates based on (citingUri, citedUri) pair.
    */
   upsertCitationsBatch(citations: readonly CitationRelationship[]): Promise<void>;
 
   /**
-   * Gets papers that cite a given preprint.
+   * Gets papers that cite a given eprint.
    *
-   * @param paperUri - AT-URI of the cited preprint
+   * @param paperUri - AT-URI of the cited eprint
    * @param options - Query options
-   * @returns Papers that cite the given preprint
+   * @returns Papers that cite the given eprint
    */
   getCitingPapers(paperUri: AtUri, options?: CitationQueryOptions): Promise<CitationQueryResult>;
 
   /**
-   * Gets papers that a given preprint cites (references).
+   * Gets papers that a given eprint cites (references).
    *
-   * @param paperUri - AT-URI of the citing preprint
+   * @param paperUri - AT-URI of the citing eprint
    * @param options - Query options
-   * @returns Papers referenced by the given preprint
+   * @returns Papers referenced by the given eprint
    */
   getReferences(paperUri: AtUri, options?: CitationQueryOptions): Promise<CitationQueryResult>;
 
   /**
-   * Finds papers frequently cited together with a given preprint.
+   * Finds papers frequently cited together with a given eprint.
    *
-   * @param paperUri - AT-URI of the source preprint
+   * @param paperUri - AT-URI of the source eprint
    * @param minCoCitations - Minimum co-citation count threshold
    * @returns Papers co-cited with the source, sorted by strength
    *
@@ -878,9 +878,9 @@ export interface ICitationGraph {
   findCoCitedPapers(paperUri: AtUri, minCoCitations?: number): Promise<readonly CoCitedPaper[]>;
 
   /**
-   * Gets citation counts for a preprint.
+   * Gets citation counts for a eprint.
    *
-   * @param paperUri - AT-URI of the preprint
+   * @param paperUri - AT-URI of the eprint
    * @returns Citation statistics
    */
   getCitationCounts(paperUri: AtUri): Promise<{
@@ -890,12 +890,12 @@ export interface ICitationGraph {
   }>;
 
   /**
-   * Deletes all citations for a preprint.
+   * Deletes all citations for a eprint.
    *
-   * @param paperUri - AT-URI of the preprint
+   * @param paperUri - AT-URI of the eprint
    *
    * @remarks
-   * Used when a preprint is removed from Chive's index.
+   * Used when a eprint is removed from Chive's index.
    */
   deleteCitationsForPaper(paperUri: AtUri): Promise<void>;
 }
@@ -908,7 +908,7 @@ export interface ICitationGraph {
  * Pre-computed discovery signals for ranking.
  *
  * @remarks
- * Maps preprint URIs to pre-computed similarity/relevance scores
+ * Maps eprint URIs to pre-computed similarity/relevance scores
  * from various sources. Passed to RankingService for scoring.
  *
  * @public

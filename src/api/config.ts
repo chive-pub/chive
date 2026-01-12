@@ -255,7 +255,7 @@ export const SECURITY_HEADERS = {
  */
 export const SERVER_INFO = {
   title: 'Chive API',
-  description: 'AT Protocol AppView for scholarly preprints',
+  description: 'AT Protocol AppView for scholarly eprints',
   version: API_VERSION,
   contact: {
     name: 'Chive',

@@ -257,8 +257,8 @@ export interface IPluginEventBus {
    *
    * @example
    * ```typescript
-   * eventBus.on('preprint.indexed', (preprint) => {
-   *   console.log('Preprint indexed:', preprint.title);
+   * eventBus.on('eprint.indexed', (eprint) => {
+   *   console.log('Eprint indexed:', eprint.title);
    * });
    * ```
    *
@@ -277,7 +277,7 @@ export interface IPluginEventBus {
    *
    * @example
    * ```typescript
-   * eventBus.emit('preprint.indexed', preprint);
+   * eventBus.emit('eprint.indexed', eprint);
    * ```
    *
    * @public
@@ -293,7 +293,7 @@ export interface IPluginEventBus {
    *
    * @example
    * ```typescript
-   * await eventBus.emitAsync('preprint.indexed', preprint);
+   * await eventBus.emitAsync('eprint.indexed', eprint);
    * ```
    *
    * @public
@@ -308,7 +308,7 @@ export interface IPluginEventBus {
    *
    * @example
    * ```typescript
-   * eventBus.off('preprint.indexed', handler);
+   * eventBus.off('eprint.indexed', handler);
    * ```
    *
    * @public
@@ -402,7 +402,7 @@ export interface IChivePlugin {
    *   this.logger = context.logger;
    *   this.cache = context.cache;
    *
-   *   context.eventBus.on('preprint.indexed', this.handleIndexed.bind(this));
+   *   context.eventBus.on('eprint.indexed', this.handleIndexed.bind(this));
    *
    *   this.logger.info('Plugin initialized');
    * }
@@ -892,9 +892,9 @@ export interface IResourceGovernor {
  * @since 0.1.0
  */
 export type PluginHookEvent =
-  | 'preprint.indexed'
-  | 'preprint.updated'
-  | 'preprint.deleted'
+  | 'eprint.indexed'
+  | 'eprint.updated'
+  | 'eprint.deleted'
   | 'review.created'
   | 'review.updated'
   | 'endorsement.created'
@@ -919,7 +919,7 @@ export type PluginHookEvent =
 // ============================================================================
 
 /**
- * External preprint source identifier.
+ * External eprint source identifier.
  *
  * @remarks
  * Import sources are EXTENSIBLE - any plugin can define its own source identifier.
@@ -949,14 +949,14 @@ export type PluginHookEvent =
 export type ImportSource = string;
 
 /**
- * Author information from an external preprint.
+ * Author information from an external eprint.
  *
  * @public
  * @since 0.1.0
  */
 export interface ExternalAuthor {
   /**
-   * Author name as it appears on the preprint.
+   * Author name as it appears on the eprint.
    */
   readonly name: string;
 
@@ -977,16 +977,16 @@ export interface ExternalAuthor {
 }
 
 /**
- * External preprint data fetched from an external source.
+ * External eprint data fetched from an external source.
  *
  * @remarks
- * Represents the metadata of a preprint before it's imported
+ * Represents the metadata of a eprint before it's imported
  * into the Chive AppView cache.
  *
  * @public
  * @since 0.1.0
  */
-export interface ExternalPreprint {
+export interface ExternalEprint {
   /**
    * Source-specific identifier.
    *
@@ -995,12 +995,12 @@ export interface ExternalPreprint {
   readonly externalId: string;
 
   /**
-   * Full URL to the original preprint.
+   * Full URL to the original eprint.
    */
   readonly url: string;
 
   /**
-   * Preprint title.
+   * Eprint title.
    */
   readonly title: string;
 
@@ -1051,7 +1051,7 @@ export interface ExternalPreprint {
 }
 
 /**
- * Imported preprint stored in AppView cache.
+ * Imported eprint stored in AppView cache.
  *
  * @remarks
  * This is ephemeral data stored in the AppView's database,
@@ -1060,7 +1060,7 @@ export interface ExternalPreprint {
  * @public
  * @since 0.1.0
  */
-export interface ImportedPreprint extends ExternalPreprint {
+export interface ImportedEprint extends ExternalEprint {
   /**
    * Internal database ID.
    */
@@ -1077,7 +1077,7 @@ export interface ImportedPreprint extends ExternalPreprint {
   readonly importedByPlugin: string;
 
   /**
-   * When the preprint was imported.
+   * When the eprint was imported.
    */
   readonly importedAt: Date;
 
@@ -1102,30 +1102,30 @@ export interface ImportedPreprint extends ExternalPreprint {
   readonly canonicalUri?: string;
 
   /**
-   * DID of the user who claimed this preprint.
+   * DID of the user who claimed this eprint.
    */
   readonly claimedByDid?: string;
 
   /**
-   * When the preprint was claimed.
+   * When the eprint was claimed.
    */
   readonly claimedAt?: Date;
 }
 
 /**
- * Options for fetching preprints from external sources.
+ * Options for fetching eprints from external sources.
  *
  * @public
  * @since 0.1.0
  */
 export interface FetchOptions {
   /**
-   * Maximum number of preprints to fetch.
+   * Maximum number of eprints to fetch.
    */
   readonly limit?: number;
 
   /**
-   * Only fetch preprints after this date.
+   * Only fetch eprints after this date.
    */
   readonly since?: Date;
 
@@ -1146,10 +1146,10 @@ export interface FetchOptions {
 }
 
 /**
- * Import service interface for tracking imported preprints.
+ * Import service interface for tracking imported eprints.
  *
  * @remarks
- * Manages the AppView cache of imported preprints. All data
+ * Manages the AppView cache of imported eprints. All data
  * is rebuildable from external sources (ATProto compliant).
  *
  * @public
@@ -1157,7 +1157,7 @@ export interface FetchOptions {
  */
 export interface IImportService {
   /**
-   * Checks if a preprint has been imported.
+   * Checks if a eprint has been imported.
    *
    * @param source - External source
    * @param externalId - Source-specific ID
@@ -1166,27 +1166,27 @@ export interface IImportService {
   exists(source: ImportSource, externalId: string): Promise<boolean>;
 
   /**
-   * Gets an imported preprint by source and ID.
+   * Gets an imported eprint by source and ID.
    *
    * @param source - External source
    * @param externalId - Source-specific ID
-   * @returns Imported preprint or null
+   * @returns Imported eprint or null
    */
-  get(source: ImportSource, externalId: string): Promise<ImportedPreprint | null>;
+  get(source: ImportSource, externalId: string): Promise<ImportedEprint | null>;
 
   /**
-   * Gets an imported preprint by internal ID.
+   * Gets an imported eprint by internal ID.
    *
    * @param id - Internal database ID
-   * @returns Imported preprint or null
+   * @returns Imported eprint or null
    */
-  getById(id: number): Promise<ImportedPreprint | null>;
+  getById(id: number): Promise<ImportedEprint | null>;
 
   /**
-   * Creates a new imported preprint.
+   * Creates a new imported eprint.
    *
    * @param data - Import data
-   * @returns Created imported preprint
+   * @returns Created imported eprint
    */
   create(data: {
     source: ImportSource;
@@ -1201,14 +1201,14 @@ export interface IImportService {
     categories?: readonly string[];
     importedByPlugin: string;
     metadata?: Record<string, unknown>;
-  }): Promise<ImportedPreprint>;
+  }): Promise<ImportedEprint>;
 
   /**
-   * Updates an imported preprint.
+   * Updates an imported eprint.
    *
    * @param id - Internal database ID
    * @param data - Fields to update
-   * @returns Updated imported preprint
+   * @returns Updated imported eprint
    */
   update(
     id: number,
@@ -1225,13 +1225,13 @@ export interface IImportService {
       claimedByDid: string;
       claimedAt: Date;
     }>
-  ): Promise<ImportedPreprint>;
+  ): Promise<ImportedEprint>;
 
   /**
-   * Searches imported preprints.
+   * Searches imported eprints.
    *
    * @param options - Search options
-   * @returns Matching preprints with cursor
+   * @returns Matching eprints with cursor
    */
   search(options: {
     query?: string;
@@ -1241,10 +1241,10 @@ export interface IImportService {
     authorOrcid?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<{ preprints: ImportedPreprint[]; cursor?: string }>;
+  }): Promise<{ eprints: ImportedEprint[]; cursor?: string }>;
 
   /**
-   * Marks a preprint as claimed.
+   * Marks a eprint as claimed.
    *
    * @param id - Internal database ID
    * @param canonicalUri - AT-URI of user's canonical record
@@ -1258,7 +1258,7 @@ export interface IImportService {
 // ============================================================================
 
 /**
- * Search query parameters for external preprint sources.
+ * Search query parameters for external eprint sources.
  *
  * @remarks
  * Used by SearchablePlugin implementations to query external APIs
@@ -1328,7 +1328,7 @@ export interface ExternalSearchQuery {
  * class ArxivPlugin implements SearchablePlugin {
  *   readonly supportsSearch = true;
  *
- *   async search(query: ExternalSearchQuery): Promise<ExternalPreprint[]> {
+ *   async search(query: ExternalSearchQuery): Promise<ExternalEprint[]> {
  *     const url = buildArxivQuery(query);
  *     const response = await fetch(url);
  *     return parseAtomFeed(response);
@@ -1350,10 +1350,10 @@ export interface SearchablePlugin extends IChivePlugin {
   readonly supportsSearch: true;
 
   /**
-   * Searches the external source for preprints matching the query.
+   * Searches the external source for eprints matching the query.
    *
    * @param query - Search parameters
-   * @returns Matching preprints from the external source
+   * @returns Matching eprints from the external source
    *
    * @throws {PluginError} If the search request fails
    *
@@ -1363,7 +1363,7 @@ export interface SearchablePlugin extends IChivePlugin {
    * - Handle network errors gracefully
    * - Return empty array (not throw) for no results
    */
-  search(query: ExternalSearchQuery): Promise<readonly ExternalPreprint[]>;
+  search(query: ExternalSearchQuery): Promise<readonly ExternalEprint[]>;
 }
 
 /**
@@ -1409,16 +1409,16 @@ export interface ImportingPlugin extends IChivePlugin {
   readonly source: ImportSource;
 
   /**
-   * Fetches preprints from the external source.
+   * Fetches eprints from the external source.
    *
    * @param options - Fetch options (pagination, filters)
-   * @yields External preprints from the source
+   * @yields External eprints from the source
    *
    * @remarks
    * Use async generator for memory-efficient bulk fetching.
    * Implementations must respect rate limits.
    */
-  fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint>;
+  fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint>;
 }
 
 /**
@@ -1475,7 +1475,7 @@ export interface Backlink {
   readonly sourceType: BacklinkSourceType;
 
   /**
-   * AT-URI of the target preprint.
+   * AT-URI of the target eprint.
    */
   readonly targetUri: string;
 
@@ -1496,7 +1496,7 @@ export interface Backlink {
 }
 
 /**
- * Aggregated backlink counts for a preprint.
+ * Aggregated backlink counts for a eprint.
  *
  * @public
  * @since 0.1.0
@@ -1548,7 +1548,7 @@ export interface BacklinkCounts {
  *
  * @remarks
  * Tracks backlinks from ATProto ecosystem apps (Semble, Leaflet,
- * WhiteWind, Bluesky) that reference Chive preprints.
+ * WhiteWind, Bluesky) that reference Chive eprints.
  * All data is rebuildable from firehose (ATProto compliant).
  *
  * @public
@@ -1576,9 +1576,9 @@ export interface IBacklinkService {
   deleteBacklink(sourceUri: string): Promise<void>;
 
   /**
-   * Gets backlinks for a preprint.
+   * Gets backlinks for a eprint.
    *
-   * @param targetUri - AT-URI of the preprint
+   * @param targetUri - AT-URI of the eprint
    * @param options - Filter options
    * @returns Backlinks matching criteria
    */
@@ -1592,17 +1592,17 @@ export interface IBacklinkService {
   ): Promise<{ backlinks: Backlink[]; cursor?: string }>;
 
   /**
-   * Gets aggregated backlink counts for a preprint.
+   * Gets aggregated backlink counts for a eprint.
    *
-   * @param targetUri - AT-URI of the preprint
+   * @param targetUri - AT-URI of the eprint
    * @returns Aggregated counts
    */
   getCounts(targetUri: string): Promise<BacklinkCounts>;
 
   /**
-   * Updates cached counts for a preprint.
+   * Updates cached counts for a eprint.
    *
-   * @param targetUri - AT-URI of the preprint
+   * @param targetUri - AT-URI of the eprint
    */
   updateCounts(targetUri: string): Promise<void>;
 }
@@ -1612,7 +1612,7 @@ export interface IBacklinkService {
 // ============================================================================
 
 /**
- * Evidence types for preprint claiming.
+ * Evidence types for eprint claiming.
  *
  * @public
  * @since 0.1.0
@@ -1678,7 +1678,7 @@ export interface ClaimRequest {
   readonly id: number;
 
   /**
-   * ID of the imported preprint.
+   * ID of the imported eprint.
    */
   readonly importId: number;
 
@@ -1738,7 +1738,7 @@ export interface ClaimRequest {
  *
  * @remarks
  * Manages the multi-authority verification flow for authors
- * to claim imported preprints. Follows ATProto principles:
+ * to claim imported eprints. Follows ATProto principles:
  * - User creates canonical record in THEIR PDS
  * - Chive only recognizes and links the claim
  *
@@ -1749,7 +1749,7 @@ export interface IClaimingService {
   /**
    * Starts a claim request.
    *
-   * @param importId - ID of imported preprint
+   * @param importId - ID of imported eprint
    * @param claimantDid - DID of user claiming
    * @param evidence - Initial evidence (e.g., from ORCID OAuth)
    * @returns Created claim request
@@ -1811,7 +1811,7 @@ export interface IClaimingService {
   getUserClaims(claimantDid: string): Promise<readonly ClaimRequest[]>;
 
   /**
-   * Finds claimable preprints for a user.
+   * Finds claimable eprints for a user.
    *
    * @param options - Search options
    */
@@ -1821,5 +1821,5 @@ export interface IClaimingService {
     email?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<{ preprints: ImportedPreprint[]; cursor?: string }>;
+  }): Promise<{ eprints: ImportedEprint[]; cursor?: string }>;
 }

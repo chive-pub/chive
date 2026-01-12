@@ -2,13 +2,13 @@
  * OSF (Open Science Framework) integration plugin.
  *
  * @remarks
- * Provides integration with OSF (https://osf.io) for linking preprints
+ * Provides integration with OSF (https://osf.io) for linking eprints
  * to their associated projects, registrations, and files.
  *
  * OSF is a free, open-source platform for supporting research workflow.
  * It provides:
  * - Project management and collaboration
- * - Preprint servers (PsyArXiv, SocArXiv, etc.)
+ * - Eprint servers (PsyArXiv, SocArXiv, etc.)
  * - Registrations (pre-registration, registered reports)
  * - File storage and DOI minting
  *
@@ -223,7 +223,7 @@ interface OsfSearchResponse {
  * OSF integration plugin.
  *
  * @remarks
- * Provides project and registration lookup for linking preprints to OSF projects.
+ * Provides project and registration lookup for linking eprints to OSF projects.
  * Supports finding pre-registrations, registered reports, and data repositories.
  *
  * @example

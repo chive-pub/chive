@@ -156,11 +156,11 @@ export function generateOpenAPISpec(): OpenAPISpec {
   }
 
   // Add REST routes
-  paths['/api/v1/preprints'] = {
+  paths['/api/v1/eprints'] = {
     get: {
-      operationId: 'searchPreprints',
-      summary: 'Search preprints',
-      tags: ['preprints'],
+      operationId: 'searchEprints',
+      summary: 'Search eprints',
+      tags: ['eprints'],
       parameters: [
         { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
         {
@@ -176,11 +176,11 @@ export function generateOpenAPISpec(): OpenAPISpec {
     },
   };
 
-  paths['/api/v1/preprints/{uri}'] = {
+  paths['/api/v1/eprints/{uri}'] = {
     get: {
-      operationId: 'getPreprint',
-      summary: 'Get preprint by URI',
-      tags: ['preprints'],
+      operationId: 'getEprint',
+      summary: 'Get eprint by URI',
+      tags: ['eprints'],
       parameters: [
         {
           name: 'uri',
@@ -191,8 +191,8 @@ export function generateOpenAPISpec(): OpenAPISpec {
         },
       ],
       responses: {
-        200: { description: 'Preprint details' },
-        404: { description: 'Preprint not found' },
+        200: { description: 'Eprint details' },
+        404: { description: 'Eprint not found' },
       },
     },
   };
@@ -231,10 +231,10 @@ export function generateOpenAPISpec(): OpenAPISpec {
     },
     servers: [...OPENAPI_SERVERS],
     tags: [
-      { name: 'preprint', description: 'Preprint operations' },
+      { name: 'eprint', description: 'Eprint operations' },
       { name: 'graph', description: 'Knowledge graph operations' },
       { name: 'metrics', description: 'Metrics and trending' },
-      { name: 'preprints', description: 'REST preprint endpoints' },
+      { name: 'eprints', description: 'REST eprint endpoints' },
       { name: 'health', description: 'Health check endpoints' },
     ],
     paths,

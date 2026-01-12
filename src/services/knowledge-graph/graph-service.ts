@@ -15,9 +15,9 @@ import { DatabaseError } from '../../types/errors.js';
 import type { Facet, IGraphDatabase } from '../../types/interfaces/graph.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
-import type { PreprintAuthor } from '../../types/models/author.js';
+import type { EprintAuthor } from '../../types/models/author.js';
 import type { Result } from '../../types/result.js';
-import type { RecordMetadata } from '../preprint/preprint-service.js';
+import type { RecordMetadata } from '../eprint/eprint-service.js';
 
 /**
  * Knowledge graph service configuration.
@@ -44,7 +44,7 @@ export interface FieldDetail {
   readonly description?: string;
   readonly parentId?: string;
   readonly status: 'proposed' | 'approved' | 'deprecated';
-  readonly preprintCount: number;
+  readonly eprintCount: number;
   readonly externalIds?: readonly {
     readonly source: string;
     readonly id: string;
@@ -63,7 +63,7 @@ export interface FieldDetail {
 export interface ChildField {
   readonly id: string;
   readonly name: string;
-  readonly preprintCount: number;
+  readonly eprintCount: number;
 }
 
 /**
@@ -155,20 +155,20 @@ export interface FacetedSource {
 }
 
 /**
- * Faceted browse preprint summary.
+ * Faceted browse eprint summary.
  *
  * @remarks
- * Uses the unified PreprintAuthor model for compatibility with SearchResults component.
+ * Uses the unified EprintAuthor model for compatibility with SearchResults component.
  *
  * @public
  * @since 0.1.0
  */
-export interface FacetedPreprintSummary {
+export interface FacetedEprintSummary {
   readonly uri: AtUri;
   readonly cid: string;
   readonly title: string;
   readonly abstract: string;
-  readonly authors: readonly PreprintAuthor[];
+  readonly authors: readonly EprintAuthor[];
   readonly submittedBy: DID;
   readonly paperDid?: DID;
   readonly fields?: readonly { uri: string; name: string; id?: string; parentUri?: string }[];
@@ -199,7 +199,7 @@ export interface FacetValue {
  * @since 0.1.0
  */
 export interface FacetedBrowseResponse {
-  readonly preprints: readonly FacetedPreprintSummary[];
+  readonly eprints: readonly FacetedEprintSummary[];
   readonly availableFacets: {
     readonly personality?: readonly FacetValue[];
     readonly matter?: readonly FacetValue[];
@@ -255,7 +255,7 @@ export interface FacetedBrowseQuery {
 export class KnowledgeGraphService {
   private readonly graph: IGraphDatabase;
   /**
-   * Storage backend for preprint metadata queries in faceted browsing.
+   * Storage backend for eprint metadata queries in faceted browsing.
    * Used when browseFaceted is fully implemented.
    * @see browseFaceted method for usage context
    */
@@ -469,7 +469,7 @@ export class KnowledgeGraphService {
         description: fieldNode.description,
         parentId: undefined, // Would be derived from broader relationships
         status: 'approved',
-        preprintCount: 0, // Would be computed from preprint-field associations
+        eprintCount: 0, // Would be computed from eprint-field associations
         externalIds: fieldNode.wikidataId
           ? [
               {
@@ -541,7 +541,7 @@ export class KnowledgeGraphService {
         .map((node) => ({
           id: node.id,
           name: node.label,
-          preprintCount: 0, // Would be computed from associations
+          eprintCount: 0, // Would be computed from associations
         }));
     } catch (error) {
       this.logger.error('Failed to get child fields', error instanceof Error ? error : undefined, {
@@ -623,7 +623,7 @@ export class KnowledgeGraphService {
         description: f.description,
         parentId: undefined,
         status: 'approved',
-        preprintCount: 0,
+        eprintCount: 0,
         externalIds: f.wikidataId
           ? [
               {
@@ -742,10 +742,10 @@ export class KnowledgeGraphService {
   }
 
   /**
-   * Browses preprints using faceted classification.
+   * Browses eprints using faceted classification.
    *
    * @remarks
-   * Queries Neo4j for preprints matching PMEST facets and enriches with
+   * Queries Neo4j for eprints matching PMEST facets and enriches with
    * metadata from storage. Aggregates available facet refinements for UI.
    *
    * The 5-dimensional PMEST facets are:
@@ -756,7 +756,7 @@ export class KnowledgeGraphService {
    * - **Time**: Temporal period
    *
    * @param query - Faceted browse query
-   * @returns Matching preprints with available facet refinements
+   * @returns Matching eprints with available facet refinements
    *
    * @public
    */
@@ -797,60 +797,60 @@ export class KnowledgeGraphService {
 
       this.logger.info('Browsing faceted', { facets, limit, offset });
 
-      // Query preprint URIs; if no facets specified, get all preprints.
-      let matchingPreprintUris: readonly string[];
+      // Query eprint URIs; if no facets specified, get all eprints.
+      let matchingEprintUris: readonly string[];
       if (facets.length === 0) {
-        // No facets: return all preprints from storage (paginated)
-        this.logger.info('No facets specified, listing all preprints from storage');
-        matchingPreprintUris = await this._storage.listPreprintUris({ limit: 1000 });
-        this.logger.info('Storage returned URIs', { uris: matchingPreprintUris });
+        // No facets: return all eprints from storage (paginated)
+        this.logger.info('No facets specified, listing all eprints from storage');
+        matchingEprintUris = await this._storage.listEprintUris({ limit: 1000 });
+        this.logger.info('Storage returned URIs', { uris: matchingEprintUris });
       } else {
         // Facets specified: filter by facets in graph
-        matchingPreprintUris = await this.graph.queryByFacets(facets);
+        matchingEprintUris = await this.graph.queryByFacets(facets);
       }
 
-      this.logger.info('Found matching preprints', {
-        count: matchingPreprintUris.length,
+      this.logger.info('Found matching eprints', {
+        count: matchingEprintUris.length,
         hasFacets: facets.length > 0,
       });
 
       // Apply pagination to URIs
-      const paginatedUris = matchingPreprintUris.slice(offset, offset + limit + 1);
+      const paginatedUris = matchingEprintUris.slice(offset, offset + limit + 1);
       const hasMore = paginatedUris.length > limit;
       if (hasMore) {
         paginatedUris.pop();
       }
 
-      // Fetch preprint metadata from storage
-      const preprints: FacetedPreprintSummary[] = [];
+      // Fetch eprint metadata from storage
+      const eprints: FacetedEprintSummary[] = [];
       for (const uri of paginatedUris) {
-        const preprint = await this._storage.getPreprint(uri as AtUri);
-        if (preprint) {
+        const eprint = await this._storage.getEprint(uri as AtUri);
+        if (eprint) {
           // Determine which DID owns the record (paper's DID if set, otherwise submitter's)
-          const recordOwner = preprint.paperDid ?? preprint.submittedBy;
+          const recordOwner = eprint.paperDid ?? eprint.submittedBy;
           // Build record URL from AT URI
-          const recordUrl = `${preprint.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${recordOwner}&collection=pub.chive.preprint.submission&rkey=${(preprint.uri as string).split('/').pop()}`;
+          const recordUrl = `${eprint.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${recordOwner}&collection=pub.chive.eprint.submission&rkey=${(eprint.uri as string).split('/').pop()}`;
 
-          preprints.push({
-            uri: preprint.uri,
-            cid: preprint.cid,
-            title: preprint.title,
-            abstract: preprint.abstract,
-            authors: preprint.authors,
-            submittedBy: preprint.submittedBy,
-            paperDid: preprint.paperDid,
-            fields: preprint.fields?.map((f) => ({
+          eprints.push({
+            uri: eprint.uri,
+            cid: eprint.cid,
+            title: eprint.title,
+            abstract: eprint.abstract,
+            authors: eprint.authors,
+            submittedBy: eprint.submittedBy,
+            paperDid: eprint.paperDid,
+            fields: eprint.fields?.map((f) => ({
               uri: f.uri,
               name: f.name,
               id: f.id,
               parentUri: f.parentUri,
             })),
-            license: preprint.license ?? 'CC-BY-4.0',
-            keywords: preprint.keywords,
-            createdAt: preprint.createdAt,
-            indexedAt: preprint.indexedAt,
+            license: eprint.license ?? 'CC-BY-4.0',
+            keywords: eprint.keywords,
+            createdAt: eprint.createdAt,
+            indexedAt: eprint.indexedAt,
             source: {
-              pdsEndpoint: preprint.pdsUrl,
+              pdsEndpoint: eprint.pdsUrl,
               recordUrl,
               stale: false, // Could be computed from lastVerifiedAt
             },
@@ -876,7 +876,7 @@ export class KnowledgeGraphService {
       const nextCursor = hasMore ? String(offset + limit) : undefined;
 
       return {
-        preprints,
+        eprints,
         availableFacets: {
           personality: formatFacets(availableFacets.personality),
           matter: formatFacets(availableFacets.matter),
@@ -886,14 +886,14 @@ export class KnowledgeGraphService {
         },
         cursor: nextCursor,
         hasMore,
-        total: matchingPreprintUris.length,
+        total: matchingEprintUris.length,
       };
     } catch (error) {
       this.logger.error('Failed to browse faceted', error instanceof Error ? error : undefined, {
         facets: query.facets,
       });
       return {
-        preprints: [],
+        eprints: [],
         availableFacets: {
           personality: undefined,
           matter: undefined,

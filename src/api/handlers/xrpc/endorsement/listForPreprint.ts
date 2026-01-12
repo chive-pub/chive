@@ -1,8 +1,8 @@
 /**
- * XRPC handler for pub.chive.endorsement.listForPreprint.
+ * XRPC handler for pub.chive.endorsement.listForEprint.
  *
  * @remarks
- * Lists endorsements for a specific preprint.
+ * Lists endorsements for a specific eprint.
  *
  * @packageDocumentation
  * @public
@@ -12,9 +12,9 @@ import type { Context } from 'hono';
 
 import type { AtUri } from '../../../../types/atproto.js';
 import {
-  listEndorsementsForPreprintParamsSchema,
+  listEndorsementsForEprintParamsSchema,
   endorsementsResponseSchema,
-  type ListEndorsementsForPreprintParams,
+  type ListEndorsementsForEprintParams,
   type EndorsementsResponse,
 } from '../../../schemas/endorsement.js';
 import type { ChiveEnv } from '../../../types/context.js';
@@ -41,7 +41,7 @@ function mapEndorsementTypeToContributions(
 }
 
 /**
- * Handler for pub.chive.endorsement.listForPreprint query.
+ * Handler for pub.chive.endorsement.listForEprint query.
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters
@@ -49,33 +49,33 @@ function mapEndorsementTypeToContributions(
  *
  * @public
  */
-export async function listForPreprintHandler(
+export async function listForEprintHandler(
   c: Context<ChiveEnv>,
-  params: ListEndorsementsForPreprintParams
+  params: ListEndorsementsForEprintParams
 ): Promise<EndorsementsResponse> {
   const logger = c.get('logger');
   const reviewService = c.get('services').review;
 
-  logger.debug('Listing endorsements for preprint', {
-    preprintUri: params.preprintUri,
+  logger.debug('Listing endorsements for eprint', {
+    eprintUri: params.eprintUri,
     contributionType: params.contributionType,
     limit: params.limit,
     cursor: params.cursor,
   });
 
   // Get paginated endorsements from service
-  const result = await reviewService.listEndorsementsForPreprint(params.preprintUri as AtUri, {
+  const result = await reviewService.listEndorsementsForEprint(params.eprintUri as AtUri, {
     limit: params.limit,
     cursor: params.cursor,
   });
 
-  // Get summary for this preprint
-  const summary = await reviewService.getEndorsementSummary(params.preprintUri as AtUri);
+  // Get summary for this eprint
+  const summary = await reviewService.getEndorsementSummary(params.eprintUri as AtUri);
 
   // Map service results to API format
   let endorsements = result.items.map((item) => ({
     uri: item.uri,
-    preprintUri: item.preprintUri,
+    eprintUri: item.eprintUri,
     endorser: {
       did: item.endorser,
       handle: 'unknown', // Handle would need to be resolved via DID
@@ -104,8 +104,8 @@ export async function listForPreprintHandler(
     total: result.total,
   };
 
-  logger.info('Endorsements listed for preprint', {
-    preprintUri: params.preprintUri,
+  logger.info('Endorsements listed for eprint', {
+    eprintUri: params.eprintUri,
     count: response.endorsements.length,
   });
 
@@ -113,20 +113,20 @@ export async function listForPreprintHandler(
 }
 
 /**
- * Endpoint definition for pub.chive.endorsement.listForPreprint.
+ * Endpoint definition for pub.chive.endorsement.listForEprint.
  *
  * @public
  */
-export const listForPreprintEndpoint: XRPCEndpoint<
-  ListEndorsementsForPreprintParams,
+export const listForEprintEndpoint: XRPCEndpoint<
+  ListEndorsementsForEprintParams,
   EndorsementsResponse
 > = {
-  method: 'pub.chive.endorsement.listForPreprint' as never,
+  method: 'pub.chive.endorsement.listForEprint' as never,
   type: 'query',
-  description: 'List endorsements for a preprint',
-  inputSchema: listEndorsementsForPreprintParamsSchema,
+  description: 'List endorsements for a eprint',
+  inputSchema: listEndorsementsForEprintParamsSchema,
   outputSchema: endorsementsResponseSchema,
-  handler: listForPreprintHandler,
+  handler: listForEprintHandler,
   auth: 'none',
   rateLimit: 'anonymous',
 };

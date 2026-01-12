@@ -2,7 +2,7 @@
  * Elasticsearch index setup and management.
  *
  * @remarks
- * Sets up Elasticsearch index templates and ILM policies for preprints.
+ * Sets up Elasticsearch index templates and ILM policies for eprints.
  * Handles:
  * - Index template creation
  * - ILM policy application
@@ -101,7 +101,7 @@ function loadJSON(filename: string): unknown {
 }
 
 /**
- * Sets up ILM policy for preprints index.
+ * Sets up ILM policy for eprints index.
  *
  * @param client - Elasticsearch client
  *
@@ -114,7 +114,7 @@ function loadJSON(filename: string): unknown {
  * @public
  */
 export async function setupILMPolicy(client: Client): Promise<void> {
-  const policyData = loadJSON('ilm/preprints_policy.json') as {
+  const policyData = loadJSON('ilm/eprints_policy.json') as {
     policy: {
       phases: {
         hot?: { min_age?: string; actions: object };
@@ -125,13 +125,13 @@ export async function setupILMPolicy(client: Client): Promise<void> {
   };
 
   await client.ilm.putLifecycle({
-    name: 'preprints_ilm_policy',
+    name: 'eprints_ilm_policy',
     policy: policyData.policy,
   });
 }
 
 /**
- * Sets up index template for preprints.
+ * Sets up index template for eprints.
  *
  * @param client - Elasticsearch client
  *
@@ -146,7 +146,7 @@ export async function setupILMPolicy(client: Client): Promise<void> {
  * @public
  */
 export async function setupIndexTemplate(client: Client): Promise<void> {
-  const templateData = loadJSON('templates/preprints.json') as {
+  const templateData = loadJSON('templates/eprints.json') as {
     index_patterns: string[];
     data_stream?: object;
     priority?: number;
@@ -157,7 +157,7 @@ export async function setupIndexTemplate(client: Client): Promise<void> {
   };
 
   await client.indices.putIndexTemplate({
-    name: 'preprints',
+    name: 'eprints',
     index_patterns: templateData.index_patterns,
     data_stream: templateData.data_stream,
     priority: templateData.priority,
@@ -166,7 +166,7 @@ export async function setupIndexTemplate(client: Client): Promise<void> {
 }
 
 /**
- * Sets up ingest pipeline for preprint processing.
+ * Sets up ingest pipeline for eprint processing.
  *
  * @param client - Elasticsearch client
  *
@@ -181,14 +181,14 @@ export async function setupIndexTemplate(client: Client): Promise<void> {
  * @public
  */
 export async function setupIngestPipeline(client: Client): Promise<void> {
-  const pipelineData = loadJSON('pipelines/preprint-processing.json') as {
+  const pipelineData = loadJSON('pipelines/eprint-processing.json') as {
     description: string;
     processors: Record<string, unknown>[];
     on_failure?: Record<string, unknown>[];
   };
 
   await client.ingest.putPipeline({
-    id: 'preprint-processing',
+    id: 'eprint-processing',
     description: pipelineData.description,
     processors: pipelineData.processors as estypes.IngestProcessorContainer[],
     on_failure: pipelineData.on_failure as estypes.IngestProcessorContainer[] | undefined,
@@ -196,7 +196,7 @@ export async function setupIngestPipeline(client: Client): Promise<void> {
 }
 
 /**
- * Creates the preprints data stream if it doesn't exist.
+ * Creates the eprints data stream if it doesn't exist.
  *
  * @param client - Elasticsearch client
  *
@@ -211,7 +211,7 @@ export async function setupIngestPipeline(client: Client): Promise<void> {
 export async function bootstrapDataStream(client: Client): Promise<void> {
   // Check if data stream already exists
   try {
-    await client.indices.getDataStream({ name: 'preprints' });
+    await client.indices.getDataStream({ name: 'eprints' });
     // Data stream exists, nothing to do
     return;
   } catch {
@@ -219,18 +219,18 @@ export async function bootstrapDataStream(client: Client): Promise<void> {
   }
 
   // Check for legacy index that would conflict
-  const legacyIndexExists = await client.indices.exists({ index: 'preprints' });
+  const legacyIndexExists = await client.indices.exists({ index: 'eprints' });
   if (legacyIndexExists) {
     // Check if it's actually a data stream backing index
     try {
-      const indexInfo = await client.indices.get({ index: 'preprints' });
+      const indexInfo = await client.indices.get({ index: 'eprints' });
       const isDataStreamIndex = Object.values(indexInfo).some(
         (info) => info.data_stream !== undefined
       );
       if (!isDataStreamIndex) {
         throw new DatabaseError(
           'BOOTSTRAP_CONFLICT',
-          'A legacy index named "preprints" exists. Migrate to data stream: ' +
+          'A legacy index named "eprints" exists. Migrate to data stream: ' +
             'https://www.elastic.co/guide/en/elasticsearch/reference/current/migrate-index-alias-to-data-stream.html'
         );
       }
@@ -241,7 +241,7 @@ export async function bootstrapDataStream(client: Client): Promise<void> {
   }
 
   // Create the data stream explicitly
-  await client.indices.createDataStream({ name: 'preprints' });
+  await client.indices.createDataStream({ name: 'eprints' });
 }
 
 /**

@@ -53,9 +53,9 @@ export type ActivityStatus = 'pending' | 'confirmed' | 'failed' | 'timeout';
  * @public
  */
 export type ActivityCategory =
-  | 'preprint_submit'
-  | 'preprint_update'
-  | 'preprint_delete'
+  | 'eprint_submit'
+  | 'eprint_update'
+  | 'eprint_delete'
   | 'review_create'
   | 'review_update'
   | 'review_delete'
@@ -99,7 +99,7 @@ export interface LogActivityInput {
   readonly category: ActivityCategory;
 
   /**
-   * Target record URI (for reviews, endorsements targeting a preprint).
+   * Target record URI (for reviews, endorsements targeting a eprint).
    */
   readonly targetUri?: AtUri;
 
@@ -294,10 +294,10 @@ export interface ActivityServiceOptions {
  * // Log activity before PDS write
  * await activityService.logActivity({
  *   actorDid: userDid,
- *   collection: 'pub.chive.preprint.submission',
+ *   collection: 'pub.chive.eprint.submission',
  *   rkey,
  *   action: 'create',
- *   category: 'preprint_submit',
+ *   category: 'eprint_submit',
  *   traceId,
  *   sessionId,
  * });
@@ -307,7 +307,7 @@ export interface ActivityServiceOptions {
  * // Firehose indexer receives event and correlates
  * await activityService.correlateWithFirehose({
  *   repo: event.repo,
- *   collection: 'pub.chive.preprint.submission',
+ *   collection: 'pub.chive.eprint.submission',
  *   rkey: event.rkey,
  *   seq: event.seq,
  *   uri: constructedUri,

@@ -1,17 +1,17 @@
 {
-  "index_patterns": ["preprints"],
+  "index_patterns": ["eprints"],
   "data_stream": {},
   "priority": 500,
   "template": {
     "settings": {
       "number_of_shards": 5,
       "number_of_replicas": 1,
-      "index.lifecycle.name": "preprints_ilm_policy",
+      "index.lifecycle.name": "eprints_ilm_policy",
       "refresh_interval": "5s",
       "max_result_window": 10000,
       "analysis": {
         "analyzer": {
-          "preprint_analyzer": {
+          "eprint_analyzer": {
             "type": "custom",
             "tokenizer": "standard",
             "char_filter": ["html_strip"],
@@ -86,7 +86,7 @@
         },
         "title": {
           "type": "text",
-          "analyzer": "preprint_analyzer",
+          "analyzer": "eprint_analyzer",
           "fields": {
             "keyword": {
               "type": "keyword",
@@ -103,11 +103,11 @@
         },
         "abstract": {
           "type": "text",
-          "analyzer": "preprint_analyzer"
+          "analyzer": "eprint_analyzer"
         },
         "full_text": {
           "type": "text",
-          "analyzer": "preprint_analyzer",
+          "analyzer": "eprint_analyzer",
           "index": true,
           "store": false,
           "norms": false
@@ -159,7 +159,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -168,7 +168,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -177,7 +177,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -186,7 +186,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -195,7 +195,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -204,7 +204,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -213,7 +213,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -222,7 +222,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -231,7 +231,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             },
@@ -240,7 +240,7 @@
               "fields": {
                 "text": {
                   "type": "text",
-                  "analyzer": "preprint_analyzer"
+                  "analyzer": "eprint_analyzer"
                 }
               }
             }
@@ -251,7 +251,7 @@
           "fields": {
             "text": {
               "type": "text",
-              "analyzer": "preprint_analyzer"
+              "analyzer": "eprint_analyzer"
             }
           }
         },
@@ -263,7 +263,7 @@
           "fields": {
             "text": {
               "type": "text",
-              "analyzer": "preprint_analyzer"
+              "analyzer": "eprint_analyzer"
             }
           }
         },

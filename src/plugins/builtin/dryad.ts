@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides integration with Dryad (https://datadryad.org) for linking
- * preprints to their associated research data.
+ * eprints to their associated research data.
  *
  * Dryad is a curated, general-purpose research data repository that makes
  * datasets discoverable, freely reusable, and citable.
@@ -184,7 +184,7 @@ interface DryadSearchResult {
  *
  * @remarks
  * Provides dataset lookup and linking for research data on Dryad.
- * Used to link preprints to their associated datasets.
+ * Used to link eprints to their associated datasets.
  *
  * @example
  * ```typescript

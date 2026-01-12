@@ -1,13 +1,13 @@
 /**
- * Repository for preprint record operations.
+ * Repository for eprint record operations.
  *
  * @remarks
- * Provides domain-specific queries and operations for preprint records
+ * Provides domain-specific queries and operations for eprint records
  * in the PostgreSQL index. Implements the repository pattern for clean
  * separation of data access logic.
  *
  * **Repository Pattern Benefits:**
- * - Encapsulates all preprint-related database operations
+ * - Encapsulates all eprint-related database operations
  * - Type-safe queries with compile-time validation
  * - Consistent error handling and result types
  * - Easy to test with mock implementations
@@ -20,25 +20,25 @@
  *
  * @example
  * ```typescript
- * const repo = new PreprintsRepository(pool);
+ * const repo = new EprintsRepository(pool);
  *
- * // Store a preprint
+ * // Store a eprint
  * const result = await repo.store({
- *   uri: toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+ *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
  *   cid: toCID('bafyreib...')!,
  *   author: toDID('did:plc:abc')!,
  *   title: 'Neural Networks in Biology',
  *   abstract: 'This paper explores...',
  *   documentBlobRef: { ... },
  *   documentFormat: 'pdf',
- *   publicationStatus: 'preprint',
+ *   publicationStatus: 'eprint',
  *   pdsUrl: 'https://pds.example.com',
  *   indexedAt: new Date(),
  *   createdAt: new Date()
  * });
  *
  * // Query by author
- * const preprints = await repo.findByAuthor(
+ * const eprints = await repo.findByAuthor(
  *   toDID('did:plc:abc')!,
  *   { limit: 10, sortBy: 'createdAt' }
  * );
@@ -53,10 +53,10 @@ import type { Pool } from 'pg';
 
 import type { AtUri, CID, DID } from '../../types/atproto.js';
 import type {
-  PreprintQueryOptions,
-  StoredPreprint,
+  EprintQueryOptions,
+  StoredEprint,
 } from '../../types/interfaces/storage.interface.js';
-import type { PreprintAuthor } from '../../types/models/author.js';
+import type { EprintAuthor } from '../../types/models/author.js';
 import type {
   ConferencePresentation,
   DocumentFormat,
@@ -67,22 +67,22 @@ import type {
   RelatedWork,
   Repositories,
   SupplementaryMaterial,
-} from '../../types/models/preprint.js';
+} from '../../types/models/eprint.js';
 import { Err, Ok, type Result } from '../../types/result.js';
 
 import { InsertBuilder, SelectBuilder, UpdateBuilder } from './query-builder.js';
 
 /**
- * Database row representation of preprint index record.
+ * Database row representation of eprint index record.
  *
  * @remarks
- * Maps StoredPreprint interface to PostgreSQL table structure.
+ * Maps StoredEprint interface to PostgreSQL table structure.
  * BlobRef is denormalized into separate columns (cid, mime_type, size).
  * Complex metadata stored as JSONB.
  *
  * @internal
  */
-interface PreprintRow extends Record<string, unknown> {
+interface EprintRow extends Record<string, unknown> {
   readonly uri: string;
   readonly cid: string;
   readonly authors: string; // JSONB stored as string
@@ -110,11 +110,11 @@ interface PreprintRow extends Record<string, unknown> {
 }
 
 /**
- * Repository for preprint record operations.
+ * Repository for eprint record operations.
  *
  * @remarks
- * Implements the repository pattern for preprint data access.
- * All database operations for preprints go through this repository.
+ * Implements the repository pattern for eprint data access.
+ * All database operations for eprints go through this repository.
  *
  * **Operations Provided:**
  * - CRUD operations (create, read, update, delete)
@@ -125,11 +125,11 @@ interface PreprintRow extends Record<string, unknown> {
  * @public
  * @since 0.1.0
  */
-export class PreprintsRepository {
+export class EprintsRepository {
   private readonly pool: Pool;
 
   /**
-   * Creates a preprints repository.
+   * Creates a eprints repository.
    *
    * @param pool - PostgreSQL connection pool
    *
@@ -142,13 +142,13 @@ export class PreprintsRepository {
   }
 
   /**
-   * Stores or updates a preprint index record.
+   * Stores or updates a eprint index record.
    *
-   * @param preprint - Preprint metadata to index
+   * @param eprint - Eprint metadata to index
    * @returns Result indicating success or failure
    *
    * @remarks
-   * Upserts the preprint (insert or update based on URI).
+   * Upserts the eprint (insert or update based on URI).
    * Updates indexed_at and last_synced_at timestamps on every call.
    *
    * Uses INSERT ... ON CONFLICT DO UPDATE for atomic upsert.
@@ -159,7 +159,7 @@ export class PreprintsRepository {
    * @example
    * ```typescript
    * const result = await repo.store({
-   *   uri: toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   cid: toCID('bafyreib...')!,
    *   author: toDID('did:plc:abc')!,
    *   title: 'Neural Networks in Biology',
@@ -171,7 +171,7 @@ export class PreprintsRepository {
    *     size: 2048576
    *   },
    *   documentFormat: 'pdf',
-   *   publicationStatus: 'preprint',
+   *   publicationStatus: 'eprint',
    *   pdsUrl: 'https://pds.example.com',
    *   indexedAt: new Date(),
    *   createdAt: new Date()
@@ -184,41 +184,41 @@ export class PreprintsRepository {
    *
    * @public
    */
-  async store(preprint: StoredPreprint): Promise<Result<void, Error>> {
+  async store(eprint: StoredEprint): Promise<Result<void, Error>> {
     try {
-      const query = new InsertBuilder<PreprintRow>()
-        .into('preprints_index')
+      const query = new InsertBuilder<EprintRow>()
+        .into('eprints_index')
         .values({
-          uri: preprint.uri,
-          cid: preprint.cid,
-          authors: JSON.stringify(preprint.authors),
-          submitted_by: preprint.submittedBy,
-          paper_did: preprint.paperDid ?? null,
-          title: preprint.title,
-          abstract: preprint.abstract,
-          document_blob_cid: preprint.documentBlobRef.ref,
-          document_blob_mime_type: preprint.documentBlobRef.mimeType,
-          document_blob_size: preprint.documentBlobRef.size,
-          document_format: preprint.documentFormat,
-          keywords: preprint.keywords ? [...preprint.keywords] : null,
-          license: preprint.license,
-          publication_status: preprint.publicationStatus,
-          published_version: preprint.publishedVersion
-            ? JSON.stringify(preprint.publishedVersion)
+          uri: eprint.uri,
+          cid: eprint.cid,
+          authors: JSON.stringify(eprint.authors),
+          submitted_by: eprint.submittedBy,
+          paper_did: eprint.paperDid ?? null,
+          title: eprint.title,
+          abstract: eprint.abstract,
+          document_blob_cid: eprint.documentBlobRef.ref,
+          document_blob_mime_type: eprint.documentBlobRef.mimeType,
+          document_blob_size: eprint.documentBlobRef.size,
+          document_format: eprint.documentFormat,
+          keywords: eprint.keywords ? [...eprint.keywords] : null,
+          license: eprint.license,
+          publication_status: eprint.publicationStatus,
+          published_version: eprint.publishedVersion
+            ? JSON.stringify(eprint.publishedVersion)
             : null,
-          external_ids: preprint.externalIds ? JSON.stringify(preprint.externalIds) : null,
-          related_works: preprint.relatedWorks ? JSON.stringify(preprint.relatedWorks) : null,
-          repositories: preprint.repositories ? JSON.stringify(preprint.repositories) : null,
-          funding: preprint.funding ? JSON.stringify(preprint.funding) : null,
-          conference_presentation: preprint.conferencePresentation
-            ? JSON.stringify(preprint.conferencePresentation)
+          external_ids: eprint.externalIds ? JSON.stringify(eprint.externalIds) : null,
+          related_works: eprint.relatedWorks ? JSON.stringify(eprint.relatedWorks) : null,
+          repositories: eprint.repositories ? JSON.stringify(eprint.repositories) : null,
+          funding: eprint.funding ? JSON.stringify(eprint.funding) : null,
+          conference_presentation: eprint.conferencePresentation
+            ? JSON.stringify(eprint.conferencePresentation)
             : null,
-          supplementary_materials: preprint.supplementaryMaterials
-            ? JSON.stringify(preprint.supplementaryMaterials)
+          supplementary_materials: eprint.supplementaryMaterials
+            ? JSON.stringify(eprint.supplementaryMaterials)
             : null,
-          pds_url: preprint.pdsUrl,
-          indexed_at: preprint.indexedAt,
-          created_at: preprint.createdAt,
+          pds_url: eprint.pdsUrl,
+          indexed_at: eprint.indexedAt,
+          created_at: eprint.createdAt,
         })
         .onConflict('uri', 'update')
         .build();
@@ -227,37 +227,37 @@ export class PreprintsRepository {
       return Ok(undefined);
     } catch (error) {
       return Err(
-        error instanceof Error ? error : new Error(`Failed to store preprint: ${String(error)}`)
+        error instanceof Error ? error : new Error(`Failed to store eprint: ${String(error)}`)
       );
     }
   }
 
   /**
-   * Retrieves a preprint index record by URI.
+   * Retrieves a eprint index record by URI.
    *
-   * @param uri - AT URI of the preprint
-   * @returns Preprint if indexed, null otherwise
+   * @param uri - AT URI of the eprint
+   * @returns Eprint if indexed, null otherwise
    *
    * @remarks
-   * Returns null if the preprint has not been indexed by Chive.
-   * The preprint may still exist in the user's PDS.
+   * Returns null if the eprint has not been indexed by Chive.
+   * The eprint may still exist in the user's PDS.
    *
    * @example
    * ```typescript
-   * const preprint = await repo.findByUri(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   * const eprint = await repo.findByUri(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
-   * if (preprint) {
-   *   console.log('Title:', preprint.title);
+   * if (eprint) {
+   *   console.log('Title:', eprint.title);
    * }
    * ```
    *
    * @public
    */
-  async findByUri(uri: AtUri): Promise<StoredPreprint | null> {
+  async findByUri(uri: AtUri): Promise<StoredEprint | null> {
     try {
-      const query = new SelectBuilder<PreprintRow>()
+      const query = new SelectBuilder<EprintRow>()
         .select(
           'uri',
           'cid',
@@ -284,11 +284,11 @@ export class PreprintsRepository {
           'indexed_at',
           'created_at'
         )
-        .from('preprints_index')
+        .from('eprints_index')
         .where({ uri })
         .build();
 
-      const result = await this.pool.query<PreprintRow>(query.sql, [...query.params]);
+      const result = await this.pool.query<EprintRow>(query.sql, [...query.params]);
 
       if (result.rows.length === 0) {
         return null;
@@ -299,38 +299,38 @@ export class PreprintsRepository {
         return null;
       }
 
-      return this.rowToPreprint(row);
+      return this.rowToEprint(row);
     } catch (error) {
-      throw error instanceof Error ? error : new Error(`Failed to find preprint: ${String(error)}`);
+      throw error instanceof Error ? error : new Error(`Failed to find eprint: ${String(error)}`);
     }
   }
 
   /**
-   * Queries preprints by author.
+   * Queries eprints by author.
    *
    * @param author - Author DID
    * @param options - Query options (limit, offset, sort)
-   * @returns Array of preprints by this author
+   * @returns Array of eprints by this author
    *
    * @remarks
-   * Returns preprints in order specified by options.sortBy.
+   * Returns eprints in order specified by options.sortBy.
    * Defaults to newest first (createdAt desc).
    *
-   * Maximum limit is 100 preprints per query. Use offset for pagination.
+   * Maximum limit is 100 eprints per query. Use offset for pagination.
    *
    * @example
    * ```typescript
-   * const preprints = await repo.findByAuthor(
+   * const eprints = await repo.findByAuthor(
    *   toDID('did:plc:abc')!,
    *   { limit: 10, sortBy: 'createdAt', sortOrder: 'desc' }
    * );
    *
-   * preprints.forEach(p => console.log(p.title));
+   * eprints.forEach(p => console.log(p.title));
    * ```
    *
    * @public
    */
-  async findByAuthor(author: DID, options: PreprintQueryOptions = {}): Promise<StoredPreprint[]> {
+  async findByAuthor(author: DID, options: EprintQueryOptions = {}): Promise<StoredEprint[]> {
     try {
       const limit = Math.min(options.limit ?? 50, 100);
       const offset = options.offset ?? 0;
@@ -339,7 +339,7 @@ export class PreprintsRepository {
 
       // Note: This queries by submitted_by. To query by any author DID,
       // use the JSONB query: authors @> '[{"did": "..."}]'
-      let query = new SelectBuilder<PreprintRow>()
+      let query = new SelectBuilder<EprintRow>()
         .select(
           'uri',
           'cid',
@@ -366,7 +366,7 @@ export class PreprintsRepository {
           'indexed_at',
           'created_at'
         )
-        .from('preprints_index')
+        .from('eprints_index')
         .where({ submitted_by: author });
 
       // Map sortBy to column name
@@ -379,21 +379,21 @@ export class PreprintsRepository {
       query = query.orderBy(sortColumn, sortDirection).limit(limit).offset(offset);
 
       const builtQuery = query.build();
-      const result = await this.pool.query<PreprintRow>(builtQuery.sql, [...builtQuery.params]);
+      const result = await this.pool.query<EprintRow>(builtQuery.sql, [...builtQuery.params]);
 
-      return result.rows.map((row) => this.rowToPreprint(row));
+      return result.rows.map((row) => this.rowToEprint(row));
     } catch (error) {
       throw error instanceof Error
         ? error
-        : new Error(`Failed to find preprints by author: ${String(error)}`);
+        : new Error(`Failed to find eprints by author: ${String(error)}`);
     }
   }
 
   /**
-   * Lists all preprint URIs with pagination.
+   * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit
-   * @returns Array of preprint URIs ordered by creation date (newest first)
+   * @returns Array of eprint URIs ordered by creation date (newest first)
    *
    * @example
    * ```typescript
@@ -410,7 +410,7 @@ export class PreprintsRepository {
       // Select both uri and created_at to enable type-safe ordering
       const query = new SelectBuilder<{ uri: string; created_at: Date }>()
         .select('uri', 'created_at')
-        .from('preprints_index')
+        .from('eprints_index')
         .orderBy('created_at', 'DESC')
         .limit(limit)
         .offset(offset)
@@ -423,14 +423,14 @@ export class PreprintsRepository {
     } catch (error) {
       throw error instanceof Error
         ? error
-        : new Error(`Failed to list preprint URIs: ${String(error)}`);
+        : new Error(`Failed to list eprint URIs: ${String(error)}`);
     }
   }
 
   /**
-   * Updates preprint metadata.
+   * Updates eprint metadata.
    *
-   * @param uri - Preprint URI
+   * @param uri - Eprint URI
    * @param updates - Fields to update
    * @returns Result indicating success or failure
    *
@@ -441,7 +441,7 @@ export class PreprintsRepository {
    * @example
    * ```typescript
    * const result = await repo.update(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   {
    *     title: 'Updated Title',
    *     abstract: 'Updated abstract...'
@@ -451,9 +451,9 @@ export class PreprintsRepository {
    *
    * @public
    */
-  async update(uri: AtUri, updates: Partial<StoredPreprint>): Promise<Result<void, Error>> {
+  async update(uri: AtUri, updates: Partial<StoredEprint>): Promise<Result<void, Error>> {
     try {
-      // Convert StoredPreprint fields to database column names
+      // Convert StoredEprint fields to database column names
       // Use Record to allow property assignment
       const dbUpdates: Record<string, unknown> = {
         indexed_at: new Date(), // Always update sync timestamp
@@ -501,40 +501,40 @@ export class PreprintsRepository {
       if (updates.pdsUrl) dbUpdates.pds_url = updates.pdsUrl;
       if (updates.createdAt) dbUpdates.created_at = updates.createdAt;
 
-      const query = new UpdateBuilder<PreprintRow>()
-        .table('preprints_index')
-        .set(dbUpdates as Partial<PreprintRow>)
+      const query = new UpdateBuilder<EprintRow>()
+        .table('eprints_index')
+        .set(dbUpdates as Partial<EprintRow>)
         .where({ uri })
         .build();
 
       const result = await this.pool.query(query.sql, [...query.params]);
 
       if (result.rowCount === 0) {
-        return Err(new Error(`Preprint not found: ${uri}`));
+        return Err(new Error(`Eprint not found: ${uri}`));
       }
 
       return Ok(undefined);
     } catch (error) {
       return Err(
-        error instanceof Error ? error : new Error(`Failed to update preprint: ${String(error)}`)
+        error instanceof Error ? error : new Error(`Failed to update eprint: ${String(error)}`)
       );
     }
   }
 
   /**
-   * Deletes a preprint from the index.
+   * Deletes a eprint from the index.
    *
-   * @param uri - Preprint URI
+   * @param uri - Eprint URI
    * @returns Result indicating success or failure
    *
    * @remarks
-   * Removes the preprint from the local index. Does not delete from PDS
+   * Removes the eprint from the local index. Does not delete from PDS
    * (ATProto compliance - never write to user PDSes).
    *
    * @example
    * ```typescript
    * const result = await repo.delete(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    * ```
    *
@@ -542,29 +542,29 @@ export class PreprintsRepository {
    */
   async delete(uri: AtUri): Promise<Result<void, Error>> {
     try {
-      const result = await this.pool.query('DELETE FROM preprints_index WHERE uri = $1', [uri]);
+      const result = await this.pool.query('DELETE FROM eprints_index WHERE uri = $1', [uri]);
 
       if (result.rowCount === 0) {
-        return Err(new Error(`Preprint not found: ${uri}`));
+        return Err(new Error(`Eprint not found: ${uri}`));
       }
 
       return Ok(undefined);
     } catch (error) {
       return Err(
-        error instanceof Error ? error : new Error(`Failed to delete preprint: ${String(error)}`)
+        error instanceof Error ? error : new Error(`Failed to delete eprint: ${String(error)}`)
       );
     }
   }
 
   /**
-   * Counts total preprints in the index.
+   * Counts total eprints in the index.
    *
-   * @returns Total number of indexed preprints
+   * @returns Total number of indexed eprints
    *
    * @example
    * ```typescript
    * const total = await repo.count();
-   * console.log(`${total} preprints indexed`);
+   * console.log(`${total} eprints indexed`);
    * ```
    *
    * @public
@@ -572,7 +572,7 @@ export class PreprintsRepository {
   async count(): Promise<number> {
     try {
       const result = await this.pool.query<{ count: string }>(
-        'SELECT COUNT(*) as count FROM preprints_index'
+        'SELECT COUNT(*) as count FROM eprints_index'
       );
 
       const row = result.rows[0];
@@ -580,15 +580,15 @@ export class PreprintsRepository {
     } catch (error) {
       throw error instanceof Error
         ? error
-        : new Error(`Failed to count preprints: ${String(error)}`);
+        : new Error(`Failed to count eprints: ${String(error)}`);
     }
   }
 
   /**
-   * Converts database row to StoredPreprint interface.
+   * Converts database row to StoredEprint interface.
    *
    * @param row - Database row
-   * @returns StoredPreprint object
+   * @returns StoredEprint object
    *
    * @remarks
    * Reconstitutes BlobRef from denormalized columns.
@@ -597,12 +597,12 @@ export class PreprintsRepository {
    *
    * @internal
    */
-  private rowToPreprint(row: PreprintRow): StoredPreprint {
+  private rowToEprint(row: EprintRow): StoredEprint {
     // Parse authors from JSONB
-    const authors: readonly PreprintAuthor[] =
+    const authors: readonly EprintAuthor[] =
       typeof row.authors === 'string'
-        ? (JSON.parse(row.authors) as PreprintAuthor[])
-        : (row.authors as PreprintAuthor[]);
+        ? (JSON.parse(row.authors) as EprintAuthor[])
+        : (row.authors as EprintAuthor[]);
 
     // Parse optional JSONB fields
     const publishedVersion = row.published_version

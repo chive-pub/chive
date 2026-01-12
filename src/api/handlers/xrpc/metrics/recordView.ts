@@ -2,7 +2,7 @@
  * Handler for pub.chive.metrics.recordView.
  *
  * @remarks
- * Records a view event for a preprint.
+ * Records a view event for a eprint.
  *
  * @packageDocumentation
  * @public
@@ -63,7 +63,7 @@ export async function recordViewHandler(
 export const recordViewEndpoint: XRPCEndpoint<RecordViewInput, RecordViewResponse> = {
   method: 'pub.chive.metrics.recordView' as never,
   type: 'procedure',
-  description: 'Record a view event for a preprint',
+  description: 'Record a view event for a eprint',
   inputSchema: recordViewInputSchema,
   outputSchema: recordViewResponseSchema,
   handler: recordViewHandler,

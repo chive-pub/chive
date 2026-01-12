@@ -132,7 +132,7 @@ export interface RepoOp {
    * Record path in repository.
    *
    * @remarks
-   * Format: "collection/rkey" (e.g., "pub.chive.preprint.submission/abc123")
+   * Format: "collection/rkey" (e.g., "pub.chive.eprint.submission/abc123")
    */
   readonly path: string;
 
@@ -179,7 +179,7 @@ export interface SubscriptionOptions {
     /**
      * Collections to include (NSIDs).
      *
-     * @example ["pub.chive.preprint.submission", "pub.chive.review.comment"]
+     * @example ["pub.chive.eprint.submission", "pub.chive.review.comment"]
      */
     readonly collections?: readonly NSID[];
   };
@@ -219,7 +219,7 @@ export interface IEventStreamConsumer {
    *   relay: 'wss://bsky.network',
    *   cursor: await consumer.getCurrentCursor(),
    *   filter: {
-   *     collections: [toNSID('pub.chive.preprint.submission')!]
+   *     collections: [toNSID('pub.chive.eprint.submission')!]
    *   }
    * });
    *

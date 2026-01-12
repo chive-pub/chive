@@ -1,8 +1,8 @@
 /**
- * XRPC handler for pub.chive.preprint.listByAuthor.
+ * XRPC handler for pub.chive.eprint.listByAuthor.
  *
  * @remarks
- * Lists all preprints by a specific author DID with pagination.
+ * Lists all eprints by a specific author DID with pagination.
  * Supports sorting by date or view count.
  *
  * **ATProto Compliance:**
@@ -19,27 +19,27 @@ import type { DID } from '../../../../types/atproto.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import {
   listByAuthorParamsSchema,
-  preprintListResponseSchema,
+  eprintListResponseSchema,
   type ListByAuthorParams,
-  type PreprintListResponse,
-} from '../../../schemas/preprint.js';
+  type EprintListResponse,
+} from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Handler for pub.chive.preprint.listByAuthor query.
+ * Handler for pub.chive.eprint.listByAuthor query.
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters with author DID
- * @returns Paginated list of author's preprints
+ * @returns Paginated list of author's eprints
  *
  * @example
  * ```http
- * GET /xrpc/pub.chive.preprint.listByAuthor?did=did:plc:abc&limit=20&sort=date
+ * GET /xrpc/pub.chive.eprint.listByAuthor?did=did:plc:abc&limit=20&sort=date
  *
  * Response:
  * {
- *   "preprints": [...],
+ *   "eprints": [...],
  *   "hasMore": true,
  *   "cursor": "...",
  *   "total": 45
@@ -51,11 +51,11 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
 export async function listByAuthorHandler(
   c: Context<ChiveEnv>,
   params: ListByAuthorParams
-): Promise<PreprintListResponse> {
-  const { preprint } = c.get('services');
+): Promise<EprintListResponse> {
+  const { eprint } = c.get('services');
   const logger = c.get('logger');
 
-  logger.debug('Listing preprints by author', {
+  logger.debug('Listing eprints by author', {
     did: params.did,
     limit: params.limit,
     sort: params.sort,
@@ -64,26 +64,26 @@ export async function listByAuthorHandler(
   const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
   const limit = params.limit ?? 50;
 
-  const results = await preprint.getPreprintsByAuthor(params.did as DID, {
+  const results = await eprint.getEprintsByAuthor(params.did as DID, {
     limit,
     offset,
     sortBy: params.sort === 'date' ? 'createdAt' : 'createdAt',
     sortOrder: 'desc',
   });
 
-  const hasMore = offset + results.preprints.length < results.total;
+  const hasMore = offset + results.eprints.length < results.total;
 
   // Calculate staleness using configured threshold
   const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
 
   // Map to response format
-  const response: PreprintListResponse = {
-    preprints: results.preprints.map((p) => {
+  const response: EprintListResponse = {
+    eprints: results.eprints.map((p) => {
       // Extract rkey for record URL
       const rkey = p.uri.split('/').pop() ?? '';
       // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
       const recordOwner = p.paperDid ?? p.submittedBy;
-      const recordUrl = `${p.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
+      const recordUrl = `${p.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
 
       return {
         uri: p.uri,
@@ -136,14 +136,14 @@ export async function listByAuthorHandler(
           : undefined,
       };
     }),
-    cursor: hasMore ? String(offset + results.preprints.length) : undefined,
+    cursor: hasMore ? String(offset + results.eprints.length) : undefined,
     hasMore,
     total: results.total,
   };
 
-  logger.info('Author preprints listed', {
+  logger.info('Author eprints listed', {
     did: params.did,
-    count: response.preprints.length,
+    count: response.eprints.length,
     total: results.total,
   });
 
@@ -151,16 +151,16 @@ export async function listByAuthorHandler(
 }
 
 /**
- * Endpoint definition for pub.chive.preprint.listByAuthor.
+ * Endpoint definition for pub.chive.eprint.listByAuthor.
  *
  * @public
  */
-export const listByAuthorEndpoint: XRPCEndpoint<ListByAuthorParams, PreprintListResponse> = {
-  method: 'pub.chive.preprint.listByAuthor' as never,
+export const listByAuthorEndpoint: XRPCEndpoint<ListByAuthorParams, EprintListResponse> = {
+  method: 'pub.chive.eprint.listByAuthor' as never,
   type: 'query',
-  description: 'List preprint submissions by author DID',
+  description: 'List eprint submissions by author DID',
   inputSchema: listByAuthorParamsSchema,
-  outputSchema: preprintListResponseSchema,
+  outputSchema: eprintListResponseSchema,
   handler: listByAuthorHandler,
   auth: 'optional',
   rateLimit: 'authenticated',

@@ -1,9 +1,9 @@
 /**
- * Preprint API schemas.
+ * Eprint API schemas.
  *
  * @remarks
- * Zod schemas for preprint-related API requests and responses.
- * All preprint responses include pdsUrl for ATProto compliance.
+ * Zod schemas for eprint-related API requests and responses.
+ * All eprint responses include pdsUrl for ATProto compliance.
  *
  * @packageDocumentation
  * @public
@@ -28,7 +28,7 @@ import {
  *
  * @public
  */
-export const preprintSourceInfoSchema = z.object({
+export const eprintSourceInfoSchema = z.object({
   pdsEndpoint: z.string().url().describe('User PDS endpoint'),
   recordUrl: z.string().url().describe('Direct URL to fetch authoritative record'),
   blobUrl: z.string().url().optional().describe('Direct URL to fetch PDF blob from PDS'),
@@ -41,7 +41,7 @@ export const preprintSourceInfoSchema = z.object({
  *
  * @public
  */
-export type PreprintSourceInfo = z.infer<typeof preprintSourceInfoSchema>;
+export type EprintSourceInfo = z.infer<typeof eprintSourceInfoSchema>;
 
 /**
  * Blob reference schema.
@@ -95,11 +95,11 @@ export const supplementaryMaterialSchema = z.object({
 export type SupplementaryMaterialResponse = z.infer<typeof supplementaryMaterialSchema>;
 
 /**
- * Preprint metrics schema.
+ * Eprint metrics schema.
  *
  * @public
  */
-export const preprintMetricsSchema = z.object({
+export const eprintMetricsSchema = z.object({
   views: z.number().int().describe('Total view count'),
   downloads: z.number().int().describe('Total download count'),
   endorsements: z.number().int().optional().describe('Endorsement count'),
@@ -179,7 +179,7 @@ export type AuthorContributionRef = z.infer<typeof authorContributionRefSchema>;
  *
  * @public
  */
-export const preprintAuthorRefSchema = z.object({
+export const eprintAuthorRefSchema = z.object({
   did: didSchema.optional().describe('Author DID if they have an ATProto account'),
   name: z.string().describe('Author display name'),
   orcid: z.string().optional().describe('ORCID identifier'),
@@ -195,23 +195,23 @@ export const preprintAuthorRefSchema = z.object({
 });
 
 /**
- * Preprint author ref type.
+ * Eprint author ref type.
  *
  * @public
  */
-export type PreprintAuthorRef = z.infer<typeof preprintAuthorRefSchema>;
+export type EprintAuthorRef = z.infer<typeof eprintAuthorRefSchema>;
 
 /**
- * Preprint summary schema (for list views).
+ * Eprint summary schema (for list views).
  *
  * @public
  */
-export const preprintSummarySchema = z.object({
+export const eprintSummarySchema = z.object({
   uri: atUriSchema,
   cid: cidSchema,
-  title: z.string().describe('Preprint title'),
+  title: z.string().describe('Eprint title'),
   abstract: z.string().max(500).describe('Truncated abstract'),
-  authors: z.array(preprintAuthorRefSchema).describe('All authors with contributions'),
+  authors: z.array(eprintAuthorRefSchema).describe('All authors with contributions'),
   submittedBy: didSchema.describe('DID of human user who submitted'),
   paperDid: didSchema.optional().describe('Paper DID if paper has its own PDS'),
   fields: z.array(fieldRefSchema).optional().describe('Subject fields'),
@@ -219,32 +219,32 @@ export const preprintSummarySchema = z.object({
   createdAt: z.string().datetime().describe('Creation timestamp'),
   indexedAt: z.string().datetime().describe('Index timestamp'),
   // ATProto compliance: source information for verification and credible exit
-  source: preprintSourceInfoSchema.describe('PDS source information'),
-  metrics: preprintMetricsSchema.optional().describe('Engagement metrics'),
+  source: eprintSourceInfoSchema.describe('PDS source information'),
+  metrics: eprintMetricsSchema.optional().describe('Engagement metrics'),
 });
 
 /**
- * Preprint summary type.
+ * Eprint summary type.
  *
  * @public
  */
-export type PreprintSummary = z.infer<typeof preprintSummarySchema>;
+export type EprintSummary = z.infer<typeof eprintSummarySchema>;
 
 /**
- * Full preprint response schema.
+ * Full eprint response schema.
  *
  * @remarks
- * Complete preprint data including version history and full metadata.
+ * Complete eprint data including version history and full metadata.
  * Always includes pdsUrl for ATProto compliance.
  *
  * @public
  */
-export const preprintResponseSchema = z.object({
+export const eprintResponseSchema = z.object({
   uri: atUriSchema,
   cid: cidSchema,
-  title: z.string().describe('Preprint title'),
+  title: z.string().describe('Eprint title'),
   abstract: z.string().describe('Full abstract'),
-  authors: z.array(preprintAuthorRefSchema).describe('All authors with contributions'),
+  authors: z.array(eprintAuthorRefSchema).describe('All authors with contributions'),
   submittedBy: didSchema.describe('DID of human user who submitted'),
   paperDid: didSchema.optional().describe('Paper DID if paper has its own PDS'),
   document: blobRefSchema.describe('Document blob reference'),
@@ -262,10 +262,10 @@ export const preprintResponseSchema = z.object({
   indexedAt: z.string().datetime().describe('Index timestamp'),
 
   // ATProto compliance: source information for verification and credible exit
-  source: preprintSourceInfoSchema.describe('PDS source information'),
+  source: eprintSourceInfoSchema.describe('PDS source information'),
 
   // Enriched data
-  metrics: preprintMetricsSchema.optional().describe('Engagement metrics'),
+  metrics: eprintMetricsSchema.optional().describe('Engagement metrics'),
   versions: z
     .array(
       z.object({
@@ -280,30 +280,30 @@ export const preprintResponseSchema = z.object({
 });
 
 /**
- * Full preprint response type.
+ * Full eprint response type.
  *
  * @public
  */
-export type PreprintResponse = z.infer<typeof preprintResponseSchema>;
+export type EprintResponse = z.infer<typeof eprintResponseSchema>;
 
 /**
- * Get preprint submission query params schema.
+ * Get eprint submission query params schema.
  *
  * @public
  */
 export const getSubmissionParamsSchema = z.object({
-  uri: atUriSchema.describe('Preprint AT URI'),
+  uri: atUriSchema.describe('Eprint AT URI'),
 });
 
 /**
- * Get preprint submission params type.
+ * Get eprint submission params type.
  *
  * @public
  */
 export type GetSubmissionParams = z.infer<typeof getSubmissionParamsSchema>;
 
 /**
- * List preprints by author query params schema.
+ * List eprints by author query params schema.
  *
  * @public
  */
@@ -320,11 +320,11 @@ export const listByAuthorParamsSchema = paginationQuerySchema.extend({
 export type ListByAuthorParams = z.infer<typeof listByAuthorParamsSchema>;
 
 /**
- * Search preprints query params schema.
+ * Search eprints query params schema.
  *
  * @public
  */
-export const searchPreprintsParamsSchema = searchQuerySchema.extend({
+export const searchEprintsParamsSchema = searchQuerySchema.extend({
   field: z.string().optional().describe('Filter by field URI'),
   author: didSchema.optional().describe('Filter by author DID'),
   license: z.string().optional().describe('Filter by license'),
@@ -333,30 +333,30 @@ export const searchPreprintsParamsSchema = searchQuerySchema.extend({
 });
 
 /**
- * Search preprints params type.
+ * Search eprints params type.
  *
  * @public
  */
-export type SearchPreprintsParams = z.infer<typeof searchPreprintsParamsSchema>;
+export type SearchEprintsParams = z.infer<typeof searchEprintsParamsSchema>;
 
 /**
- * Preprint list response schema.
+ * Eprint list response schema.
  *
  * @public
  */
-export const preprintListResponseSchema = z.object({
-  preprints: z.array(preprintSummarySchema).describe('Preprint list'),
+export const eprintListResponseSchema = z.object({
+  eprints: z.array(eprintSummarySchema).describe('Eprint list'),
   cursor: z.string().optional().describe('Cursor for next page'),
   hasMore: z.boolean().describe('Whether more results exist'),
   total: z.number().int().optional().describe('Total count'),
 });
 
 /**
- * Preprint list response type.
+ * Eprint list response type.
  *
  * @public
  */
-export type PreprintListResponse = z.infer<typeof preprintListResponseSchema>;
+export type EprintListResponse = z.infer<typeof eprintListResponseSchema>;
 
 /**
  * Search results response schema.
@@ -366,7 +366,7 @@ export type PreprintListResponse = z.infer<typeof preprintListResponseSchema>;
 export const searchResultsResponseSchema = z.object({
   hits: z
     .array(
-      preprintSummarySchema.extend({
+      eprintSummarySchema.extend({
         score: z.number().optional().describe('Relevance score'),
         highlights: z
           .record(z.string(), z.array(z.string()))
@@ -405,11 +405,11 @@ export const searchResultsResponseSchema = z.object({
 export type SearchResultsResponse = z.infer<typeof searchResultsResponseSchema>;
 
 /**
- * Author affiliation schema for preprint submission.
+ * Author affiliation schema for eprint submission.
  *
  * @public
  */
-export const preprintAuthorAffiliationSchema = z.object({
+export const eprintAuthorAffiliationSchema = z.object({
   name: z.string().min(1).max(300).describe('Organization name'),
   rorId: z.string().max(100).optional().describe('ROR ID (e.g., https://ror.org/02mhbdp94)'),
   department: z.string().max(200).optional().describe('Department or division'),
@@ -420,14 +420,14 @@ export const preprintAuthorAffiliationSchema = z.object({
  *
  * @public
  */
-export type PreprintAuthorAffiliation = z.infer<typeof preprintAuthorAffiliationSchema>;
+export type EprintAuthorAffiliation = z.infer<typeof eprintAuthorAffiliationSchema>;
 
 /**
- * Author contribution schema for preprint submission.
+ * Author contribution schema for eprint submission.
  *
  * @public
  */
-export const preprintAuthorContributionSchema = z.object({
+export const eprintAuthorContributionSchema = z.object({
   typeUri: atUriSchema.describe('AT-URI to contribution type from knowledge graph'),
   typeId: z.string().max(50).optional().describe('Contribution type ID (e.g., conceptualization)'),
   typeLabel: z.string().max(100).optional().describe('Human-readable label'),
@@ -439,17 +439,17 @@ export const preprintAuthorContributionSchema = z.object({
  *
  * @public
  */
-export type PreprintAuthorContribution = z.infer<typeof preprintAuthorContributionSchema>;
+export type EprintAuthorContribution = z.infer<typeof eprintAuthorContributionSchema>;
 
 /**
- * Full author input schema for preprint submission.
+ * Full author input schema for eprint submission.
  *
  * @remarks
  * Supports both ATProto users (with DID) and external collaborators (without DID).
  *
  * @public
  */
-export const preprintAuthorInputSchema = z.object({
+export const eprintAuthorInputSchema = z.object({
   did: didSchema.optional().describe('Author DID if they have an ATProto account'),
   name: z.string().min(1).max(200).describe('Author display name'),
   orcid: z
@@ -460,12 +460,12 @@ export const preprintAuthorInputSchema = z.object({
   email: z.string().email().max(254).optional().describe('Contact email (for external authors)'),
   order: z.number().int().min(1).describe('Position in author list (1-indexed)'),
   affiliations: z
-    .array(preprintAuthorAffiliationSchema)
+    .array(eprintAuthorAffiliationSchema)
     .max(10)
     .default([])
     .describe('Author affiliations'),
   contributions: z
-    .array(preprintAuthorContributionSchema)
+    .array(eprintAuthorContributionSchema)
     .max(14)
     .default([])
     .describe('CRediT-based contributions'),
@@ -484,7 +484,7 @@ export const preprintAuthorInputSchema = z.object({
  *
  * @public
  */
-export type PreprintAuthorInput = z.infer<typeof preprintAuthorInputSchema>;
+export type EprintAuthorInput = z.infer<typeof eprintAuthorInputSchema>;
 
 /**
  * Facet dimension enum.
@@ -502,11 +502,11 @@ export const facetDimensionSchema = z.enum([
 ]);
 
 /**
- * Facet input schema for preprint classification.
+ * Facet input schema for eprint classification.
  *
  * @public
  */
-export const preprintFacetInputSchema = z.object({
+export const eprintFacetInputSchema = z.object({
   dimension: facetDimensionSchema.describe('PMEST/FAST facet dimension'),
   value: z.string().min(1).max(200).describe('Facet value'),
 });
@@ -516,22 +516,22 @@ export const preprintFacetInputSchema = z.object({
  *
  * @public
  */
-export type PreprintFacetInput = z.infer<typeof preprintFacetInputSchema>;
+export type EprintFacetInput = z.infer<typeof eprintFacetInputSchema>;
 
 /**
- * Create preprint submission input schema.
+ * Create eprint submission input schema.
  *
  * @remarks
- * Input for creating a new preprint submission. The document must be uploaded
+ * Input for creating a new eprint submission. The document must be uploaded
  * to the user's PDS first, and the BlobRef provided here references that blob.
  *
  * @public
  */
 export const createSubmissionInputSchema = z.object({
-  title: z.string().min(1).max(500).describe('Preprint title'),
+  title: z.string().min(1).max(500).describe('Eprint title'),
   abstract: z.string().min(1).max(10000).describe('Abstract/summary'),
   authors: z
-    .array(preprintAuthorInputSchema)
+    .array(eprintAuthorInputSchema)
     .min(1)
     .max(100)
     .describe('Author list with contributions and affiliations'),
@@ -545,7 +545,7 @@ export const createSubmissionInputSchema = z.object({
     .max(20)
     .optional()
     .describe('Keywords for discovery'),
-  facets: z.array(preprintFacetInputSchema).optional().describe('Faceted classification'),
+  facets: z.array(eprintFacetInputSchema).optional().describe('Faceted classification'),
   license: z.string().max(50).optional().describe('License identifier (e.g., CC-BY-4.0)'),
   doi: z.string().max(100).optional().describe('External DOI if already assigned'),
 });
@@ -563,7 +563,7 @@ export type CreateSubmissionInput = z.infer<typeof createSubmissionInputSchema>;
  * @public
  */
 export const createSubmissionResponseSchema = z.object({
-  uri: atUriSchema.describe('AT URI of created preprint record'),
+  uri: atUriSchema.describe('AT URI of created eprint record'),
   cid: cidSchema.describe('CID of created record'),
   createdAt: z.string().datetime().describe('Creation timestamp'),
 });

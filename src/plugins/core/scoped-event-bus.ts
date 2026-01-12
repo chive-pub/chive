@@ -36,7 +36,7 @@ interface RegisteredHandler {
  * @remarks
  * Each plugin receives a scoped event bus that:
  * - Only allows subscription to hooks declared in manifest.permissions.hooks
- * - Supports wildcard patterns (e.g., 'preprint.*' in manifest allows 'preprint.indexed')
+ * - Supports wildcard patterns (e.g., 'eprint.*' in manifest allows 'eprint.indexed')
  * - Tracks all registered handlers for cleanup on plugin unload
  * - Delegates actual event handling to the main PluginEventBus
  *
@@ -45,14 +45,14 @@ interface RegisteredHandler {
  * // Plugin manifest declares allowed hooks
  * const manifest = {
  *   permissions: {
- *     hooks: ['preprint.indexed', 'preprint.updated', 'system.*']
+ *     hooks: ['eprint.indexed', 'eprint.updated', 'system.*']
  *   }
  * };
  *
  * const scopedBus = new ScopedPluginEventBus(mainEventBus, manifest);
  *
  * // Allowed (matches declared hook)
- * scopedBus.on('preprint.indexed', handler);
+ * scopedBus.on('eprint.indexed', handler);
  *
  * // Allowed (matches wildcard 'system.*')
  * scopedBus.on('system.startup', handler);
@@ -105,8 +105,8 @@ export class ScopedPluginEventBus implements IPluginEventBus {
    *
    * @example
    * ```typescript
-   * // Plugin with hooks: ['preprint.*']
-   * scopedBus.on('preprint.indexed', (data) => {
+   * // Plugin with hooks: ['eprint.*']
+   * scopedBus.on('eprint.indexed', (data) => {
    *   console.log('Indexed:', data.uri);
    * });
    * ```
@@ -317,8 +317,8 @@ export class ScopedPluginEventBus implements IPluginEventBus {
    *
    * @remarks
    * Supports exact matches and wildcard patterns:
-   * - Exact: 'preprint.indexed' matches 'preprint.indexed'
-   * - Wildcard: 'preprint.*' matches 'preprint.indexed', 'preprint.updated'
+   * - Exact: 'eprint.indexed' matches 'eprint.indexed'
+   * - Wildcard: 'eprint.*' matches 'eprint.indexed', 'eprint.updated'
    *
    * @internal
    */
@@ -347,9 +347,9 @@ export class ScopedPluginEventBus implements IPluginEventBus {
    *
    * @remarks
    * Pattern matching rules:
-   * - Exact match: 'preprint.indexed' matches 'preprint.indexed'
-   * - Trailing wildcard: 'preprint.*' matches 'preprint.indexed', 'preprint.updated'
-   * - Double wildcard: 'preprint.**' matches 'preprint.indexed', 'preprint.version.created'
+   * - Exact match: 'eprint.indexed' matches 'eprint.indexed'
+   * - Trailing wildcard: 'eprint.*' matches 'eprint.indexed', 'eprint.updated'
+   * - Double wildcard: 'eprint.**' matches 'eprint.indexed', 'eprint.version.created'
    *
    * @internal
    */
@@ -359,7 +359,7 @@ export class ScopedPluginEventBus implements IPluginEventBus {
       return true;
     }
 
-    // Trailing single wildcard (e.g., 'preprint.*')
+    // Trailing single wildcard (e.g., 'eprint.*')
     if (pattern.endsWith('.*')) {
       const prefix = pattern.slice(0, -1); // Remove '*', keep '.'
       // Hook must start with prefix and have exactly one more segment
@@ -371,7 +371,7 @@ export class ScopedPluginEventBus implements IPluginEventBus {
       return false;
     }
 
-    // Trailing double wildcard (e.g., 'preprint.**')
+    // Trailing double wildcard (e.g., 'eprint.**')
     if (pattern.endsWith('.**')) {
       const prefix = pattern.slice(0, -2); // Remove '**', keep '.'
       return hookName.startsWith(prefix);

@@ -307,8 +307,8 @@ export class PermissionEnforcer implements IPermissionEnforcer {
    *
    * @example
    * ```typescript
-   * enforcer.enforceHookAccess(plugin, 'preprint.indexed');
-   * // Throws if plugin doesn't have hook:preprint.indexed permission
+   * enforcer.enforceHookAccess(plugin, 'eprint.indexed');
+   * // Throws if plugin doesn't have hook:eprint.indexed permission
    * ```
    *
    * @public
@@ -419,7 +419,7 @@ export class PermissionEnforcer implements IPermissionEnforcer {
 
     // Check wildcard patterns
     for (const hook of allowedHooks) {
-      // Single wildcard (preprint.* matches preprint.indexed)
+      // Single wildcard (eprint.* matches eprint.indexed)
       if (hook.endsWith('.*')) {
         const prefix = hook.slice(0, -1);
         if (hookName.startsWith(prefix) && !hookName.slice(prefix.length).includes('.')) {
@@ -427,7 +427,7 @@ export class PermissionEnforcer implements IPermissionEnforcer {
         }
       }
 
-      // Double wildcard (preprint.** matches preprint.version.created)
+      // Double wildcard (eprint.** matches eprint.version.created)
       if (hook.endsWith('.**')) {
         const prefix = hook.slice(0, -2);
         if (hookName.startsWith(prefix)) {

@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides integration with Figshare (https://figshare.com) for linking
- * preprints to their associated research outputs (datasets, figures,
+ * eprints to their associated research outputs (datasets, figures,
  * presentations, posters, code, etc.).
  *
  * Figshare is a repository where users can make their research outputs
@@ -200,7 +200,7 @@ type FigshareSearchResult = FigshareApiArticle[];
  *
  * @remarks
  * Provides research output lookup and linking via Figshare.
- * Used to link preprints to their associated datasets, figures, and code.
+ * Used to link eprints to their associated datasets, figures, and code.
  *
  * @example
  * ```typescript
@@ -492,7 +492,7 @@ export class FigsharePlugin extends BasePlugin {
       software: 9,
       code: 9,
       online_resource: 10,
-      preprint: 11,
+      eprint: 11,
       book: 12,
       journal_contribution: 13,
       conference_contribution: 14,

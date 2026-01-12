@@ -3,7 +3,7 @@
  *
  * @remarks
  * Application service coordinating full-text search via Elasticsearch.
- * Indexes preprint metadata and provides search/autocomplete capabilities.
+ * Indexes eprint metadata and provides search/autocomplete capabilities.
  *
  * @packageDocumentation
  * @public
@@ -14,7 +14,7 @@ import { DatabaseError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type {
   ISearchEngine,
-  IndexablePreprintDocument,
+  IndexableEprintDocument,
   SearchQuery,
   SearchResults,
 } from '../../types/interfaces/search.interface.js';
@@ -37,8 +37,8 @@ export interface SearchServiceOptions {
  * ```typescript
  * const service = new SearchService({ search, logger });
  *
- * // Index preprint for search
- * await service.indexPreprintForSearch(preprintDoc);
+ * // Index eprint for search
+ * await service.indexEprintForSearch(eprintDoc);
  *
  * // Search
  * const results = await service.search({
@@ -59,19 +59,19 @@ export class SearchService {
   }
 
   /**
-   * Indexes preprint for full-text search.
+   * Indexes eprint for full-text search.
    *
-   * @param preprint - Indexable preprint document
+   * @param eprint - Indexable eprint document
    * @returns Result indicating success or failure
    *
    * @public
    */
-  async indexPreprintForSearch(
-    preprint: IndexablePreprintDocument
+  async indexEprintForSearch(
+    eprint: IndexableEprintDocument
   ): Promise<Result<void, DatabaseError>> {
     try {
-      await this.searchEngine.indexPreprint(preprint);
-      this.logger.debug('Indexed preprint for search', { uri: preprint.uri });
+      await this.searchEngine.indexEprint(eprint);
+      this.logger.debug('Indexed eprint for search', { uri: eprint.uri });
       return { ok: true, value: undefined };
     } catch (error) {
       return {
@@ -82,7 +82,7 @@ export class SearchService {
   }
 
   /**
-   * Searches preprints.
+   * Searches eprints.
    *
    * @param query - Search query
    * @returns Search results
@@ -117,9 +117,9 @@ export class SearchService {
   }
 
   /**
-   * Removes preprint from search index.
+   * Removes eprint from search index.
    *
-   * @param uri - Preprint URI
+   * @param uri - Eprint URI
    * @returns Result indicating success or failure
    *
    * @public
@@ -127,7 +127,7 @@ export class SearchService {
   async removeFromSearch(uri: AtUri): Promise<Result<void, DatabaseError>> {
     try {
       await this.searchEngine.deleteDocument(uri);
-      this.logger.debug('Removed preprint from search', { uri });
+      this.logger.debug('Removed eprint from search', { uri });
       return { ok: true, value: undefined };
     } catch (error) {
       return {

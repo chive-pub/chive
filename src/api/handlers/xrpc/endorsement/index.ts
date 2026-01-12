@@ -6,21 +6,21 @@
  */
 
 export {
-  listForPreprintEndpoint as listEndorsementsForPreprintEndpoint,
-  listForPreprintHandler as listEndorsementsForPreprintHandler,
-} from './listForPreprint.js';
+  listForEprintEndpoint as listEndorsementsForEprintEndpoint,
+  listForEprintHandler as listEndorsementsForEprintHandler,
+} from './listForEprint.js';
 export { getSummaryEndpoint, getSummaryHandler } from './getSummary.js';
 export { getUserEndorsementEndpoint, getUserEndorsementHandler } from './getUserEndorsement.js';
 
 import { getSummaryEndpoint } from './getSummary.js';
 import { getUserEndorsementEndpoint } from './getUserEndorsement.js';
-import { listForPreprintEndpoint } from './listForPreprint.js';
+import { listForEprintEndpoint } from './listForEprint.js';
 
 /**
  * All endorsement XRPC endpoints.
  */
 export const endorsementEndpoints = [
-  listForPreprintEndpoint,
+  listForEprintEndpoint,
   getSummaryEndpoint,
   getUserEndorsementEndpoint,
 ] as const;

@@ -3,7 +3,7 @@
  *
  * @remarks
  * This module implements the backlink service that tracks references to
- * Chive preprints from across the ATProto ecosystem (Semble, Leaflet,
+ * Chive eprints from across the ATProto ecosystem (Semble, Leaflet,
  * WhiteWind, Bluesky).
  *
  * ATProto Compliance:
@@ -80,7 +80,7 @@ interface BacklinkCountsRow {
  *
  * @remarks
  * Manages PostgreSQL tables `backlinks` and `backlink_counts` which track
- * references to Chive preprints from the ATProto ecosystem.
+ * references to Chive eprints from the ATProto ecosystem.
  *
  * All data is rebuildable from firehose replay, making this ATProto-compliant.
  *
@@ -88,17 +88,17 @@ interface BacklinkCountsRow {
  * ```typescript
  * const backlinkService = container.resolve<IBacklinkService>('IBacklinkService');
  *
- * // Create a backlink from a Bluesky post mentioning a preprint
+ * // Create a backlink from a Bluesky post mentioning a eprint
  * const backlink = await backlinkService.createBacklink({
  *   sourceUri: 'at://did:plc:aswhite123abc/app.bsky.feed.post/3jt7k9xyzab',
  *   sourceType: 'bluesky.post',
- *   targetUri: 'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab',
- *   context: 'Check out this preprint on clause-embedding verbs!',
+ *   targetUri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab',
+ *   context: 'Check out this eprint on clause-embedding verbs!',
  * });
  *
- * // Get backlink counts for a preprint
+ * // Get backlink counts for a eprint
  * const counts = await backlinkService.getCounts(
- *   'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab'
+ *   'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab'
  * );
  * console.log(`Total backlinks: ${counts.total}`);
  * ```
@@ -198,9 +198,9 @@ export class BacklinkService implements IBacklinkService {
   }
 
   /**
-   * Gets backlinks for a target preprint.
+   * Gets backlinks for a target eprint.
    *
-   * @param targetUri - AT-URI of the target preprint
+   * @param targetUri - AT-URI of the target eprint
    * @param options - Query options
    * @returns Backlinks and pagination cursor
    */
@@ -252,7 +252,7 @@ export class BacklinkService implements IBacklinkService {
   /**
    * Gets aggregated backlink counts for a target.
    *
-   * @param targetUri - AT-URI of the target preprint
+   * @param targetUri - AT-URI of the target eprint
    * @returns Backlink counts by type
    *
    * @remarks
@@ -295,7 +295,7 @@ export class BacklinkService implements IBacklinkService {
   /**
    * Updates backlink counts for a target.
    *
-   * @param targetUri - AT-URI of the target preprint
+   * @param targetUri - AT-URI of the target eprint
    */
   async updateCounts(targetUri: string): Promise<void> {
     await this.db.query(`SELECT refresh_backlink_counts($1)`, [targetUri]);

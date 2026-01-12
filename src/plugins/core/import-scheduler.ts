@@ -1,5 +1,5 @@
 /**
- * Import scheduler for periodic preprint imports from external sources.
+ * Import scheduler for periodic eprint imports from external sources.
  *
  * @remarks
  * This module provides scheduling infrastructure for plugins that require
@@ -31,7 +31,7 @@ export interface PluginScheduleConfig {
    * The importing plugin instance to schedule.
    *
    * @remarks
-   * Must implement the ImportingPlugin abstract class with fetchPreprints().
+   * Must implement the ImportingPlugin abstract class with fetchEprints().
    */
   readonly plugin: ImportingPlugin;
 
@@ -128,7 +128,7 @@ export interface ImportSchedulerOptions {
 }
 
 /**
- * Import scheduler for periodic preprint imports.
+ * Import scheduler for periodic eprint imports.
  *
  * @remarks
  * Manages scheduled import cycles for plugins that require periodic bulk
@@ -236,12 +236,12 @@ export class ImportScheduler {
 
     const pluginId = config.plugin.id;
 
-    // Validate plugin has fetchPreprints method (ImportingPlugin)
+    // Validate plugin has fetchEprints method (ImportingPlugin)
     if (!this.isImportingPlugin(config.plugin)) {
       throw new PluginError(
         pluginId,
         'INITIALIZE',
-        'Plugin does not implement ImportingPlugin interface (missing fetchPreprints method)'
+        'Plugin does not implement ImportingPlugin interface (missing fetchEprints method)'
       );
     }
 
@@ -586,8 +586,8 @@ export class ImportScheduler {
     return (
       typeof plugin === 'object' &&
       plugin !== null &&
-      'fetchPreprints' in plugin &&
-      typeof (plugin as IImportingPlugin).fetchPreprints === 'function' &&
+      'fetchEprints' in plugin &&
+      typeof (plugin as IImportingPlugin).fetchEprints === 'function' &&
       'runImportCycle' in plugin &&
       typeof (plugin as ImportingPlugin).runImportCycle === 'function'
     );

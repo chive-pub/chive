@@ -10,7 +10,7 @@
  * {
  *   "error": {
  *     "code": "NOT_FOUND",
- *     "message": "Preprint not found: at://did:plc:abc/...",
+ *     "message": "Eprint not found: at://did:plc:abc/...",
  *     "field": "uri",
  *     "requestId": "req_abc123"
  *   }

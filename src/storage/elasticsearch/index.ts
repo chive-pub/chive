@@ -24,8 +24,8 @@ export {
 
 // Document mapping
 export {
-  mapPreprintToDocument,
-  type IndexablePreprintDocument,
+  mapEprintToDocument,
+  type IndexableEprintDocument,
   type AuthorDocument,
   type FacetDocument,
   type DocumentMetadata,

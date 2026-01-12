@@ -3,7 +3,7 @@
  *
  * @remarks
  * This module implements the reconciliation service that creates governance
- * records linking imported preprints to their canonical ATProto records.
+ * records linking imported eprints to their canonical ATProto records.
  *
  * ATProto Compliance:
  * - Reconciliation records live in Governance PDS (did:plc:chive-governance)
@@ -36,7 +36,7 @@ export interface ReconciliationRecord {
   readonly $type: 'pub.chive.graph.reconciliation';
 
   /**
-   * AT-URI or internal reference to the imported preprint.
+   * AT-URI or internal reference to the imported eprint.
    */
   readonly importUri: string;
 
@@ -179,7 +179,7 @@ export interface IReconciliationService {
  * Reconciliation service implementation.
  *
  * @remarks
- * Creates and manages reconciliation records that link imported preprints
+ * Creates and manages reconciliation records that link imported eprints
  * to their canonical ATProto records created by users.
  *
  * Architecture:

@@ -7,7 +7,7 @@
  * tool that indexes 200M+ papers with citation and influence metrics.
  *
  * This plugin is used to:
- * - Enrich preprints with citation and influence data
+ * - Enrich eprints with citation and influence data
  * - Verify author identity via claimed Semantic Scholar profiles
  * - Provide related paper recommendations
  *

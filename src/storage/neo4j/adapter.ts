@@ -22,7 +22,7 @@ import type {
   RelationshipType,
   FacetType,
   FacetQuery,
-  PreprintMatch,
+  EprintMatch,
   FacetAggregation,
   ConsensusResult,
   FieldHierarchy,
@@ -711,7 +711,7 @@ export class Neo4jAdapter implements IGraphDatabase {
     );
 
     const query = `
-      MATCH (p:Preprint)
+      MATCH (p:Eprint)
       ${facetMatches.join('\n')}
       RETURN DISTINCT p.uri as uri
       LIMIT $limit
@@ -736,7 +736,7 @@ export class Neo4jAdapter implements IGraphDatabase {
    * @param query - Faceted query
    * @returns Matching papers
    */
-  async facetedSearch(query: FacetQuery): Promise<PreprintMatch[]> {
+  async facetedSearch(query: FacetQuery): Promise<EprintMatch[]> {
     const facetMatches = query.facets.map(
       (_, i) => `
       MATCH (p)-[:FACET_VALUE]->(f${i}:Facet {
@@ -747,7 +747,7 @@ export class Neo4jAdapter implements IGraphDatabase {
     );
 
     const cypherQuery = `
-      MATCH (p:Preprint)
+      MATCH (p:Eprint)
       ${facetMatches.join('\n')}
       WITH p, [${query.facets.map((_, i) => `f${i}`).join(', ')}] as matchedFacets
       RETURN p.uri as uri,
@@ -794,7 +794,7 @@ export class Neo4jAdapter implements IGraphDatabase {
    */
   async aggregateFacets(_filters?: FacetQuery): Promise<FacetAggregation[]> {
     const query = `
-      MATCH (p:Preprint)-[:FACET_VALUE]->(f:Facet)
+      MATCH (p:Eprint)-[:FACET_VALUE]->(f:Facet)
       WITH f.facetType as facetType, f.value as facetValue, count(p) as paperCount
       WITH facetType,
            collect({value: facetValue, count: paperCount}) as values,
@@ -1497,7 +1497,7 @@ export class Neo4jAdapter implements IGraphDatabase {
       }
 
       const query = `
-        MATCH (p:Preprint)
+        MATCH (p:Eprint)
         ${facetMatches}
         MATCH (p)-[:FACET_VALUE]->(f:Facet {facetType: $dimension})
         WITH f.value as value, count(DISTINCT p) as count

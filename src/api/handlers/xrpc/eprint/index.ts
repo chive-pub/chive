@@ -1,5 +1,5 @@
 /**
- * XRPC preprint handler exports.
+ * XRPC eprint handler exports.
  *
  * @packageDocumentation
  * @public
@@ -16,9 +16,9 @@ import { listByAuthorEndpoint } from './listByAuthor.js';
 import { searchSubmissionsEndpoint } from './searchSubmissions.js';
 
 /**
- * All preprint XRPC endpoints.
+ * All eprint XRPC endpoints.
  */
-export const preprintEndpoints = [
+export const eprintEndpoints = [
   getSubmissionEndpoint,
   searchSubmissionsEndpoint,
   listByAuthorEndpoint,

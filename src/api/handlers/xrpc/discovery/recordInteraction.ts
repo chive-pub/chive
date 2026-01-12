@@ -31,9 +31,9 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @remarks
  * Records user interactions to improve recommendations:
- * - 'view': User viewed a preprint detail page
+ * - 'view': User viewed a eprint detail page
  * - 'click': User clicked a recommendation
- * - 'endorse': User endorsed the preprint
+ * - 'endorse': User endorsed the eprint
  * - 'dismiss': User dismissed a recommendation (negative signal)
  * - 'claim': User claimed authorship
  *
@@ -58,7 +58,7 @@ export async function recordInteractionHandler(
 
   logger.debug('Recording interaction', {
     userDid,
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
     type: params.type,
     recommendationId: params.recommendationId,
   });
@@ -66,7 +66,7 @@ export async function recordInteractionHandler(
   // Record the interaction if discovery service is available
   if (discovery) {
     await discovery.recordInteraction(userDid, {
-      preprintUri: params.preprintUri as AtUri,
+      eprintUri: params.eprintUri as AtUri,
       type: params.type,
       recommendationId: params.recommendationId,
       timestamp: new Date(),
@@ -75,7 +75,7 @@ export async function recordInteractionHandler(
 
   logger.info('Interaction recorded', {
     userDid,
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
     type: params.type,
   });
 

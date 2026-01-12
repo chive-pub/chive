@@ -9,7 +9,7 @@ export * from './annotation.js';
 export * from './author.js';
 export * from './contribution.js';
 export * from './governance.js';
-// Export all from preprint except DocumentFormat (already exported from annotation)
+// Export all from eprint except DocumentFormat (already exported from annotation)
 export {
   type SupplementaryCategory,
   type SupplementaryMaterial,
@@ -33,8 +33,8 @@ export {
   type FundingSource,
   type PresentationType,
   type ConferencePresentation,
-  type Preprint,
-  type PreprintVersion,
+  type Eprint,
+  type EprintVersion,
   type UserTag,
-} from './preprint.js';
+} from './eprint.js';
 export * from './review.js';

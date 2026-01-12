@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.endorsement.getSummary.
  *
  * @remarks
- * Gets endorsement summary (counts by type) for a preprint.
+ * Gets endorsement summary (counts by type) for a eprint.
  *
  * @packageDocumentation
  * @public
@@ -37,11 +37,11 @@ export async function getSummaryHandler(
   const reviewService = c.get('services').review;
 
   logger.debug('Getting endorsement summary', {
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
   });
 
   // Get summary from ReviewService
-  const summary = await reviewService.getEndorsementSummary(params.preprintUri as AtUri);
+  const summary = await reviewService.getEndorsementSummary(params.eprintUri as AtUri);
 
   // Map to API format
   const response: EndorsementSummary = {
@@ -51,7 +51,7 @@ export async function getSummaryHandler(
   };
 
   logger.info('Endorsement summary returned', {
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
     total: response.total,
   });
 
@@ -66,7 +66,7 @@ export async function getSummaryHandler(
 export const getSummaryEndpoint: XRPCEndpoint<GetEndorsementSummaryParams, EndorsementSummary> = {
   method: 'pub.chive.endorsement.getSummary' as never,
   type: 'query',
-  description: 'Get endorsement summary for a preprint',
+  description: 'Get endorsement summary for a eprint',
   inputSchema: getEndorsementSummaryParamsSchema,
   outputSchema: endorsementSummarySchema,
   handler: getSummaryHandler,

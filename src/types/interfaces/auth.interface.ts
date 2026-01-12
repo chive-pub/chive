@@ -34,9 +34,9 @@ export interface TokenOptions {
    * Scopes to grant.
    *
    * @remarks
-   * Scopes follow the format `{resource}:{action}` (e.g., "read:preprints").
+   * Scopes follow the format `{resource}:{action}` (e.g., "read:eprints").
    *
-   * @example ["read:preprints", "write:reviews"]
+   * @example ["read:eprints", "write:reviews"]
    */
   readonly scope?: readonly string[];
 

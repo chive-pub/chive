@@ -1,5 +1,5 @@
 /**
- * Zod validator for pub.chive.preprint.version
+ * Zod validator for pub.chive.eprint.version
  *
  * @remarks
  * Generated from Lexicon schema. DO NOT EDIT manually.
@@ -12,12 +12,12 @@
 import { z } from 'zod';
 
 /**
- * Zod schema for pub.chive.preprint.version record.
+ * Zod schema for pub.chive.eprint.version record.
  *
  * @internal
  */
-export const preprintVersionSchema = z.object({
-  preprintUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }),
+export const eprintVersionSchema = z.object({
+  eprintUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }),
   versionNumber: z.number().int().min(1),
   previousVersionUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }).optional(),
   changes: z.string().max(2000),
@@ -25,10 +25,10 @@ export const preprintVersionSchema = z.object({
 });
 
 /**
- * Type for pub.chive.preprint.version record.
+ * Type for pub.chive.eprint.version record.
  *
  * @public
  */
-export type PreprintVersion = z.infer<typeof preprintVersionSchema>;
+export type EprintVersion = z.infer<typeof eprintVersionSchema>;
 
 

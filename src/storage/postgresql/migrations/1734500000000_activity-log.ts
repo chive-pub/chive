@@ -63,7 +63,7 @@ export function up(pgm: MigrationBuilder): void {
     collection: {
       type: 'varchar(255)',
       notNull: true,
-      comment: 'NSID of the record collection (e.g., pub.chive.preprint.submission)',
+      comment: 'NSID of the record collection (e.g., pub.chive.eprint.submission)',
     },
     rkey: {
       type: 'varchar(255)',
@@ -81,7 +81,7 @@ export function up(pgm: MigrationBuilder): void {
     action_category: {
       type: 'varchar(50)',
       notNull: true,
-      comment: 'Semantic category (preprint_submit, review_create, endorsement_create, etc.)',
+      comment: 'Semantic category (eprint_submit, review_create, endorsement_create, etc.)',
     },
 
     // Status tracking
@@ -123,7 +123,7 @@ export function up(pgm: MigrationBuilder): void {
     // Target context (what was the action about)
     target_uri: {
       type: 'varchar(512)',
-      comment: 'AT URI of target record (for reviews, endorsements targeting a preprint)',
+      comment: 'AT URI of target record (for reviews, endorsements targeting a eprint)',
     },
     target_title: {
       type: 'text',

@@ -36,7 +36,7 @@ function mapToApiReview(review: ReviewView): Review {
       did: review.author,
       handle: 'unknown', // Handle would need DID resolution
     },
-    preprintUri: review.subject,
+    eprintUri: review.subject,
     content: review.text,
     body: undefined,
     target: undefined,

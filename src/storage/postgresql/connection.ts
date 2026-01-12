@@ -75,7 +75,7 @@ export interface PoolStats {
  * const pool = createPool(config);
  *
  * // Use pool for queries
- * const result = await pool.query('SELECT * FROM preprint_index LIMIT 10');
+ * const result = await pool.query('SELECT * FROM eprint_index LIMIT 10');
  * console.log(result.rows);
  *
  * // Graceful shutdown

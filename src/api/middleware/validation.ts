@@ -54,7 +54,7 @@ function formatZodError(error: ZodError): ValidationError {
  * });
  *
  * app.get(
- *   '/xrpc/pub.chive.preprint.getSubmission',
+ *   '/xrpc/pub.chive.eprint.getSubmission',
  *   validateQuery(paramsSchema),
  *   (c) => {
  *     const params = c.get('validatedInput') as z.infer<typeof paramsSchema>;
@@ -98,7 +98,7 @@ export function validateQuery<T>(schema: z.ZodType<T>): MiddlewareHandler<ChiveE
  * });
  *
  * app.post(
- *   '/xrpc/pub.chive.preprint.searchSubmissions',
+ *   '/xrpc/pub.chive.eprint.searchSubmissions',
  *   validateBody(bodySchema),
  *   (c) => {
  *     const body = c.get('validatedInput') as z.infer<typeof bodySchema>;
@@ -186,7 +186,7 @@ export function validateParams<T>(schema: z.ZodType<T>): MiddlewareHandler<Chive
  * @example
  * ```typescript
  * app.post(
- *   '/api/v1/preprints/:id/comments',
+ *   '/api/v1/eprints/:id/comments',
  *   validateAll({
  *     params: paramsSchema,
  *     body: bodySchema,

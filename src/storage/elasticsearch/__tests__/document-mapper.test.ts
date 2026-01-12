@@ -8,12 +8,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../../types/atproto.js';
 import type { Facet } from '../../../types/interfaces/graph.interface.js';
-import type { PreprintAuthor } from '../../../types/models/author.js';
-import type { Preprint } from '../../../types/models/preprint.js';
+import type { EprintAuthor } from '../../../types/models/author.js';
+import type { Eprint } from '../../../types/models/eprint.js';
 import type { EnrichmentData } from '../document-mapper.js';
-import { mapPreprintToDocument } from '../document-mapper.js';
+import { mapEprintToDocument } from '../document-mapper.js';
 
-describe('mapPreprintToDocument', () => {
+describe('mapEprintToDocument', () => {
   const mockBlobRef: BlobRef = {
     $type: 'blob',
     ref: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi' as CID,
@@ -37,7 +37,7 @@ describe('mapPreprintToDocument', () => {
     },
   ];
 
-  const mockAuthors: PreprintAuthor[] = [
+  const mockAuthors: EprintAuthor[] = [
     {
       did: 'did:plc:abc123' as DID,
       name: 'Jane Smith',
@@ -76,8 +76,8 @@ describe('mapPreprintToDocument', () => {
     },
   ];
 
-  const mockPreprint: Preprint = {
-    uri: 'at://did:plc:abc123/pub.chive.preprint/3jzfcijpj2z2a' as AtUri,
+  const mockEprint: Eprint = {
+    uri: 'at://did:plc:abc123/pub.chive.eprint/3jzfcijpj2z2a' as AtUri,
     cid: 'bafyreid27zk7lbis4zw5fz4podbvbs4fc5ivwji3dmrwa6zggnj4bnd57u' as CID,
     authors: mockAuthors,
     submittedBy: 'did:plc:abc123' as DID,
@@ -86,7 +86,7 @@ describe('mapPreprintToDocument', () => {
       'This paper presents novel approaches to neural machine translation using transformer architectures with attention mechanisms.',
     documentBlobRef: mockBlobRef,
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     keywords: ['machine learning', 'NMT', 'transformers'],
     facets: mockFacets,
     version: 1,
@@ -95,59 +95,59 @@ describe('mapPreprintToDocument', () => {
   };
 
   describe('basic mapping', () => {
-    it('should map preprint to document', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+    it('should map eprint to document', () => {
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
-      expect(document.uri).toBe(mockPreprint.uri);
-      expect(document.cid).toBe(mockPreprint.cid);
+      expect(document.uri).toBe(mockEprint.uri);
+      expect(document.cid).toBe(mockEprint.cid);
       expect(document.rkey).toBe('3jzfcijpj2z2a');
-      expect(document.title).toBe(mockPreprint.title);
-      expect(document.abstract).toBe(mockPreprint.abstract);
-      expect(document.license).toBe(mockPreprint.license);
+      expect(document.title).toBe(mockEprint.title);
+      expect(document.abstract).toBe(mockEprint.abstract);
+      expect(document.license).toBe(mockEprint.license);
       expect(document.version).toBe(1);
       expect(document.pds_url).toBe('https://example.pds.host');
       expect(document.pds_endpoint).toBe('example.pds.host');
     });
 
     it('should convert timestamp to ISO 8601', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.created_at).toBe('2024-01-01T00:00:00.000Z');
       expect(document.updated_at).toBeUndefined();
     });
 
     it('should include updated timestamp if present', () => {
-      const preprintWithUpdate: Preprint = {
-        ...mockPreprint,
+      const eprintWithUpdate: Eprint = {
+        ...mockEprint,
         updatedAt: 1704153600000 as Timestamp,
       };
 
-      const document = mapPreprintToDocument(preprintWithUpdate, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintWithUpdate, 'https://example.pds.host');
 
       expect(document.updated_at).toBe('2024-01-02T00:00:00.000Z');
     });
 
     it('should extract rkey from AT-URI', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.rkey).toBe('3jzfcijpj2z2a');
     });
 
     it('should handle previous version URI', () => {
-      const preprintWithPrevious: Preprint = {
-        ...mockPreprint,
-        previousVersionUri: 'at://did:plc:abc123/pub.chive.preprint/3jzfcijpj2z2b' as AtUri,
+      const eprintWithPrevious: Eprint = {
+        ...mockEprint,
+        previousVersionUri: 'at://did:plc:abc123/pub.chive.eprint/3jzfcijpj2z2b' as AtUri,
       };
 
-      const document = mapPreprintToDocument(preprintWithPrevious, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintWithPrevious, 'https://example.pds.host');
 
-      expect(document.previous_version).toBe(preprintWithPrevious.previousVersionUri);
+      expect(document.previous_version).toBe(eprintWithPrevious.previousVersionUri);
     });
   });
 
   describe('author mapping', () => {
     it('should map single author', () => {
-      const singleAuthor: PreprintAuthor = {
+      const singleAuthor: EprintAuthor = {
         did: 'did:plc:abc123' as DID,
         name: 'Jane Smith',
         order: 1,
@@ -157,12 +157,12 @@ describe('mapPreprintToDocument', () => {
         isHighlighted: false,
       };
 
-      const singleAuthorPreprint: Preprint = {
-        ...mockPreprint,
+      const singleAuthorEprint: Eprint = {
+        ...mockEprint,
         authors: [singleAuthor],
       };
 
-      const document = mapPreprintToDocument(singleAuthorPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(singleAuthorEprint, 'https://example.pds.host');
 
       expect(document.authors).toBeDefined();
       expect(document.authors).toHaveLength(1);
@@ -172,7 +172,7 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should map multiple authors', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.authors).toBeDefined();
       expect(document.authors).toHaveLength(3);
@@ -191,7 +191,7 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should map author metadata', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       // First author should have full metadata
       expect(document.authors?.[0]?.orcid).toBe('0000-0001-2345-6789');
@@ -203,7 +203,7 @@ describe('mapPreprintToDocument', () => {
 
   describe('keyword mapping', () => {
     it('should map keywords', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.keywords).toBeDefined();
       expect(document.keywords).toHaveLength(3);
@@ -213,12 +213,12 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should handle empty keywords array', () => {
-      const preprintNoKeywords: Preprint = {
-        ...mockPreprint,
+      const eprintNoKeywords: Eprint = {
+        ...mockEprint,
         keywords: [],
       };
 
-      const document = mapPreprintToDocument(preprintNoKeywords, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintNoKeywords, 'https://example.pds.host');
 
       expect(document.keywords).toEqual([]);
     });
@@ -226,7 +226,7 @@ describe('mapPreprintToDocument', () => {
 
   describe('facet mapping', () => {
     it('should extract field nodes from matter and topical dimensions', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.field_nodes).toBeDefined();
       expect(document.field_nodes).toContain('Computer Science');
@@ -235,13 +235,13 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should extract primary field', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.primary_field).toBe('Computer Science');
     });
 
     it('should map facets to 10-dimensional structure', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.facets).toBeDefined();
       expect(document.facets?.matter).toContain('Computer Science');
@@ -255,45 +255,45 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should map geographic dimension to space', () => {
-      const preprintWithGeographic: Preprint = {
-        ...mockPreprint,
+      const eprintWithGeographic: Eprint = {
+        ...mockEprint,
         facets: [{ dimension: 'geographic', value: 'North America' }],
       };
 
-      const document = mapPreprintToDocument(preprintWithGeographic, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintWithGeographic, 'https://example.pds.host');
 
       expect(document.facets?.space).toContain('North America');
     });
 
     it('should map chronological dimension to time', () => {
-      const preprintWithChronological: Preprint = {
-        ...mockPreprint,
+      const eprintWithChronological: Eprint = {
+        ...mockEprint,
         facets: [{ dimension: 'chronological', value: '21st Century' }],
       };
 
-      const document = mapPreprintToDocument(preprintWithChronological, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintWithChronological, 'https://example.pds.host');
 
       expect(document.facets?.time).toContain('21st Century');
     });
 
     it('should map topical dimension to matter when no matter facets', () => {
-      const preprintWithTopical: Preprint = {
-        ...mockPreprint,
+      const eprintWithTopical: Eprint = {
+        ...mockEprint,
         facets: [{ dimension: 'topical', value: 'Natural Language Processing' }],
       };
 
-      const document = mapPreprintToDocument(preprintWithTopical, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintWithTopical, 'https://example.pds.host');
 
       expect(document.facets?.matter).toContain('Natural Language Processing');
     });
 
     it('should handle empty facets', () => {
-      const preprintNoFacets: Preprint = {
-        ...mockPreprint,
+      const eprintNoFacets: Eprint = {
+        ...mockEprint,
         facets: [],
       };
 
-      const document = mapPreprintToDocument(preprintNoFacets, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintNoFacets, 'https://example.pds.host');
 
       expect(document.field_nodes).toBeUndefined();
       expect(document.primary_field).toBeUndefined();
@@ -303,14 +303,14 @@ describe('mapPreprintToDocument', () => {
 
   describe('authority mapping', () => {
     it('should extract authority-controlled terms', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.authorities).toBeDefined();
       expect(document.authorities).toContain('Natural Language Processing');
     });
 
     it('should extract authority record URIs', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.authority_uris).toBeDefined();
       expect(document.authority_uris).toContain(
@@ -319,12 +319,12 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should handle facets without authorities', () => {
-      const preprintNoAuthorities: Preprint = {
-        ...mockPreprint,
+      const eprintNoAuthorities: Eprint = {
+        ...mockEprint,
         facets: [{ dimension: 'matter', value: 'Computer Science' }],
       };
 
-      const document = mapPreprintToDocument(preprintNoAuthorities, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintNoAuthorities, 'https://example.pds.host');
 
       expect(document.authorities).toBeUndefined();
       expect(document.authority_uris).toBeUndefined();
@@ -333,7 +333,7 @@ describe('mapPreprintToDocument', () => {
 
   describe('document metadata mapping', () => {
     it('should map BlobRef to document metadata', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.document_metadata).toBeDefined();
       expect(document.document_metadata?.file_size).toBe(1024000);
@@ -342,7 +342,7 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should map BlobRef to document_blob_ref', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.document_blob_ref).toBeDefined();
       expect(document.document_blob_ref?.cid).toBe(mockBlobRef.ref);
@@ -351,7 +351,7 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should not include blob data by default', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.document_base64).toBeUndefined();
     });
@@ -359,25 +359,25 @@ describe('mapPreprintToDocument', () => {
 
   describe('PDS tracking', () => {
     it('should store PDS URL', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host:3000');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host:3000');
 
       expect(document.pds_url).toBe('https://example.pds.host:3000');
     });
 
     it('should extract PDS endpoint', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host:3000');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host:3000');
 
       expect(document.pds_endpoint).toBe('example.pds.host:3000');
     });
 
     it('should handle PDS URL without port', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.pds_endpoint).toBe('example.pds.host');
     });
 
     it('should handle invalid PDS URL', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'not-a-url');
+      const document = mapEprintToDocument(mockEprint, 'not-a-url');
 
       expect(document.pds_endpoint).toBe('not-a-url');
     });
@@ -392,7 +392,7 @@ describe('mapPreprintToDocument', () => {
         downloadCount: 250,
       };
 
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host', enrichment);
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host', enrichment);
 
       expect(document.citation_count).toBe(42);
       expect(document.endorsement_count).toBe(10);
@@ -401,7 +401,7 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should default counts to zero when no enrichment', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.citation_count).toBe(0);
       expect(document.endorsement_count).toBe(0);
@@ -414,7 +414,7 @@ describe('mapPreprintToDocument', () => {
         tags: ['ml', 'nlp', 'transformers'],
       };
 
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host', enrichment);
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host', enrichment);
 
       expect(document.tags).toBeDefined();
       expect(document.tags).toContain('ml');
@@ -424,7 +424,7 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should set tag count to zero when no tags', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.tags).toBeUndefined();
       expect(document.tag_count).toBe(0);
@@ -435,7 +435,7 @@ describe('mapPreprintToDocument', () => {
         documentBase64: 'JVBERi0xLjQKJeLjz9MK...',
       };
 
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host', enrichment);
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host', enrichment);
 
       expect(document.document_base64).toBe('JVBERi0xLjQKJeLjz9MK...');
     });
@@ -445,7 +445,7 @@ describe('mapPreprintToDocument', () => {
         citationCount: 5,
       };
 
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host', enrichment);
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host', enrichment);
 
       expect(document.citation_count).toBe(5);
       expect(document.endorsement_count).toBe(0);
@@ -457,8 +457,8 @@ describe('mapPreprintToDocument', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle minimal preprint', () => {
-      const minimalAuthor: PreprintAuthor = {
+    it('should handle minimal eprint', () => {
+      const minimalAuthor: EprintAuthor = {
         did: 'did:plc:test' as DID,
         name: 'Test Author',
         order: 1,
@@ -468,8 +468,8 @@ describe('mapPreprintToDocument', () => {
         isHighlighted: false,
       };
 
-      const minimalPreprint: Preprint = {
-        uri: 'at://did:plc:test/pub.chive.preprint/abc' as AtUri,
+      const minimalEprint: Eprint = {
+        uri: 'at://did:plc:test/pub.chive.eprint/abc' as AtUri,
         cid: 'bafytest' as CID,
         authors: [minimalAuthor],
         submittedBy: 'did:plc:test' as DID,
@@ -477,7 +477,7 @@ describe('mapPreprintToDocument', () => {
         abstract: 'Abstract',
         documentBlobRef: mockBlobRef,
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         keywords: [],
         facets: [],
         version: 1,
@@ -485,9 +485,9 @@ describe('mapPreprintToDocument', () => {
         createdAt: 1704067200000 as Timestamp,
       };
 
-      const document = mapPreprintToDocument(minimalPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(minimalEprint, 'https://example.pds.host');
 
-      expect(document.uri).toBe(minimalPreprint.uri);
+      expect(document.uri).toBe(minimalEprint.uri);
       expect(document.authors).toHaveLength(1);
       expect(document.keywords).toEqual([]);
       expect(document.field_nodes).toBeUndefined();
@@ -496,36 +496,36 @@ describe('mapPreprintToDocument', () => {
     });
 
     it('should handle URI with multiple slashes', () => {
-      const preprintComplexUri: Preprint = {
-        ...mockPreprint,
-        uri: 'at://did:plc:abc123/com.example.record/pub.chive.preprint/tid' as AtUri,
+      const eprintComplexUri: Eprint = {
+        ...mockEprint,
+        uri: 'at://did:plc:abc123/com.example.record/pub.chive.eprint/tid' as AtUri,
       };
 
-      const document = mapPreprintToDocument(preprintComplexUri, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintComplexUri, 'https://example.pds.host');
 
       expect(document.rkey).toBe('tid');
     });
 
     it('should handle empty rkey extraction', () => {
-      const preprintNoRkey: Preprint = {
-        ...mockPreprint,
+      const eprintNoRkey: Eprint = {
+        ...mockEprint,
         uri: 'at://did:plc:abc123/' as AtUri,
       };
 
-      const document = mapPreprintToDocument(preprintNoRkey, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintNoRkey, 'https://example.pds.host');
 
       expect(document.rkey).toBe('');
     });
 
     it('should set DOI to undefined', () => {
-      const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
+      const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.doi).toBeUndefined();
     });
 
     it('should handle supplementary materials', () => {
-      const preprintWithSupplementary: Preprint = {
-        ...mockPreprint,
+      const eprintWithSupplementary: Eprint = {
+        ...mockEprint,
         supplementaryMaterials: [
           {
             blobRef: {
@@ -554,7 +554,7 @@ describe('mapPreprintToDocument', () => {
         ],
       };
 
-      const document = mapPreprintToDocument(preprintWithSupplementary, 'https://example.pds.host');
+      const document = mapEprintToDocument(eprintWithSupplementary, 'https://example.pds.host');
 
       expect(document).toBeDefined();
       expect(document.supplementary_count).toBe(2);

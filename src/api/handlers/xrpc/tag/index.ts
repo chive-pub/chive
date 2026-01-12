@@ -6,9 +6,9 @@
  */
 
 export {
-  listForPreprintEndpoint as listTagsForPreprintEndpoint,
-  listForPreprintHandler as listTagsForPreprintHandler,
-} from './listForPreprint.js';
+  listForEprintEndpoint as listTagsForEprintEndpoint,
+  listForEprintHandler as listTagsForEprintHandler,
+} from './listForEprint.js';
 export { getSuggestionsEndpoint, getSuggestionsHandler } from './getSuggestions.js';
 export {
   getTrendingEndpoint as getTrendingTagsEndpoint,
@@ -26,14 +26,14 @@ export {
 import { getDetailEndpoint } from './getDetail.js';
 import { getSuggestionsEndpoint } from './getSuggestions.js';
 import { getTrendingEndpoint } from './getTrending.js';
-import { listForPreprintEndpoint } from './listForPreprint.js';
+import { listForEprintEndpoint } from './listForEprint.js';
 import { searchEndpoint } from './search.js';
 
 /**
  * All tag XRPC endpoints.
  */
 export const tagEndpoints = [
-  listForPreprintEndpoint,
+  listForEprintEndpoint,
   getSuggestionsEndpoint,
   getTrendingEndpoint,
   searchEndpoint,

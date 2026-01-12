@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.metrics.getTrending.
  *
  * @remarks
- * Returns trending preprints based on view counts within a time window.
+ * Returns trending eprints based on view counts within a time window.
  * Supports 24h, 7d, and 30d windows.
  *
  * @packageDocumentation
@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import { paginationQuerySchema } from '../../../schemas/common.js';
-import { preprintSummarySchema } from '../../../schemas/preprint.js';
+import { eprintSummarySchema } from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
@@ -38,7 +38,7 @@ export type GetTrendingParams = z.infer<typeof getTrendingParamsSchema>;
 /**
  * Trending entry schema.
  */
-const trendingEntrySchema = preprintSummarySchema.extend({
+const trendingEntrySchema = eprintSummarySchema.extend({
   viewsInWindow: z.number().int().describe('Views in the selected window'),
   rank: z.number().int().describe('Trending rank'),
   velocity: z
@@ -51,7 +51,7 @@ const trendingEntrySchema = preprintSummarySchema.extend({
  * Trending response schema.
  */
 export const getTrendingResponseSchema = z.object({
-  trending: z.array(trendingEntrySchema).describe('Trending preprints'),
+  trending: z.array(trendingEntrySchema).describe('Trending eprints'),
   window: trendingWindowSchema,
   cursor: z.string().optional(),
   hasMore: z.boolean(),
@@ -67,7 +67,7 @@ export type GetTrendingResponse = z.infer<typeof getTrendingResponseSchema>;
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters
- * @returns Trending preprints for the selected time window
+ * @returns Trending eprints for the selected time window
  *
  * @example
  * ```http
@@ -89,13 +89,13 @@ export async function getTrendingHandler(
   c: Context<ChiveEnv>,
   params: GetTrendingParams
 ): Promise<GetTrendingResponse> {
-  const { metrics, preprint } = c.get('services');
+  const { metrics, eprint } = c.get('services');
   const logger = c.get('logger');
 
   const limit = params.limit ?? 20;
   const window = params.window ?? '7d';
 
-  logger.debug('Getting trending preprints', {
+  logger.debug('Getting trending eprints', {
     window,
     limit,
   });
@@ -103,31 +103,31 @@ export async function getTrendingHandler(
   // Get trending entries from metrics service
   const trendingEntries = await metrics.getTrending(window, limit);
 
-  // Enrich with preprint data
+  // Enrich with eprint data
   const enrichedTrending = await Promise.all(
     trendingEntries.map(async (entry, index) => {
-      const preprintData = await preprint.getPreprint(entry.uri);
+      const eprintData = await eprint.getEprint(entry.uri);
 
-      if (!preprintData) {
-        // Skip entries where preprint is no longer indexed
+      if (!eprintData) {
+        // Skip entries where eprint is no longer indexed
         return null;
       }
 
       // Extract rkey for record URL
-      const rkey = preprintData.uri.split('/').pop() ?? '';
+      const rkey = eprintData.uri.split('/').pop() ?? '';
       // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
-      const recordOwner = preprintData.paperDid ?? preprintData.submittedBy;
-      const recordUrl = `${preprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
+      const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
+      const recordUrl = `${eprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
 
       // Calculate staleness using configured threshold
       const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
 
       return {
-        uri: preprintData.uri,
-        cid: preprintData.cid,
-        title: preprintData.title,
-        abstract: preprintData.abstract.substring(0, 500),
-        authors: preprintData.authors.map((author) => ({
+        uri: eprintData.uri,
+        cid: eprintData.cid,
+        title: eprintData.title,
+        abstract: eprintData.abstract.substring(0, 500),
+        authors: eprintData.authors.map((author) => ({
           did: author.did,
           name: author.name,
           orcid: author.orcid,
@@ -149,26 +149,26 @@ export async function getTrendingHandler(
           handle: undefined as string | undefined,
           avatarUrl: undefined as string | undefined,
         })),
-        submittedBy: preprintData.submittedBy,
-        paperDid: preprintData.paperDid,
+        submittedBy: eprintData.submittedBy,
+        paperDid: eprintData.paperDid,
         fields: undefined as
           | { id?: string; uri: string; name: string; parentUri?: string }[]
           | undefined,
-        license: preprintData.license,
-        createdAt: preprintData.createdAt.toISOString(),
-        indexedAt: preprintData.indexedAt.toISOString(),
+        license: eprintData.license,
+        createdAt: eprintData.createdAt.toISOString(),
+        indexedAt: eprintData.indexedAt.toISOString(),
         source: {
-          pdsEndpoint: preprintData.pdsUrl,
+          pdsEndpoint: eprintData.pdsUrl,
           recordUrl,
           blobUrl: undefined as string | undefined,
-          lastVerifiedAt: preprintData.indexedAt.toISOString(),
-          stale: preprintData.indexedAt.getTime() < stalenessThreshold,
+          lastVerifiedAt: eprintData.indexedAt.toISOString(),
+          stale: eprintData.indexedAt.getTime() < stalenessThreshold,
         },
-        metrics: preprintData.metrics
+        metrics: eprintData.metrics
           ? {
-              views: preprintData.metrics.views,
-              downloads: preprintData.metrics.downloads,
-              endorsements: preprintData.metrics.endorsements,
+              views: eprintData.metrics.views,
+              downloads: eprintData.metrics.downloads,
+              endorsements: eprintData.metrics.endorsements,
             }
           : undefined,
         viewsInWindow: entry.score,
@@ -207,7 +207,7 @@ export async function getTrendingHandler(
 export const getTrendingEndpoint: XRPCEndpoint<GetTrendingParams, GetTrendingResponse> = {
   method: 'pub.chive.metrics.getTrending' as never,
   type: 'query',
-  description: 'Get trending preprints by view count in time window',
+  description: 'Get trending eprints by view count in time window',
   inputSchema: getTrendingParamsSchema,
   outputSchema: getTrendingResponseSchema,
   handler: getTrendingHandler,

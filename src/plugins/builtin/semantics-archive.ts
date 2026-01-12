@@ -2,7 +2,7 @@
  * Semantics Archive integration plugin.
  *
  * @remarks
- * Imports linguistics preprints from Semantics Archive (https://semanticsarchive.net).
+ * Imports linguistics eprints from Semantics Archive (https://semanticsarchive.net).
  *
  * Since Semantics Archive has no official API, this plugin:
  * - Scrapes the recent papers page with respectful rate limiting
@@ -14,7 +14,7 @@
  * ATProto Compliance:
  * - All imported data is AppView cache (ephemeral, rebuildable)
  * - Never writes to user PDSes
- * - Users claim preprints by creating records in THEIR PDS
+ * - Users claim eprints by creating records in THEIR PDS
  *
  * @packageDocumentation
  * @public
@@ -26,7 +26,7 @@ import { parseDocument } from 'htmlparser2';
 
 import { PluginError } from '../../types/errors.js';
 import type {
-  ExternalPreprint,
+  ExternalEprint,
   FetchOptions,
   IPluginManifest,
   IPluginContext,
@@ -86,8 +86,8 @@ export interface SemanticsArchivePaper {
  * Semantics Archive integration plugin.
  *
  * @remarks
- * Fetches linguistics preprints from Semantics Archive and imports them
- * into the Chive AppView cache. Users can claim preprints they authored.
+ * Fetches linguistics eprints from Semantics Archive and imports them
+ * into the Chive AppView cache. Users can claim eprints they authored.
  *
  * Extends ImportingPlugin for standardized import/claiming workflow.
  *
@@ -127,7 +127,7 @@ export class SemanticsArchivePlugin extends ImportingPlugin {
     id: 'pub.chive.plugin.semanticsarchive',
     name: 'Semantics Archive Integration',
     version: '0.1.0',
-    description: 'Imports linguistics preprints from Semantics Archive with claiming support',
+    description: 'Imports linguistics eprints from Semantics Archive with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -213,17 +213,17 @@ export class SemanticsArchivePlugin extends ImportingPlugin {
   }
 
   /**
-   * Fetches preprints from Semantics Archive.
+   * Fetches eprints from Semantics Archive.
    *
    * @param options - Fetch options (limit, cursor)
-   * @returns Async iterable of external preprints
+   * @returns Async iterable of external eprints
    */
-  async *fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint> {
+  async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
     await this.rateLimit();
 
     const response = await fetch(`${this.BASE_URL}/cgi-bin/browse.pl`, {
       headers: {
-        'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+        'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
         Accept: 'text/html',
       },
     });
@@ -241,9 +241,9 @@ export class SemanticsArchivePlugin extends ImportingPlugin {
     for (const paper of papers) {
       if (count >= limit) break;
 
-      // Convert to ExternalPreprint format
-      const preprint = this.paperToExternalPreprint(paper);
-      yield preprint;
+      // Convert to ExternalEprint format
+      const eprint = this.paperToExternalEprint(paper);
+      yield eprint;
       count++;
     }
   }
@@ -254,7 +254,7 @@ export class SemanticsArchivePlugin extends ImportingPlugin {
    * @param externalId - Paper ID
    * @returns Full URL to the paper
    */
-  buildPreprintUrl(externalId: string): string {
+  buildEprintUrl(externalId: string): string {
     return `${this.BASE_URL}/Archive/${externalId}`;
   }
 
@@ -280,9 +280,9 @@ export class SemanticsArchivePlugin extends ImportingPlugin {
   }
 
   /**
-   * Converts a Semantics Archive paper to ExternalPreprint format.
+   * Converts a Semantics Archive paper to ExternalEprint format.
    */
-  private paperToExternalPreprint(paper: SemanticsArchivePaper): ExternalPreprint {
+  private paperToExternalEprint(paper: SemanticsArchivePaper): ExternalEprint {
     return {
       externalId: paper.id,
       url: paper.url,

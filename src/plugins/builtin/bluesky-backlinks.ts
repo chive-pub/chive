@@ -2,11 +2,11 @@
  * Bluesky backlinks tracking plugin.
  *
  * @remarks
- * Tracks references to Chive preprints from Bluesky posts.
+ * Tracks references to Chive eprints from Bluesky posts.
  * Bluesky (https://bsky.app) is the flagship ATProto social application
  * where users share and discuss content.
  *
- * When a Bluesky post embeds or links to a Chive preprint,
+ * When a Bluesky post embeds or links to a Chive eprint,
  * this plugin creates a backlink for aggregation and discovery.
  *
  * Post schema: app.bsky.feed.post
@@ -141,11 +141,11 @@ type BlueskyFacetFeature =
  * Bluesky backlinks tracking plugin.
  *
  * @remarks
- * Tracks preprint references in Bluesky posts via firehose
+ * Tracks eprint references in Bluesky posts via firehose
  * and creates backlinks for discovery and aggregation.
  *
  * Extracts references from:
- * - Record embeds (embedded preprint records)
+ * - Record embeds (embedded eprint records)
  * - External link embeds (chive.pub URLs)
  * - Rich text facets (links in post text)
  * - Plain text AT-URIs
@@ -181,7 +181,7 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
     id: 'pub.chive.plugin.bluesky-backlinks',
     name: 'Bluesky Backlinks',
     version: '0.1.0',
-    description: 'Tracks references to Chive preprints from Bluesky posts',
+    description: 'Tracks references to Chive eprints from Bluesky posts',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -199,12 +199,12 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
   private readonly CHIVE_DOMAIN = 'chive.pub';
 
   /**
-   * Extracts preprint AT-URIs from a Bluesky post.
+   * Extracts eprint AT-URIs from a Bluesky post.
    *
    * @param record - Bluesky post record
-   * @returns Array of preprint AT-URIs
+   * @returns Array of eprint AT-URIs
    */
-  extractPreprintRefs(record: unknown): string[] {
+  extractEprintRefs(record: unknown): string[] {
     const post = record as BlueskyPost;
     const refs: string[] = [];
 
@@ -228,22 +228,22 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
   }
 
   /**
-   * Extracts preprint references from embed.
+   * Extracts eprint references from embed.
    *
    * @param embed - Bluesky embed
-   * @returns Array of preprint AT-URIs
+   * @returns Array of eprint AT-URIs
    */
   private extractFromEmbed(embed: BlueskyEmbed): string[] {
     const refs: string[] = [];
 
     if (embed.$type === 'app.bsky.embed.record') {
       // Direct record embed
-      if (this.isPreprintUri(embed.record.uri)) {
+      if (this.isEprintUri(embed.record.uri)) {
         refs.push(embed.record.uri);
       }
     } else if (embed.$type === 'app.bsky.embed.recordWithMedia') {
       // Record with media
-      if (this.isPreprintUri(embed.record.record.uri)) {
+      if (this.isEprintUri(embed.record.record.uri)) {
         refs.push(embed.record.record.uri);
       }
     } else if (embed.$type === 'app.bsky.embed.external') {
@@ -258,10 +258,10 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
   }
 
   /**
-   * Extracts preprint references from rich text facets.
+   * Extracts eprint references from rich text facets.
    *
    * @param facets - Bluesky facets
-   * @returns Array of preprint AT-URIs
+   * @returns Array of eprint AT-URIs
    */
   private extractFromFacets(facets: BlueskyFacet[]): string[] {
     const refs: string[] = [];
@@ -270,7 +270,7 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
       for (const feature of facet.features) {
         if (feature.$type === 'app.bsky.richtext.facet#link') {
           // Check if it's an AT-URI
-          if (this.isPreprintUri(feature.uri)) {
+          if (this.isEprintUri(feature.uri)) {
             refs.push(feature.uri);
           }
           // Check if it's a Chive URL
@@ -293,7 +293,7 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
    *
    * @remarks
    * Handles URLs like:
-   * - https://chive.pub/preprint/did:plc:xxx/abc123
+   * - https://chive.pub/eprint/did:plc:xxx/abc123
    * - https://chive.pub/paper/did:plc:xxx/abc123
    */
   private chiveUrlToAtUri(url: string): string | null {
@@ -304,14 +304,14 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
         return null;
       }
 
-      // Match /preprint/{did}/{rkey} or /paper/{did}/{rkey}
-      const match = /^\/(preprint|paper)\/(did:[a-z]+:[a-zA-Z0-9]+)\/([a-zA-Z0-9]+)/.exec(
+      // Match /eprint/{did}/{rkey} or /paper/{did}/{rkey}
+      const match = /^\/(eprint|paper)\/(did:[a-z]+:[a-zA-Z0-9]+)\/([a-zA-Z0-9]+)/.exec(
         parsed.pathname
       );
       if (match) {
         const did = match[2];
         const rkey = match[3];
-        return `at://${did}/pub.chive.preprint.submission/${rkey}`;
+        return `at://${did}/pub.chive.eprint.submission/${rkey}`;
       }
 
       return null;

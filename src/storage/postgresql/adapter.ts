@@ -8,7 +8,7 @@
  *
  * **Architecture Pattern:**
  * - Adapter implements IStorageBackend interface
- * - Delegates to PreprintsRepository for CRUD operations
+ * - Delegates to EprintsRepository for CRUD operations
  * - Delegates to PDSTracker for source tracking
  * - Delegates to StalenessDetector for staleness checks
  *
@@ -28,9 +28,9 @@
  * const pool = createPool(config);
  * const storage = new PostgreSQLAdapter(pool);
  *
- * // Store preprint
- * const result = await storage.storePreprint({
- *   uri: toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+ * // Store eprint
+ * const result = await storage.storeEprint({
+ *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
  *   cid: toCID('bafyreib...')!,
  *   author: toDID('did:plc:abc')!,
  *   title: 'Neural Networks in Biology',
@@ -57,13 +57,13 @@ import type { Pool } from 'pg';
 import type { AtUri, DID } from '../../types/atproto.js';
 import type {
   IStorageBackend,
-  PreprintQueryOptions,
-  StoredPreprint,
+  EprintQueryOptions,
+  StoredEprint,
 } from '../../types/interfaces/storage.interface.js';
 import type { Result } from '../../types/result.js';
 
 import { PDSTracker } from './pds-tracker.js';
-import { PreprintsRepository } from './preprints-repository.js';
+import { EprintsRepository } from './eprints-repository.js';
 import { StalenessDetector } from './staleness-detector.js';
 
 /**
@@ -74,7 +74,7 @@ import { StalenessDetector } from './staleness-detector.js';
  * This design provides clean separation of concerns and makes testing easier.
  *
  * **Delegation Strategy:**
- * - PreprintsRepository handles all preprint CRUD operations
+ * - EprintsRepository handles all eprint CRUD operations
  * - PDSTracker manages PDS source tracking
  * - StalenessDetector checks if records need re-indexing
  *
@@ -82,7 +82,7 @@ import { StalenessDetector } from './staleness-detector.js';
  * @since 0.1.0
  */
 export class PostgreSQLAdapter implements IStorageBackend {
-  private readonly preprintsRepo: PreprintsRepository;
+  private readonly eprintsRepo: EprintsRepository;
   private readonly pdsTracker: PDSTracker;
   private readonly stalenessDetector: StalenessDetector;
 
@@ -99,27 +99,27 @@ export class PostgreSQLAdapter implements IStorageBackend {
    * for efficient resource sharing.
    */
   constructor(pool: Pool) {
-    this.preprintsRepo = new PreprintsRepository(pool);
+    this.eprintsRepo = new EprintsRepository(pool);
     this.pdsTracker = new PDSTracker(pool);
     this.stalenessDetector = new StalenessDetector(pool);
   }
 
   /**
-   * Stores or updates a preprint index record.
+   * Stores or updates a eprint index record.
    *
-   * @param preprint - Preprint metadata to index
+   * @param eprint - Eprint metadata to index
    * @returns Result indicating success or failure
    *
    * @remarks
-   * Delegates to PreprintsRepository for the actual storage operation.
-   * Upserts the preprint (insert or update based on URI).
+   * Delegates to EprintsRepository for the actual storage operation.
+   * Upserts the eprint (insert or update based on URI).
    *
    * **ATProto Compliance:** Stores metadata only, not source data.
    *
    * @example
    * ```typescript
-   * const result = await adapter.storePreprint({
-   *   uri: toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   * const result = await adapter.storeEprint({
+   *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   cid: toCID('bafyreib...')!,
    *   author: toDID('did:plc:abc')!,
    *   title: 'Neural Networks in Biology',
@@ -138,84 +138,84 @@ export class PostgreSQLAdapter implements IStorageBackend {
    *
    * @public
    */
-  async storePreprint(preprint: StoredPreprint): Promise<Result<void, Error>> {
-    return this.preprintsRepo.store(preprint);
+  async storeEprint(eprint: StoredEprint): Promise<Result<void, Error>> {
+    return this.eprintsRepo.store(eprint);
   }
 
   /**
-   * Retrieves a preprint index record by URI.
+   * Retrieves a eprint index record by URI.
    *
-   * @param uri - AT URI of the preprint
-   * @returns Preprint if indexed, null otherwise
+   * @param uri - AT URI of the eprint
+   * @returns Eprint if indexed, null otherwise
    *
    * @remarks
-   * Delegates to PreprintsRepository for the query.
-   * Returns null if the preprint has not been indexed by Chive.
-   * The preprint may still exist in the user's PDS.
+   * Delegates to EprintsRepository for the query.
+   * Returns null if the eprint has not been indexed by Chive.
+   * The eprint may still exist in the user's PDS.
    *
    * @example
    * ```typescript
-   * const preprint = await adapter.getPreprint(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   * const eprint = await adapter.getEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
-   * if (preprint) {
-   *   console.log('Title:', preprint.title);
+   * if (eprint) {
+   *   console.log('Title:', eprint.title);
    * }
    * ```
    *
    * @public
    */
-  async getPreprint(uri: AtUri): Promise<StoredPreprint | null> {
-    return this.preprintsRepo.findByUri(uri);
+  async getEprint(uri: AtUri): Promise<StoredEprint | null> {
+    return this.eprintsRepo.findByUri(uri);
   }
 
   /**
-   * Queries preprints by author.
+   * Queries eprints by author.
    *
    * @param author - Author DID
    * @param options - Query options (limit, offset, sort)
-   * @returns Array of preprints by this author
+   * @returns Array of eprints by this author
    *
    * @remarks
-   * Delegates to PreprintsRepository for the query.
-   * Returns preprints in order specified by options.sortBy.
+   * Delegates to EprintsRepository for the query.
+   * Returns eprints in order specified by options.sortBy.
    * Defaults to newest first (createdAt desc).
    *
    * @example
    * ```typescript
-   * const preprints = await adapter.getPreprintsByAuthor(
+   * const eprints = await adapter.getEprintsByAuthor(
    *   toDID('did:plc:abc')!,
    *   { limit: 10, sortBy: 'createdAt', sortOrder: 'desc' }
    * );
    *
-   * preprints.forEach(p => console.log(p.title));
+   * eprints.forEach(p => console.log(p.title));
    * ```
    *
    * @public
    */
-  async getPreprintsByAuthor(
+  async getEprintsByAuthor(
     author: DID,
-    options: PreprintQueryOptions = {}
-  ): Promise<StoredPreprint[]> {
-    return this.preprintsRepo.findByAuthor(author, options);
+    options: EprintQueryOptions = {}
+  ): Promise<StoredEprint[]> {
+    return this.eprintsRepo.findByAuthor(author, options);
   }
 
   /**
-   * Lists all preprint URIs with pagination.
+   * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit
-   * @returns Array of preprint URIs
+   * @returns Array of eprint URIs
    *
    * @remarks
-   * Used for browsing all preprints without facet filtering.
+   * Used for browsing all eprints without facet filtering.
    *
    * @public
    */
-  async listPreprintUris(
+  async listEprintUris(
     options: { limit?: number; cursor?: string } = {}
   ): Promise<readonly string[]> {
-    return this.preprintsRepo.listUris(options);
+    return this.eprintsRepo.listUris(options);
   }
 
   /**
@@ -235,7 +235,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
    * @example
    * ```typescript
    * await adapter.trackPDSSource(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   'https://pds.example.com',
    *   new Date()
    * );
@@ -263,7 +263,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
    * @example
    * ```typescript
    * const isStale = await adapter.isStale(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
    * if (isStale) {

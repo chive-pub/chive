@@ -21,13 +21,13 @@ import type {
   FacetedSearchQuery,
   FacetedSearchResults,
   ISearchEngine,
-  IndexablePreprintDocument as SimpleIndexableDocument,
+  IndexableEprintDocument as SimpleIndexableDocument,
   SearchQuery,
   SearchResults,
 } from '../../types/interfaces/search.interface.js';
 
 import type { ElasticsearchConnectionPool } from './connection.js';
-import type { IndexablePreprintDocument } from './document-mapper.js';
+import type { IndexableEprintDocument } from './document-mapper.js';
 
 /**
  * Search error.
@@ -68,7 +68,7 @@ export interface ElasticsearchAdapterConfig {
   /**
    * Index name or alias.
    *
-   * @defaultValue 'preprints'
+   * @defaultValue 'eprints'
    */
   readonly indexName?: string;
 
@@ -105,7 +105,7 @@ export interface ElasticsearchAdapterConfig {
  * Elasticsearch adapter implementing ISearchEngine.
  *
  * @remarks
- * Provides search capabilities for preprints using Elasticsearch.
+ * Provides search capabilities for eprints using Elasticsearch.
  * Implements complete search interface with faceting, autocomplete,
  * and index management.
  *
@@ -114,7 +114,7 @@ export interface ElasticsearchAdapterConfig {
  * const pool = new ElasticsearchConnectionPool(config);
  * const adapter = new ElasticsearchAdapter(pool);
  *
- * await adapter.indexPreprint(document);
+ * await adapter.indexEprint(document);
  *
  * const results = await adapter.search({
  *   q: 'neural networks',
@@ -134,7 +134,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
   ) {
     this.client = connectionPool.getClient();
     this.config = {
-      indexName: config.indexName ?? 'preprints',
+      indexName: config.indexName ?? 'eprints',
       enableCaching: config.enableCaching ?? true,
       defaultLimit: config.defaultLimit ?? 20,
       maxLimit: config.maxLimit ?? 100,
@@ -143,9 +143,9 @@ export class ElasticsearchAdapter implements ISearchEngine {
   }
 
   /**
-   * Indexes a preprint document.
+   * Indexes a eprint document.
    *
-   * @param preprint - Preprint to index
+   * @param eprint - Eprint to index
    *
    * @throws {IndexError} On indexing failure
    *
@@ -155,33 +155,33 @@ export class ElasticsearchAdapter implements ISearchEngine {
    *
    * @public
    */
-  async indexPreprint(
-    preprint: SimpleIndexableDocument | IndexablePreprintDocument
+  async indexEprint(
+    eprint: SimpleIndexableDocument | IndexableEprintDocument
   ): Promise<void> {
     try {
-      const document = this.normalizeDocument(preprint);
+      const document = this.normalizeDocument(eprint);
 
       await this.client.index({
         index: this.config.indexName,
-        id: String(preprint.uri),
+        id: String(eprint.uri),
         document,
-        pipeline: 'preprint-processing',
+        pipeline: 'eprint-processing',
         refresh: false,
       });
     } catch (error) {
       if (error instanceof errors.ResponseError) {
-        throw new IndexError(`Failed to index document ${preprint.uri}: ${error.message}`, error);
+        throw new IndexError(`Failed to index document ${eprint.uri}: ${error.message}`, error);
       }
 
       throw new IndexError(
-        `Unexpected error indexing document ${preprint.uri}`,
+        `Unexpected error indexing document ${eprint.uri}`,
         error instanceof Error ? error : undefined
       );
     }
   }
 
   /**
-   * Searches preprints.
+   * Searches eprints.
    *
    * @param query - Search query
    * @returns Search results
@@ -197,7 +197,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
 
       const esQuery = this.buildSearchQuery(query);
 
-      const response = await this.client.search<IndexablePreprintDocument>({
+      const response = await this.client.search<IndexableEprintDocument>({
         index: this.config.indexName,
         query: esQuery,
         size: limit,
@@ -250,7 +250,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
       const esQuery = this.buildSearchQuery(query);
       const aggregations = this.buildFacetAggregations(query.facets);
 
-      const response = await this.client.search<IndexablePreprintDocument>({
+      const response = await this.client.search<IndexableEprintDocument>({
         index: this.config.indexName,
         query: esQuery,
         size: limit,
@@ -293,7 +293,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
    */
   async autocomplete(prefix: string, limit = 5): Promise<readonly string[]> {
     try {
-      const response = await this.client.search<IndexablePreprintDocument>({
+      const response = await this.client.search<IndexableEprintDocument>({
         index: this.config.indexName,
         suggest: {
           title_suggest: {
@@ -375,9 +375,9 @@ export class ElasticsearchAdapter implements ISearchEngine {
    * @returns Normalized document
    */
   private normalizeDocument(
-    doc: SimpleIndexableDocument | IndexablePreprintDocument
+    doc: SimpleIndexableDocument | IndexableEprintDocument
   ):
-    | IndexablePreprintDocument
+    | IndexableEprintDocument
     | Record<string, string | number | boolean | readonly unknown[] | Date | undefined> {
     if (this.isExtendedDocument(doc)) {
       return doc;
@@ -410,8 +410,8 @@ export class ElasticsearchAdapter implements ISearchEngine {
    * @returns True if extended format
    */
   private isExtendedDocument(
-    doc: SimpleIndexableDocument | IndexablePreprintDocument
-  ): doc is IndexablePreprintDocument {
+    doc: SimpleIndexableDocument | IndexableEprintDocument
+  ): doc is IndexableEprintDocument {
     return 'cid' in doc;
   }
 
@@ -590,7 +590,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
    * @returns Parsed search results
    */
   private parseSearchResponse(
-    response: estypes.SearchResponse<IndexablePreprintDocument>
+    response: estypes.SearchResponse<IndexableEprintDocument>
   ): SearchResults {
     const hits = response.hits.hits.map((hit) => ({
       uri: (hit._source?.uri ?? hit._id) as AtUri,
@@ -623,7 +623,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
    * @returns Parsed faceted search results
    */
   private parseFacetedSearchResponse(
-    response: estypes.SearchResponse<IndexablePreprintDocument>,
+    response: estypes.SearchResponse<IndexableEprintDocument>,
     facetNames: readonly string[]
   ): FacetedSearchResults {
     const baseResults = this.parseSearchResponse(response);
@@ -703,7 +703,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
    * @returns Suggested completions
    */
   private parseAutocompleteResponse(
-    response: estypes.SearchResponse<IndexablePreprintDocument>
+    response: estypes.SearchResponse<IndexableEprintDocument>
   ): readonly string[] {
     if (!response.suggest?.title_suggest) {
       return [];

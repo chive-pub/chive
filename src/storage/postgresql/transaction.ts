@@ -124,16 +124,16 @@ export class DeadlockError extends Error {
  * import { withTransaction } from './transaction.js';
  *
  * const result = await withTransaction(pool, async (client) => {
- *   // Insert preprint
+ *   // Insert eprint
  *   await client.query(
- *     'INSERT INTO preprint_index (uri, title, author) VALUES ($1, $2, $3)',
- *     ['at://did:plc:abc/pub.chive.preprint.submission/xyz', 'Title', 'did:plc:abc']
+ *     'INSERT INTO eprint_index (uri, title, author) VALUES ($1, $2, $3)',
+ *     ['at://did:plc:abc/pub.chive.eprint.submission/xyz', 'Title', 'did:plc:abc']
  *   );
  *
  *   // Insert author metadata (same transaction)
  *   await client.query(
- *     'INSERT INTO preprint_authors (uri, author_did, position) VALUES ($1, $2, $3)',
- *     ['at://did:plc:abc/pub.chive.preprint.submission/xyz', 'did:plc:abc', 0]
+ *     'INSERT INTO eprint_authors (uri, author_did, position) VALUES ($1, $2, $3)',
+ *     ['at://did:plc:abc/pub.chive.eprint.submission/xyz', 'did:plc:abc', 0]
  *   );
  *
  *   return { success: true };
@@ -267,11 +267,11 @@ export async function withTransaction<T>(
  *
  * await withTransaction(pool, async (client) => {
  *   // Main operation (always happens)
- *   await client.query('INSERT INTO preprint_index ...');
+ *   await client.query('INSERT INTO eprint_index ...');
  *
  *   // Optional operation (may fail without aborting transaction)
  *   const result = await withSavepoint(client, 'optional_tags', async () => {
- *     await client.query('INSERT INTO preprint_tags ...');
+ *     await client.query('INSERT INTO eprint_tags ...');
  *   });
  *
  *   if (!result.ok) {

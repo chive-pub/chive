@@ -3,7 +3,7 @@
  *
  * @remarks
  * This module implements the {@link ICitationGraph} interface for storing
- * and querying citation relationships between Chive preprints in Neo4j.
+ * and querying citation relationships between Chive eprints in Neo4j.
  *
  * **Critical Constraint**: Only stores citations where BOTH the citing and
  * cited papers are indexed in Chive. External citations from Semantic Scholar
@@ -21,15 +21,15 @@
  * // Index citations discovered from S2
  * await citationGraph.upsertCitationsBatch([
  *   {
- *     citingUri: 'at://did:plc:abc/pub.chive.preprint.submission/1',
- *     citedUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+ *     citingUri: 'at://did:plc:abc/pub.chive.eprint.submission/1',
+ *     citedUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
  *     isInfluential: true,
  *     source: 'semantic-scholar',
  *   },
  * ]);
  *
  * // Query co-cited papers
- * const coCited = await citationGraph.findCoCitedPapers(preprintUri, 3);
+ * const coCited = await citationGraph.findCoCitedPapers(eprintUri, 3);
  * ```
  *
  * @see {@link https://api.semanticscholar.org/api-docs/graph#tag/Paper-Data | Semantic Scholar Citations API}
@@ -68,7 +68,7 @@ type Neo4jValue = string | number | boolean | null | string[];
  * Citation graph storage implementation for Neo4j.
  *
  * @remarks
- * Manages CITES relationships between Preprint nodes in Neo4j. Provides
+ * Manages CITES relationships between Eprint nodes in Neo4j. Provides
  * efficient queries for:
  * - Direct citations (citing papers, references)
  * - Co-citation analysis (papers frequently cited together)
@@ -76,16 +76,16 @@ type Neo4jValue = string | number | boolean | null | string[];
  *
  * **Schema**:
  * ```cypher
- * (:Preprint {uri: string})-[:CITES {
+ * (:Eprint {uri: string})-[:CITES {
  *   isInfluential: boolean,
  *   source: string,
  *   discoveredAt: datetime
- * }]->(:Preprint {uri: string})
+ * }]->(:Eprint {uri: string})
  * ```
  *
  * **Indexes** (created by setup.ts):
- * - `CREATE INDEX preprint_uri FOR (p:Preprint) ON (p.uri)`
- * - `CREATE INDEX preprint_doi FOR (p:Preprint) ON (p.doi)`
+ * - `CREATE INDEX eprint_uri FOR (p:Eprint) ON (p.uri)`
+ * - `CREATE INDEX eprint_doi FOR (p:Eprint) ON (p.doi)`
  *
  * @example
  * Batch upsert citations:
@@ -99,7 +99,7 @@ type Neo4jValue = string | number | boolean | null | string[];
  * @example
  * Find co-cited papers:
  * ```typescript
- * const coCited = await citationGraph.findCoCitedPapers(preprintUri, 3);
+ * const coCited = await citationGraph.findCoCitedPapers(eprintUri, 3);
  * for (const paper of coCited) {
  *   console.log(`${paper.title}: ${paper.coCitationCount} co-citations`);
  * }
@@ -124,7 +124,7 @@ export class CitationGraph implements ICitationGraph {
    *
    * @remarks
    * Uses MERGE to create or update CITES edges. Deduplicates based on
-   * (citingUri, citedUri) pair. If both papers don't exist as Preprint
+   * (citingUri, citedUri) pair. If both papers don't exist as Eprint
    * nodes, the citation is silently skipped (we only store Chive-to-Chive).
    *
    * For large batches (1000+), consider calling in chunks to avoid
@@ -134,8 +134,8 @@ export class CitationGraph implements ICitationGraph {
    * ```typescript
    * await citationGraph.upsertCitationsBatch([
    *   {
-   *     citingUri: 'at://did:plc:abc/pub.chive.preprint.submission/1',
-   *     citedUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+   *     citingUri: 'at://did:plc:abc/pub.chive.eprint.submission/1',
+   *     citedUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
    *     isInfluential: true,
    *     source: 'semantic-scholar',
    *   },
@@ -148,11 +148,11 @@ export class CitationGraph implements ICitationGraph {
     }
 
     // Use UNWIND for efficient batch processing
-    // Only create edge if BOTH preprints exist in Chive
+    // Only create edge if BOTH eprints exist in Chive
     const query = `
       UNWIND $citations AS citation
-      MATCH (citing:Preprint {uri: citation.citingUri})
-      MATCH (cited:Preprint {uri: citation.citedUri})
+      MATCH (citing:Eprint {uri: citation.citingUri})
+      MATCH (cited:Eprint {uri: citation.citedUri})
       MERGE (citing)-[r:CITES]->(cited)
       SET r.isInfluential = citation.isInfluential,
           r.source = citation.source,
@@ -179,24 +179,24 @@ export class CitationGraph implements ICitationGraph {
   }
 
   /**
-   * Gets papers that cite a given preprint.
+   * Gets papers that cite a given eprint.
    *
-   * @param paperUri - AT-URI of the cited preprint
+   * @param paperUri - AT-URI of the cited eprint
    * @param options - Query options
-   * @returns Papers that cite the given preprint
+   * @returns Papers that cite the given eprint
    *
    * @remarks
-   * Returns all Chive preprints that have a CITES edge pointing to
+   * Returns all Chive eprints that have a CITES edge pointing to
    * the specified paper. Results are ordered by discovery date (newest first).
    *
    * @example
    * ```typescript
-   * const result = await citationGraph.getCitingPapers(preprintUri, {
+   * const result = await citationGraph.getCitingPapers(eprintUri, {
    *   limit: 20,
    *   onlyInfluential: true,
    * });
    *
-   * console.log(`${result.total} papers cite this preprint`);
+   * console.log(`${result.total} papers cite this eprint`);
    * for (const citation of result.citations) {
    *   console.log(`Cited by: ${citation.citingUri}`);
    * }
@@ -212,7 +212,7 @@ export class CitationGraph implements ICitationGraph {
     const influentialFilter = options?.onlyInfluential ? 'AND r.isInfluential = true' : '';
 
     const query = `
-      MATCH (citing:Preprint)-[r:CITES]->(cited:Preprint {uri: $paperUri})
+      MATCH (citing:Eprint)-[r:CITES]->(cited:Eprint {uri: $paperUri})
       WHERE true ${influentialFilter}
       WITH citing, r, cited
       ORDER BY r.discoveredAt DESC
@@ -226,7 +226,7 @@ export class CitationGraph implements ICitationGraph {
     `;
 
     const countQuery = `
-      MATCH (citing:Preprint)-[r:CITES]->(cited:Preprint {uri: $paperUri})
+      MATCH (citing:Eprint)-[r:CITES]->(cited:Eprint {uri: $paperUri})
       WHERE true ${influentialFilter}
       RETURN count(r) AS total
     `;
@@ -257,21 +257,21 @@ export class CitationGraph implements ICitationGraph {
   }
 
   /**
-   * Gets papers that a given preprint cites (references).
+   * Gets papers that a given eprint cites (references).
    *
-   * @param paperUri - AT-URI of the citing preprint
+   * @param paperUri - AT-URI of the citing eprint
    * @param options - Query options
-   * @returns Papers referenced by the given preprint
+   * @returns Papers referenced by the given eprint
    *
    * @remarks
-   * Returns all Chive preprints that the specified paper has a CITES
+   * Returns all Chive eprints that the specified paper has a CITES
    * edge pointing to. Results are ordered by discovery date (newest first).
    *
    * @example
    * ```typescript
-   * const result = await citationGraph.getReferences(preprintUri, { limit: 50 });
+   * const result = await citationGraph.getReferences(eprintUri, { limit: 50 });
    *
-   * console.log(`This preprint cites ${result.total} other preprints`);
+   * console.log(`This eprint cites ${result.total} other eprints`);
    * ```
    */
   async getReferences(
@@ -284,7 +284,7 @@ export class CitationGraph implements ICitationGraph {
     const influentialFilter = options?.onlyInfluential ? 'AND r.isInfluential = true' : '';
 
     const query = `
-      MATCH (citing:Preprint {uri: $paperUri})-[r:CITES]->(cited:Preprint)
+      MATCH (citing:Eprint {uri: $paperUri})-[r:CITES]->(cited:Eprint)
       WHERE true ${influentialFilter}
       WITH citing, r, cited
       ORDER BY r.discoveredAt DESC
@@ -298,7 +298,7 @@ export class CitationGraph implements ICitationGraph {
     `;
 
     const countQuery = `
-      MATCH (citing:Preprint {uri: $paperUri})-[r:CITES]->(cited:Preprint)
+      MATCH (citing:Eprint {uri: $paperUri})-[r:CITES]->(cited:Eprint)
       WHERE true ${influentialFilter}
       RETURN count(r) AS total
     `;
@@ -329,9 +329,9 @@ export class CitationGraph implements ICitationGraph {
   }
 
   /**
-   * Finds papers frequently cited together with a given preprint.
+   * Finds papers frequently cited together with a given eprint.
    *
-   * @param paperUri - AT-URI of the source preprint
+   * @param paperUri - AT-URI of the source eprint
    * @param minCoCitations - Minimum co-citation count threshold (default: 2)
    * @returns Papers co-cited with the source, sorted by strength
    *
@@ -348,7 +348,7 @@ export class CitationGraph implements ICitationGraph {
    *
    * @example
    * ```typescript
-   * const coCited = await citationGraph.findCoCitedPapers(preprintUri, 3);
+   * const coCited = await citationGraph.findCoCitedPapers(eprintUri, 3);
    *
    * for (const paper of coCited) {
    *   console.log(`${paper.title}: co-cited ${paper.coCitationCount} times`);
@@ -360,13 +360,13 @@ export class CitationGraph implements ICitationGraph {
     // Find papers that share citing papers with the query paper
     // This is co-citation analysis: papers frequently cited together
     const query = `
-      MATCH (q:Preprint {uri: $paperUri})<-[:CITES]-(citingPaper:Preprint)-[:CITES]->(coCited:Preprint)
+      MATCH (q:Eprint {uri: $paperUri})<-[:CITES]-(citingPaper:Eprint)-[:CITES]->(coCited:Eprint)
       WHERE q <> coCited
       WITH coCited, count(DISTINCT citingPaper) AS coCitationCount
       WHERE coCitationCount >= $minCoCitations
 
       // Get citation counts for normalization
-      OPTIONAL MATCH (q:Preprint {uri: $paperUri})<-[qCites:CITES]-()
+      OPTIONAL MATCH (q:Eprint {uri: $paperUri})<-[qCites:CITES]-()
       WITH coCited, coCitationCount, count(DISTINCT qCites) AS qCitedBy
 
       OPTIONAL MATCH (coCited)<-[cCites:CITES]-()
@@ -406,20 +406,20 @@ export class CitationGraph implements ICitationGraph {
   }
 
   /**
-   * Gets citation counts for a preprint.
+   * Gets citation counts for a eprint.
    *
-   * @param paperUri - AT-URI of the preprint
+   * @param paperUri - AT-URI of the eprint
    * @returns Citation statistics
    *
    * @remarks
    * Returns counts for:
-   * - `citedByCount`: Number of Chive preprints citing this paper
-   * - `referencesCount`: Number of Chive preprints this paper cites
+   * - `citedByCount`: Number of Chive eprints citing this paper
+   * - `referencesCount`: Number of Chive eprints this paper cites
    * - `influentialCitedByCount`: Influential citations (from Semantic Scholar)
    *
    * @example
    * ```typescript
-   * const counts = await citationGraph.getCitationCounts(preprintUri);
+   * const counts = await citationGraph.getCitationCounts(eprintUri);
    * console.log(`Cited by: ${counts.citedByCount}`);
    * console.log(`References: ${counts.referencesCount}`);
    * console.log(`Influential: ${counts.influentialCitedByCount}`);
@@ -431,7 +431,7 @@ export class CitationGraph implements ICitationGraph {
     readonly influentialCitedByCount: number;
   }> {
     const query = `
-      MATCH (p:Preprint {uri: $paperUri})
+      MATCH (p:Eprint {uri: $paperUri})
       OPTIONAL MATCH (p)<-[citedBy:CITES]-()
       OPTIONAL MATCH (p)-[refs:CITES]->()
       OPTIONAL MATCH (p)<-[influential:CITES {isInfluential: true}]-()
@@ -466,26 +466,26 @@ export class CitationGraph implements ICitationGraph {
   }
 
   /**
-   * Deletes all citations for a preprint.
+   * Deletes all citations for a eprint.
    *
-   * @param paperUri - AT-URI of the preprint
+   * @param paperUri - AT-URI of the eprint
    *
    * @remarks
    * Removes all CITES edges where the paper is either citing or cited.
-   * Used when a preprint is removed from Chive's index.
+   * Used when a eprint is removed from Chive's index.
    *
-   * **Note**: This only deletes the edges, not the Preprint node itself.
+   * **Note**: This only deletes the edges, not the Eprint node itself.
    * Node deletion is handled by the indexing pipeline.
    *
    * @example
    * ```typescript
-   * // When a preprint is removed from the index
-   * await citationGraph.deleteCitationsForPaper(preprintUri);
+   * // When a eprint is removed from the index
+   * await citationGraph.deleteCitationsForPaper(eprintUri);
    * ```
    */
   async deleteCitationsForPaper(paperUri: AtUri): Promise<void> {
     const query = `
-      MATCH (p:Preprint {uri: $paperUri})
+      MATCH (p:Eprint {uri: $paperUri})
       OPTIONAL MATCH (p)-[r:CITES]-()
       DELETE r
     `;

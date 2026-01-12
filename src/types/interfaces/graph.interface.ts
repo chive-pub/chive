@@ -581,11 +581,11 @@ export interface IGraphDatabase {
    * Aggregates available facet values with counts for refinement UI.
    *
    * @param currentFacets - Currently selected facets to filter by
-   * @returns Available facet values with preprint counts per dimension
+   * @returns Available facet values with eprint counts per dimension
    *
    * @remarks
    * Returns only facet values that would produce results given current filters.
-   * Counts represent how many preprints match if that facet is added.
+   * Counts represent how many eprints match if that facet is added.
    *
    * @example
    * ```typescript

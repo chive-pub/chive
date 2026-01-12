@@ -2,7 +2,7 @@
  * Handler for pub.chive.discovery.getEnrichment.
  *
  * @remarks
- * Returns enrichment data for a preprint, including external IDs,
+ * Returns enrichment data for a eprint, including external IDs,
  * citation counts, concepts, and topics from Semantic Scholar and OpenAlex.
  *
  * @packageDocumentation
@@ -36,7 +36,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  * - OpenAlex concepts with Wikidata IDs
  * - OpenAlex topics with hierarchical classification
  *
- * Enrichment data is computed asynchronously when preprints are indexed.
+ * Enrichment data is computed asynchronously when eprints are indexed.
  * If enrichment is not yet available, returns { available: false }.
  *
  * @public
@@ -46,7 +46,7 @@ export async function getEnrichmentHandler(
   params: GetEnrichmentParams
 ): Promise<GetEnrichmentResponse> {
   const logger = c.get('logger');
-  const { discovery, preprint } = c.get('services');
+  const { discovery, eprint } = c.get('services');
 
   logger.debug('Getting enrichment', { uri: params.uri });
 
@@ -54,10 +54,10 @@ export async function getEnrichmentHandler(
     throw new ServiceUnavailableError('Discovery service not available');
   }
 
-  // Verify preprint exists
-  const sourcePreprint = await preprint.getPreprint(params.uri as AtUri);
-  if (!sourcePreprint) {
-    throw new NotFoundError('Preprint not found', params.uri);
+  // Verify eprint exists
+  const sourceEprint = await eprint.getEprint(params.uri as AtUri);
+  if (!sourceEprint) {
+    throw new NotFoundError('Eprint not found', params.uri);
   }
 
   // Get enrichment data from discovery service
@@ -114,7 +114,7 @@ export async function getEnrichmentHandler(
 export const getEnrichmentEndpoint: XRPCEndpoint<GetEnrichmentParams, GetEnrichmentResponse> = {
   method: 'pub.chive.discovery.getEnrichment' as never,
   type: 'query',
-  description: 'Get enrichment data for a preprint',
+  description: 'Get enrichment data for a eprint',
   inputSchema: getEnrichmentParamsSchema,
   outputSchema: getEnrichmentResponseSchema,
   handler: getEnrichmentHandler,

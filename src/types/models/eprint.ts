@@ -1,8 +1,8 @@
 /**
- * Preprint domain models.
+ * Eprint domain models.
  *
  * @remarks
- * This module defines domain models for preprints, preprint versions,
+ * This module defines domain models for eprints, eprint versions,
  * user-generated tags, and comprehensive publication metadata.
  * All models are immutable (readonly properties).
  *
@@ -14,7 +14,7 @@ import type { AtUri, BlobRef, CID, DID, Timestamp } from '../atproto.js';
 import type { Facet } from '../interfaces/graph.interface.js';
 
 import type { DocumentFormat } from './annotation.js';
-import type { PreprintAuthor } from './author.js';
+import type { EprintAuthor } from './author.js';
 
 // Re-export DocumentFormat for consumers (canonical definition in annotation.js)
 export type { DocumentFormat };
@@ -46,7 +46,7 @@ export type SupplementaryCategory =
  * Supplementary material item with metadata.
  *
  * @remarks
- * Attached to preprints as additional files (appendices, data, code, figures).
+ * Attached to eprints as additional files (appendices, data, code, figures).
  * Format and category are auto-detected but can be overridden.
  *
  * @public
@@ -95,12 +95,12 @@ export interface SupplementaryMaterial {
  * Publication lifecycle status.
  *
  * @remarks
- * Tracks the progression from preprint to published article.
+ * Tracks the progression from eprint to published article.
  *
  * @public
  */
 export type PublicationStatus =
-  | 'preprint'
+  | 'eprint'
   | 'under_review'
   | 'revision_requested'
   | 'accepted'
@@ -125,7 +125,7 @@ export type AccessType =
  * Published version metadata (Version of Record).
  *
  * @remarks
- * Comprehensive metadata about the published version of a preprint,
+ * Comprehensive metadata about the published version of a eprint,
  * following CrossRef and DataCite standards.
  *
  * @public
@@ -270,7 +270,7 @@ export type RelationType =
  * Related work reference.
  *
  * @remarks
- * Links to related preprints, datasets, software, and prior versions
+ * Links to related eprints, datasets, software, and prior versions
  * using DataCite-compatible relation types.
  *
  * @public
@@ -279,7 +279,7 @@ export interface RelatedWork {
   /**
    * Identifier value.
    *
-   * @example "10.1234/example", "arXiv:2401.12345", "at://did:plc:xyz/pub.chive.preprint.submission/abc"
+   * @example "10.1234/example", "arXiv:2401.12345", "at://did:plc:xyz/pub.chive.eprint.submission/abc"
    */
   readonly identifier: string;
 
@@ -691,14 +691,14 @@ export interface ConferencePresentation {
 }
 
 // =============================================================================
-// Main Preprint Model
+// Main Eprint Model
 // =============================================================================
 
 /**
- * Preprint domain model.
+ * Eprint domain model.
  *
  * @remarks
- * Represents a scholarly preprint indexed by Chive. This model captures
+ * Represents a scholarly eprint indexed by Chive. This model captures
  * comprehensive metadata from the user's PDS record including publication
  * status, linked published versions, external identifiers, repositories,
  * funding, and conference presentations.
@@ -710,14 +710,14 @@ export interface ConferencePresentation {
  *
  * @public
  */
-export interface Preprint {
+export interface Eprint {
   /**
-   * AT URI of the preprint record.
+   * AT URI of the eprint record.
    */
   readonly uri: AtUri;
 
   /**
-   * CID of this preprint version.
+   * CID of this eprint version.
    */
   readonly cid: CID;
 
@@ -728,10 +728,10 @@ export interface Preprint {
    * Unified author list including primary and co-authors.
    * Order is determined by each author's `order` property.
    */
-  readonly authors: readonly PreprintAuthor[];
+  readonly authors: readonly EprintAuthor[];
 
   /**
-   * DID of the human user who submitted this preprint.
+   * DID of the human user who submitted this eprint.
    *
    * @remarks
    * Always set to the human who performed the submission.
@@ -752,12 +752,12 @@ export interface Preprint {
   readonly paperDid?: DID;
 
   /**
-   * Preprint title.
+   * Eprint title.
    */
   readonly title: string;
 
   /**
-   * Preprint abstract.
+   * Eprint abstract.
    */
   readonly abstract: string;
 
@@ -781,7 +781,7 @@ export interface Preprint {
   readonly documentFormat: DocumentFormat;
 
   /**
-   * Supplementary materials attached to this preprint.
+   * Supplementary materials attached to this eprint.
    *
    * @remarks
    * Additional files (appendices, figures, data, code, notebooks).
@@ -839,8 +839,8 @@ export interface Preprint {
    * Current publication status.
    *
    * @remarks
-   * Tracks progression from preprint through review to publication.
-   * Defaults to 'preprint' for new submissions.
+   * Tracks progression from eprint through review to publication.
+   * Defaults to 'eprint' for new submissions.
    */
   readonly publicationStatus: PublicationStatus;
 
@@ -848,7 +848,7 @@ export interface Preprint {
    * Link to the published version (Version of Record).
    *
    * @remarks
-   * Populated when preprint has been published in a journal.
+   * Populated when eprint has been published in a journal.
    * Uses CrossRef `isPreprintOf` relation pattern.
    */
   readonly publishedVersion?: PublishedVersion;
@@ -857,7 +857,7 @@ export interface Preprint {
    * Related works.
    *
    * @remarks
-   * Links to related preprints, datasets, software, and prior versions
+   * Links to related eprints, datasets, software, and prior versions
    * using DataCite-compatible relation types.
    */
   readonly relatedWorks?: readonly RelatedWork[];
@@ -897,7 +897,7 @@ export interface Preprint {
   readonly conferencePresentation?: ConferencePresentation;
 
   /**
-   * Preprint creation timestamp.
+   * Eprint creation timestamp.
    */
   readonly createdAt: Timestamp;
 
@@ -908,14 +908,14 @@ export interface Preprint {
 }
 
 /**
- * Preprint version metadata.
+ * Eprint version metadata.
  *
  * @remarks
- * Tracks version history for preprints with multiple revisions.
+ * Tracks version history for eprints with multiple revisions.
  *
  * @public
  */
-export interface PreprintVersion {
+export interface EprintVersion {
   /**
    * AT URI of this version's record.
    */
@@ -948,11 +948,11 @@ export interface PreprintVersion {
 }
 
 /**
- * User-generated tag on a preprint.
+ * User-generated tag on a eprint.
  *
  * @remarks
  * Tags provide folksonomy-style classification alongside formal facets.
- * Users can tag preprints with arbitrary strings for discovery.
+ * Users can tag eprints with arbitrary strings for discovery.
  *
  * @public
  */
@@ -963,9 +963,9 @@ export interface UserTag {
   readonly uri: AtUri;
 
   /**
-   * AT URI of the preprint being tagged.
+   * AT URI of the eprint being tagged.
    */
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
 
   /**
    * DID of user who created the tag.

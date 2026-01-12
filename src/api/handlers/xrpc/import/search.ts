@@ -2,7 +2,7 @@
  * Handler for pub.chive.import.search.
  *
  * @remarks
- * Searches imported preprints in the AppView cache.
+ * Searches imported eprints in the AppView cache.
  *
  * @packageDocumentation
  * @public
@@ -24,7 +24,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @param c - Hono context
  * @param params - Search parameters
- * @returns Matching imported preprints
+ * @returns Matching imported eprints
  *
  * @public
  */
@@ -52,7 +52,7 @@ export async function searchImportsHandler(
   });
 
   return {
-    preprints: result.preprints.map((p) => ({
+    eprints: result.eprints.map((p) => ({
       id: p.id,
       source: p.source,
       externalId: p.externalId,
@@ -91,7 +91,7 @@ export async function searchImportsHandler(
 export const searchImportsEndpoint: XRPCEndpoint<SearchImportsParams, SearchImportsResponse> = {
   method: 'pub.chive.import.search' as never,
   type: 'query',
-  description: 'Search imported preprints',
+  description: 'Search imported eprints',
   inputSchema: searchImportsParamsSchema,
   outputSchema: searchImportsResponseSchema,
   handler: searchImportsHandler,

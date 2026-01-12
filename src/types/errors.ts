@@ -149,9 +149,9 @@ export class ComplianceError extends ChiveError {
  *
  * @example
  * ```typescript
- * const preprint = await storage.getPreprint(uri);
- * if (!preprint) {
- *   throw new NotFoundError('Preprint', uri);
+ * const eprint = await storage.getEprint(uri);
+ * if (!eprint) {
+ *   throw new NotFoundError('Eprint', uri);
  * }
  * ```
  *
@@ -163,7 +163,7 @@ export class NotFoundError extends ChiveError {
   /**
    * Type of resource that was not found.
    *
-   * @example 'Preprint', 'Review', 'Author', 'Field'
+   * @example 'Eprint', 'Review', 'Author', 'Field'
    */
   readonly resourceType: string;
 
@@ -177,7 +177,7 @@ export class NotFoundError extends ChiveError {
   /**
    * Creates a new NotFoundError.
    *
-   * @param resourceType - Type of resource (e.g., 'Preprint', 'Author')
+   * @param resourceType - Type of resource (e.g., 'Eprint', 'Author')
    * @param resourceId - Resource identifier (e.g., AT URI, DID)
    */
   constructor(resourceType: string, resourceId: string) {
@@ -198,9 +198,9 @@ export class NotFoundError extends ChiveError {
  *
  * @example
  * ```typescript
- * if (!preprint.title) {
+ * if (!eprint.title) {
  *   throw new ValidationError(
- *     'Preprint title is required',
+ *     'Eprint title is required',
  *     'title',
  *     'required'
  *   );
@@ -275,10 +275,10 @@ export class AuthenticationError extends ChiveError {
  *
  * @example
  * ```typescript
- * if (!user.hasScope('write:preprints')) {
+ * if (!user.hasScope('write:eprints')) {
  *   throw new AuthorizationError(
  *     'Missing required scope',
- *     'write:preprints'
+ *     'write:eprints'
  *   );
  * }
  * ```
@@ -297,7 +297,7 @@ export class AuthorizationError extends ChiveError {
    * Creates a new AuthorizationError.
    *
    * @param message - Description of authorization failure
-   * @param requiredScope - Required scope (e.g., 'write:preprints')
+   * @param requiredScope - Required scope (e.g., 'write:eprints')
    */
   constructor(message: string, requiredScope?: string) {
     super(message);
@@ -480,7 +480,7 @@ export class PluginPermissionError extends ChiveError {
   /**
    * Permission that was required but not granted.
    *
-   * @example 'network:api.github.com', 'hook:preprint.indexed', 'storage:write'
+   * @example 'network:api.github.com', 'hook:eprint.indexed', 'storage:write'
    */
   readonly permission: string;
 
@@ -595,12 +595,12 @@ export class SandboxViolationError extends ChiveError {
  *
  * @example
  * ```typescript
- * const response = await fetch('/api/preprints');
+ * const response = await fetch('/api/eprints');
  * if (!response.ok) {
  *   throw new APIError(
- *     `Failed to fetch preprints: ${response.statusText}`,
+ *     `Failed to fetch eprints: ${response.statusText}`,
  *     response.status,
- *     '/api/preprints'
+ *     '/api/eprints'
  *   );
  * }
  * ```
@@ -625,7 +625,7 @@ export class APIError extends ChiveError {
    *
    * @param message - Description of the API failure
    * @param statusCode - HTTP status code (e.g., 404, 500)
-   * @param endpoint - API endpoint that failed (e.g., '/api/preprints')
+   * @param endpoint - API endpoint that failed (e.g., '/api/eprints')
    * @param cause - Original error (if chained)
    */
   constructor(message: string, statusCode?: number, endpoint?: string, cause?: Error) {

@@ -1,8 +1,8 @@
 /**
- * XRPC handler for pub.chive.tag.listForPreprint.
+ * XRPC handler for pub.chive.tag.listForEprint.
  *
  * @remarks
- * Lists tags for a specific preprint with TaxoFolk suggestions.
+ * Lists tags for a specific eprint with TaxoFolk suggestions.
  *
  * @packageDocumentation
  * @public
@@ -12,42 +12,42 @@ import type { Context } from 'hono';
 
 import type { AtUri } from '../../../../types/atproto.js';
 import {
-  listTagsForPreprintParamsSchema,
-  preprintTagsResponseSchema,
-  type ListTagsForPreprintParams,
-  type PreprintTagsResponse,
+  listTagsForEprintParamsSchema,
+  eprintTagsResponseSchema,
+  type ListTagsForEprintParams,
+  type EprintTagsResponse,
 } from '../../../schemas/tag.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Handler for pub.chive.tag.listForPreprint query.
+ * Handler for pub.chive.tag.listForEprint query.
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters
- * @returns Tags and suggestions for the preprint
+ * @returns Tags and suggestions for the eprint
  *
  * @public
  */
-export async function listForPreprintHandler(
+export async function listForEprintHandler(
   c: Context<ChiveEnv>,
-  params: ListTagsForPreprintParams
-): Promise<PreprintTagsResponse> {
+  params: ListTagsForEprintParams
+): Promise<EprintTagsResponse> {
   const logger = c.get('logger');
   const tagManager = c.get('services').tagManager;
 
-  logger.debug('Listing tags for preprint', {
-    preprintUri: params.preprintUri,
+  logger.debug('Listing tags for eprint', {
+    eprintUri: params.eprintUri,
   });
 
-  // Get tags for the preprint
-  const preprintTags = await tagManager.getTagsForRecord(params.preprintUri as AtUri);
+  // Get tags for the eprint
+  const eprintTags = await tagManager.getTagsForRecord(params.eprintUri as AtUri);
 
   // Map to API UserTag format
   // Note: The API schema expects a different format than the Neo4j UserTag
-  const tags: PreprintTagsResponse['tags'] = preprintTags.map((tag) => ({
+  const tags: EprintTagsResponse['tags'] = eprintTags.map((tag) => ({
     uri: `at://tags/${tag.normalizedForm}`, // Synthetic URI for tags
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
     author: {
       did: 'did:plc:unknown' as string, // Tags don't track individual authors in aggregated form
       handle: 'unknown',
@@ -58,8 +58,8 @@ export async function listForPreprintHandler(
   }));
 
   // Get suggestions based on co-occurrence with existing tags
-  let suggestions: PreprintTagsResponse['suggestions'] = [];
-  const topTag = preprintTags[0];
+  let suggestions: EprintTagsResponse['suggestions'] = [];
+  const topTag = eprintTags[0];
   if (topTag) {
     // Use the most popular tag to get co-occurrence suggestions
     const coOccurrences = await tagManager.getTagSuggestions(topTag.normalizedForm, 5);
@@ -72,13 +72,13 @@ export async function listForPreprintHandler(
     }));
   }
 
-  const response: PreprintTagsResponse = {
+  const response: EprintTagsResponse = {
     tags,
     suggestions,
   };
 
-  logger.info('Tags listed for preprint', {
-    preprintUri: params.preprintUri,
+  logger.info('Tags listed for eprint', {
+    eprintUri: params.eprintUri,
     count: response.tags.length,
   });
 
@@ -86,20 +86,20 @@ export async function listForPreprintHandler(
 }
 
 /**
- * Endpoint definition for pub.chive.tag.listForPreprint.
+ * Endpoint definition for pub.chive.tag.listForEprint.
  *
  * @public
  */
-export const listForPreprintEndpoint: XRPCEndpoint<
-  ListTagsForPreprintParams,
-  PreprintTagsResponse
+export const listForEprintEndpoint: XRPCEndpoint<
+  ListTagsForEprintParams,
+  EprintTagsResponse
 > = {
-  method: 'pub.chive.tag.listForPreprint' as never,
+  method: 'pub.chive.tag.listForEprint' as never,
   type: 'query',
-  description: 'List tags for a preprint',
-  inputSchema: listTagsForPreprintParamsSchema,
-  outputSchema: preprintTagsResponseSchema,
-  handler: listForPreprintHandler,
+  description: 'List tags for a eprint',
+  inputSchema: listTagsForEprintParamsSchema,
+  outputSchema: eprintTagsResponseSchema,
+  handler: listForEprintHandler,
   auth: 'none',
   rateLimit: 'anonymous',
 };

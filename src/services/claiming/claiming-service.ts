@@ -1,9 +1,9 @@
 /**
- * Claiming service for multi-authority preprint verification.
+ * Claiming service for multi-authority eprint verification.
  *
  * @remarks
  * This module implements the claiming service that enables authors to claim
- * ownership of preprints imported from external sources (arXiv, LingBuzz, etc.)
+ * ownership of eprints imported from external sources (arXiv, LingBuzz, etc.)
  * using multi-authority verification.
  *
  * ATProto Compliance:
@@ -38,28 +38,28 @@ import type {
   ClaimRequest,
   ClaimStatus,
   ExternalAuthor,
-  ExternalPreprint,
+  ExternalEprint,
   ExternalSearchQuery,
   IClaimingService,
   IImportService,
   IPluginManager,
-  ImportedPreprint,
+  ImportedEprint,
   ImportSource,
 } from '../../types/interfaces/plugin.interface.js';
 import { isSearchablePlugin } from '../../types/interfaces/plugin.interface.js';
 
 /**
- * External preprint with source metadata.
+ * External eprint with source metadata.
  *
  * @remarks
- * Extends ExternalPreprint with the source identifier for federated search results.
+ * Extends ExternalEprint with the source identifier for federated search results.
  *
  * @public
  * @since 0.1.0
  */
-export interface ExternalPreprintWithSource extends ExternalPreprint {
+export interface ExternalEprintWithSource extends ExternalEprint {
   /**
-   * Source system the preprint came from.
+   * Source system the eprint came from.
    */
   readonly source: ImportSource;
 }
@@ -84,7 +84,7 @@ interface ClaimRequestRow {
 }
 
 /**
- * Database row type for claim requests joined with imported_preprints.
+ * Database row type for claim requests joined with imported_eprints.
  */
 interface ClaimRequestWithPaperRow extends ClaimRequestRow {
   paper_source: string;
@@ -100,7 +100,7 @@ interface ClaimRequestWithPaperRow extends ClaimRequestRow {
  * Claim request with paper details for display.
  */
 export interface ClaimRequestWithPaper extends ClaimRequest {
-  /** Paper details from imported_preprints */
+  /** Paper details from imported_eprints */
   paper: {
     source: ImportSource;
     externalId: string;
@@ -144,7 +144,7 @@ const DECISION_THRESHOLDS = {
  * Claiming service implementation.
  *
  * @remarks
- * Manages the claim workflow for imported preprints:
+ * Manages the claim workflow for imported eprints:
  * 1. User initiates claim request
  * 2. Service collects evidence from multiple authorities
  * 3. Confidence score computed with weighted evidence
@@ -230,7 +230,7 @@ export class ClaimingService implements IClaimingService {
   /**
    * Starts a new claim request.
    *
-   * @param importId - ID of the imported preprint to claim
+   * @param importId - ID of the imported eprint to claim
    * @param claimantDid - DID of the user making the claim
    * @param evidence - Optional initial evidence
    * @returns Created claim request
@@ -246,7 +246,7 @@ export class ClaimingService implements IClaimingService {
     // Verify import exists and is claimable
     const imported = await this.importService.getById(importId);
     if (!imported) {
-      throw new NotFoundError('ImportedPreprint', importId.toString());
+      throw new NotFoundError('ImportedEprint', importId.toString());
     }
 
     if (imported.claimStatus === 'claimed') {
@@ -327,7 +327,7 @@ export class ClaimingService implements IClaimingService {
 
     const imported = await this.importService.getById(claim.importId);
     if (!imported) {
-      throw new NotFoundError('ImportedPreprint', claim.importId.toString());
+      throw new NotFoundError('ImportedEprint', claim.importId.toString());
     }
 
     // Collect evidence from various sources in parallel
@@ -546,7 +546,7 @@ export class ClaimingService implements IClaimingService {
          ip.publication_date AS paper_publication_date,
          ip.doi AS paper_doi
        FROM claim_requests cr
-       JOIN imported_preprints ip ON cr.import_id = ip.id
+       JOIN imported_eprints ip ON cr.import_id = ip.id
        WHERE cr.claimant_did = $1
        ORDER BY cr.created_at DESC`,
       [claimantDid]
@@ -580,14 +580,14 @@ export class ClaimingService implements IClaimingService {
   }
 
   /**
-   * Finds claimable preprints for a user.
+   * Finds claimable eprints for a user.
    */
   async findClaimable(options: {
     q?: string;
     source?: ImportSource;
     limit?: number;
     cursor?: string;
-  }): Promise<{ preprints: ImportedPreprint[]; cursor?: string }> {
+  }): Promise<{ eprints: ImportedEprint[]; cursor?: string }> {
     // Search for unclaimed imports matching the query
     return this.importService.search({
       claimStatus: 'unclaimed',
@@ -699,10 +699,10 @@ export class ClaimingService implements IClaimingService {
   // ============================================================
 
   /**
-   * Searches all external sources for preprints.
+   * Searches all external sources for eprints.
    *
    * @param options - Search options
-   * @returns Preprints from all sources with source metadata
+   * @returns Eprints from all sources with source metadata
    *
    * @remarks
    * Performs federated search across all SearchablePlugin instances.
@@ -727,7 +727,7 @@ export class ClaimingService implements IClaimingService {
     sources?: readonly ImportSource[];
     limit?: number;
     timeoutMs?: number;
-  }): Promise<readonly ExternalPreprintWithSource[]> {
+  }): Promise<readonly ExternalEprintWithSource[]> {
     if (!this.pluginManager) {
       this.logger.warn('Plugin manager not configured, falling back to local search');
       const localResults = await this.importService.search({
@@ -735,13 +735,13 @@ export class ClaimingService implements IClaimingService {
         authorName: options.author,
         limit: options.limit,
       });
-      return localResults.preprints.map((p) => ({
-        ...this.importedPreprintToExternal(p),
+      return localResults.eprints.map((p) => ({
+        ...this.importedEprintToExternal(p),
         source: p.source,
       }));
     }
 
-    const results: ExternalPreprintWithSource[] = [];
+    const results: ExternalEprintWithSource[] = [];
     const plugins = this.pluginManager.getAllPlugins();
     const timeoutMs = options.timeoutMs ?? 10000;
     const limit = options.limit ?? 10;
@@ -811,10 +811,10 @@ export class ClaimingService implements IClaimingService {
       });
 
       // Add local results that are from non-searchable sources
-      for (const imported of localResults.preprints) {
+      for (const imported of localResults.eprints) {
         if (nonSearchableSources.includes(imported.source)) {
           results.push({
-            ...this.importedPreprintToExternal(imported),
+            ...this.importedEprintToExternal(imported),
             source: imported.source,
           });
         }
@@ -855,7 +855,7 @@ export class ClaimingService implements IClaimingService {
       limit?: number;
       timeoutMs?: number;
     }
-  ): Promise<readonly ExternalPreprintWithSource[]> {
+  ): Promise<readonly ExternalEprintWithSource[]> {
     // Use shorter timeout for autocomplete
     const timeoutMs = options?.timeoutMs ?? 500;
     const limit = options?.limit ?? 8;
@@ -902,7 +902,7 @@ export class ClaimingService implements IClaimingService {
       timeoutMs?: number;
     }
   ): Promise<{
-    papers: readonly (ExternalPreprintWithSource & {
+    papers: readonly (ExternalEprintWithSource & {
       matchScore: number;
       matchReason: string;
     })[];
@@ -969,7 +969,7 @@ export class ClaimingService implements IClaimingService {
     }
 
     // Search for papers using each name variant (limit searches to avoid overload)
-    const searchPromises: Promise<readonly ExternalPreprintWithSource[]>[] = [];
+    const searchPromises: Promise<readonly ExternalEprintWithSource[]>[] = [];
     const maxNameSearches = 3; // Limit to top 3 name variants
 
     for (const name of namesToSearch.slice(0, maxNameSearches)) {
@@ -987,7 +987,7 @@ export class ClaimingService implements IClaimingService {
 
     // Deduplicate results by external ID
     const seenIds = new Set<string>();
-    const allPapers: (ExternalPreprintWithSource & {
+    const allPapers: (ExternalEprintWithSource & {
       matchScore: number;
       matchReason: string;
     })[] = [];
@@ -1027,7 +1027,7 @@ export class ClaimingService implements IClaimingService {
   /**
    * Scores how well a paper matches a user's profile.
    *
-   * @param paper - External preprint to score
+   * @param paper - External eprint to score
    * @param profile - User's profile
    * @param namesToMatch - Normalized name variants
    * @returns Score (0-100) and reason
@@ -1035,7 +1035,7 @@ export class ClaimingService implements IClaimingService {
    * @private
    */
   private scorePaperMatch(
-    paper: ExternalPreprintWithSource,
+    paper: ExternalEprintWithSource,
     profile: UserProfile,
     namesToMatch: readonly string[]
   ): { score: number; reason: string } {
@@ -1131,7 +1131,7 @@ export class ClaimingService implements IClaimingService {
    * @returns Created claim request
    *
    * @remarks
-   * Implements "import on demand" - only imports the preprint when
+   * Implements "import on demand" - only imports the eprint when
    * a user actually wants to claim it. This reduces storage and API load.
    *
    * Flow:
@@ -1139,7 +1139,7 @@ export class ClaimingService implements IClaimingService {
    * 2. If not imported -> fetch from source and import
    * 3. Start claim request
    *
-   * @throws NotFoundError if preprint cannot be found in source
+   * @throws NotFoundError if eprint cannot be found in source
    * @throws ValidationError if source does not support search
    */
   async startClaimFromExternal(
@@ -1179,34 +1179,34 @@ export class ClaimingService implements IClaimingService {
         );
       }
 
-      // Fetch the preprint by external ID
+      // Fetch the eprint by external ID
       const results = await plugin.search({ externalId, limit: 1 });
       if (results.length === 0) {
-        throw new NotFoundError('ExternalPreprint', `${source}:${externalId}`);
+        throw new NotFoundError('ExternalEprint', `${source}:${externalId}`);
       }
 
-      const preprint = results[0];
-      if (!preprint) {
-        throw new NotFoundError('ExternalPreprint', `${source}:${externalId}`);
+      const eprint = results[0];
+      if (!eprint) {
+        throw new NotFoundError('ExternalEprint', `${source}:${externalId}`);
       }
 
-      // Import the preprint
+      // Import the eprint
       imported = await this.importService.create({
         source,
-        externalId: preprint.externalId,
-        externalUrl: preprint.url,
-        title: preprint.title,
-        abstract: preprint.abstract,
-        authors: preprint.authors,
-        publicationDate: preprint.publicationDate,
-        doi: preprint.doi,
-        pdfUrl: preprint.pdfUrl,
-        categories: preprint.categories,
+        externalId: eprint.externalId,
+        externalUrl: eprint.url,
+        title: eprint.title,
+        abstract: eprint.abstract,
+        authors: eprint.authors,
+        publicationDate: eprint.publicationDate,
+        doi: eprint.doi,
+        pdfUrl: eprint.pdfUrl,
+        categories: eprint.categories,
         importedByPlugin: pluginId,
-        metadata: preprint.metadata,
+        metadata: eprint.metadata,
       });
 
-      this.logger.info('Imported preprint on demand', {
+      this.logger.info('Imported eprint on demand', {
         source,
         externalId,
         importId: imported.id,
@@ -1252,9 +1252,9 @@ export class ClaimingService implements IClaimingService {
   }
 
   /**
-   * Converts an ImportedPreprint to ExternalPreprint format.
+   * Converts an ImportedEprint to ExternalEprint format.
    */
-  private importedPreprintToExternal(imported: ImportedPreprint): ExternalPreprint {
+  private importedEprintToExternal(imported: ImportedEprint): ExternalEprint {
     return {
       externalId: imported.externalId,
       url: imported.url,
@@ -1521,7 +1521,7 @@ export class ClaimingService implements IClaimingService {
    * @remarks
    * ORCID matching provides the highest confidence evidence because:
    * 1. ORCID iDs are persistent, unique identifiers for researchers
-   * 2. Authors often include ORCID in preprint metadata
+   * 2. Authors often include ORCID in eprint metadata
    * 3. OAuth verification confirms the user controls the ORCID
    *
    * @private
@@ -1592,14 +1592,14 @@ export class ClaimingService implements IClaimingService {
    * Collects Semantic Scholar evidence.
    *
    * @remarks
-   * Checks if the preprint appears in the user's claimed Semantic Scholar
+   * Checks if the eprint appears in the user's claimed Semantic Scholar
    * author page. S2 allows researchers to claim their publications.
    *
    * @private
    */
   private async collectSemanticScholarEvidence(
     claimantDid: string,
-    imported: ImportedPreprint
+    imported: ImportedEprint
   ): Promise<ClaimEvidence | null> {
     const profile = await this.getUserProfile(claimantDid);
 
@@ -1630,7 +1630,7 @@ export class ClaimingService implements IClaimingService {
       return null;
     }
 
-    // Check if imported preprint appears in author's papers
+    // Check if imported eprint appears in author's papers
     try {
       const papersUrl = `https://api.semanticscholar.org/graph/v1/author/${authorId}/papers?fields=externalIds,title&limit=500`;
       const response = await fetch(papersUrl);
@@ -1694,7 +1694,7 @@ export class ClaimingService implements IClaimingService {
    */
   private async collectOpenReviewEvidence(
     claimantDid: string,
-    imported: ImportedPreprint
+    imported: ImportedEprint
   ): Promise<ClaimEvidence | null> {
     const profile = await this.getUserProfile(claimantDid);
     if (!profile?.orcid) {
@@ -1778,7 +1778,7 @@ export class ClaimingService implements IClaimingService {
    */
   private async collectOpenAlexEvidence(
     claimantDid: string,
-    imported: ImportedPreprint
+    imported: ImportedEprint
   ): Promise<ClaimEvidence | null> {
     const profile = await this.getUserProfile(claimantDid);
     if (!profile?.orcid) {

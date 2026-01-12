@@ -5,19 +5,19 @@
  * @public
  */
 
-export { listForPreprintEndpoint, listForPreprintHandler } from './listForPreprint.js';
+export { listForEprintEndpoint, listForEprintHandler } from './listForEprint.js';
 export { listForAuthorEndpoint, listForAuthorHandler } from './listForAuthor.js';
 export { getThreadEndpoint, getThreadHandler } from './getThread.js';
 
 import { getThreadEndpoint } from './getThread.js';
 import { listForAuthorEndpoint } from './listForAuthor.js';
-import { listForPreprintEndpoint } from './listForPreprint.js';
+import { listForEprintEndpoint } from './listForEprint.js';
 
 /**
  * All review XRPC endpoints.
  */
 export const reviewEndpoints = [
-  listForPreprintEndpoint,
+  listForEprintEndpoint,
   listForAuthorEndpoint,
   getThreadEndpoint,
 ] as const;

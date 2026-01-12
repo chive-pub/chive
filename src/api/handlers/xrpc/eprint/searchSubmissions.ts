@@ -1,8 +1,8 @@
 /**
- * XRPC handler for pub.chive.preprint.searchSubmissions.
+ * XRPC handler for pub.chive.eprint.searchSubmissions.
  *
  * @remarks
- * Full-text search across indexed preprints with faceted filtering.
+ * Full-text search across indexed eprints with faceted filtering.
  * Supports field, author, license, and date range filters.
  *
  * **ATProto Compliance:**
@@ -25,16 +25,16 @@ import { AcademicTextScorer } from '../../../../services/search/text-scorer.js';
 import type { DID } from '../../../../types/atproto.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import {
-  searchPreprintsParamsSchema,
+  searchEprintsParamsSchema,
   searchResultsResponseSchema,
-  type SearchPreprintsParams,
+  type SearchEprintsParams,
   type SearchResultsResponse,
-} from '../../../schemas/preprint.js';
+} from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Handler for pub.chive.preprint.searchSubmissions query.
+ * Handler for pub.chive.eprint.searchSubmissions query.
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated search parameters
@@ -42,7 +42,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @example
  * ```http
- * GET /xrpc/pub.chive.preprint.searchSubmissions?q=quantum+computing&limit=20
+ * GET /xrpc/pub.chive.eprint.searchSubmissions?q=quantum+computing&limit=20
  *
  * Response:
  * {
@@ -58,9 +58,9 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  */
 export async function searchSubmissionsHandler(
   c: Context<ChiveEnv>,
-  params: SearchPreprintsParams
+  params: SearchEprintsParams
 ): Promise<SearchResultsResponse> {
-  const { search, preprint, relevanceLogger, ranking } = c.get('services');
+  const { search, eprint, relevanceLogger, ranking } = c.get('services');
   const logger = c.get('logger');
   const user = c.get('user');
 
@@ -77,7 +77,7 @@ export async function searchSubmissionsHandler(
     }
   }
 
-  logger.debug('Searching preprints', {
+  logger.debug('Searching eprints', {
     query: params.q,
     limit: params.limit,
     field: params.field,
@@ -102,28 +102,28 @@ export async function searchSubmissionsHandler(
   // Calculate staleness using configured threshold
   const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
 
-  // Fetch full preprint details for each hit
+  // Fetch full eprint details for each hit
   const enrichedHits = await Promise.all(
     searchResults.hits.map(async (hit) => {
-      const preprintData = await preprint.getPreprint(hit.uri);
+      const eprintData = await eprint.getEprint(hit.uri);
 
-      if (!preprintData) {
-        // Preprint may have been deleted, skip it
+      if (!eprintData) {
+        // Eprint may have been deleted, skip it
         return null;
       }
 
       // Extract rkey for record URL
-      const rkey = preprintData.uri.split('/').pop() ?? '';
+      const rkey = eprintData.uri.split('/').pop() ?? '';
       // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
-      const recordOwner = preprintData.paperDid ?? preprintData.submittedBy;
-      const recordUrl = `${preprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
+      const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
+      const recordUrl = `${eprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
 
       return {
-        uri: preprintData.uri,
-        cid: preprintData.cid,
-        title: preprintData.title,
-        abstract: preprintData.abstract.substring(0, 500), // Truncate for list view
-        authors: preprintData.authors.map((author) => ({
+        uri: eprintData.uri,
+        cid: eprintData.cid,
+        title: eprintData.title,
+        abstract: eprintData.abstract.substring(0, 500), // Truncate for list view
+        authors: eprintData.authors.map((author) => ({
           did: author.did,
           name: author.name,
           orcid: author.orcid,
@@ -145,26 +145,26 @@ export async function searchSubmissionsHandler(
           handle: undefined as string | undefined,
           avatarUrl: undefined as string | undefined,
         })),
-        submittedBy: preprintData.submittedBy,
-        paperDid: preprintData.paperDid,
+        submittedBy: eprintData.submittedBy,
+        paperDid: eprintData.paperDid,
         fields: undefined as
           | { id?: string; uri: string; name: string; parentUri?: string }[]
           | undefined,
-        license: preprintData.license,
-        createdAt: preprintData.createdAt.toISOString(),
-        indexedAt: preprintData.indexedAt.toISOString(),
+        license: eprintData.license,
+        createdAt: eprintData.createdAt.toISOString(),
+        indexedAt: eprintData.indexedAt.toISOString(),
         source: {
-          pdsEndpoint: preprintData.pdsUrl,
+          pdsEndpoint: eprintData.pdsUrl,
           recordUrl,
           blobUrl: undefined as string | undefined,
-          lastVerifiedAt: preprintData.indexedAt.toISOString(),
-          stale: preprintData.indexedAt.getTime() < stalenessThreshold,
+          lastVerifiedAt: eprintData.indexedAt.toISOString(),
+          stale: eprintData.indexedAt.getTime() < stalenessThreshold,
         },
-        metrics: preprintData.metrics
+        metrics: eprintData.metrics
           ? {
-              views: preprintData.metrics.views,
-              downloads: preprintData.metrics.downloads,
-              endorsements: preprintData.metrics.endorsements,
+              views: eprintData.metrics.views,
+              downloads: eprintData.metrics.downloads,
+              endorsements: eprintData.metrics.endorsements,
             }
           : undefined,
         score: hit.score,
@@ -182,7 +182,7 @@ export async function searchSubmissionsHandler(
     })
   );
 
-  // Filter out null results (deleted preprints)
+  // Filter out null results (deleted eprints)
   const validHits = enrichedHits.filter((hit): hit is NonNullable<typeof hit> => hit !== null);
 
   const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
@@ -289,16 +289,16 @@ function computeRecencyScore(dateStr: string): number {
 }
 
 /**
- * Endpoint definition for pub.chive.preprint.searchSubmissions.
+ * Endpoint definition for pub.chive.eprint.searchSubmissions.
  *
  * @public
  */
-export const searchSubmissionsEndpoint: XRPCEndpoint<SearchPreprintsParams, SearchResultsResponse> =
+export const searchSubmissionsEndpoint: XRPCEndpoint<SearchEprintsParams, SearchResultsResponse> =
   {
-    method: 'pub.chive.preprint.searchSubmissions' as never,
+    method: 'pub.chive.eprint.searchSubmissions' as never,
     type: 'query',
-    description: 'Search preprint submissions with full-text and faceted filtering',
-    inputSchema: searchPreprintsParamsSchema,
+    description: 'Search eprint submissions with full-text and faceted filtering',
+    inputSchema: searchEprintsParamsSchema,
     outputSchema: searchResultsResponseSchema,
     handler: searchSubmissionsHandler,
     auth: 'optional',

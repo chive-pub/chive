@@ -1,9 +1,9 @@
 /**
- * XRPC handler for pub.chive.preprint.getSubmission.
+ * XRPC handler for pub.chive.eprint.getSubmission.
  *
  * @remarks
- * Retrieves a preprint by AT URI from Chive's index. Returns the full
- * preprint record with enriched metadata, version history, and metrics.
+ * Retrieves a eprint by AT URI from Chive's index. Returns the full
+ * eprint record with enriched metadata, version history, and metrics.
  *
  * **ATProto Compliance:**
  * - Returns pdsUrl for source transparency
@@ -21,28 +21,28 @@ import { NotFoundError } from '../../../../types/errors.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import {
   getSubmissionParamsSchema,
-  preprintResponseSchema,
+  eprintResponseSchema,
   type GetSubmissionParams,
-  type PreprintResponse,
-} from '../../../schemas/preprint.js';
+  type EprintResponse,
+} from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Handler for pub.chive.preprint.getSubmission query.
+ * Handler for pub.chive.eprint.getSubmission query.
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters
- * @returns Preprint submission with pdsUrl
- * @throws NotFoundError if preprint is not indexed
+ * @returns Eprint submission with pdsUrl
+ * @throws NotFoundError if eprint is not indexed
  *
  * @example
  * ```http
- * GET /xrpc/pub.chive.preprint.getSubmission?uri=at://did:plc:abc/pub.chive.preprint.submission/xyz
+ * GET /xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc/pub.chive.eprint.submission/xyz
  *
  * Response:
  * {
- *   "uri": "at://did:plc:abc/pub.chive.preprint.submission/xyz",
+ *   "uri": "at://did:plc:abc/pub.chive.eprint.submission/xyz",
  *   "title": "Quantum Computing Advances",
  *   "pdsUrl": "https://bsky.social",
  *   ...
@@ -54,17 +54,17 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
 export async function getSubmissionHandler(
   c: Context<ChiveEnv>,
   params: GetSubmissionParams
-): Promise<PreprintResponse> {
-  const { preprint, metrics } = c.get('services');
+): Promise<EprintResponse> {
+  const { eprint, metrics } = c.get('services');
   const logger = c.get('logger');
   const user = c.get('user');
 
-  logger.debug('Getting preprint submission', { uri: params.uri });
+  logger.debug('Getting eprint submission', { uri: params.uri });
 
-  const result = await preprint.getPreprint(params.uri as AtUri);
+  const result = await eprint.getEprint(params.uri as AtUri);
 
   if (!result) {
-    throw new NotFoundError('Preprint', params.uri);
+    throw new NotFoundError('Eprint', params.uri);
   }
 
   // Record view metric (non-blocking)
@@ -85,7 +85,7 @@ export async function getSubmissionHandler(
   const recordOwner = result.paperDid ?? result.submittedBy;
 
   // Build record URL for direct PDS access
-  const recordUrl = `${result.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.preprint.submission&rkey=${rkey}`;
+  const recordUrl = `${result.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
 
   // Build blob URL for direct PDS access
   const blobUrl = `${result.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(recordOwner)}&cid=${result.documentBlobRef.ref}`;
@@ -115,8 +115,8 @@ export async function getSubmissionHandler(
     avatarUrl: undefined,
   }));
 
-  // Map stored preprint to response format
-  const response: PreprintResponse = {
+  // Map stored eprint to response format
+  const response: EprintResponse = {
     uri: result.uri,
     cid: result.cid,
     title: result.title,
@@ -181,16 +181,16 @@ export async function getSubmissionHandler(
 }
 
 /**
- * Endpoint definition for pub.chive.preprint.getSubmission.
+ * Endpoint definition for pub.chive.eprint.getSubmission.
  *
  * @public
  */
-export const getSubmissionEndpoint: XRPCEndpoint<GetSubmissionParams, PreprintResponse> = {
-  method: 'pub.chive.preprint.getSubmission' as never,
+export const getSubmissionEndpoint: XRPCEndpoint<GetSubmissionParams, EprintResponse> = {
+  method: 'pub.chive.eprint.getSubmission' as never,
   type: 'query',
-  description: 'Get a preprint submission by AT URI',
+  description: 'Get a eprint submission by AT URI',
   inputSchema: getSubmissionParamsSchema,
-  outputSchema: preprintResponseSchema,
+  outputSchema: eprintResponseSchema,
   handler: getSubmissionHandler,
   auth: 'optional',
   rateLimit: 'authenticated',

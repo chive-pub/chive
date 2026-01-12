@@ -72,7 +72,7 @@ export {
   // XRPC handlers
   registerXRPCRoutes,
   allXRPCEndpoints,
-  preprintEndpoints,
+  eprintEndpoints,
   graphEndpoints,
   metricsEndpoints,
   getSubmissionHandler,
@@ -110,13 +110,13 @@ export {
   // Error
   errorResponseSchema,
   commonErrorResponses,
-  // Preprint
-  preprintSummarySchema,
-  preprintResponseSchema,
+  // Eprint
+  eprintSummarySchema,
+  eprintResponseSchema,
   getSubmissionParamsSchema,
   listByAuthorParamsSchema,
-  searchPreprintsParamsSchema,
-  preprintListResponseSchema,
+  searchEprintsParamsSchema,
+  eprintListResponseSchema,
   searchResultsResponseSchema,
   // Graph
   fieldNodeSchema,

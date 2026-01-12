@@ -39,10 +39,10 @@ export function up(pgm: MigrationBuilder): void {
       notNull: false, // Initially nullable for existing rows
       comment: 'Record key from AT URI',
     },
-    preprint_cid: {
+    eprint_cid: {
       type: 'text',
       notNull: false, // Initially nullable for existing rows
-      comment: 'CID of the preprint at time of review',
+      comment: 'CID of the eprint at time of review',
     },
   });
 
@@ -258,6 +258,6 @@ export function down(pgm: MigrationBuilder): void {
   pgm.dropColumn('reviews_index', 'parent_uri', { ifExists: true });
   pgm.dropColumn('reviews_index', 'motivation', { ifExists: true });
   pgm.dropColumn('reviews_index', 'content_format', { ifExists: true });
-  pgm.dropColumn('reviews_index', 'preprint_cid', { ifExists: true });
+  pgm.dropColumn('reviews_index', 'eprint_cid', { ifExists: true });
   pgm.dropColumn('reviews_index', 'rkey', { ifExists: true });
 }

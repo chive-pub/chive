@@ -1,9 +1,9 @@
 /**
- * Version manager for tracking preprint version chains.
+ * Version manager for tracking eprint version chains.
  *
  * @remarks
- * Helper utility for traversing and managing preprint version history.
- * Preprints can have multiple versions linked via previousVersionUri.
+ * Helper utility for traversing and managing eprint version history.
+ * Eprints can have multiple versions linked via previousVersionUri.
  *
  * @packageDocumentation
  * @public
@@ -13,7 +13,7 @@ import { toTimestamp } from '../../types/atproto-validators.js';
 import type { AtUri, CID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError } from '../../types/errors.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
-import type { PreprintVersion } from '../../types/models/preprint.js';
+import type { EprintVersion } from '../../types/models/eprint.js';
 
 /**
  * Version chain result.
@@ -24,12 +24,12 @@ export interface VersionChain {
   /**
    * All versions ordered chronologically (oldest first).
    */
-  readonly versions: readonly PreprintVersion[];
+  readonly versions: readonly EprintVersion[];
 
   /**
    * Latest version.
    */
-  readonly latest: PreprintVersion;
+  readonly latest: EprintVersion;
 
   /**
    * Total version count.
@@ -57,7 +57,7 @@ export interface VersionManagerOptions {
 }
 
 /**
- * Version manager for preprint version chains.
+ * Version manager for eprint version chains.
  *
  * @remarks
  * Handles version history traversal following previousVersionUri links.
@@ -92,7 +92,7 @@ export class VersionManager {
   }
 
   /**
-   * Gets complete version chain for preprint.
+   * Gets complete version chain for eprint.
    *
    * @param uri - URI of any version in chain
    * @returns Complete version chain
@@ -135,21 +135,21 @@ export class VersionManager {
     let iterations = 0;
 
     while (currentUri && iterations < this.maxVersions) {
-      const preprint = await this.storage.getPreprint(currentUri);
+      const eprint = await this.storage.getEprint(currentUri);
 
-      if (!preprint) {
-        throw new NotFoundError('PreprintVersion', currentUri);
+      if (!eprint) {
+        throw new NotFoundError('EprintVersion', currentUri);
       }
 
       tempVersions.push({
-        uri: preprint.uri,
-        cid: preprint.cid,
-        previousVersionUri: preprint.previousVersionUri,
-        changes: preprint.versionNotes ?? '',
-        createdAt: toTimestamp(preprint.createdAt),
+        uri: eprint.uri,
+        cid: eprint.cid,
+        previousVersionUri: eprint.previousVersionUri,
+        changes: eprint.versionNotes ?? '',
+        createdAt: toTimestamp(eprint.createdAt),
       });
 
-      currentUri = preprint.previousVersionUri;
+      currentUri = eprint.previousVersionUri;
       iterations++;
     }
 
@@ -162,7 +162,7 @@ export class VersionManager {
 
     tempVersions.reverse();
 
-    const versions: PreprintVersion[] = tempVersions.map((v, index) => ({
+    const versions: EprintVersion[] = tempVersions.map((v, index) => ({
       ...v,
       versionNumber: index + 1,
     }));
@@ -187,10 +187,10 @@ export class VersionManager {
    *
    * @public
    */
-  async getVersion(uri: AtUri): Promise<PreprintVersion | null> {
-    const preprint = await this.storage.getPreprint(uri);
+  async getVersion(uri: AtUri): Promise<EprintVersion | null> {
+    const eprint = await this.storage.getEprint(uri);
 
-    if (!preprint) {
+    if (!eprint) {
       return null;
     }
 
@@ -202,12 +202,12 @@ export class VersionManager {
     }
 
     return {
-      uri: preprint.uri,
-      cid: preprint.cid,
+      uri: eprint.uri,
+      cid: eprint.cid,
       versionNumber: positionInChain + 1,
-      previousVersionUri: preprint.previousVersionUri,
-      changes: preprint.versionNotes ?? '',
-      createdAt: toTimestamp(preprint.createdAt),
+      previousVersionUri: eprint.previousVersionUri,
+      changes: eprint.versionNotes ?? '',
+      createdAt: toTimestamp(eprint.createdAt),
     };
   }
 
@@ -222,7 +222,7 @@ export class VersionManager {
    *
    * @public
    */
-  async getLatestVersion(uri: AtUri): Promise<PreprintVersion> {
+  async getLatestVersion(uri: AtUri): Promise<EprintVersion> {
     const chain = await this.getVersionChain(uri);
     return chain.latest;
   }

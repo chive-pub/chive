@@ -1,8 +1,8 @@
 /**
- * Handler for pub.chive.graph.getFieldPreprints.
+ * Handler for pub.chive.graph.getFieldEprints.
  *
  * @remarks
- * Returns preprints associated with a specific knowledge graph field.
+ * Returns eprints associated with a specific knowledge graph field.
  * Supports pagination and sorting.
  *
  * @packageDocumentation
@@ -13,31 +13,31 @@ import type { Context } from 'hono';
 
 import { NotFoundError } from '../../../../types/errors.js';
 import {
-  getFieldPreprintsParamsSchema,
-  fieldPreprintsResponseSchema,
-  type GetFieldPreprintsParams,
-  type FieldPreprintsResponse,
+  getFieldEprintsParamsSchema,
+  fieldEprintsResponseSchema,
+  type GetFieldEprintsParams,
+  type FieldEprintsResponse,
 } from '../../../schemas/graph.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Handler for pub.chive.graph.getFieldPreprints.
+ * Handler for pub.chive.graph.getFieldEprints.
  *
  * @param c - Hono context
  * @param params - Request parameters
- * @returns Preprints in the specified field
+ * @returns Eprints in the specified field
  *
  * @throws {NotFoundError} When field is not found
  */
-export async function getFieldPreprintsHandler(
+export async function getFieldEprintsHandler(
   c: Context<ChiveEnv>,
-  params: GetFieldPreprintsParams
-): Promise<FieldPreprintsResponse> {
+  params: GetFieldEprintsParams
+): Promise<FieldEprintsResponse> {
   const logger = c.get('logger');
   const { graph, metrics } = c.get('services');
 
-  logger.debug('Getting field preprints', { fieldId: params.fieldId });
+  logger.debug('Getting field eprints', { fieldId: params.fieldId });
 
   // Verify field exists
   const field = await graph.getField(params.fieldId);
@@ -45,7 +45,7 @@ export async function getFieldPreprintsHandler(
     throw new NotFoundError('Field', params.fieldId);
   }
 
-  // Get preprints for this field using faceted browse
+  // Get eprints for this field using faceted browse
   const browseResult = await graph.browseFaceted({
     facets: {
       personality: [params.fieldId],
@@ -55,8 +55,8 @@ export async function getFieldPreprintsHandler(
   });
 
   // Enrich with view counts
-  const preprintsWithViews = await Promise.all(
-    browseResult.preprints.map(async (p) => {
+  const eprintsWithViews = await Promise.all(
+    browseResult.eprints.map(async (p) => {
       const viewCount = await metrics.getViewCount(p.uri);
       // Get primary author (first in order) for display
       const primaryAuthor = p.authors.find((a) => a.order === 1) ?? p.authors[0];
@@ -74,7 +74,7 @@ export async function getFieldPreprintsHandler(
   );
 
   return {
-    preprints: preprintsWithViews,
+    eprints: eprintsWithViews,
     cursor: browseResult.cursor,
     hasMore: browseResult.hasMore,
     total: browseResult.total,
@@ -82,20 +82,20 @@ export async function getFieldPreprintsHandler(
 }
 
 /**
- * Endpoint definition for pub.chive.graph.getFieldPreprints.
+ * Endpoint definition for pub.chive.graph.getFieldEprints.
  *
  * @public
  */
-export const getFieldPreprintsEndpoint: XRPCEndpoint<
-  GetFieldPreprintsParams,
-  FieldPreprintsResponse
+export const getFieldEprintsEndpoint: XRPCEndpoint<
+  GetFieldEprintsParams,
+  FieldEprintsResponse
 > = {
-  method: 'pub.chive.graph.getFieldPreprints' as never,
+  method: 'pub.chive.graph.getFieldEprints' as never,
   type: 'query',
-  description: 'Get preprints in a knowledge graph field',
-  inputSchema: getFieldPreprintsParamsSchema,
-  outputSchema: fieldPreprintsResponseSchema,
-  handler: getFieldPreprintsHandler,
+  description: 'Get eprints in a knowledge graph field',
+  inputSchema: getFieldEprintsParamsSchema,
+  outputSchema: fieldEprintsResponseSchema,
+  handler: getFieldEprintsHandler,
   auth: 'optional',
   rateLimit: 'anonymous',
 };

@@ -672,7 +672,7 @@ export class AuthorityRepository {
              toLower(a2.authorizedForm)
            ) as similarity
       WHERE similarity >= $minSimilarity
-      OPTIONAL MATCH (a1)<-[:HAS_AUTHORITY]-(p:Preprint)-[:HAS_AUTHORITY]->(a2)
+      OPTIONAL MATCH (a1)<-[:HAS_AUTHORITY]-(p:Eprint)-[:HAS_AUTHORITY]->(a2)
       WITH a1, a2, similarity, count(p) as coOccurrence
       RETURN a1.uri as primaryUri,
              a2.uri as variantUri,

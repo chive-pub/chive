@@ -44,7 +44,7 @@ import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
 import { PDSSyncService } from './services/pds-sync/sync-service.js';
-import { PreprintService } from './services/preprint/preprint-service.js';
+import { EprintService } from './services/eprint/eprint-service.js';
 import { ReviewService } from './services/review/review-service.js';
 import { TaxonomyCategoryMatcher } from './services/search/category-matcher.js';
 import { RankingService } from './services/search/ranking-service.js';
@@ -314,7 +314,7 @@ function createServices(
   const cdnAdapter = createCDNAdapter(config, logger);
 
   // Create services
-  const preprintService = new PreprintService({
+  const eprintService = new EprintService({
     storage: storageAdapter,
     search: searchAdapter,
     repository,
@@ -436,7 +436,7 @@ function createServices(
   });
 
   return {
-    preprintService,
+    eprintService,
     searchService,
     metricsService,
     graphService,
@@ -626,7 +626,7 @@ function createNoopMetrics(): IMetrics {
  * This hybrid approach minimizes storage and API load while ensuring full coverage.
  *
  * @param redis - Redis client for caching
- * @param importService - Import service for storing imported preprints
+ * @param importService - Import service for storing imported eprints
  * @param claimingService - Claiming service to wire with plugin manager
  * @param logger - Logger instance
  * @returns Import scheduler for shutdown cleanup

@@ -4,7 +4,7 @@
  * @remarks
  * Exports all discovery-related XRPC endpoint handlers:
  * - getRecommendations: Personalized paper recommendations
- * - getSimilar: Related papers for a preprint
+ * - getSimilar: Related papers for a eprint
  * - getCitations: Citation network data
  * - getEnrichment: External API enrichment data
  * - recordInteraction: Record user interactions for feedback loop

@@ -72,7 +72,7 @@ export async function listFieldsHandler(
       description: f.description,
       parentId: f.parentId,
       status: f.status as 'proposed' | 'under_review' | 'approved' | 'deprecated',
-      preprintCount: f.preprintCount,
+      eprintCount: f.eprintCount,
       externalIds: f.externalIds?.map((ext) => ({
         source: ext.source as 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv',
         id: ext.id,

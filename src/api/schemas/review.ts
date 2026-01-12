@@ -115,7 +115,7 @@ export const selectorRefinementSchema = z.object({
  * @public
  */
 export const textSpanTargetSchema = z.object({
-  source: atUriSchema.describe('Preprint AT-URI'),
+  source: atUriSchema.describe('Eprint AT-URI'),
   selector: textQuoteSelectorSchema.optional().describe('Text quote selector'),
   refinedBy: selectorRefinementSchema.optional().describe('Position refinement with page info'),
   page: z
@@ -187,7 +187,7 @@ export const reviewSchema = z.object({
   uri: atUriSchema.describe('Review AT-URI'),
   cid: z.string().describe('Content identifier'),
   author: authorRefSchema.describe('Review author'),
-  preprintUri: atUriSchema.describe('Preprint being reviewed'),
+  eprintUri: atUriSchema.describe('Eprint being reviewed'),
   content: z.string().describe('Plain text content'),
   body: annotationBodySchema.optional().describe('Rich text body'),
   target: textSpanTargetSchema.optional().describe('Target span for inline annotations'),
@@ -224,22 +224,22 @@ export const reviewThreadSchema = z.object({
 export type ReviewThread = z.infer<typeof reviewThreadSchema>;
 
 /**
- * List reviews for preprint params schema.
+ * List reviews for eprint params schema.
  *
  * @public
  */
-export const listReviewsForPreprintParamsSchema = paginationQuerySchema.extend({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+export const listReviewsForEprintParamsSchema = paginationQuerySchema.extend({
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
   motivation: annotationMotivationSchema.optional().describe('Filter by motivation'),
   inlineOnly: z.coerce.boolean().optional().describe('Only include inline annotations'),
 });
 
 /**
- * List reviews for preprint params type.
+ * List reviews for eprint params type.
  *
  * @public
  */
-export type ListReviewsForPreprintParams = z.infer<typeof listReviewsForPreprintParamsSchema>;
+export type ListReviewsForEprintParams = z.infer<typeof listReviewsForEprintParamsSchema>;
 
 /**
  * Get review thread params schema.
@@ -263,7 +263,7 @@ export type GetReviewThreadParams = z.infer<typeof getReviewThreadParamsSchema>;
  * @public
  */
 export const createReviewInputSchema = z.object({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
   content: z.string().min(1).max(10000).describe('Plain text content'),
   body: annotationBodySchema.optional().describe('Rich text body'),
   target: textSpanTargetSchema.optional().describe('Target span'),

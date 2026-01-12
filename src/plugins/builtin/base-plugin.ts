@@ -47,11 +47,11 @@ import {
  *   };
  *
  *   protected async onInitialize(): Promise<void> {
- *     this.context.eventBus.on('preprint.indexed', this.handleIndexed.bind(this));
+ *     this.context.eventBus.on('eprint.indexed', this.handleIndexed.bind(this));
  *   }
  *
  *   private async handleIndexed(data: { uri: string }): Promise<void> {
- *     this.logger.info('Preprint indexed', { uri: data.uri });
+ *     this.logger.info('Eprint indexed', { uri: data.uri });
  *   }
  * }
  * ```
@@ -177,7 +177,7 @@ export abstract class BasePlugin implements IChivePlugin {
    * ```typescript
    * protected async onInitialize(): Promise<void> {
    *   // Subscribe to events
-   *   this.context.eventBus.on('preprint.indexed', this.handleIndexed.bind(this));
+   *   this.context.eventBus.on('eprint.indexed', this.handleIndexed.bind(this));
    *
    *   // Load cached state
    *   const state = await this.cache.get('state');

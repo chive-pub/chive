@@ -66,7 +66,7 @@ export interface ICategoryMatcher {
   /**
    * Computes overlap between item categories and user fields.
    *
-   * @param itemCategories - Categories from the preprint
+   * @param itemCategories - Categories from the eprint
    * @param userFields - User's research fields/interests
    * @returns Match score from 0 (no overlap) to 1 (full match)
    */

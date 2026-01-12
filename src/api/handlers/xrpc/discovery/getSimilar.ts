@@ -2,7 +2,7 @@
  * Handler for pub.chive.discovery.getSimilar.
  *
  * @remarks
- * Returns related papers for a given preprint based on citation patterns,
+ * Returns related papers for a given eprint based on citation patterns,
  * semantic similarity, and topic overlap.
  *
  * @packageDocumentation
@@ -14,29 +14,29 @@ import type { Context } from 'hono';
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ServiceUnavailableError } from '../../../../types/errors.js';
 import type {
-  RelatedPreprintRelationship,
-  RelatedPreprintSignal,
+  RelatedEprintRelationship,
+  RelatedEprintSignal,
 } from '../../../../types/interfaces/discovery.interface.js';
 import {
   getSimilarParamsSchema,
   getSimilarResponseSchema,
   type GetSimilarParams,
   type GetSimilarResponse,
-  type RelatedPreprint as SchemaRelatedPreprint,
+  type RelatedEprint as SchemaRelatedEprint,
 } from '../../../schemas/discovery.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Maps includeTypes param to RelatedPreprintSignal array.
+ * Maps includeTypes param to RelatedEprintSignal array.
  */
 function mapIncludeTypesToSignals(
   includeTypes?: readonly ('semantic' | 'citation' | 'topic' | 'author')[]
-): RelatedPreprintSignal[] | undefined {
+): RelatedEprintSignal[] | undefined {
   if (!includeTypes || includeTypes.length === 0) {
     return undefined;
   }
-  const signalMap: Record<'semantic' | 'citation' | 'topic' | 'author', RelatedPreprintSignal> = {
+  const signalMap: Record<'semantic' | 'citation' | 'topic' | 'author', RelatedEprintSignal> = {
     semantic: 'semantic',
     citation: 'citations',
     topic: 'topics',
@@ -49,9 +49,9 @@ function mapIncludeTypesToSignals(
  * Maps interface relationship types to schema relationship types.
  */
 function mapRelationshipType(
-  interfaceType: RelatedPreprintRelationship
-): SchemaRelatedPreprint['relationshipType'] {
-  const typeMap: Record<RelatedPreprintRelationship, SchemaRelatedPreprint['relationshipType']> = {
+  interfaceType: RelatedEprintRelationship
+): SchemaRelatedEprint['relationshipType'] {
+  const typeMap: Record<RelatedEprintRelationship, SchemaRelatedEprint['relationshipType']> = {
     cites: 'cites',
     'cited-by': 'cited-by',
     'co-cited': 'co-cited',
@@ -99,7 +99,7 @@ export async function getSimilarHandler(
   params: GetSimilarParams
 ): Promise<GetSimilarResponse> {
   const logger = c.get('logger');
-  const { discovery, preprint } = c.get('services');
+  const { discovery, eprint } = c.get('services');
 
   logger.debug('Getting similar papers', { uri: params.uri, limit: params.limit });
 
@@ -107,14 +107,14 @@ export async function getSimilarHandler(
     throw new ServiceUnavailableError('Discovery service not available');
   }
 
-  // Get the source preprint
-  const sourcePreprint = await preprint.getPreprint(params.uri as AtUri);
-  if (!sourcePreprint) {
-    throw new NotFoundError('Preprint not found', params.uri);
+  // Get the source eprint
+  const sourceEprint = await eprint.getEprint(params.uri as AtUri);
+  if (!sourceEprint) {
+    throw new NotFoundError('Eprint not found', params.uri);
   }
 
   // Get related papers from discovery service
-  const related = await discovery.findRelatedPreprints(params.uri as AtUri, {
+  const related = await discovery.findRelatedEprints(params.uri as AtUri, {
     limit: params.limit,
     signals: mapIncludeTypesToSignals(params.includeTypes),
   });
@@ -138,9 +138,9 @@ export async function getSimilarHandler(
   });
 
   return {
-    preprint: {
+    eprint: {
       uri: params.uri,
-      title: sourcePreprint.title,
+      title: sourceEprint.title,
     },
     related: relatedPapers,
   };
@@ -154,7 +154,7 @@ export async function getSimilarHandler(
 export const getSimilarEndpoint: XRPCEndpoint<GetSimilarParams, GetSimilarResponse> = {
   method: 'pub.chive.discovery.getSimilar' as never,
   type: 'query',
-  description: 'Get related papers for a preprint',
+  description: 'Get related papers for a eprint',
   inputSchema: getSimilarParamsSchema,
   outputSchema: getSimilarResponseSchema,
   handler: getSimilarHandler,

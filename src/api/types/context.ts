@@ -21,7 +21,7 @@ import type { ImportService } from '../../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../../services/metrics/metrics-service.js';
 import type { PDSSyncService } from '../../services/pds-sync/sync-service.js';
-import type { PreprintService } from '../../services/preprint/preprint-service.js';
+import type { EprintService } from '../../services/eprint/eprint-service.js';
 import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';
@@ -37,7 +37,7 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
  * @public
  */
 export interface ChiveServices {
-  readonly preprint: PreprintService;
+  readonly eprint: EprintService;
   readonly search: SearchService;
   readonly ranking?: RankingService;
   readonly relevanceLogger: IRelevanceLogger;
@@ -127,7 +127,7 @@ export type RateLimitTier = 'anonymous' | 'authenticated' | 'premium' | 'admin';
  *
  * async function handler(c: Context<ChiveEnv>) {
  *   const services = c.get('services');
- *   const preprint = await services.preprint.getPreprint(uri);
+ *   const eprint = await services.eprint.getEprint(uri);
  * }
  * ```
  *

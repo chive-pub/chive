@@ -1,5 +1,5 @@
 /**
- * REST API v1 preprint endpoints.
+ * REST API v1 eprint endpoints.
  *
  * @remarks
  * Provides REST-style endpoints that delegate to XRPC handlers.
@@ -14,14 +14,14 @@ import { z } from 'zod';
 
 import { REST_PATH_PREFIX } from '../../../config.js';
 import { validateQuery, validateParams } from '../../../middleware/validation.js';
-import { getSubmissionParamsSchema, listByAuthorParamsSchema } from '../../../schemas/preprint.js';
-import { searchPreprintsParamsSchema } from '../../../schemas/preprint.js';
+import { getSubmissionParamsSchema, listByAuthorParamsSchema } from '../../../schemas/eprint.js';
+import { searchEprintsParamsSchema } from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import {
   getSubmissionHandler,
   listByAuthorHandler,
   searchSubmissionsHandler,
-} from '../../xrpc/preprint/index.js';
+} from '../../xrpc/eprint/index.js';
 
 /**
  * URI path parameter schema.
@@ -38,37 +38,37 @@ const didPathParamSchema = z.object({
 });
 
 /**
- * Registers REST v1 preprint routes.
+ * Registers REST v1 eprint routes.
  *
  * @param app - Hono application
  *
  * @remarks
  * Routes:
- * - `GET /api/v1/preprints` - Search/list preprints
- * - `GET /api/v1/preprints/:uri` - Get preprint by URI
- * - `GET /api/v1/authors/:did/preprints` - List preprints by author
+ * - `GET /api/v1/eprints` - Search/list eprints
+ * - `GET /api/v1/eprints/:uri` - Get eprint by URI
+ * - `GET /api/v1/authors/:did/eprints` - List eprints by author
  *
  * @example
  * ```http
- * GET /api/v1/preprints?q=quantum
- * GET /api/v1/preprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.preprint.submission%2Fxyz
- * GET /api/v1/authors/did:plc:abc/preprints
+ * GET /api/v1/eprints?q=quantum
+ * GET /api/v1/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.eprint.submission%2Fxyz
+ * GET /api/v1/authors/did:plc:abc/eprints
  * ```
  *
  * @public
  */
-export function registerPreprintRoutes(app: Hono<ChiveEnv>): void {
-  const basePath = `${REST_PATH_PREFIX}/preprints`;
+export function registerEprintRoutes(app: Hono<ChiveEnv>): void {
+  const basePath = `${REST_PATH_PREFIX}/eprints`;
   const authorsPath = `${REST_PATH_PREFIX}/authors`;
 
-  // GET /api/v1/preprints: Search preprints
-  app.get(basePath, validateQuery(searchPreprintsParamsSchema), async (c) => {
-    const params = c.get('validatedInput') as z.infer<typeof searchPreprintsParamsSchema>;
+  // GET /api/v1/eprints: Search eprints
+  app.get(basePath, validateQuery(searchEprintsParamsSchema), async (c) => {
+    const params = c.get('validatedInput') as z.infer<typeof searchEprintsParamsSchema>;
     const result = await searchSubmissionsHandler(c, params);
     return c.json(result);
   });
 
-  // GET /api/v1/preprints/:uri: Get preprint by URI
+  // GET /api/v1/eprints/:uri: Get eprint by URI
   app.get(`${basePath}/:uri`, validateParams(uriPathParamSchema), async (c) => {
     const pathParams = c.get('validatedInput') as z.infer<typeof uriPathParamSchema>;
     // Decode URL-encoded URI
@@ -78,9 +78,9 @@ export function registerPreprintRoutes(app: Hono<ChiveEnv>): void {
     return c.json(result);
   });
 
-  // GET /api/v1/authors/:did/preprints: List preprints by author
+  // GET /api/v1/authors/:did/eprints: List eprints by author
   app.get(
-    `${authorsPath}/:did/preprints`,
+    `${authorsPath}/:did/eprints`,
     validateParams(didPathParamSchema),
     validateQuery(listByAuthorParamsSchema.omit({ did: true })),
     async (c) => {

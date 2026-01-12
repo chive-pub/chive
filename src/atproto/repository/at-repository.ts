@@ -46,8 +46,8 @@ import {
  *
  * @example
  * ```typescript
- * const parts = parseAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz');
- * // { did: 'did:plc:abc', collection: 'pub.chive.preprint.submission', rkey: 'xyz' }
+ * const parts = parseAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz');
+ * // { did: 'did:plc:abc', collection: 'pub.chive.eprint.submission', rkey: 'xyz' }
  * ```
  *
  * @internal
@@ -108,10 +108,10 @@ function parseAtUri(uri: AtUri): { did: DID; collection: NSID; rkey: string } | 
  * });
  *
  * // Fetch a single record
- * const record = await repository.getRecord<PreprintRecord>(uri);
+ * const record = await repository.getRecord<EprintRecord>(uri);
  *
  * // List records from a collection
- * for await (const record of repository.listRecords<PreprintRecord>(did, nsid)) {
+ * for await (const record of repository.listRecords<EprintRecord>(did, nsid)) {
  *   console.log(record.value.title);
  * }
  *
@@ -182,8 +182,8 @@ export class ATRepository implements IRepository {
    *
    * @example
    * ```typescript
-   * const record = await repository.getRecord<PreprintRecord>(
-   *   toAtUri('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')!
+   * const record = await repository.getRecord<EprintRecord>(
+   *   toAtUri('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')!
    * );
    *
    * if (record) {
@@ -277,14 +277,14 @@ export class ATRepository implements IRepository {
    *
    * @example
    * ```typescript
-   * const preprints = repository.listRecords<PreprintRecord>(
+   * const eprints = repository.listRecords<EprintRecord>(
    *   toDID('did:plc:abc123')!,
-   *   toNSID('pub.chive.preprint.submission')!,
+   *   toNSID('pub.chive.eprint.submission')!,
    *   { limit: 10 }
    * );
    *
-   * for await (const record of preprints) {
-   *   console.log('Preprint:', record.value.title);
+   * for await (const record of eprints) {
+   *   console.log('Eprint:', record.value.title);
    * }
    * ```
    *

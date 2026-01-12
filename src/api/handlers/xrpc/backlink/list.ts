@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.backlink.list.
  *
  * @remarks
- * Lists backlinks to a preprint from ATProto ecosystem sources including
+ * Lists backlinks to a eprint from ATProto ecosystem sources including
  * Semble collections, Leaflet lists, Whitewind blogs, and Bluesky shares.
  *
  * **ATProto Compliance:**
@@ -30,11 +30,11 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters
- * @returns Paginated list of backlinks to the target preprint
+ * @returns Paginated list of backlinks to the target eprint
  *
  * @example
  * ```http
- * GET /xrpc/pub.chive.backlink.list?targetUri=at://did:plc:abc/pub.chive.preprint.submission/xyz&limit=20
+ * GET /xrpc/pub.chive.backlink.list?targetUri=at://did:plc:abc/pub.chive.eprint.submission/xyz&limit=20
  *
  * Response:
  * {
@@ -43,7 +43,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *       "id": 1,
  *       "sourceUri": "at://did:plc:def/app.bsky.feed.post/ghi",
  *       "sourceType": "bluesky.post",
- *       "targetUri": "at://did:plc:abc/pub.chive.preprint.submission/xyz",
+ *       "targetUri": "at://did:plc:abc/pub.chive.eprint.submission/xyz",
  *       "indexedAt": "2024-01-15T10:00:00Z",
  *       "deleted": false
  *     }
@@ -107,7 +107,7 @@ export async function listBacklinksHandler(
 export const listBacklinksEndpoint: XRPCEndpoint<ListBacklinksParams, ListBacklinksResponse> = {
   method: 'pub.chive.backlink.list' as never,
   type: 'query',
-  description: 'List backlinks to a preprint',
+  description: 'List backlinks to a eprint',
   inputSchema: listBacklinksParamsSchema,
   outputSchema: listBacklinksResponseSchema,
   handler: listBacklinksHandler,

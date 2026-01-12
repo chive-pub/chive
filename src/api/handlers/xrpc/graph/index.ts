@@ -9,7 +9,7 @@ export { getFieldHandler, getFieldEndpoint } from './getField.js';
 export { listFieldsHandler, listFieldsEndpoint } from './listFields.js';
 export { searchAuthoritiesHandler, searchAuthoritiesEndpoint } from './searchAuthorities.js';
 export { browseFacetedHandler, browseFacetedEndpoint } from './browseFaceted.js';
-export { getFieldPreprintsHandler, getFieldPreprintsEndpoint } from './getFieldPreprints.js';
+export { getFieldEprintsHandler, getFieldEprintsEndpoint } from './getFieldEprints.js';
 export { getAuthorityHandler, getAuthorityEndpoint } from './getAuthority.js';
 export {
   getAuthorityReconciliationsHandler,
@@ -23,7 +23,7 @@ import { browseFacetedEndpoint } from './browseFaceted.js';
 import { getAuthorityEndpoint } from './getAuthority.js';
 import { getAuthorityReconciliationsEndpoint } from './getAuthorityReconciliations.js';
 import { getFieldEndpoint } from './getField.js';
-import { getFieldPreprintsEndpoint } from './getFieldPreprints.js';
+import { getFieldEprintsEndpoint } from './getFieldEprints.js';
 import { listFieldsEndpoint } from './listFields.js';
 import { searchAuthoritiesEndpoint } from './searchAuthorities.js';
 
@@ -32,7 +32,7 @@ export const graphEndpoints = [
   listFieldsEndpoint,
   searchAuthoritiesEndpoint,
   browseFacetedEndpoint,
-  getFieldPreprintsEndpoint,
+  getFieldEprintsEndpoint,
   getAuthorityEndpoint,
   getAuthorityReconciliationsEndpoint,
 ] as const;

@@ -21,7 +21,7 @@
  * const pool = createPool(config);
  * const storage = new PostgreSQLAdapter(pool);
  *
- * await storage.storePreprint(preprint);
+ * await storage.storeEprint(eprint);
  * ```
  *
  * @packageDocumentation
@@ -63,5 +63,5 @@ export {
 } from './batch-operations.js';
 export { PDSTracker } from './pds-tracker.js';
 export { StalenessDetector } from './staleness-detector.js';
-export { PreprintsRepository } from './preprints-repository.js';
+export { EprintsRepository } from './eprints-repository.js';
 export { ReviewsRepository, type StoredReview } from './reviews-repository.js';

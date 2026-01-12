@@ -2,7 +2,7 @@
  * Handler for pub.chive.metrics.getMetrics.
  *
  * @remarks
- * Gets comprehensive metrics for a preprint.
+ * Gets comprehensive metrics for a eprint.
  *
  * @packageDocumentation
  * @public
@@ -13,9 +13,9 @@ import type { Context } from 'hono';
 import type { AtUri } from '../../../../types/atproto.js';
 import {
   getMetricsParamsSchema,
-  preprintMetricsSchema,
+  eprintMetricsSchema,
   type GetMetricsParams,
-  type PreprintMetrics,
+  type EprintMetrics,
 } from '../../../schemas/metrics.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
@@ -25,14 +25,14 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @param c - Hono context
  * @param params - Request parameters
- * @returns Comprehensive preprint metrics
+ * @returns Comprehensive eprint metrics
  *
  * @public
  */
 export async function getMetricsHandler(
   c: Context<ChiveEnv>,
   params: GetMetricsParams
-): Promise<PreprintMetrics> {
+): Promise<EprintMetrics> {
   const logger = c.get('logger');
   const { metrics } = c.get('services');
 
@@ -55,12 +55,12 @@ export async function getMetricsHandler(
  *
  * @public
  */
-export const getMetricsEndpoint: XRPCEndpoint<GetMetricsParams, PreprintMetrics> = {
+export const getMetricsEndpoint: XRPCEndpoint<GetMetricsParams, EprintMetrics> = {
   method: 'pub.chive.metrics.getMetrics' as never,
   type: 'query',
-  description: 'Get comprehensive metrics for a preprint',
+  description: 'Get comprehensive metrics for a eprint',
   inputSchema: getMetricsParamsSchema,
-  outputSchema: preprintMetricsSchema,
+  outputSchema: eprintMetricsSchema,
   handler: getMetricsHandler,
   auth: 'none',
   rateLimit: 'anonymous',

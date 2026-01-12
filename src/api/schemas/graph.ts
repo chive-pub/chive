@@ -12,7 +12,7 @@
 import { z } from 'zod';
 
 import { paginationQuerySchema, searchQuerySchema, didSchema } from './common.js';
-import { preprintAuthorRefSchema, preprintSourceInfoSchema, fieldRefSchema } from './preprint.js';
+import { eprintAuthorRefSchema, eprintSourceInfoSchema, fieldRefSchema } from './eprint.js';
 
 /**
  * External identifier schema.
@@ -56,7 +56,7 @@ export const fieldNodeSchema = z.object({
   description: z.string().optional().describe('Field description'),
   parentId: z.string().optional().describe('Parent field ID'),
   status: fieldStatusSchema,
-  preprintCount: z.number().int().optional().describe('Number of preprints'),
+  eprintCount: z.number().int().optional().describe('Number of eprints'),
   childCount: z.number().int().optional().describe('Number of child fields'),
   externalIds: z.array(externalIdSchema).optional().describe('External identifiers'),
   createdAt: z.string().datetime().describe('Creation timestamp'),
@@ -96,7 +96,7 @@ export const fieldDetailSchema = fieldNodeSchema.extend({
       z.object({
         id: z.string(),
         name: z.string(),
-        preprintCount: z.number().int().optional(),
+        eprintCount: z.number().int().optional(),
       })
     )
     .optional()
@@ -151,7 +151,7 @@ export const authorityRecordSchema = z.object({
   alternateNames: z.array(z.string()).optional().describe('Alternate names'),
   description: z.string().optional().describe('Description'),
   externalIds: z.array(externalIdSchema).optional().describe('External identifiers'),
-  linkedPreprints: z.number().int().optional().describe('Number of linked preprints'),
+  linkedEprints: z.number().int().optional().describe('Number of linked eprints'),
   status: fieldStatusSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime().optional(),
@@ -252,23 +252,23 @@ export type BrowseFacetedParams = z.infer<typeof browseFacetedParamsSchema>;
 export const facetValueSchema = z.object({
   value: z.string().describe('Facet value'),
   label: z.string().optional().describe('Display label'),
-  count: z.number().int().describe('Number of preprints'),
+  count: z.number().int().describe('Number of eprints'),
 });
 
 /**
- * Preprint summary for faceted browse results.
+ * Eprint summary for faceted browse results.
  *
  * @remarks
- * Uses the unified author model matching PreprintSummary.
+ * Uses the unified author model matching EprintSummary.
  *
  * @public
  */
-export const facetedPreprintSummarySchema = z.object({
+export const facetedEprintSummarySchema = z.object({
   uri: z.string().describe('AT URI'),
   cid: z.string().describe('CID of indexed version'),
-  title: z.string().describe('Preprint title'),
-  abstract: z.string().describe('Preprint abstract'),
-  authors: z.array(preprintAuthorRefSchema).describe('All authors with contributions'),
+  title: z.string().describe('Eprint title'),
+  abstract: z.string().describe('Eprint abstract'),
+  authors: z.array(eprintAuthorRefSchema).describe('All authors with contributions'),
   submittedBy: didSchema.describe('DID of human user who submitted'),
   paperDid: didSchema.optional().describe('Paper DID if paper has its own PDS'),
   fields: z.array(fieldRefSchema).optional().describe('Subject fields'),
@@ -276,17 +276,17 @@ export const facetedPreprintSummarySchema = z.object({
   keywords: z.array(z.string()).optional().describe('Keywords'),
   createdAt: z.string().datetime().describe('Creation timestamp'),
   indexedAt: z.string().datetime().describe('Index timestamp'),
-  source: preprintSourceInfoSchema.describe('Source PDS information'),
+  source: eprintSourceInfoSchema.describe('Source PDS information'),
   score: z.number().optional().describe('Relevance score'),
   highlights: z.record(z.string(), z.array(z.string())).optional().describe('Search highlights'),
 });
 
 /**
- * Faceted preprint summary type.
+ * Faceted eprint summary type.
  *
  * @public
  */
-export type FacetedPreprintSummary = z.infer<typeof facetedPreprintSummarySchema>;
+export type FacetedEprintSummary = z.infer<typeof facetedEprintSummarySchema>;
 
 /**
  * Faceted browse response schema.
@@ -297,7 +297,7 @@ export type FacetedPreprintSummary = z.infer<typeof facetedPreprintSummarySchema
  * @public
  */
 export const facetedBrowseResponseSchema = z.object({
-  hits: z.array(facetedPreprintSummarySchema).describe('Matching preprints'),
+  hits: z.array(facetedEprintSummarySchema).describe('Matching eprints'),
   facets: z
     .object({
       // PMEST dimensions
@@ -366,33 +366,33 @@ export const fieldListResponseSchema = z.object({
 export type FieldListResponse = z.infer<typeof fieldListResponseSchema>;
 
 // =============================================================================
-// FIELD PREPRINTS SCHEMAS
+// FIELD EPRINTS SCHEMAS
 // =============================================================================
 
 /**
- * Get field preprints query params schema.
+ * Get field eprints query params schema.
  *
  * @public
  */
-export const getFieldPreprintsParamsSchema = paginationQuerySchema.extend({
+export const getFieldEprintsParamsSchema = paginationQuerySchema.extend({
   fieldId: z.string().describe('Field identifier'),
 });
 
 /**
- * Get field preprints params type.
+ * Get field eprints params type.
  *
  * @public
  */
-export type GetFieldPreprintsParams = z.infer<typeof getFieldPreprintsParamsSchema>;
+export type GetFieldEprintsParams = z.infer<typeof getFieldEprintsParamsSchema>;
 
 /**
- * Preprint summary for field listings schema.
+ * Eprint summary for field listings schema.
  *
  * @public
  */
-export const fieldPreprintSummarySchema = z.object({
-  uri: z.string().describe('Preprint AT URI'),
-  title: z.string().describe('Preprint title'),
+export const fieldEprintSummarySchema = z.object({
+  uri: z.string().describe('Eprint AT URI'),
+  title: z.string().describe('Eprint title'),
   abstract: z.string().max(500).optional().describe('Truncated abstract'),
   authorDid: z.string().describe('Primary author DID'),
   authorName: z.string().optional().describe('Author display name'),
@@ -402,30 +402,30 @@ export const fieldPreprintSummarySchema = z.object({
 });
 
 /**
- * Preprint summary type.
+ * Eprint summary type.
  *
  * @public
  */
-export type FieldPreprintSummary = z.infer<typeof fieldPreprintSummarySchema>;
+export type FieldEprintSummary = z.infer<typeof fieldEprintSummarySchema>;
 
 /**
- * Field preprints response schema.
+ * Field eprints response schema.
  *
  * @public
  */
-export const fieldPreprintsResponseSchema = z.object({
-  preprints: z.array(fieldPreprintSummarySchema).describe('Preprints in this field'),
+export const fieldEprintsResponseSchema = z.object({
+  eprints: z.array(fieldEprintSummarySchema).describe('Eprints in this field'),
   cursor: z.string().optional().describe('Pagination cursor'),
   hasMore: z.boolean().describe('Whether more results exist'),
   total: z.number().int().describe('Total count'),
 });
 
 /**
- * Field preprints response type.
+ * Field eprints response type.
  *
  * @public
  */
-export type FieldPreprintsResponse = z.infer<typeof fieldPreprintsResponseSchema>;
+export type FieldEprintsResponse = z.infer<typeof fieldEprintsResponseSchema>;
 
 // =============================================================================
 // AUTHORITY DETAIL SCHEMAS
@@ -453,7 +453,7 @@ export type GetAuthorityParams = z.infer<typeof getAuthorityParamsSchema>;
  * @public
  */
 export const authorityDetailSchema = authorityRecordSchema.extend({
-  linkedPreprints: z.number().int().optional().describe('Number of linked preprints'),
+  linkedEprints: z.number().int().optional().describe('Number of linked eprints'),
   linkedAuthors: z.number().int().optional().describe('Number of linked authors'),
   reconciliationCount: z.number().int().optional().describe('Number of reconciliations'),
 });

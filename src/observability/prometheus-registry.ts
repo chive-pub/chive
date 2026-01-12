@@ -89,7 +89,7 @@ export const httpMetrics = {
    *
    * @example
    * ```typescript
-   * httpMetrics.requestsTotal.inc({ method: 'GET', endpoint: '/api/preprints', status: '200' });
+   * httpMetrics.requestsTotal.inc({ method: 'GET', endpoint: '/api/eprints', status: '200' });
    * ```
    */
   requestsTotal: new Counter({
@@ -108,7 +108,7 @@ export const httpMetrics = {
    *
    * @example
    * ```typescript
-   * const end = httpMetrics.requestDuration.startTimer({ method: 'GET', endpoint: '/api/preprints' });
+   * const end = httpMetrics.requestDuration.startTimer({ method: 'GET', endpoint: '/api/eprints' });
    * // ... handle request ...
    * end({ status: '200' });
    * ```
@@ -123,48 +123,48 @@ export const httpMetrics = {
 };
 
 /**
- * Pre-defined metrics for preprint indexing.
+ * Pre-defined metrics for eprint indexing.
  *
  * @remarks
- * Tracks preprint indexing operations and errors.
+ * Tracks eprint indexing operations and errors.
  *
  * @public
  */
-export const preprintMetrics = {
+export const eprintMetrics = {
   /**
-   * Total preprints indexed counter.
+   * Total eprints indexed counter.
    *
    * @remarks
    * Labels: field (knowledge graph field), status (success/error)
    *
    * @example
    * ```typescript
-   * preprintMetrics.indexedTotal.inc({ field: 'cs.AI', status: 'success' });
+   * eprintMetrics.indexedTotal.inc({ field: 'cs.AI', status: 'success' });
    * ```
    */
   indexedTotal: new Counter({
-    name: 'chive_preprints_indexed_total',
-    help: 'Total number of preprints indexed',
+    name: 'chive_eprints_indexed_total',
+    help: 'Total number of eprints indexed',
     labelNames: ['field', 'status'] as const,
     registers: [prometheusRegistry],
   } satisfies CounterConfiguration<'field' | 'status'>),
 
   /**
-   * Preprint indexing duration histogram.
+   * Eprint indexing duration histogram.
    *
    * @remarks
    * Labels: status (success/error)
    *
    * @example
    * ```typescript
-   * const end = preprintMetrics.indexingDuration.startTimer();
-   * // ... index preprint ...
+   * const end = eprintMetrics.indexingDuration.startTimer();
+   * // ... index eprint ...
    * end({ status: 'success' });
    * ```
    */
   indexingDuration: new Histogram({
-    name: 'chive_preprint_indexing_duration_seconds',
-    help: 'Preprint indexing duration in seconds',
+    name: 'chive_eprint_indexing_duration_seconds',
+    help: 'Eprint indexing duration in seconds',
     labelNames: ['status'] as const,
     buckets: [...DEFAULT_HISTOGRAM_BUCKETS],
     registers: [prometheusRegistry],

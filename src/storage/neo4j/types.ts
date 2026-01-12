@@ -354,9 +354,9 @@ export interface FacetQuery {
 }
 
 /**
- * Preprint match from faceted search
+ * Eprint match from faceted search
  */
-export interface PreprintMatch {
+export interface EprintMatch {
   uri: AtUri;
   title: string;
   matchedFacets: Facet[];

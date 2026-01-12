@@ -1,5 +1,5 @@
 /**
- * Zod validator for pub.chive.preprint.authorContribution
+ * Zod validator for pub.chive.eprint.authorContribution
  *
  * @remarks
  * Generated from Lexicon schema. DO NOT EDIT manually.
@@ -13,11 +13,11 @@ import { z } from 'zod';
 
 
 /**
- * Zod schema for pub.chive.preprint.authorContribution object.
+ * Zod schema for pub.chive.eprint.authorContribution object.
  *
  * @internal
  */
-export const preprintAuthorContributionSchema = z.object({
+export const eprintAuthorContributionSchema = z.object({
   did: z.string().refine((val) => /^did:[a-z]+:[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid DID format" }).optional(),
   name: z.string().max(200),
   orcid: z.string().max(19).optional(),
@@ -30,9 +30,9 @@ export const preprintAuthorContributionSchema = z.object({
 });
 
 /**
- * Type for pub.chive.preprint.authorContribution object.
+ * Type for pub.chive.eprint.authorContribution object.
  *
  * @public
  */
-export type PreprintAuthorContribution = z.infer<typeof preprintAuthorContributionSchema>;
+export type EprintAuthorContribution = z.infer<typeof eprintAuthorContributionSchema>;
 

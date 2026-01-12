@@ -1,11 +1,11 @@
 /**
- * PsyArXiv integration plugin for psychology preprints.
+ * PsyArXiv integration plugin for psychology eprints.
  *
  * @remarks
- * Imports psychology preprints from PsyArXiv (https://psyarxiv.com),
- * which is hosted on the OSF Preprints platform.
+ * Imports psychology eprints from PsyArXiv (https://psyarxiv.com),
+ * which is hosted on the OSF Eprints platform.
  *
- * Uses the OSF Preprints API v2:
+ * Uses the OSF Eprints API v2:
  * - REST API with JSON:API format
  * - Public access without authentication for reading
  * - Rate limit: 100 requests per minute
@@ -13,7 +13,7 @@
  * ATProto Compliance:
  * - All imported data is AppView cache (ephemeral, rebuildable)
  * - Never writes to user PDSes
- * - Users claim preprints by creating records in THEIR PDS
+ * - Users claim eprints by creating records in THEIR PDS
  *
  * @packageDocumentation
  * @public
@@ -22,7 +22,7 @@
 
 import { PluginError } from '../../types/errors.js';
 import type {
-  ExternalPreprint,
+  ExternalEprint,
   ExternalSearchQuery,
   FetchOptions,
   IPluginManifest,
@@ -31,12 +31,12 @@ import type {
 import { ImportingPlugin } from '../core/importing-plugin.js';
 
 /**
- * OSF Preprints API response types.
+ * OSF Eprints API response types.
  *
  * @internal
  */
-interface OsfPreprintResponse {
-  data: OsfPreprint[];
+interface OsfEprintResponse {
+  data: OsfEprint[];
   links: {
     next?: string;
     prev?: string;
@@ -44,13 +44,13 @@ interface OsfPreprintResponse {
 }
 
 /**
- * OSF Preprint data structure.
+ * OSF Eprint data structure.
  *
  * @internal
  */
-interface OsfPreprint {
+interface OsfEprint {
   id: string;
-  type: 'preprints';
+  type: 'eprints';
   attributes: {
     title: string;
     description?: string;
@@ -59,7 +59,7 @@ interface OsfPreprint {
     date_published?: string;
     doi?: string;
     is_published: boolean;
-    is_preprint_orphan: boolean;
+    is_eprint_orphan: boolean;
     license_record?: {
       copyright_holders: string[];
       year: string;
@@ -89,7 +89,7 @@ interface OsfPreprint {
   links: {
     self: string;
     html: string;
-    preprint_doi?: string;
+    eprint_doi?: string;
   };
 }
 
@@ -134,7 +134,7 @@ interface OsfContributor {
  */
 export interface PsyArxivPaper {
   /**
-   * Unique preprint identifier.
+   * Unique eprint identifier.
    */
   id: string;
 
@@ -154,7 +154,7 @@ export interface PsyArxivPaper {
   abstract?: string;
 
   /**
-   * URL to the preprint.
+   * URL to the eprint.
    */
   url: string;
 
@@ -193,8 +193,8 @@ export interface PsyArxivPaper {
  * PsyArXiv integration plugin.
  *
  * @remarks
- * Fetches psychology preprints from PsyArXiv via OSF Preprints API and imports
- * them into the Chive AppView cache. Users can claim preprints they authored.
+ * Fetches psychology eprints from PsyArXiv via OSF Eprints API and imports
+ * them into the Chive AppView cache. Users can claim eprints they authored.
  *
  * Extends ImportingPlugin for standardized import/claiming workflow.
  *
@@ -229,7 +229,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
     id: 'pub.chive.plugin.psyarxiv',
     name: 'PsyArXiv Integration',
     version: '0.1.0',
-    description: 'Imports psychology preprints from PsyArXiv with claiming support',
+    description: 'Imports psychology eprints from PsyArXiv with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -271,7 +271,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
     this.rateLimitDelayMs = 600;
 
     this.logger.info('PsyArXiv plugin initialized (search-based)', {
-      apiVersion: 'OSF Preprints API v2',
+      apiVersion: 'OSF Eprints API v2',
       rateLimit: `${this.rateLimitDelayMs}ms between requests`,
     });
 
@@ -279,14 +279,14 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Fetches preprints from PsyArXiv.
+   * Fetches eprints from PsyArXiv.
    *
    * @param options - Fetch options (limit, cursor)
-   * @returns Async iterable of external preprints
+   * @returns Async iterable of external eprints
    */
-  async *fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint> {
+  async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
     let nextUrl: string | null =
-      `${this.API_BASE_URL}/preprints/?filter[provider]=${this.PROVIDER_ID}&sort=-date_created`;
+      `${this.API_BASE_URL}/eprints/?filter[provider]=${this.PROVIDER_ID}&sort=-date_created`;
 
     // If cursor provided, use it as the next URL
     if (options?.cursor) {
@@ -301,7 +301,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
 
       const response = await fetch(nextUrl, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/vnd.api+json',
         },
       });
@@ -310,19 +310,19 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
         throw new PluginError(this.id, 'EXECUTE', `PsyArXiv API error: ${response.status}`);
       }
 
-      const data = (await response.json()) as OsfPreprintResponse;
+      const data = (await response.json()) as OsfEprintResponse;
 
-      for (const preprint of data.data) {
+      for (const eprint of data.data) {
         if (count >= limit) break;
 
-        // Skip unpublished or orphaned preprints
-        if (!preprint.attributes.is_published || preprint.attributes.is_preprint_orphan) {
+        // Skip unpublished or orphaned eprints
+        if (!eprint.attributes.is_published || eprint.attributes.is_eprint_orphan) {
           continue;
         }
 
-        const paper = await this.osfPreprintToPaper(preprint);
+        const paper = await this.osfEprintToPaper(eprint);
         if (paper) {
-          yield this.paperToExternalPreprint(paper);
+          yield this.paperToExternalEprint(paper);
           count++;
         }
       }
@@ -333,19 +333,19 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Builds the canonical URL for a PsyArXiv preprint.
+   * Builds the canonical URL for a PsyArXiv eprint.
    *
-   * @param externalId - Preprint ID
-   * @returns Full URL to the preprint
+   * @param externalId - Eprint ID
+   * @returns Full URL to the eprint
    */
-  buildPreprintUrl(externalId: string): string {
+  buildEprintUrl(externalId: string): string {
     return `https://psyarxiv.com/${externalId}`;
   }
 
   /**
-   * Builds the PDF URL for a PsyArXiv preprint.
+   * Builds the PDF URL for a PsyArXiv eprint.
    *
-   * @param externalId - Preprint ID
+   * @param externalId - Eprint ID
    * @returns PDF download URL
    */
   override buildPdfUrl(externalId: string): string | null {
@@ -356,49 +356,49 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
    * Parses external ID from a PsyArXiv URL.
    *
    * @param url - PsyArXiv URL
-   * @returns Preprint ID or null
+   * @returns Eprint ID or null
    */
   override parseExternalId(url: string): string | null {
-    // Match psyarxiv.com/{id} or osf.io/preprints/psyarxiv/{id}
+    // Match psyarxiv.com/{id} or osf.io/eprints/psyarxiv/{id}
     const psyarxivMatch = /psyarxiv\.com\/([a-z0-9]+)/i.exec(url);
     if (psyarxivMatch?.[1]) {
       return psyarxivMatch[1];
     }
 
-    const osfMatch = /osf\.io\/preprints\/psyarxiv\/([a-z0-9]+)/i.exec(url);
+    const osfMatch = /osf\.io\/eprints\/psyarxiv\/([a-z0-9]+)/i.exec(url);
     return osfMatch?.[1] ?? null;
   }
 
   /**
-   * Converts an OSF preprint to PsyArxivPaper format.
+   * Converts an OSF eprint to PsyArxivPaper format.
    *
-   * @param preprint - OSF preprint data
+   * @param eprint - OSF eprint data
    * @returns PsyArxiv paper or null
    */
-  private async osfPreprintToPaper(preprint: OsfPreprint): Promise<PsyArxivPaper | null> {
+  private async osfEprintToPaper(eprint: OsfEprint): Promise<PsyArxivPaper | null> {
     try {
       // Fetch contributors to get author names
-      const authors = await this.fetchContributors(preprint);
+      const authors = await this.fetchContributors(eprint);
 
       // Extract subjects as categories
-      const subjects = preprint.attributes.subjects?.map((s) => s.text) ?? [];
+      const subjects = eprint.attributes.subjects?.map((s) => s.text) ?? [];
 
       return {
-        id: preprint.id,
-        title: preprint.attributes.title,
+        id: eprint.id,
+        title: eprint.attributes.title,
         authors,
-        abstract: preprint.attributes.description,
-        url: preprint.links.html,
-        publicationDate: preprint.attributes.date_published ?? preprint.attributes.date_created,
-        doi: preprint.attributes.doi,
-        pdfUrl: this.buildPdfUrl(preprint.id) ?? undefined,
+        abstract: eprint.attributes.description,
+        url: eprint.links.html,
+        publicationDate: eprint.attributes.date_published ?? eprint.attributes.date_created,
+        doi: eprint.attributes.doi,
+        pdfUrl: this.buildPdfUrl(eprint.id) ?? undefined,
         subjects: subjects.length > 0 ? subjects : undefined,
-        tags: preprint.attributes.tags,
+        tags: eprint.attributes.tags,
         source: 'psyarxiv',
       };
     } catch (err) {
-      this.logger.warn('Error converting OSF preprint', {
-        preprintId: preprint.id,
+      this.logger.warn('Error converting OSF eprint', {
+        eprintId: eprint.id,
         error: (err as Error).message,
       });
       return null;
@@ -406,26 +406,26 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Fetches contributors for a preprint.
+   * Fetches contributors for a eprint.
    *
-   * @param preprint - OSF preprint data
+   * @param eprint - OSF eprint data
    * @returns Array of author names
    */
-  private async fetchContributors(preprint: OsfPreprint): Promise<string[]> {
-    const contributorsUrl = preprint.relationships.contributors.links.related.href;
+  private async fetchContributors(eprint: OsfEprint): Promise<string[]> {
+    const contributorsUrl = eprint.relationships.contributors.links.related.href;
 
     await this.rateLimit();
 
     const response = await fetch(`${contributorsUrl}?embed=users`, {
       headers: {
-        'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+        'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
         Accept: 'application/vnd.api+json',
       },
     });
 
     if (!response.ok) {
       this.logger.warn('Failed to fetch contributors', {
-        preprintId: preprint.id,
+        eprintId: eprint.id,
         status: response.status,
       });
       return [];
@@ -451,9 +451,9 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Converts a PsyArxiv paper to ExternalPreprint format.
+   * Converts a PsyArxiv paper to ExternalEprint format.
    */
-  private paperToExternalPreprint(paper: PsyArxivPaper): ExternalPreprint {
+  private paperToExternalEprint(paper: PsyArxivPaper): ExternalEprint {
     return {
       externalId: paper.id,
       url: paper.url,
@@ -470,7 +470,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   /**
    * Gets a cached paper by ID.
    *
-   * @param id - Preprint ID
+   * @param id - Eprint ID
    * @returns Paper metadata or null
    *
    * @public
@@ -480,16 +480,16 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Fetches details for a specific preprint.
+   * Fetches details for a specific eprint.
    *
-   * @param preprintId - PsyArXiv preprint ID
+   * @param eprintId - PsyArXiv eprint ID
    * @returns Paper details or null
    *
    * @public
    */
-  async fetchPreprintDetails(preprintId: string): Promise<PsyArxivPaper | null> {
+  async fetchEprintDetails(eprintId: string): Promise<PsyArxivPaper | null> {
     // Check cache first
-    const cached = await this.cache.get<PsyArxivPaper>(`psyarxiv:detail:${preprintId}`);
+    const cached = await this.cache.get<PsyArxivPaper>(`psyarxiv:detail:${eprintId}`);
     if (cached) {
       return cached;
     }
@@ -497,32 +497,32 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
     await this.rateLimit();
 
     try {
-      const response = await fetch(`${this.API_BASE_URL}/preprints/${preprintId}/`, {
+      const response = await fetch(`${this.API_BASE_URL}/eprints/${eprintId}/`, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/vnd.api+json',
         },
       });
 
       if (!response.ok) {
-        this.logger.warn('Failed to fetch preprint details', {
-          preprintId,
+        this.logger.warn('Failed to fetch eprint details', {
+          eprintId,
           status: response.status,
         });
         return null;
       }
 
-      const data = (await response.json()) as { data: OsfPreprint };
-      const paper = await this.osfPreprintToPaper(data.data);
+      const data = (await response.json()) as { data: OsfEprint };
+      const paper = await this.osfEprintToPaper(data.data);
 
       if (paper) {
-        await this.cache.set(`psyarxiv:detail:${preprintId}`, paper, this.CACHE_TTL);
+        await this.cache.set(`psyarxiv:detail:${eprintId}`, paper, this.CACHE_TTL);
       }
 
       return paper;
     } catch (err) {
-      this.logger.warn('Error fetching preprint details', {
-        preprintId,
+      this.logger.warn('Error fetching eprint details', {
+        eprintId,
         error: (err as Error).message,
       });
       return null;
@@ -530,7 +530,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Searches for preprints by query.
+   * Searches for eprints by query.
    *
    * @param query - Search query
    * @param options - Search options
@@ -538,7 +538,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
    *
    * @public
    */
-  async searchPreprints(
+  async searchEprints(
     query: string,
     options?: { limit?: number }
   ): Promise<readonly PsyArxivPaper[]> {
@@ -549,10 +549,10 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
 
     try {
       const response = await fetch(
-        `${this.API_BASE_URL}/preprints/?filter[provider]=${this.PROVIDER_ID}&filter[title]=${encodedQuery}&page[size]=${limit}`,
+        `${this.API_BASE_URL}/eprints/?filter[provider]=${this.PROVIDER_ID}&filter[title]=${encodedQuery}&page[size]=${limit}`,
         {
           headers: {
-            'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+            'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
             Accept: 'application/vnd.api+json',
           },
         }
@@ -566,15 +566,15 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
         return [];
       }
 
-      const data = (await response.json()) as OsfPreprintResponse;
+      const data = (await response.json()) as OsfEprintResponse;
       const papers: PsyArxivPaper[] = [];
 
-      for (const preprint of data.data) {
-        if (!preprint.attributes.is_published || preprint.attributes.is_preprint_orphan) {
+      for (const eprint of data.data) {
+        if (!eprint.attributes.is_published || eprint.attributes.is_eprint_orphan) {
           continue;
         }
 
-        const paper = await this.osfPreprintToPaper(preprint);
+        const paper = await this.osfEprintToPaper(eprint);
         if (paper) {
           papers.push(paper);
         }
@@ -591,17 +591,17 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Searches PsyArXiv for preprints matching the query.
+   * Searches PsyArXiv for eprints matching the query.
    *
    * @param query - Search parameters (author, title, externalId)
-   * @returns Matching preprints from PsyArXiv
+   * @returns Matching eprints from PsyArXiv
    *
    * @throws {PluginError} If the search request fails
    *
    * @remarks
-   * Uses OSF Preprints API v2 for search queries. Supports searching by:
+   * Uses OSF Eprints API v2 for search queries. Supports searching by:
    * - Title text (filter[title] parameter)
-   * - Preprint ID (exact match lookup)
+   * - Eprint ID (exact match lookup)
    *
    * Rate limiting: Enforces 600ms delay between requests.
    *
@@ -615,12 +615,12 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
    *
    * @public
    */
-  async search(query: ExternalSearchQuery): Promise<readonly ExternalPreprint[]> {
+  async search(query: ExternalSearchQuery): Promise<readonly ExternalEprint[]> {
     // Handle exact ID lookup separately
     if (query.externalId) {
-      const paper = await this.fetchPreprintDetails(query.externalId);
+      const paper = await this.fetchEprintDetails(query.externalId);
       if (paper) {
-        return [this.paperToExternalPreprint(paper)];
+        return [this.paperToExternalEprint(paper)];
       }
       return [];
     }
@@ -652,7 +652,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
     try {
       const response = await fetch(searchUrl, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/vnd.api+json',
         },
       });
@@ -665,15 +665,15 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
         );
       }
 
-      const data = (await response.json()) as OsfPreprintResponse;
+      const data = (await response.json()) as OsfEprintResponse;
       const papers: PsyArxivPaper[] = [];
 
-      for (const preprint of data.data) {
-        if (!preprint.attributes.is_published || preprint.attributes.is_preprint_orphan) {
+      for (const eprint of data.data) {
+        if (!eprint.attributes.is_published || eprint.attributes.is_eprint_orphan) {
           continue;
         }
 
-        const paper = await this.osfPreprintToPaper(preprint);
+        const paper = await this.osfEprintToPaper(eprint);
         if (paper) {
           papers.push(paper);
         }
@@ -687,7 +687,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
       this.recordCounter('search_requests');
       this.recordCounter('search_results', { count: String(papers.length) });
 
-      return papers.map((paper) => this.paperToExternalPreprint(paper));
+      return papers.map((paper) => this.paperToExternalEprint(paper));
     } catch (err) {
       if (err instanceof PluginError) {
         throw err;
@@ -714,7 +714,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
    * @internal
    */
   private buildSearchUrl(query: ExternalSearchQuery): string {
-    const url = new URL(`${this.API_BASE_URL}/preprints/`);
+    const url = new URL(`${this.API_BASE_URL}/eprints/`);
 
     url.searchParams.set('filter[provider]', this.PROVIDER_ID);
 

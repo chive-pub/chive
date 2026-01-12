@@ -29,7 +29,7 @@ export * from './governance/index.js';
 export * from './graph/index.js';
 export * from './import/index.js';
 export * from './metrics/index.js';
-export * from './preprint/index.js';
+export * from './eprint/index.js';
 export * from './review/index.js';
 export * from './sync/index.js';
 export * from './tag/index.js';
@@ -48,7 +48,7 @@ import { governanceEndpoints } from './governance/index.js';
 import { graphEndpoints } from './graph/index.js';
 import { importEndpoints } from './import/index.js';
 import { metricsEndpoints } from './metrics/index.js';
-import { preprintEndpoints } from './preprint/index.js';
+import { eprintEndpoints } from './eprint/index.js';
 import { reviewEndpoints } from './review/index.js';
 import { syncEndpoints } from './sync/index.js';
 import { tagEndpoints } from './tag/index.js';
@@ -70,7 +70,7 @@ export const allXRPCEndpoints = [
   ...graphEndpoints,
   ...importEndpoints,
   ...metricsEndpoints,
-  ...preprintEndpoints,
+  ...eprintEndpoints,
   ...reviewEndpoints,
   ...syncEndpoints,
   ...tagEndpoints,
@@ -90,8 +90,8 @@ export const allXRPCEndpoints = [
  * const app = new Hono<ChiveEnv>();
  * registerXRPCRoutes(app);
  * // Routes:
- * // GET /xrpc/pub.chive.preprint.getSubmission
- * // GET /xrpc/pub.chive.preprint.searchSubmissions
+ * // GET /xrpc/pub.chive.eprint.getSubmission
+ * // GET /xrpc/pub.chive.eprint.searchSubmissions
  * // etc.
  * ```
  *

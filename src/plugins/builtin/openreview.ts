@@ -17,7 +17,7 @@
  * ATProto Compliance:
  * - All imported data is AppView cache (ephemeral, rebuildable)
  * - Never writes to user PDSes
- * - Users claim preprints by creating records in THEIR PDS
+ * - Users claim eprints by creating records in THEIR PDS
  *
  * @packageDocumentation
  * @public
@@ -26,7 +26,7 @@
 
 import { PluginError } from '../../types/errors.js';
 import type {
-  ExternalPreprint,
+  ExternalEprint,
   ExternalSearchQuery,
   FetchOptions,
   IPluginManifest,
@@ -341,9 +341,9 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
    * Fetches submissions from OpenReview.
    *
    * @param options - Fetch options (limit, cursor, filters)
-   * @returns Async iterable of external preprints
+   * @returns Async iterable of external eprints
    */
-  async *fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint> {
+  async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
     let count = 0;
     const limit = options?.limit ?? 100;
 
@@ -364,7 +364,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
 
         const response = await fetch(url.toString(), {
           headers: {
-            'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+            'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
             Accept: 'application/json',
           },
         });
@@ -388,7 +388,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
 
           const paper = this.noteToPaper(note);
           if (paper) {
-            yield this.paperToExternalPreprint(paper);
+            yield this.paperToExternalEprint(paper);
             count++;
           }
         }
@@ -409,7 +409,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
    * @param externalId - Note ID
    * @returns Full URL to the submission
    */
-  buildPreprintUrl(externalId: string): string {
+  buildEprintUrl(externalId: string): string {
     return `https://openreview.net/forum?id=${externalId}`;
   }
 
@@ -456,7 +456,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
       authors: content.authors?.value ?? [],
       authorIds: content.authorids?.value ?? [],
       abstract: content.abstract?.value,
-      url: this.buildPreprintUrl(note.forum),
+      url: this.buildEprintUrl(note.forum),
       createdAt: note.cdate,
       publishedAt: note.pdate ?? note.odate,
       pdfUrl: content.pdf?.value
@@ -471,9 +471,9 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
   }
 
   /**
-   * Converts an OpenReview paper to ExternalPreprint format.
+   * Converts an OpenReview paper to ExternalEprint format.
    */
-  private paperToExternalPreprint(paper: OpenReviewPaper): ExternalPreprint {
+  private paperToExternalEprint(paper: OpenReviewPaper): ExternalEprint {
     return {
       externalId: paper.id,
       url: paper.url,
@@ -516,7 +516,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
         `${this.API_BASE_URL}/profiles?id=${encodeURIComponent(profileId)}`,
         {
           headers: {
-            'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+            'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
             Accept: 'application/json',
           },
         }
@@ -602,7 +602,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
         `${this.API_BASE_URL}/profiles?confirmedEmails=${encodeURIComponent(email)}`,
         {
           headers: {
-            'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+            'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
             Accept: 'application/json',
           },
         }
@@ -650,7 +650,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
         `${this.API_BASE_URL}/notes?content.authorids=${encodeURIComponent(profileId)}&limit=${limit}`,
         {
           headers: {
-            'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+            'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
             Accept: 'application/json',
           },
         }
@@ -699,7 +699,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
     try {
       const response = await fetch(`${this.API_BASE_URL}/notes?id=${submissionId}`, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/json',
         },
       });
@@ -754,7 +754,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
     try {
       const response = await fetch(`${this.API_BASE_URL}/notes?id=${noteId}`, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/json',
         },
       });
@@ -816,12 +816,12 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
    *
    * @public
    */
-  async search(query: ExternalSearchQuery): Promise<readonly ExternalPreprint[]> {
+  async search(query: ExternalSearchQuery): Promise<readonly ExternalEprint[]> {
     // Handle exact ID lookup separately
     if (query.externalId) {
       const paper = await this.fetchSubmissionDetails(query.externalId);
       if (paper) {
-        return [this.paperToExternalPreprint(paper)];
+        return [this.paperToExternalEprint(paper)];
       }
       return [];
     }
@@ -838,7 +838,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
     try {
       const response = await fetch(searchUrl, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/json',
         },
       });
@@ -869,7 +869,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
       this.recordCounter('search_requests');
       this.recordCounter('search_results', { count: String(papers.length) });
 
-      return papers.map((paper) => this.paperToExternalPreprint(paper));
+      return papers.map((paper) => this.paperToExternalEprint(paper));
     } catch (err) {
       if (err instanceof PluginError) {
         throw err;

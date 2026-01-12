@@ -3,7 +3,7 @@
  *
  * @remarks
  * This interface provides access to Chive's local index database. It stores
- * searchable metadata about preprints, but NOT the source data itself.
+ * searchable metadata about eprints, but NOT the source data itself.
  *
  * **CRITICAL ATProto Compliance**:
  * - Stores INDEXES only, not source data
@@ -16,7 +16,7 @@
  */
 
 import type { AtUri, BlobRef, CID, DID } from '../atproto.js';
-import type { PreprintAuthor } from '../models/author.js';
+import type { EprintAuthor } from '../models/author.js';
 import type {
   ConferencePresentation,
   DocumentFormat,
@@ -27,27 +27,27 @@ import type {
   RelatedWork,
   Repositories,
   SupplementaryMaterial,
-} from '../models/preprint.js';
+} from '../models/eprint.js';
 import type { Result } from '../result.js';
 
 /**
- * Stored preprint metadata in Chive's index.
+ * Stored eprint metadata in Chive's index.
  *
  * @remarks
  * This is an INDEX record, not the source of truth. The authoritative
- * preprint data lives in the user's PDS. This record enables fast searching
+ * eprint data lives in the user's PDS. This record enables fast searching
  * and browsing without hitting individual PDSes.
  *
  * @public
  */
-export interface StoredPreprint {
+export interface StoredEprint {
   /**
-   * AT URI of the preprint record.
+   * AT URI of the eprint record.
    */
   readonly uri: AtUri;
 
   /**
-   * CID of the indexed preprint version.
+   * CID of the indexed eprint version.
    *
    * @remarks
    * Used to detect when PDS has a newer version (staleness check).
@@ -61,10 +61,10 @@ export interface StoredPreprint {
    * Unified author list including primary and co-authors.
    * Order is determined by each author's `order` property.
    */
-  readonly authors: readonly PreprintAuthor[];
+  readonly authors: readonly EprintAuthor[];
 
   /**
-   * DID of the human user who submitted this preprint.
+   * DID of the human user who submitted this eprint.
    *
    * @remarks
    * Always set to the human who performed the submission.
@@ -83,7 +83,7 @@ export interface StoredPreprint {
   readonly paperDid?: DID;
 
   /**
-   * Preprint title.
+   * Eprint title.
    *
    * @remarks
    * Indexed for full-text search and faceted filtering.
@@ -91,7 +91,7 @@ export interface StoredPreprint {
   readonly title: string;
 
   /**
-   * Preprint abstract.
+   * Eprint abstract.
    *
    * @remarks
    * Indexed for full-text search.
@@ -117,7 +117,7 @@ export interface StoredPreprint {
   readonly documentFormat: DocumentFormat;
 
   /**
-   * Supplementary materials attached to this preprint.
+   * Supplementary materials attached to this eprint.
    *
    * @remarks
    * Additional files (appendices, figures, data, code, notebooks).
@@ -129,7 +129,7 @@ export interface StoredPreprint {
    * AT URI of previous version (if this is an update).
    *
    * @remarks
-   * Used to build version chains for preprints with multiple revisions.
+   * Used to build version chains for eprints with multiple revisions.
    */
   readonly previousVersionUri?: AtUri;
 
@@ -145,7 +145,7 @@ export interface StoredPreprint {
    * Keywords for searchability and categorization.
    *
    * @remarks
-   * User-provided keywords for the preprint. Indexed for full-text search.
+   * User-provided keywords for the eprint. Indexed for full-text search.
    */
   readonly keywords?: readonly string[];
 
@@ -173,8 +173,8 @@ export interface StoredPreprint {
    * Current publication status.
    *
    * @remarks
-   * Tracks progression from preprint through review to publication.
-   * Defaults to 'preprint' for new submissions.
+   * Tracks progression from eprint through review to publication.
+   * Defaults to 'eprint' for new submissions.
    */
   readonly publicationStatus: PublicationStatus;
 
@@ -182,7 +182,7 @@ export interface StoredPreprint {
    * Link to the published version (Version of Record).
    *
    * @remarks
-   * Populated when preprint has been published in a journal.
+   * Populated when eprint has been published in a journal.
    */
   readonly publishedVersion?: PublishedVersion;
 
@@ -198,7 +198,7 @@ export interface StoredPreprint {
    * Related works.
    *
    * @remarks
-   * Links to related preprints, datasets, software, and prior versions
+   * Links to related eprints, datasets, software, and prior versions
    * using DataCite-compatible relation types.
    */
   readonly relatedWorks?: readonly RelatedWork[];
@@ -228,7 +228,7 @@ export interface StoredPreprint {
   readonly conferencePresentation?: ConferencePresentation;
 
   /**
-   * URL of the user's PDS where this preprint lives.
+   * URL of the user's PDS where this eprint lives.
    *
    * @remarks
    * Used for:
@@ -244,17 +244,17 @@ export interface StoredPreprint {
   readonly indexedAt: Date;
 
   /**
-   * When the preprint was created (from record).
+   * When the eprint was created (from record).
    */
   readonly createdAt: Date;
 }
 
 /**
- * Query options for retrieving preprints from index.
+ * Query options for retrieving eprints from index.
  *
  * @public
  */
-export interface PreprintQueryOptions {
+export interface EprintQueryOptions {
   /**
    * Maximum number of records to return.
    *
@@ -303,21 +303,21 @@ export interface PreprintQueryOptions {
  */
 export interface IStorageBackend {
   /**
-   * Stores or updates a preprint index record.
+   * Stores or updates a eprint index record.
    *
-   * @param preprint - Preprint metadata to index
+   * @param eprint - Eprint metadata to index
    * @returns Result indicating success or failure
    *
    * @remarks
-   * Upserts the preprint (insert or update based on URI).
+   * Upserts the eprint (insert or update based on URI).
    * Updates indexedAt timestamp on every call.
    *
    * **ATProto Compliance**: Stores metadata only, not source data.
    *
    * @example
    * ```typescript
-   * const result = await storage.storePreprint({
-   *   uri: toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   * const result = await storage.storeEprint({
+   *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   cid: toCID('bafyreib...')!,
    *   author: toDID('did:plc:abc')!,
    *   title: 'Neural Networks in Biology',
@@ -329,7 +329,7 @@ export interface IStorageBackend {
    *     size: 2048576
    *   },
    *   documentFormat: 'pdf',
-   *   publicationStatus: 'preprint',
+   *   publicationStatus: 'eprint',
    *   pdsUrl: 'https://pds.example.com',
    *   indexedAt: new Date(),
    *   createdAt: new Date()
@@ -342,76 +342,76 @@ export interface IStorageBackend {
    *
    * @public
    */
-  storePreprint(preprint: StoredPreprint): Promise<Result<void, Error>>;
+  storeEprint(eprint: StoredEprint): Promise<Result<void, Error>>;
 
   /**
-   * Retrieves a preprint index record by URI.
+   * Retrieves a eprint index record by URI.
    *
-   * @param uri - AT URI of the preprint
-   * @returns Preprint if indexed, null otherwise
+   * @param uri - AT URI of the eprint
+   * @returns Eprint if indexed, null otherwise
    *
    * @remarks
-   * Returns null if the preprint has not been indexed by Chive.
-   * The preprint may still exist in the user's PDS.
+   * Returns null if the eprint has not been indexed by Chive.
+   * The eprint may still exist in the user's PDS.
    *
    * @example
    * ```typescript
-   * const preprint = await storage.getPreprint(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   * const eprint = await storage.getEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
-   * if (preprint) {
-   *   console.log('Title:', preprint.title);
+   * if (eprint) {
+   *   console.log('Title:', eprint.title);
    * }
    * ```
    *
    * @public
    */
-  getPreprint(uri: AtUri): Promise<StoredPreprint | null>;
+  getEprint(uri: AtUri): Promise<StoredEprint | null>;
 
   /**
-   * Queries preprints by author.
+   * Queries eprints by author.
    *
    * @param author - Author DID
    * @param options - Query options (limit, offset, sort)
-   * @returns Array of preprints by this author
+   * @returns Array of eprints by this author
    *
    * @remarks
-   * Returns preprints in order specified by options.sortBy.
+   * Returns eprints in order specified by options.sortBy.
    * For full-text search across all fields, use ISearchEngine instead.
    *
    * @example
    * ```typescript
-   * const preprints = await storage.getPreprintsByAuthor(
+   * const eprints = await storage.getEprintsByAuthor(
    *   toDID('did:plc:abc')!,
    *   { limit: 10, sortBy: 'createdAt', sortOrder: 'desc' }
    * );
    *
-   * preprints.forEach(p => console.log(p.title));
+   * eprints.forEach(p => console.log(p.title));
    * ```
    *
    * @public
    */
-  getPreprintsByAuthor(author: DID, options?: PreprintQueryOptions): Promise<StoredPreprint[]>;
+  getEprintsByAuthor(author: DID, options?: EprintQueryOptions): Promise<StoredEprint[]>;
 
   /**
-   * Lists all preprint URIs with pagination.
+   * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit
-   * @returns Array of preprint URIs
+   * @returns Array of eprint URIs
    *
    * @remarks
-   * Used for browsing all preprints without facet filtering.
+   * Used for browsing all eprints without facet filtering.
    * Returns URIs only for efficiency; full metadata can be fetched separately.
    *
    * @example
    * ```typescript
-   * const uris = await storage.listPreprintUris({ limit: 100 });
+   * const uris = await storage.listEprintUris({ limit: 100 });
    * ```
    *
    * @public
    */
-  listPreprintUris(options?: { limit?: number; cursor?: string }): Promise<readonly string[]>;
+  listEprintUris(options?: { limit?: number; cursor?: string }): Promise<readonly string[]>;
 
   /**
    * Tracks PDS source for staleness detection.
@@ -430,7 +430,7 @@ export interface IStorageBackend {
    * @example
    * ```typescript
    * await storage.trackPDSSource(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   'https://pds.example.com',
    *   new Date()
    * );
@@ -456,7 +456,7 @@ export interface IStorageBackend {
    * @example
    * ```typescript
    * const isStale = await storage.isStale(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
    * if (isStale) {

@@ -1,5 +1,5 @@
 {
-  "description": "Preprint indexing pipeline with PDF extraction and field computation",
+  "description": "Eprint indexing pipeline with PDF extraction and field computation",
   "processors": [
     {
       "attachment": {
@@ -149,7 +149,7 @@
     {
       "set": {
         "field": "_index",
-        "value": "failed-preprints-{now/d}"
+        "value": "failed-eprints-{now/d}"
       }
     },
     {
@@ -161,7 +161,7 @@
     {
       "set": {
         "field": "error.pipeline",
-        "value": "preprint-processing"
+        "value": "eprint-processing"
       }
     },
     {

@@ -88,8 +88,8 @@ export interface BatchAssignmentResult {
  *   updatedAt: new Date()
  * });
  *
- * // Assign facets to a preprint
- * await facetManager.assignFacets('at://did:plc:user/pub.chive.preprint/123', [
+ * // Assign facets to a eprint
+ * await facetManager.assignFacets('at://did:plc:user/pub.chive.eprint/123', [
  *   { facetType: 'matter', facetUri: uri, confidence: 0.95 }
  * ], 'did:plc:user');
  *
@@ -656,7 +656,7 @@ export class FacetManager {
   }
 
   /**
-   * Assign facets to a record (preprint, review, etc.).
+   * Assign facets to a record (eprint, review, etc.).
    *
    * Creates FACET_VALUE relationships between the record and facet nodes.
    *
@@ -667,7 +667,7 @@ export class FacetManager {
    * @example
    * ```typescript
    * await facetManager.assignFacets(
-   *   'at://did:plc:user/pub.chive.preprint/123',
+   *   'at://did:plc:user/pub.chive.eprint/123',
    *   [
    *     {
    *       facetType: 'matter',

@@ -126,7 +126,7 @@ export const paginationResponseSchema = z.object({
  *
  * @example
  * ```typescript
- * const preprintListSchema = paginatedResponse(preprintSummarySchema, 'preprints');
+ * const eprintListSchema = paginatedResponse(eprintSummarySchema, 'eprints');
  * ```
  *
  * @public
