@@ -456,18 +456,37 @@ export class BatchOperations {
   private async insertSinglePreprint(client: PoolClient, preprint: StoredPreprint): Promise<void> {
     const query = `
       INSERT INTO preprints_index (
-        uri, cid, author_did, title, abstract,
-        pdf_blob_cid, pdf_blob_mime_type, pdf_blob_size,
+        uri, cid, authors, submitted_by, paper_did, title, abstract,
+        document_blob_cid, document_blob_mime_type, document_blob_size,
+        document_format, keywords, license, publication_status,
+        previous_version_uri, version_notes,
+        supplementary_materials, published_version, external_ids,
+        related_works, repositories, funding, conference_presentation,
         pds_url, indexed_at, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
       ON CONFLICT (uri) DO UPDATE SET
         cid = EXCLUDED.cid,
-        author_did = EXCLUDED.author_did,
+        authors = EXCLUDED.authors,
+        submitted_by = EXCLUDED.submitted_by,
+        paper_did = EXCLUDED.paper_did,
         title = EXCLUDED.title,
         abstract = EXCLUDED.abstract,
-        pdf_blob_cid = EXCLUDED.pdf_blob_cid,
-        pdf_blob_mime_type = EXCLUDED.pdf_blob_mime_type,
-        pdf_blob_size = EXCLUDED.pdf_blob_size,
+        document_blob_cid = EXCLUDED.document_blob_cid,
+        document_blob_mime_type = EXCLUDED.document_blob_mime_type,
+        document_blob_size = EXCLUDED.document_blob_size,
+        document_format = EXCLUDED.document_format,
+        keywords = EXCLUDED.keywords,
+        license = EXCLUDED.license,
+        publication_status = EXCLUDED.publication_status,
+        previous_version_uri = EXCLUDED.previous_version_uri,
+        version_notes = EXCLUDED.version_notes,
+        supplementary_materials = EXCLUDED.supplementary_materials,
+        published_version = EXCLUDED.published_version,
+        external_ids = EXCLUDED.external_ids,
+        related_works = EXCLUDED.related_works,
+        repositories = EXCLUDED.repositories,
+        funding = EXCLUDED.funding,
+        conference_presentation = EXCLUDED.conference_presentation,
         pds_url = EXCLUDED.pds_url,
         indexed_at = EXCLUDED.indexed_at,
         created_at = EXCLUDED.created_at
@@ -476,12 +495,27 @@ export class BatchOperations {
     const params = [
       preprint.uri,
       preprint.cid,
-      preprint.author,
+      JSON.stringify(preprint.authors),
+      preprint.submittedBy,
+      preprint.paperDid ?? null,
       preprint.title,
       preprint.abstract,
-      preprint.pdfBlobRef.ref,
-      preprint.pdfBlobRef.mimeType,
-      preprint.pdfBlobRef.size,
+      preprint.documentBlobRef.ref,
+      preprint.documentBlobRef.mimeType,
+      preprint.documentBlobRef.size,
+      preprint.documentFormat,
+      preprint.keywords ? JSON.stringify(preprint.keywords) : null,
+      preprint.license,
+      preprint.publicationStatus,
+      preprint.previousVersionUri ?? null,
+      preprint.versionNotes ?? null,
+      preprint.supplementaryMaterials ? JSON.stringify(preprint.supplementaryMaterials) : null,
+      preprint.publishedVersion ? JSON.stringify(preprint.publishedVersion) : null,
+      preprint.externalIds ? JSON.stringify(preprint.externalIds) : null,
+      preprint.relatedWorks ? JSON.stringify(preprint.relatedWorks) : null,
+      preprint.repositories ? JSON.stringify(preprint.repositories) : null,
+      preprint.funding ? JSON.stringify(preprint.funding) : null,
+      preprint.conferencePresentation ? JSON.stringify(preprint.conferencePresentation) : null,
       preprint.pdsUrl,
       preprint.indexedAt,
       preprint.createdAt,
@@ -511,42 +545,80 @@ export class BatchOperations {
     const values: unknown[] = [];
     const valueClauses: string[] = [];
     let paramIndex = 1;
+    const paramsPerRow = 26;
 
     for (const preprint of preprints) {
-      const clause = `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10})`;
-      valueClauses.push(clause);
+      const placeholders = Array.from(
+        { length: paramsPerRow },
+        (_, i) => `$${paramIndex + i}`
+      ).join(', ');
+      valueClauses.push(`(${placeholders})`);
 
       values.push(
         preprint.uri,
         preprint.cid,
-        preprint.author,
+        JSON.stringify(preprint.authors),
+        preprint.submittedBy,
+        preprint.paperDid ?? null,
         preprint.title,
         preprint.abstract,
-        preprint.pdfBlobRef.ref,
-        preprint.pdfBlobRef.mimeType,
-        preprint.pdfBlobRef.size,
+        preprint.documentBlobRef.ref,
+        preprint.documentBlobRef.mimeType,
+        preprint.documentBlobRef.size,
+        preprint.documentFormat,
+        preprint.keywords ? JSON.stringify(preprint.keywords) : null,
+        preprint.license,
+        preprint.publicationStatus,
+        preprint.previousVersionUri ?? null,
+        preprint.versionNotes ?? null,
+        preprint.supplementaryMaterials ? JSON.stringify(preprint.supplementaryMaterials) : null,
+        preprint.publishedVersion ? JSON.stringify(preprint.publishedVersion) : null,
+        preprint.externalIds ? JSON.stringify(preprint.externalIds) : null,
+        preprint.relatedWorks ? JSON.stringify(preprint.relatedWorks) : null,
+        preprint.repositories ? JSON.stringify(preprint.repositories) : null,
+        preprint.funding ? JSON.stringify(preprint.funding) : null,
+        preprint.conferencePresentation ? JSON.stringify(preprint.conferencePresentation) : null,
         preprint.pdsUrl,
         preprint.indexedAt,
         preprint.createdAt
       );
 
-      paramIndex += 11;
+      paramIndex += paramsPerRow;
     }
 
     const query = `
       INSERT INTO preprints_index (
-        uri, cid, author_did, title, abstract,
-        pdf_blob_cid, pdf_blob_mime_type, pdf_blob_size,
+        uri, cid, authors, submitted_by, paper_did, title, abstract,
+        document_blob_cid, document_blob_mime_type, document_blob_size,
+        document_format, keywords, license, publication_status,
+        previous_version_uri, version_notes,
+        supplementary_materials, published_version, external_ids,
+        related_works, repositories, funding, conference_presentation,
         pds_url, indexed_at, created_at
       ) VALUES ${valueClauses.join(', ')}
       ON CONFLICT (uri) DO UPDATE SET
         cid = EXCLUDED.cid,
-        author_did = EXCLUDED.author_did,
+        authors = EXCLUDED.authors,
+        submitted_by = EXCLUDED.submitted_by,
+        paper_did = EXCLUDED.paper_did,
         title = EXCLUDED.title,
         abstract = EXCLUDED.abstract,
-        pdf_blob_cid = EXCLUDED.pdf_blob_cid,
-        pdf_blob_mime_type = EXCLUDED.pdf_blob_mime_type,
-        pdf_blob_size = EXCLUDED.pdf_blob_size,
+        document_blob_cid = EXCLUDED.document_blob_cid,
+        document_blob_mime_type = EXCLUDED.document_blob_mime_type,
+        document_blob_size = EXCLUDED.document_blob_size,
+        document_format = EXCLUDED.document_format,
+        keywords = EXCLUDED.keywords,
+        license = EXCLUDED.license,
+        publication_status = EXCLUDED.publication_status,
+        previous_version_uri = EXCLUDED.previous_version_uri,
+        version_notes = EXCLUDED.version_notes,
+        supplementary_materials = EXCLUDED.supplementary_materials,
+        published_version = EXCLUDED.published_version,
+        external_ids = EXCLUDED.external_ids,
+        related_works = EXCLUDED.related_works,
+        repositories = EXCLUDED.repositories,
+        funding = EXCLUDED.funding,
+        conference_presentation = EXCLUDED.conference_presentation,
         pds_url = EXCLUDED.pds_url,
         indexed_at = EXCLUDED.indexed_at,
         created_at = EXCLUDED.created_at

@@ -55,3 +55,10 @@ FOR (rp:RelationProposal) REQUIRE rp.uri IS UNIQUE;
 // Facet dimension constraints
 CREATE CONSTRAINT facet_dimension_name_unique IF NOT EXISTS
 FOR (fd:FacetDimension) REQUIRE fd.name IS UNIQUE;
+
+// Contribution type constraints
+CREATE CONSTRAINT contribution_type_id_unique IF NOT EXISTS
+FOR (ct:ContributionType) REQUIRE ct.typeId IS UNIQUE;
+
+CREATE CONSTRAINT contribution_type_uri_unique IF NOT EXISTS
+FOR (ct:ContributionType) REQUIRE ct.uri IS UNIQUE;

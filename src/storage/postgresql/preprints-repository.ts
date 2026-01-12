@@ -29,7 +29,9 @@
  *   author: toDID('did:plc:abc')!,
  *   title: 'Neural Networks in Biology',
  *   abstract: 'This paper explores...',
- *   pdfBlobRef: { ... },
+ *   documentBlobRef: { ... },
+ *   documentFormat: 'pdf',
+ *   publicationStatus: 'preprint',
  *   pdsUrl: 'https://pds.example.com',
  *   indexedAt: new Date(),
  *   createdAt: new Date()
@@ -54,6 +56,18 @@ import type {
   PreprintQueryOptions,
   StoredPreprint,
 } from '../../types/interfaces/storage.interface.js';
+import type { PreprintAuthor } from '../../types/models/author.js';
+import type {
+  ConferencePresentation,
+  DocumentFormat,
+  ExternalIds,
+  FundingSource,
+  PublicationStatus,
+  PublishedVersion,
+  RelatedWork,
+  Repositories,
+  SupplementaryMaterial,
+} from '../../types/models/preprint.js';
 import { Err, Ok, type Result } from '../../types/result.js';
 
 import { InsertBuilder, SelectBuilder, UpdateBuilder } from './query-builder.js';
@@ -64,20 +78,32 @@ import { InsertBuilder, SelectBuilder, UpdateBuilder } from './query-builder.js'
  * @remarks
  * Maps StoredPreprint interface to PostgreSQL table structure.
  * BlobRef is denormalized into separate columns (cid, mime_type, size).
+ * Complex metadata stored as JSONB.
  *
  * @internal
  */
 interface PreprintRow extends Record<string, unknown> {
   readonly uri: string;
   readonly cid: string;
-  readonly author_did: string;
+  readonly authors: string; // JSONB stored as string
+  readonly submitted_by: string;
+  readonly paper_did: string | null;
   readonly title: string;
   readonly abstract: string;
-  readonly pdf_blob_cid: string;
-  readonly pdf_blob_mime_type: string;
-  readonly pdf_blob_size: number;
+  readonly document_blob_cid: string;
+  readonly document_blob_mime_type: string;
+  readonly document_blob_size: number;
+  readonly document_format: string;
   readonly keywords: string[] | null;
   readonly license: string;
+  readonly publication_status: string;
+  readonly published_version: string | null; // JSONB
+  readonly external_ids: string | null; // JSONB
+  readonly related_works: string | null; // JSONB
+  readonly repositories: string | null; // JSONB
+  readonly funding: string | null; // JSONB
+  readonly conference_presentation: string | null; // JSONB
+  readonly supplementary_materials: string | null; // JSONB
   readonly pds_url: string;
   readonly indexed_at: Date;
   readonly created_at: Date;
@@ -138,12 +164,14 @@ export class PreprintsRepository {
    *   author: toDID('did:plc:abc')!,
    *   title: 'Neural Networks in Biology',
    *   abstract: 'This paper explores...',
-   *   pdfBlobRef: {
+   *   documentBlobRef: {
    *     $type: 'blob',
    *     ref: toCID('bafyreib...')!,
    *     mimeType: 'application/pdf',
    *     size: 2048576
    *   },
+   *   documentFormat: 'pdf',
+   *   publicationStatus: 'preprint',
    *   pdsUrl: 'https://pds.example.com',
    *   indexedAt: new Date(),
    *   createdAt: new Date()
@@ -163,13 +191,31 @@ export class PreprintsRepository {
         .values({
           uri: preprint.uri,
           cid: preprint.cid,
-          author_did: preprint.author,
+          authors: JSON.stringify(preprint.authors),
+          submitted_by: preprint.submittedBy,
+          paper_did: preprint.paperDid ?? null,
           title: preprint.title,
           abstract: preprint.abstract,
-          pdf_blob_cid: preprint.pdfBlobRef.ref,
-          pdf_blob_mime_type: preprint.pdfBlobRef.mimeType,
-          pdf_blob_size: preprint.pdfBlobRef.size,
+          document_blob_cid: preprint.documentBlobRef.ref,
+          document_blob_mime_type: preprint.documentBlobRef.mimeType,
+          document_blob_size: preprint.documentBlobRef.size,
+          document_format: preprint.documentFormat,
+          keywords: preprint.keywords ? [...preprint.keywords] : null,
           license: preprint.license,
+          publication_status: preprint.publicationStatus,
+          published_version: preprint.publishedVersion
+            ? JSON.stringify(preprint.publishedVersion)
+            : null,
+          external_ids: preprint.externalIds ? JSON.stringify(preprint.externalIds) : null,
+          related_works: preprint.relatedWorks ? JSON.stringify(preprint.relatedWorks) : null,
+          repositories: preprint.repositories ? JSON.stringify(preprint.repositories) : null,
+          funding: preprint.funding ? JSON.stringify(preprint.funding) : null,
+          conference_presentation: preprint.conferencePresentation
+            ? JSON.stringify(preprint.conferencePresentation)
+            : null,
+          supplementary_materials: preprint.supplementaryMaterials
+            ? JSON.stringify(preprint.supplementaryMaterials)
+            : null,
           pds_url: preprint.pdsUrl,
           indexed_at: preprint.indexedAt,
           created_at: preprint.createdAt,
@@ -215,14 +261,25 @@ export class PreprintsRepository {
         .select(
           'uri',
           'cid',
-          'author_did',
+          'authors',
+          'submitted_by',
+          'paper_did',
           'title',
           'abstract',
-          'pdf_blob_cid',
-          'pdf_blob_mime_type',
-          'pdf_blob_size',
+          'document_blob_cid',
+          'document_blob_mime_type',
+          'document_blob_size',
+          'document_format',
           'keywords',
           'license',
+          'publication_status',
+          'published_version',
+          'external_ids',
+          'related_works',
+          'repositories',
+          'funding',
+          'conference_presentation',
+          'supplementary_materials',
           'pds_url',
           'indexed_at',
           'created_at'
@@ -280,24 +337,37 @@ export class PreprintsRepository {
       const sortBy = options.sortBy ?? 'createdAt';
       const sortOrder = options.sortOrder ?? 'desc';
 
+      // Note: This queries by submitted_by. To query by any author DID,
+      // use the JSONB query: authors @> '[{"did": "..."}]'
       let query = new SelectBuilder<PreprintRow>()
         .select(
           'uri',
           'cid',
-          'author_did',
+          'authors',
+          'submitted_by',
+          'paper_did',
           'title',
           'abstract',
-          'pdf_blob_cid',
-          'pdf_blob_mime_type',
-          'pdf_blob_size',
+          'document_blob_cid',
+          'document_blob_mime_type',
+          'document_blob_size',
+          'document_format',
           'keywords',
           'license',
+          'publication_status',
+          'published_version',
+          'external_ids',
+          'related_works',
+          'repositories',
+          'funding',
+          'conference_presentation',
+          'supplementary_materials',
           'pds_url',
           'indexed_at',
           'created_at'
         )
         .from('preprints_index')
-        .where({ author_did: author });
+        .where({ submitted_by: author });
 
       // Map sortBy to column name
       const sortColumn =
@@ -392,10 +462,41 @@ export class PreprintsRepository {
       if (updates.cid) dbUpdates.cid = updates.cid;
       if (updates.title) dbUpdates.title = updates.title;
       if (updates.abstract) dbUpdates.abstract = updates.abstract;
-      if (updates.pdfBlobRef) {
-        dbUpdates.pdf_blob_cid = updates.pdfBlobRef.ref;
-        dbUpdates.pdf_blob_mime_type = updates.pdfBlobRef.mimeType;
-        dbUpdates.pdf_blob_size = updates.pdfBlobRef.size;
+      if (updates.documentBlobRef) {
+        dbUpdates.document_blob_cid = updates.documentBlobRef.ref;
+        dbUpdates.document_blob_mime_type = updates.documentBlobRef.mimeType;
+        dbUpdates.document_blob_size = updates.documentBlobRef.size;
+      }
+      if (updates.documentFormat) dbUpdates.document_format = updates.documentFormat;
+      if (updates.publicationStatus) dbUpdates.publication_status = updates.publicationStatus;
+      if (updates.publishedVersion !== undefined) {
+        dbUpdates.published_version = updates.publishedVersion
+          ? JSON.stringify(updates.publishedVersion)
+          : null;
+      }
+      if (updates.externalIds !== undefined) {
+        dbUpdates.external_ids = updates.externalIds ? JSON.stringify(updates.externalIds) : null;
+      }
+      if (updates.relatedWorks !== undefined) {
+        dbUpdates.related_works = updates.relatedWorks
+          ? JSON.stringify(updates.relatedWorks)
+          : null;
+      }
+      if (updates.repositories !== undefined) {
+        dbUpdates.repositories = updates.repositories ? JSON.stringify(updates.repositories) : null;
+      }
+      if (updates.funding !== undefined) {
+        dbUpdates.funding = updates.funding ? JSON.stringify(updates.funding) : null;
+      }
+      if (updates.conferencePresentation !== undefined) {
+        dbUpdates.conference_presentation = updates.conferencePresentation
+          ? JSON.stringify(updates.conferencePresentation)
+          : null;
+      }
+      if (updates.supplementaryMaterials !== undefined) {
+        dbUpdates.supplementary_materials = updates.supplementaryMaterials
+          ? JSON.stringify(updates.supplementaryMaterials)
+          : null;
       }
       if (updates.pdsUrl) dbUpdates.pds_url = updates.pdsUrl;
       if (updates.createdAt) dbUpdates.created_at = updates.createdAt;
@@ -491,25 +592,64 @@ export class PreprintsRepository {
    *
    * @remarks
    * Reconstitutes BlobRef from denormalized columns.
+   * Parses JSONB columns for complex metadata.
    * Performs type conversions (string → Date, number → bigint).
    *
    * @internal
    */
   private rowToPreprint(row: PreprintRow): StoredPreprint {
+    // Parse authors from JSONB
+    const authors: readonly PreprintAuthor[] =
+      typeof row.authors === 'string'
+        ? (JSON.parse(row.authors) as PreprintAuthor[])
+        : (row.authors as PreprintAuthor[]);
+
+    // Parse optional JSONB fields
+    const publishedVersion = row.published_version
+      ? (JSON.parse(row.published_version) as PublishedVersion)
+      : undefined;
+    const externalIds = row.external_ids
+      ? (JSON.parse(row.external_ids) as ExternalIds)
+      : undefined;
+    const relatedWorks = row.related_works
+      ? (JSON.parse(row.related_works) as RelatedWork[])
+      : undefined;
+    const repositories = row.repositories
+      ? (JSON.parse(row.repositories) as Repositories)
+      : undefined;
+    const funding = row.funding ? (JSON.parse(row.funding) as FundingSource[]) : undefined;
+    const conferencePresentation = row.conference_presentation
+      ? (JSON.parse(row.conference_presentation) as ConferencePresentation)
+      : undefined;
+    const supplementaryMaterials = row.supplementary_materials
+      ? (JSON.parse(row.supplementary_materials) as SupplementaryMaterial[])
+      : undefined;
+
     return {
       uri: row.uri as AtUri,
       cid: row.cid as CID,
-      author: row.author_did as DID,
+      authors,
+      submittedBy: row.submitted_by as DID,
+      paperDid: row.paper_did ? (row.paper_did as DID) : undefined,
       title: row.title,
       abstract: row.abstract,
-      pdfBlobRef: {
+      documentBlobRef: {
         $type: 'blob',
-        ref: row.pdf_blob_cid as CID,
-        mimeType: row.pdf_blob_mime_type,
-        size: row.pdf_blob_size,
+        ref: row.document_blob_cid as CID,
+        mimeType: row.document_blob_mime_type,
+        size: row.document_blob_size,
       },
+      documentFormat: row.document_format as DocumentFormat,
       keywords: row.keywords ?? undefined,
       license: row.license,
+      publicationStatus: row.publication_status as PublicationStatus,
+      publishedVersion,
+      externalIds,
+      relatedWorks,
+      repositories,
+      funding,
+      conferencePresentation,
+      supplementaryMaterials,
       pdsUrl: row.pds_url,
       indexedAt: new Date(row.indexed_at),
       createdAt: new Date(row.created_at),

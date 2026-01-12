@@ -46,10 +46,19 @@ export function up(pgm: MigrationBuilder): void {
       notNull: true,
       comment: 'Record CID for version tracking',
     },
-    author_did: {
+    submitted_by: {
       type: 'text',
       notNull: true,
-      comment: 'Author DID',
+      comment: 'DID of the human who submitted this preprint',
+    },
+    authors: {
+      type: 'jsonb',
+      notNull: true,
+      comment: 'Array of author objects with affiliations, contributions, and metadata',
+    },
+    paper_did: {
+      type: 'text',
+      comment: 'DID of the paper own account (if paper has its own PDS)',
     },
     title: {
       type: 'text',
@@ -61,20 +70,60 @@ export function up(pgm: MigrationBuilder): void {
       notNull: true,
       comment: 'Preprint abstract',
     },
-    pdf_blob_cid: {
+    document_blob_cid: {
       type: 'text',
       notNull: true,
       comment: 'BlobRef CID (NOT blob data)',
     },
-    pdf_blob_mime_type: {
+    document_blob_mime_type: {
       type: 'text',
       notNull: true,
       comment: 'Blob MIME type',
     },
-    pdf_blob_size: {
+    document_blob_size: {
       type: 'bigint',
       notNull: true,
       comment: 'Blob size in bytes',
+    },
+    document_format: {
+      type: 'text',
+      notNull: true,
+      default: 'pdf',
+      comment: 'Detected or user-specified document format',
+    },
+    publication_status: {
+      type: 'text',
+      notNull: true,
+      default: 'preprint',
+      comment: 'Publication lifecycle status',
+    },
+    published_version: {
+      type: 'jsonb',
+      comment: 'Published version metadata (doi, url, journal, publisher, etc.)',
+    },
+    external_ids: {
+      type: 'jsonb',
+      comment: 'External persistent identifiers',
+    },
+    related_works: {
+      type: 'jsonb',
+      comment: 'Related preprints, datasets, and software',
+    },
+    repositories: {
+      type: 'jsonb',
+      comment: 'Linked code, data, protocols, and materials repositories',
+    },
+    funding: {
+      type: 'jsonb',
+      comment: 'Funding sources with funder DOI/ROR and grant information',
+    },
+    conference_presentation: {
+      type: 'jsonb',
+      comment: 'Conference presentation information',
+    },
+    supplementary_materials: {
+      type: 'jsonb',
+      comment: 'Supplementary materials metadata',
     },
     keywords: {
       type: 'text[]',
@@ -134,10 +183,33 @@ export function up(pgm: MigrationBuilder): void {
   });
 
   // Indexes for performance
-  pgm.createIndex('preprints_index', 'author_did');
+  pgm.createIndex('preprints_index', 'submitted_by');
+  pgm.createIndex('preprints_index', 'paper_did');
   pgm.createIndex('preprints_index', 'created_at');
   pgm.createIndex('preprints_index', 'pds_url');
   pgm.createIndex('preprints_index', 'keywords', { method: 'gin' });
+  pgm.createIndex('preprints_index', 'authors', {
+    method: 'gin',
+    name: 'idx_preprints_authors_gin',
+  });
+  pgm.createIndex('preprints_index', 'document_format');
+  pgm.createIndex('preprints_index', 'publication_status');
+  pgm.createIndex('preprints_index', "(published_version->>'doi')", {
+    name: 'idx_preprints_published_doi',
+    method: 'btree',
+  });
+  pgm.createIndex('preprints_index', 'external_ids', {
+    name: 'idx_preprints_external_ids_gin',
+    method: 'gin',
+  });
+  pgm.createIndex('preprints_index', 'related_works', {
+    name: 'idx_preprints_related_works_gin',
+    method: 'gin',
+  });
+  pgm.createIndex('preprints_index', 'supplementary_materials', {
+    name: 'idx_preprints_supplementary_gin',
+    method: 'gin',
+  });
 
   // Authors index (profile data)
   pgm.createTable('authors_index', {
@@ -501,6 +573,181 @@ export function up(pgm: MigrationBuilder): void {
       comment: 'Whether PDS is healthy',
     },
   });
+
+  // Contribution types table for knowledge graph governance
+  pgm.createTable('contribution_types_index', {
+    uri: {
+      type: 'text',
+      primaryKey: true,
+      comment:
+        'AT URI (e.g., at://did:plc:governance/pub.chive.contribution.type/conceptualization)',
+    },
+    cid: {
+      type: 'text',
+      notNull: true,
+      comment: 'Record CID',
+    },
+    type_id: {
+      type: 'text',
+      notNull: true,
+      unique: true,
+      comment: 'Type identifier (e.g., "conceptualization")',
+    },
+    label: {
+      type: 'text',
+      notNull: true,
+      comment: 'Human-readable label',
+    },
+    description: {
+      type: 'text',
+      comment: 'Detailed description',
+    },
+    external_mappings: {
+      type: 'jsonb',
+      default: '[]',
+      comment: 'External ontology mappings (CRediT, CRO, etc.)',
+    },
+    status: {
+      type: 'text',
+      notNull: true,
+      default: 'established',
+      check: "status IN ('established', 'proposed', 'deprecated')",
+      comment: 'Type status',
+    },
+    proposal_uri: {
+      type: 'text',
+      comment: 'AT URI of the proposal that created this type (null for seeded types)',
+    },
+    // PDS source tracking
+    pds_url: {
+      type: 'text',
+      notNull: true,
+      default: 'https://governance.chive.pub',
+      comment: 'URL of PDS (governance PDS)',
+    },
+    indexed_at: {
+      type: 'timestamptz',
+      notNull: true,
+      default: pgm.func('NOW()'),
+      comment: 'When indexed',
+    },
+    last_synced_at: {
+      type: 'timestamptz',
+      notNull: true,
+      default: pgm.func('NOW()'),
+      comment: 'Last sync',
+    },
+    created_at: {
+      type: 'timestamptz',
+      notNull: true,
+      comment: 'When type was created',
+    },
+  });
+
+  pgm.createIndex('contribution_types_index', 'type_id');
+  pgm.createIndex('contribution_types_index', 'status');
+
+  // Contribution type proposals table
+  pgm.createTable('contribution_type_proposals', {
+    uri: {
+      type: 'text',
+      primaryKey: true,
+      comment: 'AT URI',
+    },
+    cid: {
+      type: 'text',
+      notNull: true,
+      comment: 'Record CID',
+    },
+    proposer_did: {
+      type: 'text',
+      notNull: true,
+      comment: 'DID of proposer',
+    },
+    proposal_type: {
+      type: 'text',
+      notNull: true,
+      check: "proposal_type IN ('create', 'update', 'deprecate')",
+      comment: 'Type of proposal',
+    },
+    existing_type_id: {
+      type: 'text',
+      comment: 'Existing type ID (for update/deprecate proposals)',
+    },
+    proposed_id: {
+      type: 'text',
+      notNull: true,
+      comment: 'Proposed type identifier',
+    },
+    proposed_label: {
+      type: 'text',
+      notNull: true,
+      comment: 'Proposed human-readable label',
+    },
+    proposed_description: {
+      type: 'text',
+      comment: 'Proposed description',
+    },
+    external_mappings: {
+      type: 'jsonb',
+      default: '[]',
+      comment: 'Proposed external ontology mappings',
+    },
+    rationale: {
+      type: 'text',
+      notNull: true,
+      comment: 'Justification for proposal',
+    },
+    status: {
+      type: 'text',
+      notNull: true,
+      default: 'pending',
+      check: "status IN ('pending', 'approved', 'rejected')",
+      comment: 'Proposal status',
+    },
+    vote_count_approve: {
+      type: 'integer',
+      notNull: true,
+      default: 0,
+      comment: 'Number of approval votes',
+    },
+    vote_count_reject: {
+      type: 'integer',
+      notNull: true,
+      default: 0,
+      comment: 'Number of rejection votes',
+    },
+    resolved_at: {
+      type: 'timestamptz',
+      comment: 'When proposal was resolved',
+    },
+    result_uri: {
+      type: 'text',
+      comment: 'AT URI of resulting contribution type (if approved)',
+    },
+    // PDS source tracking
+    pds_url: {
+      type: 'text',
+      notNull: true,
+      comment: 'URL of PDS',
+    },
+    indexed_at: {
+      type: 'timestamptz',
+      notNull: true,
+      default: pgm.func('NOW()'),
+      comment: 'When indexed',
+    },
+    created_at: {
+      type: 'timestamptz',
+      notNull: true,
+      comment: 'When proposal was created',
+    },
+  });
+
+  pgm.createIndex('contribution_type_proposals', 'proposer_did');
+  pgm.createIndex('contribution_type_proposals', 'status');
+  pgm.createIndex('contribution_type_proposals', 'proposed_id');
+  pgm.createIndex('contribution_type_proposals', 'created_at');
 }
 
 /**
@@ -509,6 +756,8 @@ export function up(pgm: MigrationBuilder): void {
  * @param pgm - PostgreSQL migration builder
  */
 export function down(pgm: MigrationBuilder): void {
+  pgm.dropTable('contribution_type_proposals', { ifExists: true });
+  pgm.dropTable('contribution_types_index', { ifExists: true });
   pgm.dropTable('pds_sync_status', { ifExists: true });
   pgm.dropTable('firehose_dlq', { ifExists: true });
   pgm.dropTable('firehose_cursor', { ifExists: true });
