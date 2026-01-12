@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Panel displaying all endorsements for a preprint.
+ * Panel displaying all endorsements for a eprint.
  *
  * @remarks
  * Displays endorsements grouped by contribution type with filtering support.
@@ -9,7 +9,7 @@
  *
  * @example
  * ```tsx
- * <EndorsementPanel preprintUri={preprintUri} />
+ * <EndorsementPanel eprintUri={eprintUri} />
  * ```
  *
  * @packageDocumentation
@@ -49,8 +49,8 @@ import { EndorsementList, EndorsementListSkeleton } from './endorsement-list';
  * Props for EndorsementPanel.
  */
 export interface EndorsementPanelProps {
-  /** AT-URI of the preprint */
-  preprintUri: string;
+  /** AT-URI of the eprint */
+  eprintUri: string;
 
   /** Open endorsement form */
   onEndorse?: () => void;
@@ -70,13 +70,13 @@ export interface EndorsementPanelProps {
 // =============================================================================
 
 /**
- * Displays endorsement summary and list for a preprint.
+ * Displays endorsement summary and list for a eprint.
  *
  * @param props - Component props
  * @returns Panel element
  */
 export function EndorsementPanel({
-  preprintUri,
+  eprintUri,
   onEndorse,
   onShareEndorsement,
   currentUserDid: _currentUserDid,
@@ -88,13 +88,13 @@ export function EndorsementPanel({
     data: summary,
     isLoading: summaryLoading,
     error: summaryError,
-  } = useEndorsementSummary(preprintUri);
+  } = useEndorsementSummary(eprintUri);
 
   const {
     data: endorsementsData,
     isLoading: endorsementsLoading,
     error: endorsementsError,
-  } = useEndorsements(preprintUri);
+  } = useEndorsements(eprintUri);
 
   const isLoading = summaryLoading || endorsementsLoading;
   const error = summaryError || endorsementsError;
@@ -208,16 +208,16 @@ export function EndorsementPanel({
 }
 
 /**
- * Compact endorsement summary for preprint cards.
+ * Compact endorsement summary for eprint cards.
  */
 export function EndorsementSummaryCompact({
-  preprintUri,
+  eprintUri,
   className,
 }: {
-  preprintUri: string;
+  eprintUri: string;
   className?: string;
 }) {
-  const { data: summary, isLoading } = useEndorsementSummary(preprintUri);
+  const { data: summary, isLoading } = useEndorsementSummary(eprintUri);
 
   if (isLoading) {
     return (
@@ -238,13 +238,13 @@ export function EndorsementSummaryCompact({
  * Minimal endorsement indicator showing just total count.
  */
 export function EndorsementIndicator({
-  preprintUri,
+  eprintUri,
   className,
 }: {
-  preprintUri: string;
+  eprintUri: string;
   className?: string;
 }) {
-  const { data: summary, isLoading } = useEndorsementSummary(preprintUri);
+  const { data: summary, isLoading } = useEndorsementSummary(eprintUri);
 
   if (isLoading) {
     return <EndorsementBadgeSkeleton size="sm" />;

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  */
 export const metadata: Metadata = {
   title: 'About | Chive',
-  description: 'Learn about Chive, a decentralized preprint server built on AT Protocol.',
+  description: 'Learn about Chive, a decentralized eprint server built on AT Protocol.',
 };
 
 /**
@@ -25,7 +25,7 @@ export default function AboutPage() {
       <header className="text-center">
         <h1 className="text-4xl font-bold tracking-tight">About Chive</h1>
         <p className="mt-4 text-xl text-muted-foreground">
-          A decentralized preprint server built on AT Protocol
+          A decentralized eprint server built on AT Protocol
         </p>
       </header>
 
@@ -33,9 +33,9 @@ export default function AboutPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Our Mission</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Chive aims to revolutionize scholarly communication by building a preprint server where
+          Chive aims to revolutionize scholarly communication by building a eprint server where
           researchers truly own their work. Using AT Protocol&apos;s decentralized architecture,
-          your preprints live in your Personal Data Server (PDS), not in a central database you
+          your eprints live in your Personal Data Server (PDS), not in a central database you
           don&apos;t control.
         </p>
       </section>
@@ -49,7 +49,7 @@ export default function AboutPage() {
               <CardTitle>Data Sovereignty</CardTitle>
             </CardHeader>
             <CardContent className="text-muted-foreground">
-              Your preprints are stored in your PDS. If Chive disappears tomorrow, your work remains
+              Your eprints are stored in your PDS. If Chive disappears tomorrow, your work remains
               intact and accessible.
             </CardContent>
           </Card>
@@ -110,9 +110,9 @@ export default function AboutPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Technology</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Chive is built as an <strong>AppView</strong> on AT Protocol. We index preprints from the
+          Chive is built as an <strong>AppView</strong> on AT Protocol. We index eprints from the
           AT Protocol firehose but never store your data as the source of truth. If our entire
-          database were deleted, all preprints would still exist in their owners&apos; Personal Data
+          database were deleted, all eprints would still exist in their owners&apos; Personal Data
           Servers.
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
@@ -145,14 +145,14 @@ export default function AboutPage() {
       <section className="rounded-lg bg-muted/50 p-8 text-center">
         <h2 className="text-2xl font-semibold">Ready to Get Started?</h2>
         <p className="mt-2 text-muted-foreground">
-          Start exploring preprints or submit your own research
+          Start exploring eprints or submit your own research
         </p>
         <div className="mt-6 flex justify-center gap-4">
           <Button asChild>
-            <Link href="/browse">Browse Preprints</Link>
+            <Link href="/browse">Browse Eprints</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/submit">Submit a Preprint</Link>
+            <Link href="/submit">Submit a Eprint</Link>
           </Button>
         </div>
       </section>

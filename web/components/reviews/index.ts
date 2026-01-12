@@ -26,7 +26,7 @@
  *
  * // Create a new review
  * <ReviewForm
- *   preprintUri={preprintUri}
+ *   eprintUri={eprintUri}
  *   onSubmit={handleSubmit}
  * />
  * ```

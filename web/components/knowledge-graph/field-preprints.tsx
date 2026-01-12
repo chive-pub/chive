@@ -2,15 +2,15 @@
 
 import { useCallback } from 'react';
 
-import { PreprintList, PreprintListSkeleton, PreprintListEmpty } from '@/components/preprints';
-import { useFieldPreprints } from '@/lib/hooks/use-field';
+import { EprintList, EprintListSkeleton, EprintListEmpty } from '@/components/eprints';
+import { useFieldEprints } from '@/lib/hooks/use-field';
 import { cn } from '@/lib/utils';
-import type { PreprintSummary } from '@/lib/api/schema';
+import type { EprintSummary } from '@/lib/api/schema';
 
 /**
- * Props for the FieldPreprints component.
+ * Props for the FieldEprints component.
  */
-export interface FieldPreprintsProps {
+export interface FieldEprintsProps {
   /** Field ID */
   fieldId: string;
   /** Display layout */
@@ -24,29 +24,29 @@ export interface FieldPreprintsProps {
 }
 
 /**
- * Displays preprints in a field with pagination.
+ * Displays eprints in a field with pagination.
  *
  * @remarks
- * Client component that fetches and displays preprints for a field.
+ * Client component that fetches and displays eprints for a field.
  * Supports load more pagination and different layouts.
  *
  * @example
  * ```tsx
- * <FieldPreprints fieldId="computer-science" layout="list" />
+ * <FieldEprints fieldId="computer-science" layout="list" />
  * ```
  *
  * @param props - Component props
- * @returns React element displaying the field's preprints
+ * @returns React element displaying the field's eprints
  */
-export function FieldPreprints({
+export function FieldEprints({
   fieldId,
   layout = 'list',
   cardVariant = 'default',
   limit = 10,
   className,
-}: FieldPreprintsProps) {
+}: FieldEprintsProps) {
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
-    useFieldPreprints(fieldId, { limit });
+    useFieldEprints(fieldId, { limit });
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -55,11 +55,11 @@ export function FieldPreprints({
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Flatten pages into single array
-  const preprints = data?.pages.flatMap((page) => page.preprints) ?? [];
+  const eprints = data?.pages.flatMap((page) => page.eprints) ?? [];
 
   if (isLoading) {
     return (
-      <PreprintListSkeleton
+      <EprintListSkeleton
         count={limit}
         layout={layout}
         cardVariant={cardVariant}
@@ -76,25 +76,25 @@ export function FieldPreprints({
           className
         )}
       >
-        <p className="text-destructive">Failed to load preprints</p>
+        <p className="text-destructive">Failed to load eprints</p>
         <p className="mt-1 text-sm text-muted-foreground">{error.message}</p>
       </div>
     );
   }
 
-  if (preprints.length === 0) {
+  if (eprints.length === 0) {
     return (
-      <PreprintListEmpty
-        message="No preprints in this field"
-        description="Be the first to publish a preprint in this field."
+      <EprintListEmpty
+        message="No eprints in this field"
+        description="Be the first to publish a eprint in this field."
         className={className}
       />
     );
   }
 
   return (
-    <PreprintList
-      preprints={preprints as unknown as PreprintSummary[]}
+    <EprintList
+      eprints={eprints as unknown as EprintSummary[]}
       hasMore={hasNextPage}
       onLoadMore={handleLoadMore}
       isLoadingMore={isFetchingNextPage}
@@ -106,9 +106,9 @@ export function FieldPreprints({
 }
 
 /**
- * Props for the FieldPreprintsSkeleton component.
+ * Props for the FieldEprintsSkeleton component.
  */
-export interface FieldPreprintsSkeletonProps {
+export interface FieldEprintsSkeletonProps {
   /** Number of skeleton cards */
   count?: number;
   /** Display layout */
@@ -118,12 +118,12 @@ export interface FieldPreprintsSkeletonProps {
 }
 
 /**
- * Loading skeleton for FieldPreprints component.
+ * Loading skeleton for FieldEprints component.
  */
-export function FieldPreprintsSkeleton({
+export function FieldEprintsSkeleton({
   count = 5,
   layout = 'list',
   className,
-}: FieldPreprintsSkeletonProps) {
-  return <PreprintListSkeleton count={count} layout={layout} className={className} />;
+}: FieldEprintsSkeletonProps) {
+  return <EprintListSkeleton count={count} layout={layout} className={className} />;
 }

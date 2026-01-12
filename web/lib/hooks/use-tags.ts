@@ -16,10 +16,10 @@
  *
  * @example
  * ```tsx
- * import { usePreprintTags, useTagSuggestions, tagKeys } from '@/lib/hooks/use-tags';
+ * import { useEprintTags, useTagSuggestions, tagKeys } from '@/lib/hooks/use-tags';
  *
- * function PreprintTags({ preprintUri }: { preprintUri: string }) {
- *   const { data: tags } = usePreprintTags(preprintUri);
+ * function EprintTags({ eprintUri }: { eprintUri: string }) {
+ *   const { data: tags } = useEprintTags(eprintUri);
  *   const { data: suggestions } = useTagSuggestions('machine learning');
  *
  *   return (
@@ -48,7 +48,7 @@ import type {
   UserTag,
   TagSummary,
   TagSuggestion,
-  PreprintTagsResponse,
+  EprintTagsResponse,
   TrendingTagsResponse,
   TagSearchResponse,
 } from '@/lib/api/schema';
@@ -68,8 +68,8 @@ import type {
  * // Invalidate all tag queries
  * queryClient.invalidateQueries({ queryKey: tagKeys.all });
  *
- * // Invalidate tags for a specific preprint
- * queryClient.invalidateQueries({ queryKey: tagKeys.forPreprint(preprintUri) });
+ * // Invalidate tags for a specific eprint
+ * queryClient.invalidateQueries({ queryKey: tagKeys.forEprint(eprintUri) });
  *
  * // Invalidate trending tags
  * queryClient.invalidateQueries({ queryKey: tagKeys.trending('week') });
@@ -79,8 +79,8 @@ export const tagKeys = {
   /** Base key for all tag queries */
   all: ['tags'] as const,
 
-  /** Key for tags by preprint */
-  forPreprint: (preprintUri: string) => [...tagKeys.all, 'preprint', preprintUri] as const,
+  /** Key for tags by eprint */
+  forEprint: (eprintUri: string) => [...tagKeys.all, 'eprint', eprintUri] as const,
 
   /** Key for tag suggestions */
   suggestions: (query: string) => [...tagKeys.all, 'suggestions', query] as const,
@@ -96,9 +96,9 @@ export const tagKeys = {
   /** Key for tag detail */
   detail: (normalizedForm: string) => [...tagKeys.all, 'detail', normalizedForm] as const,
 
-  /** Key for preprints by tag */
-  preprintsWithTag: (normalizedForm: string, params?: TagPreprintParams) =>
-    [...tagKeys.all, 'preprints', normalizedForm, params] as const,
+  /** Key for eprints by tag */
+  eprintsWithTag: (normalizedForm: string, params?: TagEprintParams) =>
+    [...tagKeys.all, 'eprints', normalizedForm, params] as const,
 };
 
 // =============================================================================
@@ -120,9 +120,9 @@ export interface TagSearchParams {
 }
 
 /**
- * Parameters for preprints by tag.
+ * Parameters for eprints by tag.
  */
-export interface TagPreprintParams {
+export interface TagEprintParams {
   /** Maximum number of results to return */
   limit?: number;
   /** Cursor for pagination */
@@ -141,8 +141,8 @@ export interface UseTagsOptions {
  * Input for creating a new tag.
  */
 export interface CreateTagInput {
-  /** AT-URI of the preprint to tag */
-  preprintUri: string;
+  /** AT-URI of the eprint to tag */
+  eprintUri: string;
   /** Tag display form */
   displayForm: string;
 }
@@ -152,7 +152,7 @@ export interface CreateTagInput {
 // =============================================================================
 
 /**
- * Fetches tags for a preprint.
+ * Fetches tags for a eprint.
  *
  * @remarks
  * Returns user-generated tags along with TaxoFolk suggestions.
@@ -160,7 +160,7 @@ export interface CreateTagInput {
  *
  * @example
  * ```tsx
- * const { data, isLoading } = usePreprintTags(preprintUri);
+ * const { data, isLoading } = useEprintTags(eprintUri);
  *
  * return (
  *   <TagList
@@ -170,27 +170,27 @@ export interface CreateTagInput {
  * );
  * ```
  *
- * @param preprintUri - AT-URI of the preprint
+ * @param eprintUri - AT-URI of the eprint
  * @param options - Hook options
  * @returns Query result with tags and suggestions
  */
-export function usePreprintTags(preprintUri: string, options: UseTagsOptions = {}) {
+export function useEprintTags(eprintUri: string, options: UseTagsOptions = {}) {
   return useQuery({
-    queryKey: tagKeys.forPreprint(preprintUri),
-    queryFn: async (): Promise<PreprintTagsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.tag.listForPreprint', {
-        params: { query: { preprintUri } },
+    queryKey: tagKeys.forEprint(eprintUri),
+    queryFn: async (): Promise<EprintTagsResponse> => {
+      const { data, error } = await api.GET('/xrpc/pub.chive.tag.listForEprint', {
+        params: { query: { eprintUri } },
       });
       if (error) {
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch tags',
           undefined,
-          '/xrpc/pub.chive.tag.listForPreprint'
+          '/xrpc/pub.chive.tag.listForEprint'
         );
       }
-      return data! as unknown as PreprintTagsResponse;
+      return data! as unknown as EprintTagsResponse;
     },
-    enabled: !!preprintUri && (options.enabled ?? true),
+    enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }
@@ -423,7 +423,7 @@ export function useTagDetail(normalizedForm: string, options: UseTagsOptions = {
  *
  * const handleAddTag = async (displayForm: string) => {
  *   await createTag.mutateAsync({
- *     preprintUri,
+ *     eprintUri,
  *     displayForm,
  *   });
  * };
@@ -448,7 +448,7 @@ export function useCreateTag() {
       // The author info comes from the current user's agent DID
       return {
         uri: result.uri,
-        preprintUri: input.preprintUri,
+        eprintUri: input.eprintUri,
         author: {
           did: agent.did ?? '',
         },
@@ -458,9 +458,9 @@ export function useCreateTag() {
       };
     },
     onSuccess: (data) => {
-      // Invalidate tags for the preprint
+      // Invalidate tags for the eprint
       queryClient.invalidateQueries({
-        queryKey: tagKeys.forPreprint(data.preprintUri),
+        queryKey: tagKeys.forEprint(data.eprintUri),
       });
 
       // Invalidate tag detail if it exists
@@ -485,7 +485,7 @@ export function useCreateTag() {
  * const handleDelete = async () => {
  *   await deleteTag.mutateAsync({
  *     uri: tag.uri,
- *     preprintUri: tag.preprintUri,
+ *     eprintUri: tag.eprintUri,
  *   });
  * };
  * ```
@@ -496,7 +496,7 @@ export function useDeleteTag() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ uri }: { uri: string; preprintUri: string }): Promise<void> => {
+    mutationFn: async ({ uri }: { uri: string; eprintUri: string }): Promise<void> => {
       // Delete directly from PDS using the authenticated agent
       const agent = getCurrentAgent();
       if (!agent) {
@@ -507,7 +507,7 @@ export function useDeleteTag() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: tagKeys.forPreprint(variables.preprintUri),
+        queryKey: tagKeys.forEprint(variables.eprintUri),
       });
     },
   });
@@ -520,17 +520,17 @@ export function useDeleteTag() {
  * Improves perceived performance by loading tag data before
  * the user views the tags section.
  *
- * @returns Function to prefetch tags for a preprint
+ * @returns Function to prefetch tags for a eprint
  */
 export function usePrefetchTags() {
   const queryClient = useQueryClient();
 
-  return (preprintUri: string) => {
+  return (eprintUri: string) => {
     queryClient.prefetchQuery({
-      queryKey: tagKeys.forPreprint(preprintUri),
-      queryFn: async (): Promise<PreprintTagsResponse | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.tag.listForPreprint', {
-          params: { query: { preprintUri } },
+      queryKey: tagKeys.forEprint(eprintUri),
+      queryFn: async (): Promise<EprintTagsResponse | undefined> => {
+        const { data } = await api.GET('/xrpc/pub.chive.tag.listForEprint', {
+          params: { query: { eprintUri } },
         });
         return data;
       },

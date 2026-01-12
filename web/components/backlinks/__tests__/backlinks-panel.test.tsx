@@ -47,7 +47,7 @@ const _mockBacklinks = [
     id: 1,
     sourceUri: 'at://did:plc:abc123/semble.collection/xyz',
     sourceType: 'semble.collection' as const,
-    targetUri: 'at://did:plc:user1/pub.chive.preprint/paper1',
+    targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     context: 'Added to ML Papers collection',
     indexedAt: '2024-01-15T10:30:00Z',
     deleted: false,
@@ -56,7 +56,7 @@ const _mockBacklinks = [
     id: 2,
     sourceUri: 'at://did:plc:def456/semble.collection/abc',
     sourceType: 'semble.collection' as const,
-    targetUri: 'at://did:plc:user1/pub.chive.preprint/paper1',
+    targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     context: 'Added to NLP collection',
     indexedAt: '2024-01-16T14:00:00Z',
     deleted: false,
@@ -89,7 +89,7 @@ describe('BacklinksPanel', () => {
   it('should render loading state initially', () => {
     mockGet.mockImplementation(() => new Promise(() => {})); // Never resolves
 
-    render(<BacklinksPanel preprintUri="at://did:plc:user1/pub.chive.preprint/paper1" />, {
+    render(<BacklinksPanel eprintUri="at://did:plc:user1/pub.chive.eprint/paper1" />, {
       wrapper: createWrapper(),
     });
 
@@ -111,7 +111,7 @@ describe('BacklinksPanel', () => {
     });
 
     const { container } = render(
-      <BacklinksPanel preprintUri="at://did:plc:user1/pub.chive.preprint/paper1" />,
+      <BacklinksPanel eprintUri="at://did:plc:user1/pub.chive.eprint/paper1" />,
       { wrapper: createWrapper() }
     );
 
@@ -132,7 +132,7 @@ describe('BacklinksPanel', () => {
       error: undefined,
     });
 
-    render(<BacklinksPanel preprintUri="at://did:plc:user1/pub.chive.preprint/paper1" />, {
+    render(<BacklinksPanel eprintUri="at://did:plc:user1/pub.chive.eprint/paper1" />, {
       wrapper: createWrapper(),
     });
 
@@ -155,7 +155,7 @@ describe('BacklinksPanel', () => {
       error: undefined,
     });
 
-    render(<BacklinksPanel preprintUri="at://did:plc:user1/pub.chive.preprint/paper1" />, {
+    render(<BacklinksPanel eprintUri="at://did:plc:user1/pub.chive.eprint/paper1" />, {
       wrapper: createWrapper(),
     });
 
@@ -172,7 +172,7 @@ describe('BacklinksPanel', () => {
             id: 3,
             sourceUri: 'at://did:plc:xyz/app.bsky.feed.post/123',
             sourceType: 'bluesky.post',
-            targetUri: 'at://did:plc:user1/pub.chive.preprint/paper1',
+            targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
             context: 'Great paper!',
             indexedAt: '2024-01-17T09:00:00Z',
             deleted: false,

@@ -37,7 +37,7 @@ const mockBacklinks: Backlink[] = [
     id: 1,
     sourceUri: 'at://did:plc:abc123/semble.collection/xyz',
     sourceType: 'semble.collection',
-    targetUri: 'at://did:plc:user1/pub.chive.preprint/paper1',
+    targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     context: 'Added to "Machine Learning Papers" collection',
     indexedAt: '2024-01-15T10:30:00Z',
     deleted: false,
@@ -46,7 +46,7 @@ const mockBacklinks: Backlink[] = [
     id: 2,
     sourceUri: 'at://did:plc:def456/app.bsky.feed.post/abc',
     sourceType: 'bluesky.post',
-    targetUri: 'at://did:plc:user1/pub.chive.preprint/paper1',
+    targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     context: 'This paper is groundbreaking!',
     indexedAt: '2024-01-16T14:00:00Z',
     deleted: false,
@@ -69,14 +69,14 @@ describe('useBacklinks', () => {
     mockGet.mockReset();
   });
 
-  it('should fetch backlinks for a preprint', async () => {
+  it('should fetch backlinks for a eprint', async () => {
     mockGet.mockResolvedValueOnce({
       data: { backlinks: mockBacklinks, hasMore: false },
       error: undefined,
     });
 
     const { result } = renderHook(
-      () => useBacklinks('at://did:plc:user1/pub.chive.preprint/paper1'),
+      () => useBacklinks('at://did:plc:user1/pub.chive.eprint/paper1'),
       { wrapper: createWrapper() }
     );
 
@@ -86,7 +86,7 @@ describe('useBacklinks', () => {
     expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.backlink.list', {
       params: {
         query: expect.objectContaining({
-          targetUri: 'at://did:plc:user1/pub.chive.preprint/paper1',
+          targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
         }),
       },
     });
@@ -100,7 +100,7 @@ describe('useBacklinks', () => {
 
     const { result } = renderHook(
       () =>
-        useBacklinks('at://did:plc:user1/pub.chive.preprint/paper1', {
+        useBacklinks('at://did:plc:user1/pub.chive.eprint/paper1', {
           sourceType: 'semble.collection',
         }),
       { wrapper: createWrapper() }
@@ -120,7 +120,7 @@ describe('useBacklinks', () => {
   it('should not fetch when disabled', () => {
     renderHook(
       () =>
-        useBacklinks('at://did:plc:user1/pub.chive.preprint/paper1', {
+        useBacklinks('at://did:plc:user1/pub.chive.eprint/paper1', {
           enabled: false,
         }),
       { wrapper: createWrapper() }
@@ -142,7 +142,7 @@ describe('useBacklinks', () => {
 
     const { result } = renderHook(
       () =>
-        useBacklinks('at://did:plc:user1/pub.chive.preprint/paper1', {
+        useBacklinks('at://did:plc:user1/pub.chive.eprint/paper1', {
           limit: 1,
         }),
       { wrapper: createWrapper() }
@@ -170,7 +170,7 @@ describe('useBacklinkCounts', () => {
     });
 
     const { result } = renderHook(
-      () => useBacklinkCounts('at://did:plc:user1/pub.chive.preprint/paper1'),
+      () => useBacklinkCounts('at://did:plc:user1/pub.chive.eprint/paper1'),
       { wrapper: createWrapper() }
     );
 
@@ -180,7 +180,7 @@ describe('useBacklinkCounts', () => {
     expect(result.current.data?.total).toBe(11);
     expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.backlink.getCounts', {
       params: {
-        query: { targetUri: 'at://did:plc:user1/pub.chive.preprint/paper1' },
+        query: { targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1' },
       },
     });
   });
@@ -188,7 +188,7 @@ describe('useBacklinkCounts', () => {
   it('should not fetch when disabled', () => {
     renderHook(
       () =>
-        useBacklinkCounts('at://did:plc:user1/pub.chive.preprint/paper1', {
+        useBacklinkCounts('at://did:plc:user1/pub.chive.eprint/paper1', {
           enabled: false,
         }),
       { wrapper: createWrapper() }
@@ -202,29 +202,29 @@ describe('backlinkKeys', () => {
   it('should generate correct query keys', () => {
     expect(backlinkKeys.all).toEqual(['backlinks']);
 
-    expect(backlinkKeys.list('at://did:plc:user1/pub.chive.preprint/paper1')).toEqual([
+    expect(backlinkKeys.list('at://did:plc:user1/pub.chive.eprint/paper1')).toEqual([
       'backlinks',
       'list',
-      'at://did:plc:user1/pub.chive.preprint/paper1',
+      'at://did:plc:user1/pub.chive.eprint/paper1',
       undefined,
     ]);
 
     expect(
-      backlinkKeys.list('at://did:plc:user1/pub.chive.preprint/paper1', {
+      backlinkKeys.list('at://did:plc:user1/pub.chive.eprint/paper1', {
         sourceType: 'semble.collection',
         limit: 10,
       })
     ).toEqual([
       'backlinks',
       'list',
-      'at://did:plc:user1/pub.chive.preprint/paper1',
+      'at://did:plc:user1/pub.chive.eprint/paper1',
       { sourceType: 'semble.collection', limit: 10 },
     ]);
 
-    expect(backlinkKeys.counts('at://did:plc:user1/pub.chive.preprint/paper1')).toEqual([
+    expect(backlinkKeys.counts('at://did:plc:user1/pub.chive.eprint/paper1')).toEqual([
       'backlinks',
       'counts',
-      'at://did:plc:user1/pub.chive.preprint/paper1',
+      'at://did:plc:user1/pub.chive.eprint/paper1',
     ]);
   });
 });

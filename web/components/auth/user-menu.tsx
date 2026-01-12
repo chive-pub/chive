@@ -82,15 +82,15 @@ export function UserMenu() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/preprints">
+            <Link href="/dashboard/eprints">
               <FileText className="mr-2 h-4 w-4" />
-              My Preprints
+              My Eprints
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/dashboard/claims">
               <ClipboardCheck className="mr-2 h-4 w-4" />
-              Claim Preprints
+              Claim Eprints
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

@@ -5,13 +5,13 @@ import { createWrapper } from '@/tests/test-utils';
 import {
   createMockTagSummary,
   createMockTagSuggestion,
-  createMockPreprintTagsResponse,
+  createMockEprintTagsResponse,
   createMockTrendingTagsResponse,
 } from '@/tests/mock-data';
 
 import {
   tagKeys,
-  usePreprintTags,
+  useEprintTags,
   useTagSuggestions,
   useTrendingTags,
   useTagSearch,
@@ -52,9 +52,9 @@ describe('tagKeys', () => {
     expect(tagKeys.all).toEqual(['tags']);
   });
 
-  it('generates forPreprint key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-    expect(tagKeys.forPreprint(uri)).toEqual(['tags', 'preprint', uri]);
+  it('generates forEprint key', () => {
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    expect(tagKeys.forEprint(uri)).toEqual(['tags', 'eprint', uri]);
   });
 
   it('generates suggestions key', () => {
@@ -82,46 +82,46 @@ describe('tagKeys', () => {
     expect(tagKeys.detail('machine-learning')).toEqual(['tags', 'detail', 'machine-learning']);
   });
 
-  it('generates preprintsWithTag key', () => {
-    expect(tagKeys.preprintsWithTag('machine-learning')).toEqual([
+  it('generates eprintsWithTag key', () => {
+    expect(tagKeys.eprintsWithTag('machine-learning')).toEqual([
       'tags',
-      'preprints',
+      'eprints',
       'machine-learning',
       undefined,
     ]);
   });
 });
 
-describe('usePreprintTags', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+describe('useEprintTags', () => {
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches tags for a preprint', async () => {
-    const mockResponse = createMockPreprintTagsResponse();
+  it('fetches tags for a eprint', async () => {
+    const mockResponse = createMockEprintTagsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
       error: undefined,
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprintTags(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEprintTags(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.listForPreprint', {
-      params: { query: { preprintUri } },
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.listForEprint', {
+      params: { query: { eprintUri } },
     });
   });
 
-  it('is disabled when preprintUri is empty', () => {
+  it('is disabled when eprintUri is empty', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprintTags(''), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEprintTags(''), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
   });
@@ -133,7 +133,7 @@ describe('usePreprintTags', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprintTags(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEprintTags(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -144,7 +144,7 @@ describe('usePreprintTags', () => {
 
   it('can be disabled via options', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprintTags(preprintUri, { enabled: false }), {
+    const { result } = renderHook(() => useEprintTags(eprintUri, { enabled: false }), {
       wrapper: Wrapper,
     });
 
@@ -443,7 +443,7 @@ describe('useTagDetail', () => {
 });
 
 describe('useCreateTag', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
   const mockAgent = { did: 'did:plc:user123' };
 
   beforeEach(() => {
@@ -453,7 +453,7 @@ describe('useCreateTag', () => {
   it('creates a tag', async () => {
     mockGetCurrentAgent.mockReturnValue(mockAgent as never);
     mockCreateUserTagRecord.mockResolvedValueOnce({
-      uri: 'at://did:plc:user123/pub.chive.preprint.userTag/abc',
+      uri: 'at://did:plc:user123/pub.chive.eprint.userTag/abc',
       cid: 'bafycid123',
     });
 
@@ -461,15 +461,15 @@ describe('useCreateTag', () => {
     const { result } = renderHook(() => useCreateTag(), { wrapper: Wrapper });
 
     const tag = await result.current.mutateAsync({
-      preprintUri,
+      eprintUri,
       displayForm: 'Machine Learning',
     });
 
     expect(mockCreateUserTagRecord).toHaveBeenCalledWith(mockAgent, {
-      preprintUri,
+      eprintUri,
       displayForm: 'Machine Learning',
     });
-    expect(tag.uri).toBe('at://did:plc:user123/pub.chive.preprint.userTag/abc');
+    expect(tag.uri).toBe('at://did:plc:user123/pub.chive.eprint.userTag/abc');
     expect(tag.normalizedForm).toBe('machine learning');
   });
 
@@ -481,7 +481,7 @@ describe('useCreateTag', () => {
 
     await expect(
       result.current.mutateAsync({
-        preprintUri,
+        eprintUri,
         displayForm: 'Test Tag',
       })
     ).rejects.toThrow('Not authenticated');
@@ -496,7 +496,7 @@ describe('useCreateTag', () => {
 
     await expect(
       result.current.mutateAsync({
-        preprintUri,
+        eprintUri,
         displayForm: 'Test Tag',
       })
     ).rejects.toThrow('PDS write failed');
@@ -504,8 +504,8 @@ describe('useCreateTag', () => {
 });
 
 describe('useDeleteTag', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-  const tagUri = 'at://did:plc:abc/pub.chive.preprint.userTag/456';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+  const tagUri = 'at://did:plc:abc/pub.chive.eprint.userTag/456';
   const mockAgent = { did: 'did:plc:user123' };
 
   beforeEach(() => {
@@ -519,7 +519,7 @@ describe('useDeleteTag', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteTag(), { wrapper: Wrapper });
 
-    await result.current.mutateAsync({ uri: tagUri, preprintUri });
+    await result.current.mutateAsync({ uri: tagUri, eprintUri });
 
     expect(mockDeleteRecord).toHaveBeenCalledWith(mockAgent, tagUri);
   });
@@ -530,7 +530,7 @@ describe('useDeleteTag', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteTag(), { wrapper: Wrapper });
 
-    await expect(result.current.mutateAsync({ uri: tagUri, preprintUri })).rejects.toThrow(
+    await expect(result.current.mutateAsync({ uri: tagUri, eprintUri })).rejects.toThrow(
       'Not authenticated'
     );
   });
@@ -542,21 +542,21 @@ describe('useDeleteTag', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteTag(), { wrapper: Wrapper });
 
-    await expect(result.current.mutateAsync({ uri: tagUri, preprintUri })).rejects.toThrow(
+    await expect(result.current.mutateAsync({ uri: tagUri, eprintUri })).rejects.toThrow(
       'PDS delete failed'
     );
   });
 });
 
 describe('usePrefetchTags', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('prefetches tags for a preprint', async () => {
-    const mockResponse = createMockPreprintTagsResponse();
+  it('prefetches tags for a eprint', async () => {
+    const mockResponse = createMockEprintTagsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
       error: undefined,
@@ -565,16 +565,16 @@ describe('usePrefetchTags', () => {
     const { Wrapper, queryClient } = createWrapper();
     const { result } = renderHook(() => usePrefetchTags(), { wrapper: Wrapper });
 
-    result.current(preprintUri);
+    result.current(eprintUri);
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.listForPreprint', {
-        params: { query: { preprintUri } },
+      expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.listForEprint', {
+        params: { query: { eprintUri } },
       });
     });
 
     // Check that data is in cache
-    const cachedData = queryClient.getQueryData(tagKeys.forPreprint(preprintUri));
+    const cachedData = queryClient.getQueryData(tagKeys.forEprint(eprintUri));
     expect(cachedData).toEqual(mockResponse);
   });
 });

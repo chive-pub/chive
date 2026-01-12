@@ -14,7 +14,7 @@ import {
 
 const mockUseInlineReviews = vi.fn();
 vi.mock('@/lib/hooks/use-review', () => ({
-  useInlineReviews: (preprintUri: string) => mockUseInlineReviews(preprintUri),
+  useInlineReviews: (eprintUri: string) => mockUseInlineReviews(eprintUri),
 }));
 
 // =============================================================================
@@ -22,7 +22,7 @@ vi.mock('@/lib/hooks/use-review', () => ({
 // =============================================================================
 
 const defaultProps = {
-  preprintUri: 'at://did:plc:testauthor/pub.chive.preprint.submission/abc123',
+  eprintUri: 'at://did:plc:testauthor/pub.chive.eprint.submission/abc123',
 };
 
 function createAnnotationOnPage(pageNumber: number, overrides = {}) {

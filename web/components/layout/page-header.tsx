@@ -10,7 +10,7 @@
  * @example
  * ```tsx
  * <PageHeader
- *   title="Submit a Preprint"
+ *   title="Submit a Eprint"
  *   description="Share your research with the world"
  *   actions={
  *     <Button variant="outline">Save Draft</Button>
@@ -121,7 +121,7 @@ export function PageHeader({
  * ```tsx
  * <SectionHeader
  *   title="Authors"
- *   description="Add co-authors to your preprint"
+ *   description="Add co-authors to your eprint"
  * />
  * ```
  */

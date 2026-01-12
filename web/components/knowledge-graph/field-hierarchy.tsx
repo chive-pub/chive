@@ -115,8 +115,8 @@ export function FieldChildren({
               className="flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-accent"
             >
               <span>{child.name}</span>
-              {child.preprintCount !== undefined && (
-                <span className="text-xs text-muted-foreground">{child.preprintCount}</span>
+              {child.eprintCount !== undefined && (
+                <span className="text-xs text-muted-foreground">{child.eprintCount}</span>
               )}
             </Link>
           </li>
@@ -280,8 +280,8 @@ function FieldTreeNode({ field, selectedId, onSelect, level }: FieldTreeNodeProp
         {!hasChildren && <span className="w-4" />}
         <FolderTree className="h-4 w-4 text-muted-foreground" />
         <span className="flex-1 text-sm">{field.name}</span>
-        {field.preprintCount !== undefined && (
-          <span className="text-xs text-muted-foreground">{field.preprintCount}</span>
+        {field.eprintCount !== undefined && (
+          <span className="text-xs text-muted-foreground">{field.eprintCount}</span>
         )}
       </div>
 

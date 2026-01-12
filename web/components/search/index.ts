@@ -77,6 +77,6 @@ export type { FacetPanelProps, FacetPanelSkeletonProps } from './facet-panel';
 export { FacetSelector, FacetSelectorWithUrl } from './facet-selector';
 export type { FacetSelectorProps, FacetSelectorWithUrlProps } from './facet-selector';
 
-// Preprint search autocomplete (for claiming workflow)
-export { PreprintSearchAutocomplete } from './preprint-search-autocomplete';
-export type { PreprintSearchAutocompleteProps } from './preprint-search-autocomplete';
+// Eprint search autocomplete (for claiming workflow)
+export { EprintSearchAutocomplete } from './eprint-search-autocomplete';
+export type { EprintSearchAutocompleteProps } from './eprint-search-autocomplete';

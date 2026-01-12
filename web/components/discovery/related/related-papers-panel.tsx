@@ -10,14 +10,14 @@ import { cn } from '@/lib/utils';
 import { useSimilarPapers, usePrefetchSimilarPapers } from '@/lib/hooks/use-discovery';
 import { RelationshipBadge } from './relationship-badge';
 import { CitationSummary } from './citation-summary';
-import type { RelatedPreprint } from '@/lib/api/schema';
+import type { RelatedEprint } from '@/lib/api/schema';
 
 /**
  * Props for RelatedPapersPanel component.
  */
 export interface RelatedPapersPanelProps {
-  /** AT-URI of the source preprint */
-  preprintUri: string;
+  /** AT-URI of the source eprint */
+  eprintUri: string;
   /** Number of related papers to show */
   limit?: number;
   /** Show citation summary section */
@@ -27,7 +27,7 @@ export interface RelatedPapersPanelProps {
 }
 
 /**
- * Panel displaying related papers for a preprint.
+ * Panel displaying related papers for a eprint.
  *
  * @remarks
  * Shows papers related by citations, topics, authors, and semantic similarity.
@@ -36,19 +36,19 @@ export interface RelatedPapersPanelProps {
  * @example
  * ```tsx
  * <RelatedPapersPanel
- *   preprintUri="at://did:plc:abc/pub.chive.preprint/123"
+ *   eprintUri="at://did:plc:abc/pub.chive.eprint/123"
  *   limit={5}
  *   showCitations
  * />
  * ```
  */
 export function RelatedPapersPanel({
-  preprintUri,
+  eprintUri,
   limit = 5,
   showCitations = true,
   className,
 }: RelatedPapersPanelProps) {
-  const { data, isLoading, isError, error } = useSimilarPapers(preprintUri, { limit });
+  const { data, isLoading, isError, error } = useSimilarPapers(eprintUri, { limit });
 
   if (isError) {
     return (
@@ -84,7 +84,7 @@ export function RelatedPapersPanel({
 
               {data.related.length >= limit && (
                 <Button variant="ghost" size="sm" className="w-full" asChild>
-                  <Link href={`/preprints/${encodeURIComponent(preprintUri)}/related`}>
+                  <Link href={`/eprints/${encodeURIComponent(eprintUri)}/related`}>
                     View all related papers
                     <ExternalLink className="ml-2 h-3 w-3" />
                   </Link>
@@ -102,7 +102,7 @@ export function RelatedPapersPanel({
       {/* Citation Network Summary */}
       {showCitations && (
         <Card>
-          <CitationSummary preprintUri={preprintUri} />
+          <CitationSummary eprintUri={eprintUri} />
         </Card>
       )}
     </div>
@@ -113,7 +113,7 @@ export function RelatedPapersPanel({
  * Props for RelatedPaperCard component.
  */
 interface RelatedPaperCardProps {
-  paper: RelatedPreprint;
+  paper: RelatedEprint;
   className?: string;
 }
 
@@ -125,7 +125,7 @@ function RelatedPaperCard({ paper, className }: RelatedPaperCardProps) {
 
   return (
     <Link
-      href={`/preprints/${encodeURIComponent(paper.uri)}`}
+      href={`/eprints/${encodeURIComponent(paper.uri)}`}
       className={cn(
         'group block rounded-lg border p-3 transition-colors hover:bg-muted/50',
         className

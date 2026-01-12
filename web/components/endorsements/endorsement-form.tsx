@@ -10,7 +10,7 @@
  * @example
  * ```tsx
  * <EndorsementForm
- *   preprintUri={preprintUri}
+ *   eprintUri={eprintUri}
  *   open={isOpen}
  *   onOpenChange={setIsOpen}
  *   onSubmit={handleSubmit}
@@ -67,8 +67,8 @@ import type { ContributionType } from '@/lib/api/schema';
  * Props for EndorsementForm.
  */
 export interface EndorsementFormProps {
-  /** AT-URI of the preprint */
-  preprintUri: string;
+  /** AT-URI of the eprint */
+  eprintUri: string;
 
   /** Dialog open state */
   open: boolean;
@@ -99,7 +99,7 @@ export interface EndorsementFormProps {
  * Data submitted from endorsement form.
  */
 export interface EndorsementFormData {
-  preprintUri: string;
+  eprintUri: string;
   contributions: ContributionType[];
   comment?: string;
 }
@@ -255,7 +255,7 @@ const CONTRIBUTION_CATEGORIES: Array<{
  * @returns Dialog element
  */
 export function EndorsementForm({
-  preprintUri,
+  eprintUri,
   open,
   onOpenChange,
   onSubmit,
@@ -286,7 +286,7 @@ export function EndorsementForm({
       }
 
       await onSubmit({
-        preprintUri,
+        eprintUri,
         contributions,
         comment: comment.trim() || undefined,
       });
@@ -295,7 +295,7 @@ export function EndorsementForm({
       setComment('');
       setContributions([]);
     },
-    [preprintUri, contributions, comment, onSubmit]
+    [eprintUri, contributions, comment, onSubmit]
   );
 
   const isValid = contributions.length > 0;
@@ -348,7 +348,7 @@ export function EndorsementForm({
               id="endorsement-dialog-title"
               className="text-lg font-semibold leading-none tracking-tight"
             >
-              Endorse this preprint
+              Endorse this eprint
             </h2>
             <p className="text-sm text-muted-foreground">
               Select one or more contribution types that you are endorsing.

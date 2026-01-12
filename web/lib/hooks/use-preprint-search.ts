@@ -1,8 +1,8 @@
 /**
- * External preprint search hooks with debouncing and autocomplete.
+ * External eprint search hooks with debouncing and autocomplete.
  *
  * @remarks
- * This module provides hooks for searching external preprint sources
+ * This module provides hooks for searching external eprint sources
  * (arXiv, OpenReview, PsyArXiv, LingBuzz, Semantics Archive) for the
  * claiming workflow. Implements industry-standard patterns:
  *
@@ -93,9 +93,9 @@ export type ImportSource =
   | 'other';
 
 /**
- * External preprint author.
+ * External eprint author.
  */
-export interface ExternalPreprintAuthor {
+export interface ExternalEprintAuthor {
   readonly name: string;
   readonly orcid?: string;
   readonly affiliation?: string;
@@ -103,14 +103,14 @@ export interface ExternalPreprintAuthor {
 }
 
 /**
- * External preprint from federated search.
+ * External eprint from federated search.
  */
-export interface ExternalPreprint {
+export interface ExternalEprint {
   readonly externalId: string;
   readonly url: string;
   readonly title: string;
   readonly abstract?: string;
-  readonly authors: readonly ExternalPreprintAuthor[];
+  readonly authors: readonly ExternalEprintAuthor[];
   readonly publicationDate?: string;
   readonly doi?: string;
   readonly pdfUrl?: string;
@@ -133,8 +133,8 @@ export interface AutocompleteSuggestion {
 /**
  * Search results response.
  */
-export interface SearchPreprintsResponse {
-  readonly preprints: readonly ExternalPreprint[];
+export interface SearchEprintsResponse {
+  readonly eprints: readonly ExternalEprint[];
   readonly facets?: {
     readonly sources: Record<string, number>;
   };
@@ -148,20 +148,20 @@ export interface AutocompleteResponse {
 }
 
 /**
- * Query key factory for preprint search queries.
+ * Query key factory for eprint search queries.
  *
  * @remarks
  * Follows TanStack Query best practices for cache key management.
  * Enables fine-grained cache invalidation for search data.
  */
-export const preprintSearchKeys = {
-  /** Base key for all preprint search queries */
-  all: ['preprint-search'] as const,
+export const eprintSearchKeys = {
+  /** Base key for all eprint search queries */
+  all: ['eprint-search'] as const,
   /** Key for federated search queries */
   search: (params: { query?: string; author?: string; sources?: string; limit?: number }) =>
-    [...preprintSearchKeys.all, 'search', params] as const,
+    [...eprintSearchKeys.all, 'search', params] as const,
   /** Key for autocomplete queries */
-  autocomplete: (query: string) => [...preprintSearchKeys.all, 'autocomplete', query] as const,
+  autocomplete: (query: string) => [...eprintSearchKeys.all, 'autocomplete', query] as const,
 };
 
 // =============================================================================
@@ -212,7 +212,7 @@ export interface UseAutocompleteOptions {
 }
 
 /**
- * Hook for preprint autocomplete suggestions.
+ * Hook for eprint autocomplete suggestions.
  *
  * @param query - Search query (minimum 2 characters)
  * @param options - Autocomplete options
@@ -250,7 +250,7 @@ export function useAutocomplete(query: string, options: UseAutocompleteOptions =
   const debouncedQuery = useDebounce(query.trim(), debounceMs);
 
   const result = useQuery({
-    queryKey: preprintSearchKeys.autocomplete(debouncedQuery),
+    queryKey: eprintSearchKeys.autocomplete(debouncedQuery),
     queryFn: async (): Promise<AutocompleteResponse> => {
       const params = new URLSearchParams({
         query: debouncedQuery,
@@ -279,7 +279,7 @@ export function useAutocomplete(query: string, options: UseAutocompleteOptions =
 /**
  * Options for federated search hook.
  */
-export interface UsePreprintSearchOptions {
+export interface UseEprintSearchOptions {
   /** Author name filter */
   author?: string;
   /** Comma-separated list of sources to search */
@@ -291,7 +291,7 @@ export interface UsePreprintSearchOptions {
 }
 
 /**
- * Hook for federated preprint search across external sources.
+ * Hook for federated eprint search across external sources.
  *
  * @param query - Search query
  * @param options - Search options
@@ -306,7 +306,7 @@ export interface UsePreprintSearchOptions {
  *
  * @example
  * ```tsx
- * const { preprints, facets, isLoading } = usePreprintSearch('attention mechanism', {
+ * const { eprints, facets, isLoading } = useEprintSearch('attention mechanism', {
  *   sources: 'arxiv,openreview',
  *   limit: 20,
  * });
@@ -314,25 +314,25 @@ export interface UsePreprintSearchOptions {
  * return (
  *   <>
  *     <SourceFacets facets={facets} />
- *     <PreprintList preprints={preprints} isLoading={isLoading} />
+ *     <EprintList eprints={eprints} isLoading={isLoading} />
  *   </>
  * );
  * ```
  */
-export function usePreprintSearch(query: string, options: UsePreprintSearchOptions = {}) {
+export function useEprintSearch(query: string, options: UseEprintSearchOptions = {}) {
   const { author, sources, limit = 20, enabled = true } = options;
 
   const result = useQuery({
-    queryKey: preprintSearchKeys.search({ query, author, sources, limit }),
-    queryFn: async (): Promise<SearchPreprintsResponse> => {
+    queryKey: eprintSearchKeys.search({ query, author, sources, limit }),
+    queryFn: async (): Promise<SearchEprintsResponse> => {
       const params = new URLSearchParams();
       if (query) params.set('query', query);
       if (author) params.set('author', author);
       if (sources) params.set('sources', sources);
       params.set('limit', String(limit));
 
-      return fetchWithAuth<SearchPreprintsResponse>(
-        `/xrpc/pub.chive.claiming.searchPreprints?${params}`
+      return fetchWithAuth<SearchEprintsResponse>(
+        `/xrpc/pub.chive.claiming.searchEprints?${params}`
       );
     },
     enabled: enabled && (query.length >= 2 || !!author),
@@ -341,7 +341,7 @@ export function usePreprintSearch(query: string, options: UsePreprintSearchOptio
   });
 
   return {
-    preprints: result.data?.preprints ?? [],
+    eprints: result.data?.eprints ?? [],
     facets: result.data?.facets,
     isLoading: result.isLoading,
     isFetching: result.isFetching,
@@ -394,7 +394,7 @@ export interface StartClaimFromExternalParams {
  *
  * @remarks
  * Implements "import on demand" pattern:
- * 1. User selects preprint from search results
+ * 1. User selects eprint from search results
  * 2. If not already imported, fetches from source and imports
  * 3. Creates claim request
  *
@@ -405,16 +405,16 @@ export interface StartClaimFromExternalParams {
  * ```tsx
  * const startClaim = useStartClaimFromExternal();
  *
- * const handleSelect = (preprint: ExternalPreprint) => {
+ * const handleSelect = (eprint: ExternalEprint) => {
  *   startClaim.mutate({
- *     source: preprint.source,
- *     externalId: preprint.externalId,
+ *     source: eprint.source,
+ *     externalId: eprint.externalId,
  *   });
  * };
  *
  * return (
- *   <PreprintCard
- *     preprint={preprint}
+ *   <EprintCard
+ *     eprint={eprint}
  *     onClaim={handleSelect}
  *     isClaimPending={startClaim.isPending}
  *   />
@@ -455,7 +455,7 @@ export function useStartClaimFromExternal() {
 /**
  * Options for combined search state hook.
  */
-export interface UsePreprintSearchStateOptions {
+export interface UseEprintSearchStateOptions {
   /** Initial search query */
   initialQuery?: string;
   /** Debounce delay for autocomplete (default: 200ms) */
@@ -465,7 +465,7 @@ export interface UsePreprintSearchStateOptions {
 }
 
 /**
- * Combined hook for managing preprint search state.
+ * Combined hook for managing eprint search state.
  *
  * @param options - Search state options
  * @returns Search state and handlers
@@ -491,7 +491,7 @@ export interface UsePreprintSearchStateOptions {
  *   handleSubmit,
  *   isAutocompleteLoading,
  *   isSearchLoading,
- * } = usePreprintSearchState();
+ * } = useEprintSearchState();
  *
  * return (
  *   <form onSubmit={handleSubmit}>
@@ -506,7 +506,7 @@ export interface UsePreprintSearchStateOptions {
  * );
  * ```
  */
-export function usePreprintSearchState(options: UsePreprintSearchStateOptions = {}) {
+export function useEprintSearchState(options: UseEprintSearchStateOptions = {}) {
   const {
     initialQuery = '',
     autocompleteDebounceMs = 200,
@@ -534,7 +534,7 @@ export function usePreprintSearchState(options: UsePreprintSearchStateOptions = 
   });
 
   // Full search hook
-  const search = usePreprintSearch(submittedQuery, {
+  const search = useEprintSearch(submittedQuery, {
     sources: selectedSources.length > 0 ? selectedSources.join(',') : undefined,
     author: authorFilter || undefined,
     enabled: !!submittedQuery,
@@ -591,7 +591,7 @@ export function usePreprintSearchState(options: UsePreprintSearchStateOptions = 
     isAutocompleteFetching: autocomplete.isFetching,
 
     // Search results
-    searchResults: search.preprints,
+    searchResults: search.eprints,
     facets: search.facets,
     availableSources,
     isSearchLoading: search.isLoading,

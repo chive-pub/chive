@@ -9,15 +9,15 @@ import { Button } from '@/components/ui/button';
 import { RecommendationBadge } from './recommendation-badge';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
-import type { RecommendedPreprint } from '@/lib/api/schema';
+import type { RecommendedEprint } from '@/lib/api/schema';
 
 /**
- * Props for FeedPreprintCard component.
+ * Props for FeedEprintCard component.
  */
-export interface FeedPreprintCardProps {
-  /** Recommended preprint data */
-  preprint: RecommendedPreprint;
-  /** Callback when preprint is dismissed */
+export interface FeedEprintCardProps {
+  /** Recommended eprint data */
+  eprint: RecommendedEprint;
+  /** Callback when eprint is dismissed */
   onDismiss?: (uri: string) => void;
   /** Callback when card is clicked (for tracking) */
   onClick?: (uri: string) => void;
@@ -28,58 +28,58 @@ export interface FeedPreprintCardProps {
 }
 
 /**
- * Displays a recommended preprint card with explanation badge.
+ * Displays a recommended eprint card with explanation badge.
  *
  * @remarks
- * Extends the base preprint card with recommendation-specific features:
+ * Extends the base eprint card with recommendation-specific features:
  * - Explanation badge showing why it was recommended
  * - Dismiss button to remove from feed
  * - Click tracking for feedback loop
  *
  * @example
  * ```tsx
- * <FeedPreprintCard
- *   preprint={recommendation}
- *   onDismiss={(uri) => dismissMutation.mutate({ preprintUri: uri, type: 'dismiss' })}
- *   onClick={(uri) => trackMutation.mutate({ preprintUri: uri, type: 'click' })}
+ * <FeedEprintCard
+ *   eprint={recommendation}
+ *   onDismiss={(uri) => dismissMutation.mutate({ eprintUri: uri, type: 'dismiss' })}
+ *   onClick={(uri) => trackMutation.mutate({ eprintUri: uri, type: 'click' })}
  * />
  * ```
  */
-export function FeedPreprintCard({
-  preprint,
+export function FeedEprintCard({
+  eprint,
   onDismiss,
   onClick,
   onPrefetch,
   className,
-}: FeedPreprintCardProps) {
+}: FeedEprintCardProps) {
   const handleMouseEnter = useCallback(() => {
     if (onPrefetch) {
-      onPrefetch(preprint.uri);
+      onPrefetch(eprint.uri);
     }
-  }, [onPrefetch, preprint.uri]);
+  }, [onPrefetch, eprint.uri]);
 
   const handleClick = useCallback(() => {
     if (onClick) {
-      onClick(preprint.uri);
+      onClick(eprint.uri);
     }
-  }, [onClick, preprint.uri]);
+  }, [onClick, eprint.uri]);
 
   const handleDismiss = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (onDismiss) {
-        onDismiss(preprint.uri);
+        onDismiss(eprint.uri);
       }
     },
-    [onDismiss, preprint.uri]
+    [onDismiss, eprint.uri]
   );
 
-  const preprintUrl = `/preprints/${encodeURIComponent(preprint.uri)}`;
+  const eprintUrl = `/eprints/${encodeURIComponent(eprint.uri)}`;
 
   // Get first author name
-  const firstAuthor = preprint.authors?.[0]?.name ?? 'Unknown author';
-  const authorCount = preprint.authors?.length ?? 0;
+  const firstAuthor = eprint.authors?.[0]?.name ?? 'Unknown author';
+  const authorCount = eprint.authors?.length ?? 0;
   const authorDisplay = authorCount > 1 ? `${firstAuthor} et al.` : firstAuthor;
 
   return (
@@ -103,26 +103,26 @@ export function FeedPreprintCard({
       <CardHeader className="pb-2">
         {/* Recommendation badge */}
         <div className="mb-2">
-          <RecommendationBadge explanation={preprint.explanation} size="sm" />
+          <RecommendationBadge explanation={eprint.explanation} size="sm" />
         </div>
 
         {/* Title */}
         <Link
-          href={preprintUrl}
+          href={eprintUrl}
           className="block font-semibold leading-tight hover:text-primary hover:underline"
           onClick={handleClick}
         >
-          <h3 className="line-clamp-2 pr-8">{preprint.title}</h3>
+          <h3 className="line-clamp-2 pr-8">{eprint.title}</h3>
         </Link>
 
         {/* Author and date */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>{authorDisplay}</span>
-          {preprint.publicationDate && (
+          {eprint.publicationDate && (
             <>
               <span className="text-xs">·</span>
               <span className="text-xs">
-                {formatDate(preprint.publicationDate, { relative: true })}
+                {formatDate(eprint.publicationDate, { relative: true })}
               </span>
             </>
           )}
@@ -131,14 +131,14 @@ export function FeedPreprintCard({
 
       <CardContent className="space-y-3">
         {/* Abstract */}
-        {preprint.abstract && (
-          <p className="line-clamp-3 text-sm text-muted-foreground">{preprint.abstract}</p>
+        {eprint.abstract && (
+          <p className="line-clamp-3 text-sm text-muted-foreground">{eprint.abstract}</p>
         )}
 
         {/* Categories */}
-        {preprint.categories && preprint.categories.length > 0 && (
+        {eprint.categories && eprint.categories.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {preprint.categories.slice(0, 3).map((category) => (
+            {eprint.categories.slice(0, 3).map((category) => (
               <span
                 key={category}
                 className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
@@ -146,9 +146,9 @@ export function FeedPreprintCard({
                 {category}
               </span>
             ))}
-            {preprint.categories.length > 3 && (
+            {eprint.categories.length > 3 && (
               <span className="text-xs text-muted-foreground">
-                +{preprint.categories.length - 3}
+                +{eprint.categories.length - 3}
               </span>
             )}
           </div>
@@ -159,9 +159,9 @@ export function FeedPreprintCard({
 }
 
 /**
- * Loading skeleton for FeedPreprintCard.
+ * Loading skeleton for FeedEprintCard.
  */
-export function FeedPreprintCardSkeleton({ className }: { className?: string }) {
+export function FeedEprintCardSkeleton({ className }: { className?: string }) {
   return (
     <Card className={cn(className)}>
       <CardHeader className="pb-2">

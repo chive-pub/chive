@@ -17,7 +17,7 @@ import {
 import { BacklinkItem } from './backlink-item';
 
 export interface BacklinksPanelProps {
-  preprintUri: string;
+  eprintUri: string;
   className?: string;
   /** Maximum number of backlinks to show initially */
   initialLimit?: number;
@@ -55,17 +55,17 @@ export function BacklinksPanelSkeleton({ className }: { className?: string }) {
  */
 function BacklinkSection({
   sourceType,
-  preprintUri,
+  eprintUri,
   initialExpanded = false,
 }: {
   sourceType: BacklinkSourceType;
-  preprintUri: string;
+  eprintUri: string;
   initialExpanded?: boolean;
 }) {
   const [expanded, setExpanded] = useState(initialExpanded);
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useBacklinks(
-    preprintUri,
+    eprintUri,
     {
       sourceType,
       limit: 5,
@@ -124,19 +124,19 @@ function BacklinkSection({
 }
 
 /**
- * Displays backlinks to a preprint from external sources.
+ * Displays backlinks to a eprint from external sources.
  *
  * @remarks
- * Shows references to this preprint from Semble collections, Bluesky posts,
+ * Shows references to this eprint from Semble collections, Bluesky posts,
  * WhiteWind blogs, and Leaflet lists. Includes counts by source type.
  *
  * @example
  * ```tsx
- * <BacklinksPanel preprintUri="at://did:plc:abc/pub.chive.preprint.submission/123" />
+ * <BacklinksPanel eprintUri="at://did:plc:abc/pub.chive.eprint.submission/123" />
  * ```
  */
-export function BacklinksPanel({ preprintUri, className }: BacklinksPanelProps) {
-  const { data: counts, isLoading: countsLoading } = useBacklinkCounts(preprintUri);
+export function BacklinksPanel({ eprintUri, className }: BacklinksPanelProps) {
+  const { data: counts, isLoading: countsLoading } = useBacklinkCounts(eprintUri);
 
   // Determine which source types have backlinks
   const sourcesWithBacklinks: BacklinkSourceType[] = [];
@@ -175,7 +175,7 @@ export function BacklinksPanel({ preprintUri, className }: BacklinksPanelProps) 
           <BacklinkSection
             key={sourceType}
             sourceType={sourceType}
-            preprintUri={preprintUri}
+            eprintUri={eprintUri}
             initialExpanded={false}
           />
         ))}

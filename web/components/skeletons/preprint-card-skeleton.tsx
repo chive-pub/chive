@@ -2,24 +2,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 
 /**
- * Loading skeleton for PreprintCard.
+ * Loading skeleton for EprintCard.
  *
  * @remarks
- * Displays a placeholder with animated pulse effect while preprint data is loading.
- * Matches the layout of PreprintCard for seamless transitions.
+ * Displays a placeholder with animated pulse effect while eprint data is loading.
+ * Matches the layout of EprintCard for seamless transitions.
  *
  * @example
  * ```tsx
- * const { data, isLoading } = usePreprint(uri);
+ * const { data, isLoading } = useEprint(uri);
  *
- * if (isLoading) return <PreprintCardSkeleton />;
+ * if (isLoading) return <EprintCardSkeleton />;
  *
- * return <PreprintCard preprint={data} />;
+ * return <EprintCard eprint={data} />;
  * ```
  *
  * @returns React element displaying the skeleton
  */
-export function PreprintCardSkeleton() {
+export function EprintCardSkeleton() {
   return (
     <Card>
       <CardHeader>

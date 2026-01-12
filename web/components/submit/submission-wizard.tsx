@@ -1,16 +1,16 @@
 'use client';
 
 /**
- * Preprint submission wizard component.
+ * Eprint submission wizard component.
  *
  * @remarks
- * Multi-step form wizard for submitting preprints to the user's PDS.
+ * Multi-step form wizard for submitting eprints to the user's PDS.
  * Follows ATProto compliance: all data is written to the user's PDS,
  * never to Chive's backend.
  *
  * @example
  * ```tsx
- * <SubmissionWizard onSuccess={(uri) => router.push(`/preprints/${uri}`)} />
+ * <SubmissionWizard onSuccess={(uri) => router.push(`/eprints/${uri}`)} />
  * ```
  *
  * @packageDocumentation
@@ -25,7 +25,7 @@ import { ArrowLeft, ArrowRight, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth, useAgent } from '@/lib/auth/auth-context';
-import { createPreprintRecord, type CreateRecordResult } from '@/lib/atproto';
+import { createEprintRecord, type CreateRecordResult } from '@/lib/atproto';
 
 import { WizardProgress, WizardProgressCompact, type WizardStep } from './wizard-progress';
 import { StepFiles } from './step-files';
@@ -35,7 +35,7 @@ import { StepAuthors } from './step-authors';
 import { StepFields } from './step-fields';
 import { StepPublication } from './step-publication';
 import { StepReview } from './step-review';
-import type { PreprintAuthorFormData } from '@/components/forms/preprint-author-editor';
+import type { EprintAuthorFormData } from '@/components/forms/eprint-author-editor';
 
 // =============================================================================
 // TYPES
@@ -103,7 +103,7 @@ export interface SupplementaryMaterialInput {
  * Publication status values.
  */
 export type PublicationStatusValue =
-  | 'preprint'
+  | 'eprint'
   | 'under_review'
   | 'revision_requested'
   | 'accepted'
@@ -150,7 +150,7 @@ export type PreregistrationPlatformValue =
  */
 export type PresentationTypeValue = 'oral' | 'poster' | 'keynote' | 'workshop' | 'demo' | 'other';
 
-export interface PreprintFormValues {
+export interface EprintFormValues {
   // Step 1: Files
   documentFile?: File;
   documentFormat?: DocumentFormatValue;
@@ -166,7 +166,7 @@ export interface PreprintFormValues {
   license: LicenseValue;
 
   // Step 4: Authors
-  authors: PreprintAuthorFormData[];
+  authors: EprintAuthorFormData[];
 
   // Step 5: Fields
   fieldNodes: Array<{
@@ -236,7 +236,7 @@ export interface SubmissionWizardProps {
  * Wizard steps configuration.
  */
 const WIZARD_STEPS: WizardStep[] = [
-  { id: 'files', title: 'Files', description: 'Upload your preprint' },
+  { id: 'files', title: 'Files', description: 'Upload your eprint' },
   { id: 'supplementary', title: 'Supplementary', description: 'Add supporting files' },
   { id: 'metadata', title: 'Metadata', description: 'Title & abstract' },
   { id: 'authors', title: 'Authors', description: 'Add co-authors' },
@@ -478,7 +478,7 @@ const stepSchemas = {
 // =============================================================================
 
 /**
- * Multi-step preprint submission wizard.
+ * Multi-step eprint submission wizard.
  *
  * @param props - Component props
  * @returns Wizard element
@@ -493,8 +493,8 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
 
   // Initialize form with react-hook-form
   // Note: Using explicit type assertion since zodResolver inference
-  // doesn't perfectly match our PreprintFormValues interface
-  const form = useForm<PreprintFormValues>({
+  // doesn't perfectly match our EprintFormValues interface
+  const form = useForm<EprintFormValues>({
     resolver: zodResolver(formSchema) as never,
     mode: 'onChange',
     defaultValues: {
@@ -506,7 +506,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
       fieldNodes: [],
       supplementaryFiles: [],
       supplementaryMaterials: [],
-      publicationStatus: 'preprint',
+      publicationStatus: 'eprint',
       publishedVersion: {},
       externalIds: {},
       codeRepositories: [],
@@ -531,7 +531,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
     if (!result.success) {
       // Trigger validation errors on the form
       result.error.issues.forEach((issue) => {
-        const path = issue.path.join('.') as keyof PreprintFormValues;
+        const path = issue.path.join('.') as keyof EprintFormValues;
         form.setError(path, { message: issue.message });
       });
       return false;
@@ -578,7 +578,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
   // Handle form submission
   const handleSubmit = useCallback(async () => {
     if (!agent || !isAuthenticated) {
-      setSubmitError('You must be logged in to submit a preprint');
+      setSubmitError('You must be logged in to submit a eprint');
       return;
     }
 
@@ -595,7 +595,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
     try {
       const values = form.getValues();
 
-      // Transform wizard data to match PreprintFormData schema
+      // Transform wizard data to match EprintFormData schema
       // Use author data directly since it already matches the unified model
       const transformedAuthors = values.authors.map((a, index) => ({
         did: a.did,
@@ -625,8 +625,8 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
         order: m.order,
       }));
 
-      // Create the preprint record in the user's PDS
-      const result = await createPreprintRecord(agent, {
+      // Create the eprint record in the user's PDS
+      const result = await createEprintRecord(agent, {
         documentFile: values.documentFile!,
         documentFormat: values.documentFormat,
         supplementaryMaterials: transformedSupplementary,
@@ -642,7 +642,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
     } catch (error) {
       console.error('Submission error:', error);
       setSubmitError(
-        error instanceof Error ? error.message : 'An error occurred while submitting your preprint'
+        error instanceof Error ? error.message : 'An error occurred while submitting your eprint'
       );
     } finally {
       setIsSubmitting(false);
@@ -738,7 +738,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
                   ) : (
                     <>
                       <Send className="h-4 w-4 mr-2" />
-                      Submit Preprint
+                      Submit Eprint
                     </>
                   )}
                 </Button>

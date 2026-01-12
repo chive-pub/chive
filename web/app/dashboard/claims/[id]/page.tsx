@@ -113,7 +113,7 @@ export default function ClaimDetailPage() {
   const handleCompleteClaim = async () => {
     // In a real implementation, this would create the canonical record first
     // For now, we'll just simulate completion
-    const canonicalUri = `at://did:plc:example/pub.chive.preprint.submission/${Date.now()}`;
+    const canonicalUri = `at://did:plc:example/pub.chive.eprint.submission/${Date.now()}`;
     try {
       await completeClaim.mutateAsync({
         claimId: claim.id,
@@ -140,7 +140,7 @@ export default function ClaimDetailPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Verify Your Claim</h1>
         <p className="text-muted-foreground">
-          Complete the verification steps to claim this preprint
+          Complete the verification steps to claim this eprint
         </p>
       </div>
 
@@ -279,7 +279,7 @@ export default function ClaimDetailPage() {
             <CardHeader>
               <CardTitle>Complete Your Claim</CardTitle>
               <CardDescription>
-                Finalize the claim to create your official preprint record on Chive
+                Finalize the claim to create your official eprint record on Chive
               </CardDescription>
             </CardHeader>
             <CardContent>

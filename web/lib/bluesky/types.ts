@@ -92,7 +92,7 @@ export type BlueskyFacetFeature =
 /**
  * Content types supported for sharing.
  */
-export type ShareableContentType = 'preprint' | 'author' | 'review' | 'endorsement';
+export type ShareableContentType = 'eprint' | 'author' | 'review' | 'endorsement';
 
 /**
  * Share content metadata.

@@ -4,7 +4,7 @@ import { EndorsementForm, type EndorsementFormData } from './endorsement-form';
 
 describe('EndorsementForm', () => {
   const defaultProps = {
-    preprintUri: 'at://did:plc:test/pub.chive.preprint.submission/abc123',
+    eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc123',
     open: true,
     onOpenChange: vi.fn(),
     onSubmit: vi.fn(),
@@ -19,7 +19,7 @@ describe('EndorsementForm', () => {
       render(<EndorsementForm {...defaultProps} />);
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText('Endorse this preprint')).toBeInTheDocument();
+      expect(screen.getByText('Endorse this eprint')).toBeInTheDocument();
       expect(
         screen.getByText('Select one or more contribution types that you are endorsing.')
       ).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe('EndorsementForm', () => {
       await user.click(screen.getByRole('button', { name: /Submit endorsement/ }));
 
       expect(onSubmit).toHaveBeenCalledWith({
-        preprintUri: 'at://did:plc:test/pub.chive.preprint.submission/abc123',
+        eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc123',
         contributions: ['methodological', 'analytical'],
         comment: 'Great work!',
       } satisfies EndorsementFormData);
@@ -233,7 +233,7 @@ describe('EndorsementForm', () => {
       await user.click(screen.getByRole('button', { name: /Submit endorsement/ }));
 
       expect(onSubmit).toHaveBeenCalledWith({
-        preprintUri: 'at://did:plc:test/pub.chive.preprint.submission/abc123',
+        eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc123',
         contributions: ['methodological'],
         comment: undefined,
       });

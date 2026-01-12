@@ -9,7 +9,7 @@ import { TagsPageSkeleton } from './loading';
  */
 export const metadata: Metadata = {
   title: 'Browse Tags | Chive',
-  description: 'Explore user-contributed tags and discover preprints by topic.',
+  description: 'Explore user-contributed tags and discover eprints by topic.',
 };
 
 /**
@@ -27,7 +27,7 @@ export default function TagsPage() {
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Tags</h1>
         <p className="mt-2 text-muted-foreground">
-          Explore preprints by community-contributed tags
+          Explore eprints by community-contributed tags
         </p>
       </header>
 

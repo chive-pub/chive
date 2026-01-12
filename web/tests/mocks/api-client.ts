@@ -154,30 +154,30 @@ export function mockAuthorProfileResponse(
 }
 
 /**
- * Type-safe factory for preprint list responses.
+ * Type-safe factory for eprint list responses.
  */
-export function mockPreprintListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_preprint_listByAuthor']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_preprint_listByAuthor']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.preprint.listByAuthor'>(data);
+export function mockEprintListResponse(
+  data: SuccessResponseJSON<operations['pub_chive_eprint_listByAuthor']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_eprint_listByAuthor']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.eprint.listByAuthor'>(data);
 }
 
 /**
  * Type-safe factory for review list responses.
  */
 export function mockReviewListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_review_listForPreprint']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_review_listForPreprint']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.review.listForPreprint'>(data);
+  data: SuccessResponseJSON<operations['pub_chive_review_listForEprint']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_review_listForEprint']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.review.listForEprint'>(data);
 }
 
 /**
  * Type-safe factory for endorsement list responses.
  */
 export function mockEndorsementListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_endorsement_listForPreprint']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_endorsement_listForPreprint']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.endorsement.listForPreprint'>(data);
+  data: SuccessResponseJSON<operations['pub_chive_endorsement_listForEprint']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_endorsement_listForEprint']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.endorsement.listForEprint'>(data);
 }
 
 /**
@@ -193,9 +193,9 @@ export function mockEndorsementSummaryResponse(
  * Type-safe factory for search responses.
  */
 export function mockSearchResponse(
-  data: SuccessResponseJSON<operations['pub_chive_preprint_searchSubmissions']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_preprint_searchSubmissions']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.preprint.searchSubmissions'>(data);
+  data: SuccessResponseJSON<operations['pub_chive_eprint_searchSubmissions']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_eprint_searchSubmissions']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.eprint.searchSubmissions'>(data);
 }
 
 /**
@@ -229,9 +229,9 @@ export function mockFieldListResponse(
  * Type-safe factory for tag list responses.
  */
 export function mockTagListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_tag_listForPreprint']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_tag_listForPreprint']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.tag.listForPreprint'>(data);
+  data: SuccessResponseJSON<operations['pub_chive_tag_listForEprint']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_tag_listForEprint']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.tag.listForEprint'>(data);
 }
 
 /**

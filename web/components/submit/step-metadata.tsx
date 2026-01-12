@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Metadata step for preprint submission.
+ * Metadata step for eprint submission.
  *
  * @remarks
  * Step 2 of the submission wizard. Handles:
@@ -32,7 +32,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
-import type { PreprintFormValues } from './submission-wizard';
+import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -43,7 +43,7 @@ import type { PreprintFormValues } from './submission-wizard';
  */
 export interface StepMetadataProps {
   /** React Hook Form instance */
-  form: UseFormReturn<PreprintFormValues>;
+  form: UseFormReturn<EprintFormValues>;
   /** Additional CSS classes */
   className?: string;
 }
@@ -113,10 +113,10 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
           <FormItem>
             <FormLabel>Title *</FormLabel>
             <FormControl>
-              <Input {...field} placeholder="Enter the title of your preprint" maxLength={500} />
+              <Input {...field} placeholder="Enter the title of your eprint" maxLength={500} />
             </FormControl>
             <FormDescription>
-              A clear, descriptive title for your preprint (max 500 characters)
+              A clear, descriptive title for your eprint (max 500 characters)
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -220,7 +220,7 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
           <li>Use a descriptive title that summarizes your main finding</li>
           <li>Abstract should cover: background, methods, results, conclusions</li>
           <li>Choose keywords that researchers would use to find your work</li>
-          <li>CC BY 4.0 is the most common license for academic preprints</li>
+          <li>CC BY 4.0 is the most common license for academic eprints</li>
         </ul>
       </section>
     </div>

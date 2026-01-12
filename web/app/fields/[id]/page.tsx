@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: FieldPageProps): Promise<Meta
 
     return {
       title: `${data.name} | Chive`,
-      description: data.description ?? `Preprints in ${data.name} on Chive`,
+      description: data.description ?? `Eprints in ${data.name} on Chive`,
     };
   } catch {
     return { title: 'Field | Chive' };
@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: FieldPageProps): Promise<Meta
  *
  * @remarks
  * Server component that renders a field's detail page.
- * Includes hierarchy, relationships, and preprints.
+ * Includes hierarchy, relationships, and eprints.
  *
  * @example
  * URL: /fields/computer-science

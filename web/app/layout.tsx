@@ -10,13 +10,13 @@ import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Chive - Decentralized Preprint Server',
+    default: 'Chive - Decentralized Eprint Server',
     template: '%s | Chive',
   },
   description:
-    'Open access preprint server built on AT Protocol. Discover, share, and discuss academic research with full data sovereignty.',
+    'Open access eprint server built on AT Protocol. Discover, share, and discuss academic research with full data sovereignty.',
   keywords: [
-    'preprint',
+    'eprint',
     'academic',
     'research',
     'ATProto',
@@ -34,13 +34,13 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://chive.pub',
     siteName: 'Chive',
-    title: 'Chive - Decentralized Preprint Server',
-    description: 'Open access preprint server built on AT Protocol with full data sovereignty.',
+    title: 'Chive - Decentralized Eprint Server',
+    description: 'Open access eprint server built on AT Protocol with full data sovereignty.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Chive - Decentralized Preprint Server',
-    description: 'Open access preprint server built on AT Protocol.',
+    title: 'Chive - Decentralized Eprint Server',
+    description: 'Open access eprint server built on AT Protocol.',
   },
   robots: {
     index: true,

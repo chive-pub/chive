@@ -85,7 +85,7 @@ export function AuthorsPageContent() {
           </CardHeader>
           <CardContent className="text-muted-foreground">
             <p>
-              View an author&apos;s preprints, metrics, and endorsements by visiting their profile
+              View an author&apos;s eprints, metrics, and endorsements by visiting their profile
               page. Link your ORCID to enhance your academic identity.
             </p>
           </CardContent>

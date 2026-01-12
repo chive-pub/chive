@@ -1,17 +1,17 @@
-import { PreprintCardSkeleton } from './preprint-card-skeleton';
+import { EprintCardSkeleton } from './eprint-card-skeleton';
 
-interface PreprintListSkeletonProps {
+interface EprintListSkeletonProps {
   count?: number;
 }
 
 /**
- * Loading skeleton for a list of preprints.
+ * Loading skeleton for a list of eprints.
  */
-export function PreprintListSkeleton({ count = 6 }: PreprintListSkeletonProps) {
+export function EprintListSkeleton({ count = 6 }: EprintListSkeletonProps) {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: count }).map((_, i) => (
-        <PreprintCardSkeleton key={i} />
+        <EprintCardSkeleton key={i} />
       ))}
     </div>
   );

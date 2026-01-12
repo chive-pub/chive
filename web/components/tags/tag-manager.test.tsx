@@ -11,26 +11,26 @@ vi.mock('next/link', () => ({
 }));
 
 // Mock the tag hooks
-const mockUsePreprintTags = vi.fn();
+const mockUseEprintTags = vi.fn();
 const mockUseCreateTag = vi.fn();
 const mockUseDeleteTag = vi.fn();
 
 vi.mock('@/lib/hooks/use-tags', () => ({
-  usePreprintTags: (uri: string) => mockUsePreprintTags(uri),
+  useEprintTags: (uri: string) => mockUseEprintTags(uri),
   useCreateTag: () => mockUseCreateTag(),
   useDeleteTag: () => mockUseDeleteTag(),
   useTagSuggestions: () => ({ data: [], isLoading: false }),
 }));
 
 describe('TagManager', () => {
-  const preprintUri = 'at://did:plc:test/pub.chive.preprint.submission/abc123';
+  const eprintUri = 'at://did:plc:test/pub.chive.eprint.submission/abc123';
   const currentUserDid = 'did:plc:currentuser';
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     // Default mock implementations
-    mockUsePreprintTags.mockReturnValue({
+    mockUseEprintTags.mockReturnValue({
       data: { tags: [] },
       isLoading: false,
       error: null,
@@ -49,32 +49,32 @@ describe('TagManager', () => {
 
   describe('rendering', () => {
     it('renders tag manager', () => {
-      render(<TagManager preprintUri={preprintUri} />);
+      render(<TagManager eprintUri={eprintUri} />);
 
       expect(screen.getByTestId('tag-manager')).toBeInTheDocument();
       expect(screen.getByText('Tags')).toBeInTheDocument();
     });
 
     it('shows loading skeleton', () => {
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: null,
         isLoading: true,
         error: null,
       });
 
-      render(<TagManager preprintUri={preprintUri} />);
+      render(<TagManager eprintUri={eprintUri} />);
 
       expect(screen.getByTestId('tag-list-skeleton')).toBeInTheDocument();
     });
 
     it('shows error state', () => {
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: null,
         isLoading: false,
         error: new Error('Failed to fetch'),
       });
 
-      render(<TagManager preprintUri={preprintUri} />);
+      render(<TagManager eprintUri={eprintUri} />);
 
       expect(screen.getByText('Failed to load tags')).toBeInTheDocument();
     });
@@ -82,19 +82,19 @@ describe('TagManager', () => {
 
   describe('empty state', () => {
     it('shows empty message when no tags', () => {
-      render(<TagManager preprintUri={preprintUri} />);
+      render(<TagManager eprintUri={eprintUri} />);
 
       expect(screen.getByText(/no tags yet/i)).toBeInTheDocument();
     });
 
     it('shows add prompt when editable and no tags', () => {
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       expect(screen.getByText('Add the first tag')).toBeInTheDocument();
     });
 
     it('does not show add prompt when not editable', () => {
-      render(<TagManager preprintUri={preprintUri} editable={false} />);
+      render(<TagManager eprintUri={eprintUri} editable={false} />);
 
       expect(screen.queryByText('Add the first tag')).not.toBeInTheDocument();
     });
@@ -115,13 +115,13 @@ describe('TagManager', () => {
         }),
       ];
 
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: { tags },
         isLoading: false,
         error: null,
       });
 
-      render(<TagManager preprintUri={preprintUri} />);
+      render(<TagManager eprintUri={eprintUri} />);
 
       expect(screen.getByText('AI')).toBeInTheDocument();
       expect(screen.getByText('ML')).toBeInTheDocument();
@@ -141,13 +141,13 @@ describe('TagManager', () => {
         }),
       ];
 
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: { tags },
         isLoading: false,
         error: null,
       });
 
-      render(<TagManager preprintUri={preprintUri} currentUserDid={currentUserDid} />);
+      render(<TagManager eprintUri={eprintUri} currentUserDid={currentUserDid} />);
 
       expect(screen.getByText('Your tags')).toBeInTheDocument();
       expect(screen.getByText('Community tags')).toBeInTheDocument();
@@ -162,13 +162,13 @@ describe('TagManager', () => {
         }),
       ];
 
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: { tags },
         isLoading: false,
         error: null,
       });
 
-      render(<TagManager preprintUri={preprintUri} currentUserDid={currentUserDid} />);
+      render(<TagManager eprintUri={eprintUri} currentUserDid={currentUserDid} />);
 
       expect(screen.getByText('Your tags')).toBeInTheDocument();
       expect(screen.queryByText('Community tags')).not.toBeInTheDocument();
@@ -177,13 +177,13 @@ describe('TagManager', () => {
 
   describe('add tag button', () => {
     it('shows Add tag button when editable', () => {
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       expect(screen.getByRole('button', { name: /add tag/i })).toBeInTheDocument();
     });
 
     it('hides Add tag button when not editable', () => {
-      render(<TagManager preprintUri={preprintUri} editable={false} />);
+      render(<TagManager eprintUri={eprintUri} editable={false} />);
 
       expect(screen.queryByRole('button', { name: /add tag/i })).not.toBeInTheDocument();
     });
@@ -191,7 +191,7 @@ describe('TagManager', () => {
     it('opens tag input when Add tag clicked', async () => {
       const user = userEvent.setup();
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByRole('button', { name: /add tag/i }));
 
@@ -201,7 +201,7 @@ describe('TagManager', () => {
     it('hides Add tag button when adding', async () => {
       const user = userEvent.setup();
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByRole('button', { name: /add tag/i }));
 
@@ -211,7 +211,7 @@ describe('TagManager', () => {
     it('shows Done button when adding', async () => {
       const user = userEvent.setup();
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByRole('button', { name: /add tag/i }));
 
@@ -221,7 +221,7 @@ describe('TagManager', () => {
     it('closes input when Done clicked', async () => {
       const user = userEvent.setup();
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByRole('button', { name: /add tag/i }));
       await user.click(screen.getByRole('button', { name: /done/i }));
@@ -239,7 +239,7 @@ describe('TagManager', () => {
         isPending: false,
       });
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByRole('button', { name: /add tag/i }));
 
@@ -247,7 +247,7 @@ describe('TagManager', () => {
       await user.type(input, 'new-tag{Enter}');
 
       expect(mutateAsync).toHaveBeenCalledWith({
-        preprintUri,
+        eprintUri,
         displayForm: 'new-tag',
       });
     });
@@ -260,7 +260,7 @@ describe('TagManager', () => {
         isPending: false,
       });
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByRole('button', { name: /add tag/i }));
 
@@ -279,7 +279,7 @@ describe('TagManager', () => {
         isPending: true,
       });
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByRole('button', { name: /add tag/i }));
 
@@ -297,13 +297,13 @@ describe('TagManager', () => {
         }),
       ];
 
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: { tags },
         isLoading: false,
         error: null,
       });
 
-      render(<TagManager preprintUri={preprintUri} currentUserDid={currentUserDid} editable />);
+      render(<TagManager eprintUri={eprintUri} currentUserDid={currentUserDid} editable />);
 
       expect(screen.getByRole('button', { name: /remove my tag tag/i })).toBeInTheDocument();
     });
@@ -317,14 +317,14 @@ describe('TagManager', () => {
         }),
       ];
 
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: { tags },
         isLoading: false,
         error: null,
       });
 
       render(
-        <TagManager preprintUri={preprintUri} currentUserDid={currentUserDid} editable={false} />
+        <TagManager eprintUri={eprintUri} currentUserDid={currentUserDid} editable={false} />
       );
 
       expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
@@ -346,20 +346,20 @@ describe('TagManager', () => {
         }),
       ];
 
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: { tags },
         isLoading: false,
         error: null,
       });
 
-      render(<TagManager preprintUri={preprintUri} currentUserDid={currentUserDid} editable />);
+      render(<TagManager eprintUri={eprintUri} currentUserDid={currentUserDid} editable />);
 
       await user.click(screen.getByRole('button', { name: /remove removable tag/i }));
 
-      // Delete mutation receives uri and preprintUri from the tag
+      // Delete mutation receives uri and eprintUri from the tag
       expect(mutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          preprintUri,
+          eprintUri,
           uri: expect.any(String),
         })
       );
@@ -370,7 +370,7 @@ describe('TagManager', () => {
     it('opens tag input when empty state link clicked', async () => {
       const user = userEvent.setup();
 
-      render(<TagManager preprintUri={preprintUri} editable />);
+      render(<TagManager eprintUri={eprintUri} editable />);
 
       await user.click(screen.getByText('Add the first tag'));
 
@@ -380,7 +380,7 @@ describe('TagManager', () => {
 
   describe('className prop', () => {
     it('applies custom className', () => {
-      render(<TagManager preprintUri={preprintUri} className="custom-class" />);
+      render(<TagManager eprintUri={eprintUri} className="custom-class" />);
 
       expect(screen.getByTestId('tag-manager')).toHaveClass('custom-class');
     });
@@ -396,13 +396,13 @@ describe('TagManager', () => {
         }),
       ];
 
-      mockUsePreprintTags.mockReturnValue({
+      mockUseEprintTags.mockReturnValue({
         data: { tags },
         isLoading: false,
         error: null,
       });
 
-      render(<TagManager preprintUri={preprintUri} />);
+      render(<TagManager eprintUri={eprintUri} />);
 
       expect(screen.getByRole('link')).toHaveAttribute('href', '/tags/linked-tag');
     });

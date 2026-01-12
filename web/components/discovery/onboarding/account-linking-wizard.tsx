@@ -183,7 +183,7 @@ export function AccountLinkingWizard({
                   <strong>Citation alerts</strong> when your work is referenced
                 </li>
                 <li>
-                  <strong>Automatic paper matching</strong> for claiming preprints
+                  <strong>Automatic paper matching</strong> for claiming eprints
                 </li>
                 <li>
                   <strong>Collaborator discovery</strong> to find related researchers

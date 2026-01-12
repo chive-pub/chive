@@ -6,7 +6,7 @@
  * @remarks
  * Renders annotation body items (FOVEA GlossItem pattern) as a mix of
  * text and interactive reference chips. References link to their targets
- * (Wikidata, authorities, fields, preprints, etc.).
+ * (Wikidata, authorities, fields, eprints, etc.).
  *
  * @example
  * ```tsx
@@ -121,14 +121,14 @@ function FacetRefChip({ dimension, value }: { dimension: string; value: string }
 }
 
 /**
- * Renders a preprint reference as a chip.
+ * Renders a eprint reference as a chip.
  */
-function PreprintRefChip({ uri, title }: { uri: string; title: string }) {
+function EprintRefChip({ uri, title }: { uri: string; title: string }) {
   // Encode the AT-URI for use in the URL
   const encodedUri = encodeURIComponent(uri.replace('at://', ''));
 
   return (
-    <Link href={`/preprints/${encodedUri}`}>
+    <Link href={`/eprints/${encodedUri}`}>
       <Badge
         variant="secondary"
         className="max-w-[200px] truncate bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
@@ -191,8 +191,8 @@ function BodyItemRenderer({ item }: { item: RichAnnotationItem }) {
     case 'facetRef':
       return <FacetRefChip dimension={item.dimension} value={item.value} />;
 
-    case 'preprintRef':
-      return <PreprintRefChip uri={item.uri} title={item.title} />;
+    case 'eprintRef':
+      return <EprintRefChip uri={item.uri} title={item.title} />;
 
     case 'annotationRef':
       return <AnnotationRefChip uri={item.uri} excerpt={item.excerpt} />;

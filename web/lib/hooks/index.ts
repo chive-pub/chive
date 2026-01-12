@@ -1,14 +1,14 @@
 export {
-  usePreprint,
-  usePreprints,
-  usePreprintsByAuthor,
-  usePrefetchPreprint,
-  preprintKeys,
-} from './use-preprint';
+  useEprint,
+  useEprints,
+  useEprintsByAuthor,
+  usePrefetchEprint,
+  eprintKeys,
+} from './use-eprint';
 
 export { useSearch, useInstantSearch, searchKeys } from './use-search';
 
-export { useSearchTracking, markPreprintViewStart } from './use-search-tracking';
+export { useSearchTracking, markEprintViewStart } from './use-search-tracking';
 
 export { useTrending, trendingKeys } from './use-trending';
 
@@ -16,7 +16,7 @@ export {
   useField,
   useFields,
   useFieldChildren,
-  useFieldPreprints,
+  useFieldEprints,
   usePrefetchField,
   fieldKeys,
 } from './use-field';
@@ -67,7 +67,7 @@ export {
 } from './use-endorsement';
 
 export {
-  usePreprintTags,
+  useEprintTags,
   useTagSuggestions,
   useTrendingTags,
   useTagSearch,
@@ -81,7 +81,7 @@ export {
 export {
   useUserClaims,
   useClaim,
-  useClaimablePreprints,
+  useClaimableEprints,
   usePendingClaims,
   useStartClaim,
   useCollectEvidence,
@@ -97,15 +97,15 @@ export {
 export {
   useDebounce,
   useAutocomplete,
-  usePreprintSearch,
+  useEprintSearch,
   useStartClaimFromExternal,
-  usePreprintSearchState,
-  preprintSearchKeys,
+  useEprintSearchState,
+  eprintSearchKeys,
   type ImportSource,
-  type ExternalPreprint,
-  type ExternalPreprintAuthor,
+  type ExternalEprint,
+  type ExternalEprintAuthor,
   type AutocompleteSuggestion,
-} from './use-preprint-search';
+} from './use-eprint-search';
 
 export {
   useOrcidAutocomplete,
@@ -144,8 +144,8 @@ export {
   useRecordInteraction,
   usePrefetchSimilarPapers,
   discoveryKeys,
-  type RecommendedPreprint,
-  type RelatedPreprint,
+  type RecommendedEprint,
+  type RelatedEprint,
 } from './use-discovery';
 
 export { useShareToBluesky } from './use-share-to-bluesky';

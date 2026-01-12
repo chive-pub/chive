@@ -11,7 +11,7 @@ import type {
   AuthorProfile,
   AuthorMetrics,
   AuthorProfileResponse,
-  PreprintSummary,
+  EprintSummary,
 } from '@/lib/api/schema';
 import type { paths } from '@/lib/api/schema.generated';
 
@@ -47,9 +47,9 @@ export const authorKeys = {
   profile: (did: string) => [...authorKeys.profiles(), did] as const,
   /** Key for author metrics queries */
   metrics: (did: string) => [...authorKeys.all, 'metrics', did] as const,
-  /** Key for author preprints queries */
-  preprints: (did: string, params?: { limit?: number }) =>
-    [...authorKeys.all, 'preprints', did, params] as const,
+  /** Key for author eprints queries */
+  eprints: (did: string, params?: { limit?: number }) =>
+    [...authorKeys.all, 'eprints', did, params] as const,
 };
 
 interface UseAuthorOptions {
@@ -70,7 +70,7 @@ interface UseAuthorOptions {
  *
  * if (data) {
  *   console.log(data.profile.displayName);
- *   console.log(data.metrics.totalPreprints);
+ *   console.log(data.metrics.totalEprints);
  * }
  * ```
  *
@@ -243,27 +243,27 @@ export function formatOrcidUrl(orcid: string): string {
 }
 
 /**
- * Response type for author preprints.
+ * Response type for author eprints.
  */
-interface AuthorPreprintsResponse {
-  preprints: PreprintSummary[];
+interface AuthorEprintsResponse {
+  eprints: EprintSummary[];
   cursor?: string;
   hasMore: boolean;
 }
 
-interface UseAuthorPreprintsOptions {
-  /** Number of preprints per page */
+interface UseAuthorEprintsOptions {
+  /** Number of eprints per page */
   limit?: number;
   /** Whether the query is enabled */
   enabled?: boolean;
 }
 
 /**
- * Fetches an author's preprints with infinite scrolling support.
+ * Fetches an author's eprints with infinite scrolling support.
  *
  * @remarks
  * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
- * Preprints are ordered by most recent first.
+ * Eprints are ordered by most recent first.
  *
  * @example
  * ```tsx
@@ -273,22 +273,22 @@ interface UseAuthorPreprintsOptions {
  *   hasNextPage,
  *   fetchNextPage,
  *   isFetchingNextPage,
- * } = useAuthorPreprints('did:plc:abc123');
+ * } = useAuthorEprints('did:plc:abc123');
  *
- * const allPreprints = data?.pages.flatMap(p => p.preprints) ?? [];
+ * const allEprints = data?.pages.flatMap(p => p.eprints) ?? [];
  * ```
  *
  * @param did - The author's DID
  * @param options - Query options
- * @returns Infinite query result with paginated preprints
+ * @returns Infinite query result with paginated eprints
  */
-export function useAuthorPreprints(did: string, options: UseAuthorPreprintsOptions = {}) {
+export function useAuthorEprints(did: string, options: UseAuthorEprintsOptions = {}) {
   const { limit = 10, enabled = true } = options;
 
   return useInfiniteQuery({
-    queryKey: authorKeys.preprints(did, { limit }),
-    queryFn: async ({ pageParam }): Promise<AuthorPreprintsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.preprint.listByAuthor', {
+    queryKey: authorKeys.eprints(did, { limit }),
+    queryFn: async ({ pageParam }): Promise<AuthorEprintsResponse> => {
+      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.listByAuthor', {
         params: {
           query: {
             did,
@@ -300,9 +300,9 @@ export function useAuthorPreprints(did: string, options: UseAuthorPreprintsOptio
       });
       if (error) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch author preprints',
+          (error as { message?: string }).message ?? 'Failed to fetch author eprints',
           undefined,
-          '/xrpc/pub.chive.preprint.listByAuthor'
+          '/xrpc/pub.chive.eprint.listByAuthor'
         );
       }
       return data!;

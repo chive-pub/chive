@@ -8,9 +8,9 @@ import { BrowsePageSkeleton } from './loading';
  * Browse page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Browse Preprints | Chive',
+  title: 'Browse Eprints | Chive',
   description:
-    'Browse preprints using our 10-dimensional faceted classification system based on PMEST and FAST.',
+    'Browse eprints using our 10-dimensional faceted classification system based on PMEST and FAST.',
 };
 
 /**
@@ -65,7 +65,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Browse</h1>
         <p className="mt-2 text-muted-foreground">
-          Explore preprints using 10-dimensional faceted classification
+          Explore eprints using 10-dimensional faceted classification
         </p>
       </header>
 

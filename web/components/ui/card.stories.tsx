@@ -29,7 +29,7 @@ export const Default: Story = {
   ),
 };
 
-export const PreprintCard: Story = {
+export const EprintCard: Story = {
   render: () => (
     <Card className="w-[400px]">
       <CardHeader>

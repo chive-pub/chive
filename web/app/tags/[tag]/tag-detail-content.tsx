@@ -67,7 +67,7 @@ export function TagDetailContent({ tag }: TagDetailContentProps) {
       <div className="flex flex-wrap gap-4">
         <Badge variant="secondary" className="gap-1.5">
           <FileText className="h-3.5 w-3.5" />
-          {tagSummary.usageCount} preprint{tagSummary.usageCount !== 1 ? 's' : ''}
+          {tagSummary.usageCount} eprint{tagSummary.usageCount !== 1 ? 's' : ''}
         </Badge>
         {tagSummary.isPromoted && tagSummary.promotedTo && (
           <Badge variant="outline" className="gap-1.5 capitalize">
@@ -90,17 +90,17 @@ export function TagDetailContent({ tag }: TagDetailContentProps) {
         </CardContent>
       </Card>
 
-      {/* Browse preprints with this tag */}
+      {/* Browse eprints with this tag */}
       <Card>
         <CardContent className="py-6 text-center">
           <p className="text-muted-foreground mb-4">
-            Find preprints tagged with &quot;
+            Find eprints tagged with &quot;
             {tagSummary.displayForms[0] ?? tagSummary.normalizedForm}&quot;
           </p>
           <Button asChild>
             <Link href={`/browse?tags=${encodeURIComponent(tagSummary.normalizedForm)}`}>
               <Search className="mr-2 h-4 w-4" />
-              Browse Preprints
+              Browse Eprints
             </Link>
           </Button>
         </CardContent>

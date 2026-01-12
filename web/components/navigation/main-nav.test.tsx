@@ -29,7 +29,7 @@ describe('MainNav', () => {
 
     await user.click(screen.getByRole('button', { name: 'Discover' }));
 
-    expect(screen.getByText('Preprints')).toBeInTheDocument();
+    expect(screen.getByText('Eprints')).toBeInTheDocument();
     expect(screen.getByText('Browse')).toBeInTheDocument();
     expect(screen.getByText('Fields')).toBeInTheDocument();
     expect(screen.getByText('Authors')).toBeInTheDocument();
@@ -56,37 +56,37 @@ describe('MainNav', () => {
 
     await user.click(screen.getByRole('button', { name: 'Discover' }));
 
-    expect(screen.getByText('Preprints').closest('a')).toHaveAttribute('href', '/preprints');
+    expect(screen.getByText('Eprints').closest('a')).toHaveAttribute('href', '/eprints');
     expect(screen.getByText('Browse').closest('a')).toHaveAttribute('href', '/browse');
     expect(screen.getByText('Fields').closest('a')).toHaveAttribute('href', '/fields');
     expect(screen.getByText('Authors').closest('a')).toHaveAttribute('href', '/authors');
   });
 
   it('highlights active link based on pathname', async () => {
-    mockUsePathname.mockReturnValue('/preprints');
+    mockUsePathname.mockReturnValue('/eprints');
     const user = userEvent.setup();
 
     render(<MainNav />);
 
     await user.click(screen.getByRole('button', { name: 'Discover' }));
 
-    const preprintsLink = screen.getByText('Preprints').closest('a');
+    const eprintsLink = screen.getByText('Eprints').closest('a');
     const browseLink = screen.getByText('Browse').closest('a');
 
-    expect(preprintsLink).toHaveClass('bg-accent/50');
+    expect(eprintsLink).toHaveClass('bg-accent/50');
     expect(browseLink).not.toHaveClass('bg-accent/50');
   });
 
   it('highlights nested route correctly', async () => {
-    mockUsePathname.mockReturnValue('/preprints/at://did:plc:test/123');
+    mockUsePathname.mockReturnValue('/eprints/at://did:plc:test/123');
     const user = userEvent.setup();
 
     render(<MainNav />);
 
     await user.click(screen.getByRole('button', { name: 'Discover' }));
 
-    const preprintsLink = screen.getByText('Preprints').closest('a');
-    expect(preprintsLink).toHaveClass('bg-accent/50');
+    const eprintsLink = screen.getByText('Eprints').closest('a');
+    expect(eprintsLink).toHaveClass('bg-accent/50');
   });
 
   it('has navigation landmark', () => {
@@ -108,7 +108,7 @@ describe('MainNav', () => {
 
     await user.click(screen.getByRole('button', { name: 'Discover' }));
 
-    expect(screen.getByText('Browse recent preprint submissions')).toBeInTheDocument();
+    expect(screen.getByText('Browse recent eprint submissions')).toBeInTheDocument();
     expect(screen.getByText('Explore with faceted classification')).toBeInTheDocument();
   });
 });

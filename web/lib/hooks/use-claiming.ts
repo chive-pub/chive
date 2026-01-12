@@ -6,7 +6,7 @@ import type {
   ClaimRequest,
   ClaimRequestWithPaper,
   ClaimPaperDetails,
-  ClaimablePreprint,
+  ClaimableEprint,
   ClaimStatus,
   ClaimEvidenceType,
   SuggestedPaper,
@@ -34,7 +34,7 @@ export const claimingKeys = {
   userClaims: (params?: { status?: ClaimStatus }) => [...claimingKeys.all, 'user', params] as const,
   /** Key for specific claim query */
   claim: (id: number) => [...claimingKeys.all, 'claim', id] as const,
-  /** Key for claimable preprints search */
+  /** Key for claimable eprints search */
   claimable: (params?: { q?: string; source?: string }) =>
     [...claimingKeys.all, 'claimable', params] as const,
   /** Key for pending claims (admin) */
@@ -133,7 +133,7 @@ export function useClaim(id: number) {
   });
 }
 
-interface UseClaimablePreprintsOptions {
+interface UseClaimableEprintsOptions {
   /** Search query */
   q?: string;
   /** Filter by source (e.g., 'arxiv', 'biorxiv') */
@@ -145,12 +145,12 @@ interface UseClaimablePreprintsOptions {
 }
 
 /**
- * Searches for claimable preprints (imported but not yet claimed).
+ * Searches for claimable eprints (imported but not yet claimed).
  *
  * @param options - Search options
- * @returns Infinite query result with claimable preprints
+ * @returns Infinite query result with claimable eprints
  */
-export function useClaimablePreprints(options: UseClaimablePreprintsOptions = {}) {
+export function useClaimableEprints(options: UseClaimableEprintsOptions = {}) {
   const { q, source, limit = 20, enabled = true } = options;
 
   return useInfiniteQuery({
@@ -158,7 +158,7 @@ export function useClaimablePreprints(options: UseClaimablePreprintsOptions = {}
     queryFn: async ({
       pageParam,
     }): Promise<{
-      preprints: ClaimablePreprint[];
+      eprints: ClaimableEprint[];
       cursor?: string;
     }> => {
       const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.findClaimable', {
@@ -173,7 +173,7 @@ export function useClaimablePreprints(options: UseClaimablePreprintsOptions = {}
       });
       if (error) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search claimable preprints',
+          (error as { message?: string }).message ?? 'Failed to search claimable eprints',
           undefined,
           '/xrpc/pub.chive.claiming.findClaimable'
         );
@@ -250,7 +250,7 @@ export function usePendingClaims(options: UsePendingClaimsOptions = {}) {
 // =============================================================================
 
 /**
- * Mutation hook to start a claim on an imported preprint.
+ * Mutation hook to start a claim on an imported eprint.
  *
  * @returns Mutation for starting a claim
  */
@@ -350,7 +350,7 @@ export function useCompleteClaim() {
       queryClient.invalidateQueries({ queryKey: claimingKeys.claim(result.claimId) });
       // Invalidate user claims
       queryClient.invalidateQueries({ queryKey: claimingKeys.userClaims() });
-      // Invalidate claimable preprints (this one is no longer claimable)
+      // Invalidate claimable eprints (this one is no longer claimable)
       queryClient.invalidateQueries({ queryKey: claimingKeys.claimable() });
     },
   });

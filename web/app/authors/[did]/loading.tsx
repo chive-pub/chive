@@ -1,8 +1,8 @@
 import {
   AuthorHeaderSkeleton,
   AuthorStatsSkeleton,
-  AuthorPreprintsSkeleton,
-} from '@/components/preprints';
+  AuthorEprintsSkeleton,
+} from '@/components/eprints';
 import { Separator } from '@/components/ui/separator';
 
 /**
@@ -26,7 +26,7 @@ export function AuthorPageSkeleton() {
       <Separator />
       <section>
         <div className="mb-6 h-8 w-32 animate-pulse rounded bg-muted" />
-        <AuthorPreprintsSkeleton count={5} />
+        <AuthorEprintsSkeleton count={5} />
       </section>
     </div>
   );

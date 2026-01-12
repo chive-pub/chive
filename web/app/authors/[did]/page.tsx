@@ -51,10 +51,10 @@ export async function generateMetadata({ params }: AuthorPageProps): Promise<Met
 
     return {
       title: `${name} | Chive`,
-      description: bio || `Preprints by ${name} on Chive`,
+      description: bio || `Eprints by ${name} on Chive`,
       openGraph: {
         title: name,
-        description: bio || `Preprints by ${name}`,
+        description: bio || `Eprints by ${name}`,
         images: [
           {
             url: ogImageUrl,
@@ -67,7 +67,7 @@ export async function generateMetadata({ params }: AuthorPageProps): Promise<Met
       twitter: {
         card: 'summary_large_image',
         title: name,
-        description: bio || `Preprints by ${name}`,
+        description: bio || `Eprints by ${name}`,
         images: [ogImageUrl],
       },
     };
@@ -81,7 +81,7 @@ export async function generateMetadata({ params }: AuthorPageProps): Promise<Met
  *
  * @remarks
  * Server component that renders an author's profile page.
- * Includes header, stats, and list of preprints.
+ * Includes header, stats, and list of eprints.
  *
  * @example
  * URL: /authors/did:plc:abc123

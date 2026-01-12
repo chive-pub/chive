@@ -36,8 +36,8 @@ export const fieldKeys = {
   children: (id: string) => [...fieldKeys.detail(id), 'children'] as const,
   /** Key for field ancestors queries */
   ancestors: (id: string) => [...fieldKeys.detail(id), 'ancestors'] as const,
-  /** Key for field preprints queries */
-  preprints: (id: string) => [...fieldKeys.detail(id), 'preprints'] as const,
+  /** Key for field eprints queries */
+  eprints: (id: string) => [...fieldKeys.detail(id), 'eprints'] as const,
 };
 
 interface UseFieldOptions {
@@ -194,17 +194,17 @@ export function useFieldChildren(parentId: string, options: UseFieldChildrenOpti
   });
 }
 
-interface UseFieldPreprintsOptions {
-  /** Number of preprints per page */
+interface UseFieldEprintsOptions {
+  /** Number of eprints per page */
   limit?: number;
   /** Whether the query is enabled */
   enabled?: boolean;
 }
 
 /**
- * Minimal preprint info returned from field preprints API.
+ * Minimal eprint info returned from field eprints API.
  */
-interface FieldPreprintInfo {
+interface FieldEprintInfo {
   uri: string;
   title: string;
   abstract?: string;
@@ -216,17 +216,17 @@ interface FieldPreprintInfo {
 }
 
 /**
- * Response type for field preprints.
+ * Response type for field eprints.
  */
-interface FieldPreprintsResponse {
-  preprints: FieldPreprintInfo[];
+interface FieldEprintsResponse {
+  eprints: FieldEprintInfo[];
   cursor?: string;
   hasMore: boolean;
   total: number;
 }
 
 /**
- * Fetches preprints associated with a field with infinite scrolling support.
+ * Fetches eprints associated with a field with infinite scrolling support.
  *
  * @remarks
  * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
@@ -239,22 +239,22 @@ interface FieldPreprintsResponse {
  *   hasNextPage,
  *   fetchNextPage,
  *   isFetchingNextPage,
- * } = useFieldPreprints('computer-science');
+ * } = useFieldEprints('computer-science');
  *
- * const allPreprints = data?.pages.flatMap(p => p.preprints) ?? [];
+ * const allEprints = data?.pages.flatMap(p => p.eprints) ?? [];
  * ```
  *
  * @param fieldId - The field ID
  * @param options - Query options
- * @returns Infinite query result with paginated preprints
+ * @returns Infinite query result with paginated eprints
  */
-export function useFieldPreprints(fieldId: string, options: UseFieldPreprintsOptions = {}) {
+export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions = {}) {
   const { limit = 10, enabled = true } = options;
 
   return useInfiniteQuery({
-    queryKey: fieldKeys.preprints(fieldId),
-    queryFn: async ({ pageParam }): Promise<FieldPreprintsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getFieldPreprints', {
+    queryKey: fieldKeys.eprints(fieldId),
+    queryFn: async ({ pageParam }): Promise<FieldEprintsResponse> => {
+      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getFieldEprints', {
         params: {
           query: {
             fieldId,
@@ -265,9 +265,9 @@ export function useFieldPreprints(fieldId: string, options: UseFieldPreprintsOpt
       });
       if (error) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch field preprints',
+          (error as { message?: string }).message ?? 'Failed to fetch field eprints',
           undefined,
-          '/xrpc/pub.chive.graph.getFieldPreprints'
+          '/xrpc/pub.chive.graph.getFieldEprints'
         );
       }
       return data!;

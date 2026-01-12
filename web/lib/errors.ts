@@ -80,12 +80,12 @@ export abstract class ChiveError extends Error {
  *
  * @example
  * ```typescript
- * const response = await fetch('/api/preprints');
+ * const response = await fetch('/api/eprints');
  * if (!response.ok) {
  *   throw new APIError(
- *     `Failed to fetch preprints: ${response.statusText}`,
+ *     `Failed to fetch eprints: ${response.statusText}`,
  *     response.status,
- *     '/api/preprints'
+ *     '/api/eprints'
  *   );
  * }
  * ```
@@ -108,7 +108,7 @@ export class APIError extends ChiveError {
    *
    * @param message - Description of the API failure
    * @param statusCode - HTTP status code (e.g., 404, 500)
-   * @param endpoint - API endpoint that failed (e.g., '/api/preprints')
+   * @param endpoint - API endpoint that failed (e.g., '/api/eprints')
    * @param cause - Original error (if chained)
    */
   constructor(message: string, statusCode?: number, endpoint?: string, cause?: Error) {
@@ -127,9 +127,9 @@ export class APIError extends ChiveError {
  *
  * @example
  * ```typescript
- * const preprint = await getPreprint(uri);
- * if (!preprint) {
- *   throw new NotFoundError('Preprint', uri);
+ * const eprint = await getEprint(uri);
+ * if (!eprint) {
+ *   throw new NotFoundError('Eprint', uri);
  * }
  * ```
  */
@@ -139,7 +139,7 @@ export class NotFoundError extends ChiveError {
   /**
    * Type of resource that was not found.
    *
-   * @example 'Preprint', 'Review', 'Author', 'Field'
+   * @example 'Eprint', 'Review', 'Author', 'Field'
    */
   readonly resourceType: string;
 
@@ -153,7 +153,7 @@ export class NotFoundError extends ChiveError {
   /**
    * Creates a new NotFoundError.
    *
-   * @param resourceType - Type of resource (e.g., 'Preprint', 'Author')
+   * @param resourceType - Type of resource (e.g., 'Eprint', 'Author')
    * @param resourceId - Resource identifier (e.g., AT URI, DID)
    */
   constructor(resourceType: string, resourceId: string) {
@@ -241,10 +241,10 @@ export class AuthenticationError extends ChiveError {
  *
  * @example
  * ```typescript
- * if (!user.canEdit(preprint)) {
+ * if (!user.canEdit(eprint)) {
  *   throw new AuthorizationError(
- *     'You do not have permission to edit this preprint',
- *     'write:preprints'
+ *     'You do not have permission to edit this eprint',
+ *     'write:eprints'
  *   );
  * }
  * ```
@@ -261,7 +261,7 @@ export class AuthorizationError extends ChiveError {
    * Creates a new AuthorizationError.
    *
    * @param message - Description of authorization failure
-   * @param requiredScope - Required scope (e.g., 'write:preprints')
+   * @param requiredScope - Required scope (e.g., 'write:eprints')
    */
   constructor(message: string, requiredScope?: string) {
     super(message);
@@ -318,7 +318,7 @@ export class RateLimitError extends ChiveError {
  * @example
  * ```typescript
  * try {
- *   await fetch('/api/preprints');
+ *   await fetch('/api/eprints');
  * } catch (err) {
  *   if (err instanceof TypeError) {
  *     throw new NetworkError('Network request failed', err);

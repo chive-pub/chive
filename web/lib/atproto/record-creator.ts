@@ -13,13 +13,13 @@
 import type { Agent } from '@atproto/api';
 import type { BlobRef } from '@atproto/lexicon';
 import type {
-  PreprintFormData,
+  EprintFormData,
   AuthorRef,
   FieldNodeRef,
   FacetValue,
   ExternalLink,
   FundingSource,
-} from '../schemas/preprint';
+} from '../schemas/eprint';
 import type { FieldProposal, Vote, ExternalMapping, Reference } from '../schemas/governance';
 
 // =============================================================================
@@ -66,11 +66,11 @@ type SupplementaryCategory =
   | 'other';
 
 /**
- * Preprint record as stored in ATProto.
+ * Eprint record as stored in ATProto.
  */
-export interface PreprintRecord {
+export interface EprintRecord {
   [key: string]: unknown;
-  $type: 'pub.chive.preprint.submission';
+  $type: 'pub.chive.eprint.submission';
   title: string;
   abstract: string;
   authors: AuthorRef[];
@@ -199,7 +199,7 @@ export async function uploadBlob(agent: Agent, file: File): Promise<UploadBlobRe
  * @example
  * ```typescript
  * const result = await uploadDocument(agent, documentFile);
- * // Use result.blobRef in preprint record
+ * // Use result.blobRef in eprint record
  * ```
  */
 export async function uploadDocument(agent: Agent, file: File): Promise<UploadBlobResult> {
@@ -207,17 +207,17 @@ export async function uploadDocument(agent: Agent, file: File): Promise<UploadBl
 }
 
 // =============================================================================
-// PREPRINT RECORD CREATION
+// EPRINT RECORD CREATION
 // =============================================================================
 
 /**
- * Create a preprint submission record in the user's PDS.
+ * Create a eprint submission record in the user's PDS.
  *
  * @remarks
- * This is the primary function for submitting preprints. It:
+ * This is the primary function for submitting eprints. It:
  * 1. Uploads the document to the user's PDS (PDF, DOCX, HTML, etc.)
  * 2. Uploads any supplementary materials
- * 3. Creates the preprint record with blob references
+ * 3. Creates the eprint record with blob references
  *
  * The record is created in the user's PDS, NOT in Chive's storage.
  * Chive will index this record when it appears on the firehose.
@@ -235,7 +235,7 @@ export async function uploadDocument(agent: Agent, file: File): Promise<UploadBl
  * const agent = useAgent();
  * if (!agent) throw new Error('Not authenticated');
  *
- * const result = await createPreprintRecord(agent, {
+ * const result = await createEprintRecord(agent, {
  *   documentFile: myDocFile,
  *   title: 'My Research Paper',
  *   abstract: 'This paper presents...',
@@ -246,9 +246,9 @@ export async function uploadDocument(agent: Agent, file: File): Promise<UploadBl
  * console.log('Published at:', result.uri);
  * ```
  */
-export async function createPreprintRecord(
+export async function createEprintRecord(
   agent: Agent,
-  data: PreprintFormData
+  data: EprintFormData
 ): Promise<CreateRecordResult> {
   const did = getAgentDid(agent);
   if (!did) {
@@ -283,8 +283,8 @@ export async function createPreprintRecord(
   }
 
   // 3. Build the record
-  const record: PreprintRecord = {
-    $type: 'pub.chive.preprint.submission',
+  const record: EprintRecord = {
+    $type: 'pub.chive.eprint.submission',
     title: data.title,
     abstract: data.abstract,
     authors: data.authors,
@@ -326,7 +326,7 @@ export async function createPreprintRecord(
   // 4. Create the record in user's PDS
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
-    collection: 'pub.chive.preprint.submission',
+    collection: 'pub.chive.eprint.submission',
     record,
   });
 
@@ -499,7 +499,7 @@ export async function createVoteRecord(
  *
  * @example
  * ```typescript
- * await deleteRecord(agent, 'at://did:plc:abc/pub.chive.preprint.submission/123');
+ * await deleteRecord(agent, 'at://did:plc:abc/pub.chive.eprint.submission/123');
  * ```
  */
 export async function deleteRecord(agent: Agent, uri: string): Promise<void> {
@@ -537,8 +537,8 @@ export async function deleteRecord(agent: Agent, uri: string): Promise<void> {
  */
 export interface UserTagRecord {
   [key: string]: unknown;
-  $type: 'pub.chive.preprint.userTag';
-  preprintUri: string;
+  $type: 'pub.chive.eprint.userTag';
+  eprintUri: string;
   tag: string;
   createdAt: string;
 }
@@ -547,7 +547,7 @@ export interface UserTagRecord {
  * Input for creating a user tag.
  */
 export interface CreateTagInput {
-  preprintUri: string;
+  eprintUri: string;
   displayForm: string;
 }
 
@@ -561,7 +561,7 @@ export interface CreateTagInput {
  * @example
  * ```typescript
  * const result = await createTagRecord(agent, {
- *   preprintUri: 'at://did:plc:abc/pub.chive.preprint.submission/123',
+ *   eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/123',
  *   displayForm: 'machine learning',
  * });
  * ```
@@ -576,15 +576,15 @@ export async function createTagRecord(
   }
 
   const record: UserTagRecord = {
-    $type: 'pub.chive.preprint.userTag',
-    preprintUri: input.preprintUri,
+    $type: 'pub.chive.eprint.userTag',
+    eprintUri: input.eprintUri,
     tag: input.displayForm,
     createdAt: new Date().toISOString(),
   };
 
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
-    collection: 'pub.chive.preprint.userTag',
+    collection: 'pub.chive.eprint.userTag',
     record,
   });
 
@@ -604,7 +604,7 @@ export async function createTagRecord(
 export interface EndorsementRecord {
   [key: string]: unknown;
   $type: 'pub.chive.review.endorsement';
-  preprintUri: string;
+  eprintUri: string;
   contributions: string[];
   comment?: string;
   createdAt: string;
@@ -614,7 +614,7 @@ export interface EndorsementRecord {
  * Input for creating an endorsement.
  */
 export interface CreateEndorsementInput {
-  preprintUri: string;
+  eprintUri: string;
   contributions: string[];
   comment?: string;
 }
@@ -637,7 +637,7 @@ export async function createEndorsementRecord(
 
   const record: EndorsementRecord = {
     $type: 'pub.chive.review.endorsement',
-    preprintUri: input.preprintUri,
+    eprintUri: input.eprintUri,
     contributions: input.contributions,
     createdAt: new Date().toISOString(),
   };
@@ -688,7 +688,7 @@ export async function updateEndorsementRecord(
     throw new Error('Cannot update records belonging to other users');
   }
 
-  // First get the existing record to preserve preprintUri
+  // First get the existing record to preserve eprintUri
   const existingResponse = await agent.com.atproto.repo.getRecord({
     repo: did,
     collection: 'pub.chive.review.endorsement',
@@ -699,7 +699,7 @@ export async function updateEndorsementRecord(
 
   const record: EndorsementRecord = {
     $type: 'pub.chive.review.endorsement',
-    preprintUri: existing.preprintUri,
+    eprintUri: existing.eprintUri,
     contributions: input.contributions,
     createdAt: existing.createdAt,
   };
@@ -731,7 +731,7 @@ export async function updateEndorsementRecord(
 export interface ReviewCommentRecord {
   [key: string]: unknown;
   $type: 'pub.chive.review.comment';
-  preprintUri: string;
+  eprintUri: string;
   content: string;
   lineNumber?: number;
   parentComment?: string;
@@ -742,7 +742,7 @@ export interface ReviewCommentRecord {
  * Input for creating a review.
  */
 export interface CreateReviewInput {
-  preprintUri: string;
+  eprintUri: string;
   content: string;
   lineNumber?: number;
   parentReviewUri?: string;
@@ -766,7 +766,7 @@ export async function createReviewRecord(
 
   const record: ReviewCommentRecord = {
     $type: 'pub.chive.review.comment',
-    preprintUri: input.preprintUri,
+    eprintUri: input.eprintUri,
     content: input.content,
     createdAt: new Date().toISOString(),
   };
@@ -942,14 +942,14 @@ export function getAuthenticatedDid(agent: Agent): string {
  * Build an AT-URI from components.
  *
  * @param did - User's DID
- * @param collection - Record collection (e.g., 'pub.chive.preprint.submission')
+ * @param collection - Record collection (e.g., 'pub.chive.eprint.submission')
  * @param rkey - Record key
  * @returns AT-URI string
  *
  * @example
  * ```typescript
- * const uri = buildAtUri('did:plc:abc', 'pub.chive.preprint.submission', '123');
- * // 'at://did:plc:abc/pub.chive.preprint.submission/123'
+ * const uri = buildAtUri('did:plc:abc', 'pub.chive.eprint.submission', '123');
+ * // 'at://did:plc:abc/pub.chive.eprint.submission/123'
  * ```
  */
 export function buildAtUri(did: string, collection: string, rkey: string): string {
@@ -964,8 +964,8 @@ export function buildAtUri(did: string, collection: string, rkey: string): strin
  *
  * @example
  * ```typescript
- * const parts = parseAtUri('at://did:plc:abc/pub.chive.preprint.submission/123');
- * // { did: 'did:plc:abc', collection: 'pub.chive.preprint.submission', rkey: '123' }
+ * const parts = parseAtUri('at://did:plc:abc/pub.chive.eprint.submission/123');
+ * // { did: 'did:plc:abc', collection: 'pub.chive.eprint.submission', rkey: '123' }
  * ```
  */
 export function parseAtUri(uri: string): {

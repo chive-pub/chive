@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { FileText, MessageSquare, ThumbsUp, Plus } from 'lucide-react';
 
 import { useCurrentUser } from '@/lib/auth';
-import { usePreprintsByAuthor } from '@/lib/hooks/use-preprint';
+import { useEprintsByAuthor } from '@/lib/hooks/use-eprint';
 import { useUserClaims } from '@/lib/hooks/use-claiming';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,10 @@ import { ForYouFeed } from '@/components/discovery/for-you-feed';
  */
 export default function DashboardPage() {
   const user = useCurrentUser();
-  const { data: preprints, isLoading } = usePreprintsByAuthor({ did: user?.did ?? '' });
-  const { data: claims } = useUserClaims();
+  const { data: eprints, isLoading } = useEprintsByAuthor({ did: user?.did ?? '' });
+  const { data: claims } = useUserClaims({ did: user?.did ?? '' });
 
-  const preprintCount = preprints?.preprints?.length ?? 0;
+  const eprintCount = eprints?.eprints?.length ?? 0;
 
   // Check if user has claimed papers (from API or localStorage for testing)
   const hasClaimedPapersFromApi = (claims?.pages?.[0]?.claims?.length ?? 0) > 0;
@@ -70,17 +70,17 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight">
           Welcome back{user?.displayName ? `, ${user.displayName}` : ''}
         </h1>
-        <p className="text-muted-foreground">Manage your preprints, reviews, and endorsements</p>
+        <p className="text-muted-foreground">Manage your eprints, reviews, and endorsements</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3" role="region" aria-label="Your statistics">
         <StatsCard
-          title="Preprints"
-          value={isLoading ? null : preprintCount}
+          title="Eprints"
+          value={isLoading ? null : eprintCount}
           description="Authored or co-authored"
           icon={FileText}
-          href="/dashboard/preprints"
+          href="/dashboard/eprints"
         />
         <StatsCard
           title="Reviews"
@@ -108,11 +108,11 @@ export default function DashboardPage() {
           <Button asChild>
             <Link href="/submit">
               <Plus className="mr-2 h-4 w-4" />
-              Submit Preprint
+              Submit Eprint
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/preprints">Browse Preprints</Link>
+            <Link href="/eprints">Browse Eprints</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href="/browse">Faceted Search</Link>

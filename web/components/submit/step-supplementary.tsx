@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Supplementary materials step for preprint submission.
+ * Supplementary materials step for eprint submission.
  *
  * @remarks
  * Handles supplementary file management with:
@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { PreprintFormValues, SupplementaryMaterialInput } from './submission-wizard';
+import type { EprintFormValues, SupplementaryMaterialInput } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -59,7 +59,7 @@ import type { PreprintFormValues, SupplementaryMaterialInput } from './submissio
  */
 export interface StepSupplementaryProps {
   /** React Hook Form instance */
-  form: UseFormReturn<PreprintFormValues>;
+  form: UseFormReturn<EprintFormValues>;
   /** Additional CSS classes */
   className?: string;
 }

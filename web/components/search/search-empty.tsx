@@ -61,7 +61,7 @@ export function SearchEmpty({
         <>
           <h3 className="mb-2 text-lg font-semibold">No results found</h3>
           <p className="mb-4 max-w-sm text-sm text-muted-foreground">
-            We couldn&apos;t find any preprints matching &ldquo;{query}&rdquo;.
+            We couldn&apos;t find any eprints matching &ldquo;{query}&rdquo;.
             {hasFilters && ' Try adjusting your filters or search terms.'}
           </p>
         </>
@@ -69,7 +69,7 @@ export function SearchEmpty({
         <>
           <h3 className="mb-2 text-lg font-semibold">Start your search</h3>
           <p className="mb-4 max-w-sm text-sm text-muted-foreground">
-            Enter keywords, author names, or DOIs to find preprints.
+            Enter keywords, author names, or DOIs to find eprints.
           </p>
         </>
       )}
@@ -178,7 +178,7 @@ export function SearchInitial({
       <div className="mb-4 rounded-full bg-primary/10 p-4">
         <Search className="h-8 w-8 text-primary" />
       </div>
-      <h3 className="mb-2 text-lg font-semibold">Search preprints</h3>
+      <h3 className="mb-2 text-lg font-semibold">Search eprints</h3>
       <p className="mb-6 max-w-sm text-sm text-muted-foreground">
         Discover research across all fields of study. Search by title, abstract, author, or
         keywords.

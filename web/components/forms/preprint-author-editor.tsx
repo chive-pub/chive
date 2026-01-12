@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Comprehensive preprint author editor component.
+ * Comprehensive eprint author editor component.
  *
  * @remarks
- * Full-featured editor for managing preprint authors with support for:
+ * Full-featured editor for managing eprint authors with support for:
  * - ATProto users (with DID) and external collaborators (without DID)
  * - CRediT-based contribution types with degree modifiers
  * - Multiple affiliations per author with ROR support
@@ -14,7 +14,7 @@
  *
  * @example
  * ```tsx
- * <PreprintAuthorEditor
+ * <EprintAuthorEditor
  *   authors={authors}
  *   onChange={setAuthors}
  *   submitterDid="did:plc:abc123"
@@ -58,9 +58,9 @@ import { AffiliationInput, type AuthorAffiliation } from './affiliation-input';
 // =============================================================================
 
 /**
- * Preprint author for form state.
+ * Eprint author for form state.
  */
-export interface PreprintAuthorFormData {
+export interface EprintAuthorFormData {
   /** ATProto DID (optional for external collaborators) */
   did?: string;
   /** Display name (required) */
@@ -86,14 +86,14 @@ export interface PreprintAuthorFormData {
 }
 
 /**
- * Props for PreprintAuthorEditor.
+ * Props for EprintAuthorEditor.
  */
-export interface PreprintAuthorEditorProps {
+export interface EprintAuthorEditorProps {
   /** Current list of authors */
-  authors: PreprintAuthorFormData[];
+  authors: EprintAuthorFormData[];
 
   /** Callback when authors change */
-  onChange: (authors: PreprintAuthorFormData[]) => void;
+  onChange: (authors: EprintAuthorFormData[]) => void;
 
   /** Submitter's DID (first author is typically the submitter) */
   submitterDid?: string;
@@ -158,8 +158,8 @@ function isValidDid(did: string): boolean {
 // =============================================================================
 
 interface AuthorFormProps {
-  author?: PreprintAuthorFormData;
-  onSave: (author: PreprintAuthorFormData) => void;
+  author?: EprintAuthorFormData;
+  onSave: (author: EprintAuthorFormData) => void;
   onCancel: () => void;
   existingDids: Set<string>;
   nextOrder: number;
@@ -180,7 +180,7 @@ function AuthorForm({
 }: AuthorFormProps) {
   const isEditing = !!author;
 
-  const [formData, setFormData] = useState<PreprintAuthorFormData>(
+  const [formData, setFormData] = useState<EprintAuthorFormData>(
     author ?? {
       did: undefined,
       name: '',
@@ -234,7 +234,7 @@ function AuthorForm({
     }
 
     // Prepare final data
-    const finalData: PreprintAuthorFormData = {
+    const finalData: EprintAuthorFormData = {
       ...formData,
       did: authorType === 'atproto' ? formData.did : undefined,
       name: formData.name.trim(),
@@ -421,7 +421,7 @@ function AuthorForm({
 // =============================================================================
 
 interface AuthorCardProps {
-  author: PreprintAuthorFormData;
+  author: EprintAuthorFormData;
   index: number;
   onEdit: () => void;
   onRemove: () => void;
@@ -615,9 +615,9 @@ function AuthorCard({
 // =============================================================================
 
 /**
- * Comprehensive author editor for preprint submissions.
+ * Comprehensive author editor for eprint submissions.
  */
-export function PreprintAuthorEditor({
+export function EprintAuthorEditor({
   authors,
   onChange,
   submitterDid,
@@ -626,7 +626,7 @@ export function PreprintAuthorEditor({
   maxAuthors = 50,
   disabled = false,
   className,
-}: PreprintAuthorEditorProps) {
+}: EprintAuthorEditorProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -644,7 +644,7 @@ export function PreprintAuthorEditor({
 
   // Handle adding new author
   const handleAddAuthor = useCallback(
-    (author: PreprintAuthorFormData) => {
+    (author: EprintAuthorFormData) => {
       const newAuthors = [...authors, { ...author, order: authors.length + 1 }];
       onChange(newAuthors);
       setShowForm(false);
@@ -654,7 +654,7 @@ export function PreprintAuthorEditor({
 
   // Handle updating author
   const handleUpdateAuthor = useCallback(
-    (index: number, author: PreprintAuthorFormData) => {
+    (index: number, author: EprintAuthorFormData) => {
       const updated = [...authors];
       updated[index] = { ...author, order: index + 1 };
       onChange(updated);
@@ -696,7 +696,7 @@ export function PreprintAuthorEditor({
   );
 
   return (
-    <div className={cn('space-y-4', className)} data-testid="preprint-author-editor">
+    <div className={cn('space-y-4', className)} data-testid="eprint-author-editor">
       {/* Validation warning */}
       {!hasCorresponding && authors.length > 0 && (
         <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

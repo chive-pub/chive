@@ -1,3 +1,3 @@
-export { PreprintCardSkeleton } from './preprint-card-skeleton';
-export { PreprintListSkeleton } from './preprint-list-skeleton';
-export { PreprintDetailSkeleton } from './preprint-detail-skeleton';
+export { EprintCardSkeleton } from './eprint-card-skeleton';
+export { EprintListSkeleton } from './eprint-list-skeleton';
+export { EprintDetailSkeleton } from './eprint-detail-skeleton';

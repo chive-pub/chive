@@ -23,48 +23,48 @@ import type { SuccessResponseJSON } from 'openapi-typescript-helpers';
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// Preprint Types
+// Eprint Types
 // -----------------------------------------------------------------------------
 
-/** Response from pub.chive.preprint.getSubmission */
-export type GetPreprintResponse = SuccessResponseJSON<
-  operations['pub_chive_preprint_getSubmission']
+/** Response from pub.chive.eprint.getSubmission */
+export type GetEprintResponse = SuccessResponseJSON<
+  operations['pub_chive_eprint_getSubmission']
 >;
 
-/** Response from pub.chive.preprint.listByAuthor */
-export type ListPreprintsResponse = SuccessResponseJSON<
-  operations['pub_chive_preprint_listByAuthor']
+/** Response from pub.chive.eprint.listByAuthor */
+export type ListEprintsResponse = SuccessResponseJSON<
+  operations['pub_chive_eprint_listByAuthor']
 >;
 
-/** Response from pub.chive.preprint.searchSubmissions */
-export type SearchPreprintsResponse = SuccessResponseJSON<
-  operations['pub_chive_preprint_searchSubmissions']
+/** Response from pub.chive.eprint.searchSubmissions */
+export type SearchEprintsResponse = SuccessResponseJSON<
+  operations['pub_chive_eprint_searchSubmissions']
 >;
 
 /**
- * Preprint object from API responses.
+ * Eprint object from API responses.
  *
  * @remarks
  * Uses the new unified authors array model. The generated type is overridden
  * here until the OpenAPI schema is regenerated.
  */
-export interface Preprint {
+export interface Eprint {
   uri: string;
   cid: string;
   title: string;
   abstract: string;
   submittedBy: string;
   paperDid?: string;
-  authors: PreprintAuthor[];
+  authors: EprintAuthor[];
   fields?: FieldRef[];
   keywords?: string[];
-  source?: PreprintSource;
+  source?: EprintSource;
   license?: string;
   doi?: string;
   document?: BlobRef;
   documentFormat?: DocumentFormat;
-  versions?: PreprintVersion[];
-  metrics?: PreprintMetrics;
+  versions?: EprintVersion[];
+  metrics?: EprintMetrics;
   publicationStatus?: PublicationStatus;
   publishedVersion?: PublishedVersion;
   externalIds?: ExternalIds;
@@ -100,7 +100,7 @@ export type DocumentFormat =
  * Publication lifecycle status.
  */
 export type PublicationStatus =
-  | 'preprint'
+  | 'eprint'
   | 'under_review'
   | 'revision_requested'
   | 'accepted'
@@ -287,23 +287,23 @@ export interface SupplementaryItem {
 }
 
 /**
- * Preprint summary in list/search results.
+ * Eprint summary in list/search results.
  *
  * @remarks
  * Uses the new unified authors array model.
  */
-export interface PreprintSummary {
+export interface EprintSummary {
   uri: string;
   cid: string;
   title: string;
   abstract: string;
   submittedBy: string;
   paperDid?: string;
-  authors: PreprintAuthor[];
+  authors: EprintAuthor[];
   fields?: FieldRef[];
-  source?: PreprintSource;
+  source?: EprintSource;
   createdAt: string;
-  metrics?: PreprintMetrics;
+  metrics?: EprintMetrics;
 }
 
 // -----------------------------------------------------------------------------
@@ -323,7 +323,7 @@ export type AuthorProfile = GetProfileResponse['profile'];
 export type AuthorMetrics = GetProfileResponse['metrics'];
 
 /**
- * Preprint author with CRediT contributions.
+ * Eprint author with CRediT contributions.
  *
  * @remarks
  * This type represents the new author model with:
@@ -332,7 +332,7 @@ export type AuthorMetrics = GetProfileResponse['metrics'];
  * - CRediT-based contribution types with degree modifiers
  * - Corresponding author and highlighted (co-first/co-last) flags
  */
-export interface PreprintAuthor {
+export interface EprintAuthor {
   /** Optional DID - undefined for external collaborators */
   did?: string;
   /** Display name (required for all) */
@@ -387,7 +387,7 @@ export interface AuthorContribution {
  * Authenticated user author (for reviews, endorsements, etc.).
  *
  * @remarks
- * Unlike PreprintAuthor, this type requires a DID because the author
+ * Unlike EprintAuthor, this type requires a DID because the author
  * must be an authenticated user. Used for reviews, comments, endorsements.
  */
 export interface Author {
@@ -411,8 +411,8 @@ export type ResearchKeyword = NonNullable<AuthorProfile['researchKeywords']>[num
 // Tag Types (TaxoFolk)
 // -----------------------------------------------------------------------------
 
-/** Response from pub.chive.tag.listForPreprint */
-export type PreprintTagsResponse = SuccessResponseJSON<operations['pub_chive_tag_listForPreprint']>;
+/** Response from pub.chive.tag.listForEprint */
+export type EprintTagsResponse = SuccessResponseJSON<operations['pub_chive_tag_listForEprint']>;
 
 /** Response from pub.chive.tag.getSuggestions */
 export type TagSuggestionsResponse = SuccessResponseJSON<
@@ -428,11 +428,11 @@ export type TagSearchResponse = SuccessResponseJSON<operations['pub_chive_tag_se
 /** Response from pub.chive.tag.getDetail */
 export type TagDetailResponse = SuccessResponseJSON<operations['pub_chive_tag_getDetail']>;
 
-/** User tag on a preprint */
-export type UserTag = PreprintTagsResponse['tags'][number];
+/** User tag on a eprint */
+export type UserTag = EprintTagsResponse['tags'][number];
 
 /** Tag suggestion from TaxoFolk */
-export type TagSuggestion = NonNullable<PreprintTagsResponse['suggestions']>[number];
+export type TagSuggestion = NonNullable<EprintTagsResponse['suggestions']>[number];
 
 /** Tag summary with stats */
 export type TagSummary = TrendingTagsResponse['tags'][number];
@@ -444,8 +444,8 @@ export type TagDetail = TagDetailResponse['tag'];
 // Review Types (W3C Web Annotation)
 // -----------------------------------------------------------------------------
 
-/** Response from pub.chive.review.listForPreprint */
-export type ReviewsResponse = SuccessResponseJSON<operations['pub_chive_review_listForPreprint']>;
+/** Response from pub.chive.review.listForEprint */
+export type ReviewsResponse = SuccessResponseJSON<operations['pub_chive_review_listForEprint']>;
 
 /** Response from pub.chive.review.listForAuthor */
 export type AuthorReviewsResponse = SuccessResponseJSON<
@@ -504,7 +504,7 @@ export type EntityLinkType =
   | { type: 'authority'; uri: string; authorizedForm: string; variantForms: string[] }
   | { type: 'fast'; uri: string; label: string }
   | { type: 'orcid'; did: string; displayName?: string }
-  | { type: 'preprint'; uri: string; title: string }
+  | { type: 'eprint'; uri: string; title: string }
   | { type: 'field'; uri: string; label: string }
   | { type: 'author'; did: string; displayName?: string };
 
@@ -512,9 +512,9 @@ export type EntityLinkType =
 // Endorsement Types
 // -----------------------------------------------------------------------------
 
-/** Response from pub.chive.endorsement.listForPreprint */
+/** Response from pub.chive.endorsement.listForEprint */
 export type EndorsementsResponse = SuccessResponseJSON<
-  operations['pub_chive_endorsement_listForPreprint']
+  operations['pub_chive_endorsement_listForEprint']
 >;
 
 /** Response from pub.chive.endorsement.getSummary */
@@ -538,9 +538,9 @@ export type GetFieldResponse = SuccessResponseJSON<operations['pub_chive_graph_g
 /** Response from pub.chive.graph.listFields */
 export type ListFieldsResponse = SuccessResponseJSON<operations['pub_chive_graph_listFields']>;
 
-/** Response from pub.chive.graph.getFieldPreprints */
-export type FieldPreprintsResponse = SuccessResponseJSON<
-  operations['pub_chive_graph_getFieldPreprints']
+/** Response from pub.chive.graph.getFieldEprints */
+export type FieldEprintsResponse = SuccessResponseJSON<
+  operations['pub_chive_graph_getFieldEprints']
 >;
 
 /** Response from pub.chive.graph.browseFaceted */
@@ -548,8 +548,8 @@ export type FacetedSearchResponse = SuccessResponseJSON<
   operations['pub_chive_graph_browseFaceted']
 >;
 
-/** Preprint summary in faceted browse results */
-export type FacetedPreprintSummary = FacetedSearchResponse['hits'][number];
+/** Eprint summary in faceted browse results */
+export type FacetedEprintSummary = FacetedSearchResponse['hits'][number];
 
 /** Field detail from API */
 export type FieldDetail = GetFieldResponse['field'];
@@ -558,7 +558,7 @@ export type FieldDetail = GetFieldResponse['field'];
 export type FieldSummary = ListFieldsResponse['fields'][number];
 
 /** Field reference (lightweight) */
-export type FieldRef = NonNullable<PreprintSummary['fields']>[number];
+export type FieldRef = NonNullable<EprintSummary['fields']>[number];
 
 /** Field ancestor in hierarchy */
 export type FieldAncestor = NonNullable<FieldDetail['ancestors']>[number];
@@ -624,18 +624,18 @@ export type ExternalId = NonNullable<AuthorityRecord['externalIds']>[number];
  * Search results response from search or faceted browse endpoints.
  *
  * @remarks
- * Both SearchPreprintsResponse and FacetedSearchResponse use the unified
+ * Both SearchEprintsResponse and FacetedSearchResponse use the unified
  * author model with `authors` array.
  */
-export type SearchResultsResponse = SearchPreprintsResponse | FacetedSearchResponse;
+export type SearchResultsResponse = SearchEprintsResponse | FacetedSearchResponse;
 
 /**
  * Search hit with score and highlights.
  *
  * @remarks
- * Extends PreprintSummary with search-specific fields like score and highlights.
+ * Extends EprintSummary with search-specific fields like score and highlights.
  */
-export interface SearchHit extends PreprintSummary {
+export interface SearchHit extends EprintSummary {
   /** Search relevance score */
   score?: number;
   /** Highlighted text snippets */
@@ -643,7 +643,7 @@ export interface SearchHit extends PreprintSummary {
 }
 
 /** Search highlight for matched text */
-export type SearchHighlight = NonNullable<SearchPreprintsResponse['hits'][number]['highlights']>;
+export type SearchHighlight = NonNullable<SearchEprintsResponse['hits'][number]['highlights']>;
 
 // -----------------------------------------------------------------------------
 // Claiming Types
@@ -665,9 +665,9 @@ export type FindClaimableResponse = SuccessResponseJSON<
   operations['pub_chive_claiming_findClaimable']
 >;
 
-/** Response from pub.chive.claiming.searchPreprints */
+/** Response from pub.chive.claiming.searchEprints */
 export type ClaimSearchResponse = SuccessResponseJSON<
-  operations['pub_chive_claiming_searchPreprints']
+  operations['pub_chive_claiming_searchEprints']
 >;
 
 /** Response from pub.chive.claiming.getSuggestions */
@@ -721,8 +721,8 @@ export type ClaimRequestWithPaper = ClaimRequest & {
   paper: ClaimPaperDetails;
 };
 
-/** Claimable preprint from findClaimable */
-export type ClaimablePreprint = FindClaimableResponse['preprints'][number];
+/** Claimable eprint from findClaimable */
+export type ClaimableEprint = FindClaimableResponse['eprints'][number];
 
 /** Suggested paper from getSuggestions */
 export type SuggestedPaper = ClaimSuggestionsResponse['papers'][number];
@@ -966,7 +966,7 @@ export type ReconcilableEntityType =
   | 'facet'
   | 'organization'
   | 'author'
-  | 'preprint';
+  | 'eprint';
 
 /**
  * Reconciliation mapping between Chive entity and external system.
@@ -1021,8 +1021,8 @@ export interface ExternalMapping {
 /** Response from pub.chive.metrics.getTrending */
 export type GetTrendingResponse = SuccessResponseJSON<operations['pub_chive_metrics_getTrending']>;
 
-/** Trending preprint from API */
-export type TrendingPreprint = GetTrendingResponse['preprints'][number];
+/** Trending eprint from API */
+export type TrendingEprint = GetTrendingResponse['eprints'][number];
 
 // -----------------------------------------------------------------------------
 // Discovery Types
@@ -1037,12 +1037,12 @@ export type RecommendationsResponse = SuccessResponseJSON<
 export type GetRecommendationsResponse = RecommendationsResponse;
 
 /** Response from pub.chive.discovery.getSimilar */
-export type SimilarPreprintsResponse = SuccessResponseJSON<
+export type SimilarEprintsResponse = SuccessResponseJSON<
   operations['pub_chive_discovery_getSimilar']
 >;
 
 /** Alias for similar response */
-export type GetSimilarResponse = SimilarPreprintsResponse;
+export type GetSimilarResponse = SimilarEprintsResponse;
 
 /** Response from pub.chive.discovery.getCitations */
 export type CitationsResponse = SuccessResponseJSON<operations['pub_chive_discovery_getCitations']>;
@@ -1058,14 +1058,14 @@ export type EnrichmentResponse = SuccessResponseJSON<
 /** Alias for enrichment response */
 export type GetEnrichmentResponse = EnrichmentResponse;
 
-/** Recommended preprint from API */
-export type RecommendedPreprint = RecommendationsResponse['recommendations'][number];
+/** Recommended eprint from API */
+export type RecommendedEprint = RecommendationsResponse['recommendations'][number];
 
 /** Recommendation explanation */
-export type RecommendationExplanation = RecommendedPreprint['explanation'];
+export type RecommendationExplanation = RecommendedEprint['explanation'];
 
-/** Related preprint from getSimilar */
-export type RelatedPreprint = SimilarPreprintsResponse['related'][number];
+/** Related eprint from getSimilar */
+export type RelatedEprint = SimilarEprintsResponse['related'][number];
 
 /** Citation relationship from getCitations */
 export type CitationRelationship = CitationsResponse['citations'][number];
@@ -1147,14 +1147,14 @@ export interface BlobRef {
   size: number;
 }
 
-/** Preprint source tracking - extracted from PreprintSummary */
-export type PreprintSource = NonNullable<PreprintSummary['source']>;
+/** Eprint source tracking - extracted from EprintSummary */
+export type EprintSource = NonNullable<EprintSummary['source']>;
 
-/** Preprint metrics - extracted from GetTrendingResponse */
-export type PreprintMetrics = NonNullable<TrendingPreprint['metrics']>;
+/** Eprint metrics - extracted from GetTrendingResponse */
+export type EprintMetrics = NonNullable<TrendingEprint['metrics']>;
 
-/** Preprint version */
-export interface PreprintVersion {
+/** Eprint version */
+export interface EprintVersion {
   version: number;
   cid: string;
   createdAt: string;
@@ -1245,7 +1245,7 @@ export type RichAnnotationItem =
   | { type: 'authorityRef'; uri: string; label: string }
   | { type: 'fieldRef'; uri: string; label: string }
   | { type: 'facetRef'; dimension: string; value: string }
-  | { type: 'preprintRef'; uri: string; title: string }
+  | { type: 'eprintRef'; uri: string; title: string }
   | { type: 'annotationRef'; uri: string; excerpt: string }
   | { type: 'authorRef'; did: string; displayName: string };
 

@@ -2,15 +2,15 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createWrapper } from '@/tests/test-utils';
-import { createMockPreprint, createMockPreprintSummary } from '@/tests/mock-data';
+import { createMockEprint, createMockEprintSummary } from '@/tests/mock-data';
 
 import {
-  preprintKeys,
-  usePreprint,
-  usePreprints,
-  usePreprintsByAuthor,
-  usePrefetchPreprint,
-} from './use-preprint';
+  eprintKeys,
+  useEprint,
+  useEprints,
+  useEprintsByAuthor,
+  usePrefetchEprint,
+} from './use-eprint';
 
 // Mock functions using vi.hoisted for proper hoisting
 const { mockApiGet } = vi.hoisted(() => ({
@@ -23,50 +23,50 @@ vi.mock('@/lib/api/client', () => ({
   },
 }));
 
-describe('preprintKeys', () => {
+describe('eprintKeys', () => {
   it('generates all key', () => {
-    expect(preprintKeys.all).toEqual(['preprints']);
+    expect(eprintKeys.all).toEqual(['eprints']);
   });
 
   it('generates lists key', () => {
-    expect(preprintKeys.lists()).toEqual(['preprints', 'list']);
+    expect(eprintKeys.lists()).toEqual(['eprints', 'list']);
   });
 
   it('generates list key with params', () => {
     const params = { limit: 10, cursor: 'abc', field: 'cs' };
-    expect(preprintKeys.list(params)).toEqual(['preprints', 'list', params]);
+    expect(eprintKeys.list(params)).toEqual(['eprints', 'list', params]);
   });
 
   it('generates details key', () => {
-    expect(preprintKeys.details()).toEqual(['preprints', 'detail']);
+    expect(eprintKeys.details()).toEqual(['eprints', 'detail']);
   });
 
   it('generates detail key with uri', () => {
-    const uri = 'at://did:plc:test/pub.chive.preprint.submission/123';
-    expect(preprintKeys.detail(uri)).toEqual(['preprints', 'detail', uri]);
+    const uri = 'at://did:plc:test/pub.chive.eprint.submission/123';
+    expect(eprintKeys.detail(uri)).toEqual(['eprints', 'detail', uri]);
   });
 
   it('generates byAuthor key with did', () => {
     const did = 'did:plc:test123';
-    expect(preprintKeys.byAuthor(did)).toEqual(['preprints', 'author', did]);
+    expect(eprintKeys.byAuthor(did)).toEqual(['eprints', 'author', did]);
   });
 });
 
-describe('usePreprint', () => {
+describe('useEprint', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches a preprint by URI', async () => {
-    const mockPreprint = createMockPreprint();
+  it('fetches a eprint by URI', async () => {
+    const mockEprint = createMockEprint();
     mockApiGet.mockResolvedValueOnce({
-      data: mockPreprint,
+      data: mockEprint,
       error: undefined,
     });
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
-      () => usePreprint('at://did:plc:test/pub.chive.preprint.submission/123'),
+      () => useEprint('at://did:plc:test/pub.chive.eprint.submission/123'),
       { wrapper: Wrapper }
     );
 
@@ -74,15 +74,15 @@ describe('usePreprint', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toEqual(mockPreprint);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.preprint.getSubmission', {
-      params: { query: { uri: 'at://did:plc:test/pub.chive.preprint.submission/123' } },
+    expect(result.current.data).toEqual(mockEprint);
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.getSubmission', {
+      params: { query: { uri: 'at://did:plc:test/pub.chive.eprint.submission/123' } },
     });
   });
 
   it('is disabled when uri is empty', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprint(''), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEprint(''), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
   });
@@ -90,7 +90,7 @@ describe('usePreprint', () => {
   it('can be disabled via options', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
-      () => usePreprint('at://did:plc:test/pub.chive.preprint.submission/123', { enabled: false }),
+      () => useEprint('at://did:plc:test/pub.chive.eprint.submission/123', { enabled: false }),
       { wrapper: Wrapper }
     );
 
@@ -105,7 +105,7 @@ describe('usePreprint', () => {
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
-      () => usePreprint('at://did:plc:test/pub.chive.preprint.submission/invalid'),
+      () => useEprint('at://did:plc:test/pub.chive.eprint.submission/invalid'),
       { wrapper: Wrapper }
     );
 
@@ -117,14 +117,14 @@ describe('usePreprint', () => {
   });
 });
 
-describe('usePreprints', () => {
+describe('useEprints', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches a list of preprints with search query', async () => {
+  it('fetches a list of eprints with search query', async () => {
     const mockData = {
-      preprints: [createMockPreprintSummary(), createMockPreprintSummary()],
+      eprints: [createMockEprintSummary(), createMockEprintSummary()],
       cursor: 'next',
       hasMore: true,
       total: 10,
@@ -135,7 +135,7 @@ describe('usePreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprints({ q: 'machine learning' }), {
+    const { result } = renderHook(() => useEprints({ q: 'machine learning' }), {
       wrapper: Wrapper,
     });
 
@@ -144,20 +144,20 @@ describe('usePreprints', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/preprints', {
+    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/eprints', {
       params: { query: expect.objectContaining({ q: 'machine learning' }) },
     });
   });
 
   it('passes parameters to the query', async () => {
     mockApiGet.mockResolvedValueOnce({
-      data: { preprints: [], cursor: undefined, hasMore: false, total: 0 },
+      data: { eprints: [], cursor: undefined, hasMore: false, total: 0 },
       error: undefined,
     });
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
-      () => usePreprints({ q: 'physics research', limit: 10, cursor: 'abc' }),
+      () => useEprints({ q: 'physics research', limit: 10, cursor: 'abc' }),
       { wrapper: Wrapper }
     );
 
@@ -165,7 +165,7 @@ describe('usePreprints', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/preprints', {
+    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/eprints', {
       params: {
         query: expect.objectContaining({
           q: 'physics research',
@@ -183,7 +183,7 @@ describe('usePreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprints({ q: 'test query' }), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEprints({ q: 'test query' }), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -194,20 +194,20 @@ describe('usePreprints', () => {
 
   it('is disabled when search query is empty', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprints(), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEprints(), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
   });
 });
 
-describe('usePreprintsByAuthor', () => {
+describe('useEprintsByAuthor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches preprints by author DID', async () => {
+  it('fetches eprints by author DID', async () => {
     const mockData = {
-      preprints: [createMockPreprintSummary()],
+      eprints: [createMockEprintSummary()],
       cursor: undefined,
       hasMore: false,
     };
@@ -217,7 +217,7 @@ describe('usePreprintsByAuthor', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprintsByAuthor({ did: 'did:plc:author123' }), {
+    const { result } = renderHook(() => useEprintsByAuthor({ did: 'did:plc:author123' }), {
       wrapper: Wrapper,
     });
 
@@ -226,14 +226,14 @@ describe('usePreprintsByAuthor', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.preprint.listByAuthor', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.listByAuthor', {
       params: { query: expect.objectContaining({ did: 'did:plc:author123' }) },
     });
   });
 
   it('is disabled when did is empty', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprintsByAuthor({ did: '' }), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEprintsByAuthor({ did: '' }), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
   });
@@ -245,7 +245,7 @@ describe('usePreprintsByAuthor', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePreprintsByAuthor({ did: 'did:plc:invalid' }), {
+    const { result } = renderHook(() => useEprintsByAuthor({ did: 'did:plc:invalid' }), {
       wrapper: Wrapper,
     });
 
@@ -257,30 +257,30 @@ describe('usePreprintsByAuthor', () => {
   });
 });
 
-describe('usePrefetchPreprint', () => {
+describe('usePrefetchEprint', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('returns a prefetch function', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePrefetchPreprint(), { wrapper: Wrapper });
+    const { result } = renderHook(() => usePrefetchEprint(), { wrapper: Wrapper });
 
     expect(typeof result.current).toBe('function');
   });
 
   it('calls prefetchQuery when invoked', () => {
-    const mockPreprint = createMockPreprint();
+    const mockEprint = createMockEprint();
     mockApiGet.mockResolvedValueOnce({
-      data: mockPreprint,
+      data: mockEprint,
       error: undefined,
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => usePrefetchPreprint(), { wrapper: Wrapper });
+    const { result } = renderHook(() => usePrefetchEprint(), { wrapper: Wrapper });
 
     // Call the prefetch function
-    result.current('at://did:plc:test/pub.chive.preprint.submission/123');
+    result.current('at://did:plc:test/pub.chive.eprint.submission/123');
 
     // The API should have been called
     expect(mockApiGet).toHaveBeenCalled();

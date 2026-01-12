@@ -144,7 +144,7 @@ export function TagCloud({
               weightClass
             )}
             style={{ fontSize: `${fontSize}rem` }}
-            title={`${tag.displayForms[0] ?? tag.normalizedForm}: ${tag.usageCount} preprint${tag.usageCount !== 1 ? 's' : ''}`}
+            title={`${tag.displayForms[0] ?? tag.normalizedForm}: ${tag.usageCount} eprint${tag.usageCount !== 1 ? 's' : ''}`}
           >
             {tag.displayForms[0] ?? tag.normalizedForm}
           </span>

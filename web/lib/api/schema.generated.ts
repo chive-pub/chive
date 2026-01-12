@@ -232,7 +232,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List backlinks to a preprint */
+    /** List backlinks to a eprint */
     get: operations['pub_chive_backlink_list'];
     put?: never;
     post?: never;
@@ -249,7 +249,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get aggregated backlink counts for a preprint */
+    /** Get aggregated backlink counts for a eprint */
     get: operations['pub_chive_backlink_getCounts'];
     put?: never;
     post?: never;
@@ -302,7 +302,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Start a claim request for an imported preprint */
+    /** Start a claim request for an imported eprint */
     post: operations['pub_chive_claiming_startClaim'];
     delete?: never;
     options?: never;
@@ -419,7 +419,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Find claimable preprints matching identity */
+    /** Find claimable eprints matching identity */
     get: operations['pub_chive_claiming_findClaimable'];
     put?: never;
     post?: never;
@@ -446,15 +446,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.claiming.searchPreprints': {
+  '/xrpc/pub.chive.claiming.searchEprints': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Search external preprint sources for papers to claim */
-    get: operations['pub_chive_claiming_searchPreprints'];
+    /** Search external eprint sources for papers to claim */
+    get: operations['pub_chive_claiming_searchEprints'];
     put?: never;
     post?: never;
     delete?: never;
@@ -606,7 +606,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get related papers for a preprint */
+    /** Get related papers for a eprint */
     get: operations['pub_chive_discovery_getSimilar'];
     put?: never;
     post?: never;
@@ -623,7 +623,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get citation network for a preprint */
+    /** Get citation network for a eprint */
     get: operations['pub_chive_discovery_getCitations'];
     put?: never;
     post?: never;
@@ -640,7 +640,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get enrichment data for a preprint */
+    /** Get enrichment data for a eprint */
     get: operations['pub_chive_discovery_getEnrichment'];
     put?: never;
     post?: never;
@@ -667,15 +667,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.endorsement.listForPreprint': {
+  '/xrpc/pub.chive.endorsement.listForEprint': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** List endorsements for a preprint */
-    get: operations['pub_chive_endorsement_listForPreprint'];
+    /** List endorsements for a eprint */
+    get: operations['pub_chive_endorsement_listForEprint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -691,7 +691,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get endorsement summary for a preprint */
+    /** Get endorsement summary for a eprint */
     get: operations['pub_chive_endorsement_getSummary'];
     put?: never;
     post?: never;
@@ -708,7 +708,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get a user's endorsement for a preprint */
+    /** Get a user's endorsement for a eprint */
     get: operations['pub_chive_endorsement_getUserEndorsement'];
     put?: never;
     post?: never;
@@ -861,7 +861,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Browse preprints using PMEST faceted classification */
+    /** Browse eprints using PMEST faceted classification */
     get: operations['pub_chive_graph_browseFaceted'];
     put?: never;
     post?: never;
@@ -871,15 +871,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.graph.getFieldPreprints': {
+  '/xrpc/pub.chive.graph.getFieldEprints': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Get preprints in a knowledge graph field */
-    get: operations['pub_chive_graph_getFieldPreprints'];
+    /** Get eprints in a knowledge graph field */
+    get: operations['pub_chive_graph_getFieldEprints'];
     put?: never;
     post?: never;
     delete?: never;
@@ -929,7 +929,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Search imported preprints */
+    /** Search imported eprints */
     get: operations['pub_chive_import_search'];
     put?: never;
     post?: never;
@@ -946,7 +946,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get an imported preprint by source and external ID */
+    /** Get an imported eprint by source and external ID */
     get: operations['pub_chive_import_get'];
     put?: never;
     post?: never;
@@ -963,7 +963,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Check if a preprint has been imported */
+    /** Check if a eprint has been imported */
     get: operations['pub_chive_import_exists'];
     put?: never;
     post?: never;
@@ -980,7 +980,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get trending preprints by view count in time window */
+    /** Get trending eprints by view count in time window */
     get: operations['pub_chive_metrics_getTrending'];
     put?: never;
     post?: never;
@@ -999,7 +999,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Record a view event for a preprint */
+    /** Record a view event for a eprint */
     post: operations['pub_chive_metrics_recordView'];
     delete?: never;
     options?: never;
@@ -1016,7 +1016,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Record a download event for a preprint */
+    /** Record a download event for a eprint */
     post: operations['pub_chive_metrics_recordDownload'];
     delete?: never;
     options?: never;
@@ -1031,7 +1031,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get comprehensive metrics for a preprint */
+    /** Get comprehensive metrics for a eprint */
     get: operations['pub_chive_metrics_getMetrics'];
     put?: never;
     post?: never;
@@ -1048,7 +1048,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get view count for a preprint */
+    /** Get view count for a eprint */
     get: operations['pub_chive_metrics_getViewCount'];
     put?: never;
     post?: never;
@@ -1109,15 +1109,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.preprint.getSubmission': {
+  '/xrpc/pub.chive.eprint.getSubmission': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Get a preprint submission by AT URI */
-    get: operations['pub_chive_preprint_getSubmission'];
+    /** Get a eprint submission by AT URI */
+    get: operations['pub_chive_eprint_getSubmission'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1126,15 +1126,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.preprint.searchSubmissions': {
+  '/xrpc/pub.chive.eprint.searchSubmissions': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Search preprint submissions with full-text and faceted filtering */
-    get: operations['pub_chive_preprint_searchSubmissions'];
+    /** Search eprint submissions with full-text and faceted filtering */
+    get: operations['pub_chive_eprint_searchSubmissions'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1143,15 +1143,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.preprint.listByAuthor': {
+  '/xrpc/pub.chive.eprint.listByAuthor': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** List preprint submissions by author DID */
-    get: operations['pub_chive_preprint_listByAuthor'];
+    /** List eprint submissions by author DID */
+    get: operations['pub_chive_eprint_listByAuthor'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1160,15 +1160,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.review.listForPreprint': {
+  '/xrpc/pub.chive.review.listForEprint': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** List reviews for a preprint */
-    get: operations['pub_chive_review_listForPreprint'];
+    /** List reviews for a eprint */
+    get: operations['pub_chive_review_listForEprint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1262,15 +1262,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.tag.listForPreprint': {
+  '/xrpc/pub.chive.tag.listForEprint': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** List tags for a preprint */
-    get: operations['pub_chive_tag_listForPreprint'];
+    /** List tags for a eprint */
+    get: operations['pub_chive_tag_listForEprint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1347,15 +1347,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/preprints': {
+  '/api/v1/eprints': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Search preprints */
-    get: operations['searchPreprints'];
+    /** Search eprints */
+    get: operations['searchEprints'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1364,15 +1364,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/v1/preprints/{uri}': {
+  '/api/v1/eprints/{uri}': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Get preprint by URI */
-    get: operations['getPreprint'];
+    /** Get eprint by URI */
+    get: operations['getEprint'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1461,9 +1461,9 @@ export interface operations {
            * @enum {string}
            */
           category:
-            | 'preprint_submit'
-            | 'preprint_update'
-            | 'preprint_delete'
+            | 'eprint_submit'
+            | 'eprint_update'
+            | 'eprint_delete'
             | 'review_create'
             | 'review_update'
             | 'review_delete'
@@ -1604,9 +1604,9 @@ export interface operations {
     parameters: {
       query?: {
         category?:
-          | 'preprint_submit'
-          | 'preprint_update'
-          | 'preprint_delete'
+          | 'eprint_submit'
+          | 'eprint_update'
+          | 'eprint_delete'
           | 'review_create'
           | 'review_update'
           | 'review_delete'
@@ -1656,9 +1656,9 @@ export interface operations {
                * @enum {string}
                */
               category:
-                | 'preprint_submit'
-                | 'preprint_update'
-                | 'preprint_delete'
+                | 'eprint_submit'
+                | 'eprint_update'
+                | 'eprint_delete'
                 | 'review_create'
                 | 'review_update'
                 | 'review_delete'
@@ -1757,9 +1757,9 @@ export interface operations {
                * @enum {string}
                */
               category:
-                | 'preprint_submit'
-                | 'preprint_update'
-                | 'preprint_delete'
+                | 'eprint_submit'
+                | 'eprint_update'
+                | 'eprint_delete'
                 | 'review_create'
                 | 'review_update'
                 | 'review_delete'
@@ -2477,13 +2477,13 @@ export interface operations {
               /** @description Scopus author ID */
               scopusAuthorId?: string;
             };
-            /** @description Author metrics across all preprints */
+            /** @description Author metrics across all eprints */
             metrics: {
-              /** @description Total preprints authored */
-              totalPreprints: number;
-              /** @description Total views across all preprints */
+              /** @description Total eprints authored */
+              totalEprints: number;
+              /** @description Total views across all eprints */
               totalViews: number;
-              /** @description Total downloads across all preprints */
+              /** @description Total downloads across all eprints */
               totalDownloads: number;
               /** @description Total endorsements received */
               totalEndorsements: number;
@@ -2803,7 +2803,7 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': {
-          /** @description ID of the imported preprint to claim */
+          /** @description ID of the imported eprint to claim */
           importId: number;
         };
       };
@@ -3360,7 +3360,7 @@ export interface operations {
         };
         content: {
           'application/json': {
-            preprints: {
+            eprints: {
               id: number;
               source: string;
               externalId: string;
@@ -3501,7 +3501,7 @@ export interface operations {
       };
     };
   };
-  pub_chive_claiming_searchPreprints: {
+  pub_chive_claiming_searchEprints: {
     parameters: {
       query?: {
         query?: string;
@@ -3522,15 +3522,15 @@ export interface operations {
         };
         content: {
           'application/json': {
-            preprints: {
+            eprints: {
               /** @description Source-specific identifier */
               externalId: string;
               /**
                * Format: uri
-               * @description Full URL to the preprint
+               * @description Full URL to the eprint
                */
               url: string;
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
               /** @description Abstract text */
               abstract?: string;
@@ -3617,7 +3617,7 @@ export interface operations {
         content: {
           'application/json': {
             suggestions: {
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
               /** @description First 2 authors joined */
               authors: string;
@@ -3686,10 +3686,10 @@ export interface operations {
               externalId: string;
               /**
                * Format: uri
-               * @description Full URL to the preprint
+               * @description Full URL to the eprint
                */
               url: string;
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
               /** @description Abstract text */
               abstract?: string;
@@ -4258,7 +4258,7 @@ export interface operations {
         };
         content: {
           'application/json': {
-            preprint: {
+            eprint: {
               uri: string;
               title: string;
             };
@@ -4336,7 +4336,7 @@ export interface operations {
         };
         content: {
           'application/json': {
-            preprint: {
+            eprint: {
               uri: string;
               title: string;
             };
@@ -4473,8 +4473,8 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': {
-          /** @description AT URI of the preprint */
-          preprintUri: string;
+          /** @description AT URI of the eprint */
+          eprintUri: string;
           /**
            * @description Interaction type
            * @enum {string}
@@ -4526,12 +4526,12 @@ export interface operations {
       };
     };
   };
-  pub_chive_endorsement_listForPreprint: {
+  pub_chive_endorsement_listForEprint: {
     parameters: {
       query: {
         limit: number;
         cursor?: string;
-        preprintUri: string;
+        eprintUri: string;
         contributionType?:
           | 'methodological'
           | 'analytical'
@@ -4566,8 +4566,8 @@ export interface operations {
             endorsements: {
               /** @description Endorsement AT-URI */
               uri: string;
-              /** @description Endorsed preprint AT-URI */
-              preprintUri: string;
+              /** @description Endorsed eprint AT-URI */
+              eprintUri: string;
               /** @description Endorser */
               endorser: {
                 /** @description Decentralized Identifier */
@@ -4665,7 +4665,7 @@ export interface operations {
   pub_chive_endorsement_getSummary: {
     parameters: {
       query: {
-        preprintUri: string;
+        eprintUri: string;
       };
       header?: never;
       path?: never;
@@ -4723,7 +4723,7 @@ export interface operations {
   pub_chive_endorsement_getUserEndorsement: {
     parameters: {
       query: {
-        preprintUri: string;
+        eprintUri: string;
         userDid: string;
       };
       header?: never;
@@ -4741,8 +4741,8 @@ export interface operations {
           'application/json': {
             /** @description Endorsement AT-URI */
             uri: string;
-            /** @description Endorsed preprint AT-URI */
-            preprintUri: string;
+            /** @description Endorsed eprint AT-URI */
+            eprintUri: string;
             /** @description Endorser */
             endorser: {
               /** @description Decentralized Identifier */
@@ -5234,8 +5234,8 @@ export interface operations {
              * @enum {string}
              */
             status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-            /** @description Number of preprints */
-            preprintCount?: number;
+            /** @description Number of eprints */
+            eprintCount?: number;
             /** @description Number of child fields */
             childCount?: number;
             /** @description External identifiers */
@@ -5287,7 +5287,7 @@ export interface operations {
             children?: {
               id: string;
               name: string;
-              preprintCount?: number;
+              eprintCount?: number;
             }[];
             /** @description Ancestor path */
             ancestors?: {
@@ -5364,8 +5364,8 @@ export interface operations {
                * @enum {string}
                */
               status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-              /** @description Number of preprints */
-              preprintCount?: number;
+              /** @description Number of eprints */
+              eprintCount?: number;
               /** @description Number of child fields */
               childCount?: number;
               /** @description External identifiers */
@@ -5484,8 +5484,8 @@ export interface operations {
                  */
                 url?: string;
               }[];
-              /** @description Number of linked preprints */
-              linkedPreprints?: number;
+              /** @description Number of linked eprints */
+              linkedEprints?: number;
               /**
                * @description Field status
                * @enum {string}
@@ -5555,15 +5555,15 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Matching preprints */
+            /** @description Matching eprints */
             hits: {
               /** @description AT URI */
               uri: string;
               /** @description CID of indexed version */
               cid: string;
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
-              /** @description Preprint abstract */
+              /** @description Eprint abstract */
               abstract: string;
               /** @description All authors with contributions */
               authors: {
@@ -5683,7 +5683,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               matter?: {
@@ -5691,7 +5691,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               energy?: {
@@ -5699,7 +5699,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               space?: {
@@ -5707,7 +5707,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               time?: {
@@ -5715,7 +5715,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               person?: {
@@ -5723,7 +5723,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               organization?: {
@@ -5731,7 +5731,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               event?: {
@@ -5739,7 +5739,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               work?: {
@@ -5747,7 +5747,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
               formGenre?: {
@@ -5755,7 +5755,7 @@ export interface operations {
                 value: string;
                 /** @description Display label */
                 label?: string;
-                /** @description Number of preprints */
+                /** @description Number of eprints */
                 count: number;
               }[];
             };
@@ -5799,7 +5799,7 @@ export interface operations {
       };
     };
   };
-  pub_chive_graph_getFieldPreprints: {
+  pub_chive_graph_getFieldEprints: {
     parameters: {
       query: {
         limit: number;
@@ -5819,11 +5819,11 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Preprints in this field */
-            preprints: {
-              /** @description Preprint AT URI */
+            /** @description Eprints in this field */
+            eprints: {
+              /** @description Eprint AT URI */
               uri: string;
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
               /** @description Truncated abstract */
               abstract?: string;
@@ -5930,8 +5930,8 @@ export interface operations {
                */
               url?: string;
             }[];
-            /** @description Number of linked preprints */
-            linkedPreprints?: number;
+            /** @description Number of linked eprints */
+            linkedEprints?: number;
             /**
              * @description Field status
              * @enum {string}
@@ -6092,7 +6092,7 @@ export interface operations {
         };
         content: {
           'application/json': {
-            preprints: {
+            eprints: {
               id: number;
               /** @description External source identifier (e.g., arxiv, semanticscholar) */
               source: string;
@@ -6319,13 +6319,13 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Trending preprints */
+            /** @description Trending eprints */
             trending: {
               /** @description AT Protocol URI (at://did/collection/rkey) */
               uri: string;
               /** @description Content Identifier */
               cid: string;
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
               /** @description Truncated abstract */
               abstract: string;
@@ -6878,7 +6878,7 @@ export interface operations {
       };
     };
   };
-  pub_chive_preprint_getSubmission: {
+  pub_chive_eprint_getSubmission: {
     parameters: {
       query: {
         uri: string;
@@ -6900,7 +6900,7 @@ export interface operations {
             uri: string;
             /** @description Content Identifier */
             cid: string;
-            /** @description Preprint title */
+            /** @description Eprint title */
             title: string;
             /** @description Full abstract */
             abstract: string;
@@ -7117,7 +7117,7 @@ export interface operations {
       };
     };
   };
-  pub_chive_preprint_searchSubmissions: {
+  pub_chive_eprint_searchSubmissions: {
     parameters: {
       query: {
         q: string;
@@ -7149,7 +7149,7 @@ export interface operations {
               uri: string;
               /** @description Content Identifier */
               cid: string;
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
               /** @description Truncated abstract */
               abstract: string;
@@ -7321,7 +7321,7 @@ export interface operations {
       };
     };
   };
-  pub_chive_preprint_listByAuthor: {
+  pub_chive_eprint_listByAuthor: {
     parameters: {
       query: {
         limit: number;
@@ -7342,13 +7342,13 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Preprint list */
-            preprints: {
+            /** @description Eprint list */
+            eprints: {
               /** @description AT Protocol URI (at://did/collection/rkey) */
               uri: string;
               /** @description Content Identifier */
               cid: string;
-              /** @description Preprint title */
+              /** @description Eprint title */
               title: string;
               /** @description Truncated abstract */
               abstract: string;
@@ -7502,12 +7502,12 @@ export interface operations {
       };
     };
   };
-  pub_chive_review_listForPreprint: {
+  pub_chive_review_listForEprint: {
     parameters: {
       query: {
         limit: number;
         cursor?: string;
-        preprintUri: string;
+        eprintUri: string;
         motivation?:
           | 'commenting'
           | 'highlighting'
@@ -7556,8 +7556,8 @@ export interface operations {
                  */
                 avatar?: string;
               };
-              /** @description Preprint being reviewed */
-              preprintUri: string;
+              /** @description Eprint being reviewed */
+              eprintUri: string;
               /** @description Plain text content */
               content: string;
               /** @description Rich text body */
@@ -7593,7 +7593,7 @@ export interface operations {
               };
               /** @description Target span for inline annotations */
               target?: {
-                /** @description Preprint AT-URI */
+                /** @description Eprint AT-URI */
                 source: string;
                 /** @description Text quote selector */
                 selector?: {
@@ -7763,8 +7763,8 @@ export interface operations {
                  */
                 avatar?: string;
               };
-              /** @description Preprint being reviewed */
-              preprintUri: string;
+              /** @description Eprint being reviewed */
+              eprintUri: string;
               /** @description Plain text content */
               content: string;
               /** @description Rich text body */
@@ -7800,7 +7800,7 @@ export interface operations {
               };
               /** @description Target span for inline annotations */
               target?: {
-                /** @description Preprint AT-URI */
+                /** @description Eprint AT-URI */
                 source: string;
                 /** @description Text quote selector */
                 selector?: {
@@ -7954,8 +7954,8 @@ export interface operations {
                  */
                 avatar?: string;
               };
-              /** @description Preprint being reviewed */
-              preprintUri: string;
+              /** @description Eprint being reviewed */
+              eprintUri: string;
               /** @description Plain text content */
               content: string;
               /** @description Rich text body */
@@ -7991,7 +7991,7 @@ export interface operations {
               };
               /** @description Target span for inline annotations */
               target?: {
-                /** @description Preprint AT-URI */
+                /** @description Eprint AT-URI */
                 source: string;
                 /** @description Text quote selector */
                 selector?: {
@@ -8089,8 +8089,8 @@ export interface operations {
                  */
                 avatar?: string;
               };
-              /** @description Preprint being reviewed */
-              preprintUri: string;
+              /** @description Eprint being reviewed */
+              eprintUri: string;
               /** @description Plain text content */
               content: string;
               /** @description Rich text body */
@@ -8126,7 +8126,7 @@ export interface operations {
               };
               /** @description Target span for inline annotations */
               target?: {
-                /** @description Preprint AT-URI */
+                /** @description Eprint AT-URI */
                 source: string;
                 /** @description Text quote selector */
                 selector?: {
@@ -8410,10 +8410,10 @@ export interface operations {
       };
     };
   };
-  pub_chive_tag_listForPreprint: {
+  pub_chive_tag_listForEprint: {
     parameters: {
       query: {
-        preprintUri: string;
+        eprintUri: string;
       };
       header?: never;
       path?: never;
@@ -8428,12 +8428,12 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Tags for the preprint */
+            /** @description Tags for the eprint */
             tags: {
               /** @description Tag AT-URI */
               uri: string;
-              /** @description Tagged preprint AT-URI */
-              preprintUri: string;
+              /** @description Tagged eprint AT-URI */
+              eprintUri: string;
               /** @description Tag creator */
               author: {
                 /** @description Decentralized Identifier */
@@ -8598,7 +8598,7 @@ export interface operations {
               normalizedForm: string;
               /** @description All display forms used */
               displayForms: string[];
-              /** @description Number of preprints tagged */
+              /** @description Number of eprints tagged */
               usageCount: number;
               /** @description Tag quality score */
               qualityScore: number;
@@ -8676,7 +8676,7 @@ export interface operations {
               normalizedForm: string;
               /** @description All display forms used */
               displayForms: string[];
-              /** @description Number of preprints tagged */
+              /** @description Number of eprints tagged */
               usageCount: number;
               /** @description Tag quality score */
               qualityScore: number;
@@ -8749,7 +8749,7 @@ export interface operations {
             normalizedForm: string;
             /** @description All display forms used */
             displayForms: string[];
-            /** @description Number of preprints tagged */
+            /** @description Number of eprints tagged */
             usageCount: number;
             /** @description Tag quality score */
             qualityScore: number;
@@ -8793,7 +8793,7 @@ export interface operations {
       };
     };
   };
-  searchPreprints: {
+  searchEprints: {
     parameters: {
       query: {
         q: string;
@@ -8815,7 +8815,7 @@ export interface operations {
       };
     };
   };
-  getPreprint: {
+  getEprint: {
     parameters: {
       query?: never;
       header?: never;
@@ -8827,14 +8827,14 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Preprint details */
+      /** @description Eprint details */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content?: never;
       };
-      /** @description Preprint not found */
+      /** @description Eprint not found */
       404: {
         headers: {
           [name: string]: unknown;

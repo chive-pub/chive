@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Preprint search autocomplete component.
+ * Eprint search autocomplete component.
  *
  * @remarks
- * Provides a unified search experience for finding preprints to claim.
+ * Provides a unified search experience for finding eprints to claim.
  * Implements industry-standard UX patterns based on research from
  * Baymard Institute and Nielsen Norman Group:
  *
@@ -33,12 +33,12 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type { AutocompleteSuggestion, ImportSource } from '@/lib/hooks/use-preprint-search';
+import type { AutocompleteSuggestion, ImportSource } from '@/lib/hooks/use-eprint-search';
 
 /**
- * Props for PreprintSearchAutocomplete component.
+ * Props for EprintSearchAutocomplete component.
  */
-export interface PreprintSearchAutocompleteProps {
+export interface EprintSearchAutocompleteProps {
   /** Current search query value */
   value: string;
   /** Handler for query changes */
@@ -138,7 +138,7 @@ function HighlightedTitle({
 }
 
 /**
- * Preprint search autocomplete input with suggestions dropdown.
+ * Eprint search autocomplete input with suggestions dropdown.
  *
  * @remarks
  * Combines search input with autocomplete suggestions in a unified
@@ -147,10 +147,10 @@ function HighlightedTitle({
  * @example
  * ```tsx
  * const { query, setQuery, suggestions, isLoading, handleSelectSuggestion } =
- *   usePreprintSearchState();
+ *   useEprintSearchState();
  *
  * return (
- *   <PreprintSearchAutocomplete
+ *   <EprintSearchAutocomplete
  *     value={query}
  *     onChange={setQuery}
  *     suggestions={suggestions}
@@ -160,7 +160,7 @@ function HighlightedTitle({
  * );
  * ```
  */
-export function PreprintSearchAutocomplete({
+export function EprintSearchAutocomplete({
   value,
   onChange,
   onSubmit,
@@ -171,7 +171,7 @@ export function PreprintSearchAutocomplete({
   className,
   disabled = false,
   autoFocus = false,
-}: PreprintSearchAutocompleteProps) {
+}: EprintSearchAutocompleteProps) {
   const [open, setOpen] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -248,7 +248,7 @@ export function PreprintSearchAutocomplete({
               disabled={disabled}
               autoFocus={autoFocus}
               className="pl-9 pr-20"
-              aria-label="Search preprints"
+              aria-label="Search eprints"
               aria-expanded={shouldShowDropdown}
               aria-controls="search-suggestions"
               aria-autocomplete="list"
@@ -289,7 +289,7 @@ export function PreprintSearchAutocomplete({
                   <p className="mt-2">Searching external sources...</p>
                 </div>
               ) : suggestions.length === 0 ? (
-                <CommandEmpty>No preprints found matching &quot;{value}&quot;</CommandEmpty>
+                <CommandEmpty>No eprints found matching &quot;{value}&quot;</CommandEmpty>
               ) : (
                 <CommandGroup>
                   {suggestions.map((suggestion) => (
@@ -338,4 +338,4 @@ export function PreprintSearchAutocomplete({
   );
 }
 
-export default PreprintSearchAutocomplete;
+export default EprintSearchAutocomplete;

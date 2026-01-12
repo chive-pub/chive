@@ -8,7 +8,7 @@
  * - `@wikidata:` - Wikidata entities
  * - `@authority:` - Chive authority records
  * - `@field:` - Knowledge graph fields
- * - `@preprint:` - Other preprints
+ * - `@eprint:` - Other eprints
  * - `^` - Other annotations
  *
  * @example
@@ -96,10 +96,10 @@ const REFERENCE_TRIGGERS: ReferenceTrigger[] = [
     description: 'Link to knowledge field',
   },
   {
-    pattern: /@preprint:/,
-    type: 'preprintRef',
-    label: '@preprint:',
-    description: 'Link to preprint',
+    pattern: /@eprint:/,
+    type: 'eprintRef',
+    label: '@eprint:',
+    description: 'Link to eprint',
   },
   {
     pattern: /\^/,
@@ -144,8 +144,8 @@ function bodyToText(body: RichAnnotationBody | null): string {
           return `@authority:${item.uri}`;
         case 'fieldRef':
           return `@field:${item.uri}`;
-        case 'preprintRef':
-          return `@preprint:${item.uri}`;
+        case 'eprintRef':
+          return `@eprint:${item.uri}`;
         case 'annotationRef':
           return `^${item.uri}`;
         case 'authorRef':

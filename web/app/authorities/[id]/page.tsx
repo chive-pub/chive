@@ -129,7 +129,7 @@ export default function AuthorityDetailPage() {
           </div>
           <h1 className="text-2xl font-bold tracking-tight mt-2">{authority.name}</h1>
           <p className="text-muted-foreground mt-1">
-            {authority.linkedPreprints ?? 0} preprints • Created{' '}
+            {authority.linkedEprints ?? 0} eprints • Created{' '}
             {new Date(authority.createdAt).toLocaleDateString()}
           </p>
         </div>
@@ -280,7 +280,7 @@ export default function AuthorityDetailPage() {
               <Separator />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Usage</span>
-                <span>{authority.linkedPreprints ?? 0} preprints</span>
+                <span>{authority.linkedEprints ?? 0} eprints</span>
               </div>
               <Separator />
               <div className="flex justify-between">

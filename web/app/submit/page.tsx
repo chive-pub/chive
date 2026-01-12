@@ -4,7 +4,7 @@
  * Submit page component.
  *
  * @remarks
- * Provides the preprint submission wizard.
+ * Provides the eprint submission wizard.
  * Requires AT Protocol authentication.
  */
 
@@ -24,9 +24,9 @@ export default function SubmitPage() {
 
   // Handle successful submission
   const handleSuccess = (result: CreateRecordResult) => {
-    // Redirect to the newly created preprint
+    // Redirect to the newly created eprint
     const encodedUri = encodeURIComponent(result.uri);
-    router.push(`/preprints/${encodedUri}?new=true`);
+    router.push(`/eprints/${encodedUri}?new=true`);
   };
 
   // Handle cancel
@@ -39,7 +39,7 @@ export default function SubmitPage() {
     return (
       <div className="space-y-8">
         <PageHeader
-          title="Submit a Preprint"
+          title="Submit a Eprint"
           description="Share your research with the world through decentralized publishing"
         />
         <div className="flex items-center justify-center py-12">
@@ -56,14 +56,14 @@ export default function SubmitPage() {
     return (
       <div className="space-y-8">
         <PageHeader
-          title="Submit a Preprint"
+          title="Submit a Eprint"
           description="Share your research with the world through decentralized publishing"
         />
 
         <Alert>
           <AlertTitle>Authentication Required</AlertTitle>
           <AlertDescription>
-            You need to sign in with your AT Protocol account to submit a preprint. Your preprint
+            You need to sign in with your AT Protocol account to submit a eprint. Your eprint
             will be stored in your Personal Data Server (PDS), giving you full control over your
             research.
           </AlertDescription>
@@ -73,14 +73,14 @@ export default function SubmitPage() {
           <h2 className="text-xl font-semibold">How It Works</h2>
           <div className="space-y-3 text-muted-foreground">
             <p>
-              Unlike traditional preprint servers, Chive doesn&apos;t store your preprints. Instead,
+              Unlike traditional eprint servers, Chive doesn&apos;t store your eprints. Instead,
               your work lives in your Personal Data Server (PDS) on AT Protocol.
             </p>
             <ul className="list-inside list-disc space-y-1">
               <li>Your PDF is uploaded to your PDS, not Chive&apos;s servers</li>
               <li>You maintain full ownership and control of your data</li>
-              <li>Chive indexes your preprint and makes it discoverable</li>
-              <li>You can update or remove your preprint at any time</li>
+              <li>Chive indexes your eprint and makes it discoverable</li>
+              <li>You can update or remove your eprint at any time</li>
             </ul>
           </div>
         </section>
@@ -99,7 +99,7 @@ export default function SubmitPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Submit a Preprint"
+        title="Submit a Eprint"
         description="Share your research with the world through decentralized publishing"
       />
 

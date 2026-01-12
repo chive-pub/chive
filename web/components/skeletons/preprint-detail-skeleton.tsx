@@ -2,9 +2,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 
 /**
- * Loading skeleton for preprint detail page.
+ * Loading skeleton for eprint detail page.
  */
-export function PreprintDetailSkeleton() {
+export function EprintDetailSkeleton() {
   return (
     <div className="container py-8">
       <div className="mx-auto max-w-4xl space-y-8">

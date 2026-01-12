@@ -9,8 +9,8 @@
  * ```tsx
  * import { useReviews, useReviewThread, reviewKeys } from '@/lib/hooks/use-review';
  *
- * function PreprintReviews({ preprintUri }: { preprintUri: string }) {
- *   const { data, isLoading } = useReviews(preprintUri);
+ * function EprintReviews({ eprintUri }: { eprintUri: string }) {
+ *   const { data, isLoading } = useReviews(eprintUri);
  *
  *   if (isLoading) return <ReviewListSkeleton />;
  *   return <ReviewList reviews={data?.reviews ?? []} />;
@@ -55,8 +55,8 @@ import type {
  * // Invalidate all review queries
  * queryClient.invalidateQueries({ queryKey: reviewKeys.all });
  *
- * // Invalidate reviews for a specific preprint
- * queryClient.invalidateQueries({ queryKey: reviewKeys.forPreprint(preprintUri) });
+ * // Invalidate reviews for a specific eprint
+ * queryClient.invalidateQueries({ queryKey: reviewKeys.forEprint(eprintUri) });
  *
  * // Invalidate a specific review thread
  * queryClient.invalidateQueries({ queryKey: reviewKeys.thread(reviewUri) });
@@ -66,12 +66,12 @@ export const reviewKeys = {
   /** Base key for all review queries */
   all: ['reviews'] as const,
 
-  /** Key for reviews by preprint */
-  forPreprint: (preprintUri: string) => [...reviewKeys.all, 'preprint', preprintUri] as const,
+  /** Key for reviews by eprint */
+  forEprint: (eprintUri: string) => [...reviewKeys.all, 'eprint', eprintUri] as const,
 
   /** Key for reviews list with filters */
-  list: (preprintUri: string, params?: ReviewListParams) =>
-    [...reviewKeys.forPreprint(preprintUri), 'list', params] as const,
+  list: (eprintUri: string, params?: ReviewListParams) =>
+    [...reviewKeys.forEprint(eprintUri), 'list', params] as const,
 
   /** Key for review thread queries */
   threads: () => [...reviewKeys.all, 'thread'] as const,
@@ -80,7 +80,7 @@ export const reviewKeys = {
   thread: (reviewUri: string) => [...reviewKeys.threads(), reviewUri] as const,
 
   /** Key for inline reviews (span annotations) */
-  inline: (preprintUri: string) => [...reviewKeys.forPreprint(preprintUri), 'inline'] as const,
+  inline: (eprintUri: string) => [...reviewKeys.forEprint(eprintUri), 'inline'] as const,
 
   /** Key for reviews by user */
   byUser: (did: string) => [...reviewKeys.all, 'user', did] as const,
@@ -116,8 +116,8 @@ export interface UseReviewsOptions {
  * Input for creating a new review.
  */
 export interface CreateReviewInput {
-  /** AT-URI of the preprint to review */
-  preprintUri: string;
+  /** AT-URI of the eprint to review */
+  eprintUri: string;
   /** Plain text content */
   content: string;
   /** Rich text body (optional) */
@@ -135,15 +135,15 @@ export interface CreateReviewInput {
 // =============================================================================
 
 /**
- * Fetches reviews for a preprint.
+ * Fetches reviews for a eprint.
  *
  * @remarks
  * Uses TanStack Query with a 1-minute stale time. Reviews are more dynamic
- * than preprints so they're revalidated more frequently.
+ * than eprints so they're revalidated more frequently.
  *
  * @example
  * ```tsx
- * const { data, isLoading, error } = useReviews(preprintUri);
+ * const { data, isLoading, error } = useReviews(eprintUri);
  *
  * if (isLoading) return <ReviewListSkeleton />;
  * if (error) return <ReviewError error={error} />;
@@ -157,7 +157,7 @@ export interface CreateReviewInput {
  * );
  * ```
  *
- * @param preprintUri - AT-URI of the preprint
+ * @param eprintUri - AT-URI of the eprint
  * @param params - Query parameters (limit, cursor, motivation, inlineOnly)
  * @param options - Hook options
  * @returns Query result with reviews data
@@ -165,17 +165,17 @@ export interface CreateReviewInput {
  * @throws {Error} When the reviews API request fails
  */
 export function useReviews(
-  preprintUri: string,
+  eprintUri: string,
   params: ReviewListParams = {},
   options: UseReviewsOptions = {}
 ) {
   return useQuery({
-    queryKey: reviewKeys.list(preprintUri, params),
+    queryKey: reviewKeys.list(eprintUri, params),
     queryFn: async (): Promise<ReviewsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.review.listForPreprint', {
+      const { data, error } = await api.GET('/xrpc/pub.chive.review.listForEprint', {
         params: {
           query: {
-            preprintUri,
+            eprintUri,
             limit: params.limit ?? 20,
             cursor: params.cursor,
             motivation: params.motivation,
@@ -187,19 +187,19 @@ export function useReviews(
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch reviews',
           undefined,
-          '/xrpc/pub.chive.review.listForPreprint'
+          '/xrpc/pub.chive.review.listForEprint'
         );
       }
       return data! as unknown as ReviewsResponse;
     },
-    enabled: !!preprintUri && (options.enabled ?? true),
+    enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 60 * 1000, // 1 minute; reviews are more dynamic.
     placeholderData: (previousData) => previousData,
   });
 }
 
 /**
- * Fetches inline reviews (span annotations) for a preprint.
+ * Fetches inline reviews (span annotations) for a eprint.
  *
  * @remarks
  * Returns only reviews that have a target text span.
@@ -207,25 +207,25 @@ export function useReviews(
  *
  * @example
  * ```tsx
- * const { data } = useInlineReviews(preprintUri);
+ * const { data } = useInlineReviews(eprintUri);
  *
  * return (
  *   <PDFAnnotationLayer annotations={data?.reviews ?? []} />
  * );
  * ```
  *
- * @param preprintUri - AT-URI of the preprint
+ * @param eprintUri - AT-URI of the eprint
  * @param options - Hook options
  * @returns Query result with inline reviews
  */
-export function useInlineReviews(preprintUri: string, options: UseReviewsOptions = {}) {
+export function useInlineReviews(eprintUri: string, options: UseReviewsOptions = {}) {
   return useQuery({
-    queryKey: reviewKeys.inline(preprintUri),
+    queryKey: reviewKeys.inline(eprintUri),
     queryFn: async (): Promise<ReviewsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.review.listForPreprint', {
+      const { data, error } = await api.GET('/xrpc/pub.chive.review.listForEprint', {
         params: {
           query: {
-            preprintUri,
+            eprintUri,
             inlineOnly: true,
             limit: 100, // Get all inline reviews
           },
@@ -235,12 +235,12 @@ export function useInlineReviews(preprintUri: string, options: UseReviewsOptions
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch inline reviews',
           undefined,
-          '/xrpc/pub.chive.review.listForPreprint'
+          '/xrpc/pub.chive.review.listForEprint'
         );
       }
       return data! as unknown as ReviewsResponse;
     },
-    enabled: !!preprintUri && (options.enabled ?? true),
+    enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 60 * 1000,
   });
 }
@@ -308,7 +308,7 @@ export function useReviewThread(reviewUri: string, options: UseReviewsOptions = 
  *
  * const handleSubmit = async (content: string) => {
  *   await createReview.mutateAsync({
- *     preprintUri,
+ *     eprintUri,
  *     content,
  *     motivation: 'commenting',
  *   });
@@ -336,7 +336,7 @@ export function useCreateReview() {
       }
 
       const result = await createReviewRecord(agent, {
-        preprintUri: input.preprintUri,
+        eprintUri: input.eprintUri,
         content: input.content,
         parentReviewUri: input.parentReviewUri,
       } as RecordCreatorReviewInput);
@@ -346,7 +346,7 @@ export function useCreateReview() {
         uri: result.uri,
         cid: result.cid,
         author: { did: '' },
-        preprintUri: input.preprintUri,
+        eprintUri: input.eprintUri,
         content: input.content,
         body: input.body,
         target: input.target,
@@ -358,9 +358,9 @@ export function useCreateReview() {
       } as unknown as Review;
     },
     onSuccess: (data) => {
-      // Invalidate reviews for the preprint
+      // Invalidate reviews for the eprint
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.forPreprint(data.preprintUri),
+        queryKey: reviewKeys.forEprint(data.eprintUri),
       });
 
       // If this is a reply, also invalidate the parent thread
@@ -387,7 +387,7 @@ export function useCreateReview() {
  * const handleDelete = async () => {
  *   await deleteReview.mutateAsync({
  *     uri: review.uri,
- *     preprintUri: review.preprintUri,
+ *     eprintUri: review.eprintUri,
  *   });
  * };
  * ```
@@ -398,7 +398,7 @@ export function useDeleteReview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ uri }: { uri: string; preprintUri: string }): Promise<void> => {
+    mutationFn: async ({ uri }: { uri: string; eprintUri: string }): Promise<void> => {
       // Delete directly from PDS using the authenticated agent
       const agent = getCurrentAgent();
       if (!agent) {
@@ -409,7 +409,7 @@ export function useDeleteReview() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.forPreprint(variables.preprintUri),
+        queryKey: reviewKeys.forEprint(variables.eprintUri),
       });
     },
   });
@@ -420,7 +420,7 @@ export function useDeleteReview() {
  *
  * @remarks
  * Improves perceived performance by loading review data before
- * the user navigates to a preprint's reviews section.
+ * the user navigates to a eprint's reviews section.
  *
  * @example
  * ```tsx
@@ -429,25 +429,25 @@ export function useDeleteReview() {
  * return (
  *   <TabsTrigger
  *     value="reviews"
- *     onMouseEnter={() => prefetchReviews(preprintUri)}
- *     onFocus={() => prefetchReviews(preprintUri)}
+ *     onMouseEnter={() => prefetchReviews(eprintUri)}
+ *     onFocus={() => prefetchReviews(eprintUri)}
  *   >
  *     Reviews
  *   </TabsTrigger>
  * );
  * ```
  *
- * @returns Function to prefetch reviews for a preprint
+ * @returns Function to prefetch reviews for a eprint
  */
 export function usePrefetchReviews() {
   const queryClient = useQueryClient();
 
-  return (preprintUri: string) => {
+  return (eprintUri: string) => {
     queryClient.prefetchQuery({
-      queryKey: reviewKeys.list(preprintUri, {}),
+      queryKey: reviewKeys.list(eprintUri, {}),
       queryFn: async (): Promise<ReviewsResponse | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.review.listForPreprint', {
-          params: { query: { preprintUri, limit: 20 } },
+        const { data } = await api.GET('/xrpc/pub.chive.review.listForEprint', {
+          params: { query: { eprintUri, limit: 20 } },
         });
         return data as unknown as ReviewsResponse | undefined;
       },

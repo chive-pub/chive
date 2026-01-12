@@ -22,10 +22,10 @@ const mockAuthor: PostAuthor = {
 };
 
 const mockLinkCard: LinkCard = {
-  url: 'https://chive.pub/preprints/test',
-  title: 'Test Preprint Title',
-  description: 'This is a test description for the preprint.',
-  thumbUrl: '/api/og?type=preprint',
+  url: 'https://chive.pub/eprints/test',
+  title: 'Test Eprint Title',
+  description: 'This is a test description for the eprint.',
+  thumbUrl: '/api/og?type=eprint',
 };
 
 describe('BlueskyPostPreview', () => {
@@ -72,8 +72,8 @@ describe('BlueskyPostPreview', () => {
       <BlueskyPostPreview author={mockAuthor} text="Check this out!" linkCard={mockLinkCard} />
     );
 
-    expect(screen.getByText('Test Preprint Title')).toBeInTheDocument();
-    expect(screen.getByText('This is a test description for the preprint.')).toBeInTheDocument();
+    expect(screen.getByText('Test Eprint Title')).toBeInTheDocument();
+    expect(screen.getByText('This is a test description for the eprint.')).toBeInTheDocument();
   });
 
   it('renders link card domain', () => {
@@ -91,7 +91,7 @@ describe('BlueskyPostPreview', () => {
 
     // Decorative images with alt="" have role="presentation" and can't be found by getByRole('img')
     // Use querySelector for images with empty alt (standard approach per Testing Library docs)
-    const thumbnail = container.querySelector('img[src="/api/og?type=preprint"]');
+    const thumbnail = container.querySelector('img[src="/api/og?type=eprint"]');
     expect(thumbnail).toBeInTheDocument();
   });
 
@@ -144,7 +144,7 @@ describe('BlueskyPostPreview', () => {
   it('extracts domain from URL for link card', () => {
     const cardWithLongUrl = {
       ...mockLinkCard,
-      url: 'https://chive.pub/preprints/at://did:plc:xyz/pub.chive.preprint.submission/abc123',
+      url: 'https://chive.pub/eprints/at://did:plc:xyz/pub.chive.eprint.submission/abc123',
     };
     render(
       <BlueskyPostPreview author={mockAuthor} text="Check this out!" linkCard={cardWithLongUrl} />

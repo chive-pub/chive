@@ -26,20 +26,20 @@ describe('SearchBar', () => {
 
     const input = screen.getByRole('searchbox');
     expect(input).toBeInTheDocument();
-    expect(input).toHaveAttribute('placeholder', 'Search preprints...');
+    expect(input).toHaveAttribute('placeholder', 'Search eprints...');
   });
 
   it('has search form with correct role', () => {
     render(<SearchBar />);
 
-    const form = screen.getByRole('search', { name: 'Search preprints' });
+    const form = screen.getByRole('search', { name: 'Search eprints' });
     expect(form).toBeInTheDocument();
   });
 
   it('has accessible label for input', () => {
     render(<SearchBar />);
 
-    const label = screen.getByText('Search for preprints');
+    const label = screen.getByText('Search for eprints');
     expect(label).toHaveClass('sr-only');
   });
 
@@ -123,7 +123,7 @@ describe('SearchBar', () => {
   it('applies custom className', () => {
     render(<SearchBar className="custom-search" />);
 
-    const form = screen.getByRole('search', { name: 'Search preprints' });
+    const form = screen.getByRole('search', { name: 'Search eprints' });
     expect(form).toHaveClass('custom-search');
   });
 

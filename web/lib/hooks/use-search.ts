@@ -47,7 +47,7 @@ interface UseSearchParams {
 }
 
 /**
- * Searches preprints by query string with optional filters.
+ * Searches eprints by query string with optional filters.
  *
  * @remarks
  * Uses TanStack Query with a 30-second stale time.
@@ -76,7 +76,7 @@ export function useSearch(query: string, params: UseSearchParams = {}) {
   return useQuery({
     queryKey: searchKeys.query(query, params),
     queryFn: async (): Promise<SearchResultsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.preprint.searchSubmissions', {
+      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.searchSubmissions', {
         params: {
           query: {
             q: query,
@@ -92,9 +92,9 @@ export function useSearch(query: string, params: UseSearchParams = {}) {
       });
       if (error) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search preprints',
+          (error as { message?: string }).message ?? 'Failed to search eprints',
           undefined,
-          '/xrpc/pub.chive.preprint.searchSubmissions'
+          '/xrpc/pub.chive.eprint.searchSubmissions'
         );
       }
       return data! as unknown as SearchResultsResponse;
@@ -134,7 +134,7 @@ export function useInstantSearch(query: string) {
   return useQuery({
     queryKey: ['instant-search', query],
     queryFn: async (): Promise<SearchResultsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.preprint.searchSubmissions', {
+      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.searchSubmissions', {
         params: {
           query: {
             q: query,
@@ -145,9 +145,9 @@ export function useInstantSearch(query: string) {
       });
       if (error) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search preprints',
+          (error as { message?: string }).message ?? 'Failed to search eprints',
           undefined,
-          '/xrpc/pub.chive.preprint.searchSubmissions'
+          '/xrpc/pub.chive.eprint.searchSubmissions'
         );
       }
       return data! as unknown as SearchResultsResponse;

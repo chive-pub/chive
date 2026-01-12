@@ -8,9 +8,9 @@ import { PageContainer } from '@/components/layout';
  * Submit page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Submit a Preprint | Chive',
+  title: 'Submit a Eprint | Chive',
   description:
-    'Submit your research to Chive, a decentralized preprint server built on AT Protocol.',
+    'Submit your research to Chive, a decentralized eprint server built on AT Protocol.',
 };
 
 /**

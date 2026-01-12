@@ -44,7 +44,7 @@ export interface SearchInputProps {
  * <SearchInput
  *   defaultValue={query}
  *   onSearch={(q) => router.push(`/search?q=${q}`)}
- *   placeholder="Search preprints..."
+ *   placeholder="Search eprints..."
  * />
  * ```
  *
@@ -53,7 +53,7 @@ export interface SearchInputProps {
  */
 export function SearchInput({
   defaultValue = '',
-  placeholder = 'Search preprints...',
+  placeholder = 'Search eprints...',
   onSearch,
   onChange,
   isLoading = false,

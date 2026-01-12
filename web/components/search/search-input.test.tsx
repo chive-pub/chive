@@ -6,8 +6,8 @@ import { SearchInput, InlineSearch } from './search-input';
 
 describe('SearchInput', () => {
   it('renders with placeholder', () => {
-    render(<SearchInput placeholder="Search preprints..." />);
-    expect(screen.getByPlaceholderText('Search preprints...')).toBeInTheDocument();
+    render(<SearchInput placeholder="Search eprints..." />);
+    expect(screen.getByPlaceholderText('Search eprints...')).toBeInTheDocument();
   });
 
   it('renders with default value', () => {

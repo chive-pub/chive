@@ -219,14 +219,14 @@ describe('AnnotationBodyRenderer', () => {
     });
   });
 
-  describe('preprint reference chips', () => {
-    it('renders preprint reference with link', () => {
+  describe('eprint reference chips', () => {
+    it('renders eprint reference with link', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
         items: [
           {
-            type: 'preprintRef',
-            uri: 'at://did:plc:author/pub.chive.preprint.submission/abc123',
+            type: 'eprintRef',
+            uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
             title: 'Novel Findings in ML',
           },
         ],
@@ -238,14 +238,14 @@ describe('AnnotationBodyRenderer', () => {
       const link = screen.getByRole('link', { name: /novel findings in ml/i });
       expect(link).toHaveAttribute(
         'href',
-        '/preprints/did%3Aplc%3Aauthor%2Fpub.chive.preprint.submission%2Fabc123'
+        '/eprints/did%3Aplc%3Aauthor%2Fpub.chive.eprint.submission%2Fabc123'
       );
     });
 
-    it('applies preprint chip styling', () => {
+    it('applies eprint chip styling', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'preprintRef', uri: 'at://preprint/123', title: 'Study Title' }],
+        items: [{ type: 'eprintRef', uri: 'at://eprint/123', title: 'Study Title' }],
         format: 'application/x-chive-gloss+json',
       };
 
@@ -255,14 +255,14 @@ describe('AnnotationBodyRenderer', () => {
       expect(badge).toHaveClass('bg-slate-100', 'text-slate-800');
     });
 
-    it('truncates long preprint titles', () => {
+    it('truncates long eprint titles', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
         items: [
           {
-            type: 'preprintRef',
-            uri: 'at://preprint/123',
-            title: 'A Very Long Preprint Title That Should Be Truncated',
+            type: 'eprintRef',
+            uri: 'at://eprint/123',
+            title: 'A Very Long Eprint Title That Should Be Truncated',
           },
         ],
         format: 'application/x-chive-gloss+json',
@@ -270,9 +270,9 @@ describe('AnnotationBodyRenderer', () => {
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const badge = screen.getByText('A Very Long Preprint Title That Should Be Truncated');
+      const badge = screen.getByText('A Very Long Eprint Title That Should Be Truncated');
       expect(badge).toHaveClass('truncate', 'max-w-[200px]');
-      expect(badge).toHaveAttribute('title', 'A Very Long Preprint Title That Should Be Truncated');
+      expect(badge).toHaveAttribute('title', 'A Very Long Eprint Title That Should Be Truncated');
     });
   });
 

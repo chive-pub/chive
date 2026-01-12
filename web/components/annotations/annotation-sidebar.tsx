@@ -4,13 +4,13 @@
  * Sidebar for displaying and navigating inline annotations.
  *
  * @remarks
- * Shows a list of inline reviews (span annotations) for a preprint.
+ * Shows a list of inline reviews (span annotations) for a eprint.
  * Clicking an annotation scrolls to its location in the PDF.
  *
  * @example
  * ```tsx
  * <AnnotationSidebar
- *   preprintUri={preprintUri}
+ *   eprintUri={eprintUri}
  *   onAnnotationClick={handleScrollToAnnotation}
  *   selectedUri={selectedAnnotationUri}
  * />
@@ -46,8 +46,8 @@ import type { Review } from '@/lib/api/schema';
  * Props for AnnotationSidebar.
  */
 export interface AnnotationSidebarProps {
-  /** AT-URI of the preprint */
-  preprintUri: string;
+  /** AT-URI of the eprint */
+  eprintUri: string;
   /** Currently selected annotation URI */
   selectedUri?: string;
   /** Callback when annotation is clicked */
@@ -80,7 +80,7 @@ type SortOption = 'page' | 'date' | 'author';
  * @returns Sidebar element
  */
 export function AnnotationSidebar({
-  preprintUri,
+  eprintUri,
   selectedUri,
   onAnnotationClick,
   className,
@@ -88,7 +88,7 @@ export function AnnotationSidebar({
   const [sortBy, setSortBy] = useState<SortOption>('page');
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([1]));
 
-  const { data, isLoading, error } = useInlineReviews(preprintUri);
+  const { data, isLoading, error } = useInlineReviews(eprintUri);
 
   // Group annotations by page
   const pageGroups = useMemo<PageGroup[]>(() => {

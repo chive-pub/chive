@@ -149,11 +149,11 @@ export default function AlphaLandingPage() {
 
         {/* Title */}
         <h1 className="mb-2 text-5xl font-bold tracking-tight">Chive</h1>
-        <p className="mb-6 text-2xl text-muted-foreground">Decentralized Preprints</p>
+        <p className="mb-6 text-2xl text-muted-foreground">Decentralized Eprints</p>
 
         {/* Description */}
         <p className="mb-8 text-lg leading-relaxed text-muted-foreground">
-          A next-generation preprint server built on AT Protocol. Share your research with full data
+          A next-generation eprint server built on AT Protocol. Share your research with full data
           sovereignty, open federation, and community governance.
         </p>
 

@@ -11,7 +11,7 @@ import { createMockReview, createMockTextSpanTarget, createMockAuthor } from '@/
 
 describe('ReviewForm', () => {
   const defaultProps = {
-    preprintUri: 'at://did:plc:test/pub.chive.preprint.submission/abc123',
+    eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc123',
     onSubmit: vi.fn(),
   };
 
@@ -126,7 +126,7 @@ describe('ReviewForm', () => {
 
       expect(onSubmit).toHaveBeenCalledWith({
         content: 'Great methodology and analysis!',
-        preprintUri: 'at://did:plc:test/pub.chive.preprint.submission/abc123',
+        eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc123',
         target: undefined,
         parentReviewUri: undefined,
         motivation: 'commenting',
@@ -395,7 +395,7 @@ describe('InlineReplyForm', () => {
   });
 
   const defaultProps = {
-    preprintUri: 'at://did:plc:test/pub.chive.preprint.submission/abc123',
+    eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc123',
     parentReview,
     onSubmit: vi.fn(),
   };
@@ -422,7 +422,7 @@ describe('InlineReplyForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       content: 'Quick reply',
-      preprintUri: 'at://did:plc:test/pub.chive.preprint.submission/abc123',
+      eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc123',
       parentReviewUri: parentReview.uri,
       motivation: 'replying',
     });

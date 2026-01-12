@@ -78,7 +78,7 @@ export interface DatasetIntegration {
  * Combined integrations response.
  */
 export interface IntegrationsData {
-  preprintUri: string;
+  eprintUri: string;
   github?: GitHubIntegration[];
   gitlab?: GitLabIntegration[];
   zenodo?: ZenodoIntegration[];
@@ -92,7 +92,7 @@ export interface IntegrationsData {
  */
 export const integrationKeys = {
   all: ['integrations'] as const,
-  detail: (preprintUri: string) => [...integrationKeys.all, preprintUri] as const,
+  detail: (eprintUri: string) => [...integrationKeys.all, eprintUri] as const,
 };
 
 /**
@@ -122,16 +122,16 @@ function getApiBaseUrl(): string {
 }
 
 /**
- * Fetches integration data for a preprint.
+ * Fetches integration data for a eprint.
  *
  * @remarks
  * Returns cached plugin data from external integrations (GitHub, GitLab, Zenodo,
- * Software Heritage, etc.) for a given preprint based on its supplementary links.
+ * Software Heritage, etc.) for a given eprint based on its supplementary links.
  *
  * @example
  * ```tsx
  * const { data: integrations, isLoading } = useIntegrations(
- *   'at://did:plc:abc/pub.chive.preprint.submission/123'
+ *   'at://did:plc:abc/pub.chive.eprint.submission/123'
  * );
  *
  * if (integrations?.github?.length > 0) {
@@ -139,19 +139,19 @@ function getApiBaseUrl(): string {
  * }
  * ```
  *
- * @param preprintUri - AT Protocol URI of the preprint
+ * @param eprintUri - AT Protocol URI of the eprint
  * @param options - Query options
  * @returns Query result with integration data
  */
-export function useIntegrations(preprintUri: string, options: UseIntegrationsOptions = {}) {
+export function useIntegrations(eprintUri: string, options: UseIntegrationsOptions = {}) {
   const { enabled = true } = options;
 
   return useQuery({
-    queryKey: integrationKeys.detail(preprintUri),
+    queryKey: integrationKeys.detail(eprintUri),
     queryFn: async (): Promise<IntegrationsData> => {
       const baseUrl = getApiBaseUrl();
-      const encodedUri = encodeURIComponent(preprintUri);
-      const response = await fetch(`${baseUrl}/api/v1/preprints/${encodedUri}/integrations`, {
+      const encodedUri = encodeURIComponent(eprintUri);
+      const response = await fetch(`${baseUrl}/api/v1/eprints/${encodedUri}/integrations`, {
         headers: {
           Accept: 'application/json',
         },
@@ -163,7 +163,7 @@ export function useIntegrations(preprintUri: string, options: UseIntegrationsOpt
 
       return response.json();
     },
-    enabled: enabled && !!preprintUri,
+    enabled: enabled && !!eprintUri,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
   });

@@ -81,9 +81,9 @@ async function uploadThumbnail(agent: Agent, imageBytes: Uint8Array): Promise<Bl
  * if (!agent) throw new Error('Not authenticated');
  *
  * const result = await createBlueskyPost(agent, {
- *   text: 'Check out this preprint!',
+ *   text: 'Check out this eprint!',
  *   embed: {
- *     uri: 'https://chive.pub/preprints/at://did:plc:abc/...',
+ *     uri: 'https://chive.pub/eprints/at://did:plc:abc/...',
  *     title: 'Novel Approach to Quantum Computing',
  *     description: 'We present a new method...',
  *     thumbBlob: ogImageBytes,

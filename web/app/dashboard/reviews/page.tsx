@@ -19,7 +19,7 @@ export default function MyReviewsPage() {
         <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
         <h3 className="mt-4 text-lg font-semibold">No reviews yet</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Reviews you write on preprints will appear here
+          Reviews you write on eprints will appear here
         </p>
       </div>
     </div>

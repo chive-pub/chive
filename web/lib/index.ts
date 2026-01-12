@@ -3,7 +3,7 @@
  *
  * @remarks
  * This module exports all frontend utilities, hooks, and API clients
- * for the Chive preprint server web application.
+ * for the Chive eprint server web application.
  *
  * @packageDocumentation
  */

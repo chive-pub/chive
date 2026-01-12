@@ -76,10 +76,10 @@ export const mainNavItems: NavGroup[] = [
     label: 'Discover',
     children: [
       {
-        label: 'Preprints',
-        href: '/preprints',
+        label: 'Eprints',
+        href: '/eprints',
         icon: FileText,
-        description: 'Browse recent preprint submissions',
+        description: 'Browse recent eprint submissions',
       },
       {
         label: 'Browse',
@@ -103,7 +103,7 @@ export const mainNavItems: NavGroup[] = [
         label: 'Trending',
         href: '/trending',
         icon: TrendingUp,
-        description: 'Popular preprints this week',
+        description: 'Popular eprints this week',
       },
       {
         label: 'Tags',

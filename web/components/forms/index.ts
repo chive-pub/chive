@@ -2,7 +2,7 @@
  * Shared form components for Chive.
  *
  * @remarks
- * Provides reusable form components for preprint submission,
+ * Provides reusable form components for eprint submission,
  * governance proposals, and other forms.
  *
  * @packageDocumentation
@@ -97,7 +97,7 @@ export {
 } from './contribution-type-selector';
 
 export {
-  PreprintAuthorEditor,
-  type PreprintAuthorEditorProps,
-  type PreprintAuthorFormData,
-} from './preprint-author-editor';
+  EprintAuthorEditor,
+  type EprintAuthorEditorProps,
+  type EprintAuthorFormData,
+} from './eprint-author-editor';

@@ -10,7 +10,7 @@ import type {
   ExternalId,
   ExternalMapping,
   FacetDimension,
-  FacetedPreprintSummary,
+  FacetedEprintSummary,
   FacetedSearchResponse,
   FacetProposalChanges,
   FacetValue,
@@ -23,14 +23,14 @@ import type {
   Organization,
   OrganizationProposalChanges,
   OrganizationType,
-  Preprint,
-  PreprintAuthor,
+  Eprint,
+  EprintAuthor,
   AuthorAffiliation,
   AuthorContribution,
-  PreprintMetrics,
-  PreprintSource,
-  PreprintSummary,
-  PreprintTagsResponse,
+  EprintMetrics,
+  EprintSource,
+  EprintSummary,
+  EprintTagsResponse,
   Reconciliation,
   ReconciliationMatchType,
   ReconciliationProposalChanges,
@@ -44,7 +44,7 @@ import type {
   TagSuggestion,
   TagSummary,
   TextSpanTarget,
-  TrendingPreprint,
+  TrendingEprint,
   TrendingTagsResponse,
   UserTag,
 } from '@/lib/api/schema';
@@ -68,10 +68,10 @@ export function createMockAuthor(overrides: Partial<Author> = {}): Author {
 }
 
 /**
- * Creates a mock PreprintAuthor (for preprint contributor lists).
+ * Creates a mock EprintAuthor (for eprint contributor lists).
  * Uses optional `did` to support external collaborators.
  */
-export function createMockPreprintAuthor(overrides: Partial<PreprintAuthor> = {}): PreprintAuthor {
+export function createMockEprintAuthor(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
   return {
     did: 'did:plc:test123',
     name: 'Test User',
@@ -114,12 +114,12 @@ export function createMockFieldRef(overrides: Partial<FieldRef> = {}): FieldRef 
 }
 
 /**
- * Creates a mock PreprintSource.
+ * Creates a mock EprintSource.
  */
-export function createMockPreprintSource(overrides: Partial<PreprintSource> = {}): PreprintSource {
+export function createMockEprintSource(overrides: Partial<EprintSource> = {}): EprintSource {
   return {
     pdsEndpoint: 'https://bsky.social',
-    recordUrl: 'at://did:plc:test123/pub.chive.preprint.submission/abc123',
+    recordUrl: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     blobUrl: 'https://bsky.social/xrpc/com.atproto.sync.getBlob',
     lastVerifiedAt: '2024-01-15T10:35:00Z',
     stale: false,
@@ -128,11 +128,11 @@ export function createMockPreprintSource(overrides: Partial<PreprintSource> = {}
 }
 
 /**
- * Creates a mock PreprintMetrics.
+ * Creates a mock EprintMetrics.
  */
-export function createMockPreprintMetrics(
-  overrides: Partial<PreprintMetrics> = {}
-): PreprintMetrics {
+export function createMockEprintMetrics(
+  overrides: Partial<EprintMetrics> = {}
+): EprintMetrics {
   return {
     views: 150,
     downloads: 42,
@@ -142,19 +142,19 @@ export function createMockPreprintMetrics(
 }
 
 /**
- * Creates a mock Preprint.
+ * Creates a mock Eprint.
  */
-export function createMockPreprint(overrides: Partial<Preprint> = {}): Preprint {
+export function createMockEprint(overrides: Partial<Eprint> = {}): Eprint {
   return {
-    uri: 'at://did:plc:test123/pub.chive.preprint.submission/abc123',
+    uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     title: 'A Novel Approach to Machine Learning',
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
     submittedBy: 'did:plc:test123',
     authors: [
-      createMockPreprintAuthor({ order: 1, isCorrespondingAuthor: true }),
-      createMockPreprintAuthor({
+      createMockEprintAuthor({ order: 1, isCorrespondingAuthor: true }),
+      createMockEprintAuthor({
         did: 'did:plc:coauthor1',
         name: 'Co-Author One',
         order: 2,
@@ -169,8 +169,8 @@ export function createMockPreprint(overrides: Partial<Preprint> = {}): Preprint 
     doi: '10.1234/chive.2024.001',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-16T14:20:00Z',
-    source: createMockPreprintSource(),
-    metrics: createMockPreprintMetrics(),
+    source: createMockEprintSource(),
+    metrics: createMockEprintMetrics(),
     versions: [
       {
         version: 1,
@@ -183,34 +183,34 @@ export function createMockPreprint(overrides: Partial<Preprint> = {}): Preprint 
 }
 
 /**
- * Creates a mock PreprintSummary.
+ * Creates a mock EprintSummary.
  */
-export function createMockPreprintSummary(
-  overrides: Partial<PreprintSummary> = {}
-): PreprintSummary {
+export function createMockEprintSummary(
+  overrides: Partial<EprintSummary> = {}
+): EprintSummary {
   return {
-    uri: 'at://did:plc:test123/pub.chive.preprint.submission/abc123',
+    uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     title: 'A Novel Approach to Machine Learning',
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
     submittedBy: 'did:plc:test123',
-    authors: [createMockPreprintAuthor({ order: 1, isCorrespondingAuthor: true })],
+    authors: [createMockEprintAuthor({ order: 1, isCorrespondingAuthor: true })],
     fields: [createMockFieldRef()],
     createdAt: '2024-01-15T10:30:00Z',
-    source: createMockPreprintSource(),
+    source: createMockEprintSource(),
     ...overrides,
   };
 }
 
 /**
- * Creates a mock TrendingPreprint.
+ * Creates a mock TrendingEprint.
  */
-export function createMockTrendingPreprint(
-  overrides: Partial<TrendingPreprint> = {}
-): TrendingPreprint {
+export function createMockTrendingEprint(
+  overrides: Partial<TrendingEprint> = {}
+): TrendingEprint {
   return {
-    ...createMockPreprintSummary(),
+    ...createMockEprintSummary(),
     viewsInWindow: 500,
     rank: 1,
     ...overrides,
@@ -218,13 +218,13 @@ export function createMockTrendingPreprint(
 }
 
 /**
- * Creates a mock FacetedPreprintSummary for browseFaceted hits.
+ * Creates a mock FacetedEprintSummary for browseFaceted hits.
  */
-export function createMockFacetedPreprintSummary(
-  overrides: Partial<FacetedPreprintSummary> = {}
-): FacetedPreprintSummary {
+export function createMockFacetedEprintSummary(
+  overrides: Partial<FacetedEprintSummary> = {}
+): FacetedEprintSummary {
   return {
-    uri: 'at://did:plc:test123/pub.chive.preprint.submission/abc123',
+    uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     title: 'A Novel Approach to Machine Learning',
     abstract:
@@ -253,7 +253,7 @@ export function createMockFacetedPreprintSummary(
     source: {
       pdsEndpoint: 'https://bsky.social',
       recordUrl:
-        'https://bsky.social/xrpc/com.atproto.sync.getRecord?did=did:plc:test123&collection=pub.chive.preprint.submission&rkey=abc123',
+        'https://bsky.social/xrpc/com.atproto.sync.getRecord?did=did:plc:test123&collection=pub.chive.eprint.submission&rkey=abc123',
       blobUrl: 'https://bsky.social/xrpc/com.atproto.sync.getBlob?did=did:plc:test123&cid=...',
       lastVerifiedAt: '2024-01-15T10:35:00Z',
       stale: false,
@@ -270,14 +270,14 @@ export function createMockSearchResults(
 ): SearchResultsResponse {
   return {
     hits: [
-      createMockFacetedPreprintSummary({
-        uri: 'at://did:plc:test1/pub.chive.preprint.submission/1',
+      createMockFacetedEprintSummary({
+        uri: 'at://did:plc:test1/pub.chive.eprint.submission/1',
       }),
-      createMockFacetedPreprintSummary({
-        uri: 'at://did:plc:test2/pub.chive.preprint.submission/2',
+      createMockFacetedEprintSummary({
+        uri: 'at://did:plc:test2/pub.chive.eprint.submission/2',
       }),
-      createMockFacetedPreprintSummary({
-        uri: 'at://did:plc:test3/pub.chive.preprint.submission/3',
+      createMockFacetedEprintSummary({
+        uri: 'at://did:plc:test3/pub.chive.eprint.submission/3',
       }),
     ],
     cursor: 'cursor123',
@@ -301,16 +301,16 @@ export function createMockTrendingResponse(
 ): GetTrendingResponse {
   return {
     trending: [
-      createMockTrendingPreprint({ rank: 1, viewsInWindow: 500 }),
-      createMockTrendingPreprint({
+      createMockTrendingEprint({ rank: 1, viewsInWindow: 500 }),
+      createMockTrendingEprint({
         rank: 2,
         viewsInWindow: 350,
-        uri: 'at://did:plc:test2/pub.chive.preprint.submission/2',
+        uri: 'at://did:plc:test2/pub.chive.eprint.submission/2',
       }),
-      createMockTrendingPreprint({
+      createMockTrendingEprint({
         rank: 3,
         viewsInWindow: 200,
-        uri: 'at://did:plc:test3/pub.chive.preprint.submission/3',
+        uri: 'at://did:plc:test3/pub.chive.eprint.submission/3',
       }),
     ],
     window: '7d',
@@ -321,13 +321,13 @@ export function createMockTrendingResponse(
 }
 
 /**
- * Creates a list of mock preprint summaries.
+ * Creates a list of mock eprint summaries.
  */
-export function createMockPreprintList(count: number = 5): PreprintSummary[] {
+export function createMockEprintList(count: number = 5): EprintSummary[] {
   return Array.from({ length: count }, (_, i) =>
-    createMockPreprintSummary({
-      uri: `at://did:plc:test${i}/pub.chive.preprint.submission/${i}`,
-      title: `Test Preprint ${i + 1}`,
+    createMockEprintSummary({
+      uri: `at://did:plc:test${i}/pub.chive.eprint.submission/${i}`,
+      title: `Test Eprint ${i + 1}`,
     })
   );
 }
@@ -359,7 +359,7 @@ export function createMockAuthorProfile(overrides: Partial<AuthorProfile> = {}):
  */
 export function createMockAuthorMetrics(overrides: Partial<AuthorMetrics> = {}): AuthorMetrics {
   return {
-    totalPreprints: 15,
+    totalEprints: 15,
     totalViews: 5000,
     totalDownloads: 1200,
     totalEndorsements: 42,
@@ -394,7 +394,7 @@ export function createMockFieldSummary(overrides: Partial<FieldSummary> = {}): F
     uri: 'at://did:plc:governance/pub.chive.graph.field/computer-science',
     name: 'Computer Science',
     description: 'The study of computation and information processing.',
-    preprintCount: 250,
+    eprintCount: 250,
     childCount: 12,
     status: 'approved',
     createdAt: '2024-01-01T00:00:00Z',
@@ -440,7 +440,7 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
     description: 'A subset of artificial intelligence that enables systems to learn from data.',
     parentId: 'computer-science',
     status: 'approved',
-    preprintCount: 150,
+    eprintCount: 150,
     externalIds: [
       createMockExternalId({
         source: 'wikidata',
@@ -467,8 +467,8 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
       }),
     ],
     children: [
-      { id: 'deep-learning', name: 'Deep Learning', preprintCount: 80 },
-      { id: 'reinforcement-learning', name: 'Reinforcement Learning', preprintCount: 40 },
+      { id: 'deep-learning', name: 'Deep Learning', eprintCount: 80 },
+      { id: 'reinforcement-learning', name: 'Reinforcement Learning', eprintCount: 40 },
     ],
     ancestors: [
       { id: 'computer-science', name: 'Computer Science' },
@@ -488,13 +488,13 @@ export function createMockFieldListResponse(
 ): FieldListResponse {
   return {
     fields: [
-      createMockFieldSummary({ id: 'physics', name: 'Physics', preprintCount: 300 }),
+      createMockFieldSummary({ id: 'physics', name: 'Physics', eprintCount: 300 }),
       createMockFieldSummary({
         id: 'computer-science',
         name: 'Computer Science',
-        preprintCount: 250,
+        eprintCount: 250,
       }),
-      createMockFieldSummary({ id: 'biology', name: 'Biology', preprintCount: 200 }),
+      createMockFieldSummary({ id: 'biology', name: 'Biology', eprintCount: 200 }),
     ],
     cursor: 'cursor-123',
     hasMore: true,
@@ -527,11 +527,11 @@ export function createMockFacetedSearchResponse(
 ): FacetedSearchResponse {
   return {
     hits: [
-      createMockFacetedPreprintSummary({
-        uri: 'at://did:plc:test1/pub.chive.preprint.submission/1',
+      createMockFacetedEprintSummary({
+        uri: 'at://did:plc:test1/pub.chive.eprint.submission/1',
       }),
-      createMockFacetedPreprintSummary({
-        uri: 'at://did:plc:test2/pub.chive.preprint.submission/2',
+      createMockFacetedEprintSummary({
+        uri: 'at://did:plc:test2/pub.chive.eprint.submission/2',
       }),
     ],
     cursor: 'cursor-456',
@@ -565,7 +565,7 @@ export function createMockFacetedSearchResponse(
  */
 export function createMockTextSpanTarget(overrides: Partial<TextSpanTarget> = {}): TextSpanTarget {
   return {
-    source: 'at://did:plc:author/pub.chive.preprint.submission/abc123',
+    source: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
     selector: {
       type: 'TextQuoteSelector',
       exact: 'neural network architecture',
@@ -607,7 +607,7 @@ export function createMockReview(overrides: Partial<Review> = {}): Review {
   return {
     uri: 'at://did:plc:reviewer/pub.chive.review.comment/review123',
     cid: 'bafyreireview123',
-    preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/abc123',
+    eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
     author: createMockAuthor({ did: 'did:plc:reviewer', displayName: 'Dr. Reviewer' }),
     content: 'This is an excellent methodology. See also Machine Learning for background.',
     body: {
@@ -714,7 +714,7 @@ export function createMockEndorsement(
   const { endorserDid, ...rest } = overrides;
   return {
     uri: 'at://did:plc:endorser/pub.chive.review.endorsement/endorsement123',
-    preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/abc123',
+    eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
     endorser: createMockAuthor({
       did: endorserDid ?? 'did:plc:endorser',
       displayName: 'Prof. Endorser',
@@ -780,8 +780,8 @@ export function createMockEndorsementsResponse(
  */
 export function createMockUserTag(overrides: Partial<UserTag> = {}): UserTag {
   return {
-    uri: 'at://did:plc:tagger/pub.chive.preprint.userTag/tag123',
-    preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/abc123',
+    uri: 'at://did:plc:tagger/pub.chive.eprint.userTag/tag123',
+    eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
     author: createMockAuthor({ did: 'did:plc:tagger', displayName: 'Tagger User' }),
     normalizedForm: 'machine-learning',
     displayForm: 'Machine Learning',
@@ -818,21 +818,21 @@ export function createMockTagSuggestion(overrides: Partial<TagSuggestion> = {}):
 }
 
 /**
- * Creates a mock PreprintTagsResponse.
+ * Creates a mock EprintTagsResponse.
  */
-export function createMockPreprintTagsResponse(
-  overrides: Partial<PreprintTagsResponse> = {}
-): PreprintTagsResponse {
+export function createMockEprintTagsResponse(
+  overrides: Partial<EprintTagsResponse> = {}
+): EprintTagsResponse {
   return {
     tags: [
       createMockUserTag({ normalizedForm: 'machine-learning', displayForm: 'Machine Learning' }),
       createMockUserTag({
-        uri: 'at://did:plc:t2/pub.chive.preprint.userTag/2',
+        uri: 'at://did:plc:t2/pub.chive.eprint.userTag/2',
         normalizedForm: 'neural-networks',
         displayForm: 'Neural Networks',
       }),
       createMockUserTag({
-        uri: 'at://did:plc:t3/pub.chive.preprint.userTag/3',
+        uri: 'at://did:plc:t3/pub.chive.eprint.userTag/3',
         normalizedForm: 'deep-learning',
         displayForm: 'Deep Learning',
       }),
@@ -915,14 +915,14 @@ export function createMockAuthorContribution(
 }
 
 /**
- * Creates a mock PreprintAuthor with DID (authenticated ATProto user).
+ * Creates a mock EprintAuthor with DID (authenticated ATProto user).
  *
  * @remarks
  * Use this for authors who have an ATProto account.
  */
-export function createMockPreprintAuthorWithDid(
-  overrides: Partial<PreprintAuthor> = {}
-): PreprintAuthor {
+export function createMockEprintAuthorWithDid(
+  overrides: Partial<EprintAuthor> = {}
+): EprintAuthor {
   return {
     did: 'did:plc:test123',
     name: 'Dr. Jane Smith',
@@ -954,7 +954,7 @@ export function createMockPreprintAuthorWithDid(
  * Use this for external collaborators who don't have ATProto DIDs.
  * They are identified by name, ORCID, or email instead.
  */
-export function createMockExternalAuthor(overrides: Partial<PreprintAuthor> = {}): PreprintAuthor {
+export function createMockExternalAuthor(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
   return {
     did: undefined,
     name: 'John External',
@@ -1041,33 +1041,33 @@ export function createMockContributionTypeProposal(
 }
 
 /**
- * Creates a mock traditional Preprint (paper lives in submitter's PDS).
+ * Creates a mock traditional Eprint (paper lives in submitter's PDS).
  *
  * @remarks
  * In the traditional model, the paper record lives in the submitter's PDS.
  * The `paperDid` field is undefined, and the record URI uses the submitter's DID.
  */
-export function createMockTraditionalPreprint(overrides: Partial<Preprint> = {}): Preprint {
+export function createMockTraditionalEprint(overrides: Partial<Eprint> = {}): Eprint {
   return {
-    uri: 'at://did:plc:user123/pub.chive.preprint.submission/xyz',
+    uri: 'at://did:plc:user123/pub.chive.eprint.submission/xyz',
     cid: 'bafyreib2a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7',
-    title: 'A Traditional Preprint',
+    title: 'A Traditional Eprint',
     abstract:
-      'This preprint uses the traditional submission model where the paper lives in the submitter PDS.',
+      'This eprint uses the traditional submission model where the paper lives in the submitter PDS.',
     submittedBy: 'did:plc:user123',
     paperDid: undefined, // Traditional model - no paper DID
-    authors: [createMockPreprintAuthorWithDid(), createMockExternalAuthor()],
+    authors: [createMockEprintAuthorWithDid(), createMockExternalAuthor()],
     document: createMockBlobRef(),
     supplementaryMaterials: [],
     fields: [createMockFieldRef()],
-    keywords: ['traditional', 'submission', 'preprint'],
+    keywords: ['traditional', 'submission', 'eprint'],
     license: 'CC-BY-4.0',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-16T14:20:00Z',
-    source: createMockPreprintSource({
-      recordUrl: 'at://did:plc:user123/pub.chive.preprint.submission/xyz',
+    source: createMockEprintSource({
+      recordUrl: 'at://did:plc:user123/pub.chive.eprint.submission/xyz',
     }),
-    metrics: createMockPreprintMetrics(),
+    metrics: createMockEprintMetrics(),
     versions: [
       {
         version: 1,
@@ -1080,34 +1080,34 @@ export function createMockTraditionalPreprint(overrides: Partial<Preprint> = {})
 }
 
 /**
- * Creates a mock paper-centric Preprint (paper has its own PDS).
+ * Creates a mock paper-centric Eprint (paper has its own PDS).
  *
  * @remarks
  * In the paper-centric model, the paper has its own DID and PDS.
  * The `paperDid` field is set, and the record URI uses the paper's DID.
  * The `submittedBy` field still refers to the human who submitted.
  */
-export function createMockPaperCentricPreprint(overrides: Partial<Preprint> = {}): Preprint {
+export function createMockPaperCentricEprint(overrides: Partial<Eprint> = {}): Eprint {
   return {
-    uri: 'at://did:plc:paper-abc123/pub.chive.preprint.submission/xyz',
+    uri: 'at://did:plc:paper-abc123/pub.chive.eprint.submission/xyz',
     cid: 'bafyreic3b4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z8',
-    title: 'A Paper-Centric Preprint',
-    abstract: 'This preprint uses the paper-centric model where the paper has its own PDS and DID.',
+    title: 'A Paper-Centric Eprint',
+    abstract: 'This eprint uses the paper-centric model where the paper has its own PDS and DID.',
     submittedBy: 'did:plc:user123', // Human who submitted (same person)
     paperDid: 'did:plc:paper-abc123', // Paper's own DID
-    authors: [createMockPreprintAuthorWithDid(), createMockExternalAuthor()],
+    authors: [createMockEprintAuthorWithDid(), createMockExternalAuthor()],
     document: createMockBlobRef(),
     supplementaryMaterials: [],
     fields: [createMockFieldRef()],
-    keywords: ['paper-centric', 'submission', 'preprint'],
+    keywords: ['paper-centric', 'submission', 'eprint'],
     license: 'CC-BY-4.0',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-16T14:20:00Z',
-    source: createMockPreprintSource({
+    source: createMockEprintSource({
       pdsEndpoint: 'https://paper-abc123.pds.example.com',
-      recordUrl: 'at://did:plc:paper-abc123/pub.chive.preprint.submission/xyz',
+      recordUrl: 'at://did:plc:paper-abc123/pub.chive.eprint.submission/xyz',
     }),
-    metrics: createMockPreprintMetrics(),
+    metrics: createMockEprintMetrics(),
     versions: [
       {
         version: 1,

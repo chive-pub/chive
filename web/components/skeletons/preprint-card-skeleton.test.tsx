@@ -1,11 +1,11 @@
 import { render } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 
-import { PreprintCardSkeleton } from './preprint-card-skeleton';
+import { EprintCardSkeleton } from './eprint-card-skeleton';
 
-describe('PreprintCardSkeleton', () => {
+describe('EprintCardSkeleton', () => {
   it('renders a card structure', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     // Should have Card container
     const card = container.querySelector('.rounded-xl');
@@ -13,7 +13,7 @@ describe('PreprintCardSkeleton', () => {
   });
 
   it('renders title skeleton', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     // Title area should have skeleton elements
     const titleSkeletons = container.querySelectorAll('.h-6');
@@ -21,7 +21,7 @@ describe('PreprintCardSkeleton', () => {
   });
 
   it('renders abstract skeleton lines', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     // Abstract area should have h-4 skeleton lines
     const abstractSkeletons = container.querySelectorAll('.h-4');
@@ -29,7 +29,7 @@ describe('PreprintCardSkeleton', () => {
   });
 
   it('renders field badge skeletons', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     // Should have rounded-full badges
     const badgeSkeletons = container.querySelectorAll('.rounded-full');
@@ -37,7 +37,7 @@ describe('PreprintCardSkeleton', () => {
   });
 
   it('renders author avatar skeleton', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     // Should have circular avatar (h-8 w-8 rounded-full)
     const avatarSkeleton = container.querySelector('.h-8.w-8.rounded-full');
@@ -45,7 +45,7 @@ describe('PreprintCardSkeleton', () => {
   });
 
   it('renders date skeleton', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     // Should have date skeleton (w-24)
     const dateSkeleton = container.querySelector('.w-24');
@@ -53,14 +53,14 @@ describe('PreprintCardSkeleton', () => {
   });
 
   it('has animate-pulse class on skeleton elements', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     const pulsingElements = container.querySelectorAll('.animate-pulse');
     expect(pulsingElements.length).toBeGreaterThan(0);
   });
 
   it('uses bg-muted for skeleton background', () => {
-    const { container } = render(<PreprintCardSkeleton />);
+    const { container } = render(<EprintCardSkeleton />);
 
     const mutedElements = container.querySelectorAll('.bg-muted');
     expect(mutedElements.length).toBeGreaterThan(0);

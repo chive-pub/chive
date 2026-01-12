@@ -16,7 +16,7 @@ export interface ParsedAtUri {
   protocol: 'at';
   /** The DID (e.g., "did:plc:abc123") */
   did: string;
-  /** The collection NSID (e.g., "pub.chive.preprint.submission") */
+  /** The collection NSID (e.g., "pub.chive.eprint.submission") */
   collection: string;
   /** The record key */
   rkey: string;
@@ -35,11 +35,11 @@ const AT_URI_REGEX = /^at:\/\/(did:[a-z]+:[a-zA-Z0-9._:%-]+)\/([a-zA-Z0-9.]+)\/(
  *
  * @example
  * ```typescript
- * parseAtUri('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')
+ * parseAtUri('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')
  * // Returns {
  * //   protocol: 'at',
  * //   did: 'did:plc:abc123',
- * //   collection: 'pub.chive.preprint.submission',
+ * //   collection: 'pub.chive.eprint.submission',
  * //   rkey: 'xyz789'
  * // }
  *
@@ -74,8 +74,8 @@ export function parseAtUri(uri: string): ParsedAtUri | null {
  *
  * @example
  * ```typescript
- * buildAtUri('did:plc:abc123', 'pub.chive.preprint.submission', 'xyz789')
- * // Returns 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789'
+ * buildAtUri('did:plc:abc123', 'pub.chive.eprint.submission', 'xyz789')
+ * // Returns 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789'
  * ```
  */
 export function buildAtUri(did: string, collection: string, rkey: string): string {
@@ -90,7 +90,7 @@ export function buildAtUri(did: string, collection: string, rkey: string): strin
  *
  * @example
  * ```typescript
- * isValidAtUri('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')
+ * isValidAtUri('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')
  * // Returns true
  *
  * isValidAtUri('https://example.com')
@@ -109,7 +109,7 @@ export function isValidAtUri(uri: string): boolean {
  *
  * @example
  * ```typescript
- * extractDid('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')
+ * extractDid('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')
  * // Returns 'did:plc:abc123'
  * ```
  */
@@ -126,8 +126,8 @@ export function extractDid(uri: string): string | null {
  *
  * @example
  * ```typescript
- * extractCollection('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')
- * // Returns 'pub.chive.preprint.submission'
+ * extractCollection('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')
+ * // Returns 'pub.chive.eprint.submission'
  * ```
  */
 export function extractCollection(uri: string): string | null {
@@ -143,7 +143,7 @@ export function extractCollection(uri: string): string | null {
  *
  * @example
  * ```typescript
- * extractRkey('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')
+ * extractRkey('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')
  * // Returns 'xyz789'
  * ```
  */
@@ -164,8 +164,8 @@ export function extractRkey(uri: string): string | null {
  *
  * @example
  * ```typescript
- * encodeAtUriForPath('at://did:plc:abc123/pub.chive.preprint.submission/xyz789')
- * // Returns 'at%3A%2F%2Fdid%3Aplc%3Aabc123%2Fpub.chive.preprint.submission%2Fxyz789'
+ * encodeAtUriForPath('at://did:plc:abc123/pub.chive.eprint.submission/xyz789')
+ * // Returns 'at%3A%2F%2Fdid%3Aplc%3Aabc123%2Fpub.chive.eprint.submission%2Fxyz789'
  * ```
  */
 export function encodeAtUriForPath(uri: string): string {
@@ -180,8 +180,8 @@ export function encodeAtUriForPath(uri: string): string {
  *
  * @example
  * ```typescript
- * decodeAtUriFromPath('at%3A%2F%2Fdid%3Aplc%3Aabc123%2Fpub.chive.preprint.submission%2Fxyz789')
- * // Returns 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789'
+ * decodeAtUriFromPath('at%3A%2F%2Fdid%3Aplc%3Aabc123%2Fpub.chive.eprint.submission%2Fxyz789')
+ * // Returns 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789'
  * ```
  */
 export function decodeAtUriFromPath(encoded: string): string {

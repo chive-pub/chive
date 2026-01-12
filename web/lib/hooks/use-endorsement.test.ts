@@ -58,22 +58,22 @@ describe('endorsementKeys', () => {
     expect(endorsementKeys.all).toEqual(['endorsements']);
   });
 
-  it('generates forPreprint key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-    expect(endorsementKeys.forPreprint(uri)).toEqual(['endorsements', 'preprint', uri]);
+  it('generates forEprint key', () => {
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    expect(endorsementKeys.forEprint(uri)).toEqual(['endorsements', 'eprint', uri]);
   });
 
   it('generates list key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-    expect(endorsementKeys.list(uri)).toEqual(['endorsements', 'preprint', uri, 'list', undefined]);
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    expect(endorsementKeys.list(uri)).toEqual(['endorsements', 'eprint', uri, 'list', undefined]);
   });
 
   it('generates list key with params', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
     const params = { limit: 10, contributionType: 'methodological' as const };
     expect(endorsementKeys.list(uri, params)).toEqual([
       'endorsements',
-      'preprint',
+      'eprint',
       uri,
       'list',
       params,
@@ -81,17 +81,17 @@ describe('endorsementKeys', () => {
   });
 
   it('generates summary key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-    expect(endorsementKeys.summary(uri)).toEqual(['endorsements', 'preprint', uri, 'summary']);
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    expect(endorsementKeys.summary(uri)).toEqual(['endorsements', 'eprint', uri, 'summary']);
   });
 
   it('generates userEndorsement key', () => {
-    const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+    const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
     const userDid = 'did:plc:user';
-    expect(endorsementKeys.userEndorsement(preprintUri, userDid)).toEqual([
+    expect(endorsementKeys.userEndorsement(eprintUri, userDid)).toEqual([
       'endorsements',
-      'preprint',
-      preprintUri,
+      'eprint',
+      eprintUri,
       'user',
       userDid,
     ]);
@@ -104,13 +104,13 @@ describe('endorsementKeys', () => {
 });
 
 describe('useEndorsements', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches endorsements for a preprint', async () => {
+  it('fetches endorsements for a eprint', async () => {
     const mockResponse = createMockEndorsementsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -118,23 +118,23 @@ describe('useEndorsements', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useEndorsements(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEndorsements(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.listForPreprint', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.listForEprint', {
       params: {
         query: expect.objectContaining({
-          preprintUri,
+          eprintUri,
         }),
       },
     });
   });
 
-  it('is disabled when preprintUri is empty', () => {
+  it('is disabled when eprintUri is empty', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useEndorsements(''), { wrapper: Wrapper });
 
@@ -150,7 +150,7 @@ describe('useEndorsements', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
       () =>
-        useEndorsements(preprintUri, {
+        useEndorsements(eprintUri, {
           limit: 20,
           cursor: 'next',
           contributionType: 'methodological',
@@ -162,10 +162,10 @@ describe('useEndorsements', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.listForPreprint', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.listForEprint', {
       params: {
         query: {
-          preprintUri,
+          eprintUri,
           limit: 20,
           cursor: 'next',
           contributionType: 'methodological',
@@ -181,7 +181,7 @@ describe('useEndorsements', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useEndorsements(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEndorsements(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -192,7 +192,7 @@ describe('useEndorsements', () => {
 
   it('can be disabled via options', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useEndorsements(preprintUri, {}, { enabled: false }), {
+    const { result } = renderHook(() => useEndorsements(eprintUri, {}, { enabled: false }), {
       wrapper: Wrapper,
     });
 
@@ -202,7 +202,7 @@ describe('useEndorsements', () => {
 });
 
 describe('useEndorsementSummary', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -216,7 +216,7 @@ describe('useEndorsementSummary', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useEndorsementSummary(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEndorsementSummary(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -224,11 +224,11 @@ describe('useEndorsementSummary', () => {
 
     expect(result.current.data).toEqual(mockSummary);
     expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.getSummary', {
-      params: { query: { preprintUri } },
+      params: { query: { eprintUri } },
     });
   });
 
-  it('is disabled when preprintUri is empty', () => {
+  it('is disabled when eprintUri is empty', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useEndorsementSummary(''), { wrapper: Wrapper });
 
@@ -242,7 +242,7 @@ describe('useEndorsementSummary', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useEndorsementSummary(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useEndorsementSummary(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -253,7 +253,7 @@ describe('useEndorsementSummary', () => {
 });
 
 describe('useUserEndorsement', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
   const userDid = 'did:plc:user';
 
   beforeEach(() => {
@@ -268,7 +268,7 @@ describe('useUserEndorsement', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useUserEndorsement(preprintUri, userDid), {
+    const { result } = renderHook(() => useUserEndorsement(eprintUri, userDid), {
       wrapper: Wrapper,
     });
 
@@ -278,7 +278,7 @@ describe('useUserEndorsement', () => {
 
     expect(result.current.data).toEqual(mockEndorsement);
     expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.getUserEndorsement', {
-      params: { query: { preprintUri, userDid } },
+      params: { query: { eprintUri, userDid } },
     });
   });
 
@@ -289,7 +289,7 @@ describe('useUserEndorsement', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useUserEndorsement(preprintUri, userDid), {
+    const { result } = renderHook(() => useUserEndorsement(eprintUri, userDid), {
       wrapper: Wrapper,
     });
 
@@ -300,7 +300,7 @@ describe('useUserEndorsement', () => {
     expect(result.current.data).toBeNull();
   });
 
-  it('is disabled when preprintUri is empty', () => {
+  it('is disabled when eprintUri is empty', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useUserEndorsement('', userDid), { wrapper: Wrapper });
 
@@ -309,7 +309,7 @@ describe('useUserEndorsement', () => {
 
   it('is disabled when userDid is empty', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useUserEndorsement(preprintUri, ''), { wrapper: Wrapper });
+    const { result } = renderHook(() => useUserEndorsement(eprintUri, ''), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
   });
@@ -321,7 +321,7 @@ describe('useUserEndorsement', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useUserEndorsement(preprintUri, userDid), {
+    const { result } = renderHook(() => useUserEndorsement(eprintUri, userDid), {
       wrapper: Wrapper,
     });
 
@@ -334,7 +334,7 @@ describe('useUserEndorsement', () => {
 });
 
 describe('useCreateEndorsement', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
   const mockAgent = { did: 'did:plc:user123' };
 
   beforeEach(() => {
@@ -352,12 +352,12 @@ describe('useCreateEndorsement', () => {
     const { result } = renderHook(() => useCreateEndorsement(), { wrapper: Wrapper });
 
     const endorsement = await result.current.mutateAsync({
-      preprintUri,
+      eprintUri,
       contributions: ['methodological'],
     });
 
     expect(mockCreateEndorsementRecord).toHaveBeenCalledWith(mockAgent, {
-      preprintUri,
+      eprintUri,
       contributions: ['methodological'],
     });
     expect(endorsement.uri).toBe('at://did:plc:user123/pub.chive.review.endorsement/abc');
@@ -375,12 +375,12 @@ describe('useCreateEndorsement', () => {
     const { result } = renderHook(() => useCreateEndorsement(), { wrapper: Wrapper });
 
     const endorsement = await result.current.mutateAsync({
-      preprintUri,
+      eprintUri,
       contributions: ['methodological', 'analytical', 'empirical'],
     });
 
     expect(mockCreateEndorsementRecord).toHaveBeenCalledWith(mockAgent, {
-      preprintUri,
+      eprintUri,
       contributions: ['methodological', 'analytical', 'empirical'],
     });
     expect(endorsement.contributions).toEqual(['methodological', 'analytical', 'empirical']);
@@ -397,13 +397,13 @@ describe('useCreateEndorsement', () => {
     const { result } = renderHook(() => useCreateEndorsement(), { wrapper: Wrapper });
 
     const endorsement = await result.current.mutateAsync({
-      preprintUri,
+      eprintUri,
       contributions: ['empirical', 'data'],
       comment: 'Excellent findings!',
     });
 
     expect(mockCreateEndorsementRecord).toHaveBeenCalledWith(mockAgent, {
-      preprintUri,
+      eprintUri,
       contributions: ['empirical', 'data'],
       comment: 'Excellent findings!',
     });
@@ -418,7 +418,7 @@ describe('useCreateEndorsement', () => {
 
     await expect(
       result.current.mutateAsync({
-        preprintUri,
+        eprintUri,
         contributions: ['methodological'],
       })
     ).rejects.toThrow('Not authenticated');
@@ -433,7 +433,7 @@ describe('useCreateEndorsement', () => {
 
     await expect(
       result.current.mutateAsync({
-        preprintUri,
+        eprintUri,
         contributions: ['methodological'],
       })
     ).rejects.toThrow('PDS write failed');
@@ -441,7 +441,7 @@ describe('useCreateEndorsement', () => {
 });
 
 describe('useUpdateEndorsement', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
   const endorsementUri = 'at://did:plc:abc/pub.chive.review.endorsement/456';
   const mockAgent = { did: 'did:plc:user123' };
 
@@ -461,7 +461,7 @@ describe('useUpdateEndorsement', () => {
 
     const endorsement = await result.current.mutateAsync({
       uri: endorsementUri,
-      preprintUri,
+      eprintUri,
       contributions: ['methodological', 'analytical', 'data'],
     });
 
@@ -485,7 +485,7 @@ describe('useUpdateEndorsement', () => {
 
     const endorsement = await result.current.mutateAsync({
       uri: endorsementUri,
-      preprintUri,
+      eprintUri,
       contributions: ['empirical'],
       comment: 'Updated comment',
     });
@@ -507,7 +507,7 @@ describe('useUpdateEndorsement', () => {
     await expect(
       result.current.mutateAsync({
         uri: endorsementUri,
-        preprintUri,
+        eprintUri,
         contributions: ['methodological'],
       })
     ).rejects.toThrow('Not authenticated');
@@ -523,7 +523,7 @@ describe('useUpdateEndorsement', () => {
     await expect(
       result.current.mutateAsync({
         uri: endorsementUri,
-        preprintUri,
+        eprintUri,
         contributions: ['methodological'],
       })
     ).rejects.toThrow('PDS update failed');
@@ -537,7 +537,7 @@ describe('useUpdateEndorsement', () => {
 });
 
 describe('useDeleteEndorsement', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
   const endorsementUri = 'at://did:plc:abc/pub.chive.review.endorsement/456';
   const mockAgent = { did: 'did:plc:user123' };
 
@@ -552,7 +552,7 @@ describe('useDeleteEndorsement', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteEndorsement(), { wrapper: Wrapper });
 
-    await result.current.mutateAsync({ uri: endorsementUri, preprintUri });
+    await result.current.mutateAsync({ uri: endorsementUri, eprintUri });
 
     expect(mockDeleteRecord).toHaveBeenCalledWith(mockAgent, endorsementUri);
   });
@@ -563,7 +563,7 @@ describe('useDeleteEndorsement', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteEndorsement(), { wrapper: Wrapper });
 
-    await expect(result.current.mutateAsync({ uri: endorsementUri, preprintUri })).rejects.toThrow(
+    await expect(result.current.mutateAsync({ uri: endorsementUri, eprintUri })).rejects.toThrow(
       'Not authenticated'
     );
   });
@@ -575,20 +575,20 @@ describe('useDeleteEndorsement', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteEndorsement(), { wrapper: Wrapper });
 
-    await expect(result.current.mutateAsync({ uri: endorsementUri, preprintUri })).rejects.toThrow(
+    await expect(result.current.mutateAsync({ uri: endorsementUri, eprintUri })).rejects.toThrow(
       'PDS delete failed'
     );
   });
 });
 
 describe('usePrefetchEndorsements', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('prefetches endorsement summary for a preprint', async () => {
+  it('prefetches endorsement summary for a eprint', async () => {
     const mockSummary = createMockEndorsementSummary();
     mockApiGet.mockResolvedValueOnce({
       data: mockSummary,
@@ -598,16 +598,16 @@ describe('usePrefetchEndorsements', () => {
     const { Wrapper, queryClient } = createWrapper();
     const { result } = renderHook(() => usePrefetchEndorsements(), { wrapper: Wrapper });
 
-    result.current(preprintUri);
+    result.current(eprintUri);
 
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.getSummary', {
-        params: { query: { preprintUri } },
+        params: { query: { eprintUri } },
       });
     });
 
     // Check that data is in cache
-    const cachedData = queryClient.getQueryData(endorsementKeys.summary(preprintUri));
+    const cachedData = queryClient.getQueryData(endorsementKeys.summary(eprintUri));
     expect(cachedData).toEqual(mockSummary);
   });
 });

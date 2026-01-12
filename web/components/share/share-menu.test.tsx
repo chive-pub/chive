@@ -13,11 +13,11 @@ vi.mock('sonner', () => ({
 }));
 
 const mockContent: ShareContent = {
-  type: 'preprint',
-  url: 'https://chive.pub/preprints/test',
-  title: 'Test Preprint',
+  type: 'eprint',
+  url: 'https://chive.pub/eprints/test',
+  title: 'Test Eprint',
   description: 'Test description',
-  ogImageUrl: '/api/og?type=preprint',
+  ogImageUrl: '/api/og?type=eprint',
 };
 
 describe('ShareMenu', () => {

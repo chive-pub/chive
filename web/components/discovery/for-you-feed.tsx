@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { FeedPreprintCard, FeedPreprintCardSkeleton } from './feed-preprint-card';
+import { FeedEprintCard, FeedEprintCardSkeleton } from './feed-eprint-card';
 import { FeedEmptyState } from './feed-empty-state';
 import { useForYouFeed, useRecordInteraction } from '@/lib/hooks/use-discovery';
 import { cn } from '@/lib/utils';
-import type { RecommendedPreprint } from '@/lib/api/schema';
+import type { RecommendedEprint } from '@/lib/api/schema';
 
 /**
  * Props for ForYouFeed component.
@@ -62,14 +62,14 @@ export function ForYouFeed({
   const { mutate: recordInteraction } = useRecordInteraction();
 
   // Flatten pages into single array
-  const recommendations: RecommendedPreprint[] =
+  const recommendations: RecommendedEprint[] =
     data?.pages.flatMap((page) => page.recommendations) ?? [];
 
   // Handle dismiss
   const handleDismiss = useCallback(
     (uri: string) => {
       recordInteraction({
-        preprintUri: uri,
+        eprintUri: uri,
         type: 'dismiss',
       });
     },
@@ -80,7 +80,7 @@ export function ForYouFeed({
   const handleClick = useCallback(
     (uri: string) => {
       recordInteraction({
-        preprintUri: uri,
+        eprintUri: uri,
         type: 'click',
       });
     },
@@ -125,7 +125,7 @@ export function ForYouFeed({
     return (
       <div className={cn('space-y-4', className)}>
         {Array.from({ length: 3 }).map((_, i) => (
-          <FeedPreprintCardSkeleton key={i} />
+          <FeedEprintCardSkeleton key={i} />
         ))}
       </div>
     );
@@ -166,10 +166,10 @@ export function ForYouFeed({
   // Recommendations list
   return (
     <div className={cn('space-y-4', className)}>
-      {recommendations.map((preprint) => (
-        <FeedPreprintCard
-          key={preprint.uri}
-          preprint={preprint}
+      {recommendations.map((eprint) => (
+        <FeedEprintCard
+          key={eprint.uri}
+          eprint={eprint}
           onDismiss={handleDismiss}
           onClick={handleClick}
         />
@@ -200,7 +200,7 @@ export function ForYouFeedSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('space-y-4', className)}>
       {Array.from({ length: 5 }).map((_, i) => (
-        <FeedPreprintCardSkeleton key={i} />
+        <FeedEprintCardSkeleton key={i} />
       ))}
     </div>
   );

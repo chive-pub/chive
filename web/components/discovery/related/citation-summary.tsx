@@ -15,8 +15,8 @@ import type { CitationRelationship } from '@/lib/api/schema';
  * Props for CitationSummary component.
  */
 export interface CitationSummaryProps {
-  /** AT-URI of the preprint */
-  preprintUri: string;
+  /** AT-URI of the eprint */
+  eprintUri: string;
   /** Initial collapsed state */
   defaultOpen?: boolean;
   /** Additional CSS classes */
@@ -32,16 +32,16 @@ export interface CitationSummaryProps {
  *
  * @example
  * ```tsx
- * <CitationSummary preprintUri="at://did:plc:abc/pub.chive.preprint/123" />
+ * <CitationSummary eprintUri="at://did:plc:abc/pub.chive.eprint/123" />
  * ```
  */
 export function CitationSummary({
-  preprintUri,
+  eprintUri,
   defaultOpen = false,
   className,
 }: CitationSummaryProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const { data, isLoading, isError } = useCitations(preprintUri, {
+  const { data, isLoading, isError } = useCitations(eprintUri, {
     limit: 5,
     enabled: isOpen, // Only fetch when expanded
   });
@@ -97,8 +97,8 @@ export function CitationSummary({
               <CitationSection
                 title="Cited by"
                 icon={<BookMarked className="h-4 w-4" />}
-                citations={data.citations.filter((c) => c.citedUri === preprintUri)}
-                preprintUri={preprintUri}
+                citations={data.citations.filter((c) => c.citedUri === eprintUri)}
+                eprintUri={eprintUri}
                 direction="citing"
               />
 
@@ -106,14 +106,14 @@ export function CitationSummary({
               <CitationSection
                 title="References"
                 icon={<Quote className="h-4 w-4" />}
-                citations={data.citations.filter((c) => c.citingUri === preprintUri)}
-                preprintUri={preprintUri}
+                citations={data.citations.filter((c) => c.citingUri === eprintUri)}
+                eprintUri={eprintUri}
                 direction="cited"
               />
 
               {data.hasMore && (
                 <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href={`/preprints/${encodeURIComponent(preprintUri)}/citations`}>
+                  <Link href={`/eprints/${encodeURIComponent(eprintUri)}/citations`}>
                     View full citation network
                     <ExternalLink className="ml-2 h-3 w-3" />
                   </Link>
@@ -135,7 +135,7 @@ interface CitationSectionProps {
   title: string;
   icon: React.ReactNode;
   citations: CitationRelationship[];
-  preprintUri: string;
+  eprintUri: string;
   direction: 'citing' | 'cited';
 }
 
@@ -156,7 +156,7 @@ function CitationSection({ title, icon, citations, direction }: CitationSectionP
           return (
             <li key={`${citation.citingUri}-${citation.citedUri}`}>
               <Link
-                href={`/preprints/${encodeURIComponent(targetUri)}`}
+                href={`/eprints/${encodeURIComponent(targetUri)}`}
                 className="group flex items-start gap-2 rounded-md p-2 text-sm hover:bg-muted/50"
               >
                 <div className="flex-1 truncate">

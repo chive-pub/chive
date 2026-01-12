@@ -13,7 +13,7 @@ import { SoftwareHeritageBadge } from './software-heritage-badge';
 import { DatasetLinks } from './dataset-links';
 
 export interface IntegrationPanelProps {
-  preprintUri: string;
+  eprintUri: string;
   className?: string;
 }
 
@@ -47,19 +47,19 @@ export function IntegrationPanelSkeleton({ className }: { className?: string }) 
 }
 
 /**
- * Displays aggregated plugin integration data for a preprint.
+ * Displays aggregated plugin integration data for a eprint.
  *
  * @remarks
  * Shows linked repositories (GitHub, GitLab), archived data (Zenodo, Software Heritage),
- * and dataset links (Figshare, Dryad, OSF) based on the preprint's supplementary materials.
+ * and dataset links (Figshare, Dryad, OSF) based on the eprint's supplementary materials.
  *
  * @example
  * ```tsx
- * <IntegrationPanel preprintUri="at://did:plc:abc/pub.chive.preprint.submission/123" />
+ * <IntegrationPanel eprintUri="at://did:plc:abc/pub.chive.eprint.submission/123" />
  * ```
  */
-export function IntegrationPanel({ preprintUri, className }: IntegrationPanelProps) {
-  const { data, isLoading, error } = useIntegrations(preprintUri);
+export function IntegrationPanel({ eprintUri, className }: IntegrationPanelProps) {
+  const { data, isLoading, error } = useIntegrations(eprintUri);
 
   if (isLoading) {
     return <IntegrationPanelSkeleton className={className} />;

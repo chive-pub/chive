@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Authors step for preprint submission.
+ * Authors step for eprint submission.
  *
  * @remarks
  * Step 3 of the submission wizard. Handles comprehensive author management:
@@ -20,9 +20,9 @@ import { UseFormReturn } from 'react-hook-form';
 import { User, Info } from 'lucide-react';
 
 import {
-  PreprintAuthorEditor,
-  type PreprintAuthorFormData,
-} from '@/components/forms/preprint-author-editor';
+  EprintAuthorEditor,
+  type EprintAuthorFormData,
+} from '@/components/forms/eprint-author-editor';
 import type { ContributionType } from '@/components/forms/contribution-type-selector';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/auth-context';
-import type { PreprintFormValues } from './submission-wizard';
+import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -44,7 +44,7 @@ import type { PreprintFormValues } from './submission-wizard';
  */
 export interface StepAuthorsProps {
   /** React Hook Form instance */
-  form: UseFormReturn<PreprintFormValues>;
+  form: UseFormReturn<EprintFormValues>;
   /** Additional CSS classes */
   className?: string;
 }
@@ -63,7 +63,7 @@ export function StepAuthors({ form, className }: StepAuthorsProps) {
   const { user } = useAuth();
   const watchedAuthors = form.watch('authors');
   const authors = useMemo(
-    () => (watchedAuthors as PreprintAuthorFormData[]) ?? [],
+    () => (watchedAuthors as EprintAuthorFormData[]) ?? [],
     [watchedAuthors]
   );
 
@@ -73,7 +73,7 @@ export function StepAuthors({ form, className }: StepAuthorsProps) {
   // Add submitter as initial author on mount
   useEffect(() => {
     if (user && authors.length === 0) {
-      const initialAuthor: PreprintAuthorFormData = {
+      const initialAuthor: EprintAuthorFormData = {
         did: user.did,
         name: user.displayName ?? user.handle ?? 'Unknown',
         handle: user.handle,
@@ -92,7 +92,7 @@ export function StepAuthors({ form, className }: StepAuthorsProps) {
 
   // Handle author list changes
   const handleAuthorsChange = useCallback(
-    (updatedAuthors: PreprintAuthorFormData[]) => {
+    (updatedAuthors: EprintAuthorFormData[]) => {
       form.setValue('authors', updatedAuthors, { shouldValidate: true });
     },
     [form]
@@ -117,7 +117,7 @@ export function StepAuthors({ form, className }: StepAuthorsProps) {
           <User className="h-4 w-4" />
           <AlertTitle>You are the submitter</AlertTitle>
           <AlertDescription>
-            Your preprint will be stored in your Personal Data Server (PDS). You are added as an
+            Your eprint will be stored in your Personal Data Server (PDS). You are added as an
             author by default, but you can reorder authors or remove yourself if you&apos;re not an
             author. You can also add external collaborators who don&apos;t have ATProto accounts.
           </AlertDescription>
@@ -125,7 +125,7 @@ export function StepAuthors({ form, className }: StepAuthorsProps) {
       )}
 
       {/* Author editor */}
-      <PreprintAuthorEditor
+      <EprintAuthorEditor
         authors={authors}
         onChange={handleAuthorsChange}
         submitterDid={user?.did}

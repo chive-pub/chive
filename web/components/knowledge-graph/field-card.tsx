@@ -64,9 +64,9 @@ export function FieldCard({ field, variant = 'default', className }: FieldCardPr
           <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">{field.description}</p>
         )}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1" title={`${field.preprintCount ?? 0} preprints`}>
+          <div className="flex items-center gap-1" title={`${field.eprintCount ?? 0} eprints`}>
             <FileText className="h-4 w-4" />
-            <span>{formatCompactNumber(field.preprintCount ?? 0)}</span>
+            <span>{formatCompactNumber(field.eprintCount ?? 0)}</span>
           </div>
           {'childCount' in field && (field.childCount ?? 0) > 0 && (
             <div className="flex items-center gap-1" title={`${field.childCount} subfields`}>
@@ -106,7 +106,7 @@ function CompactFieldCard({
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">
-          {formatCompactNumber(field.preprintCount ?? 0)} preprints
+          {formatCompactNumber(field.eprintCount ?? 0)} eprints
         </span>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </div>
@@ -145,9 +145,9 @@ function FeaturedFieldCard({
         <div className="flex items-center gap-6">
           <div className="text-center">
             <div className="text-2xl font-bold">
-              {formatCompactNumber(field.preprintCount ?? 0)}
+              {formatCompactNumber(field.eprintCount ?? 0)}
             </div>
-            <div className="text-sm text-muted-foreground">Preprints</div>
+            <div className="text-sm text-muted-foreground">Eprints</div>
           </div>
           {'childCount' in field && (
             <div className="text-center">

@@ -72,8 +72,8 @@ describe('ConditionalHeader', () => {
       expect(screen.getByTestId('site-header')).toBeInTheDocument();
     });
 
-    it('shows header on preprint pages (/preprints/123)', () => {
-      mockUsePathname.mockReturnValue('/preprints/123');
+    it('shows header on eprint pages (/eprints/123)', () => {
+      mockUsePathname.mockReturnValue('/eprints/123');
       render(<ConditionalHeader />);
 
       expect(screen.getByTestId('site-header')).toBeInTheDocument();

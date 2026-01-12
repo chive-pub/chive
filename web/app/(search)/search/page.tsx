@@ -8,8 +8,8 @@ import { SearchPageSkeleton } from './loading';
  * Search page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Search Preprints | Chive',
-  description: 'Search across all preprints on Chive, the decentralized preprint server.',
+  title: 'Search Eprints | Chive',
+  description: 'Search across all eprints on Chive, the decentralized eprint server.',
 };
 
 /**
@@ -43,7 +43,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Search</h1>
-        <p className="mt-2 text-muted-foreground">Discover preprints across all fields of study</p>
+        <p className="mt-2 text-muted-foreground">Discover eprints across all fields of study</p>
       </header>
 
       <Suspense fallback={<SearchPageSkeleton />}>

@@ -63,7 +63,7 @@ export function AlphaStatusDisplay({ status, appliedAt, reviewedAt }: AlphaStatu
       </CardHeader>
       <CardContent>
         <p className="text-green-700 dark:text-green-300">
-          Your application has been approved. You now have full access to Chive. Explore preprints,
+          Your application has been approved. You now have full access to Chive. Explore eprints,
           submit your work, and join the scholarly conversation.
         </p>
       </CardContent>

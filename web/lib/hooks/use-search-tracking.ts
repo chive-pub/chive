@@ -11,7 +11,7 @@
  *
  * // Track click on result
  * <Link
- *   href={`/preprints/${uri}`}
+ *   href={`/eprints/${uri}`}
  *   onClick={() => trackClick(uri, position)}
  * >
  *   {title}
@@ -152,7 +152,7 @@ export function useSearchTracking(impressionId: string | undefined) {
 
   // Set up visibility change listener for dwell time tracking
   useEffect(() => {
-    // Check for pending click data on mount (returning from preprint page)
+    // Check for pending click data on mount (returning from eprint page)
     try {
       const storedData = sessionStorage.getItem(CLICK_DATA_KEY);
       if (storedData) {
@@ -208,13 +208,13 @@ export function useSearchTracking(impressionId: string | undefined) {
 }
 
 /**
- * Marks the start of viewing a preprint page (called on preprint page mount).
+ * Marks the start of viewing a eprint page (called on eprint page mount).
  *
  * @remarks
- * This should be called when a preprint page loads to mark the start time
+ * This should be called when a eprint page loads to mark the start time
  * for dwell time calculation.
  */
-export function markPreprintViewStart(): void {
+export function markEprintViewStart(): void {
   try {
     const storedData = sessionStorage.getItem(CLICK_DATA_KEY);
     if (storedData) {

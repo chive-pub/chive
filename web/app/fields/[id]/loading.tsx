@@ -2,7 +2,7 @@ import {
   FieldBreadcrumbSkeleton,
   FieldRelationshipsSkeleton,
   FieldExternalIdsSkeleton,
-  FieldPreprintsSkeleton,
+  FieldEprintsSkeleton,
 } from '@/components/knowledge-graph';
 import { Separator } from '@/components/ui/separator';
 
@@ -34,7 +34,7 @@ export function FieldDetailSkeleton() {
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <div className="space-y-8">
           <div className="h-8 w-32 animate-pulse rounded bg-muted" />
-          <FieldPreprintsSkeleton count={5} />
+          <FieldEprintsSkeleton count={5} />
         </div>
         <aside className="space-y-6">
           <FieldRelationshipsSkeleton />

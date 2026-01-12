@@ -12,14 +12,14 @@ export {
   // Types
   type CreateRecordResult,
   type UploadBlobResult,
-  type PreprintRecord,
+  type EprintRecord,
   type FieldProposalRecord,
   type VoteRecord,
   // Blob upload
   uploadBlob,
   uploadDocument,
-  // Preprint records
-  createPreprintRecord,
+  // Eprint records
+  createEprintRecord,
   // Governance records
   createFieldProposalRecord,
   createVoteRecord,

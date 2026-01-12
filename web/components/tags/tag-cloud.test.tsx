@@ -136,7 +136,7 @@ describe('TagCloud', () => {
     it('shows tag count in title', () => {
       render(<TagCloud tags={mockTags} />);
 
-      expect(screen.getByTitle('AI: 100 preprints')).toBeInTheDocument();
+      expect(screen.getByTitle('AI: 100 eprints')).toBeInTheDocument();
     });
 
     it('shows singular for count of 1', () => {
@@ -144,7 +144,7 @@ describe('TagCloud', () => {
 
       render(<TagCloud tags={tags} />);
 
-      expect(screen.getByTitle('Single: 1 preprint')).toBeInTheDocument();
+      expect(screen.getByTitle('Single: 1 eprint')).toBeInTheDocument();
     });
   });
 

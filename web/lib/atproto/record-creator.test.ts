@@ -9,7 +9,7 @@ import type { Agent } from '@atproto/api';
 import {
   uploadBlob,
   uploadDocument,
-  createPreprintRecord,
+  createEprintRecord,
   createFieldProposalRecord,
   createVoteRecord,
   deleteRecord,
@@ -161,12 +161,12 @@ describe('uploadDocument', () => {
   });
 });
 
-describe('createPreprintRecord', () => {
-  it('creates a preprint record in user PDS', async () => {
+describe('createEprintRecord', () => {
+  it('creates a eprint record in user PDS', async () => {
     const agent = createMockAgent();
     const documentFile = createMockFile('paper.pdf', 'application/pdf');
 
-    const result = await createPreprintRecord(agent, {
+    const result = await createEprintRecord(agent, {
       documentFile,
       title: 'Test Paper',
       abstract: 'This is a test abstract that is long enough to pass validation.',
@@ -175,11 +175,11 @@ describe('createPreprintRecord', () => {
       license: 'cc-by-4.0',
     });
 
-    expect(result.uri).toContain('pub.chive.preprint.submission');
+    expect(result.uri).toContain('pub.chive.eprint.submission');
     expect(result.cid).toBeDefined();
     expect(agent.com.atproto.repo.createRecord).toHaveBeenCalledWith(
       expect.objectContaining({
-        collection: 'pub.chive.preprint.submission',
+        collection: 'pub.chive.eprint.submission',
       })
     );
   });
@@ -188,7 +188,7 @@ describe('createPreprintRecord', () => {
     const agent = createMockAgent();
     const documentFile = createMockFile('paper.pdf', 'application/pdf');
 
-    await createPreprintRecord(agent, {
+    await createEprintRecord(agent, {
       documentFile,
       title: 'Test Paper',
       abstract: 'This is a test abstract that is long enough to pass validation.',
@@ -204,14 +204,14 @@ describe('createPreprintRecord', () => {
     expect(createRecordCall.record.license).toBe('cc-by-4.0');
   });
 
-  it('creates a preprint record with DOCX document', async () => {
+  it('creates a eprint record with DOCX document', async () => {
     const agent = createMockAgent();
     const documentFile = createMockFile(
       'paper.docx',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     );
 
-    const result = await createPreprintRecord(agent, {
+    const result = await createEprintRecord(agent, {
       documentFile,
       documentFormat: 'docx',
       title: 'Test Paper',
@@ -221,7 +221,7 @@ describe('createPreprintRecord', () => {
       license: 'cc-by-4.0',
     });
 
-    expect(result.uri).toContain('pub.chive.preprint.submission');
+    expect(result.uri).toContain('pub.chive.eprint.submission');
     expect(result.cid).toBeDefined();
   });
 
@@ -230,7 +230,7 @@ describe('createPreprintRecord', () => {
     const documentFile = createMockFile('paper.pdf', 'application/pdf');
 
     await expect(
-      createPreprintRecord(agent, {
+      createEprintRecord(agent, {
         documentFile,
         title: 'Test',
         abstract: 'This is a test abstract that is long enough to pass validation.',
@@ -301,13 +301,13 @@ describe('deleteRecord', () => {
   it('deletes a record belonging to the user', async () => {
     const did = 'did:plc:test123';
     const agent = createMockAgent({ did });
-    const uri = `at://${did}/pub.chive.preprint.submission/abc123`;
+    const uri = `at://${did}/pub.chive.eprint.submission/abc123`;
 
     await deleteRecord(agent, uri);
 
     expect(agent.com.atproto.repo.deleteRecord).toHaveBeenCalledWith({
       repo: did,
-      collection: 'pub.chive.preprint.submission',
+      collection: 'pub.chive.eprint.submission',
       rkey: 'abc123',
     });
   });
@@ -320,7 +320,7 @@ describe('deleteRecord', () => {
 
   it('throws error when trying to delete another user record', async () => {
     const agent = createMockAgent({ did: 'did:plc:user1' });
-    const uri = 'at://did:plc:user2/pub.chive.preprint.submission/abc123';
+    const uri = 'at://did:plc:user2/pub.chive.eprint.submission/abc123';
 
     await expect(deleteRecord(agent, uri)).rejects.toThrow(
       'Cannot delete records belonging to other users'
@@ -358,17 +358,17 @@ describe('getAuthenticatedDid', () => {
 
 describe('buildAtUri', () => {
   it('builds correct AT-URI', () => {
-    const uri = buildAtUri('did:plc:abc', 'pub.chive.preprint.submission', '123');
-    expect(uri).toBe('at://did:plc:abc/pub.chive.preprint.submission/123');
+    const uri = buildAtUri('did:plc:abc', 'pub.chive.eprint.submission', '123');
+    expect(uri).toBe('at://did:plc:abc/pub.chive.eprint.submission/123');
   });
 });
 
 describe('parseAtUri', () => {
   it('parses valid AT-URI', () => {
-    const result = parseAtUri('at://did:plc:abc/pub.chive.preprint.submission/123');
+    const result = parseAtUri('at://did:plc:abc/pub.chive.eprint.submission/123');
     expect(result).toEqual({
       did: 'did:plc:abc',
-      collection: 'pub.chive.preprint.submission',
+      collection: 'pub.chive.eprint.submission',
       rkey: '123',
     });
   });

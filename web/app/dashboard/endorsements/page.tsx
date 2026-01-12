@@ -19,7 +19,7 @@ export default function MyEndorsementsPage() {
         <ThumbsUp className="mx-auto h-12 w-12 text-muted-foreground" />
         <h3 className="mt-4 text-lg font-semibold">No endorsements yet</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Endorsements you give to preprints will appear here
+          Endorsements you give to eprints will appear here
         </p>
       </div>
     </div>

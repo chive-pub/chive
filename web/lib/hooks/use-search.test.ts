@@ -37,7 +37,7 @@ describe('useSearch', () => {
     vi.clearAllMocks();
   });
 
-  it('searches preprints by query', async () => {
+  it('searches eprints by query', async () => {
     const mockResults = createMockSearchResults();
     mockApiGet.mockResolvedValueOnce({
       data: mockResults,
@@ -52,7 +52,7 @@ describe('useSearch', () => {
     });
 
     expect(result.current.data).toEqual(mockResults);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.preprint.searchSubmissions', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.searchSubmissions', {
       params: {
         query: expect.objectContaining({
           q: 'machine learning',
@@ -108,7 +108,7 @@ describe('useSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.preprint.searchSubmissions', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.searchSubmissions', {
       params: {
         query: expect.objectContaining({
           q: 'physics',
@@ -177,7 +177,7 @@ describe('useInstantSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.preprint.searchSubmissions', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.searchSubmissions', {
       params: {
         query: expect.objectContaining({
           q: 'quick search',

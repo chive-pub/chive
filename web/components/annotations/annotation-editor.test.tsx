@@ -191,7 +191,7 @@ describe('AnnotationEditor', () => {
       expect(screen.getByText('@wikidata:')).toBeInTheDocument();
       expect(screen.getByText('@authority:')).toBeInTheDocument();
       expect(screen.getByText('@field:')).toBeInTheDocument();
-      expect(screen.getByText('@preprint:')).toBeInTheDocument();
+      expect(screen.getByText('@eprint:')).toBeInTheDocument();
       expect(screen.getByText('^')).toBeInTheDocument();
     });
 
