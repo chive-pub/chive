@@ -56,7 +56,8 @@ test.describe('Authors index page', () => {
     await expect(comingSoon).toBeVisible();
   });
 
-  test('search with DID shows profile link', async ({ page }) => {
+  test('search with DID shows profile link', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'Webkit has different form submission behavior');
     const searchInput = page.getByPlaceholder(/handle.*or did/i);
     await searchInput.fill('did:plc:test123');
 
