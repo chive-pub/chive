@@ -189,11 +189,9 @@ test.describe('Author Display - Contribution Types', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for contribution degrees (lead/equal/supporting)
-    const degrees = page
-      .getByText(/lead|equal|supporting/i)
-      .filter({
-        has: page.locator('[data-testid="contribution-degree"]').or(page.locator('.contribution')),
-      });
+    const degrees = page.getByText(/lead|equal|supporting/i).filter({
+      has: page.locator('[data-testid="contribution-degree"]').or(page.locator('.contribution')),
+    });
 
     // May or may not be visible depending on data structure
     const isVisible = await degrees
