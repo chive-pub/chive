@@ -161,11 +161,11 @@ describe('SemanticsArchivePlugin', () => {
     });
   });
 
-  describe('buildPreprintUrl', () => {
+  describe('buildEprintUrl', () => {
     it('should build correct Semantics Archive URL', async () => {
       await plugin.initialize(context);
 
-      const url = plugin.buildPreprintUrl('WhiteRawlins2020');
+      const url = plugin.buildEprintUrl('WhiteRawlins2020');
 
       expect(url).toBe('https://semanticsarchive.net/Archive/WhiteRawlins2020');
     });
@@ -189,7 +189,7 @@ describe('SemanticsArchivePlugin', () => {
     });
   });
 
-  describe('fetchPreprints', () => {
+  describe('fetchEprints', () => {
     it('should fetch papers from browse page', async () => {
       await plugin.initialize(context);
       vi.mocked(global.fetch).mockResolvedValueOnce({
@@ -198,7 +198,7 @@ describe('SemanticsArchivePlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 10 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 10 })) {
         papers.push(paper);
       }
 
@@ -217,7 +217,7 @@ describe('SemanticsArchivePlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -237,7 +237,7 @@ describe('SemanticsArchivePlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -255,7 +255,7 @@ describe('SemanticsArchivePlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 10 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 10 })) {
         papers.push(paper);
       }
 
@@ -273,7 +273,7 @@ describe('SemanticsArchivePlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -295,7 +295,7 @@ describe('SemanticsArchivePlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -311,7 +311,7 @@ describe('SemanticsArchivePlugin', () => {
 
       await expect(async () => {
         const papers: unknown[] = [];
-        for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+        for await (const paper of plugin.fetchEprints({ limit: 1 })) {
           papers.push(paper);
         }
       }).rejects.toThrow('Semantics Archive error: 503');

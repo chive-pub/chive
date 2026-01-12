@@ -35,7 +35,7 @@ test.describe('Tags page', () => {
     }
   });
 
-  test('clicking tag shows related preprints', async ({ page }) => {
+  test('clicking tag shows related eprints', async ({ page }) => {
     // Look for tag links within main content (exclude sr-only skip link)
     const mainContent = page.locator('#main-content');
     const tagLink = mainContent.getByRole('link', { name: /.+/ }).first();
@@ -54,7 +54,7 @@ test.describe('Tags page', () => {
     }
   });
 
-  test('tag page displays preprint count', async ({ page }) => {
+  test('tag page displays eprint count', async ({ page }) => {
     // Look for tag links within main content (exclude sr-only skip link)
     const mainContent = page.locator('#main-content');
     const tagLink = mainContent.getByRole('link', { name: /.+/ }).first();
@@ -63,14 +63,14 @@ test.describe('Tags page', () => {
     // Page must show either tag links OR empty state
     await expect(tagLink.or(emptyState)).toBeVisible();
 
-    // If tag links exist, verify preprint count is shown
+    // If tag links exist, verify eprint count is shown
     if (await tagLink.isVisible().catch(() => false)) {
       await tagLink.click();
 
       // Tag page must show count OR empty state
-      const count = page.getByText(/\d+\s*(preprints?|results?|items?)/i);
-      const noPreprints = page.getByText(/no preprints|0 preprints/i);
-      await expect(count.or(noPreprints)).toBeVisible();
+      const count = page.getByText(/\d+\s*(eprints?|results?|items?)/i);
+      const noEprints = page.getByText(/no eprints|0 eprints/i);
+      await expect(count.or(noEprints)).toBeVisible();
     } else {
       // If no tag links, empty state must be visible
       await expect(emptyState).toBeVisible();
@@ -109,9 +109,9 @@ test.describe('Tags page', () => {
 
       // Tag page must show usage stats OR empty state
       const stats = page
-        .getByText(/\d+\s*(uses?|preprints?|results?)/i)
+        .getByText(/\d+\s*(uses?|eprints?|results?)/i)
         .or(page.getByRole('region', { name: /stats/i }));
-      const noStats = page.getByText(/no preprints|0 uses/i);
+      const noStats = page.getByText(/no eprints|0 uses/i);
       await expect(stats.or(noStats)).toBeVisible();
     } else {
       // If no tag links, empty state must be visible

@@ -1,5 +1,5 @@
 /**
- * E2E tests for author display on preprint pages.
+ * E2E tests for author display on eprint pages.
  *
  * Tests how authors are displayed including:
  * - Author list with ordering
@@ -13,12 +13,12 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { SEEDED_PREPRINTS, SEEDED_AUTHORS } from '../fixtures/test-data.js';
+import { SEEDED_EPRINTS, SEEDED_AUTHORS } from '../fixtures/test-data.js';
 
-test.describe('Author Display - Preprint Page', () => {
+test.describe('Author Display - Eprint Page', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to a seeded preprint
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    // Navigate to a seeded eprint
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
   });
 
   test('displays author name prominently', async ({ page }) => {
@@ -79,8 +79,8 @@ test.describe('Author Display - Preprint Page', () => {
 
 test.describe('Author Display - Multiple Authors', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to a preprint with co-authors (if seeded)
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.grove.uri)}`);
+    // Navigate to a eprint with co-authors (if seeded)
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.grove.uri)}`);
   });
 
   test('displays all authors in order', async ({ page }) => {
@@ -108,7 +108,7 @@ test.describe('Author Display - Multiple Authors', () => {
 
 test.describe('Author Display - Badges and Indicators', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
   });
 
   test('displays corresponding author indicator', async ({ page }) => {
@@ -158,7 +158,7 @@ test.describe('Author Display - Badges and Indicators', () => {
 
 test.describe('Author Display - Contribution Types', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
   });
 
   test('can expand author to see contributions', async ({ page }) => {
@@ -206,7 +206,7 @@ test.describe('Author Display - Contribution Types', () => {
 test.describe('Author Display - External Authors', () => {
   // External authors don't have DIDs, testing the distinction in display
   test('external authors show without profile link', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // External authors (if any) should not have clickable links
@@ -219,7 +219,7 @@ test.describe('Author Display - External Authors', () => {
   });
 
   test('external authors can show ORCID even without DID', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // ORCID should be visible regardless of DID status
@@ -235,7 +235,7 @@ test.describe('Author Display - External Authors', () => {
 
 test.describe('Author Display - Accessibility', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
   });
 
   test('authors section has proper heading hierarchy', async ({ page }) => {
@@ -282,7 +282,7 @@ test.describe('Author Display - Responsive', () => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
 
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Author should still be visible on mobile
@@ -294,7 +294,7 @@ test.describe('Author Display - Responsive', () => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
 
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Page should not have horizontal scroll

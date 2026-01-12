@@ -39,8 +39,8 @@ const createMockNotificationInput = (
 ): CreateNotificationInput => ({
   type: 'new-review',
   recipient: 'did:plc:recipient' as DID,
-  subject: 'New review on your preprint',
-  message: 'Your preprint received a new review',
+  subject: 'New review on your eprint',
+  message: 'Your eprint received a new review',
   ...overrides,
 });
 
@@ -63,7 +63,7 @@ describe('NotificationService', () => {
       if (result.ok) {
         expect(result.value.type).toBe('new-review');
         expect(result.value.recipient).toBe('did:plc:recipient');
-        expect(result.value.subject).toBe('New review on your preprint');
+        expect(result.value.subject).toBe('New review on your eprint');
         expect(result.value.read).toBe(false);
         expect(result.value.id).toBeDefined();
         expect(result.value.createdAt).toBeDefined();
@@ -95,7 +95,7 @@ describe('NotificationService', () => {
 
     it('handles optional resourceUri and actorDid', async () => {
       const input = createMockNotificationInput({
-        resourceUri: 'at://did:plc:author/pub.chive.preprint.submission/abc123' as never,
+        resourceUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as never,
         actorDid: 'did:plc:reviewer' as DID,
       });
 
@@ -104,7 +104,7 @@ describe('NotificationService', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.resourceUri).toBe(
-          'at://did:plc:author/pub.chive.preprint.submission/abc123'
+          'at://did:plc:author/pub.chive.eprint.submission/abc123'
         );
         expect(result.value.actorDid).toBe('did:plc:reviewer');
       }

@@ -65,7 +65,7 @@ vi.mock('bullmq', () => {
 });
 
 // Test constants
-const TEST_URI = 'at://did:plc:test/pub.chive.preprint.submission/abc' as AtUri;
+const TEST_URI = 'at://did:plc:test/pub.chive.eprint.submission/abc' as AtUri;
 
 /**
  * Creates a mock logger.
@@ -86,7 +86,7 @@ function createMockLogger(): ILogger {
  */
 function createMockDiscoveryService(): IDiscoveryService {
   return {
-    enrichPreprint: vi.fn().mockResolvedValue({
+    enrichEprint: vi.fn().mockResolvedValue({
       uri: TEST_URI,
       success: true,
       semanticScholarId: 's2-123',
@@ -95,7 +95,7 @@ function createMockDiscoveryService(): IDiscoveryService {
       chiveCitationsIndexed: 3,
     } as EnrichmentResult),
     lookupPaper: vi.fn().mockResolvedValue(null),
-    findRelatedPreprints: vi.fn().mockResolvedValue([]),
+    findRelatedEprints: vi.fn().mockResolvedValue([]),
     getRecommendationsForUser: vi.fn().mockResolvedValue({ recommendations: [], hasMore: false }),
     recordInteraction: vi.fn().mockResolvedValue(undefined),
     getCitingPapers: vi.fn().mockResolvedValue({ citations: [], hasMore: false }),
@@ -236,7 +236,7 @@ describe('EnrichmentPriority', () => {
 
 describe('ENRICHMENT_QUEUE_NAME', () => {
   it('should have correct queue name', () => {
-    expect(ENRICHMENT_QUEUE_NAME).toBe('preprint-enrichment');
+    expect(ENRICHMENT_QUEUE_NAME).toBe('eprint-enrichment');
   });
 });
 

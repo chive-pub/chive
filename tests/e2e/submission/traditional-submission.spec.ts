@@ -14,7 +14,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { FORM_DATA, SEEDED_PREPRINTS, SEEDED_AUTHORS, TEST_USER } from '../fixtures/test-data.js';
+import { FORM_DATA, SEEDED_EPRINTS, SEEDED_AUTHORS, TEST_USER } from '../fixtures/test-data.js';
 
 /**
  * Creates a minimal valid PDF buffer for testing.
@@ -57,8 +57,8 @@ startxref
 
 test.describe('Traditional Submission - Display', () => {
   test('does not show separate paper identity badge', async ({ page }) => {
-    // Navigate to a seeded preprint (traditional model)
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    // Navigate to a seeded eprint (traditional model)
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Paper identity badge should NOT be visible for traditional submissions
@@ -71,7 +71,7 @@ test.describe('Traditional Submission - Display', () => {
   });
 
   test('shows author as primary identity', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Author should be the primary identity shown
@@ -80,13 +80,13 @@ test.describe('Traditional Submission - Display', () => {
   });
 
   test('record URI uses submitter DID', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // The URI should contain the author's DID
     const uriDisplay = page
       .getByText(new RegExp(SEEDED_AUTHORS.white.did.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-      .or(page.locator('[data-testid="preprint-uri"]'));
+      .or(page.locator('[data-testid="eprint-uri"]'));
 
     if (await uriDisplay.isVisible({ timeout: 3000 }).catch(() => false)) {
       const text = await uriDisplay.textContent();
@@ -97,7 +97,7 @@ test.describe('Traditional Submission - Display', () => {
 
 test.describe('Traditional Submission - Blob Fetching', () => {
   test('PDF loads from submitter PDS', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // PDF viewer or download should be available
@@ -232,7 +232,7 @@ test.describe('Traditional Submission - Full Flow', () => {
 
 test.describe('Traditional Submission - Navigation', () => {
   test('author link goes to author profile, not paper profile', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Click author link
@@ -250,7 +250,7 @@ test.describe('Traditional Submission - Navigation', () => {
   });
 
   test('no paper profile link exists for traditional submissions', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Paper profile link should not exist

@@ -1,73 +1,73 @@
 /**
- * E2E tests for enrichment and backlinks panels on preprint pages.
+ * E2E tests for enrichment and backlinks panels on eprint pages.
  *
  * Tests external data display (Semantic Scholar, OpenAlex) and
  * backlinks from ATProto ecosystem apps (Semble, Bluesky, WhiteWind, Leaflet).
  *
  * @remarks
- * These tests use seeded test data from global.setup.ts. The first test preprint
+ * These tests use seeded test data from global.setup.ts. The first test eprint
  * (White's "Frequency, Acceptability, and Selection") has both enrichment data
  * and backlinks seeded.
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { PreprintPage } from './fixtures/page-objects.js';
+import { EprintPage } from './fixtures/page-objects.js';
 
 /**
- * URI components for the test preprint with enrichment and backlinks.
- * This preprint has both enrichment data (S2/OpenAlex) and backlinks (Semble, Bluesky).
+ * URI components for the test eprint with enrichment and backlinks.
+ * This eprint has both enrichment data (S2/OpenAlex) and backlinks (Semble, Bluesky).
  */
-const TEST_PREPRINT = {
+const TEST_EPRINT = {
   authorDid: 'did:plc:aswhite123abc',
   rkey: '3jt7k9xyzab01',
   title: 'Frequency, Acceptability, and Selection',
 };
 
 /**
- * Navigate to a specific preprint by searching for its title.
+ * Navigate to a specific eprint by searching for its title.
  */
-async function navigateToPreprintWithData(page: Page): Promise<PreprintPage> {
+async function navigateToEprintWithData(page: Page): Promise<EprintPage> {
   // Go to browse and wait for content
   await page.goto('/browse');
 
-  // Wait for preprint links to be visible
-  const preprintLinks = page.locator('a[href*="/preprints/"]');
-  await expect(preprintLinks.first()).toBeVisible();
+  // Wait for eprint links to be visible
+  const eprintLinks = page.locator('a[href*="/eprints/"]');
+  await expect(eprintLinks.first()).toBeVisible();
 
-  // Find the test preprint link by title
-  const preprintLink = preprintLinks.filter({
-    hasText: TEST_PREPRINT.title,
+  // Find the test eprint link by title
+  const eprintLink = eprintLinks.filter({
+    hasText: TEST_EPRINT.title,
   });
 
-  // Fall back to first preprint if specific one not found
-  const hasTestPreprint = (await preprintLink.count()) > 0;
+  // Fall back to first eprint if specific one not found
+  const hasTestEprint = (await eprintLink.count()) > 0;
 
-  if (hasTestPreprint) {
-    await preprintLink.first().click();
+  if (hasTestEprint) {
+    await eprintLink.first().click();
   } else {
-    // Fallback: click any preprint
-    await preprintLinks.first().click();
+    // Fallback: click any eprint
+    await eprintLinks.first().click();
   }
 
-  await page.waitForURL(/\/preprints\//);
+  await page.waitForURL(/\/eprints\//);
 
-  return new PreprintPage(page);
+  return new EprintPage(page);
 }
 
 /**
- * Navigate to the first available preprint from the browse page.
+ * Navigate to the first available eprint from the browse page.
  */
-async function navigateToFirstPreprint(page: Page): Promise<PreprintPage> {
+async function navigateToFirstEprint(page: Page): Promise<EprintPage> {
   await page.goto('/browse');
 
-  // Wait for preprint links to be visible
-  const preprintLink = page.locator('a[href*="/preprints/"]').first();
-  await expect(preprintLink).toBeVisible();
+  // Wait for eprint links to be visible
+  const eprintLink = page.locator('a[href*="/eprints/"]').first();
+  await expect(eprintLink).toBeVisible();
 
-  await preprintLink.click();
-  await page.waitForURL(/\/preprints\//);
+  await eprintLink.click();
+  await page.waitForURL(/\/eprints\//);
 
-  return new PreprintPage(page);
+  return new EprintPage(page);
 }
 
 // =============================================================================
@@ -76,7 +76,7 @@ async function navigateToFirstPreprint(page: Page): Promise<PreprintPage> {
 
 test.describe('Enrichment Panel', () => {
   test('Metadata tab is navigable and displays content', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     // Navigate to Metadata tab
     const metadataTab = page.getByRole('tab', { name: 'Metadata' });
@@ -93,13 +93,13 @@ test.describe('Enrichment Panel', () => {
   });
 
   test('enrichment panel shows "External Data" heading with seeded data', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const metadataTab = page.getByRole('tab', { name: 'Metadata' });
     await metadataTab.click();
     await expect(metadataTab).toHaveAttribute('data-state', 'active');
 
-    // Enrichment panel MUST be visible for preprints with seeded enrichment data
+    // Enrichment panel MUST be visible for eprints with seeded enrichment data
     const enrichmentHeading = page.getByText('External Data');
     await expect(enrichmentHeading).toBeVisible();
 
@@ -109,7 +109,7 @@ test.describe('Enrichment Panel', () => {
   });
 
   test('external ID badges link to Semantic Scholar and OpenAlex', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const metadataTab = page.getByRole('tab', { name: 'Metadata' });
     await metadataTab.click();
@@ -129,7 +129,7 @@ test.describe('Enrichment Panel', () => {
   });
 
   test('topics section displays badges with hierarchical data', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const metadataTab = page.getByRole('tab', { name: 'Metadata' });
     await metadataTab.click();
@@ -145,7 +145,7 @@ test.describe('Enrichment Panel', () => {
   });
 
   test('concepts with Wikidata have external links', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const metadataTab = page.getByRole('tab', { name: 'Metadata' });
     await metadataTab.click();
@@ -175,7 +175,7 @@ test.describe('Enrichment Panel', () => {
 
 test.describe('Backlinks Panel', () => {
   test('Related tab is navigable and displays content', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     // Navigate to Related tab
     const relatedTab = page.getByRole('tab', { name: 'Related' });
@@ -192,13 +192,13 @@ test.describe('Backlinks Panel', () => {
   });
 
   test('backlinks panel shows count badge with seeded data', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const relatedTab = page.getByRole('tab', { name: 'Related' });
     await relatedTab.click();
     await expect(relatedTab).toHaveAttribute('data-state', 'active');
 
-    // Backlinks panel MUST be visible for preprints with seeded backlinks
+    // Backlinks panel MUST be visible for eprints with seeded backlinks
     const backlinksHeading = page.getByText('Backlinks').first();
     await expect(backlinksHeading).toBeVisible();
 
@@ -213,13 +213,13 @@ test.describe('Backlinks Panel', () => {
   });
 
   test('backlinks sections are expandable buttons', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const relatedTab = page.getByRole('tab', { name: 'Related' });
     await relatedTab.click();
     await expect(relatedTab).toHaveAttribute('data-state', 'active');
 
-    // At least one section MUST be visible (we have Semble and Bluesky backlinks for first preprint)
+    // At least one section MUST be visible (we have Semble and Bluesky backlinks for first eprint)
     const sectionButtons = page
       .locator('button')
       .filter({ hasText: /(Semble|Bluesky|WhiteWind|Leaflet)/i });
@@ -232,7 +232,7 @@ test.describe('Backlinks Panel', () => {
   });
 
   test('expanded backlink section shows items with context', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const relatedTab = page.getByRole('tab', { name: 'Related' });
     await relatedTab.click();
@@ -258,7 +258,7 @@ test.describe('Backlinks Panel', () => {
   });
 
   test('backlink external links have correct security attributes', async ({ page }) => {
-    await navigateToPreprintWithData(page);
+    await navigateToEprintWithData(page);
 
     const relatedTab = page.getByRole('tab', { name: 'Related' });
     await relatedTab.click();
@@ -300,7 +300,7 @@ test.describe('Backlinks Panel', () => {
 
 test.describe('Tab Structure Integration', () => {
   test('Metadata tab contains required sections in correct order', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const metadataTab = page.getByRole('tab', { name: 'Metadata' });
     await metadataTab.click();
@@ -318,7 +318,7 @@ test.describe('Tab Structure Integration', () => {
   });
 
   test('Related tab contains related papers panel', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const relatedTab = page.getByRole('tab', { name: 'Related' });
     await relatedTab.click();
@@ -331,8 +331,8 @@ test.describe('Tab Structure Integration', () => {
     await expect(relatedPapersHeading.first()).toBeVisible();
   });
 
-  test('all preprint tabs are accessible', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+  test('all eprint tabs are accessible', async ({ page }) => {
+    await navigateToFirstEprint(page);
 
     // All tabs must be visible
     const tabs = ['Abstract', 'PDF', 'Reviews', 'Endorsements', 'Related', 'Metadata'];

@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { test, expect, type Page } from '@playwright/test';
-import { SEEDED_AUTHORS, SEEDED_PREPRINTS } from './fixtures/test-data.js';
+import { SEEDED_AUTHORS, SEEDED_EPRINTS } from './fixtures/test-data.js';
 
 // =============================================================================
 // TEST PDF FIXTURE
@@ -51,7 +51,7 @@ async function setupPdfMocking(page: Page): Promise<void> {
 // =============================================================================
 
 /**
- * Navigate to the first available preprint's PDF tab.
+ * Navigate to the first available eprint's PDF tab.
  */
 async function navigateToPdfViewer(page: Page): Promise<void> {
   // Set up PDF mocking before navigation
@@ -60,12 +60,12 @@ async function navigateToPdfViewer(page: Page): Promise<void> {
   await page.goto('/browse');
   await page.waitForLoadState('networkidle');
 
-  // Get the first preprint link
-  const preprintLink = page.locator('a[href*="/preprints/"]').first();
-  await expect(preprintLink).toBeVisible({ timeout: 10000 });
+  // Get the first eprint link
+  const eprintLink = page.locator('a[href*="/eprints/"]').first();
+  await expect(eprintLink).toBeVisible({ timeout: 10000 });
 
   // Click and wait for navigation
-  await Promise.all([page.waitForURL(/\/preprints\//), preprintLink.click()]);
+  await Promise.all([page.waitForURL(/\/eprints\//), eprintLink.click()]);
 
   // Switch to PDF tab
   const pdfTab = page.getByRole('tab', { name: 'PDF' });
@@ -77,15 +77,15 @@ async function navigateToPdfViewer(page: Page): Promise<void> {
 }
 
 /**
- * Navigate directly to a known preprint's PDF view.
+ * Navigate directly to a known eprint's PDF view.
  */
-async function navigateToKnownPreprint(page: Page): Promise<void> {
+async function navigateToKnownEprint(page: Page): Promise<void> {
   // Set up PDF mocking before navigation
   await setupPdfMocking(page);
 
   // Use the full AT-URI; the page component expects it to start with "at://"
-  const preprintUri = SEEDED_PREPRINTS.white.uri;
-  await page.goto(`/preprints/${encodeURIComponent(preprintUri)}`);
+  const eprintUri = SEEDED_EPRINTS.white.uri;
+  await page.goto(`/eprints/${encodeURIComponent(eprintUri)}`);
   await page.waitForLoadState('networkidle');
 
   // Switch to PDF tab if visible
@@ -193,7 +193,7 @@ test.describe('Annotation Sidebar', () => {
 
 test.describe('Review Creation UI', () => {
   test('Reviews tab shows write review button', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     // Click Reviews tab
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
@@ -206,7 +206,7 @@ test.describe('Review Creation UI', () => {
   });
 
   test('clicking write review opens the review form', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.click();
@@ -220,7 +220,7 @@ test.describe('Review Creation UI', () => {
   });
 
   test('review form has content textarea', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.click();
@@ -234,7 +234,7 @@ test.describe('Review Creation UI', () => {
   });
 
   test('review form validates minimum content length', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.click();
@@ -251,7 +251,7 @@ test.describe('Review Creation UI', () => {
   });
 
   test('review form enables post button with valid content', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.click();
@@ -276,7 +276,7 @@ test.describe('Review Creation UI', () => {
 
 test.describe('Entity Linking UI', () => {
   test('entity link button is not visible without text selection', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     // Navigate to PDF tab
     const pdfTab = page.getByRole('tab', { name: 'PDF' });
@@ -295,7 +295,7 @@ test.describe('Entity Linking UI', () => {
 
 test.describe('Review Sharing', () => {
   test('review card has share button when reviews exist', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.click();
@@ -319,9 +319,9 @@ test.describe('Review Sharing', () => {
   });
 
   test('share menu shows Bluesky option', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
-    // Click the share button on the preprint page
+    // Click the share button on the eprint page
     const shareButton = page.getByRole('button', { name: /share/i }).first();
     await expect(shareButton).toBeVisible();
     await shareButton.click();
@@ -376,7 +376,7 @@ test.describe('Author Profile Reviews Tab', () => {
     await expect(content.first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('author reviews show link to preprint', async ({ page }) => {
+  test('author reviews show link to eprint', async ({ page }) => {
     const authorDid = SEEDED_AUTHORS.white.did;
     await page.goto(`/authors/${encodeURIComponent(authorDid)}`);
     await page.waitForLoadState('networkidle');
@@ -384,13 +384,13 @@ test.describe('Author Profile Reviews Tab', () => {
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.click();
 
-    // If there are reviews, they should have preprint links
+    // If there are reviews, they should have eprint links
     const reviewItem = page.locator('[data-testid="author-review-item"]').first();
     const itemCount = await reviewItem.count();
 
     if (itemCount > 0) {
-      const preprintLink = reviewItem.getByRole('link', { name: /view preprint/i });
-      await expect(preprintLink).toBeVisible();
+      const eprintLink = reviewItem.getByRole('link', { name: /view eprint/i });
+      await expect(eprintLink).toBeVisible();
     } else {
       // Empty state is acceptable
       await expect(page.getByText(/no reviews yet/i)).toBeVisible();
@@ -404,7 +404,7 @@ test.describe('Author Profile Reviews Tab', () => {
 
 test.describe('Inline Annotation Display', () => {
   test('inline annotations show badge in review list', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.click();
@@ -428,7 +428,7 @@ test.describe('Inline Annotation Display', () => {
 
 test.describe('Keyboard Navigation', () => {
   test('can navigate tabs with keyboard', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     // Focus on the first tab
     const abstractTab = page.getByRole('tab', { name: 'Abstract' });
@@ -443,7 +443,7 @@ test.describe('Keyboard Navigation', () => {
   });
 
   test('can activate tab with Enter or Space', async ({ page }) => {
-    await navigateToKnownPreprint(page);
+    await navigateToKnownEprint(page);
 
     const reviewsTab = page.getByRole('tab', { name: /reviews/i });
     await reviewsTab.focus();

@@ -18,7 +18,7 @@
 import { Pool } from 'pg';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 
-import type { RecordMetadata } from '@/services/preprint/preprint-service.js';
+import type { RecordMetadata } from '@/services/eprint/eprint-service.js';
 import {
   ReviewService,
   type ReviewComment,
@@ -32,7 +32,7 @@ import type { AtUri, CID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 // Test constants
-const TEST_PREPRINT_URI = 'at://did:plc:author/pub.chive.preprint.submission/test123' as AtUri;
+const TEST_EPRINT_URI = 'at://did:plc:author/pub.chive.eprint.submission/test123' as AtUri;
 const TEST_PDS_URL = 'https://pds.review.test.example.com';
 
 // Generate unique test URIs
@@ -76,7 +76,7 @@ function createTestMetadata(uri: AtUri, cid: CID): RecordMetadata {
 function createTestReviewComment(overrides: Partial<ReviewComment> = {}): ReviewComment {
   return {
     $type: 'pub.chive.review.comment',
-    subject: { uri: TEST_PREPRINT_URI, cid: 'bafysubject' },
+    subject: { uri: TEST_EPRINT_URI, cid: 'bafysubject' },
     text: 'This is a test review comment.',
     reviewType: 'general',
     createdAt: new Date().toISOString(),
@@ -90,7 +90,7 @@ function createTestReviewComment(overrides: Partial<ReviewComment> = {}): Review
 function createTestEndorsement(overrides: Partial<Endorsement> = {}): Endorsement {
   return {
     $type: 'pub.chive.review.endorsement',
-    subject: { uri: TEST_PREPRINT_URI, cid: 'bafysubject' },
+    subject: { uri: TEST_EPRINT_URI, cid: 'bafysubject' },
     endorsementType: 'methods',
     createdAt: new Date().toISOString(),
     ...overrides,
@@ -109,7 +109,7 @@ function createTestReviewView(
   return {
     uri,
     author: 'did:plc:reviewer',
-    subject: TEST_PREPRINT_URI,
+    subject: TEST_EPRINT_URI,
     text: text ?? `Review ${uri}`,
     parent,
     createdAt: createdAt ?? new Date(),
@@ -132,15 +132,15 @@ describe('ReviewService Integration', () => {
       logger: createMockLogger(),
     });
 
-    // Insert required preprint for foreign key constraint
+    // Insert required eprint for foreign key constraint
     await pool.query(
-      `INSERT INTO preprints_index (
+      `INSERT INTO eprints_index (
         uri, cid, submitted_by, authors, title, abstract, document_blob_cid, document_blob_mime_type,
         document_blob_size, license, created_at, pds_url, indexed_at, last_synced_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
-        TEST_PREPRINT_URI,
+        TEST_EPRINT_URI,
         'bafysubject',
         'did:plc:author',
         JSON.stringify([
@@ -153,8 +153,8 @@ describe('ReviewService Integration', () => {
             isHighlighted: false,
           },
         ]),
-        'Test Preprint for Reviews',
-        'This is a test preprint used for review integration tests.',
+        'Test Eprint for Reviews',
+        'This is a test eprint used for review integration tests.',
         'bafyreipdfblob123',
         'application/pdf',
         1024000,
@@ -166,9 +166,9 @@ describe('ReviewService Integration', () => {
 
   afterAll(async () => {
     // Clean up test data
-    await pool.query('DELETE FROM reviews_index WHERE preprint_uri = $1', [TEST_PREPRINT_URI]);
-    await pool.query('DELETE FROM endorsements_index WHERE preprint_uri = $1', [TEST_PREPRINT_URI]);
-    await pool.query('DELETE FROM preprints_index WHERE uri = $1', [TEST_PREPRINT_URI]);
+    await pool.query('DELETE FROM reviews_index WHERE eprint_uri = $1', [TEST_EPRINT_URI]);
+    await pool.query('DELETE FROM endorsements_index WHERE eprint_uri = $1', [TEST_EPRINT_URI]);
+    await pool.query('DELETE FROM eprints_index WHERE uri = $1', [TEST_EPRINT_URI]);
     await pool.end();
   });
 
@@ -254,16 +254,16 @@ describe('ReviewService Integration', () => {
   });
 
   describe('getReviews', () => {
-    it('returns reviews indexed for the preprint', async () => {
-      const reviews = await service.getReviews(TEST_PREPRINT_URI);
+    it('returns reviews indexed for the eprint', async () => {
+      const reviews = await service.getReviews(TEST_EPRINT_URI);
 
       expect(Array.isArray(reviews)).toBe(true);
       // Reviews were indexed in earlier tests
       expect(reviews.length).toBeGreaterThan(0);
     });
 
-    it('returns empty array for preprint with no reviews', async () => {
-      const unknownUri = 'at://did:plc:unknown/pub.chive.preprint.submission/unknown' as AtUri;
+    it('returns empty array for eprint with no reviews', async () => {
+      const unknownUri = 'at://did:plc:unknown/pub.chive.eprint.submission/unknown' as AtUri;
       const reviews = await service.getReviews(unknownUri);
 
       expect(Array.isArray(reviews)).toBe(true);
@@ -272,16 +272,16 @@ describe('ReviewService Integration', () => {
   });
 
   describe('getEndorsements', () => {
-    it('returns endorsements indexed for the preprint', async () => {
-      const endorsements = await service.getEndorsements(TEST_PREPRINT_URI);
+    it('returns endorsements indexed for the eprint', async () => {
+      const endorsements = await service.getEndorsements(TEST_EPRINT_URI);
 
       expect(Array.isArray(endorsements)).toBe(true);
       // Endorsements were indexed in earlier tests
       expect(endorsements.length).toBeGreaterThan(0);
     });
 
-    it('returns empty array for preprint with no endorsements', async () => {
-      const unknownUri = 'at://did:plc:unknown/pub.chive.preprint.submission/unknown' as AtUri;
+    it('returns empty array for eprint with no endorsements', async () => {
+      const unknownUri = 'at://did:plc:unknown/pub.chive.eprint.submission/unknown' as AtUri;
       const endorsements = await service.getEndorsements(unknownUri);
 
       expect(Array.isArray(endorsements)).toBe(true);

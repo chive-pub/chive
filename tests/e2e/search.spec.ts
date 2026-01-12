@@ -29,7 +29,7 @@ test.describe('Search functionality', () => {
     // Before searching, should show initial state (either suggestions or main search heading)
     const initialState = page
       .getByRole('heading', { name: /search/i })
-      .or(page.getByText(/search preprints|popular searches/i));
+      .or(page.getByText(/search eprints|popular searches/i));
     await expect(initialState.first()).toBeVisible();
   });
 

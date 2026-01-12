@@ -100,12 +100,12 @@ describe('ActivityService', () => {
 
       const result = await service.logActivity({
         actorDid: 'did:plc:testuser' as DID,
-        collection: 'pub.chive.preprint.submission' as NSID,
+        collection: 'pub.chive.eprint.submission' as NSID,
         rkey: 'abc123',
         action: 'create',
-        category: 'preprint_submit',
-        targetUri: 'at://did:plc:target/pub.chive.preprint.submission/xyz' as AtUri,
-        targetTitle: 'Test Preprint',
+        category: 'eprint_submit',
+        targetUri: 'at://did:plc:target/pub.chive.eprint.submission/xyz' as AtUri,
+        targetTitle: 'Test Eprint',
         traceId: 'trace123',
         spanId: 'span456',
         sessionId: 'session789',
@@ -118,7 +118,7 @@ describe('ActivityService', () => {
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO user_activities'),
-        expect.arrayContaining(['did:plc:testuser', 'pub.chive.preprint.submission', 'abc123'])
+        expect.arrayContaining(['did:plc:testuser', 'pub.chive.eprint.submission', 'abc123'])
       );
     });
 
@@ -127,10 +127,10 @@ describe('ActivityService', () => {
 
       const result = await service.logActivity({
         actorDid: 'did:plc:testuser' as DID,
-        collection: 'pub.chive.preprint.submission' as NSID,
+        collection: 'pub.chive.eprint.submission' as NSID,
         rkey: 'abc123',
         action: 'create',
-        category: 'preprint_submit',
+        category: 'eprint_submit',
       });
 
       expect(result.ok).toBe(false);
@@ -163,10 +163,10 @@ describe('ActivityService', () => {
 
       const result = await service.correlateWithFirehose({
         repo: 'did:plc:testuser' as DID,
-        collection: 'pub.chive.preprint.submission' as NSID,
+        collection: 'pub.chive.eprint.submission' as NSID,
         rkey: 'abc123',
         seq: 12345,
-        uri: 'at://did:plc:testuser/pub.chive.preprint.submission/abc123' as AtUri,
+        uri: 'at://did:plc:testuser/pub.chive.eprint.submission/abc123' as AtUri,
         cid: 'bafyreiabc123' as CID,
       });
 
@@ -177,7 +177,7 @@ describe('ActivityService', () => {
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('SELECT correlate_activity'),
-        expect.arrayContaining(['did:plc:testuser', 'pub.chive.preprint.submission', 'abc123'])
+        expect.arrayContaining(['did:plc:testuser', 'pub.chive.eprint.submission', 'abc123'])
       );
     });
 
@@ -186,10 +186,10 @@ describe('ActivityService', () => {
 
       const result = await service.correlateWithFirehose({
         repo: 'did:plc:testuser' as DID,
-        collection: 'pub.chive.preprint.submission' as NSID,
+        collection: 'pub.chive.eprint.submission' as NSID,
         rkey: 'nonexistent',
         seq: 12345,
-        uri: 'at://did:plc:testuser/pub.chive.preprint.submission/nonexistent' as AtUri,
+        uri: 'at://did:plc:testuser/pub.chive.eprint.submission/nonexistent' as AtUri,
         cid: 'bafyreiabc123' as CID,
       });
 
@@ -204,10 +204,10 @@ describe('ActivityService', () => {
 
       const result = await service.correlateWithFirehose({
         repo: 'did:plc:testuser' as DID,
-        collection: 'pub.chive.preprint.submission' as NSID,
+        collection: 'pub.chive.eprint.submission' as NSID,
         rkey: 'abc123',
         seq: 12345,
-        uri: 'at://did:plc:testuser/pub.chive.preprint.submission/abc123' as AtUri,
+        uri: 'at://did:plc:testuser/pub.chive.eprint.submission/abc123' as AtUri,
         cid: 'bafyreiabc123' as CID,
       });
 
@@ -222,7 +222,7 @@ describe('ActivityService', () => {
 
       const result = await service.markFailed(
         'did:plc:testuser' as DID,
-        'pub.chive.preprint.submission' as NSID,
+        'pub.chive.eprint.submission' as NSID,
         'abc123',
         'PDS_WRITE_FAILED',
         'Failed to write to PDS'
@@ -232,7 +232,7 @@ describe('ActivityService', () => {
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining("SET status = 'failed'"),
-        expect.arrayContaining(['did:plc:testuser', 'pub.chive.preprint.submission', 'abc123'])
+        expect.arrayContaining(['did:plc:testuser', 'pub.chive.eprint.submission', 'abc123'])
       );
     });
 
@@ -241,7 +241,7 @@ describe('ActivityService', () => {
 
       const result = await service.markFailed(
         'did:plc:testuser' as DID,
-        'pub.chive.preprint.submission' as NSID,
+        'pub.chive.eprint.submission' as NSID,
         'abc123',
         'ERROR_CODE',
         'Error message'
@@ -291,15 +291,15 @@ describe('ActivityService', () => {
         {
           id: 'activity-1',
           actor_did: 'did:plc:user1',
-          collection: 'pub.chive.preprint.submission',
+          collection: 'pub.chive.eprint.submission',
           rkey: 'abc123',
           action: 'create',
-          action_category: 'preprint_submit',
+          action_category: 'eprint_submit',
           status: 'confirmed',
           initiated_at: new Date('2024-01-01T12:00:00Z'),
           confirmed_at: new Date('2024-01-01T12:00:05Z'),
           firehose_seq: '12345',
-          firehose_uri: 'at://did:plc:user1/pub.chive.preprint.submission/abc123',
+          firehose_uri: 'at://did:plc:user1/pub.chive.eprint.submission/abc123',
           firehose_cid: 'bafyreiabc123',
           target_uri: null,
           target_title: null,
@@ -392,10 +392,10 @@ describe('ActivityService', () => {
       const inputs = [
         {
           repo: 'did:plc:user1' as DID,
-          collection: 'pub.chive.preprint.submission' as NSID,
+          collection: 'pub.chive.eprint.submission' as NSID,
           rkey: 'rkey1',
           seq: 1,
-          uri: 'at://did:plc:user1/pub.chive.preprint.submission/rkey1' as AtUri,
+          uri: 'at://did:plc:user1/pub.chive.eprint.submission/rkey1' as AtUri,
           cid: 'cid1' as CID,
         },
         {
@@ -408,10 +408,10 @@ describe('ActivityService', () => {
         },
         {
           repo: 'did:plc:user3' as DID,
-          collection: 'pub.chive.preprint.userTag' as NSID,
+          collection: 'pub.chive.eprint.userTag' as NSID,
           rkey: 'rkey3',
           seq: 3,
-          uri: 'at://did:plc:user3/pub.chive.preprint.userTag/rkey3' as AtUri,
+          uri: 'at://did:plc:user3/pub.chive.eprint.userTag/rkey3' as AtUri,
           cid: 'cid3' as CID,
         },
       ];
@@ -455,10 +455,10 @@ describe('ActivityService', () => {
       const inputs = [
         {
           repo: 'did:plc:user1' as DID,
-          collection: 'pub.chive.preprint.submission' as NSID,
+          collection: 'pub.chive.eprint.submission' as NSID,
           rkey: 'rkey1',
           seq: 1,
-          uri: 'at://did:plc:user1/pub.chive.preprint.submission/rkey1' as AtUri,
+          uri: 'at://did:plc:user1/pub.chive.eprint.submission/rkey1' as AtUri,
           cid: 'cid1' as CID,
         },
       ];
@@ -476,15 +476,15 @@ describe('ActivityService', () => {
       const mockActivity = {
         id: 'activity-1',
         actor_did: 'did:plc:user1',
-        collection: 'pub.chive.preprint.submission',
+        collection: 'pub.chive.eprint.submission',
         rkey: 'abc123',
         action: 'create',
-        action_category: 'preprint_submit',
+        action_category: 'eprint_submit',
         status: 'confirmed',
         initiated_at: new Date('2024-01-01T12:00:00Z'),
         confirmed_at: new Date('2024-01-01T12:00:05Z'),
         firehose_seq: '12345',
-        firehose_uri: 'at://did:plc:user1/pub.chive.preprint.submission/abc123',
+        firehose_uri: 'at://did:plc:user1/pub.chive.eprint.submission/abc123',
         firehose_cid: 'bafyreiabc123',
         target_uri: null,
         target_title: null,

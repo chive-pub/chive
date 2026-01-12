@@ -14,7 +14,7 @@ import type { AtUri } from '@/types/atproto.js';
 const createMockReview = (overrides?: Partial<ReviewView>): ReviewView => ({
   uri: 'at://did:plc:reviewer/pub.chive.review.comment/r1' as AtUri,
   author: 'did:plc:reviewer',
-  subject: 'at://did:plc:author/pub.chive.preprint.submission/p1' as AtUri,
+  subject: 'at://did:plc:author/pub.chive.eprint.submission/p1' as AtUri,
   text: 'Test review',
   parent: undefined,
   createdAt: new Date('2024-01-01T00:00:00Z'),

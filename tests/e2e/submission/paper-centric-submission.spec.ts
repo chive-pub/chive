@@ -15,15 +15,15 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { SEEDED_PREPRINTS, SEEDED_AUTHORS, TEST_USER } from '../fixtures/test-data.js';
+import { SEEDED_EPRINTS, SEEDED_AUTHORS, TEST_USER } from '../fixtures/test-data.js';
 
 test.describe('Paper-Centric Submission - Display', () => {
   // Note: Paper-centric submissions require special setup with a paper that has its own DID
   // These tests verify the display logic when paperDid is set
 
   test('displays paper identity when paperDid is set', async ({ page }) => {
-    // Navigate to a preprint page
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    // Navigate to a eprint page
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for paper identity badge (only shown when paperDid is set)
@@ -38,7 +38,7 @@ test.describe('Paper-Centric Submission - Display', () => {
   });
 
   test('shows "Submitted by" separately from paper identity', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for submitter information
@@ -52,7 +52,7 @@ test.describe('Paper-Centric Submission - Display', () => {
   });
 
   test('paper profile link uses paperDid when set', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for paper profile link
@@ -68,7 +68,7 @@ test.describe('Paper-Centric Submission - Display', () => {
 
 test.describe('Paper-Centric Submission - Blob Fetching', () => {
   test('PDF viewer loads (blobs fetched from correct PDS)', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for PDF viewer or download button
@@ -84,7 +84,7 @@ test.describe('Paper-Centric Submission - Blob Fetching', () => {
   });
 
   test('supplementary files load from correct PDS', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for supplementary files section
@@ -100,13 +100,13 @@ test.describe('Paper-Centric Submission - Blob Fetching', () => {
 
 test.describe('Paper-Centric Submission - Record URI', () => {
   test('record URI uses paperDid as repo when set', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for AT-URI display
     const atUri = page
       .getByText(/at:\/\/did:plc:/i)
-      .or(page.locator('[data-testid="preprint-uri"]'));
+      .or(page.locator('[data-testid="eprint-uri"]'));
 
     if (await atUri.isVisible({ timeout: 3000 }).catch(() => false)) {
       // URI should contain a DID - either paper's or submitter's
@@ -118,7 +118,7 @@ test.describe('Paper-Centric Submission - Record URI', () => {
 
 test.describe('Paper-Centric vs Traditional - Detection', () => {
   test('distinguishes paper-centric from traditional submissions', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // In paper-centric: shows paper identity badge
@@ -134,7 +134,7 @@ test.describe('Paper-Centric vs Traditional - Detection', () => {
   });
 
   test('shows submitter for both paper-centric and traditional', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Submitter should always be shown
@@ -148,7 +148,7 @@ test.describe('Paper-Centric vs Traditional - Detection', () => {
 
 test.describe('Paper-Centric Submission - Navigation', () => {
   test('can navigate to paper profile page via paperDid', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for paper profile link
@@ -162,7 +162,7 @@ test.describe('Paper-Centric Submission - Navigation', () => {
   });
 
   test('can navigate to submitter profile page', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Find author/submitter link

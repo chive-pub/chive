@@ -36,7 +36,7 @@ import {
   createMockAuthzService,
   createMockAlphaService,
   createMockLogger,
-  createMockPreprintService,
+  createMockEprintService,
   createMockSearchService,
   createMockMetricsService,
   createMockBlobProxyService,
@@ -138,7 +138,7 @@ describe('XRPC Graph Endpoints Integration', () => {
 
     // Create Hono app with full middleware stack
     const serverConfig: ServerConfig = {
-      preprintService: createMockPreprintService(),
+      eprintService: createMockEprintService(),
       searchService: createMockSearchService(),
       metricsService: createMockMetricsService(),
       graphService,

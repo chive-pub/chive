@@ -25,9 +25,9 @@ import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '@/types/interfaces/storage.interface.js';
 
 // Test URIs and DIDs
-const TEST_URI_1 = 'at://did:plc:test1/pub.chive.preprint.submission/abc123' as AtUri;
-const TEST_URI_2 = 'at://did:plc:test2/pub.chive.preprint.submission/def456' as AtUri;
-const TEST_URI_3 = 'at://did:plc:test3/pub.chive.preprint.submission/ghi789' as AtUri;
+const TEST_URI_1 = 'at://did:plc:test1/pub.chive.eprint.submission/abc123' as AtUri;
+const TEST_URI_2 = 'at://did:plc:test2/pub.chive.eprint.submission/def456' as AtUri;
+const TEST_URI_3 = 'at://did:plc:test3/pub.chive.eprint.submission/ghi789' as AtUri;
 const TEST_DID_1 = 'did:plc:viewer1' as DID;
 const TEST_DID_2 = 'did:plc:viewer2' as DID;
 const TEST_DID_3 = 'did:plc:viewer3' as DID;
@@ -68,10 +68,10 @@ function createMockPool(): Pool {
  */
 function createMockStorage(): IStorageBackend {
   return {
-    storePreprint: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
-    getPreprint: vi.fn().mockResolvedValue(null),
-    getPreprintsByAuthor: vi.fn().mockResolvedValue([]),
-    listPreprintUris: vi.fn().mockResolvedValue([]),
+    storeEprint: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    getEprint: vi.fn().mockResolvedValue(null),
+    getEprintsByAuthor: vi.fn().mockResolvedValue([]),
+    listEprintUris: vi.fn().mockResolvedValue([]),
     trackPDSSource: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     isStale: vi.fn().mockResolvedValue(false),
   };
@@ -279,7 +279,7 @@ describe('MetricsService Integration', () => {
       expect(trending).toEqual([]);
     });
 
-    it('returns trending preprints sorted by view count', async () => {
+    it('returns trending eprints sorted by view count', async () => {
       // URI_1: 10 views
       for (let i = 0; i < 10; i++) {
         await service.recordView(TEST_URI_1);

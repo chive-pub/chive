@@ -259,8 +259,8 @@ describe('Lexicon ATProto Compliance', () => {
     }
   });
 
-  it('preprint submission schema compliance', () => {
-    const submissionSchema = schemas.find((s) => s.id === 'pub.chive.preprint.submission');
+  it('eprint submission schema compliance', () => {
+    const submissionSchema = schemas.find((s) => s.id === 'pub.chive.eprint.submission');
     expect(submissionSchema).toBeDefined();
 
     const mainDef = submissionSchema?.defs.main as RecordDef;

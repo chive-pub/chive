@@ -71,7 +71,7 @@ const createMockDatabasePool = (): MockDatabasePool => ({
  */
 interface MockSearchEngine {
   search: ReturnType<typeof vi.fn>;
-  indexPreprint: ReturnType<typeof vi.fn>;
+  indexEprint: ReturnType<typeof vi.fn>;
   facetedSearch: ReturnType<typeof vi.fn>;
   autocomplete: ReturnType<typeof vi.fn>;
   deleteDocument: ReturnType<typeof vi.fn>;
@@ -81,7 +81,7 @@ interface MockSearchEngine {
 
 const createMockSearchEngine = (): MockSearchEngine => ({
   search: vi.fn().mockResolvedValue({ hits: [], total: 0, took: 0 }),
-  indexPreprint: vi.fn().mockResolvedValue(undefined),
+  indexEprint: vi.fn().mockResolvedValue(undefined),
   facetedSearch: vi.fn().mockResolvedValue({ hits: [], total: 0, facets: {} }),
   autocomplete: vi.fn().mockResolvedValue([]),
   deleteDocument: vi.fn().mockResolvedValue(undefined),
@@ -261,18 +261,18 @@ const createMockPluginManager = (
 // Sample Data
 // ============================================================================
 
-const SAMPLE_PREPRINT_URI = 'at://did:plc:test/pub.chive.preprint/1' as AtUri;
+const SAMPLE_EPRINT_URI = 'at://did:plc:test/pub.chive.eprint/1' as AtUri;
 const SAMPLE_USER_DID = 'did:plc:testuser' as DID;
 
 const SAMPLE_ENRICHMENT_INPUT: EnrichmentInput = {
-  uri: SAMPLE_PREPRINT_URI,
+  uri: SAMPLE_EPRINT_URI,
   doi: '10.1234/test.2024.001',
   title: 'A Test Paper for Discovery Features',
   abstract: 'This is a test abstract for validating discovery feature integration.',
 };
 
-const SAMPLE_PREPRINT_ROW = {
-  uri: SAMPLE_PREPRINT_URI,
+const SAMPLE_EPRINT_ROW = {
+  uri: SAMPLE_EPRINT_URI,
   title: 'A Test Paper for Discovery Features',
   abstract: 'This is a test abstract for validating discovery feature integration.',
   categories: ['cs.CL', 'linguistics'],
@@ -284,7 +284,7 @@ const SAMPLE_PREPRINT_ROW = {
 };
 
 const SAMPLE_ENRICHMENT_ROW = {
-  uri: SAMPLE_PREPRINT_URI,
+  uri: SAMPLE_EPRINT_URI,
   semantic_scholar_id: '649def34f8be52c8b66281af98ae884c09aef38b',
   openalex_id: 'https://openalex.org/W2741809807',
   citation_count: 42,
@@ -367,7 +367,7 @@ describe('DiscoveryService', () => {
       // Now S2 plugin should be accessible for enrichment
       db.query.mockResolvedValueOnce({ rows: [] }); // filterToChiveCitations check
 
-      const result = await service.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      const result = await service.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       expect(result.success).toBe(true);
       expect(s2Plugin.getPaperByDoi).toHaveBeenCalledWith('10.1234/test.2024.001');
@@ -375,18 +375,18 @@ describe('DiscoveryService', () => {
   });
 
   // ==========================================================================
-  // enrichPreprint
+  // enrichEprint
   // ==========================================================================
 
-  describe('enrichPreprint', () => {
+  describe('enrichEprint', () => {
     beforeEach(() => {
       service.setPluginManager(pluginManager);
     });
 
-    it('should enrich preprint with S2 data using DOI', async () => {
+    it('should enrich eprint with S2 data using DOI', async () => {
       db.query.mockResolvedValue({ rows: [] }); // No Chive citations found
 
-      const result = await service.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      const result = await service.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       expect(result.success).toBe(true);
       expect(result.semanticScholarId).toBe(s2MockPaper.paperId);
@@ -395,25 +395,25 @@ describe('DiscoveryService', () => {
       expect(s2Plugin.getPaperByDoi).toHaveBeenCalledWith('10.1234/test.2024.001');
     });
 
-    it('should enrich preprint with arXiv ID if no DOI', async () => {
+    it('should enrich eprint with arXiv ID if no DOI', async () => {
       const input: EnrichmentInput = {
-        uri: SAMPLE_PREPRINT_URI,
+        uri: SAMPLE_EPRINT_URI,
         arxivId: '2401.12345',
         title: 'Test Paper',
       };
 
       db.query.mockResolvedValue({ rows: [] });
 
-      const result = await service.enrichPreprint(input);
+      const result = await service.enrichEprint(input);
 
       expect(result.success).toBe(true);
       expect(s2Plugin.getPaperByArxiv).toHaveBeenCalledWith('2401.12345');
     });
 
-    it('should enrich preprint with OpenAlex data', async () => {
+    it('should enrich eprint with OpenAlex data', async () => {
       db.query.mockResolvedValue({ rows: [] });
 
-      const result = await service.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      const result = await service.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       expect(result.success).toBe(true);
       expect(result.openAlexId).toBe(oaMockWork.id);
@@ -425,7 +425,7 @@ describe('DiscoveryService', () => {
       oaPlugin.getWorkByDoi.mockResolvedValueOnce(null);
       db.query.mockResolvedValue({ rows: [] });
 
-      const result = await service.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      const result = await service.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       expect(result.success).toBe(true);
       expect(result.topics).toBeDefined();
@@ -439,11 +439,11 @@ describe('DiscoveryService', () => {
       // First call for filterToChiveCitations check
       db.query
         .mockResolvedValueOnce({
-          rows: [{ uri: 'at://did:plc:other/pub.chive.preprint/cited' }],
+          rows: [{ uri: 'at://did:plc:other/pub.chive.eprint/cited' }],
         })
         .mockResolvedValue({ rows: [] });
 
-      const result = await service.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      const result = await service.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       expect(result.success).toBe(true);
       expect(citationGraph.upsertCitationsBatch).toHaveBeenCalled();
@@ -459,7 +459,7 @@ describe('DiscoveryService', () => {
         citationGraph as unknown as ICitationGraph
       );
 
-      const result = await localService.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      const result = await localService.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       // Service still returns success but without enrichment data
       // since no plugins are available for external API calls
@@ -473,7 +473,7 @@ describe('DiscoveryService', () => {
       s2Plugin.getPaperByDoi.mockRejectedValueOnce(new Error('API rate limited'));
       db.query.mockResolvedValue({ rows: [] });
 
-      const result = await service.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      const result = await service.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       // Graceful degradation: success is true even if S2 fails
       // OpenAlex data may still be available
@@ -491,13 +491,13 @@ describe('DiscoveryService', () => {
       );
     });
 
-    it('should update preprint record with enrichment data', async () => {
+    it('should update eprint record with enrichment data', async () => {
       db.query.mockResolvedValue({ rows: [] });
 
-      await service.enrichPreprint(SAMPLE_ENRICHMENT_INPUT);
+      await service.enrichEprint(SAMPLE_ENRICHMENT_INPUT);
 
       expect(db.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE preprints SET'),
+        expect.stringContaining('UPDATE eprints SET'),
         expect.any(Array)
       );
     });
@@ -571,19 +571,19 @@ describe('DiscoveryService', () => {
   });
 
   // ==========================================================================
-  // findRelatedPreprints
+  // findRelatedEprints
   // ==========================================================================
 
-  describe('findRelatedPreprints', () => {
+  describe('findRelatedEprints', () => {
     beforeEach(() => {
       service.setPluginManager(pluginManager);
-      db.query.mockResolvedValue({ rows: [SAMPLE_PREPRINT_ROW] });
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
     });
 
-    it('should find related preprints using citation signal', async () => {
+    it('should find related eprints using citation signal', async () => {
       const coCitedPapers: CoCitedPaper[] = [
         {
-          uri: 'at://did:plc:other/pub.chive.preprint/related1' as AtUri,
+          uri: 'at://did:plc:other/pub.chive.eprint/related1' as AtUri,
           title: 'Related Paper 1',
           abstract: 'Abstract 1',
           coCitationCount: 5,
@@ -592,7 +592,7 @@ describe('DiscoveryService', () => {
       ];
       citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
 
-      const result = await service.findRelatedPreprints(SAMPLE_PREPRINT_URI, {
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
         signals: ['citations'],
       });
       const firstResult = result[0];
@@ -602,21 +602,21 @@ describe('DiscoveryService', () => {
       expect(citationGraph.findCoCitedPapers).toHaveBeenCalled();
     });
 
-    it('should find related preprints using semantic signal', async () => {
+    it('should find related eprints using semantic signal', async () => {
       // Mock that recommended papers exist in Chive
       db.query
-        .mockResolvedValueOnce({ rows: [SAMPLE_PREPRINT_ROW] }) // getPreprintByUri
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }) // getEprintByUri
         .mockResolvedValueOnce({
           rows: [
             {
-              ...SAMPLE_PREPRINT_ROW,
-              uri: 'at://did:plc:other/pub.chive.preprint/related',
+              ...SAMPLE_EPRINT_ROW,
+              uri: 'at://did:plc:other/pub.chive.eprint/related',
               semantic_scholar_id: 'rec1',
             },
           ],
-        }); // findPreprintByExternalId
+        }); // findEprintByExternalId
 
-      await service.findRelatedPreprints(SAMPLE_PREPRINT_URI, {
+      await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
         signals: ['semantic'],
       });
 
@@ -625,14 +625,14 @@ describe('DiscoveryService', () => {
 
     it('should respect limit option', async () => {
       const coCitedPapers: CoCitedPaper[] = Array.from({ length: 20 }, (_, i) => ({
-        uri: `at://did:plc:other/pub.chive.preprint/related${i}` as AtUri,
+        uri: `at://did:plc:other/pub.chive.eprint/related${i}` as AtUri,
         title: `Related Paper ${i}`,
         coCitationCount: 5 - i,
         strength: 0.9 - i * 0.02,
       }));
       citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
 
-      const result = await service.findRelatedPreprints(SAMPLE_PREPRINT_URI, {
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
         signals: ['citations'],
         limit: 5,
       });
@@ -643,13 +643,13 @@ describe('DiscoveryService', () => {
     it('should filter by minScore', async () => {
       const coCitedPapers: CoCitedPaper[] = [
         {
-          uri: 'at://did:plc:other/pub.chive.preprint/high' as AtUri,
+          uri: 'at://did:plc:other/pub.chive.eprint/high' as AtUri,
           title: 'High Score',
           coCitationCount: 10,
           strength: 0.9,
         },
         {
-          uri: 'at://did:plc:other/pub.chive.preprint/low' as AtUri,
+          uri: 'at://did:plc:other/pub.chive.eprint/low' as AtUri,
           title: 'Low Score',
           coCitationCount: 1,
           strength: 0.2,
@@ -657,7 +657,7 @@ describe('DiscoveryService', () => {
       ];
       citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
 
-      const result = await service.findRelatedPreprints(SAMPLE_PREPRINT_URI, {
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
         signals: ['citations'],
         minScore: 0.5,
       });
@@ -665,10 +665,10 @@ describe('DiscoveryService', () => {
       expect(result.every((r) => r.score >= 0.5)).toBe(true);
     });
 
-    it('should return empty array if preprint not found', async () => {
+    it('should return empty array if eprint not found', async () => {
       db.query.mockResolvedValueOnce({ rows: [] });
 
-      const result = await service.findRelatedPreprints(SAMPLE_PREPRINT_URI);
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI);
 
       expect(result).toEqual([]);
     });
@@ -676,7 +676,7 @@ describe('DiscoveryService', () => {
     it('should combine multiple signals', async () => {
       const coCitedPapers: CoCitedPaper[] = [
         {
-          uri: 'at://did:plc:other/pub.chive.preprint/cocited' as AtUri,
+          uri: 'at://did:plc:other/pub.chive.eprint/cocited' as AtUri,
           title: 'Co-cited Paper',
           coCitationCount: 5,
           strength: 0.7,
@@ -686,8 +686,8 @@ describe('DiscoveryService', () => {
       citationGraph.getCitingPapers.mockResolvedValueOnce({
         citations: [
           {
-            citingUri: 'at://did:plc:citing/pub.chive.preprint/1' as AtUri,
-            citedUri: SAMPLE_PREPRINT_URI,
+            citingUri: 'at://did:plc:citing/pub.chive.eprint/1' as AtUri,
+            citedUri: SAMPLE_EPRINT_URI,
             isInfluential: true,
             source: 'semantic-scholar' as const,
           },
@@ -696,9 +696,9 @@ describe('DiscoveryService', () => {
         hasMore: false,
       });
 
-      db.query.mockResolvedValue({ rows: [SAMPLE_PREPRINT_ROW] });
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
 
-      const result = await service.findRelatedPreprints(SAMPLE_PREPRINT_URI, {
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
         signals: ['citations'],
       });
 
@@ -718,12 +718,12 @@ describe('DiscoveryService', () => {
     it('should return field-based recommendations', async () => {
       // Mock user has claimed papers
       db.query
-        .mockResolvedValueOnce({ rows: [{ uri: SAMPLE_PREPRINT_URI }] }) // getUserClaimedPapers
+        .mockResolvedValueOnce({ rows: [{ uri: SAMPLE_EPRINT_URI }] }) // getUserClaimedPapers
         .mockResolvedValueOnce({ rows: [] }) // getDismissedRecommendations
-        .mockResolvedValueOnce({ rows: [SAMPLE_PREPRINT_ROW] }); // getPreprintByUri for field-based
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }); // getEprintByUri for field-based
 
       searchEngine.search.mockResolvedValueOnce({
-        hits: [{ uri: 'at://did:plc:other/pub.chive.preprint/fieldmatch' as AtUri, score: 0.9 }],
+        hits: [{ uri: 'at://did:plc:other/pub.chive.eprint/fieldmatch' as AtUri, score: 0.9 }],
         total: 1,
       });
 
@@ -737,15 +737,15 @@ describe('DiscoveryService', () => {
 
     it('should return citation-based recommendations', async () => {
       db.query
-        .mockResolvedValueOnce({ rows: [{ uri: SAMPLE_PREPRINT_URI }] }) // getUserClaimedPapers
+        .mockResolvedValueOnce({ rows: [{ uri: SAMPLE_EPRINT_URI }] }) // getUserClaimedPapers
         .mockResolvedValueOnce({ rows: [] }) // getDismissedRecommendations
-        .mockResolvedValueOnce({ rows: [SAMPLE_PREPRINT_ROW] }); // getPreprintByUri
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }); // getEprintByUri
 
       citationGraph.getCitingPapers.mockResolvedValueOnce({
         citations: [
           {
-            citingUri: 'at://did:plc:citing/pub.chive.preprint/new' as AtUri,
-            citedUri: SAMPLE_PREPRINT_URI,
+            citingUri: 'at://did:plc:citing/pub.chive.eprint/new' as AtUri,
+            citedUri: SAMPLE_EPRINT_URI,
             isInfluential: false,
             source: 'semantic-scholar' as const,
           },
@@ -762,16 +762,16 @@ describe('DiscoveryService', () => {
     });
 
     it('should filter dismissed recommendations', async () => {
-      const dismissedUri = 'at://did:plc:dismissed/pub.chive.preprint/1';
+      const dismissedUri = 'at://did:plc:dismissed/pub.chive.eprint/1';
       db.query
         .mockResolvedValueOnce({ rows: [] }) // getUserClaimedPapers
-        .mockResolvedValueOnce({ rows: [{ preprint_uri: dismissedUri }] }) // getDismissedRecommendations
-        .mockResolvedValueOnce({ rows: [SAMPLE_PREPRINT_ROW] });
+        .mockResolvedValueOnce({ rows: [{ eprint_uri: dismissedUri }] }) // getDismissedRecommendations
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] });
 
       searchEngine.search.mockResolvedValueOnce({
         hits: [
           { uri: dismissedUri as AtUri, score: 0.95 },
-          { uri: 'at://did:plc:other/pub.chive.preprint/1' as AtUri, score: 0.9 },
+          { uri: 'at://did:plc:other/pub.chive.eprint/1' as AtUri, score: 0.9 },
         ],
         total: 2,
       });
@@ -788,10 +788,10 @@ describe('DiscoveryService', () => {
       db.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValue({ rows: [SAMPLE_PREPRINT_ROW] });
+        .mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
 
       searchEngine.search.mockResolvedValueOnce({
-        hits: [{ uri: 'at://did:plc:other/pub.chive.preprint/1' as AtUri, score: 0.9 }],
+        hits: [{ uri: 'at://did:plc:other/pub.chive.eprint/1' as AtUri, score: 0.9 }],
         total: 1,
       });
 
@@ -804,7 +804,7 @@ describe('DiscoveryService', () => {
       db.query.mockResolvedValue({ rows: [] });
       searchEngine.search.mockResolvedValueOnce({
         hits: Array.from({ length: 30 }, (_, i) => ({
-          uri: `at://did:plc:other/pub.chive.preprint/${i}` as AtUri,
+          uri: `at://did:plc:other/pub.chive.eprint/${i}` as AtUri,
           score: 0.9 - i * 0.01,
         })),
         total: 30,
@@ -831,10 +831,10 @@ describe('DiscoveryService', () => {
       db.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValue({ rows: [SAMPLE_PREPRINT_ROW] });
+        .mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
 
       searchEngine.search.mockResolvedValueOnce({
-        hits: [{ uri: 'at://did:plc:other/pub.chive.preprint/1' as AtUri, score: 0.9 }],
+        hits: [{ uri: 'at://did:plc:other/pub.chive.eprint/1' as AtUri, score: 0.9 }],
         total: 1,
       });
 
@@ -858,45 +858,45 @@ describe('DiscoveryService', () => {
     it('should record a view interaction', async () => {
       await service.recordInteraction(SAMPLE_USER_DID, {
         type: 'view',
-        preprintUri: SAMPLE_PREPRINT_URI,
+        eprintUri: SAMPLE_EPRINT_URI,
         timestamp: new Date(),
       });
 
       expect(db.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO user_interactions'),
-        expect.arrayContaining([SAMPLE_USER_DID, SAMPLE_PREPRINT_URI, 'view'])
+        expect.arrayContaining([SAMPLE_USER_DID, SAMPLE_EPRINT_URI, 'view'])
       );
     });
 
     it('should record a dismiss interaction', async () => {
       await service.recordInteraction(SAMPLE_USER_DID, {
         type: 'dismiss',
-        preprintUri: SAMPLE_PREPRINT_URI,
+        eprintUri: SAMPLE_EPRINT_URI,
         recommendationId: 'rec-123',
         timestamp: new Date(),
       });
 
       expect(db.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO user_interactions'),
-        expect.arrayContaining([SAMPLE_USER_DID, SAMPLE_PREPRINT_URI, 'dismiss', 'rec-123'])
+        expect.arrayContaining([SAMPLE_USER_DID, SAMPLE_EPRINT_URI, 'dismiss', 'rec-123'])
       );
     });
 
     it('should log debug message on success', async () => {
       await service.recordInteraction(SAMPLE_USER_DID, {
         type: 'click',
-        preprintUri: SAMPLE_PREPRINT_URI,
+        eprintUri: SAMPLE_EPRINT_URI,
         timestamp: new Date(),
       });
 
       expect(logger.debug).toHaveBeenCalledWith('Recorded user interaction', expect.any(Object));
     });
 
-    it('should throw ValidationError if preprintUri is missing', async () => {
+    it('should throw ValidationError if eprintUri is missing', async () => {
       await expect(
         service.recordInteraction(SAMPLE_USER_DID, {
           type: 'view',
-          preprintUri: '' as AtUri,
+          eprintUri: '' as AtUri,
           timestamp: new Date(),
         })
       ).rejects.toThrow('required');
@@ -915,12 +915,12 @@ describe('DiscoveryService', () => {
         influentialCitedByCount: 5,
       });
 
-      const result = await service.getCitationCounts(SAMPLE_PREPRINT_URI);
+      const result = await service.getCitationCounts(SAMPLE_EPRINT_URI);
 
       expect(result.citedByCount).toBe(42);
       expect(result.referencesCount).toBe(23);
       expect(result.influentialCitedByCount).toBe(5);
-      expect(citationGraph.getCitationCounts).toHaveBeenCalledWith(SAMPLE_PREPRINT_URI);
+      expect(citationGraph.getCitationCounts).toHaveBeenCalledWith(SAMPLE_EPRINT_URI);
     });
   });
 
@@ -929,8 +929,8 @@ describe('DiscoveryService', () => {
       citationGraph.getCitingPapers.mockResolvedValueOnce({
         citations: [
           {
-            citingUri: 'at://did:plc:citing/pub.chive.preprint/1' as AtUri,
-            citedUri: SAMPLE_PREPRINT_URI,
+            citingUri: 'at://did:plc:citing/pub.chive.eprint/1' as AtUri,
+            citedUri: SAMPLE_EPRINT_URI,
             isInfluential: true,
             source: 'semantic-scholar' as const,
           },
@@ -939,7 +939,7 @@ describe('DiscoveryService', () => {
         hasMore: true,
       });
 
-      const result = await service.getCitingPapers(SAMPLE_PREPRINT_URI, { limit: 5 });
+      const result = await service.getCitingPapers(SAMPLE_EPRINT_URI, { limit: 5 });
 
       expect(result.citations.length).toBe(1);
       expect(result.hasMore).toBe(true);
@@ -952,8 +952,8 @@ describe('DiscoveryService', () => {
       citationGraph.getReferences.mockResolvedValueOnce({
         citations: [
           {
-            citingUri: SAMPLE_PREPRINT_URI,
-            citedUri: 'at://did:plc:ref/pub.chive.preprint/1' as AtUri,
+            citingUri: SAMPLE_EPRINT_URI,
+            citedUri: 'at://did:plc:ref/pub.chive.eprint/1' as AtUri,
             isInfluential: false,
             source: 'openalex' as const,
           },
@@ -962,7 +962,7 @@ describe('DiscoveryService', () => {
         hasMore: false,
       });
 
-      const result = await service.getReferences(SAMPLE_PREPRINT_URI);
+      const result = await service.getReferences(SAMPLE_EPRINT_URI);
 
       expect(result.citations.length).toBe(1);
       expect(result.hasMore).toBe(false);
@@ -978,7 +978,7 @@ describe('DiscoveryService', () => {
     it('should return enrichment data from database', async () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_ENRICHMENT_ROW] });
 
-      const result = await service.getEnrichment(SAMPLE_PREPRINT_URI);
+      const result = await service.getEnrichment(SAMPLE_EPRINT_URI);
 
       expect(result).not.toBeNull();
       expect(result?.semanticScholarId).toBe(SAMPLE_ENRICHMENT_ROW.semantic_scholar_id);
@@ -989,7 +989,7 @@ describe('DiscoveryService', () => {
     it('should return null if no enrichment data', async () => {
       db.query.mockResolvedValueOnce({ rows: [] });
 
-      const result = await service.getEnrichment(SAMPLE_PREPRINT_URI);
+      const result = await service.getEnrichment(SAMPLE_EPRINT_URI);
 
       expect(result).toBeNull();
     });

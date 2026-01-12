@@ -2,41 +2,41 @@
  * Unit tests for VersionManager.
  *
  * @remarks
- * Tests preprint version chain traversal, version history retrieval,
+ * Tests eprint version chain traversal, version history retrieval,
  * and circular reference detection.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { VersionManager } from '@/services/preprint/version-manager.js';
+import { VersionManager } from '@/services/eprint/version-manager.js';
 import { toTimestamp } from '@/types/atproto-validators.js';
 import type { AtUri, BlobRef, CID, DID } from '@/types/atproto.js';
 import { DatabaseError, NotFoundError } from '@/types/errors.js';
-import type { IStorageBackend, StoredPreprint } from '@/types/interfaces/storage.interface.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
+import type { IStorageBackend, StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { EprintAuthor } from '@/types/models/author.js';
 
 interface MockStorage {
   storage: IStorageBackend;
-  getPreprintMock: ReturnType<typeof vi.fn>;
+  getEprintMock: ReturnType<typeof vi.fn>;
 }
 
 const createMockStorage = (): MockStorage => {
-  const getPreprintMock = vi.fn().mockResolvedValue(null);
+  const getEprintMock = vi.fn().mockResolvedValue(null);
   const storage: IStorageBackend = {
-    getPreprint: getPreprintMock,
-    storePreprint: vi.fn(),
-    getPreprintsByAuthor: vi.fn(),
+    getEprint: getEprintMock,
+    storeEprint: vi.fn(),
+    getEprintsByAuthor: vi.fn(),
     trackPDSSource: vi.fn(),
     getRecordsNotSyncedSince: vi.fn(),
     isStale: vi.fn(),
   } as unknown as IStorageBackend;
   return {
     storage,
-    getPreprintMock,
+    getEprintMock,
   };
 };
 
-const mockAuthor: PreprintAuthor = {
+const mockAuthor: EprintAuthor = {
   did: 'did:plc:author' as DID,
   name: 'Test Author',
   order: 1,
@@ -46,8 +46,8 @@ const mockAuthor: PreprintAuthor = {
   isHighlighted: false,
 };
 
-const createMockStoredPreprint = (overrides?: Partial<StoredPreprint>): StoredPreprint => ({
-  uri: 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri,
+const createMockStoredEprint = (overrides?: Partial<StoredEprint>): StoredEprint => ({
+  uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
   cid: 'bafyreicid123' as CID,
   authors: [mockAuthor],
   submittedBy: 'did:plc:author' as DID,
@@ -61,7 +61,7 @@ const createMockStoredPreprint = (overrides?: Partial<StoredPreprint>): StoredPr
     size: 1000,
   } as BlobRef,
   documentFormat: 'pdf',
-  publicationStatus: 'preprint',
+  publicationStatus: 'eprint',
   previousVersionUri: undefined,
   versionNotes: undefined,
   license: 'CC-BY-4.0',
@@ -81,46 +81,46 @@ describe('VersionManager', () => {
   });
 
   describe('getVersionChain', () => {
-    it('returns single version for preprint without previous versions', async () => {
-      const preprint = createMockStoredPreprint();
-      mockStorage.getPreprintMock.mockResolvedValue(preprint);
+    it('returns single version for eprint without previous versions', async () => {
+      const eprint = createMockStoredEprint();
+      mockStorage.getEprintMock.mockResolvedValue(eprint);
 
-      const chain = await manager.getVersionChain(preprint.uri);
+      const chain = await manager.getVersionChain(eprint.uri);
 
       expect(chain.totalVersions).toBe(1);
       expect(chain.versions).toHaveLength(1);
-      expect(chain.latest.uri).toBe(preprint.uri);
+      expect(chain.latest.uri).toBe(eprint.uri);
       expect(chain.latest.versionNumber).toBe(1);
     });
 
-    it('builds chain for preprint with previous versions', async () => {
-      const v1 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v1' as AtUri,
+    it('builds chain for eprint with previous versions', async () => {
+      const v1 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v1' as AtUri,
         cid: 'bafyreiv1' as CID,
         previousVersionUri: undefined,
         versionNotes: undefined,
         createdAt: new Date('2024-01-01T00:00:00Z'),
       });
 
-      const v2 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v2' as AtUri,
+      const v2 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v2' as AtUri,
         cid: 'bafyreiv2' as CID,
         previousVersionUri: v1.uri,
         versionNotes: 'Extended analysis to include factive predicates',
         createdAt: new Date('2020-02-01T00:00:00Z'),
       });
 
-      const v3 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v3' as AtUri,
+      const v3 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v3' as AtUri,
         cid: 'bafyreiv3' as CID,
         previousVersionUri: v2.uri,
         versionNotes: 'Added cross-linguistic comparison section',
         createdAt: new Date('2020-03-01T00:00:00Z'),
       });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (uri: AtUri): Promise<StoredPreprint | null> =>
+        (uri: AtUri): Promise<StoredEprint | null> =>
           Promise.resolve(uri === v1.uri ? v1 : uri === v2.uri ? v2 : uri === v3.uri ? v3 : null)
       );
 
@@ -147,21 +147,21 @@ describe('VersionManager', () => {
     });
 
     it('builds complete chain when starting from latest version', async () => {
-      const v1 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v1' as AtUri,
+      const v1 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v1' as AtUri,
         cid: 'bafyreiv1' as CID,
         previousVersionUri: undefined,
       });
 
-      const v2 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v2' as AtUri,
+      const v2 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v2' as AtUri,
         cid: 'bafyreiv2' as CID,
         previousVersionUri: v1.uri,
       });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (uri: AtUri): Promise<StoredPreprint | null> =>
+        (uri: AtUri): Promise<StoredEprint | null> =>
           Promise.resolve(uri === v1.uri ? v1 : uri === v2.uri ? v2 : null)
       );
 
@@ -174,9 +174,9 @@ describe('VersionManager', () => {
     });
 
     it('throws NotFoundError when version not found', async () => {
-      mockStorage.getPreprintMock.mockResolvedValue(null);
+      mockStorage.getEprintMock.mockResolvedValue(null);
 
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/nonexistent' as AtUri;
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/nonexistent' as AtUri;
 
       await expect(manager.getVersionChain(uri)).rejects.toThrow(NotFoundError);
     });
@@ -184,17 +184,17 @@ describe('VersionManager', () => {
     it('throws DatabaseError when version chain exceeds max length', async () => {
       const managerWithLimit = new VersionManager({ storage: mockStorage.storage, maxVersions: 3 });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (): Promise<StoredPreprint | null> =>
+        (): Promise<StoredEprint | null> =>
           Promise.resolve(
-            createMockStoredPreprint({
-              previousVersionUri: 'at://did:plc:author/pub.chive.preprint.submission/prev' as AtUri,
+            createMockStoredEprint({
+              previousVersionUri: 'at://did:plc:author/pub.chive.eprint.submission/prev' as AtUri,
             })
           )
       );
 
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/current' as AtUri;
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/current' as AtUri;
 
       await expect(managerWithLimit.getVersionChain(uri)).rejects.toThrow(DatabaseError);
       await expect(managerWithLimit.getVersionChain(uri)).rejects.toThrow(
@@ -203,20 +203,20 @@ describe('VersionManager', () => {
     });
 
     it('includes version notes in chain', async () => {
-      const v1 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v1' as AtUri,
+      const v1 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v1' as AtUri,
         versionNotes: undefined,
       });
 
-      const v2 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v2' as AtUri,
+      const v2 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v2' as AtUri,
         previousVersionUri: v1.uri,
         versionNotes: 'Revised semantic selectional restrictions analysis',
       });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (uri: AtUri): Promise<StoredPreprint | null> =>
+        (uri: AtUri): Promise<StoredEprint | null> =>
           Promise.resolve(uri === v1.uri ? v1 : uri === v2.uri ? v2 : null)
       );
 
@@ -236,21 +236,21 @@ describe('VersionManager', () => {
 
   describe('getVersion', () => {
     it('returns version with correct position in chain', async () => {
-      const v1 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v1' as AtUri,
+      const v1 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v1' as AtUri,
         cid: 'bafyreiv1' as CID,
         previousVersionUri: undefined,
       });
 
-      const v2 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v2' as AtUri,
+      const v2 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v2' as AtUri,
         cid: 'bafyreiv2' as CID,
         previousVersionUri: v1.uri,
       });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (uri: AtUri): Promise<StoredPreprint | null> =>
+        (uri: AtUri): Promise<StoredEprint | null> =>
           Promise.resolve(uri === v1.uri ? v1 : uri === v2.uri ? v2 : null)
       );
 
@@ -266,25 +266,25 @@ describe('VersionManager', () => {
     });
 
     it('returns null when version not found', async () => {
-      mockStorage.getPreprintMock.mockResolvedValue(null);
+      mockStorage.getEprintMock.mockResolvedValue(null);
 
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/nonexistent' as AtUri;
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/nonexistent' as AtUri;
       const version = await manager.getVersion(uri);
 
       expect(version).toBeNull();
     });
 
     it('throws DatabaseError when version not in its own chain', async () => {
-      const preprint = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri,
+      const eprint = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri,
       });
 
-      mockStorage.getPreprintMock.mockResolvedValue(preprint);
+      mockStorage.getEprintMock.mockResolvedValue(eprint);
 
       const managerSpy = vi.spyOn(manager, 'getVersionChain').mockResolvedValue({
         versions: [],
         latest: {
-          uri: 'at://did:plc:author/pub.chive.preprint.submission/other' as AtUri,
+          uri: 'at://did:plc:author/pub.chive.eprint.submission/other' as AtUri,
           cid: 'bafyreicid' as CID,
           versionNumber: 1,
           changes: '',
@@ -293,8 +293,8 @@ describe('VersionManager', () => {
         totalVersions: 1,
       });
 
-      await expect(manager.getVersion(preprint.uri)).rejects.toThrow(DatabaseError);
-      await expect(manager.getVersion(preprint.uri)).rejects.toThrow('not found in its own chain');
+      await expect(manager.getVersion(eprint.uri)).rejects.toThrow(DatabaseError);
+      await expect(manager.getVersion(eprint.uri)).rejects.toThrow('not found in its own chain');
 
       managerSpy.mockRestore();
     });
@@ -302,27 +302,27 @@ describe('VersionManager', () => {
 
   describe('getLatestVersion', () => {
     it('returns latest version when starting from latest', async () => {
-      const v1 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v1' as AtUri,
+      const v1 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v1' as AtUri,
         cid: 'bafyreiv1' as CID,
         previousVersionUri: undefined,
       });
 
-      const v2 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v2' as AtUri,
+      const v2 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v2' as AtUri,
         cid: 'bafyreiv2' as CID,
         previousVersionUri: v1.uri,
       });
 
-      const v3 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v3' as AtUri,
+      const v3 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v3' as AtUri,
         cid: 'bafyreiv3' as CID,
         previousVersionUri: v2.uri,
       });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (uri: AtUri): Promise<StoredPreprint | null> =>
+        (uri: AtUri): Promise<StoredEprint | null> =>
           Promise.resolve(uri === v1.uri ? v1 : uri === v2.uri ? v2 : uri === v3.uri ? v3 : null)
       );
 
@@ -335,19 +335,19 @@ describe('VersionManager', () => {
 
   describe('isLatestVersion', () => {
     it('returns true for latest version', async () => {
-      const v1 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v1' as AtUri,
+      const v1 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v1' as AtUri,
         previousVersionUri: undefined,
       });
 
-      const v2 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v2' as AtUri,
+      const v2 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v2' as AtUri,
         previousVersionUri: v1.uri,
       });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (uri: AtUri): Promise<StoredPreprint | null> =>
+        (uri: AtUri): Promise<StoredEprint | null> =>
           Promise.resolve(uri === v1.uri ? v1 : uri === v2.uri ? v2 : null)
       );
 
@@ -356,15 +356,15 @@ describe('VersionManager', () => {
       expect(isV2Latest).toBe(true);
     });
 
-    it('returns true for single version preprint', async () => {
-      const v1 = createMockStoredPreprint({
-        uri: 'at://did:plc:author/pub.chive.preprint.submission/v1' as AtUri,
+    it('returns true for single version eprint', async () => {
+      const v1 = createMockStoredEprint({
+        uri: 'at://did:plc:author/pub.chive.eprint.submission/v1' as AtUri,
         previousVersionUri: undefined,
       });
 
-      mockStorage.getPreprintMock.mockImplementation(
+      mockStorage.getEprintMock.mockImplementation(
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        (uri: AtUri): Promise<StoredPreprint | null> => Promise.resolve(uri === v1.uri ? v1 : null)
+        (uri: AtUri): Promise<StoredEprint | null> => Promise.resolve(uri === v1.uri ? v1 : null)
       );
 
       const isV1Latest = await manager.isLatestVersion(v1.uri);

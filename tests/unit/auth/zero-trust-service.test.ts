@@ -142,8 +142,8 @@ describe('ZeroTrustService', () => {
         },
         action: 'read',
         resource: {
-          type: 'preprint',
-          id: 'preprint_123',
+          type: 'eprint',
+          id: 'eprint_123',
         },
         context: {
           ipAddress: '192.168.1.1',
@@ -163,8 +163,8 @@ describe('ZeroTrustService', () => {
         },
         action: 'read',
         resource: {
-          type: 'preprint',
-          id: 'preprint_123',
+          type: 'eprint',
+          id: 'eprint_123',
         },
         context: {},
       });
@@ -212,8 +212,8 @@ describe('ZeroTrustService', () => {
         },
         action: 'write',
         resource: {
-          type: 'preprint',
-          id: 'preprint_123',
+          type: 'eprint',
+          id: 'eprint_123',
         },
         context: {},
       });
@@ -241,7 +241,7 @@ describe('ZeroTrustService', () => {
           roles: ['admin'],
         },
         action: 'read',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {},
       });
 
@@ -251,7 +251,7 @@ describe('ZeroTrustService', () => {
           roles: ['reader'],
         },
         action: 'read',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {},
       });
 
@@ -282,7 +282,7 @@ describe('ZeroTrustService', () => {
           roles: ['author'],
         },
         action: 'write',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {},
       });
 
@@ -295,7 +295,7 @@ describe('ZeroTrustService', () => {
           roles: ['author'],
         },
         action: 'write',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {},
       });
 
@@ -314,7 +314,7 @@ describe('ZeroTrustService', () => {
           roles: ['author'],
         },
         action: 'read',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {
           attributes: {
             sessionAge: 60, // 1 minute (gets +10 bonus)
@@ -328,7 +328,7 @@ describe('ZeroTrustService', () => {
           roles: ['author'],
         },
         action: 'read',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {
           attributes: {
             sessionAge: 7200, // 2 hours (no session age bonus)
@@ -396,7 +396,7 @@ describe('ZeroTrustService', () => {
           roles: ['author'],
         },
         action: 'write',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {
           ipAddress: '192.168.1.1',
         },
@@ -408,7 +408,7 @@ describe('ZeroTrustService', () => {
           roles: ['author'],
         },
         action: 'write',
-        resource: { type: 'preprint', id: '123' },
+        resource: { type: 'eprint', id: '123' },
         context: {
           ipAddress: '192.168.1.1',
         },
@@ -472,7 +472,7 @@ describe('ZeroTrustService', () => {
 
       const decision = await s2sService.evaluate({
         subject: {
-          spiffeId: 'spiffe://chive.pub/ns/default/sa/preprint-service',
+          spiffeId: 'spiffe://chive.pub/ns/default/sa/eprint-service',
         },
         action: 'read',
         resource: { type: 'internal', id: 'metrics' },
@@ -499,7 +499,7 @@ describe('ZeroTrustService', () => {
 
       const decision = await service.evaluate({
         subject: {
-          spiffeId: 'spiffe://chive.pub/ns/default/sa/preprint-service',
+          spiffeId: 'spiffe://chive.pub/ns/default/sa/eprint-service',
         },
         action: 'read',
         resource: { type: 'internal', id: 'metrics' },

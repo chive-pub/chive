@@ -163,7 +163,7 @@ describe('Validation Middleware', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: 'Test Preprint',
+          title: 'Test Eprint',
           abstract: 'A'.repeat(150),
           keywords: ['quantum', 'computing'],
         }),
@@ -171,7 +171,7 @@ describe('Validation Middleware', () => {
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as { title: string; keywords: string[] };
-      expect(body.title).toBe('Test Preprint');
+      expect(body.title).toBe('Test Eprint');
       expect(body.keywords).toEqual(['quantum', 'computing']);
     });
 

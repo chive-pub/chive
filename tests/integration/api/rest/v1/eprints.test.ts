@@ -1,5 +1,5 @@
 /**
- * Integration tests for REST v1/preprints endpoints.
+ * Integration tests for REST v1/eprints endpoints.
  *
  * @remarks
  * Tests the REST compatibility layer that delegates to XRPC handlers.
@@ -18,7 +18,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
-import { PreprintService, type RecordMetadata } from '@/services/preprint/preprint-service.js';
+import { EprintService, type RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
 import { createElasticsearchClient } from '@/storage/elasticsearch/setup.js';
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
@@ -28,13 +28,13 @@ import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type {
   ISearchEngine,
-  IndexablePreprintDocument,
+  IndexableEprintDocument,
   SearchQuery,
   SearchResults,
   FacetedSearchQuery,
   FacetedSearchResults,
 } from '@/types/interfaces/search.interface.js';
-import type { Preprint } from '@/types/models/preprint.js';
+import type { Eprint } from '@/types/models/eprint.js';
 
 import {
   createMockAuthzService,
@@ -56,8 +56,8 @@ import {
   createMockActivityService,
 } from '../../../../helpers/mock-services.js';
 import type {
-  PreprintResponse,
-  PreprintListResponse,
+  EprintResponse,
+  EprintListResponse,
   SearchResultsResponse,
   ErrorResponse,
   HealthResponse,
@@ -66,14 +66,14 @@ import type {
 // Test constants
 const TEST_AUTHOR = 'did:plc:restauthor123' as DID;
 const TEST_PDS_URL = 'https://pds.test.example.com';
-const INDEX_NAME = 'preprints-rest-integration';
-// Unique IP for REST preprint tests to avoid rate limit collisions with parallel test files
-const REST_PREPRINT_TEST_IP = '192.168.100.2';
+const INDEX_NAME = 'eprints-rest-integration';
+// Unique IP for REST eprint tests to avoid rate limit collisions with parallel test files
+const REST_EPRINT_TEST_IP = '192.168.100.2';
 
 // Generate unique test URIs
 function createTestUri(suffix: string): AtUri {
   const timestamp = Date.now();
-  return `at://${TEST_AUTHOR}/pub.chive.preprint.submission/rest${timestamp}${suffix}` as AtUri;
+  return `at://${TEST_AUTHOR}/pub.chive.eprint.submission/rest${timestamp}${suffix}` as AtUri;
 }
 
 function createTestCid(suffix: string): CID {
@@ -85,7 +85,7 @@ function createTestCid(suffix: string): CID {
  */
 function createSearchEngine(client: Client): ISearchEngine {
   return {
-    indexPreprint: async (doc: IndexablePreprintDocument): Promise<void> => {
+    indexEprint: async (doc: IndexableEprintDocument): Promise<void> => {
       await client.index({
         index: INDEX_NAME,
         id: doc.uri,
@@ -166,16 +166,16 @@ function testRequest(
   init?: RequestInit
 ): Response | Promise<Response> {
   const headers = new Headers(init?.headers);
-  headers.set('X-Forwarded-For', REST_PREPRINT_TEST_IP);
+  headers.set('X-Forwarded-For', REST_EPRINT_TEST_IP);
   return app.request(url, { ...init, headers });
 }
 
 /**
- * Creates test preprint record.
+ * Creates test eprint record.
  */
-function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Preprint {
+function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
   return {
-    $type: 'pub.chive.preprint.submission',
+    $type: 'pub.chive.eprint.submission',
     uri,
     cid: overrides.cid ?? createTestCid('default'),
     authors: overrides.authors ?? [
@@ -207,10 +207,10 @@ function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Prep
       size: 1024000,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     createdAt: overrides.createdAt ?? (Date.now() as Timestamp),
     ...overrides,
-  } as Preprint;
+  } as Eprint;
 }
 
 /**
@@ -225,13 +225,13 @@ function createTestMetadata(uri: AtUri, cid: CID): RecordMetadata {
   };
 }
 
-describe('REST v1/preprints Endpoints Integration', () => {
+describe('REST v1/eprints Endpoints Integration', () => {
   let pool: Pool;
   let esClient: Client;
   let redis: Redis;
   let storage: PostgreSQLAdapter;
   let searchEngine: ISearchEngine;
-  let preprintService: PreprintService;
+  let eprintService: EprintService;
   let app: Hono<ChiveEnv>;
   let logger: ILogger;
 
@@ -276,8 +276,8 @@ describe('REST v1/preprints Endpoints Integration', () => {
     // Create logger
     logger = createMockLogger();
 
-    // Create preprint service
-    preprintService = new PreprintService({
+    // Create eprint service
+    eprintService = new EprintService({
       storage,
       search: searchEngine,
       repository: createMockRepository(),
@@ -287,7 +287,7 @@ describe('REST v1/preprints Endpoints Integration', () => {
 
     // Create Hono app with full middleware stack
     const serverConfig: ServerConfig = {
-      preprintService,
+      eprintService,
       searchService: createMockSearchService(searchEngine),
       metricsService: createMockMetricsService(),
       graphService: createMockGraphService(),
@@ -346,9 +346,9 @@ describe('REST v1/preprints Endpoints Integration', () => {
     }
   });
 
-  describe('GET /api/v1/preprints/:uri', () => {
+  describe('GET /api/v1/eprints/:uri', () => {
     it('returns error for invalid uri format', async () => {
-      const res = await testRequest(app, '/api/v1/preprints/invalid-uri-format');
+      const res = await testRequest(app, '/api/v1/eprints/invalid-uri-format');
 
       // May return 400 (validation), 404 (not found), or 500 (internal error from parsing)
       expect([400, 404, 500]).toContain(res.status);
@@ -356,29 +356,29 @@ describe('REST v1/preprints Endpoints Integration', () => {
       expect(body.error).toBeDefined();
     });
 
-    it('returns 404 for non-existent preprint', async () => {
+    it('returns 404 for non-existent eprint', async () => {
       const nonExistentUri = createTestUri('nonexistent');
-      const res = await testRequest(app, `/api/v1/preprints/${encodeURIComponent(nonExistentUri)}`);
+      const res = await testRequest(app, `/api/v1/eprints/${encodeURIComponent(nonExistentUri)}`);
 
       expect(res.status).toBe(404);
       const body = (await res.json()) as ErrorResponse;
       expect(body.error.code).toBe('NOT_FOUND');
     });
 
-    it('returns preprint with ATProto-compliant source field', async () => {
-      // Index a preprint first
+    it('returns eprint with ATProto-compliant source field', async () => {
+      // Index a eprint first
       const uri = createTestUri('restget1');
       const cid = createTestCid('restget1');
-      const preprint = createTestPreprint(uri, {
+      const eprint = createTestEprint(uri, {
         title: 'Split-scope definites: Relative superlatives and Haddock descriptions',
       });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
-      const res = await testRequest(app, `/api/v1/preprints/${encodeURIComponent(uri)}`);
+      const res = await testRequest(app, `/api/v1/eprints/${encodeURIComponent(uri)}`);
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // Verify core fields
       expect(body.uri).toBe(uri);
@@ -394,7 +394,7 @@ describe('REST v1/preprints Endpoints Integration', () => {
     it('includes document as BlobRef, never inline data', async () => {
       const uri = createTestUri('restblob1');
       const cid = createTestCid('restblob1');
-      const preprint = createTestPreprint(uri, {
+      const eprint = createTestEprint(uri, {
         documentBlobRef: {
           $type: 'blob',
           ref: 'bafyrerestblobtest' as CID,
@@ -402,13 +402,13 @@ describe('REST v1/preprints Endpoints Integration', () => {
           size: 3145728,
         },
       });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
-      const res = await testRequest(app, `/api/v1/preprints/${encodeURIComponent(uri)}`);
+      const res = await testRequest(app, `/api/v1/eprints/${encodeURIComponent(uri)}`);
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // Verify BlobRef structure
       expect(body.document).toBeDefined();
@@ -425,20 +425,20 @@ describe('REST v1/preprints Endpoints Integration', () => {
     it('equivalent to XRPC getSubmission endpoint', async () => {
       const uri = createTestUri('equiv1');
       const cid = createTestCid('equiv1');
-      const preprint = createTestPreprint(uri, { title: 'Equivalence Test' });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri, { title: 'Equivalence Test' });
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       // Call REST endpoint
-      const restRes = await testRequest(app, `/api/v1/preprints/${encodeURIComponent(uri)}`);
-      const restBody = (await restRes.json()) as PreprintResponse;
+      const restRes = await testRequest(app, `/api/v1/eprints/${encodeURIComponent(uri)}`);
+      const restBody = (await restRes.json()) as EprintResponse;
 
       // Call XRPC endpoint
       const xrpcRes = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
-      const xrpcBody = (await xrpcRes.json()) as PreprintResponse;
+      const xrpcBody = (await xrpcRes.json()) as EprintResponse;
 
       // Core fields should be equivalent
       expect(restBody.uri).toBe(xrpcBody.uri);
@@ -447,28 +447,28 @@ describe('REST v1/preprints Endpoints Integration', () => {
     });
   });
 
-  describe('GET /api/v1/preprints (search)', () => {
+  describe('GET /api/v1/eprints (search)', () => {
     it('requires q parameter for search', async () => {
       // Without q parameter, should return validation error
-      const res = await testRequest(app, '/api/v1/preprints');
+      const res = await testRequest(app, '/api/v1/eprints');
 
       // Returns 400 because q is required for search
       expect(res.status).toBe(400);
     });
 
     it('returns search results with source field for each', async () => {
-      // Index multiple preprints
+      // Index multiple eprints
       for (let i = 0; i < 3; i++) {
         const uri = createTestUri(`restlist${i}`);
         const cid = createTestCid(`restlist${i}`);
-        const preprint = createTestPreprint(uri, { title: `Quantifier Scope in Linguistics ${i}` });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        const eprint = createTestEprint(uri, { title: `Quantifier Scope in Linguistics ${i}` });
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const res = await testRequest(app, '/api/v1/preprints?q=Quantifier+Scope');
+      const res = await testRequest(app, '/api/v1/eprints?q=Quantifier+Scope');
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as SearchResultsResponse;
@@ -479,18 +479,18 @@ describe('REST v1/preprints Endpoints Integration', () => {
     });
 
     it('supports pagination with limit', async () => {
-      // Index multiple preprints
+      // Index multiple eprints
       for (let i = 0; i < 5; i++) {
         const uri = createTestUri(`restpage${i}`);
         const cid = createTestCid(`restpage${i}`);
-        const preprint = createTestPreprint(uri, { title: `Dynamic Semantics Analysis ${i}` });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        const eprint = createTestEprint(uri, { title: `Dynamic Semantics Analysis ${i}` });
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const res = await testRequest(app, '/api/v1/preprints?q=Dynamic+Semantics&limit=2');
+      const res = await testRequest(app, '/api/v1/eprints?q=Dynamic+Semantics&limit=2');
       expect(res.status).toBe(200);
       const body = (await res.json()) as SearchResultsResponse;
 
@@ -498,23 +498,23 @@ describe('REST v1/preprints Endpoints Integration', () => {
     });
   });
 
-  describe('GET /api/v1/authors/:did/preprints', () => {
-    it('returns preprints by author', async () => {
+  describe('GET /api/v1/authors/:did/eprints', () => {
+    it('returns eprints by author', async () => {
       const uri = createTestUri('restauthor1');
       const cid = createTestCid('restauthor1');
-      const preprint = createTestPreprint(uri, { title: 'Author Preprint' });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri, { title: 'Author Eprint' });
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/api/v1/authors/${encodeURIComponent(TEST_AUTHOR)}/preprints`
+        `/api/v1/authors/${encodeURIComponent(TEST_AUTHOR)}/eprints`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintListResponse;
+      const body = (await res.json()) as EprintListResponse;
 
-      expect(body.preprints).toBeDefined();
+      expect(body.eprints).toBeDefined();
     });
   });
 
@@ -528,15 +528,15 @@ describe('REST v1/preprints Endpoints Integration', () => {
     });
 
     it('returns search results with hits array', async () => {
-      // Index searchable preprints
+      // Index searchable eprints
       for (let i = 0; i < 3; i++) {
         const uri = createTestUri(`restsearch${i}`);
         const cid = createTestCid(`restsearch${i}`);
-        const preprint = createTestPreprint(uri, {
+        const eprint = createTestEprint(uri, {
           title: `Clause-Embedding Predicates Analysis ${i}`,
           keywords: ['semantics', 'clause-embedding', 'predicates'],
         });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
@@ -556,8 +556,8 @@ describe('REST v1/preprints Endpoints Integration', () => {
     it('includes search metadata (total, hasMore)', async () => {
       const uri = createTestUri('restsearchmeta');
       const cid = createTestCid('restsearchmeta');
-      const preprint = createTestPreprint(uri, { title: 'Factive Predicates and Presupposition' });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri, { title: 'Factive Predicates and Presupposition' });
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -572,15 +572,15 @@ describe('REST v1/preprints Endpoints Integration', () => {
     });
 
     it('supports limit parameter', async () => {
-      // Index multiple searchable preprints
+      // Index multiple searchable eprints
       for (let i = 0; i < 5; i++) {
         const uri = createTestUri(`restsearchlimit${i}`);
         const cid = createTestCid(`restsearchlimit${i}`);
-        const preprint = createTestPreprint(uri, {
+        const eprint = createTestEprint(uri, {
           title: `Incremental Quantification Semantics ${i}`,
           keywords: ['quantification', 'incrementality', 'semantics'],
         });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
@@ -634,7 +634,7 @@ describe('REST v1/preprints Endpoints Integration', () => {
 
   describe('Content-Type Handling', () => {
     it('returns JSON responses with correct content-type', async () => {
-      const res = await testRequest(app, '/api/v1/preprints');
+      const res = await testRequest(app, '/api/v1/eprints');
 
       expect(res.headers.get('Content-Type')).toContain('application/json');
     });
@@ -642,7 +642,7 @@ describe('REST v1/preprints Endpoints Integration', () => {
 
   describe('Rate Limiting', () => {
     it('includes rate limit headers in REST responses', async () => {
-      const res = await testRequest(app, '/api/v1/preprints');
+      const res = await testRequest(app, '/api/v1/eprints');
 
       expect(res.headers.get('X-RateLimit-Limit')).toBeDefined();
       expect(res.headers.get('X-RateLimit-Remaining')).toBeDefined();
@@ -680,7 +680,7 @@ describe('REST v1/preprints Endpoints Integration', () => {
 
   describe('CORS Headers', () => {
     it('includes CORS headers in REST responses', async () => {
-      const res = await testRequest(app, '/api/v1/preprints', {
+      const res = await testRequest(app, '/api/v1/eprints', {
         headers: { Origin: 'http://localhost:3000' },
       });
 

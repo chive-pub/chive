@@ -32,7 +32,7 @@ import {
   createMockAlphaService,
   createMockContributionTypeManager,
   createMockLogger,
-  createMockPreprintService,
+  createMockEprintService,
   createMockSearchService,
   createMockMetricsService,
   createMockGraphService,
@@ -82,7 +82,7 @@ describe('API Rate Limiting Integration', () => {
 
     // Create Hono app with full middleware stack
     const serverConfig: ServerConfig = {
-      preprintService: createMockPreprintService(),
+      eprintService: createMockEprintService(),
       searchService: createMockSearchService(),
       metricsService: createMockMetricsService(),
       graphService: createMockGraphService(),
@@ -372,7 +372,7 @@ describe('API Rate Limiting Integration', () => {
       const res1 = await app.request('/api/v1/search?q=test', {
         headers: { 'X-Forwarded-For': testIp },
       });
-      const res2 = await app.request('/xrpc/pub.chive.preprint.listByAuthor?did=did:plc:test', {
+      const res2 = await app.request('/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test', {
         headers: { 'X-Forwarded-For': testIp },
       });
 
@@ -459,7 +459,7 @@ describe('API Rate Limiting Integration', () => {
     it('rate limits POST requests', async () => {
       const testIp = '192.168.180.2';
 
-      const res = await app.request('/xrpc/pub.chive.preprint.searchSubmissions', {
+      const res = await app.request('/xrpc/pub.chive.eprint.searchSubmissions', {
         method: 'POST',
         headers: {
           'X-Forwarded-For': testIp,

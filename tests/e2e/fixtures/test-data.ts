@@ -54,23 +54,23 @@ export const SEEDED_AUTHORS = {
 };
 
 /**
- * Real seeded preprints from global.setup.ts.
+ * Real seeded eprints from global.setup.ts.
  *
  * These are actual papers from the seeded authors.
  */
-export const SEEDED_PREPRINTS = {
+export const SEEDED_EPRINTS = {
   white: {
-    uri: 'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab01',
+    uri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab01',
     title: 'Frequency, Acceptability, and Selection: A Case Study of Clause-Embedding',
     keywords: ['clause-embedding verbs', 'acceptability', 'corpus frequency'],
   },
   grove: {
-    uri: 'at://did:plc:jgrove456def/pub.chive.preprint.submission/3kt8m0abcde02',
+    uri: 'at://did:plc:jgrove456def/pub.chive.eprint.submission/3kt8m0abcde02',
     title: 'Algebraic Effects for Extensible Dynamic Semantics',
     keywords: ['dynamic semantics', 'algebraic effects', 'Montague semantics'],
   },
   charlow: {
-    uri: 'at://did:plc:scharlow789ghi/pub.chive.preprint.submission/4lu9n1bcdef03',
+    uri: 'at://did:plc:scharlow789ghi/pub.chive.eprint.submission/4lu9n1bcdef03',
     title: 'On the Semantics of Exceptional Scope',
     keywords: ['scope', 'continuations', 'monads', 'indefinites'],
   },
@@ -120,7 +120,7 @@ export const FORM_DATA = {
   validAbstract:
     'This is a comprehensive test abstract that is at least 50 characters long for validation requirements.',
   shortAbstract: 'Too short',
-  validTitle: 'Test Preprint: A Comprehensive E2E Test Case',
+  validTitle: 'Test Eprint: A Comprehensive E2E Test Case',
   validDid: 'did:plc:coauthor123abc',
   invalidDid: 'not-a-valid-did',
   validOrcid: '0000-0002-1825-0097',
@@ -154,7 +154,7 @@ export const ROUTES = {
   home: '/',
   search: '/search',
   browse: '/browse',
-  preprints: '/preprints',
+  eprints: '/eprints',
   authors: '/authors',
   fields: '/fields',
   tags: '/tags',

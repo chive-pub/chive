@@ -126,7 +126,7 @@ describe('Auth ATProto Compliance', () => {
         lastActivity: new Date().toISOString(),
         ipAddress: '192.168.1.1',
         userAgent: 'TestAgent/1.0',
-        scope: ['read:preprints'],
+        scope: ['read:eprints'],
       };
 
       // Session should not have password-related fields
@@ -260,7 +260,7 @@ describe('Auth security compliance', () => {
         iat: Math.floor(Date.now() / 1000),
         jti: 'unique-token-id',
         sessionId: 'sess_123',
-        scope: 'read:preprints write:reviews',
+        scope: 'read:eprints write:reviews',
       };
 
       for (const claim of requiredClaims) {

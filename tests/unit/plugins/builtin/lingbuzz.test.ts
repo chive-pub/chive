@@ -189,11 +189,11 @@ describe('LingBuzzPlugin', () => {
     });
   });
 
-  describe('buildPreprintUrl', () => {
+  describe('buildEprintUrl', () => {
     it('should build correct LingBuzz URL', async () => {
       await plugin.initialize(context);
 
-      const url = plugin.buildPreprintUrl('006789');
+      const url = plugin.buildEprintUrl('006789');
 
       expect(url).toBe('https://ling.auf.net/lingbuzz/006789');
     });
@@ -235,7 +235,7 @@ describe('LingBuzzPlugin', () => {
     });
   });
 
-  describe('fetchPreprints', () => {
+  describe('fetchEprints', () => {
     it('should fetch papers from RSS feed', async () => {
       await plugin.initialize(context);
       vi.mocked(global.fetch).mockResolvedValueOnce({
@@ -244,7 +244,7 @@ describe('LingBuzzPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 10 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 10 })) {
         papers.push(paper);
       }
 
@@ -263,7 +263,7 @@ describe('LingBuzzPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -280,7 +280,7 @@ describe('LingBuzzPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 10 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 10 })) {
         papers.push(paper);
       }
 
@@ -298,7 +298,7 @@ describe('LingBuzzPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -315,7 +315,7 @@ describe('LingBuzzPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -332,7 +332,7 @@ describe('LingBuzzPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -354,7 +354,7 @@ describe('LingBuzzPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -370,7 +370,7 @@ describe('LingBuzzPlugin', () => {
 
       await expect(async () => {
         const papers: unknown[] = [];
-        for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+        for await (const paper of plugin.fetchEprints({ limit: 1 })) {
           papers.push(paper);
         }
       }).rejects.toThrow('LingBuzz RSS feed error: 503');

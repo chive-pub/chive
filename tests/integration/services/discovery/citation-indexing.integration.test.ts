@@ -31,7 +31,7 @@ const TEST_AUTHOR_3 = 'did:plc:citationtestauthor3' as DID;
 // Generate unique test URIs
 function createTestUri(author: DID, suffix: string): AtUri {
   const timestamp = Date.now();
-  return `at://${author}/pub.chive.preprint.submission/citation${timestamp}${suffix}` as AtUri;
+  return `at://${author}/pub.chive.eprint.submission/citation${timestamp}${suffix}` as AtUri;
 }
 
 describe('CitationGraph Integration', () => {
@@ -40,11 +40,11 @@ describe('CitationGraph Integration', () => {
   let citationGraph: CitationGraph;
 
   // Test URIs - created once per test run
-  let preprintA: AtUri;
-  let preprintB: AtUri;
-  let preprintC: AtUri;
-  let preprintD: AtUri;
-  let preprintE: AtUri;
+  let eprintA: AtUri;
+  let eprintB: AtUri;
+  let eprintC: AtUri;
+  let eprintD: AtUri;
+  let eprintE: AtUri;
 
   beforeAll(async () => {
     // Create real Neo4j connection
@@ -59,24 +59,24 @@ describe('CitationGraph Integration', () => {
     citationGraph = new CitationGraph(connection);
 
     // Generate unique test URIs for this test run
-    preprintA = createTestUri(TEST_AUTHOR_1, 'a');
-    preprintB = createTestUri(TEST_AUTHOR_2, 'b');
-    preprintC = createTestUri(TEST_AUTHOR_3, 'c');
-    preprintD = createTestUri(TEST_AUTHOR_1, 'd');
-    preprintE = createTestUri(TEST_AUTHOR_2, 'e');
+    eprintA = createTestUri(TEST_AUTHOR_1, 'a');
+    eprintB = createTestUri(TEST_AUTHOR_2, 'b');
+    eprintC = createTestUri(TEST_AUTHOR_3, 'c');
+    eprintD = createTestUri(TEST_AUTHOR_1, 'd');
+    eprintE = createTestUri(TEST_AUTHOR_2, 'e');
 
-    // Create Preprint nodes for testing
+    // Create Eprint nodes for testing
     const session = connection.getSession();
     try {
       await session.run(
         `
         UNWIND $uris AS uri
-        MERGE (p:Preprint {uri: uri})
-        SET p.title = 'Test Preprint ' + uri
+        MERGE (p:Eprint {uri: uri})
+        SET p.title = 'Test Eprint ' + uri
         SET p.doi = '10.1234/citation.test.' + uri
         SET p.createdAt = datetime()
         `,
-        { uris: [preprintA, preprintB, preprintC, preprintD, preprintE] }
+        { uris: [eprintA, eprintB, eprintC, eprintD, eprintE] }
       );
     } finally {
       await session.close();
@@ -84,12 +84,12 @@ describe('CitationGraph Integration', () => {
   });
 
   afterAll(async () => {
-    // Clean up all test preprints and their relationships
+    // Clean up all test eprints and their relationships
     const session = connection.getSession();
     try {
       await session.run(
         `
-        MATCH (p:Preprint)
+        MATCH (p:Eprint)
         WHERE p.uri STARTS WITH 'at://did:plc:citationtestauthor'
         DETACH DELETE p
         `
@@ -103,12 +103,12 @@ describe('CitationGraph Integration', () => {
   });
 
   beforeEach(async () => {
-    // Clean up citation edges between tests, but keep preprint nodes
+    // Clean up citation edges between tests, but keep eprint nodes
     const session = connection.getSession();
     try {
       await session.run(
         `
-        MATCH (p:Preprint)-[r:CITES]->()
+        MATCH (p:Eprint)-[r:CITES]->()
         WHERE p.uri STARTS WITH 'at://did:plc:citationtestauthor'
         DELETE r
         `
@@ -123,11 +123,11 @@ describe('CitationGraph Integration', () => {
   // ==========================================================================
 
   describe('upsertCitationsBatch', () => {
-    it('should create citation edges between existing preprints', async () => {
+    it('should create citation edges between existing eprints', async () => {
       const citations: CitationRelationship[] = [
         {
-          citingUri: preprintA,
-          citedUri: preprintB,
+          citingUri: eprintA,
+          citedUri: eprintB,
           isInfluential: true,
           source: 'semantic-scholar',
         },
@@ -140,10 +140,10 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (citing:Preprint {uri: $citingUri})-[r:CITES]->(cited:Preprint {uri: $citedUri})
+          MATCH (citing:Eprint {uri: $citingUri})-[r:CITES]->(cited:Eprint {uri: $citedUri})
           RETURN r.isInfluential AS isInfluential, r.source AS source
           `,
-          { citingUri: preprintA, citedUri: preprintB }
+          { citingUri: eprintA, citedUri: eprintB }
         );
 
         expect(result.records).toHaveLength(1);
@@ -158,8 +158,8 @@ describe('CitationGraph Integration', () => {
       // First insert with isInfluential=false
       await citationGraph.upsertCitationsBatch([
         {
-          citingUri: preprintA,
-          citedUri: preprintB,
+          citingUri: eprintA,
+          citedUri: eprintB,
           isInfluential: false,
           source: 'openalex',
         },
@@ -168,8 +168,8 @@ describe('CitationGraph Integration', () => {
       // Second insert with isInfluential=true (should update, not create duplicate)
       await citationGraph.upsertCitationsBatch([
         {
-          citingUri: preprintA,
-          citedUri: preprintB,
+          citingUri: eprintA,
+          citedUri: eprintB,
           isInfluential: true,
           source: 'semantic-scholar',
         },
@@ -180,10 +180,10 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (citing:Preprint {uri: $citingUri})-[r:CITES]->(cited:Preprint {uri: $citedUri})
+          MATCH (citing:Eprint {uri: $citingUri})-[r:CITES]->(cited:Eprint {uri: $citedUri})
           RETURN count(r) AS edgeCount, r.isInfluential AS isInfluential, r.source AS source
           `,
-          { citingUri: preprintA, citedUri: preprintB }
+          { citingUri: eprintA, citedUri: eprintB }
         );
 
         expect(result.records).toHaveLength(1);
@@ -199,21 +199,21 @@ describe('CitationGraph Integration', () => {
     it('should handle batch of multiple citations efficiently', async () => {
       const citations: CitationRelationship[] = [
         {
-          citingUri: preprintA,
-          citedUri: preprintB,
+          citingUri: eprintA,
+          citedUri: eprintB,
           isInfluential: true,
           source: 'semantic-scholar',
         },
         {
-          citingUri: preprintA,
-          citedUri: preprintC,
+          citingUri: eprintA,
+          citedUri: eprintC,
           isInfluential: false,
           source: 'semantic-scholar',
         },
-        { citingUri: preprintB, citedUri: preprintC, isInfluential: true, source: 'openalex' },
+        { citingUri: eprintB, citedUri: eprintC, isInfluential: true, source: 'openalex' },
         {
-          citingUri: preprintC,
-          citedUri: preprintD,
+          citingUri: eprintC,
+          citedUri: eprintD,
           isInfluential: false,
           source: 'semantic-scholar',
         },
@@ -226,11 +226,11 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (p:Preprint)-[r:CITES]->()
+          MATCH (p:Eprint)-[r:CITES]->()
           WHERE p.uri IN $uris
           RETURN count(r) AS edgeCount
           `,
-          { uris: [preprintA, preprintB, preprintC] }
+          { uris: [eprintA, eprintB, eprintC] }
         );
 
         expect(result.records[0]?.get('edgeCount')).toBe(4);
@@ -239,11 +239,11 @@ describe('CitationGraph Integration', () => {
       }
     });
 
-    it('should silently skip citations where citing preprint does not exist', async () => {
-      const nonExistentUri = 'at://did:plc:nonexistent/pub.chive.preprint.submission/xyz' as AtUri;
+    it('should silently skip citations where citing eprint does not exist', async () => {
+      const nonExistentUri = 'at://did:plc:nonexistent/pub.chive.eprint.submission/xyz' as AtUri;
 
       const citations: CitationRelationship[] = [
-        { citingUri: nonExistentUri, citedUri: preprintB, source: 'semantic-scholar' },
+        { citingUri: nonExistentUri, citedUri: eprintB, source: 'semantic-scholar' },
       ];
 
       // Should not throw
@@ -254,10 +254,10 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH ()-[r:CITES]->(p:Preprint {uri: $uri})
+          MATCH ()-[r:CITES]->(p:Eprint {uri: $uri})
           RETURN count(r) AS edgeCount
           `,
-          { uri: preprintB }
+          { uri: eprintB }
         );
 
         expect(result.records[0]?.get('edgeCount')).toBe(0);
@@ -266,24 +266,24 @@ describe('CitationGraph Integration', () => {
       }
     });
 
-    it('should silently skip citations where cited preprint does not exist', async () => {
-      const nonExistentUri = 'at://did:plc:nonexistent/pub.chive.preprint.submission/xyz' as AtUri;
+    it('should silently skip citations where cited eprint does not exist', async () => {
+      const nonExistentUri = 'at://did:plc:nonexistent/pub.chive.eprint.submission/xyz' as AtUri;
 
       const citations: CitationRelationship[] = [
-        { citingUri: preprintA, citedUri: nonExistentUri, source: 'semantic-scholar' },
+        { citingUri: eprintA, citedUri: nonExistentUri, source: 'semantic-scholar' },
       ];
 
       await expect(citationGraph.upsertCitationsBatch(citations)).resolves.not.toThrow();
 
-      // Verify no edges were created from preprintA
+      // Verify no edges were created from eprintA
       const session = connection.getSession();
       try {
         const result = await session.run(
           `
-          MATCH (p:Preprint {uri: $uri})-[r:CITES]->()
+          MATCH (p:Eprint {uri: $uri})-[r:CITES]->()
           RETURN count(r) AS edgeCount
           `,
-          { uri: preprintA }
+          { uri: eprintA }
         );
 
         expect(result.records[0]?.get('edgeCount')).toBe(0);
@@ -300,7 +300,7 @@ describe('CitationGraph Integration', () => {
       const beforeInsert = new Date();
 
       await citationGraph.upsertCitationsBatch([
-        { citingUri: preprintA, citedUri: preprintB, source: 'semantic-scholar' },
+        { citingUri: eprintA, citedUri: eprintB, source: 'semantic-scholar' },
       ]);
 
       const afterInsert = new Date();
@@ -309,10 +309,10 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (citing:Preprint {uri: $citingUri})-[r:CITES]->(cited:Preprint {uri: $citedUri})
+          MATCH (citing:Eprint {uri: $citingUri})-[r:CITES]->(cited:Eprint {uri: $citedUri})
           RETURN r.discoveredAt AS discoveredAt
           `,
-          { citingUri: preprintA, citedUri: preprintB }
+          { citingUri: eprintA, citedUri: eprintB }
         );
 
         const discoveredAt = new Date(
@@ -335,56 +335,56 @@ describe('CitationGraph Integration', () => {
       // Set up citation network: A, B, C all cite D
       await citationGraph.upsertCitationsBatch([
         {
-          citingUri: preprintA,
-          citedUri: preprintD,
+          citingUri: eprintA,
+          citedUri: eprintD,
           isInfluential: true,
           source: 'semantic-scholar',
         },
         {
-          citingUri: preprintB,
-          citedUri: preprintD,
+          citingUri: eprintB,
+          citedUri: eprintD,
           isInfluential: false,
           source: 'semantic-scholar',
         },
-        { citingUri: preprintC, citedUri: preprintD, isInfluential: true, source: 'openalex' },
+        { citingUri: eprintC, citedUri: eprintD, isInfluential: true, source: 'openalex' },
       ]);
     });
 
     it('should return all papers that cite the target', async () => {
-      const result = await citationGraph.getCitingPapers(preprintD);
+      const result = await citationGraph.getCitingPapers(eprintD);
 
       expect(result.citations).toHaveLength(3);
       expect(result.total).toBe(3);
 
       const citingUris = result.citations.map((c) => c.citingUri);
-      expect(citingUris).toContain(preprintA);
-      expect(citingUris).toContain(preprintB);
-      expect(citingUris).toContain(preprintC);
+      expect(citingUris).toContain(eprintA);
+      expect(citingUris).toContain(eprintB);
+      expect(citingUris).toContain(eprintC);
     });
 
     it('should include isInfluential flag correctly', async () => {
-      const result = await citationGraph.getCitingPapers(preprintD);
+      const result = await citationGraph.getCitingPapers(eprintD);
 
       const influentialCount = result.citations.filter((c) => c.isInfluential).length;
       expect(influentialCount).toBe(2);
 
-      const citationFromA = result.citations.find((c) => c.citingUri === preprintA);
+      const citationFromA = result.citations.find((c) => c.citingUri === eprintA);
       expect(citationFromA?.isInfluential).toBe(true);
 
-      const citationFromB = result.citations.find((c) => c.citingUri === preprintB);
+      const citationFromB = result.citations.find((c) => c.citingUri === eprintB);
       expect(citationFromB?.isInfluential).toBe(false);
     });
 
     it('should respect limit option', async () => {
-      const result = await citationGraph.getCitingPapers(preprintD, { limit: 2 });
+      const result = await citationGraph.getCitingPapers(eprintD, { limit: 2 });
 
       expect(result.citations).toHaveLength(2);
       expect(result.total).toBe(3); // Total should still reflect all citations
     });
 
     it('should respect offset option for pagination', async () => {
-      const firstPage = await citationGraph.getCitingPapers(preprintD, { limit: 2, offset: 0 });
-      const secondPage = await citationGraph.getCitingPapers(preprintD, { limit: 2, offset: 2 });
+      const firstPage = await citationGraph.getCitingPapers(eprintD, { limit: 2, offset: 0 });
+      const secondPage = await citationGraph.getCitingPapers(eprintD, { limit: 2, offset: 2 });
 
       expect(firstPage.citations).toHaveLength(2);
       expect(secondPage.citations).toHaveLength(1);
@@ -398,16 +398,16 @@ describe('CitationGraph Integration', () => {
     });
 
     it('should return empty result for paper with no citations', async () => {
-      const result = await citationGraph.getCitingPapers(preprintE);
+      const result = await citationGraph.getCitingPapers(eprintE);
 
       expect(result.citations).toHaveLength(0);
       expect(result.total).toBe(0);
     });
 
     it('should include source information', async () => {
-      const result = await citationGraph.getCitingPapers(preprintD);
+      const result = await citationGraph.getCitingPapers(eprintD);
 
-      const citationFromC = result.citations.find((c) => c.citingUri === preprintC);
+      const citationFromC = result.citations.find((c) => c.citingUri === eprintC);
       expect(citationFromC?.source).toBe('openalex');
     });
   });
@@ -421,52 +421,52 @@ describe('CitationGraph Integration', () => {
       // Set up citation network: A cites B, C, D
       await citationGraph.upsertCitationsBatch([
         {
-          citingUri: preprintA,
-          citedUri: preprintB,
+          citingUri: eprintA,
+          citedUri: eprintB,
           isInfluential: true,
           source: 'semantic-scholar',
         },
         {
-          citingUri: preprintA,
-          citedUri: preprintC,
+          citingUri: eprintA,
+          citedUri: eprintC,
           isInfluential: false,
           source: 'semantic-scholar',
         },
-        { citingUri: preprintA, citedUri: preprintD, isInfluential: true, source: 'openalex' },
+        { citingUri: eprintA, citedUri: eprintD, isInfluential: true, source: 'openalex' },
       ]);
     });
 
     it('should return all papers that the target cites (references)', async () => {
-      const result = await citationGraph.getReferences(preprintA);
+      const result = await citationGraph.getReferences(eprintA);
 
       expect(result.citations).toHaveLength(3);
       expect(result.total).toBe(3);
 
       const citedUris = result.citations.map((c) => c.citedUri);
-      expect(citedUris).toContain(preprintB);
-      expect(citedUris).toContain(preprintC);
-      expect(citedUris).toContain(preprintD);
+      expect(citedUris).toContain(eprintB);
+      expect(citedUris).toContain(eprintC);
+      expect(citedUris).toContain(eprintD);
     });
 
     it('should include isInfluential flag correctly', async () => {
-      const result = await citationGraph.getReferences(preprintA);
+      const result = await citationGraph.getReferences(eprintA);
 
-      const referenceToB = result.citations.find((c) => c.citedUri === preprintB);
+      const referenceToB = result.citations.find((c) => c.citedUri === eprintB);
       expect(referenceToB?.isInfluential).toBe(true);
 
-      const referenceToC = result.citations.find((c) => c.citedUri === preprintC);
+      const referenceToC = result.citations.find((c) => c.citedUri === eprintC);
       expect(referenceToC?.isInfluential).toBe(false);
     });
 
     it('should respect limit option', async () => {
-      const result = await citationGraph.getReferences(preprintA, { limit: 2 });
+      const result = await citationGraph.getReferences(eprintA, { limit: 2 });
 
       expect(result.citations).toHaveLength(2);
       expect(result.total).toBe(3);
     });
 
     it('should return empty result for paper with no references', async () => {
-      const result = await citationGraph.getReferences(preprintE);
+      const result = await citationGraph.getReferences(eprintE);
 
       expect(result.citations).toHaveLength(0);
       expect(result.total).toBe(0);
@@ -485,48 +485,48 @@ describe('CitationGraph Integration', () => {
       // E cites B only
       // So B and C are co-cited together by A and D (co-citation count = 2)
       await citationGraph.upsertCitationsBatch([
-        { citingUri: preprintA, citedUri: preprintB, source: 'semantic-scholar' },
-        { citingUri: preprintA, citedUri: preprintC, source: 'semantic-scholar' },
-        { citingUri: preprintD, citedUri: preprintB, source: 'semantic-scholar' },
-        { citingUri: preprintD, citedUri: preprintC, source: 'semantic-scholar' },
-        { citingUri: preprintE, citedUri: preprintB, source: 'semantic-scholar' },
+        { citingUri: eprintA, citedUri: eprintB, source: 'semantic-scholar' },
+        { citingUri: eprintA, citedUri: eprintC, source: 'semantic-scholar' },
+        { citingUri: eprintD, citedUri: eprintB, source: 'semantic-scholar' },
+        { citingUri: eprintD, citedUri: eprintC, source: 'semantic-scholar' },
+        { citingUri: eprintE, citedUri: eprintB, source: 'semantic-scholar' },
       ]);
     });
 
     it('should find papers frequently cited together with target', async () => {
       // Find papers co-cited with B
-      const result = await citationGraph.findCoCitedPapers(preprintB, 1);
+      const result = await citationGraph.findCoCitedPapers(eprintB, 1);
 
       // C should be co-cited with B (by A and D = 2 co-citations)
       expect(result.length).toBeGreaterThan(0);
 
-      const coC = result.find((p) => p.uri === preprintC);
+      const coC = result.find((p) => p.uri === eprintC);
       expect(coC).toBeDefined();
       expect(coC?.coCitationCount).toBe(2);
     });
 
     it('should respect minimum co-citation threshold', async () => {
       // With threshold 2, only papers co-cited at least twice should appear
-      const result = await citationGraph.findCoCitedPapers(preprintB, 2);
+      const result = await citationGraph.findCoCitedPapers(eprintB, 2);
 
       // Should only include C (co-cited 2 times)
       expect(result.every((p) => p.coCitationCount >= 2)).toBe(true);
 
-      const coC = result.find((p) => p.uri === preprintC);
+      const coC = result.find((p) => p.uri === eprintC);
       expect(coC).toBeDefined();
     });
 
     it('should exclude self from co-citation results', async () => {
-      const result = await citationGraph.findCoCitedPapers(preprintB, 1);
+      const result = await citationGraph.findCoCitedPapers(eprintB, 1);
 
       // B should not appear in its own co-citation list
-      const selfCitation = result.find((p) => p.uri === preprintB);
+      const selfCitation = result.find((p) => p.uri === eprintB);
       expect(selfCitation).toBeUndefined();
     });
 
     it('should return empty for papers with no co-citations', async () => {
       // E is only cited once, so no co-citations possible
-      const result = await citationGraph.findCoCitedPapers(preprintE, 1);
+      const result = await citationGraph.findCoCitedPapers(eprintE, 1);
 
       expect(result).toHaveLength(0);
     });
@@ -537,25 +537,25 @@ describe('CitationGraph Integration', () => {
         // Another paper F that cites B and C - increases B-C co-citation to 3
         {
           citingUri: createTestUri(TEST_AUTHOR_3, 'f'),
-          citedUri: preprintB,
+          citedUri: eprintB,
           source: 'semantic-scholar',
         },
       ]);
 
-      // First create the F preprint node
+      // First create the F eprint node
       const session = connection.getSession();
       try {
         const fUri = createTestUri(TEST_AUTHOR_3, 'f');
-        await session.run(`MERGE (p:Preprint {uri: $uri}) SET p.title = 'F'`, { uri: fUri });
+        await session.run(`MERGE (p:Eprint {uri: $uri}) SET p.title = 'F'`, { uri: fUri });
         await citationGraph.upsertCitationsBatch([
-          { citingUri: fUri, citedUri: preprintB, source: 'semantic-scholar' },
-          { citingUri: fUri, citedUri: preprintC, source: 'semantic-scholar' },
+          { citingUri: fUri, citedUri: eprintB, source: 'semantic-scholar' },
+          { citingUri: fUri, citedUri: eprintC, source: 'semantic-scholar' },
         ]);
       } finally {
         await session.close();
       }
 
-      const result = await citationGraph.findCoCitedPapers(preprintB, 1);
+      const result = await citationGraph.findCoCitedPapers(eprintB, 1);
 
       // Results should be sorted by coCitationCount descending
       for (let i = 1; i < result.length; i++) {

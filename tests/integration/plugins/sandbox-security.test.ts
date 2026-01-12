@@ -78,7 +78,7 @@ class RestrictedPlugin extends BasePlugin {
     author: 'Test',
     license: 'MIT' as const,
     permissions: {
-      hooks: ['preprint.indexed'],
+      hooks: ['eprint.indexed'],
       network: { allowedDomains: ['api.github.com'] },
       storage: { maxSize: 1024 },
     },
@@ -105,13 +105,13 @@ class RestrictedPlugin extends BasePlugin {
   }
 
   public subscribeToPermittedHook(): void {
-    this.context?.eventBus.on('preprint.indexed', () => {
+    this.context?.eventBus.on('eprint.indexed', () => {
       // Permitted hook handler
     });
   }
 
   public emitPermittedEvent(): void {
-    this.context?.eventBus.emit('preprint.indexed', {});
+    this.context?.eventBus.emit('eprint.indexed', {});
   }
 }
 

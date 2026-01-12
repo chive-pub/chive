@@ -31,7 +31,7 @@ const TEST_USER = 'did:plc:testuser456' as DID;
 // Generate unique test URIs
 function createTestUri(suffix: string): AtUri {
   const timestamp = Date.now();
-  return `at://${TEST_AUTHOR}/pub.chive.preprint.submission/test${timestamp}${suffix}` as AtUri;
+  return `at://${TEST_AUTHOR}/pub.chive.eprint.submission/test${timestamp}${suffix}` as AtUri;
 }
 
 /**
@@ -65,12 +65,12 @@ function createMockDatabasePool(): IDatabasePool {
  */
 function createMockSearchEngine(): ISearchEngine {
   return {
-    indexPreprint: vi.fn().mockResolvedValue(undefined),
-    search: vi.fn().mockResolvedValue({ preprints: [], total: 0, cursor: undefined }),
+    indexEprint: vi.fn().mockResolvedValue(undefined),
+    search: vi.fn().mockResolvedValue({ eprints: [], total: 0, cursor: undefined }),
     findRelated: vi.fn().mockResolvedValue([]),
     findByConceptOverlap: vi.fn().mockResolvedValue([]),
-    findByAuthor: vi.fn().mockResolvedValue({ preprints: [], total: 0 }),
-    getPreprint: vi.fn().mockResolvedValue(null),
+    findByAuthor: vi.fn().mockResolvedValue({ eprints: [], total: 0 }),
+    getEprint: vi.fn().mockResolvedValue(null),
   } as unknown as ISearchEngine;
 }
 
@@ -192,18 +192,18 @@ describe('Recommendation Pipeline Integration', () => {
   });
 
   // ==========================================================================
-  // enrichPreprint
+  // enrichEprint
   // ==========================================================================
 
-  describe('enrichPreprint', () => {
-    it('should enrich preprint with Semantic Scholar data', async () => {
+  describe('enrichEprint', () => {
+    it('should enrich eprint with Semantic Scholar data', async () => {
       const input: EnrichmentInput = {
         uri: testUri,
         doi: '10.1234/test.2024.001',
         title: 'Test Paper on Discovery',
       };
 
-      const result = await discoveryService.enrichPreprint(input);
+      const result = await discoveryService.enrichEprint(input);
 
       expect(result.success).toBe(true);
       expect(result.semanticScholarId).toBe('s2-paper-123');
@@ -211,14 +211,14 @@ describe('Recommendation Pipeline Integration', () => {
       expect(result.influentialCitationCount).toBe(5);
     });
 
-    it('should enrich preprint with OpenAlex data', async () => {
+    it('should enrich eprint with OpenAlex data', async () => {
       const input: EnrichmentInput = {
         uri: testUri,
         doi: '10.1234/test.2024.001',
         title: 'Test Paper on Discovery',
       };
 
-      const result = await discoveryService.enrichPreprint(input);
+      const result = await discoveryService.enrichEprint(input);
 
       expect(result.success).toBe(true);
       expect(result.openAlexId).toBe('https://openalex.org/W123');
@@ -241,7 +241,7 @@ describe('Recommendation Pipeline Integration', () => {
         title: 'Test Paper',
       };
 
-      const result = await discoveryService.enrichPreprint(input);
+      const result = await discoveryService.enrichEprint(input);
 
       expect(result.success).toBe(true);
       expect(result.semanticScholarId).toBeUndefined();
@@ -265,7 +265,7 @@ describe('Recommendation Pipeline Integration', () => {
       };
 
       // Should not throw
-      const result = await discoveryService.enrichPreprint(input);
+      const result = await discoveryService.enrichEprint(input);
       expect(result.success).toBe(true);
     });
   });
@@ -303,13 +303,13 @@ describe('Recommendation Pipeline Integration', () => {
   });
 
   // ==========================================================================
-  // findRelatedPreprints
+  // findRelatedEprints
   // ==========================================================================
 
-  describe('findRelatedPreprints', () => {
-    it('should return array of related preprints', async () => {
+  describe('findRelatedEprints', () => {
+    it('should return array of related eprints', async () => {
       // This is a basic smoke test - full integration requires real databases
-      const result = await discoveryService.findRelatedPreprints(testUri);
+      const result = await discoveryService.findRelatedEprints(testUri);
 
       expect(Array.isArray(result)).toBe(true);
     });
@@ -363,7 +363,7 @@ describe('Recommendation Pipeline Integration', () => {
       await expect(
         discoveryService.recordInteraction(TEST_USER, {
           type: 'view',
-          preprintUri: testUri,
+          eprintUri: testUri,
           timestamp: new Date(),
         })
       ).resolves.not.toThrow();
@@ -373,7 +373,7 @@ describe('Recommendation Pipeline Integration', () => {
       await expect(
         discoveryService.recordInteraction(TEST_USER, {
           type: 'click',
-          preprintUri: testUri,
+          eprintUri: testUri,
           recommendationId: 'rec-123',
           timestamp: new Date(),
         })
@@ -384,7 +384,7 @@ describe('Recommendation Pipeline Integration', () => {
       await expect(
         discoveryService.recordInteraction(TEST_USER, {
           type: 'dismiss',
-          preprintUri: testUri,
+          eprintUri: testUri,
           timestamp: new Date(),
         })
       ).resolves.not.toThrow();
@@ -445,7 +445,7 @@ describe('Recommendation Pipeline Integration', () => {
       expect(db.query).toHaveBeenCalled();
     });
 
-    it('should return null for non-enriched preprint', async () => {
+    it('should return null for non-enriched eprint', async () => {
       vi.mocked(db.query).mockResolvedValue({ rows: [] } as never);
 
       const result = await discoveryService.getEnrichment(testUri);

@@ -1,5 +1,5 @@
 /**
- * Unit tests for XRPC preprint handlers.
+ * Unit tests for XRPC eprint handlers.
  *
  * @remarks
  * Tests getSubmission, searchSubmissions, and listByAuthor handlers.
@@ -8,13 +8,13 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getSubmissionHandler } from '@/api/handlers/xrpc/preprint/getSubmission.js';
-import { listByAuthorHandler } from '@/api/handlers/xrpc/preprint/listByAuthor.js';
-import type { PreprintView } from '@/services/preprint/preprint-service.js';
+import { getSubmissionHandler } from '@/api/handlers/xrpc/eprint/getSubmission.js';
+import { listByAuthorHandler } from '@/api/handlers/xrpc/eprint/listByAuthor.js';
+import type { EprintView } from '@/services/eprint/eprint-service.js';
 import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
 import { NotFoundError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
+import type { EprintAuthor } from '@/types/models/author.js';
 
 const createMockLogger = (): ILogger => ({
   debug: vi.fn(),
@@ -24,7 +24,7 @@ const createMockLogger = (): ILogger => ({
   child: vi.fn().mockReturnThis(),
 });
 
-const mockAuthor: PreprintAuthor = {
+const mockAuthor: EprintAuthor = {
   did: 'did:plc:author123' as DID,
   name: 'Test Author',
   order: 1,
@@ -34,8 +34,8 @@ const mockAuthor: PreprintAuthor = {
   isHighlighted: false,
 };
 
-const createMockPreprint = (overrides?: Partial<PreprintView>): PreprintView => ({
-  uri: 'at://did:plc:author123/pub.chive.preprint.submission/abc123' as AtUri,
+const createMockEprint = (overrides?: Partial<EprintView>): EprintView => ({
+  uri: 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri,
   cid: 'bafyreiabc123' as CID,
   title: 'Quantum Computing Advances',
   abstract: 'This paper presents advances in quantum computing...',
@@ -50,12 +50,12 @@ const createMockPreprint = (overrides?: Partial<PreprintView>): PreprintView => 
     size: 1024000,
   },
   documentFormat: 'pdf',
-  publicationStatus: 'preprint',
+  publicationStatus: 'eprint',
   createdAt: new Date('2024-01-15T10:00:00Z'),
   indexedAt: new Date('2024-01-15T10:05:00Z'),
   versions: [
     {
-      uri: 'at://did:plc:author123/pub.chive.preprint.submission/abc123' as AtUri,
+      uri: 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri,
       versionNumber: 1,
       cid: 'bafyreiabc123' as CID,
       createdAt: Date.parse('2024-01-15T10:00:00Z') as Timestamp,
@@ -70,27 +70,27 @@ const createMockPreprint = (overrides?: Partial<PreprintView>): PreprintView => 
   ...overrides,
 });
 
-interface MockPreprintService {
-  getPreprint: ReturnType<typeof vi.fn>;
-  getPreprintsByAuthor: ReturnType<typeof vi.fn>;
+interface MockEprintService {
+  getEprint: ReturnType<typeof vi.fn>;
+  getEprintsByAuthor: ReturnType<typeof vi.fn>;
 }
 
 interface MockMetricsService {
   recordView: ReturnType<typeof vi.fn>;
 }
 
-const createMockPreprintService = (): MockPreprintService => ({
-  getPreprint: vi.fn(),
-  getPreprintsByAuthor: vi.fn(),
+const createMockEprintService = (): MockEprintService => ({
+  getEprint: vi.fn(),
+  getEprintsByAuthor: vi.fn(),
 });
 
 const createMockMetricsService = (): MockMetricsService => ({
   recordView: vi.fn().mockResolvedValue(undefined),
 });
 
-describe('XRPC Preprint Handlers', () => {
+describe('XRPC Eprint Handlers', () => {
   let mockLogger: ILogger;
-  let mockPreprintService: MockPreprintService;
+  let mockEprintService: MockEprintService;
   let mockMetricsService: MockMetricsService;
   let mockContext: {
     get: ReturnType<typeof vi.fn>;
@@ -99,7 +99,7 @@ describe('XRPC Preprint Handlers', () => {
 
   beforeEach(() => {
     mockLogger = createMockLogger();
-    mockPreprintService = createMockPreprintService();
+    mockEprintService = createMockEprintService();
     mockMetricsService = createMockMetricsService();
 
     mockContext = {
@@ -107,7 +107,7 @@ describe('XRPC Preprint Handlers', () => {
         switch (key) {
           case 'services':
             return {
-              preprint: mockPreprintService,
+              eprint: mockEprintService,
               metrics: mockMetricsService,
             };
           case 'logger':
@@ -123,17 +123,17 @@ describe('XRPC Preprint Handlers', () => {
   });
 
   describe('getSubmissionHandler', () => {
-    it('returns preprint with ATProto-compliant source information', async () => {
-      const preprint = createMockPreprint();
-      mockPreprintService.getPreprint.mockResolvedValue(preprint);
+    it('returns eprint with ATProto-compliant source information', async () => {
+      const eprint = createMockEprint();
+      mockEprintService.getEprint.mockResolvedValue(eprint);
 
       const result = await getSubmissionHandler(
         mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: preprint.uri }
+        { uri: eprint.uri }
       );
 
-      expect(result.uri).toBe(preprint.uri);
-      expect(result.title).toBe(preprint.title);
+      expect(result.uri).toBe(eprint.uri);
+      expect(result.title).toBe(eprint.title);
 
       // Verify ATProto compliance: source field
       expect(result.source).toBeDefined();
@@ -145,12 +145,12 @@ describe('XRPC Preprint Handlers', () => {
     });
 
     it('includes document as BlobRef, not inline data', async () => {
-      const preprint = createMockPreprint();
-      mockPreprintService.getPreprint.mockResolvedValue(preprint);
+      const eprint = createMockEprint();
+      mockEprintService.getEprint.mockResolvedValue(eprint);
 
       const result = await getSubmissionHandler(
         mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: preprint.uri }
+        { uri: eprint.uri }
       );
 
       // Verify BlobRef structure
@@ -163,12 +163,12 @@ describe('XRPC Preprint Handlers', () => {
     });
 
     it('includes version history', async () => {
-      const preprint = createMockPreprint();
-      mockPreprintService.getPreprint.mockResolvedValue(preprint);
+      const eprint = createMockEprint();
+      mockEprintService.getEprint.mockResolvedValue(eprint);
 
       const result = await getSubmissionHandler(
         mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: preprint.uri }
+        { uri: eprint.uri }
       );
 
       expect(result.versions).toHaveLength(1);
@@ -183,12 +183,12 @@ describe('XRPC Preprint Handlers', () => {
     });
 
     it('includes metrics when available', async () => {
-      const preprint = createMockPreprint();
-      mockPreprintService.getPreprint.mockResolvedValue(preprint);
+      const eprint = createMockEprint();
+      mockEprintService.getEprint.mockResolvedValue(eprint);
 
       const result = await getSubmissionHandler(
         mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: preprint.uri }
+        { uri: eprint.uri }
       );
 
       expect(result.metrics).toMatchObject({
@@ -198,54 +198,54 @@ describe('XRPC Preprint Handlers', () => {
       });
     });
 
-    it('throws NotFoundError when preprint does not exist', async () => {
-      mockPreprintService.getPreprint.mockResolvedValue(null);
+    it('throws NotFoundError when eprint does not exist', async () => {
+      mockEprintService.getEprint.mockResolvedValue(null);
 
       await expect(
         getSubmissionHandler(mockContext as unknown as Parameters<typeof getSubmissionHandler>[0], {
-          uri: 'at://did:plc:notfound/pub.chive.preprint.submission/xyz' as AtUri,
+          uri: 'at://did:plc:notfound/pub.chive.eprint.submission/xyz' as AtUri,
         })
       ).rejects.toThrow(NotFoundError);
     });
 
     it('records view metric asynchronously', async () => {
-      const preprint = createMockPreprint();
-      mockPreprintService.getPreprint.mockResolvedValue(preprint);
+      const eprint = createMockEprint();
+      mockEprintService.getEprint.mockResolvedValue(eprint);
 
       await getSubmissionHandler(
         mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: preprint.uri }
+        { uri: eprint.uri }
       );
 
       expect(mockMetricsService.recordView).toHaveBeenCalledWith(
-        preprint.uri,
+        eprint.uri,
         undefined // user DID (anonymous)
       );
     });
 
-    it('marks preprint as stale if indexed > 7 days ago', async () => {
-      const preprint = createMockPreprint({
+    it('marks eprint as stale if indexed > 7 days ago', async () => {
+      const eprint = createMockEprint({
         indexedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000), // 8 days ago
       });
-      mockPreprintService.getPreprint.mockResolvedValue(preprint);
+      mockEprintService.getEprint.mockResolvedValue(eprint);
 
       const result = await getSubmissionHandler(
         mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: preprint.uri }
+        { uri: eprint.uri }
       );
 
       expect(result.source.stale).toBe(true);
     });
 
-    it('marks preprint as fresh if indexed within 7 days', async () => {
-      const preprint = createMockPreprint({
+    it('marks eprint as fresh if indexed within 7 days', async () => {
+      const eprint = createMockEprint({
         indexedAt: new Date(), // Now
       });
-      mockPreprintService.getPreprint.mockResolvedValue(preprint);
+      mockEprintService.getEprint.mockResolvedValue(eprint);
 
       const result = await getSubmissionHandler(
         mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: preprint.uri }
+        { uri: eprint.uri }
       );
 
       expect(result.source.stale).toBe(false);
@@ -254,16 +254,16 @@ describe('XRPC Preprint Handlers', () => {
 
   describe('listByAuthorHandler', () => {
     it('returns paginated list with ATProto-compliant source info', async () => {
-      const preprints = [
-        createMockPreprint(),
-        createMockPreprint({
-          uri: 'at://did:plc:author123/pub.chive.preprint.submission/def456' as AtUri,
+      const eprints = [
+        createMockEprint(),
+        createMockEprint({
+          uri: 'at://did:plc:author123/pub.chive.eprint.submission/def456' as AtUri,
           title: 'Another Paper',
         }),
       ];
 
-      mockPreprintService.getPreprintsByAuthor.mockResolvedValue({
-        preprints,
+      mockEprintService.getEprintsByAuthor.mockResolvedValue({
+        eprints,
         total: 2,
       });
 
@@ -272,27 +272,27 @@ describe('XRPC Preprint Handlers', () => {
         { did: 'did:plc:author123', limit: 20, sort: 'date' }
       );
 
-      expect(result.preprints).toHaveLength(2);
+      expect(result.eprints).toHaveLength(2);
       expect(result.total).toBe(2);
       expect(result.hasMore).toBe(false);
 
-      // Each preprint should have source info
-      for (const p of result.preprints) {
+      // Each eprint should have source info
+      for (const p of result.eprints) {
         expect(p.source).toBeDefined();
         expect(p.source.pdsEndpoint).toBe('https://bsky.social');
       }
     });
 
     it('handles pagination with cursor', async () => {
-      const preprints = Array.from({ length: 20 }, (_, i) =>
-        createMockPreprint({
-          uri: `at://did:plc:author123/pub.chive.preprint.submission/item${i}` as AtUri,
+      const eprints = Array.from({ length: 20 }, (_, i) =>
+        createMockEprint({
+          uri: `at://did:plc:author123/pub.chive.eprint.submission/item${i}` as AtUri,
           title: `Paper ${i}`,
         })
       );
 
-      mockPreprintService.getPreprintsByAuthor.mockResolvedValue({
-        preprints,
+      mockEprintService.getEprintsByAuthor.mockResolvedValue({
+        eprints,
         total: 45,
       });
 
@@ -307,10 +307,10 @@ describe('XRPC Preprint Handlers', () => {
 
     it('truncates abstract to 500 characters', async () => {
       const longAbstract = 'A'.repeat(1000);
-      const preprint = createMockPreprint({ abstract: longAbstract });
+      const eprint = createMockEprint({ abstract: longAbstract });
 
-      mockPreprintService.getPreprintsByAuthor.mockResolvedValue({
-        preprints: [preprint],
+      mockEprintService.getEprintsByAuthor.mockResolvedValue({
+        eprints: [eprint],
         total: 1,
       });
 
@@ -319,9 +319,9 @@ describe('XRPC Preprint Handlers', () => {
         { did: 'did:plc:author123', limit: 20, sort: 'date' }
       );
 
-      const firstPreprint = result.preprints[0];
-      if (firstPreprint) {
-        expect(firstPreprint.abstract.length).toBe(500);
+      const firstEprint = result.eprints[0];
+      if (firstEprint) {
+        expect(firstEprint.abstract.length).toBe(500);
       }
     });
   });

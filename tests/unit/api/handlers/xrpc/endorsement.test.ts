@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { getSummaryHandler } from '@/api/handlers/xrpc/endorsement/getSummary.js';
 import { getUserEndorsementHandler } from '@/api/handlers/xrpc/endorsement/getUserEndorsement.js';
-import { listForPreprintHandler } from '@/api/handlers/xrpc/endorsement/listForPreprint.js';
+import { listForEprintHandler } from '@/api/handlers/xrpc/endorsement/listForEprint.js';
 import type { AtUri, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -20,7 +20,7 @@ const createMockLogger = (): ILogger => ({
 
 interface MockEndorsement {
   uri: AtUri;
-  preprintUri: AtUri;
+  eprintUri: AtUri;
   endorser: DID;
   endorsementType: 'methods' | 'results' | 'overall';
   comment?: string;
@@ -36,13 +36,13 @@ interface MockEndorsementSummary {
 interface MockReviewService {
   getEndorsementSummary: ReturnType<typeof vi.fn>;
   getEndorsementByUser: ReturnType<typeof vi.fn>;
-  listEndorsementsForPreprint: ReturnType<typeof vi.fn>;
+  listEndorsementsForEprint: ReturnType<typeof vi.fn>;
 }
 
 const createMockReviewService = (): MockReviewService => ({
   getEndorsementSummary: vi.fn(),
   getEndorsementByUser: vi.fn(),
-  listEndorsementsForPreprint: vi.fn(),
+  listEndorsementsForEprint: vi.fn(),
 });
 
 describe('XRPC Endorsement Handlers', () => {
@@ -81,12 +81,12 @@ describe('XRPC Endorsement Handlers', () => {
     };
   });
 
-  describe('listForPreprintHandler', () => {
-    it('returns paginated endorsements for a preprint', async () => {
+  describe('listForEprintHandler', () => {
+    it('returns paginated endorsements for a eprint', async () => {
       const endorsements: MockEndorsement[] = [
         {
           uri: 'at://did:plc:user1/pub.chive.review.endorsement/abc' as AtUri,
-          preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' as AtUri,
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' as AtUri,
           endorser: 'did:plc:user1' as DID,
           endorsementType: 'methods',
           createdAt: new Date(),
@@ -99,16 +99,16 @@ describe('XRPC Endorsement Handlers', () => {
         byType: { methodological: 1, analytical: 1 },
       };
 
-      mockReviewService.listEndorsementsForPreprint.mockResolvedValue({
+      mockReviewService.listEndorsementsForEprint.mockResolvedValue({
         items: endorsements,
         hasMore: false,
         total: 1,
       });
       mockReviewService.getEndorsementSummary.mockResolvedValue(summary);
 
-      const result = await listForPreprintHandler(
-        mockContext as unknown as Parameters<typeof listForPreprintHandler>[0],
-        { preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz', limit: 20 }
+      const result = await listForEprintHandler(
+        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
+        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
       );
 
       expect(result.endorsements).toHaveLength(1);
@@ -120,7 +120,7 @@ describe('XRPC Endorsement Handlers', () => {
     });
 
     it('handles pagination with cursor', async () => {
-      mockReviewService.listEndorsementsForPreprint.mockResolvedValue({
+      mockReviewService.listEndorsementsForEprint.mockResolvedValue({
         items: [],
         hasMore: true,
         total: 50,
@@ -132,9 +132,9 @@ describe('XRPC Endorsement Handlers', () => {
         byType: {},
       });
 
-      const result = await listForPreprintHandler(
-        mockContext as unknown as Parameters<typeof listForPreprintHandler>[0],
-        { preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz', limit: 10 }
+      const result = await listForEprintHandler(
+        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
+        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 10 }
       );
 
       expect(result.hasMore).toBe(true);
@@ -157,7 +157,7 @@ describe('XRPC Endorsement Handlers', () => {
 
       const result = await getSummaryHandler(
         mockContext as unknown as Parameters<typeof getSummaryHandler>[0],
-        { preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }
+        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }
       );
 
       expect(result.total).toBe(25);
@@ -170,7 +170,7 @@ describe('XRPC Endorsement Handlers', () => {
     it('returns user endorsement when exists', async () => {
       const endorsement: MockEndorsement = {
         uri: 'at://did:plc:user123/pub.chive.review.endorsement/abc' as AtUri,
-        preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' as AtUri,
+        eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' as AtUri,
         endorser: 'did:plc:user123' as DID,
         endorsementType: 'methods',
         comment: 'Excellent methodology',
@@ -181,7 +181,7 @@ describe('XRPC Endorsement Handlers', () => {
       const result = await getUserEndorsementHandler(
         mockContext as unknown as Parameters<typeof getUserEndorsementHandler>[0],
         {
-          preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           userDid: 'did:plc:user123',
         }
       );
@@ -197,7 +197,7 @@ describe('XRPC Endorsement Handlers', () => {
         getUserEndorsementHandler(
           mockContext as unknown as Parameters<typeof getUserEndorsementHandler>[0],
           {
-            preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+            eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
             userDid: 'did:plc:nonendorser',
           }
         )

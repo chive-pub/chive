@@ -37,7 +37,7 @@ import {
   createMockImportService,
   createMockPDSSyncService,
   createMockActivityService,
-  createMockPreprintService,
+  createMockEprintService,
   createNoOpRelevanceLogger,
   createMockServiceAuthVerifier,
 } from '../../../helpers/mock-services.js';
@@ -119,7 +119,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
 
     // Create server with full configuration
     const serverConfig: ServerConfig = {
-      preprintService: createMockPreprintService(),
+      eprintService: createMockEprintService(),
       searchService: createMockSearchService(),
       metricsService: createMockMetricsService(),
       graphService: createMockGraphService(),

@@ -18,7 +18,7 @@ describe('EventFilter', () => {
       expect(
         filter.shouldProcess({
           action: 'create',
-          path: 'pub.chive.preprint.submission/abc123',
+          path: 'pub.chive.eprint.submission/abc123',
         })
       ).toBe(true);
 
@@ -64,14 +64,14 @@ describe('EventFilter', () => {
 
     it('filters by specific collections when provided', () => {
       const filter = new EventFilter({
-        collections: ['pub.chive.preprint.submission' as NSID, 'pub.chive.review.comment' as NSID],
+        collections: ['pub.chive.eprint.submission' as NSID, 'pub.chive.review.comment' as NSID],
       });
 
       // Allowed collections
       expect(
         filter.shouldProcess({
           action: 'create',
-          path: 'pub.chive.preprint.submission/abc123',
+          path: 'pub.chive.eprint.submission/abc123',
         })
       ).toBe(true);
 
@@ -108,7 +108,7 @@ describe('EventFilter', () => {
       expect(
         filter.shouldProcess({
           action: 'create',
-          path: 'pub.chive.preprint.submission',
+          path: 'pub.chive.eprint.submission',
         })
       ).toBe(true); // No slash is fine (just checks collection part)
     });
@@ -119,7 +119,7 @@ describe('EventFilter', () => {
       expect(
         filter.shouldProcess({
           action: 'create',
-          path: 'pub.chive.preprint.submission/abc123/extra',
+          path: 'pub.chive.eprint.submission/abc123/extra',
         })
       ).toBe(true); // Only checks first part before first slash
     });
@@ -129,8 +129,8 @@ describe('EventFilter', () => {
     it('extracts collection from valid path', () => {
       const filter = new EventFilter();
 
-      expect(filter.extractCollection('pub.chive.preprint.submission/abc123')).toBe(
-        'pub.chive.preprint.submission'
+      expect(filter.extractCollection('pub.chive.eprint.submission/abc123')).toBe(
+        'pub.chive.eprint.submission'
       );
 
       expect(filter.extractCollection('pub.chive.review.comment/xyz789')).toBe(
@@ -141,8 +141,8 @@ describe('EventFilter', () => {
     it('returns collection even without rkey', () => {
       const filter = new EventFilter();
 
-      expect(filter.extractCollection('pub.chive.preprint.submission')).toBe(
-        'pub.chive.preprint.submission'
+      expect(filter.extractCollection('pub.chive.eprint.submission')).toBe(
+        'pub.chive.eprint.submission'
       );
     });
 
@@ -155,8 +155,8 @@ describe('EventFilter', () => {
     it('extracts only first segment before slash', () => {
       const filter = new EventFilter();
 
-      expect(filter.extractCollection('pub.chive.preprint.submission/abc/def')).toBe(
-        'pub.chive.preprint.submission'
+      expect(filter.extractCollection('pub.chive.eprint.submission/abc/def')).toBe(
+        'pub.chive.eprint.submission'
       );
     });
   });
@@ -169,7 +169,7 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.chive.preprint.submission/abc',
+            path: 'pub.chive.eprint.submission/abc',
           })
         ).toBe(true);
 
@@ -214,7 +214,7 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.Chive.preprint.submission/abc',
+            path: 'pub.Chive.eprint.submission/abc',
           })
         ).toBe(false);
 
@@ -222,7 +222,7 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.chive!.preprint.submission/abc',
+            path: 'pub.chive!.eprint.submission/abc',
           })
         ).toBe(false);
       });
@@ -233,7 +233,7 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.chive--.preprint.submission/abc',
+            path: 'pub.chive--.eprint.submission/abc',
           })
         ).toBe(false);
       });
@@ -244,14 +244,14 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.-chive.preprint.submission/abc',
+            path: 'pub.-chive.eprint.submission/abc',
           })
         ).toBe(false);
 
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.chive-.preprint.submission/abc',
+            path: 'pub.chive-.eprint.submission/abc',
           })
         ).toBe(false);
       });
@@ -262,7 +262,7 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.chive.preprint-app.submission-type/abc',
+            path: 'pub.chive.eprint-app.submission-type/abc',
           })
         ).toBe(true);
       });
@@ -273,7 +273,7 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.chive.preprint2.submission3/abc',
+            path: 'pub.chive.eprint2.submission3/abc',
           })
         ).toBe(true);
       });
@@ -307,7 +307,7 @@ describe('EventFilter', () => {
         expect(
           filter.shouldProcess({
             action: 'create',
-            path: 'pub.Chive.preprint.submission/abc',
+            path: 'pub.Chive.eprint.submission/abc',
           })
         ).toBe(false);
 
@@ -331,7 +331,7 @@ describe('EventFilter', () => {
 
     it('returns set of collections when specified', () => {
       const collections = [
-        'pub.chive.preprint.submission' as NSID,
+        'pub.chive.eprint.submission' as NSID,
         'pub.chive.review.comment' as NSID,
       ];
 
@@ -340,7 +340,7 @@ describe('EventFilter', () => {
       const filterSet = filter.getCollectionFilter();
       expect(filterSet).toBeDefined();
       expect(filterSet?.size).toBe(2);
-      expect(filterSet?.has('pub.chive.preprint.submission' as NSID)).toBe(true);
+      expect(filterSet?.has('pub.chive.eprint.submission' as NSID)).toBe(true);
       expect(filterSet?.has('pub.chive.review.comment' as NSID)).toBe(true);
     });
   });
@@ -352,7 +352,7 @@ describe('EventFilter', () => {
       expect(
         filter.shouldProcess({
           action: 'delete',
-          path: 'pub.chive.preprint.submission/abc123',
+          path: 'pub.chive.eprint.submission/abc123',
         })
       ).toBe(true);
     });
@@ -363,7 +363,7 @@ describe('EventFilter', () => {
       expect(
         filter.shouldProcess({
           action: 'update',
-          path: 'pub.chive.preprint.submission/abc123',
+          path: 'pub.chive.eprint.submission/abc123',
         })
       ).toBe(true);
     });
@@ -375,7 +375,7 @@ describe('EventFilter', () => {
       expect(
         filter.shouldProcess({
           action: 'create',
-          path: 'Pub.chive.preprint.submission/abc',
+          path: 'Pub.chive.eprint.submission/abc',
         })
       ).toBe(false);
 
@@ -383,7 +383,7 @@ describe('EventFilter', () => {
       expect(
         filter.shouldProcess({
           action: 'create',
-          path: 'pub.Chive.preprint.submission/abc',
+          path: 'pub.Chive.eprint.submission/abc',
         })
       ).toBe(false);
     });

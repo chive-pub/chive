@@ -1,5 +1,5 @@
 /**
- * E2E tests for preprint submission.
+ * E2E tests for eprint submission.
  *
  * Tests the submission wizard flow.
  * Note: These tests run in authenticated context.
@@ -49,12 +49,12 @@ startxref
   return Buffer.from(pdfContent, 'utf-8');
 }
 
-test.describe('Preprint submission', () => {
+test.describe('Eprint submission', () => {
   test('displays submission page when authenticated', async ({ page }) => {
     await page.goto('/submit');
 
     // When authenticated, should show the submission page (not redirect)
-    const heading = page.getByRole('heading', { name: /submit.*preprint/i });
+    const heading = page.getByRole('heading', { name: /submit.*eprint/i });
     await expect(heading).toBeVisible();
   });
 
@@ -62,7 +62,7 @@ test.describe('Preprint submission', () => {
     await page.goto('/submit');
 
     // Should show the wizard heading
-    await expect(page.getByRole('heading', { name: 'Submit a Preprint' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Submit a Eprint' })).toBeVisible();
 
     // Should show step indicators in the progress navigation
     const progressNav = page.getByRole('navigation', { name: 'Progress' });
@@ -102,13 +102,13 @@ test.describe('Preprint submission', () => {
       const pdfBuffer = createTestPdfBuffer();
 
       await fileInput.setInputFiles({
-        name: 'test-preprint.pdf',
+        name: 'test-eprint.pdf',
         mimeType: 'application/pdf',
         buffer: pdfBuffer,
       });
 
       // Should show the uploaded file name somewhere on the page
-      await expect(page.getByText('test-preprint.pdf')).toBeVisible();
+      await expect(page.getByText('test-eprint.pdf')).toBeVisible();
     });
 
     test('navigates to metadata step after file upload', async ({ page }) => {
@@ -120,7 +120,7 @@ test.describe('Preprint submission', () => {
       const pdfBuffer = createTestPdfBuffer();
 
       await fileInput.setInputFiles({
-        name: 'test-preprint.pdf',
+        name: 'test-eprint.pdf',
         mimeType: 'application/pdf',
         buffer: pdfBuffer,
       });
@@ -160,7 +160,7 @@ test.describe('Preprint submission', () => {
 
       // Fill required metadata (wait for title input to be visible first)
       await expect(page.getByLabel(/title/i)).toBeVisible();
-      await page.getByLabel(/title/i).fill('Test Preprint Title for E2E Testing');
+      await page.getByLabel(/title/i).fill('Test Eprint Title for E2E Testing');
       await page
         .getByLabel(/abstract/i)
         .fill(
@@ -194,7 +194,7 @@ test.describe('Preprint submission', () => {
       // Supplementary -> Metadata
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       await expect(page.getByLabel(/title/i)).toBeVisible();
-      await page.getByLabel(/title/i).fill('Test Preprint');
+      await page.getByLabel(/title/i).fill('Test Eprint');
       await page
         .getByLabel(/abstract/i)
         .fill(
@@ -244,7 +244,7 @@ test.describe('Preprint submission', () => {
       // Supplementary -> Metadata
       await page.getByRole('button', { name: 'Next', exact: true }).click();
       await expect(page.getByLabel(/title/i)).toBeVisible();
-      await page.getByLabel(/title/i).fill('Test Preprint for Review');
+      await page.getByLabel(/title/i).fill('Test Eprint for Review');
       await page
         .getByLabel(/abstract/i)
         .fill(
@@ -298,13 +298,13 @@ async function navigateToReviewStep(page: Page) {
   const primaryDocSection = page.locator('section').filter({ hasText: /primary document/i });
   const fileInput = primaryDocSection.getByLabel(/file input/i);
   await fileInput.setInputFiles({
-    name: 'test-preprint.pdf',
+    name: 'test-eprint.pdf',
     mimeType: 'application/pdf',
     buffer: createTestPdfBuffer(),
   });
 
   // Verify file was uploaded
-  await expect(page.getByText('test-preprint.pdf')).toBeVisible();
+  await expect(page.getByText('test-eprint.pdf')).toBeVisible();
 
   // Next -> Supplementary
   await page.getByRole('button', { name: 'Next', exact: true }).click();
@@ -461,7 +461,7 @@ test.describe('Step 7: Review and Submit', () => {
 
   test('shows PDF file name in Files section', async ({ page }) => {
     await navigateToReviewStep(page);
-    await expect(page.getByText('test-preprint.pdf')).toBeVisible();
+    await expect(page.getByText('test-eprint.pdf')).toBeVisible();
   });
 
   test('shows entered title in Metadata section', async ({ page }) => {
@@ -497,19 +497,19 @@ test.describe('Step 7: Review and Submit', () => {
 
   test('Submit button triggers submission process', async ({ page }) => {
     await navigateToReviewStep(page);
-    const submitButton = page.getByRole('button', { name: /submit preprint/i });
+    const submitButton = page.getByRole('button', { name: /submit eprint/i });
     await submitButton.click();
 
-    // With mock agent, submission completes very quickly and redirects to preprint page.
+    // With mock agent, submission completes very quickly and redirects to eprint page.
     // Verify that clicking Submit either:
     // 1. Shows "Submitting..." loading state briefly, OR
-    // 2. Redirects to preprint page URL (indicates successful submission)
-    // We check URL change since text matching is unreliable due to "preprint" appearing in many places.
+    // 2. Redirects to eprint page URL (indicates successful submission)
+    // We check URL change since text matching is unreliable due to "eprint" appearing in many places.
     await Promise.race([
       expect(page.getByText('Submitting...'))
         .toBeVisible({ timeout: 2000 })
         .catch(() => {}),
-      expect(page).toHaveURL(/\/preprints\//, { timeout: 10000 }),
+      expect(page).toHaveURL(/\/eprints\//, { timeout: 10000 }),
     ]);
   });
 });

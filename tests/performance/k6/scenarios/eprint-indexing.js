@@ -1,11 +1,11 @@
 /**
- * k6 performance scenario: Preprint indexing.
+ * k6 performance scenario: Eprint indexing.
  *
  * @description
- * Tests preprint indexing throughput and latency.
+ * Tests eprint indexing throughput and latency.
  * Target: p95 < 200ms for indexing operations.
  *
- * Run with: k6 run scenarios/preprint-indexing.js
+ * Run with: k6 run scenarios/eprint-indexing.js
  */
 
 import { check, sleep } from 'k6';
@@ -16,7 +16,7 @@ import { config, thresholds, stages, testData } from '../config.js';
 import {
   generateAtUri,
   generateCid,
-  generatePreprint,
+  generateEprint,
   makeRequest,
   validateResponse,
   randomChoice,
@@ -43,7 +43,7 @@ export const options = {
     },
   },
   thresholds: {
-    ...thresholds.preprintIndexing,
+    ...thresholds.eprintIndexing,
     index_duration: ['p(95)<200', 'p(99)<500'],
   },
 };
@@ -52,7 +52,7 @@ export const options = {
  * Setup function - runs once before all VUs.
  */
 export function setup() {
-  console.log(`Running preprint indexing benchmark against ${config.baseUrl}`);
+  console.log(`Running eprint indexing benchmark against ${config.baseUrl}`);
   return {
     baseUrl: config.baseUrl,
     startTime: Date.now(),
@@ -66,18 +66,18 @@ export default function (data) {
   const authorDid = randomChoice(testData.sampleDIDs);
   const uri = generateAtUri(authorDid);
   const cid = generateCid();
-  const preprint = generatePreprint(authorDid);
+  const eprint = generateEprint(authorDid);
 
   // Simulate indexing request (POST to indexing endpoint)
   const indexPayload = {
     uri,
     cid,
-    record: preprint,
+    record: eprint,
     pdsUrl: 'https://pds.test.example.com',
   };
 
   const startTime = Date.now();
-  const response = makeRequest('POST', `${data.baseUrl}/xrpc/pub.chive.index.preprint`, indexPayload);
+  const response = makeRequest('POST', `${data.baseUrl}/xrpc/pub.chive.index.eprint`, indexPayload);
   const duration = Date.now() - startTime;
 
   // Track metrics
@@ -109,10 +109,10 @@ export default function (data) {
     // 10% verification rate
     sleep(0.1); // Brief delay for indexing propagation
 
-    const getResponse = makeRequest('GET', `${data.baseUrl}/xrpc/pub.chive.preprint.get?uri=${encodeURIComponent(uri)}`);
+    const getResponse = makeRequest('GET', `${data.baseUrl}/xrpc/pub.chive.eprint.get?uri=${encodeURIComponent(uri)}`);
 
     check(getResponse, {
-      'verification: preprint retrievable': (r) => r.status === 200,
+      'verification: eprint retrievable': (r) => r.status === 200,
       'verification: correct uri': (r) => {
         try {
           const json = r.json();
@@ -133,5 +133,5 @@ export default function (data) {
  */
 export function teardown(data) {
   const totalDuration = (Date.now() - data.startTime) / 1000;
-  console.log(`Preprint indexing benchmark completed in ${totalDuration.toFixed(2)}s`);
+  console.log(`Eprint indexing benchmark completed in ${totalDuration.toFixed(2)}s`);
 }

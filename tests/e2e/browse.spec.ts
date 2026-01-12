@@ -1,7 +1,7 @@
 /**
  * E2E tests for browse page.
  *
- * Tests faceted preprint browsing with 10-dimensional classification.
+ * Tests faceted eprint browsing with 10-dimensional classification.
  */
 
 import { test, expect } from '@playwright/test';
@@ -18,7 +18,7 @@ test.describe('Browse page', () => {
   });
 
   test('displays page description', async ({ page }) => {
-    const description = page.getByText(/explore preprints|faceted classification/i);
+    const description = page.getByText(/explore eprints|faceted classification/i);
     await expect(description).toBeVisible();
   });
 
@@ -41,7 +41,7 @@ test.describe('Browse page', () => {
 
   test('displays results or empty state', async ({ page }) => {
     // Page should show either search results or an empty/initial state
-    const resultsOrEmpty = page.getByText(/results|preprints|no results|start/i);
+    const resultsOrEmpty = page.getByText(/results|eprints|no results|start/i);
     await expect(resultsOrEmpty.first()).toBeVisible();
   });
 

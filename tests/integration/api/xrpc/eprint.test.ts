@@ -1,5 +1,5 @@
 /**
- * Integration tests for XRPC preprint endpoints.
+ * Integration tests for XRPC eprint endpoints.
  *
  * @remarks
  * Tests the full request/response cycle through the Hono server
@@ -23,7 +23,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
-import { PreprintService, type RecordMetadata } from '@/services/preprint/preprint-service.js';
+import { EprintService, type RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
 import { createElasticsearchClient } from '@/storage/elasticsearch/setup.js';
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
@@ -33,14 +33,14 @@ import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type {
   ISearchEngine,
-  IndexablePreprintDocument,
+  IndexableEprintDocument,
   SearchQuery,
   SearchResults,
   FacetedSearchQuery,
   FacetedSearchResults,
 } from '@/types/interfaces/search.interface.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
-import type { Preprint } from '@/types/models/preprint.js';
+import type { EprintAuthor } from '@/types/models/author.js';
+import type { Eprint } from '@/types/models/eprint.js';
 
 import {
   createMockAuthzService,
@@ -62,8 +62,8 @@ import {
   createMockActivityService,
 } from '../../../helpers/mock-services.js';
 import type {
-  PreprintResponse,
-  PreprintListResponse,
+  EprintResponse,
+  EprintListResponse,
   SearchResultsResponse,
   ErrorResponse,
 } from '../../../types/api-responses.js';
@@ -71,14 +71,14 @@ import type {
 // Test constants
 const TEST_AUTHOR = 'did:plc:testauthor123' as DID;
 const TEST_PDS_URL = 'https://pds.test.example.com';
-const INDEX_NAME = 'preprints-integration-api';
-// Unique IP for xrpc preprint tests to avoid rate limit collisions with parallel test files
-const XRPC_PREPRINT_TEST_IP = '192.168.100.1';
+const INDEX_NAME = 'eprints-integration-api';
+// Unique IP for xrpc eprint tests to avoid rate limit collisions with parallel test files
+const XRPC_EPRINT_TEST_IP = '192.168.100.1';
 
 // Generate unique test URIs
 function createTestUri(suffix: string): AtUri {
   const timestamp = Date.now();
-  return `at://${TEST_AUTHOR}/pub.chive.preprint.submission/api${timestamp}${suffix}` as AtUri;
+  return `at://${TEST_AUTHOR}/pub.chive.eprint.submission/api${timestamp}${suffix}` as AtUri;
 }
 
 function createTestCid(suffix: string): CID {
@@ -90,7 +90,7 @@ function createTestCid(suffix: string): CID {
  */
 function createSearchEngine(client: Client): ISearchEngine {
   return {
-    indexPreprint: async (doc: IndexablePreprintDocument): Promise<void> => {
+    indexEprint: async (doc: IndexableEprintDocument): Promise<void> => {
       await client.index({
         index: INDEX_NAME,
         id: doc.uri,
@@ -171,15 +171,15 @@ function testRequest(
   init?: RequestInit
 ): Response | Promise<Response> {
   const headers = new Headers(init?.headers);
-  headers.set('X-Forwarded-For', XRPC_PREPRINT_TEST_IP);
+  headers.set('X-Forwarded-For', XRPC_EPRINT_TEST_IP);
   return app.request(url, { ...init, headers });
 }
 
 /**
- * Creates test preprint record.
+ * Creates test eprint record.
  */
-function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Preprint {
-  const testAuthor: PreprintAuthor = {
+function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
+  const testAuthor: EprintAuthor = {
     did: TEST_AUTHOR,
     name: 'Test Author',
     order: 1,
@@ -190,7 +190,7 @@ function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Prep
   };
 
   return {
-    $type: 'pub.chive.preprint.submission',
+    $type: 'pub.chive.eprint.submission',
     uri,
     cid: overrides.cid ?? createTestCid('default'),
     authors: overrides.authors ?? [testAuthor],
@@ -212,10 +212,10 @@ function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Prep
       size: 1024000,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     createdAt: overrides.createdAt ?? (Date.now() as Timestamp),
     ...overrides,
-  } as Preprint;
+  } as Eprint;
 }
 
 /**
@@ -230,13 +230,13 @@ function createTestMetadata(uri: AtUri, cid: CID): RecordMetadata {
   };
 }
 
-describe('XRPC Preprint Endpoints Integration', () => {
+describe('XRPC Eprint Endpoints Integration', () => {
   let pool: Pool;
   let esClient: Client;
   let redis: Redis;
   let storage: PostgreSQLAdapter;
   let searchEngine: ISearchEngine;
-  let preprintService: PreprintService;
+  let eprintService: EprintService;
   let app: Hono<ChiveEnv>;
   let logger: ILogger;
 
@@ -281,8 +281,8 @@ describe('XRPC Preprint Endpoints Integration', () => {
     // Create logger
     logger = createMockLogger();
 
-    // Create preprint service
-    preprintService = new PreprintService({
+    // Create eprint service
+    eprintService = new EprintService({
       storage,
       search: searchEngine,
       repository: createMockRepository(),
@@ -292,7 +292,7 @@ describe('XRPC Preprint Endpoints Integration', () => {
 
     // Create Hono app with full middleware stack
     const serverConfig: ServerConfig = {
-      preprintService,
+      eprintService,
       searchService: createMockSearchService(searchEngine),
       metricsService: createMockMetricsService(),
       graphService: createMockGraphService(),
@@ -351,9 +351,9 @@ describe('XRPC Preprint Endpoints Integration', () => {
     }
   });
 
-  describe('GET /xrpc/pub.chive.preprint.getSubmission', () => {
+  describe('GET /xrpc/pub.chive.eprint.getSubmission', () => {
     it('returns 400 for missing uri parameter', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.preprint.getSubmission');
+      const res = await testRequest(app, '/xrpc/pub.chive.eprint.getSubmission');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;
@@ -361,11 +361,11 @@ describe('XRPC Preprint Endpoints Integration', () => {
       expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('returns 404 for non-existent preprint', async () => {
+    it('returns 404 for non-existent eprint', async () => {
       const nonExistentUri = createTestUri('nonexistent');
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(nonExistentUri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(nonExistentUri)}`
       );
 
       expect(res.status).toBe(404);
@@ -373,21 +373,21 @@ describe('XRPC Preprint Endpoints Integration', () => {
       expect(body.error.code).toBe('NOT_FOUND');
     });
 
-    it('returns preprint with ATProto-compliant source field', async () => {
-      // Index a preprint first
+    it('returns eprint with ATProto-compliant source field', async () => {
+      // Index a eprint first
       const uri = createTestUri('get1');
       const cid = createTestCid('get1');
-      const preprint = createTestPreprint(uri, { title: 'The Semantics of Exceptional Scope' });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri, { title: 'The Semantics of Exceptional Scope' });
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // Verify core fields
       expect(body.uri).toBe(uri);
@@ -404,7 +404,7 @@ describe('XRPC Preprint Endpoints Integration', () => {
     it('includes document as BlobRef, never inline data', async () => {
       const uri = createTestUri('blobref1');
       const cid = createTestCid('blobref1');
-      const preprint = createTestPreprint(uri, {
+      const eprint = createTestEprint(uri, {
         documentBlobRef: {
           $type: 'blob',
           ref: 'bafyreiblobtest456' as CID,
@@ -412,16 +412,16 @@ describe('XRPC Preprint Endpoints Integration', () => {
           size: 2048576,
         },
       });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // Verify BlobRef structure
       expect(body.document).toBeDefined();
@@ -441,17 +441,17 @@ describe('XRPC Preprint Endpoints Integration', () => {
     it('includes version history when available', async () => {
       const uri = createTestUri('versions1');
       const cid = createTestCid('versions1');
-      const preprint = createTestPreprint(uri, { version: 1 });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri, { version: 1 });
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       expect(body.versions).toBeDefined();
       expect(Array.isArray(body.versions)).toBe(true);
@@ -460,17 +460,17 @@ describe('XRPC Preprint Endpoints Integration', () => {
     it('includes metrics when available', async () => {
       const uri = createTestUri('metrics1');
       const cid = createTestCid('metrics1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       expect(body.metrics).toBeDefined();
       if (body.metrics) {
@@ -482,23 +482,23 @@ describe('XRPC Preprint Endpoints Integration', () => {
     it('includes requestId in response headers', async () => {
       const uri = createTestUri('reqid1');
       const cid = createTestCid('reqid1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.headers.get('X-Request-Id')).toBeDefined();
       expect(res.headers.get('X-Request-Id')).toMatch(/^req_/);
     });
 
-    it('marks stale preprints correctly', async () => {
+    it('marks stale eprints correctly', async () => {
       const uri = createTestUri('stale1');
       const cid = createTestCid('stale1');
-      const preprint = createTestPreprint(uri);
+      const eprint = createTestEprint(uri);
 
       // Index with old timestamp (8 days ago)
       const oldMetadata: RecordMetadata = {
@@ -508,152 +508,152 @@ describe('XRPC Preprint Endpoints Integration', () => {
         indexedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
       };
 
-      await preprintService.indexPreprint(preprint, oldMetadata);
+      await eprintService.indexEprint(eprint, oldMetadata);
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       expect(body.source.stale).toBe(true);
     });
 
-    it('marks fresh preprints correctly', async () => {
+    it('marks fresh eprints correctly', async () => {
       const uri = createTestUri('fresh1');
       const cid = createTestCid('fresh1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       expect(body.source.stale).toBe(false);
     });
   });
 
-  describe('GET /xrpc/pub.chive.preprint.listByAuthor', () => {
+  describe('GET /xrpc/pub.chive.eprint.listByAuthor', () => {
     it('returns 400 for missing did parameter', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.preprint.listByAuthor');
+      const res = await testRequest(app, '/xrpc/pub.chive.eprint.listByAuthor');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;
       expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('returns empty list for author with no preprints', async () => {
+    it('returns empty list for author with no eprints', async () => {
       const unknownAuthor = 'did:plc:unknownauthor' as DID;
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(unknownAuthor)}`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(unknownAuthor)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintListResponse;
+      const body = (await res.json()) as EprintListResponse;
 
-      expect(body.preprints).toEqual([]);
+      expect(body.eprints).toEqual([]);
       expect(body.total).toBe(0);
       expect(body.hasMore).toBe(false);
     });
 
-    it('returns preprints by author with source field', async () => {
-      // Index preprints for TEST_AUTHOR
+    it('returns eprints by author with source field', async () => {
+      // Index eprints for TEST_AUTHOR
       for (let i = 0; i < 3; i++) {
         const uri = createTestUri(`author${i}`);
         const cid = createTestCid(`author${i}`);
-        const preprint = createTestPreprint(uri, { title: `Dynamic Semantics Paper ${i}` });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        const eprint = createTestEprint(uri, { title: `Dynamic Semantics Paper ${i}` });
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintListResponse;
+      const body = (await res.json()) as EprintListResponse;
 
-      expect(body.preprints.length).toBeGreaterThan(0);
+      expect(body.eprints.length).toBeGreaterThan(0);
       expect(body.total).toBeGreaterThanOrEqual(3);
 
-      // Verify each preprint has source field
-      for (const preprint of body.preprints) {
-        expect(preprint.source).toBeDefined();
-        expect(preprint.source.pdsEndpoint).toBe(TEST_PDS_URL);
+      // Verify each eprint has source field
+      for (const eprint of body.eprints) {
+        expect(eprint.source).toBeDefined();
+        expect(eprint.source.pdsEndpoint).toBe(TEST_PDS_URL);
       }
     });
 
     it('respects limit parameter', async () => {
-      // Index 5 preprints
+      // Index 5 eprints
       for (let i = 0; i < 5; i++) {
         const uri = createTestUri(`limit${i}`);
         const cid = createTestCid(`limit${i}`);
-        const preprint = createTestPreprint(uri, { title: `Quantifier Scope Study ${i}` });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        const eprint = createTestEprint(uri, { title: `Quantifier Scope Study ${i}` });
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}&limit=2`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}&limit=2`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintListResponse;
+      const body = (await res.json()) as EprintListResponse;
 
       // Verify limit is respected
-      expect(body.preprints.length).toBeLessThanOrEqual(2);
+      expect(body.eprints.length).toBeLessThanOrEqual(2);
       // hasMore and total reflect returned results
       expect(typeof body.hasMore).toBe('boolean');
       expect(typeof body.total).toBe('number');
     });
 
     it('supports cursor-based pagination', async () => {
-      // Index 5 preprints
+      // Index 5 eprints
       for (let i = 0; i < 5; i++) {
         const uri = createTestUri(`page${i}`);
         const cid = createTestCid(`page${i}`);
-        const preprint = createTestPreprint(uri, { title: `Presupposition Analysis ${i}` });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        const eprint = createTestEprint(uri, { title: `Presupposition Analysis ${i}` });
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
       // First page
       const res1 = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}&limit=2`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}&limit=2`
       );
       expect(res1.status).toBe(200);
-      const page1 = (await res1.json()) as PreprintListResponse;
+      const page1 = (await res1.json()) as EprintListResponse;
 
       // Verify structure
-      expect(page1.preprints.length).toBeLessThanOrEqual(2);
+      expect(page1.eprints.length).toBeLessThanOrEqual(2);
       expect(typeof page1.hasMore).toBe('boolean');
 
       // If there are more results and cursor is provided, test pagination
       if (page1.cursor) {
         const res2 = await testRequest(
           app,
-          `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}&limit=2&cursor=${page1.cursor}`
+          `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}&limit=2&cursor=${page1.cursor}`
         );
         expect(res2.status).toBe(200);
-        const page2 = (await res2.json()) as PreprintListResponse;
+        const page2 = (await res2.json()) as EprintListResponse;
 
-        expect(page2.preprints.length).toBeLessThanOrEqual(2);
+        expect(page2.eprints.length).toBeLessThanOrEqual(2);
 
         // Verify no overlap between pages
-        const page1Uris = new Set(page1.preprints.map((p) => p.uri));
-        const page2Uris = new Set(page2.preprints.map((p) => p.uri));
+        const page1Uris = new Set(page1.eprints.map((p) => p.uri));
+        const page2Uris = new Set(page2.eprints.map((p) => p.uri));
         const intersection = [...page1Uris].filter((uri) => page2Uris.has(uri));
         expect(intersection.length).toBe(0);
       }
@@ -663,30 +663,30 @@ describe('XRPC Preprint Endpoints Integration', () => {
       const longAbstract = 'A'.repeat(1000);
       const uri = createTestUri('truncate1');
       const cid = createTestCid('truncate1');
-      const preprint = createTestPreprint(uri, { abstract: longAbstract });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri, { abstract: longAbstract });
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintListResponse;
+      const body = (await res.json()) as EprintListResponse;
 
-      const matchingPreprint = body.preprints.find((p) => p.uri === uri);
-      expect(matchingPreprint).toBeDefined();
-      if (matchingPreprint) {
-        expect(matchingPreprint.abstract.length).toBeLessThanOrEqual(500);
+      const matchingEprint = body.eprints.find((p) => p.uri === uri);
+      expect(matchingEprint).toBeDefined();
+      if (matchingEprint) {
+        expect(matchingEprint.abstract.length).toBeLessThanOrEqual(500);
       }
     });
   });
 
-  describe('GET /xrpc/pub.chive.preprint.searchSubmissions', () => {
+  describe('GET /xrpc/pub.chive.eprint.searchSubmissions', () => {
     it('returns 400 for missing q parameter', async () => {
       // searchSubmissions is a GET endpoint (type: 'query')
-      const res = await testRequest(app, '/xrpc/pub.chive.preprint.searchSubmissions');
+      const res = await testRequest(app, '/xrpc/pub.chive.eprint.searchSubmissions');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;
@@ -694,15 +694,15 @@ describe('XRPC Preprint Endpoints Integration', () => {
     });
 
     it('returns search results with source field', async () => {
-      // Index searchable preprints
+      // Index searchable eprints
       for (let i = 0; i < 3; i++) {
         const uri = createTestUri(`search${i}`);
         const cid = createTestCid(`search${i}`);
-        const preprint = createTestPreprint(uri, {
+        const eprint = createTestEprint(uri, {
           title: `Clause-Embedding Predicates Study ${i}`,
           keywords: ['clause-embedding', 'semantics', 'predicates'],
         });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
@@ -712,7 +712,7 @@ describe('XRPC Preprint Endpoints Integration', () => {
       // searchSubmissions is a GET endpoint with query params
       const res = await testRequest(
         app,
-        '/xrpc/pub.chive.preprint.searchSubmissions?q=clause-embedding+predicates&limit=10'
+        '/xrpc/pub.chive.eprint.searchSubmissions?q=clause-embedding+predicates&limit=10'
       );
 
       expect(res.status).toBe(200);
@@ -733,8 +733,8 @@ describe('XRPC Preprint Endpoints Integration', () => {
     it('includes search metadata (total, hasMore)', async () => {
       const uri = createTestUri('searchmeta1');
       const cid = createTestCid('searchmeta1');
-      const preprint = createTestPreprint(uri, { title: 'Algebraic Effects in Dynamic Semantics' });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri, { title: 'Algebraic Effects in Dynamic Semantics' });
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -742,7 +742,7 @@ describe('XRPC Preprint Endpoints Integration', () => {
       // searchSubmissions is a GET endpoint with query params
       const res = await testRequest(
         app,
-        '/xrpc/pub.chive.preprint.searchSubmissions?q=algebraic+effects&limit=10'
+        '/xrpc/pub.chive.eprint.searchSubmissions?q=algebraic+effects&limit=10'
       );
 
       expect(res.status).toBe(200);
@@ -753,15 +753,15 @@ describe('XRPC Preprint Endpoints Integration', () => {
     });
 
     it('respects limit parameter', async () => {
-      // Index multiple searchable preprints
+      // Index multiple searchable eprints
       for (let i = 0; i < 5; i++) {
         const uri = createTestUri(`searchlimit${i}`);
         const cid = createTestCid(`searchlimit${i}`);
-        const preprint = createTestPreprint(uri, {
+        const eprint = createTestEprint(uri, {
           title: `Incremental Quantification Study ${i}`,
           keywords: ['quantification', 'semantics'],
         });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
         createdUris.push(uri);
       }
 
@@ -770,7 +770,7 @@ describe('XRPC Preprint Endpoints Integration', () => {
       // searchSubmissions is a GET endpoint with query params
       const res = await testRequest(
         app,
-        '/xrpc/pub.chive.preprint.searchSubmissions?q=quantification+semantics&limit=2'
+        '/xrpc/pub.chive.eprint.searchSubmissions?q=quantification+semantics&limit=2'
       );
 
       expect(res.status).toBe(200);
@@ -784,13 +784,13 @@ describe('XRPC Preprint Endpoints Integration', () => {
     it('includes rate limit headers in response', async () => {
       const uri = createTestUri('ratelimit1');
       const cid = createTestCid('ratelimit1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       createdUris.push(uri);
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.headers.get('X-RateLimit-Limit')).toBeDefined();
@@ -801,7 +801,7 @@ describe('XRPC Preprint Endpoints Integration', () => {
 
   describe('Error Response Format', () => {
     it('returns standardized error format for validation errors', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.preprint.getSubmission');
+      const res = await testRequest(app, '/xrpc/pub.chive.eprint.getSubmission');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;
@@ -816,21 +816,21 @@ describe('XRPC Preprint Endpoints Integration', () => {
       const nonExistentUri = createTestUri('notfound');
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(nonExistentUri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(nonExistentUri)}`
       );
 
       expect(res.status).toBe(404);
       const body = (await res.json()) as ErrorResponse;
 
       expect(body.error.code).toBe('NOT_FOUND');
-      expect(body.error.message).toContain('Preprint not found');
+      expect(body.error.message).toContain('Eprint not found');
       expect(body.error.requestId).toBeDefined();
     });
   });
 
   describe('Security Headers', () => {
     it('includes security headers in response', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.preprint.listByAuthor?did=did:plc:test');
+      const res = await testRequest(app, '/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test');
 
       // Check for common security headers (Hono secureHeaders middleware)
       // At minimum, one of the security headers should be present
@@ -844,7 +844,7 @@ describe('XRPC Preprint Endpoints Integration', () => {
 
   describe('CORS Headers', () => {
     it('includes CORS headers in response', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.preprint.listByAuthor?did=did:plc:test', {
+      const res = await testRequest(app, '/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test', {
         headers: { Origin: 'http://localhost:3000' },
       });
 

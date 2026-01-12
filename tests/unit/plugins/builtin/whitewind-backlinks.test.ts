@@ -82,7 +82,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
     id: 1,
     sourceUri: 'at://did:plc:test/com.whitewind.blog.entry/rkey',
     sourceType: 'whitewind.blog',
-    targetUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+    targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
     indexedAt: new Date(),
     deleted: false,
   } as Backlink),
@@ -208,7 +208,7 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should have correct description', () => {
       expect(plugin.manifest.description).toBe(
-        'Tracks references to Chive preprints from WhiteWind blog posts'
+        'Tracks references to Chive eprints from WhiteWind blog posts'
       );
     });
 
@@ -259,21 +259,21 @@ describe('WhiteWindBacklinksPlugin', () => {
     });
   });
 
-  describe('extractPreprintRefs - embed only', () => {
-    it('should extract preprint URI from embed', () => {
+  describe('extractEprintRefs - embed only', () => {
+    it('should extract eprint URI from embed', () => {
       const entry = createWhiteWindEntry({
         embed: {
           $type: 'com.whitewind.blog.embed#record',
-          uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+          uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
         },
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
-      expect(refs).toEqual(['at://did:plc:author/pub.chive.preprint.submission/xyz']);
+      expect(refs).toEqual(['at://did:plc:author/pub.chive.eprint.submission/xyz']);
     });
 
-    it('should not extract non-preprint URI from embed', () => {
+    it('should not extract non-eprint URI from embed', () => {
       const entry = createWhiteWindEntry({
         embed: {
           $type: 'com.whitewind.blog.embed#record',
@@ -281,7 +281,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         },
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([]);
     });
@@ -289,56 +289,56 @@ describe('WhiteWindBacklinksPlugin', () => {
     it('should handle entry without embed', () => {
       const entry = createWhiteWindEntry();
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([]);
     });
   });
 
-  describe('extractPreprintRefs - markdown content', () => {
-    it('should extract preprint URI from markdown content', () => {
+  describe('extractEprintRefs - markdown content', () => {
+    it('should extract eprint URI from markdown content', () => {
       const entry = createWhiteWindEntry({
-        content: 'Check out this paper: at://did:plc:author/pub.chive.preprint.submission/abc123',
+        content: 'Check out this paper: at://did:plc:author/pub.chive.eprint.submission/abc123',
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
-      expect(refs).toEqual(['at://did:plc:author/pub.chive.preprint.submission/abc123']);
+      expect(refs).toEqual(['at://did:plc:author/pub.chive.eprint.submission/abc123']);
     });
 
-    it('should extract multiple preprint URIs from markdown content', () => {
+    it('should extract multiple eprint URIs from markdown content', () => {
       const entry = createWhiteWindEntry({
         content: `
-          First paper: at://did:plc:author1/pub.chive.preprint.submission/paper1
-          Second paper: at://did:plc:author2/pub.chive.preprint.submission/paper2
-          Third paper: at://did:plc:author3/pub.chive.preprint.submission/paper3
+          First paper: at://did:plc:author1/pub.chive.eprint.submission/paper1
+          Second paper: at://did:plc:author2/pub.chive.eprint.submission/paper2
+          Third paper: at://did:plc:author3/pub.chive.eprint.submission/paper3
         `,
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([
-        'at://did:plc:author1/pub.chive.preprint.submission/paper1',
-        'at://did:plc:author2/pub.chive.preprint.submission/paper2',
-        'at://did:plc:author3/pub.chive.preprint.submission/paper3',
+        'at://did:plc:author1/pub.chive.eprint.submission/paper1',
+        'at://did:plc:author2/pub.chive.eprint.submission/paper2',
+        'at://did:plc:author3/pub.chive.eprint.submission/paper3',
       ]);
     });
 
-    it('should filter out non-preprint URIs from markdown content', () => {
+    it('should filter out non-eprint URIs from markdown content', () => {
       const entry = createWhiteWindEntry({
         content: `
-          Preprint: at://did:plc:author/pub.chive.preprint.submission/paper1
+          Eprint: at://did:plc:author/pub.chive.eprint.submission/paper1
           Bluesky post: at://did:plc:someone/app.bsky.feed.post/xyz
           Other collection: at://did:plc:other/some.collection/abc
         `,
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
-      expect(refs).toEqual(['at://did:plc:author/pub.chive.preprint.submission/paper1']);
+      expect(refs).toEqual(['at://did:plc:author/pub.chive.eprint.submission/paper1']);
     });
 
     it('should return empty array for markdown content without AT-URIs', () => {
@@ -347,78 +347,78 @@ describe('WhiteWindBacklinksPlugin', () => {
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([]);
     });
   });
 
-  describe('extractPreprintRefs - HTML content', () => {
-    it('should extract preprint URI from HTML content', () => {
+  describe('extractEprintRefs - HTML content', () => {
+    it('should extract eprint URI from HTML content', () => {
       const entry = createWhiteWindEntry({
         content:
-          '<p>Check out <a href="at://did:plc:author/pub.chive.preprint.submission/abc">this paper</a></p>',
+          '<p>Check out <a href="at://did:plc:author/pub.chive.eprint.submission/abc">this paper</a></p>',
         contentFormat: 'html',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
-      expect(refs).toEqual(['at://did:plc:author/pub.chive.preprint.submission/abc']);
+      expect(refs).toEqual(['at://did:plc:author/pub.chive.eprint.submission/abc']);
     });
 
-    it('should extract multiple preprint URIs from HTML content', () => {
+    it('should extract multiple eprint URIs from HTML content', () => {
       const entry = createWhiteWindEntry({
         content: `
-          <p>Papers: at://did:plc:author1/pub.chive.preprint.submission/paper1</p>
-          <p>And: at://did:plc:author2/pub.chive.preprint.submission/paper2</p>
+          <p>Papers: at://did:plc:author1/pub.chive.eprint.submission/paper1</p>
+          <p>And: at://did:plc:author2/pub.chive.eprint.submission/paper2</p>
         `,
         contentFormat: 'html',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([
-        'at://did:plc:author1/pub.chive.preprint.submission/paper1',
-        'at://did:plc:author2/pub.chive.preprint.submission/paper2',
+        'at://did:plc:author1/pub.chive.eprint.submission/paper1',
+        'at://did:plc:author2/pub.chive.eprint.submission/paper2',
       ]);
     });
   });
 
-  describe('extractPreprintRefs - plaintext content', () => {
+  describe('extractEprintRefs - plaintext content', () => {
     it('should not extract URIs from plaintext content', () => {
       const entry = createWhiteWindEntry({
-        content: 'Some plaintext with at://did:plc:author/pub.chive.preprint.submission/abc123',
+        content: 'Some plaintext with at://did:plc:author/pub.chive.eprint.submission/abc123',
         contentFormat: 'plaintext',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([]);
     });
   });
 
-  describe('extractPreprintRefs - embed and content', () => {
+  describe('extractEprintRefs - embed and content', () => {
     it('should extract from both embed and content', () => {
       const entry = createWhiteWindEntry({
         embed: {
           $type: 'com.whitewind.blog.embed#record',
-          uri: 'at://did:plc:author1/pub.chive.preprint.submission/paper1',
+          uri: 'at://did:plc:author1/pub.chive.eprint.submission/paper1',
         },
-        content: 'Also see: at://did:plc:author2/pub.chive.preprint.submission/paper2',
+        content: 'Also see: at://did:plc:author2/pub.chive.eprint.submission/paper2',
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
-      expect(refs).toContain('at://did:plc:author1/pub.chive.preprint.submission/paper1');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.preprint.submission/paper2');
+      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/paper1');
+      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/paper2');
       expect(refs).toHaveLength(2);
     });
   });
 
-  describe('extractPreprintRefs - deduplication', () => {
+  describe('extractEprintRefs - deduplication', () => {
     it('should deduplicate same URI in embed and content', () => {
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/paper1';
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/paper1';
       const entry = createWhiteWindEntry({
         embed: {
           $type: 'com.whitewind.blog.embed#record',
@@ -428,20 +428,20 @@ describe('WhiteWindBacklinksPlugin', () => {
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([uri]);
       expect(refs).toHaveLength(1);
     });
 
     it('should deduplicate same URI mentioned multiple times in content', () => {
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/paper1';
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/paper1';
       const entry = createWhiteWindEntry({
         content: `First mention: ${uri}. Second mention: ${uri}. Third: ${uri}`,
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([uri]);
       expect(refs).toHaveLength(1);
@@ -517,7 +517,7 @@ describe('WhiteWindBacklinksPlugin', () => {
           title: 'Great Paper Review',
           embed: {
             $type: 'com.whitewind.blog.embed#record',
-            uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+            uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
         deleted: false,
@@ -530,7 +530,7 @@ describe('WhiteWindBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post123',
         sourceType: 'whitewind.blog',
-        targetUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+        targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
         context: 'Great Paper Review',
       });
     });
@@ -544,8 +544,8 @@ describe('WhiteWindBacklinksPlugin', () => {
         record: createWhiteWindEntry({
           title: 'Reading List',
           content: `
-            Paper 1: at://did:plc:author1/pub.chive.preprint.submission/paper1
-            Paper 2: at://did:plc:author2/pub.chive.preprint.submission/paper2
+            Paper 1: at://did:plc:author1/pub.chive.eprint.submission/paper1
+            Paper 2: at://did:plc:author2/pub.chive.eprint.submission/paper2
           `,
           contentFormat: 'markdown',
         }),
@@ -560,13 +560,13 @@ describe('WhiteWindBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post456',
         sourceType: 'whitewind.blog',
-        targetUri: 'at://did:plc:author1/pub.chive.preprint.submission/paper1',
+        targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/paper1',
         context: 'Reading List',
       });
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post456',
         sourceType: 'whitewind.blog',
-        targetUri: 'at://did:plc:author2/pub.chive.preprint.submission/paper2',
+        targetUri: 'at://did:plc:author2/pub.chive.eprint.submission/paper2',
         context: 'Reading List',
       });
     });
@@ -581,7 +581,7 @@ describe('WhiteWindBacklinksPlugin', () => {
           visibility: 'unlisted',
           embed: {
             $type: 'com.whitewind.blog.embed#record',
-            uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+            uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
         deleted: false,
@@ -604,7 +604,7 @@ describe('WhiteWindBacklinksPlugin', () => {
           visibility: 'private',
           embed: {
             $type: 'com.whitewind.blog.embed#record',
-            uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+            uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
         deleted: false,
@@ -617,14 +617,14 @@ describe('WhiteWindBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).not.toHaveBeenCalled();
     });
 
-    it('should not create backlink for entry without preprint refs', async () => {
+    it('should not create backlink for entry without eprint refs', async () => {
       const record: FirehoseRecord = {
         uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post111',
         collection: 'com.whitewind.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post111',
         record: createWhiteWindEntry({
-          content: 'Just a regular blog post without any preprint references.',
+          content: 'Just a regular blog post without any eprint references.',
           contentFormat: 'markdown',
         }),
         deleted: false,
@@ -669,7 +669,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         record: createWhiteWindEntry({
           embed: {
             $type: 'com.whitewind.blog.embed#record',
-            uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+            uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
         deleted: false,
@@ -682,7 +682,7 @@ describe('WhiteWindBacklinksPlugin', () => {
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.created', {
         sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post333',
         sourceType: 'whitewind.blog',
-        targetUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+        targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
       });
     });
 
@@ -695,7 +695,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         record: createWhiteWindEntry({
           embed: {
             $type: 'com.whitewind.blog.embed#record',
-            uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+            uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
         deleted: false,
@@ -720,7 +720,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         contentFormat: 'markdown',
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([]);
     });
@@ -735,7 +735,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         createdAt: new Date().toISOString(),
       };
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([]);
     });
@@ -748,7 +748,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         },
       });
 
-      const refs = plugin.extractPreprintRefs(entry);
+      const refs = plugin.extractEprintRefs(entry);
 
       expect(refs).toEqual([]);
     });

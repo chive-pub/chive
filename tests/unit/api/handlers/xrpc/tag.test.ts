@@ -2,7 +2,7 @@
  * Unit tests for XRPC tag handlers.
  *
  * @remarks
- * Tests getSuggestions, getTrending, search, listForPreprint, and getDetail handlers.
+ * Tests getSuggestions, getTrending, search, listForEprint, and getDetail handlers.
  * Validates TagManager integration and ATProto compliance.
  */
 
@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getDetailHandler } from '@/api/handlers/xrpc/tag/getDetail.js';
 import { getSuggestionsHandler } from '@/api/handlers/xrpc/tag/getSuggestions.js';
 import { getTrendingHandler } from '@/api/handlers/xrpc/tag/getTrending.js';
-import { listForPreprintHandler } from '@/api/handlers/xrpc/tag/listForPreprint.js';
+import { listForEprintHandler } from '@/api/handlers/xrpc/tag/listForEprint.js';
 import { searchHandler } from '@/api/handlers/xrpc/tag/search.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -208,13 +208,13 @@ describe('XRPC Tag Handlers', () => {
     });
   });
 
-  describe('listForPreprintHandler', () => {
-    it('returns tags for a specific preprint', async () => {
-      const preprintTags: MockTagData[] = [
+  describe('listForEprintHandler', () => {
+    it('returns tags for a specific eprint', async () => {
+      const eprintTags: MockTagData[] = [
         createMockTagData({ normalizedForm: 'quantum-computing', rawForm: 'quantum computing' }),
         createMockTagData({ normalizedForm: 'algorithms', rawForm: 'algorithms' }),
       ];
-      mockTagManager.getTagsForRecord.mockResolvedValue(preprintTags);
+      mockTagManager.getTagsForRecord.mockResolvedValue(eprintTags);
       mockTagManager.getTagSuggestions.mockResolvedValue([
         {
           tag: createMockTagData({ normalizedForm: 'cryptography', rawForm: 'cryptography' }),
@@ -222,9 +222,9 @@ describe('XRPC Tag Handlers', () => {
         },
       ]);
 
-      const result = await listForPreprintHandler(
-        mockContext as unknown as Parameters<typeof listForPreprintHandler>[0],
-        { preprintUri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz' }
+      const result = await listForEprintHandler(
+        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
+        { eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' }
       );
 
       expect(result.tags).toHaveLength(2);
@@ -235,9 +235,9 @@ describe('XRPC Tag Handlers', () => {
     it('returns empty arrays when no tags exist', async () => {
       mockTagManager.getTagsForRecord.mockResolvedValue([]);
 
-      const result = await listForPreprintHandler(
-        mockContext as unknown as Parameters<typeof listForPreprintHandler>[0],
-        { preprintUri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz' }
+      const result = await listForEprintHandler(
+        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
+        { eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' }
       );
 
       expect(result.tags).toHaveLength(0);

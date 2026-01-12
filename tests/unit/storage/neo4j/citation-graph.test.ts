@@ -3,7 +3,7 @@
  *
  * @remarks
  * Tests the CitationGraph implementation that manages CITES relationships
- * between Chive preprints. Uses mocked Neo4jConnection to test query
+ * between Chive eprints. Uses mocked Neo4jConnection to test query
  * generation and result mapping without requiring a real database.
  */
 
@@ -78,14 +78,14 @@ describe('CitationGraph', () => {
     it('should batch upsert citations using UNWIND', async () => {
       const citations: CitationRelationship[] = [
         {
-          citingUri: 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri,
-          citedUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2' as AtUri,
+          citingUri: 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri,
+          citedUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2' as AtUri,
           isInfluential: true,
           source: 'semantic-scholar',
         },
         {
-          citingUri: 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri,
-          citedUri: 'at://did:plc:def/pub.chive.preprint.submission/3' as AtUri,
+          citingUri: 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri,
+          citedUri: 'at://did:plc:def/pub.chive.eprint.submission/3' as AtUri,
           source: 'openalex',
         },
       ];
@@ -126,8 +126,8 @@ describe('CitationGraph', () => {
 
       const citations: CitationRelationship[] = [
         {
-          citingUri: 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri,
-          citedUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2' as AtUri,
+          citingUri: 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri,
+          citedUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2' as AtUri,
           source: 'semantic-scholar',
         },
       ];
@@ -139,13 +139,13 @@ describe('CitationGraph', () => {
   });
 
   describe('getCitingPapers', () => {
-    it('should return papers citing a given preprint', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+    it('should return papers citing a given eprint', async () => {
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const citationRecord: MockQueryResult = {
         records: [
           createMockRecord({
-            citingUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+            citingUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
             citedUri: paperUri,
             isInfluential: true,
             source: 'semantic-scholar',
@@ -168,14 +168,14 @@ describe('CitationGraph', () => {
       expect(result.citations).toHaveLength(1);
       const citation = result.citations[0];
       expect(citation).toBeDefined();
-      expect(citation?.citingUri).toBe('at://did:plc:xyz/pub.chive.preprint.submission/2');
+      expect(citation?.citingUri).toBe('at://did:plc:xyz/pub.chive.eprint.submission/2');
       expect(citation?.isInfluential).toBe(true);
       expect(result.total).toBe(1);
       expect(result.hasMore).toBe(false);
     });
 
     it('should apply onlyInfluential filter', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       mockConnection.executeQuery
         .mockResolvedValueOnce({ records: [], summary: {} })
@@ -188,12 +188,12 @@ describe('CitationGraph', () => {
     });
 
     it('should handle pagination with offset and limit', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const citationRecord: MockQueryResult = {
         records: [
           createMockRecord({
-            citingUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+            citingUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
             citedUri: paperUri,
             isInfluential: false,
             source: 'openalex',
@@ -220,14 +220,14 @@ describe('CitationGraph', () => {
   });
 
   describe('getReferences', () => {
-    it('should return papers that a preprint cites', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+    it('should return papers that a eprint cites', async () => {
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const refRecord: MockQueryResult = {
         records: [
           createMockRecord({
             citingUri: paperUri,
-            citedUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+            citedUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
             isInfluential: false,
             source: 'openalex',
             discoveredAt: '2024-01-15T10:00:00Z',
@@ -245,19 +245,19 @@ describe('CitationGraph', () => {
       expect(result.citations).toHaveLength(1);
       const citation = result.citations[0];
       expect(citation).toBeDefined();
-      expect(citation?.citedUri).toBe('at://did:plc:xyz/pub.chive.preprint.submission/2');
+      expect(citation?.citedUri).toBe('at://did:plc:xyz/pub.chive.eprint.submission/2');
       expect(result.total).toBe(1);
     });
   });
 
   describe('findCoCitedPapers', () => {
     it('should return co-cited papers with strength scores', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const coCitedRecord: MockQueryResult = {
         records: [
           createMockRecord({
-            uri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+            uri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
             title: 'Related Paper',
             abstract: 'An abstract',
             categories: ['cs.AI', 'cs.LG'],
@@ -276,7 +276,7 @@ describe('CitationGraph', () => {
       expect(result).toHaveLength(1);
       const coCited = result[0];
       expect(coCited).toBeDefined();
-      expect(coCited?.uri).toBe('at://did:plc:xyz/pub.chive.preprint.submission/2');
+      expect(coCited?.uri).toBe('at://did:plc:xyz/pub.chive.eprint.submission/2');
       expect(coCited?.title).toBe('Related Paper');
       expect(coCited?.coCitationCount).toBe(5);
       expect(coCited?.strength).toBe(0.75);
@@ -289,7 +289,7 @@ describe('CitationGraph', () => {
     });
 
     it('should use default minCoCitations of 2', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       mockConnection.executeQuery.mockResolvedValue({ records: [], summary: {} });
 
@@ -302,12 +302,12 @@ describe('CitationGraph', () => {
     });
 
     it('should handle null optional fields in co-cited papers', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const minimalRecord: MockQueryResult = {
         records: [
           createMockRecord({
-            uri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+            uri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
             title: 'Minimal Paper',
             abstract: null,
             categories: null,
@@ -334,7 +334,7 @@ describe('CitationGraph', () => {
 
   describe('getCitationCounts', () => {
     it('should return citation statistics', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const countsRecord: MockQueryResult = {
         records: [
@@ -357,7 +357,7 @@ describe('CitationGraph', () => {
     });
 
     it('should return zeros when paper not found', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/unknown' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/unknown' as AtUri;
 
       mockConnection.executeQuery.mockResolvedValue({ records: [], summary: {} });
 
@@ -371,7 +371,7 @@ describe('CitationGraph', () => {
 
   describe('deleteCitationsForPaper', () => {
     it('should delete all citation edges for a paper', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       mockConnection.executeQuery.mockResolvedValue({ records: [], summary: {} });
 
@@ -386,7 +386,7 @@ describe('CitationGraph', () => {
     it('should throw DatabaseError on delete failure', async () => {
       mockConnection.executeQuery.mockRejectedValue(new Error('Delete failed'));
 
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       await expect(citationGraph.deleteCitationsForPaper(paperUri)).rejects.toThrow(
         'Failed to delete citations for paper'
@@ -396,12 +396,12 @@ describe('CitationGraph', () => {
 
   describe('record mapping', () => {
     it('should correctly map citation record with all fields', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const fullRecord: MockQueryResult = {
         records: [
           createMockRecord({
-            citingUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+            citingUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
             citedUri: paperUri,
             isInfluential: true,
             source: 'semantic-scholar',
@@ -426,12 +426,12 @@ describe('CitationGraph', () => {
     });
 
     it('should handle null isInfluential as undefined', async () => {
-      const paperUri = 'at://did:plc:abc/pub.chive.preprint.submission/1' as AtUri;
+      const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const nullFieldsRecord: MockQueryResult = {
         records: [
           createMockRecord({
-            citingUri: 'at://did:plc:xyz/pub.chive.preprint.submission/2',
+            citingUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
             citedUri: paperUri,
             isInfluential: null,
             source: 'user-provided',

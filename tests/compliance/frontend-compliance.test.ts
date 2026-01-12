@@ -154,17 +154,17 @@ describe('Frontend ATProto compliance', () => {
       const schemaPath = path.join(WEB_DIR, 'lib/api/schema.d.ts');
       const content = readFileContent(schemaPath);
 
-      expect(content).toContain('pub.chive.preprint');
+      expect(content).toContain('pub.chive.eprint');
       expect(content).toContain('pub.chive.graph');
       expect(content).toContain('pub.chive.metrics');
     });
 
-    it('includes source PDS information in preprint types', () => {
+    it('includes source PDS information in eprint types', () => {
       // Check generated schema (source of truth from OpenAPI spec)
       const generatedSchemaPath = path.join(WEB_DIR, 'lib/api/schema.generated.ts');
       const content = readFileContent(generatedSchemaPath);
 
-      // ATProto compliance: preprints must include PDS source tracking
+      // ATProto compliance: eprints must include PDS source tracking
       expect(content).toContain('pdsEndpoint');
       expect(content).toContain('recordUrl');
       expect(content).toContain('stale');
@@ -185,8 +185,8 @@ describe('Frontend ATProto compliance', () => {
   });
 
   describe('Data sovereignty transparency', () => {
-    it('exposes PDS source in preprint API responses', () => {
-      // Check generated schema for source field in preprint responses
+    it('exposes PDS source in eprint API responses', () => {
+      // Check generated schema for source field in eprint responses
       const generatedSchemaPath = path.join(WEB_DIR, 'lib/api/schema.generated.ts');
       const content = readFileContent(generatedSchemaPath);
 

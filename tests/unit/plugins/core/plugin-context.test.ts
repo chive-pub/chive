@@ -76,7 +76,7 @@ const createTestManifest = (id = 'pub.chive.plugin.test'): IPluginManifest => ({
   author: 'Chive Team',
   license: 'MIT',
   permissions: {
-    hooks: ['preprint.indexed', 'preprint.updated'],
+    hooks: ['eprint.indexed', 'eprint.updated'],
     network: { allowedDomains: ['api.example.com'] },
     storage: { maxSize: 1024 * 1024 },
   },
@@ -269,7 +269,7 @@ describe('PluginContextFactory', () => {
       const handler = vi.fn();
 
       expect(() => {
-        context.eventBus.on('preprint.indexed', handler);
+        context.eventBus.on('eprint.indexed', handler);
       }).not.toThrow();
     });
 
@@ -290,12 +290,12 @@ describe('PluginContextFactory', () => {
       const context = factory.createContext(manifest, {});
       const handler = vi.fn();
 
-      context.eventBus.on('preprint.indexed', handler);
-      expect(eventBus.listenerCount('preprint.indexed')).toBe(1);
+      context.eventBus.on('eprint.indexed', handler);
+      expect(eventBus.listenerCount('eprint.indexed')).toBe(1);
 
       factory.cleanup(manifest.id);
 
-      expect(eventBus.listenerCount('preprint.indexed')).toBe(0);
+      expect(eventBus.listenerCount('eprint.indexed')).toBe(0);
     });
 
     it('should be idempotent', () => {

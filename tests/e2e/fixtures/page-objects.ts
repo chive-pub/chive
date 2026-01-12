@@ -24,7 +24,7 @@ export class HeaderComponent {
     this.page = page;
     this.logo = page.getByRole('link', { name: /chive/i }).first();
     // Use specific name for header search (not page search)
-    this.searchInput = page.getByRole('searchbox', { name: /search for preprints/i });
+    this.searchInput = page.getByRole('searchbox', { name: /search for eprints/i });
     this.signInButton = page.getByRole('link', { name: /sign in|log in/i });
     // User menu button shows initials or avatar when authenticated
     this.userMenu = page.getByRole('button').filter({ hasText: /^[A-Z]{1,2}$/ });
@@ -67,8 +67,8 @@ export class AlphaLandingPage {
     this.page = page;
     this.logo = page.getByRole('img', { name: /chive/i });
     this.title = page.getByRole('heading', { level: 1 });
-    this.tagline = page.getByText(/decentralized preprints/i);
-    this.description = page.getByText(/next-generation preprint server/i);
+    this.tagline = page.getByText(/decentralized eprints/i);
+    this.description = page.getByText(/next-generation eprint server/i);
     this.handleInput = page.getByRole('textbox', { name: /bsky\.social/i });
     this.signInButton = page.getByRole('button', { name: /sign in with bluesky/i });
     this.errorMessage = page.locator('.text-destructive');
@@ -145,8 +145,8 @@ export class SearchPage {
     this.pagination = page
       .getByRole('navigation', { name: /pagination/i })
       .or(page.getByRole('navigation').last());
-    this.emptyState = page.getByText(/no results found|no preprints|nothing found/i);
-    this.resultCount = page.getByText(/\d+\s*(results?|preprints?|items?)/i);
+    this.emptyState = page.getByText(/no results found|no eprints|nothing found/i);
+    this.resultCount = page.getByText(/\d+\s*(results?|eprints?|items?)/i);
   }
 
   async goto(): Promise<void> {
@@ -170,9 +170,9 @@ export class SearchPage {
 }
 
 /**
- * Preprint detail page.
+ * Eprint detail page.
  */
-export class PreprintPage {
+export class EprintPage {
   readonly page: Page;
   readonly header: HeaderComponent;
   readonly title: Locator;
@@ -211,7 +211,7 @@ export class PreprintPage {
   }
 
   async goto(uri: string): Promise<void> {
-    await this.page.goto(`/preprints/${encodeURIComponent(uri)}`);
+    await this.page.goto(`/eprints/${encodeURIComponent(uri)}`);
   }
 }
 
@@ -224,7 +224,7 @@ export class AuthorPage {
   readonly displayName: Locator;
   readonly bio: Locator;
   readonly avatar: Locator;
-  readonly preprintsList: Locator;
+  readonly eprintsList: Locator;
   readonly stats: Locator;
   readonly identifiers: Locator;
 
@@ -237,12 +237,12 @@ export class AuthorPage {
     this.avatar = page
       .getByRole('img', { name: /avatar|profile/i })
       .or(page.locator('img[alt*="avatar" i], img[alt*="profile" i]'));
-    this.preprintsList = page
-      .getByRole('list', { name: /preprints|publications/i })
+    this.eprintsList = page
+      .getByRole('list', { name: /eprints|publications/i })
       .or(page.getByRole('list').first());
     this.stats = page
       .getByRole('region', { name: /stats|statistics/i })
-      .or(page.getByText(/publications|preprints/i).first());
+      .or(page.getByText(/publications|eprints/i).first());
     this.identifiers = page.getByRole('list', { name: /identifiers|orcid/i });
   }
 
@@ -306,7 +306,7 @@ export class DashboardPage {
   readonly page: Page;
   readonly header: HeaderComponent;
   readonly welcomeMessage: Locator;
-  readonly preprintsList: Locator;
+  readonly eprintsList: Locator;
   readonly activityFeed: Locator;
   readonly quickActions: Locator;
   readonly stats: Locator;
@@ -316,8 +316,8 @@ export class DashboardPage {
     this.header = new HeaderComponent(page);
     this.welcomeMessage = page.getByRole('heading', { level: 1 });
     // Use role-based selectors for resilience
-    this.preprintsList = page
-      .getByRole('list', { name: /preprints|submissions/i })
+    this.eprintsList = page
+      .getByRole('list', { name: /eprints|submissions/i })
       .or(page.getByRole('list').first());
     this.activityFeed = page.getByRole('feed', { name: /activity/i });
     this.quickActions = page

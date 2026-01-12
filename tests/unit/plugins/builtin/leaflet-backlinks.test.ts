@@ -65,7 +65,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
     id: 1,
     sourceUri: 'at://did:plc:user/xyz.leaflet.list/abc123',
     sourceType: 'leaflet.list',
-    targetUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz789',
+    targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz789',
     indexedAt: new Date(),
     deleted: false,
   } as Backlink),
@@ -98,7 +98,7 @@ const createMockContext = (overrides?: Partial<IPluginContext>): IPluginContext 
 // ============================================================================
 
 /**
- * Sample Leaflet reading list with preprints.
+ * Sample Leaflet reading list with eprints.
  */
 const SAMPLE_LEAFLET_LIST = {
   $type: 'xyz.leaflet.list',
@@ -107,19 +107,19 @@ const SAMPLE_LEAFLET_LIST = {
   visibility: 'public' as const,
   items: [
     {
-      uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
       addedAt: '2024-01-15T10:00:00Z',
       status: 'unread' as const,
       notes: 'Interesting approach to quantifier scope',
       rating: 5,
     },
     {
-      uri: 'at://did:plc:author2/pub.chive.preprint.submission/def456',
+      uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
       addedAt: '2024-01-16T11:30:00Z',
       status: 'reading' as const,
     },
     {
-      uri: 'at://did:plc:author3/pub.chive.preprint.submission/ghi789',
+      uri: 'at://did:plc:author3/pub.chive.eprint.submission/ghi789',
       addedAt: '2024-01-17T14:00:00Z',
       status: 'read' as const,
       rating: 4,
@@ -131,7 +131,7 @@ const SAMPLE_LEAFLET_LIST = {
 };
 
 /**
- * Sample Leaflet list with mixed URIs (preprints and non-preprints).
+ * Sample Leaflet list with mixed URIs (eprints and non-eprints).
  */
 const SAMPLE_MIXED_LIST = {
   $type: 'xyz.leaflet.list',
@@ -139,7 +139,7 @@ const SAMPLE_MIXED_LIST = {
   visibility: 'public' as const,
   items: [
     {
-      uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
       addedAt: '2024-01-15T10:00:00Z',
     },
     {
@@ -147,7 +147,7 @@ const SAMPLE_MIXED_LIST = {
       addedAt: '2024-01-15T11:00:00Z',
     },
     {
-      uri: 'at://did:plc:author2/pub.chive.preprint.submission/def456',
+      uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
       addedAt: '2024-01-15T12:00:00Z',
     },
     {
@@ -167,7 +167,7 @@ const SAMPLE_PRIVATE_LIST = {
   visibility: 'private' as const,
   items: [
     {
-      uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
       addedAt: '2024-01-15T10:00:00Z',
     },
   ],
@@ -183,7 +183,7 @@ const SAMPLE_FOLLOWERS_LIST = {
   visibility: 'followers' as const,
   items: [
     {
-      uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
       addedAt: '2024-01-15T10:00:00Z',
     },
   ],
@@ -291,7 +291,7 @@ describe('LeafletBacklinksPlugin', () => {
 
     it('should have correct manifest description', () => {
       expect(plugin.manifest.description).toBe(
-        'Tracks references to Chive preprints from Leaflet reading lists'
+        'Tracks references to Chive eprints from Leaflet reading lists'
       );
     });
 
@@ -345,34 +345,34 @@ describe('LeafletBacklinksPlugin', () => {
     });
   });
 
-  describe('extractPreprintRefs', () => {
-    it('should extract preprint URIs from list items', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_LEAFLET_LIST);
+  describe('extractEprintRefs', () => {
+    it('should extract eprint URIs from list items', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_LEAFLET_LIST);
 
       expect(refs).toHaveLength(3);
-      expect(refs).toContain('at://did:plc:author1/pub.chive.preprint.submission/abc123');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.preprint.submission/def456');
-      expect(refs).toContain('at://did:plc:author3/pub.chive.preprint.submission/ghi789');
+      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
+      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
+      expect(refs).toContain('at://did:plc:author3/pub.chive.eprint.submission/ghi789');
     });
 
-    it('should filter out non-preprint URIs', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_MIXED_LIST);
+    it('should filter out non-eprint URIs', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_MIXED_LIST);
 
       expect(refs).toHaveLength(2);
-      expect(refs).toContain('at://did:plc:author1/pub.chive.preprint.submission/abc123');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.preprint.submission/def456');
+      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
+      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
       expect(refs).not.toContain('at://did:plc:user/app.bsky.feed.post/xyz789');
       expect(refs).not.toContain('https://example.com/paper');
     });
 
     it('should return empty array for empty items', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_EMPTY_LIST);
+      const refs = plugin.extractEprintRefs(SAMPLE_EMPTY_LIST);
 
       expect(refs).toEqual([]);
     });
 
     it('should return empty array when items field is missing', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_NO_ITEMS_LIST);
+      const refs = plugin.extractEprintRefs(SAMPLE_NO_ITEMS_LIST);
 
       expect(refs).toEqual([]);
     });
@@ -386,7 +386,7 @@ describe('LeafletBacklinksPlugin', () => {
         createdAt: '2024-01-15T10:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(invalidList);
+      const refs = plugin.extractEprintRefs(invalidList);
 
       expect(refs).toEqual([]);
     });
@@ -398,7 +398,7 @@ describe('LeafletBacklinksPlugin', () => {
         visibility: 'public' as const,
         items: [
           {
-            uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+            uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
             addedAt: '2024-01-15T10:00:00Z',
           },
           {
@@ -406,18 +406,18 @@ describe('LeafletBacklinksPlugin', () => {
             addedAt: '2024-01-15T11:00:00Z',
           },
           {
-            uri: 'at://did:plc:author2/pub.chive.preprint.submission/def456',
+            uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
             addedAt: '2024-01-15T12:00:00Z',
           },
         ],
         createdAt: '2024-01-15T10:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(listWithUndefinedUris);
+      const refs = plugin.extractEprintRefs(listWithUndefinedUris);
 
       expect(refs).toHaveLength(2);
-      expect(refs).toContain('at://did:plc:author1/pub.chive.preprint.submission/abc123');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.preprint.submission/def456');
+      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
+      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
     });
   });
 
@@ -541,7 +541,7 @@ describe('LeafletBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:user/xyz.leaflet.list/abc123',
         sourceType: 'leaflet.list',
-        targetUri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+        targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
         context:
           'Reading Queue: Semantics Papers: Papers on semantics and pragmatics I want to read',
       });

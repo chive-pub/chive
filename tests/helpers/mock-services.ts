@@ -126,7 +126,7 @@ export function createMockRepository(): IRepository {
  */
 export function createMockSearchEngine(): ISearchEngine {
   return {
-    indexPreprint: vi.fn().mockResolvedValue(undefined),
+    indexEprint: vi.fn().mockResolvedValue(undefined),
     search: vi.fn().mockResolvedValue({
       hits: [],
       total: 0,
@@ -165,7 +165,7 @@ export function createMockMetricsService(): MetricsService {
     recordEndorsement: vi.fn().mockResolvedValue(undefined),
     getMetrics: vi.fn().mockResolvedValue({ views: 100, downloads: 20, endorsements: 5 }),
     getTrending: vi.fn().mockResolvedValue({
-      preprints: [],
+      eprints: [],
       window: '24h',
       generatedAt: new Date(),
     }),
@@ -187,7 +187,7 @@ export function createMockGraphService(): KnowledgeGraphService {
       total: 0,
     }),
     browseFaceted: vi.fn().mockResolvedValue({
-      preprints: [],
+      eprints: [],
       availableFacets: {},
       hasMore: false,
       total: 0,
@@ -216,7 +216,7 @@ export function createMockReviewService(): ServerConfig['reviewService'] {
     getEndorsements: vi.fn().mockResolvedValue([]),
     getEndorsementSummary: vi.fn().mockResolvedValue({ total: 0, endorserCount: 0, byType: {} }),
     getEndorsementByUser: vi.fn().mockResolvedValue(null),
-    listEndorsementsForPreprint: vi.fn().mockResolvedValue({ items: [], hasMore: false, total: 0 }),
+    listEndorsementsForEprint: vi.fn().mockResolvedValue({ items: [], hasMore: false, total: 0 }),
   } as unknown as ServerConfig['reviewService'];
 }
 
@@ -293,7 +293,7 @@ export function createMockClaimingService(): ServerConfig['claimingService'] {
       evidence: [],
       verificationScore: 0.8,
       status: 'approved',
-      canonicalUri: 'at://did:plc:test/pub.chive.preprint.submission/123',
+      canonicalUri: 'at://did:plc:test/pub.chive.eprint.submission/123',
       rejectionReason: null,
       reviewedBy: null,
       reviewedAt: null,
@@ -304,7 +304,7 @@ export function createMockClaimingService(): ServerConfig['claimingService'] {
     rejectClaim: vi.fn().mockResolvedValue(undefined),
     getClaim: vi.fn().mockResolvedValue(null),
     getUserClaims: vi.fn().mockResolvedValue([]),
-    findClaimable: vi.fn().mockResolvedValue({ preprints: [], cursor: undefined }),
+    findClaimable: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
     getPendingClaims: vi.fn().mockResolvedValue({ claims: [], cursor: undefined }),
   } as unknown as ServerConfig['claimingService'];
 }
@@ -319,7 +319,7 @@ export function createMockImportService(): ServerConfig['importService'] {
     getById: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue({ id: 1 }),
     update: vi.fn().mockResolvedValue({ id: 1 }),
-    search: vi.fn().mockResolvedValue({ preprints: [], cursor: undefined }),
+    search: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
     markClaimed: vi.fn().mockResolvedValue(undefined),
   } as unknown as ServerConfig['importService'];
 }
@@ -359,17 +359,17 @@ export function createMockActivityService(): ServerConfig['activityService'] {
 }
 
 /**
- * Creates a mock preprint service.
+ * Creates a mock eprint service.
  */
-export function createMockPreprintService(): ServerConfig['preprintService'] {
+export function createMockEprintService(): ServerConfig['eprintService'] {
   return {
-    getPreprint: vi.fn().mockResolvedValue(null),
-    getPreprintByUri: vi.fn().mockResolvedValue(null),
-    listPreprints: vi.fn().mockResolvedValue({ preprints: [], cursor: undefined }),
-    getPreprintsByAuthor: vi.fn().mockResolvedValue({ preprints: [], total: 0 }),
-    indexPreprint: vi.fn().mockResolvedValue(undefined),
-    deletePreprint: vi.fn().mockResolvedValue(undefined),
-  } as unknown as ServerConfig['preprintService'];
+    getEprint: vi.fn().mockResolvedValue(null),
+    getEprintByUri: vi.fn().mockResolvedValue(null),
+    listEprints: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
+    getEprintsByAuthor: vi.fn().mockResolvedValue({ eprints: [], total: 0 }),
+    indexEprint: vi.fn().mockResolvedValue(undefined),
+    deleteEprint: vi.fn().mockResolvedValue(undefined),
+  } as unknown as ServerConfig['eprintService'];
 }
 
 /**
@@ -422,10 +422,10 @@ export function createMockContributionTypeManager(): ServerConfig['contributionT
  */
 export function createMockStorageBackend(): IStorageBackend {
   return {
-    storePreprint: vi.fn().mockResolvedValue(undefined),
-    getPreprint: vi.fn().mockResolvedValue(null),
-    updatePreprint: vi.fn().mockResolvedValue(undefined),
-    deletePreprint: vi.fn().mockResolvedValue(undefined),
-    getPreprintsByAuthor: vi.fn().mockResolvedValue({ preprints: [], total: 0 }),
+    storeEprint: vi.fn().mockResolvedValue(undefined),
+    getEprint: vi.fn().mockResolvedValue(null),
+    updateEprint: vi.fn().mockResolvedValue(undefined),
+    deleteEprint: vi.fn().mockResolvedValue(undefined),
+    getEprintsByAuthor: vi.fn().mockResolvedValue({ eprints: [], total: 0 }),
   } as unknown as IStorageBackend;
 }

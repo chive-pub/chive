@@ -82,10 +82,10 @@ describe('PluginEventBus', () => {
 
     it('should support wildcard event patterns', async () => {
       const handler = vi.fn();
-      eventBus.on('preprint.*', handler);
+      eventBus.on('eprint.*', handler);
 
-      eventBus.emit('preprint.indexed', { uri: 'test-uri' });
-      eventBus.emit('preprint.updated', { uri: 'test-uri-2' });
+      eventBus.emit('eprint.indexed', { uri: 'test-uri' });
+      eventBus.emit('eprint.updated', { uri: 'test-uri-2' });
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -395,7 +395,7 @@ describe('PluginEventBus', () => {
 
     it('should not match different namespace', async () => {
       const handler = vi.fn();
-      eventBus.on('preprint.*', handler);
+      eventBus.on('eprint.*', handler);
 
       eventBus.emit('review.created', {});
 

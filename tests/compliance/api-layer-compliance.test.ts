@@ -25,7 +25,7 @@ import type { ChiveEnv } from '@/api/types/context.js';
 import type { BlobProxyService } from '@/services/blob-proxy/proxy-service.js';
 import type { KnowledgeGraphService } from '@/services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '@/services/metrics/metrics-service.js';
-import { PreprintService, type RecordMetadata } from '@/services/preprint/preprint-service.js';
+import { EprintService, type RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
 import type { SearchService } from '@/services/search/search-service.js';
 import { createElasticsearchClient } from '@/storage/elasticsearch/setup.js';
@@ -38,13 +38,13 @@ import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IRepository } from '@/types/interfaces/repository.interface.js';
 import type {
   ISearchEngine,
-  IndexablePreprintDocument,
+  IndexableEprintDocument,
   SearchQuery,
   SearchResults,
   FacetedSearchQuery,
   FacetedSearchResults,
 } from '@/types/interfaces/search.interface.js';
-import type { Preprint } from '@/types/models/preprint.js';
+import type { Eprint } from '@/types/models/eprint.js';
 
 import {
   createMockAuthzService,
@@ -52,15 +52,15 @@ import {
   createMockContributionTypeManager,
 } from '../helpers/mock-services.js';
 import type {
-  PreprintResponse,
-  PreprintListResponse,
+  EprintResponse,
+  EprintListResponse,
   ErrorResponse,
 } from '../types/api-responses.js';
 
 // Test constants for compliance validation
 const TEST_AUTHOR = 'did:plc:compliance123' as DID;
 const TEST_PDS_URL = 'https://pds.compliance.example.com';
-const INDEX_NAME = 'preprints-compliance';
+const INDEX_NAME = 'eprints-compliance';
 // Unique IP for compliance tests to avoid rate limit collisions with parallel test files
 const _COMPLIANCE_TEST_IP = '192.168.100.9';
 void _COMPLIANCE_TEST_IP; // Reserved for rate limit test isolation
@@ -68,7 +68,7 @@ void _COMPLIANCE_TEST_IP; // Reserved for rate limit test isolation
 // Generate unique test URIs
 function createTestUri(suffix: string): AtUri {
   const timestamp = Date.now();
-  return `at://${TEST_AUTHOR}/pub.chive.preprint.submission/compliance${timestamp}${suffix}` as AtUri;
+  return `at://${TEST_AUTHOR}/pub.chive.eprint.submission/compliance${timestamp}${suffix}` as AtUri;
 }
 
 function createTestCid(suffix: string): CID {
@@ -120,7 +120,7 @@ function createMockRepository(): IRepository {
  */
 function createSearchEngine(client: Client): ISearchEngine {
   return {
-    indexPreprint: async (doc: IndexablePreprintDocument): Promise<void> => {
+    indexEprint: async (doc: IndexableEprintDocument): Promise<void> => {
       await client.index({
         index: INDEX_NAME,
         id: doc.uri,
@@ -198,7 +198,7 @@ function createMockMetricsService(): MetricsService {
     recordEndorsement: vi.fn().mockResolvedValue(undefined),
     getMetrics: vi.fn().mockResolvedValue({ views: 100, downloads: 20, endorsements: 5 }),
     getTrending: vi.fn().mockResolvedValue({
-      preprints: [],
+      eprints: [],
       window: '24h',
       generatedAt: new Date(),
     }),
@@ -220,7 +220,7 @@ function createMockGraphService(): KnowledgeGraphService {
       total: 0,
     }),
     browseFaceted: vi.fn().mockResolvedValue({
-      preprints: [],
+      eprints: [],
       availableFacets: {},
       hasMore: false,
       total: 0,
@@ -249,7 +249,7 @@ function createMockReviewService(): ServerConfig['reviewService'] {
     getEndorsements: vi.fn().mockResolvedValue([]),
     getEndorsementSummary: vi.fn().mockResolvedValue({ total: 0, endorserCount: 0, byType: {} }),
     getEndorsementByUser: vi.fn().mockResolvedValue(null),
-    listEndorsementsForPreprint: vi.fn().mockResolvedValue({ items: [], hasMore: false, total: 0 }),
+    listEndorsementsForEprint: vi.fn().mockResolvedValue({ items: [], hasMore: false, total: 0 }),
   } as unknown as ServerConfig['reviewService'];
 }
 
@@ -303,7 +303,7 @@ function createMockImportService(): ServerConfig['importService'] {
     getById: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue({ id: 1 }),
     update: vi.fn().mockResolvedValue({ id: 1 }),
-    search: vi.fn().mockResolvedValue({ preprints: [], cursor: undefined }),
+    search: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
     markClaimed: vi.fn().mockResolvedValue(undefined),
   } as unknown as ServerConfig['importService'];
 }
@@ -351,7 +351,7 @@ function createMockClaimingService(): ServerConfig['claimingService'] {
     rejectClaim: vi.fn().mockResolvedValue(undefined),
     getClaim: vi.fn().mockResolvedValue(null),
     getUserClaims: vi.fn().mockResolvedValue([]),
-    findClaimable: vi.fn().mockResolvedValue({ preprints: [], cursor: undefined }),
+    findClaimable: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
     getPendingClaims: vi.fn().mockResolvedValue({ claims: [], cursor: undefined }),
     computeScore: vi.fn().mockReturnValue({ score: 0, decision: 'insufficient' }),
   } as unknown as ServerConfig['claimingService'];
@@ -377,11 +377,11 @@ function createMockActivityService(): ServerConfig['activityService'] {
 }
 
 /**
- * Creates test preprint record.
+ * Creates test eprint record.
  */
-function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Preprint {
+function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
   return {
-    $type: 'pub.chive.preprint.submission',
+    $type: 'pub.chive.eprint.submission',
     uri,
     cid: overrides.cid ?? createTestCid('default'),
     authors: overrides.authors ?? [
@@ -396,8 +396,8 @@ function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Prep
       },
     ],
     submittedBy: TEST_AUTHOR,
-    title: overrides.title ?? 'ATProto Compliance Test Preprint',
-    abstract: overrides.abstract ?? 'This preprint tests ATProto compliance requirements.',
+    title: overrides.title ?? 'ATProto Compliance Test Eprint',
+    abstract: overrides.abstract ?? 'This eprint tests ATProto compliance requirements.',
     keywords: overrides.keywords ?? ['compliance', 'atproto', 'test'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
     version: overrides.version ?? 1,
@@ -409,10 +409,10 @@ function createTestPreprint(uri: AtUri, overrides: Partial<Preprint> = {}): Prep
       size: 1024000,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     createdAt: overrides.createdAt ?? (Date.now() as Timestamp),
     ...overrides,
-  } as Preprint;
+  } as Eprint;
 }
 
 /**
@@ -433,7 +433,7 @@ describe('API Layer ATProto Compliance', () => {
   let redis: Redis;
   let storage: PostgreSQLAdapter;
   let searchEngine: ISearchEngine;
-  let preprintService: PreprintService;
+  let eprintService: EprintService;
   let app: Hono<ChiveEnv>;
   let logger: ILogger;
 
@@ -475,8 +475,8 @@ describe('API Layer ATProto Compliance', () => {
     // Create logger
     logger = createMockLogger();
 
-    // Create preprint service
-    preprintService = new PreprintService({
+    // Create eprint service
+    eprintService = new EprintService({
       storage,
       search: searchEngine,
       repository: createMockRepository(),
@@ -486,7 +486,7 @@ describe('API Layer ATProto Compliance', () => {
 
     // Create Hono app
     const serverConfig: ServerConfig = {
-      preprintService,
+      eprintService,
       searchService: createMockSearchService(searchEngine),
       metricsService: createMockMetricsService(),
       graphService: createMockGraphService(),
@@ -567,25 +567,25 @@ describe('API Layer ATProto Compliance', () => {
     it('getSubmission response includes source.pdsEndpoint', async () => {
       const uri = createTestUri('pds1');
       const cid = createTestCid('pds1');
-      const preprint = createTestPreprint(uri);
-      const indexResult = await preprintService.indexPreprint(
-        preprint,
+      const eprint = createTestEprint(uri);
+      const indexResult = await eprintService.indexEprint(
+        eprint,
         createTestMetadata(uri, cid)
       );
 
       if (!indexResult.ok) {
-        throw new Error(`Failed to index preprint: ${indexResult.error.message}`);
+        throw new Error(`Failed to index eprint: ${indexResult.error.message}`);
       }
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       if (res.status !== 200) {
         const errorBody = await res.json();
         throw new Error(`Expected 200 but got ${res.status}: ${JSON.stringify(errorBody)}`);
       }
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: source field MUST be present
       expect(body.source).toBeDefined();
@@ -595,15 +595,15 @@ describe('API Layer ATProto Compliance', () => {
     it('getSubmission response includes source.recordUrl for direct PDS access', async () => {
       const uri = createTestUri('pds2');
       const cid = createTestCid('pds2');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: recordUrl MUST point to source PDS
       expect(body.source.recordUrl).toBeDefined();
@@ -613,15 +613,15 @@ describe('API Layer ATProto Compliance', () => {
     it('getSubmission response includes source.lastVerifiedAt timestamp', async () => {
       const uri = createTestUri('pds3');
       const cid = createTestCid('pds3');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: lastVerifiedAt MUST be present for staleness tracking
       expect(body.source.lastVerifiedAt).toBeDefined();
@@ -638,50 +638,50 @@ describe('API Layer ATProto Compliance', () => {
     it('getSubmission response includes source.stale boolean', async () => {
       const uri = createTestUri('pds4');
       const cid = createTestCid('pds4');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: stale indicator MUST be present
       expect(body.source.stale).toBeDefined();
       expect(typeof body.source.stale).toBe('boolean');
     });
 
-    it('listByAuthor response includes source for each preprint', async () => {
-      // Index multiple preprints
+    it('listByAuthor response includes source for each eprint', async () => {
+      // Index multiple eprints
       for (let i = 0; i < 3; i++) {
         const uri = createTestUri(`list${i}`);
         const cid = createTestCid(`list${i}`);
-        const preprint = createTestPreprint(uri, { title: `List Preprint ${i}` });
-        await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+        const eprint = createTestEprint(uri, { title: `List Eprint ${i}` });
+        await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
       }
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintListResponse;
+      const body = (await res.json()) as EprintListResponse;
 
-      // CRITICAL: Each preprint MUST have source field
-      expect(body.preprints.length).toBeGreaterThan(0);
-      for (const preprint of body.preprints) {
-        expect(preprint.source).toBeDefined();
-        expect(preprint.source.pdsEndpoint).toBeDefined();
+      // CRITICAL: Each eprint MUST have source field
+      expect(body.eprints.length).toBeGreaterThan(0);
+      for (const eprint of body.eprints) {
+        expect(eprint.source).toBeDefined();
+        expect(eprint.source.pdsEndpoint).toBeDefined();
       }
     });
   });
 
   describe('CRITICAL: No write operations exposed to user PDSes', () => {
-    it('API does not expose POST endpoints for creating preprints', async () => {
-      // Attempt to create a preprint via API should fail
-      const res = await makeRequest('/xrpc/pub.chive.preprint.create', {
+    it('API does not expose POST endpoints for creating eprints', async () => {
+      // Attempt to create a eprint via API should fail
+      const res = await makeRequest('/xrpc/pub.chive.eprint.create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -694,10 +694,10 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(404);
     });
 
-    it('API does not expose PUT endpoints for updating preprints', async () => {
+    it('API does not expose PUT endpoints for updating eprints', async () => {
       const uri = createTestUri('noupdate');
 
-      const res = await makeRequest(`/xrpc/pub.chive.preprint.update?uri=${uri}`, {
+      const res = await makeRequest(`/xrpc/pub.chive.eprint.update?uri=${uri}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: 'Updated' }),
@@ -707,10 +707,10 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(404);
     });
 
-    it('API does not expose DELETE endpoints for deleting preprints', async () => {
+    it('API does not expose DELETE endpoints for deleting eprints', async () => {
       const uri = createTestUri('nodelete');
 
-      const res = await makeRequest(`/xrpc/pub.chive.preprint.delete?uri=${uri}`, {
+      const res = await makeRequest(`/xrpc/pub.chive.eprint.delete?uri=${uri}`, {
         method: 'DELETE',
       });
 
@@ -749,7 +749,7 @@ describe('API Layer ATProto Compliance', () => {
     it('getSubmission returns document as BlobRef structure', async () => {
       const uri = createTestUri('blobref1');
       const cid = createTestCid('blobref1');
-      const preprint = createTestPreprint(uri, {
+      const eprint = createTestEprint(uri, {
         documentBlobRef: {
           $type: 'blob',
           ref: 'bafyreiblobreftest' as CID,
@@ -757,14 +757,14 @@ describe('API Layer ATProto Compliance', () => {
           size: 2097152,
         },
       });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: Document MUST be BlobRef structure
       expect(body.document).toBeDefined();
@@ -778,15 +778,15 @@ describe('API Layer ATProto Compliance', () => {
     it('getSubmission does NOT include inline blob data', async () => {
       const uri = createTestUri('noinline1');
       const cid = createTestCid('noinline1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: No inline blob data fields (these properties should not exist on BlobRef)
       const document = body.document as unknown as Record<string, unknown>;
@@ -800,23 +800,23 @@ describe('API Layer ATProto Compliance', () => {
     it('listByAuthor returns documents as BlobRefs', async () => {
       const uri = createTestUri('listblob1');
       const cid = createTestCid('listblob1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintListResponse;
+      const body = (await res.json()) as EprintListResponse;
 
       // CRITICAL: List summaries should not include inline document data
-      for (const preprint of body.preprints) {
+      for (const eprint of body.eprints) {
         // Cast to unknown to check for forbidden fields
-        const rawPreprint = preprint as unknown as Record<string, unknown>;
+        const rawEprint = eprint as unknown as Record<string, unknown>;
         // If document field exists, verify it's a BlobRef (not inline data)
-        if (rawPreprint.document) {
-          const doc = rawPreprint.document as Record<string, unknown>;
+        if (rawEprint.document) {
+          const doc = rawEprint.document as Record<string, unknown>;
           expect(doc.$type).toBe('blob');
           expect(doc.ref).toBeDefined();
           expect(doc.data).toBeUndefined();
@@ -828,15 +828,15 @@ describe('API Layer ATProto Compliance', () => {
     it('source.blobUrl points to PDS, not Chive storage', async () => {
       const uri = createTestUri('bloburl1');
       const cid = createTestCid('bloburl1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // If blobUrl is present, it MUST point to PDS
       if (body.source.blobUrl) {
@@ -849,29 +849,29 @@ describe('API Layer ATProto Compliance', () => {
   });
 
   describe('CRITICAL: PDS source tracking for staleness', () => {
-    it('recently indexed preprint has stale=false', async () => {
+    it('recently indexed eprint has stale=false', async () => {
       const uri = createTestUri('fresh1');
       const cid = createTestCid('fresh1');
-      const preprint = createTestPreprint(uri);
+      const eprint = createTestEprint(uri);
 
       // Index with current timestamp
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
-      // Fresh preprint (indexed now) should NOT be stale
+      // Fresh eprint (indexed now) should NOT be stale
       expect(body.source.stale).toBe(false);
     });
 
-    it('old indexed preprint has stale=true', async () => {
+    it('old indexed eprint has stale=true', async () => {
       const uri = createTestUri('old1');
       const cid = createTestCid('old1');
-      const preprint = createTestPreprint(uri);
+      const eprint = createTestEprint(uri);
 
       // Index with old timestamp (8 days ago)
       const oldMetadata: RecordMetadata = {
@@ -881,16 +881,16 @@ describe('API Layer ATProto Compliance', () => {
         indexedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
       };
 
-      await preprintService.indexPreprint(preprint, oldMetadata);
+      await eprintService.indexEprint(eprint, oldMetadata);
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
-      // Old preprint (>7 days) should be stale
+      // Old eprint (>7 days) should be stale
       expect(body.source.stale).toBe(true);
     });
 
@@ -906,12 +906,12 @@ describe('API Layer ATProto Compliance', () => {
         indexedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
       };
 
-      await preprintService.indexPreprint(createTestPreprint(uri6days), sixDaysAgo);
+      await eprintService.indexEprint(createTestEprint(uri6days), sixDaysAgo);
 
       const res6 = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri6days)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri6days)}`
       );
-      const body6 = (await res6.json()) as PreprintResponse;
+      const body6 = (await res6.json()) as EprintResponse;
 
       expect(body6.source.stale).toBe(false);
 
@@ -926,12 +926,12 @@ describe('API Layer ATProto Compliance', () => {
         indexedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
       };
 
-      await preprintService.indexPreprint(createTestPreprint(uri8days), eightDaysAgo);
+      await eprintService.indexEprint(createTestEprint(uri8days), eightDaysAgo);
 
       const res8 = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri8days)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri8days)}`
       );
-      const body8 = (await res8.json()) as PreprintResponse;
+      const body8 = (await res8.json()) as EprintResponse;
 
       expect(body8.source.stale).toBe(true);
     });
@@ -941,21 +941,21 @@ describe('API Layer ATProto Compliance', () => {
     it('API only exposes read operations', async () => {
       // Test that we can read
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
+        `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
       );
       expect(res.status).toBe(200);
 
       // Test that write operations don't exist
       const writeEndpoints = [
-        { path: '/xrpc/pub.chive.preprint.create', method: 'POST' },
-        { path: '/xrpc/pub.chive.preprint.update', method: 'PUT' },
-        { path: '/xrpc/pub.chive.preprint.delete', method: 'DELETE' },
+        { path: '/xrpc/pub.chive.eprint.create', method: 'POST' },
+        { path: '/xrpc/pub.chive.eprint.update', method: 'PUT' },
+        { path: '/xrpc/pub.chive.eprint.delete', method: 'DELETE' },
         { path: '/xrpc/com.atproto.repo.createRecord', method: 'POST' },
         { path: '/xrpc/com.atproto.repo.putRecord', method: 'PUT' },
         { path: '/xrpc/com.atproto.repo.deleteRecord', method: 'POST' },
-        { path: '/api/v1/preprints', method: 'POST' },
-        { path: '/api/v1/preprints', method: 'PUT' },
-        { path: '/api/v1/preprints', method: 'DELETE' },
+        { path: '/api/v1/eprints', method: 'POST' },
+        { path: '/api/v1/eprints', method: 'PUT' },
+        { path: '/api/v1/eprints', method: 'DELETE' },
       ];
 
       for (const { path, method } of writeEndpoints) {
@@ -966,9 +966,9 @@ describe('API Layer ATProto Compliance', () => {
     });
 
     it('indexing happens from firehose (not direct API)', async () => {
-      // The PreprintService.indexPreprint method is called from firehose consumer,
+      // The EprintService.indexEprint method is called from firehose consumer,
       // NOT from an API endpoint. Verify there's no API endpoint for indexing.
-      const res = await makeRequest('/xrpc/pub.chive.internal.indexPreprint', {
+      const res = await makeRequest('/xrpc/pub.chive.internal.indexEprint', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uri: 'at://test' }),
@@ -982,15 +982,15 @@ describe('API Layer ATProto Compliance', () => {
     it('response provides enough info to fetch from PDS directly', async () => {
       const uri = createTestUri('exit1');
       const cid = createTestCid('exit1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // User should be able to reconstruct PDS fetch URL
       expect(body.uri).toBeDefined(); // AT URI
@@ -1001,13 +1001,13 @@ describe('API Layer ATProto Compliance', () => {
       const uriParts = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/.exec(body.uri);
       expect(uriParts).not.toBeNull();
       expect(uriParts?.[1]).toBe(TEST_AUTHOR); // DID
-      expect(uriParts?.[2]).toBe('pub.chive.preprint.submission'); // Collection
+      expect(uriParts?.[2]).toBe('pub.chive.eprint.submission'); // Collection
     });
 
     it('blob reference provides CID for PDS fetch', async () => {
       const uri = createTestUri('exitblob1');
       const cid = createTestCid('exitblob1');
-      const preprint = createTestPreprint(uri, {
+      const eprint = createTestEprint(uri, {
         documentBlobRef: {
           $type: 'blob',
           ref: 'bafyreiexit123' as CID,
@@ -1015,14 +1015,14 @@ describe('API Layer ATProto Compliance', () => {
           size: 1024000,
         },
       });
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as PreprintResponse;
+      const body = (await res.json()) as EprintResponse;
 
       // User should be able to fetch blob from PDS using CID
       expect(body.document.ref).toBeDefined();
@@ -1035,7 +1035,7 @@ describe('API Layer ATProto Compliance', () => {
   describe('Response format consistency', () => {
     it('all error responses follow standardized format', async () => {
       // Validation error
-      const validationRes = await makeRequest('/xrpc/pub.chive.preprint.getSubmission');
+      const validationRes = await makeRequest('/xrpc/pub.chive.eprint.getSubmission');
       expect(validationRes.status).toBe(400);
       const validationBody = (await validationRes.json()) as ErrorResponse;
       expect(validationBody.error.code).toBeDefined();
@@ -1044,7 +1044,7 @@ describe('API Layer ATProto Compliance', () => {
 
       // Not found error
       const notFoundRes = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(createTestUri('notfound'))}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(createTestUri('notfound'))}`
       );
       expect(notFoundRes.status).toBe(404);
       const notFoundBody = (await notFoundRes.json()) as ErrorResponse;
@@ -1056,11 +1056,11 @@ describe('API Layer ATProto Compliance', () => {
     it('all successful responses include requestId header', async () => {
       const uri = createTestUri('reqid1');
       const cid = createTestCid('reqid1');
-      const preprint = createTestPreprint(uri);
-      await preprintService.indexPreprint(preprint, createTestMetadata(uri, cid));
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const res = await makeRequest(
-        `/xrpc/pub.chive.preprint.getSubmission?uri=${encodeURIComponent(uri)}`
+        `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
       );
 
       expect(res.status).toBe(200);

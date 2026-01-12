@@ -2,7 +2,7 @@
  * Unit tests for SembleBacklinksPlugin.
  *
  * @remarks
- * Tests backlink tracking from Semble collections to Chive preprints.
+ * Tests backlink tracking from Semble collections to Chive eprints.
  *
  * @packageDocumentation
  */
@@ -67,7 +67,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
     id: 1,
     sourceUri: 'at://did:plc:user/xyz.semble.collection/abc123',
     sourceType: 'semble.collection',
-    targetUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz789',
+    targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz789',
     context: 'Test Collection',
     indexedAt: new Date(),
     deleted: false,
@@ -101,7 +101,7 @@ const createMockContext = (overrides?: Partial<IPluginContext>): IPluginContext 
 // ============================================================================
 
 /**
- * Sample Semble collection with preprint references.
+ * Sample Semble collection with eprint references.
  */
 const SAMPLE_PUBLIC_COLLECTION = {
   $type: 'xyz.semble.collection',
@@ -110,18 +110,18 @@ const SAMPLE_PUBLIC_COLLECTION = {
   visibility: 'public' as const,
   items: [
     {
-      uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
       addedAt: '2024-01-15T00:00:00Z',
       note: 'Great paper on semantics',
     },
     {
-      uri: 'at://did:plc:author2/pub.chive.preprint.submission/def456',
+      uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
       addedAt: '2024-01-16T00:00:00Z',
     },
     {
       uri: 'https://example.com/some-article',
       addedAt: '2024-01-17T00:00:00Z',
-      note: 'Not a Chive preprint',
+      note: 'Not a Chive eprint',
     },
   ],
   createdAt: '2024-01-15T00:00:00Z',
@@ -138,7 +138,7 @@ const SAMPLE_PRIVATE_COLLECTION = {
   visibility: 'private' as const,
   items: [
     {
-      uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
       addedAt: '2024-01-15T00:00:00Z',
     },
   ],
@@ -154,7 +154,7 @@ const SAMPLE_UNLISTED_COLLECTION = {
   visibility: 'unlisted' as const,
   items: [
     {
-      uri: 'at://did:plc:author1/pub.chive.preprint.submission/xyz789',
+      uri: 'at://did:plc:author1/pub.chive.eprint.submission/xyz789',
       addedAt: '2024-01-15T00:00:00Z',
     },
   ],
@@ -237,7 +237,7 @@ describe('SembleBacklinksPlugin', () => {
 
     it('should have descriptive text', () => {
       expect(plugin.manifest.description).toBe(
-        'Tracks references to Chive preprints from Semble collections'
+        'Tracks references to Chive eprints from Semble collections'
       );
     });
 
@@ -324,33 +324,33 @@ describe('SembleBacklinksPlugin', () => {
     });
   });
 
-  describe('extractPreprintRefs', () => {
+  describe('extractEprintRefs', () => {
     beforeEach(async () => {
       await plugin.initialize(context);
     });
 
-    it('should extract preprint URIs from collection items', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_PUBLIC_COLLECTION);
+    it('should extract eprint URIs from collection items', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_PUBLIC_COLLECTION);
 
       expect(refs).toHaveLength(2);
-      expect(refs).toContain('at://did:plc:author1/pub.chive.preprint.submission/abc123');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.preprint.submission/def456');
+      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
+      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
     });
 
-    it('should filter out non-preprint URIs', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_PUBLIC_COLLECTION);
+    it('should filter out non-eprint URIs', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_PUBLIC_COLLECTION);
 
       expect(refs).not.toContain('https://example.com/some-article');
     });
 
     it('should return empty array for collection with no items', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_EMPTY_COLLECTION);
+      const refs = plugin.extractEprintRefs(SAMPLE_EMPTY_COLLECTION);
 
       expect(refs).toEqual([]);
     });
 
     it('should return empty array for collection with missing items field', () => {
-      const refs = plugin.extractPreprintRefs(SAMPLE_MALFORMED_COLLECTION);
+      const refs = plugin.extractEprintRefs(SAMPLE_MALFORMED_COLLECTION);
 
       expect(refs).toEqual([]);
     });
@@ -361,7 +361,7 @@ describe('SembleBacklinksPlugin', () => {
         items: 'not-an-array',
       };
 
-      const refs = plugin.extractPreprintRefs(malformed);
+      const refs = plugin.extractEprintRefs(malformed);
 
       expect(refs).toEqual([]);
     });
@@ -372,19 +372,19 @@ describe('SembleBacklinksPlugin', () => {
         items: null,
       };
 
-      const refs = plugin.extractPreprintRefs(malformed);
+      const refs = plugin.extractEprintRefs(malformed);
 
       expect(refs).toEqual([]);
     });
 
-    it('should only extract URIs containing pub.chive.preprint.submission', () => {
+    it('should only extract URIs containing pub.chive.eprint.submission', () => {
       const collection = {
         $type: 'xyz.semble.collection',
         title: 'Mixed Collection',
         visibility: 'public' as const,
         items: [
           {
-            uri: 'at://did:plc:user/pub.chive.preprint.submission/abc123',
+            uri: 'at://did:plc:user/pub.chive.eprint.submission/abc123',
             addedAt: '2024-01-15T00:00:00Z',
           },
           {
@@ -399,10 +399,10 @@ describe('SembleBacklinksPlugin', () => {
         createdAt: '2024-01-15T00:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(collection);
+      const refs = plugin.extractEprintRefs(collection);
 
       expect(refs).toHaveLength(1);
-      expect(refs[0]).toBe('at://did:plc:user/pub.chive.preprint.submission/abc123');
+      expect(refs[0]).toBe('at://did:plc:user/pub.chive.eprint.submission/abc123');
     });
   });
 
@@ -515,13 +515,13 @@ describe('SembleBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:user/xyz.semble.collection/abc123',
         sourceType: 'semble.collection',
-        targetUri: 'at://did:plc:author1/pub.chive.preprint.submission/abc123',
+        targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
         context: 'Linguistics Reading List: Papers on semantic theory',
       });
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:user/xyz.semble.collection/abc123',
         sourceType: 'semble.collection',
-        targetUri: 'at://did:plc:author2/pub.chive.preprint.submission/def456',
+        targetUri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
         context: 'Linguistics Reading List: Papers on semantic theory',
       });
     });
@@ -632,7 +632,7 @@ describe('SembleBacklinksPlugin', () => {
         'backlink.created',
         expect.objectContaining({
           sourceType: 'semble.collection',
-          targetUri: expect.stringContaining('pub.chive.preprint.submission'),
+          targetUri: expect.stringContaining('pub.chive.eprint.submission'),
         })
       );
     });

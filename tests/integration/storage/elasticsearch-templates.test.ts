@@ -57,30 +57,30 @@ describe('Elasticsearch Templates', () => {
   });
 
   describe('Index Template', () => {
-    it('applies preprints index template', async () => {
+    it('applies eprints index template', async () => {
       const response = await client.indices.getIndexTemplate({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       expect(response.index_templates).toHaveLength(1);
-      expect(response.index_templates[0]?.name).toBe('preprints');
+      expect(response.index_templates[0]?.name).toBe('eprints');
     });
 
     it('template is configured as data stream', async () => {
       const response = await client.indices.getIndexTemplate({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       const template = response.index_templates[0];
       expect(template).toBeDefined();
-      expect(template?.index_template.index_patterns).toContain('preprints');
+      expect(template?.index_template.index_patterns).toContain('eprints');
       // Data stream templates have a data_stream property
       expect(template?.index_template.data_stream).toBeDefined();
     });
 
     it('configures custom analyzers', async () => {
       const response = await client.indices.getIndexTemplate({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       const template = response.index_templates[0];
@@ -89,13 +89,13 @@ describe('Elasticsearch Templates', () => {
       const index = settings?.index as ElasticsearchSettings | undefined;
 
       expect(index?.analysis?.analyzer).toBeDefined();
-      expect(index?.analysis?.analyzer).toHaveProperty('preprint_analyzer');
+      expect(index?.analysis?.analyzer).toHaveProperty('eprint_analyzer');
       expect(index?.analysis?.analyzer).toHaveProperty('keyword_analyzer');
     });
 
-    it('configures mappings for preprint fields', async () => {
+    it('configures mappings for eprint fields', async () => {
       const response = await client.indices.getIndexTemplate({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       const template = response.index_templates[0];
@@ -113,7 +113,7 @@ describe('Elasticsearch Templates', () => {
 
     it('configures facets mapping with properties', async () => {
       const response = await client.indices.getIndexTemplate({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       const template = response.index_templates[0];
@@ -127,7 +127,7 @@ describe('Elasticsearch Templates', () => {
 
     it('configures completion suggester for title', async () => {
       const response = await client.indices.getIndexTemplate({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       const template = response.index_templates[0];
@@ -142,18 +142,18 @@ describe('Elasticsearch Templates', () => {
   describe('ILM Policy', () => {
     it('creates ILM policy', async () => {
       const response = await client.ilm.getLifecycle({
-        name: 'preprints_ilm_policy',
+        name: 'eprints_ilm_policy',
       });
 
-      expect(response).toHaveProperty('preprints_ilm_policy');
+      expect(response).toHaveProperty('eprints_ilm_policy');
     });
 
     it('configures hot/warm/cold tiers', async () => {
       const response = await client.ilm.getLifecycle({
-        name: 'preprints_ilm_policy',
+        name: 'eprints_ilm_policy',
       });
 
-      const policy = response.preprints_ilm_policy?.policy;
+      const policy = response.eprints_ilm_policy?.policy;
       expect(policy?.phases).toBeDefined();
       expect(policy?.phases).toHaveProperty('hot');
       expect(policy?.phases).toHaveProperty('warm');
@@ -162,36 +162,36 @@ describe('Elasticsearch Templates', () => {
 
     it('hot phase configures rollover', async () => {
       const response = await client.ilm.getLifecycle({
-        name: 'preprints_ilm_policy',
+        name: 'eprints_ilm_policy',
       });
 
-      const hotPhase = response.preprints_ilm_policy?.policy?.phases?.hot;
+      const hotPhase = response.eprints_ilm_policy?.policy?.phases?.hot;
       expect(hotPhase?.actions).toHaveProperty('rollover');
     });
 
     it('warm phase configures force merge', async () => {
       const response = await client.ilm.getLifecycle({
-        name: 'preprints_ilm_policy',
+        name: 'eprints_ilm_policy',
       });
 
-      const warmPhase = response.preprints_ilm_policy?.policy?.phases?.warm;
+      const warmPhase = response.eprints_ilm_policy?.policy?.phases?.warm;
       expect(warmPhase?.actions).toHaveProperty('forcemerge');
     });
   });
 
   describe('Data Stream Bootstrap', () => {
-    it('creates preprints data stream', async () => {
+    it('creates eprints data stream', async () => {
       const response = await client.indices.getDataStream({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       expect(response.data_streams).toHaveLength(1);
-      expect(response.data_streams[0]?.name).toBe('preprints');
+      expect(response.data_streams[0]?.name).toBe('eprints');
     });
 
     it('data stream has backing indices', async () => {
       const response = await client.indices.getDataStream({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       const dataStream = response.data_streams[0];
@@ -201,11 +201,11 @@ describe('Elasticsearch Templates', () => {
 
     it('data stream uses ILM policy', async () => {
       const response = await client.indices.getDataStream({
-        name: 'preprints',
+        name: 'eprints',
       });
 
       const dataStream = response.data_streams[0];
-      expect(dataStream?.ilm_policy).toBe('preprints_ilm_policy');
+      expect(dataStream?.ilm_policy).toBe('eprints_ilm_policy');
     });
   });
 

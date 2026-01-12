@@ -124,13 +124,13 @@ describe('Observability ATProto Compliance', () => {
     it('SHOULD preserve non-sensitive data', () => {
       logger.info('Safe log', {
         userId: 'did:plc:abc123', // DID is public
-        operation: 'indexPreprint',
+        operation: 'indexEprint',
         duration: 150,
       });
 
       const output = consoleOutput.join('');
       expect(output).toContain('did:plc:abc123');
-      expect(output).toContain('indexPreprint');
+      expect(output).toContain('indexEprint');
       expect(output).toContain('150');
     });
 
@@ -163,13 +163,13 @@ describe('Observability ATProto Compliance', () => {
     it('SHOULD track requests by endpoint, not by user', async () => {
       // Good: aggregate by endpoint
       metrics.incrementCounter('http_requests_total', {
-        endpoint: '/api/preprints',
+        endpoint: '/api/eprints',
         method: 'GET',
       });
       metrics.incrementCounter('http_requests_total', { endpoint: '/api/search', method: 'GET' });
 
       const output = await registry.metrics();
-      expect(output).toContain('endpoint="/api/preprints"');
+      expect(output).toContain('endpoint="/api/eprints"');
       expect(output).toContain('endpoint="/api/search"');
     });
 
@@ -181,16 +181,16 @@ describe('Observability ATProto Compliance', () => {
       // metrics.incrementCounter('user_actions', { user_did: 'did:plc:abc' });
 
       // Do this:
-      metrics.incrementCounter('user_actions_total', { action: 'view_preprint' });
+      metrics.incrementCounter('user_actions_total', { action: 'view_eprint' });
 
       const output = await registry.metrics();
       expect(output).not.toContain('did:plc:');
     });
 
-    it('SHOULD aggregate preprint metrics by field, not by individual preprint', async () => {
+    it('SHOULD aggregate eprint metrics by field, not by individual eprint', async () => {
       // Good: aggregate by field category
-      metrics.incrementCounter('preprints_indexed_total', { field: 'cs.AI', status: 'success' });
-      metrics.incrementCounter('preprints_indexed_total', { field: 'physics', status: 'success' });
+      metrics.incrementCounter('eprints_indexed_total', { field: 'cs.AI', status: 'success' });
+      metrics.incrementCounter('eprints_indexed_total', { field: 'physics', status: 'success' });
 
       const output = await registry.metrics();
       expect(output).toContain('field="cs.AI"');
@@ -276,7 +276,7 @@ describe('Observability ATProto Compliance', () => {
       // Health checks only read from dependencies (Redis, PostgreSQL, etc.)
       // This is verified by code review. health.ts uses read operations only:
       // - redis.ping()
-      // - services.preprint.getPreprintsByAuthor (read)
+      // - services.eprint.getEprintsByAuthor (read)
       // - services.search.search (read)
       // - services.graph.getFieldById (read)
       expect(true).toBe(true);
@@ -321,7 +321,7 @@ describe('Observability ATProto Compliance', () => {
       expect(SpanAttributes.DB_OPERATION).toBe('db.operation');
 
       // Chive attributes (only public identifiers)
-      expect(SpanAttributes.PREPRINT_URI).toBe('chive.preprint.uri'); // AT URI (public)
+      expect(SpanAttributes.EPRINT_URI).toBe('chive.eprint.uri'); // AT URI (public)
       expect(SpanAttributes.USER_DID).toBe('chive.user.did'); // DID (public)
       expect(SpanAttributes.REQUEST_ID).toBe('chive.request.id'); // Random ID
     });

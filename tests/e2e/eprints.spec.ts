@@ -1,54 +1,54 @@
 /**
- * E2E tests for preprint detail page.
+ * E2E tests for eprint detail page.
  *
- * Tests preprint display, metadata, and actions.
+ * Tests eprint display, metadata, and actions.
  *
  * @remarks
- * These tests REQUIRE seeded data. If no preprints are available,
+ * These tests REQUIRE seeded data. If no eprints are available,
  * tests will fail - this is intentional to catch seeding issues.
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { PreprintPage } from './fixtures/page-objects.js';
-import { SEEDED_AUTHORS, SEEDED_PREPRINTS } from './fixtures/test-data.js';
+import { EprintPage } from './fixtures/page-objects.js';
+import { SEEDED_AUTHORS, SEEDED_EPRINTS } from './fixtures/test-data.js';
 
 /**
- * Navigate to the first available preprint from the browse page.
+ * Navigate to the first available eprint from the browse page.
  *
  * @param page - Playwright page
- * @returns PreprintPage page object
- * @throws If no preprints are available (seeding required)
+ * @returns EprintPage page object
+ * @throws If no eprints are available (seeding required)
  */
-async function navigateToFirstPreprint(page: Page): Promise<PreprintPage> {
+async function navigateToFirstEprint(page: Page): Promise<EprintPage> {
   await page.goto('/browse');
   await page.waitForLoadState('networkidle');
 
-  // Get the first preprint link specifically (href contains /preprints/)
+  // Get the first eprint link specifically (href contains /eprints/)
   // More robust than generic first link which might match navigation/filter links
-  const preprintLink = page.locator('a[href*="/preprints/"]').first();
+  const eprintLink = page.locator('a[href*="/eprints/"]').first();
 
-  // Assert preprint exists; fail if not (do not silently accept empty state).
-  await expect(preprintLink).toBeVisible({
+  // Assert eprint exists; fail if not (do not silently accept empty state).
+  await expect(eprintLink).toBeVisible({
     timeout: 10000,
   });
 
   // Click and wait for navigation to complete
-  await Promise.all([page.waitForURL(/\/preprints\//), preprintLink.click()]);
+  await Promise.all([page.waitForURL(/\/eprints\//), eprintLink.click()]);
 
-  return new PreprintPage(page);
+  return new EprintPage(page);
 }
 
-test.describe('Preprint detail page', () => {
-  test('displays preprint title', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+test.describe('Eprint detail page', () => {
+  test('displays eprint title', async ({ page }) => {
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Title MUST be visible
-    await expect(preprintPage.title).toBeVisible();
+    await expect(eprintPage.title).toBeVisible();
   });
 
-  test('handles 404 for non-existent preprint', async ({ page }) => {
+  test('handles 404 for non-existent eprint', async ({ page }) => {
     await page.goto(
-      '/preprints/at%3A%2F%2Fdid%3Aplc%3Anonexistent%2Fpub.chive.preprint.submission%2Fxyz'
+      '/eprints/at%3A%2F%2Fdid%3Aplc%3Anonexistent%2Fpub.chive.eprint.submission%2Fxyz'
     );
 
     // Should show error message
@@ -57,58 +57,58 @@ test.describe('Preprint detail page', () => {
   });
 
   test('displays metadata section', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Metadata section MUST be visible
-    await expect(preprintPage.metadata).toBeVisible();
+    await expect(eprintPage.metadata).toBeVisible();
   });
 
   test('displays authors list', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Authors section MUST be visible
-    await expect(preprintPage.authors).toBeVisible();
+    await expect(eprintPage.authors).toBeVisible();
   });
 
   test('displays abstract section', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Abstract section MUST be visible
-    await expect(preprintPage.abstract).toBeVisible();
+    await expect(eprintPage.abstract).toBeVisible();
   });
 
   test('download button is visible', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Download button MUST be visible
-    await expect(preprintPage.downloadButton).toBeVisible();
+    await expect(eprintPage.downloadButton).toBeVisible();
   });
 
-  test('endorse button is visible on preprint page', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+  test('endorse button is visible on eprint page', async ({ page }) => {
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Endorse button MUST be visible
-    await expect(preprintPage.endorseButton).toBeVisible();
+    await expect(eprintPage.endorseButton).toBeVisible();
   });
 
   test('version selector or metadata is visible', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Either version selector or metadata MUST be visible
-    const versionOrMetadata = preprintPage.versionSelector.or(preprintPage.metadata);
+    const versionOrMetadata = eprintPage.versionSelector.or(eprintPage.metadata);
     await expect(versionOrMetadata).toBeVisible();
   });
 
-  test('share button is visible on preprint page', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+  test('share button is visible on eprint page', async ({ page }) => {
+    await navigateToFirstEprint(page);
 
     // Share button MUST be visible
     const shareButton = page.getByRole('button', { name: /share/i });
     await expect(shareButton).toBeVisible();
   });
 
-  test('preprint page has proper heading hierarchy', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+  test('eprint page has proper heading hierarchy', async ({ page }) => {
+    await navigateToFirstEprint(page);
 
     // H1 should be the title
     const h1 = page.getByRole('heading', { level: 1 });
@@ -120,10 +120,10 @@ test.describe('Preprint detail page', () => {
   });
 
   test('keywords or tags are displayed', async ({ page }) => {
-    const preprintPage = await navigateToFirstPreprint(page);
+    const eprintPage = await navigateToFirstEprint(page);
 
     // Keywords section MUST be visible
-    await expect(preprintPage.keywords).toBeVisible();
+    await expect(eprintPage.keywords).toBeVisible();
   });
 });
 
@@ -133,7 +133,7 @@ test.describe('Preprint detail page', () => {
 
 test.describe('Tab Navigation', () => {
   test('displays all tabs (Abstract, PDF, Reviews, Endorsements, Metadata)', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await expect(page.getByRole('tab', { name: 'Abstract' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'PDF' })).toBeVisible();
     await expect(page.getByRole('tab', { name: /reviews/i })).toBeVisible();
@@ -142,7 +142,7 @@ test.describe('Tab Navigation', () => {
   });
 
   test('Abstract tab is active by default', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     const abstractTab = page.getByRole('tab', { name: 'Abstract' });
     await expect(abstractTab).toHaveAttribute('data-state', 'active');
   });
@@ -150,15 +150,15 @@ test.describe('Tab Navigation', () => {
   test('clicking Reviews tab shows review form button for authenticated users', async ({
     page,
   }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /reviews/i }).click();
     await expect(page.getByRole('button', { name: /write a review/i })).toBeVisible();
   });
 
   test('clicking Endorsements tab shows endorsement button', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /endorsements/i }).click();
-    const endorseButton = page.getByRole('button', { name: /endorse this preprint/i });
+    const endorseButton = page.getByRole('button', { name: /endorse this eprint/i });
     await expect(endorseButton).toBeVisible();
   });
 });
@@ -169,21 +169,21 @@ test.describe('Tab Navigation', () => {
 
 test.describe('Review Submission Flow', () => {
   test('Write a review button opens form with data-testid', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /reviews/i }).click();
     await page.getByRole('button', { name: /write a review/i }).click();
     await expect(page.locator('[data-testid="review-form"]')).toBeVisible();
   });
 
   test('review form textarea has data-testid', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /reviews/i }).click();
     await page.getByRole('button', { name: /write a review/i }).click();
     await expect(page.locator('[data-testid="review-content-input"]')).toBeVisible();
   });
 
   test('review form shows character count with minimum indicator', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /reviews/i }).click();
     await page.getByRole('button', { name: /write a review/i }).click();
 
@@ -194,7 +194,7 @@ test.describe('Review Submission Flow', () => {
   });
 
   test('Post review button is disabled when content is too short', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /reviews/i }).click();
     await page.getByRole('button', { name: /write a review/i }).click();
 
@@ -204,7 +204,7 @@ test.describe('Review Submission Flow', () => {
   });
 
   test('Cancel button hides review form', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /reviews/i }).click();
     await page.getByRole('button', { name: /write a review/i }).click();
     await expect(page.locator('[data-testid="review-form"]')).toBeVisible();
@@ -220,20 +220,20 @@ test.describe('Review Submission Flow', () => {
 // =============================================================================
 
 test.describe('Endorsement Flow', () => {
-  test('Endorse this preprint button opens dialog', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+  test('Endorse this eprint button opens dialog', async ({ page }) => {
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /endorsements/i }).click();
-    await page.getByRole('button', { name: /endorse this preprint/i }).click();
+    await page.getByRole('button', { name: /endorse this eprint/i }).click();
 
     await expect(page.getByRole('dialog')).toBeVisible();
     // Use heading role to avoid matching the button text
-    await expect(page.getByRole('heading', { name: 'Endorse this preprint' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Endorse this eprint' })).toBeVisible();
   });
 
   test('endorsement dialog shows contribution type categories', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /endorsements/i }).click();
-    await page.getByRole('button', { name: /endorse this preprint/i }).click();
+    await page.getByRole('button', { name: /endorse this eprint/i }).click();
 
     // Categories from EndorsementForm CONTRIBUTION_CATEGORIES
     // Use heading role to avoid matching checkbox labels with same text
@@ -243,9 +243,9 @@ test.describe('Endorsement Flow', () => {
   });
 
   test('selecting contribution type updates selection count', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /endorsements/i }).click();
-    await page.getByRole('button', { name: /endorse this preprint/i }).click();
+    await page.getByRole('button', { name: /endorse this eprint/i }).click();
 
     // Wait for dialog to be visible
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -258,18 +258,18 @@ test.describe('Endorsement Flow', () => {
   });
 
   test('Submit endorsement button is disabled without contribution type', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /endorsements/i }).click();
-    await page.getByRole('button', { name: /endorse this preprint/i }).click();
+    await page.getByRole('button', { name: /endorse this eprint/i }).click();
 
     const submitButton = page.getByRole('button', { name: /submit endorsement/i });
     await expect(submitButton).toBeDisabled();
   });
 
   test('shows validation error when no contribution type selected', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
     await page.getByRole('tab', { name: /endorsements/i }).click();
-    await page.getByRole('button', { name: /endorse this preprint/i }).click();
+    await page.getByRole('button', { name: /endorse this eprint/i }).click();
 
     // Error message appears immediately in form
     await expect(page.getByText('Please select at least one contribution type.')).toBeVisible();
@@ -286,7 +286,7 @@ test.describe('Share Functionality', () => {
     test.skip(browserName !== 'chromium', 'Clipboard API not supported in Firefox/WebKit headless');
 
     await context.grantPermissions(['clipboard-write', 'clipboard-read']);
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     // Click the share button
     await page.getByRole('button', { name: /share/i }).click();
@@ -308,7 +308,7 @@ test.describe('Share Functionality', () => {
     try {
       const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
       if (clipboardText) {
-        expect(clipboardText).toContain('/preprints/');
+        expect(clipboardText).toContain('/eprints/');
       }
     } catch {
       // Clipboard access may fail in some environments - just verify share button worked

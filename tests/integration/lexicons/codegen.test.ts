@@ -40,11 +40,11 @@ describe('Lexicon Code Generation Pipeline', () => {
       'pub/chive/graph/facet.ts',
       'pub/chive/graph/fieldProposal.ts',
       'pub/chive/graph/vote.ts',
-      'pub/chive/preprint/getSubmission.ts',
-      'pub/chive/preprint/searchSubmissions.ts',
-      'pub/chive/preprint/submission.ts',
-      'pub/chive/preprint/userTag.ts',
-      'pub/chive/preprint/version.ts',
+      'pub/chive/eprint/getSubmission.ts',
+      'pub/chive/eprint/searchSubmissions.ts',
+      'pub/chive/eprint/submission.ts',
+      'pub/chive/eprint/userTag.ts',
+      'pub/chive/eprint/version.ts',
       'pub/chive/review/comment.ts',
       'pub/chive/review/endorsement.ts',
       'pub/chive/review/entityLink.ts',
@@ -66,24 +66,24 @@ describe('Lexicon Code Generation Pipeline', () => {
   }, 30000);
 
   it('generated validators export schemas', async () => {
-    const { preprintSubmissionSchema } =
-      await import('../../../src/lexicons/validators/pub/chive/preprint/submission.js');
+    const { eprintSubmissionSchema } =
+      await import('../../../src/lexicons/validators/pub/chive/eprint/submission.js');
     const { reviewCommentSchema } =
       await import('../../../src/lexicons/validators/pub/chive/review/comment.js');
     const { actorProfileSchema } =
       await import('../../../src/lexicons/validators/pub/chive/actor/profile.js');
 
-    expect(preprintSubmissionSchema).toBeDefined();
+    expect(eprintSubmissionSchema).toBeDefined();
     expect(reviewCommentSchema).toBeDefined();
     expect(actorProfileSchema).toBeDefined();
   });
 
   it('generated validators work correctly', async () => {
-    const { preprintSubmissionSchema } =
-      await import('../../../src/lexicons/validators/pub/chive/preprint/submission.js');
+    const { eprintSubmissionSchema } =
+      await import('../../../src/lexicons/validators/pub/chive/eprint/submission.js');
 
     const validData = {
-      title: 'Test Preprint',
+      title: 'Test Eprint',
       abstract: 'Abstract',
       document: {
         $type: 'blob',
@@ -108,26 +108,26 @@ describe('Lexicon Code Generation Pipeline', () => {
       createdAt: new Date().toISOString(),
     };
 
-    expect(() => preprintSubmissionSchema.parse(validData)).not.toThrow();
+    expect(() => eprintSubmissionSchema.parse(validData)).not.toThrow();
 
     const invalidData = {
       title: 'Test',
       // Missing required fields
     };
 
-    expect(() => preprintSubmissionSchema.parse(invalidData)).toThrow();
+    expect(() => eprintSubmissionSchema.parse(invalidData)).toThrow();
   });
 
   it('generated files include proper TSDoc comments', async () => {
     const submissionFile = path.join(
       __dirname,
-      '../../../src/lexicons/validators/pub/chive/preprint/submission.ts'
+      '../../../src/lexicons/validators/pub/chive/eprint/submission.ts'
     );
     const content = await fs.readFile(submissionFile, 'utf-8');
 
     expect(content).toContain('/**');
     expect(content).toContain('* @');
-    expect(content).toContain('pub.chive.preprint.submission');
+    expect(content).toContain('pub.chive.eprint.submission');
   });
 
   it('generated files do not contain AI slop', async () => {
@@ -165,12 +165,12 @@ describe('Lexicon Code Generation Pipeline', () => {
   it('generated validators include proper exports', async () => {
     const submissionFile = path.join(
       __dirname,
-      '../../../src/lexicons/validators/pub/chive/preprint/submission.ts'
+      '../../../src/lexicons/validators/pub/chive/eprint/submission.ts'
     );
     const content = await fs.readFile(submissionFile, 'utf-8');
 
-    expect(content).toContain('export const preprintSubmissionSchema');
-    expect(content).toContain('export type PreprintSubmission');
+    expect(content).toContain('export const eprintSubmissionSchema');
+    expect(content).toContain('export type EprintSubmission');
   });
 
   it('facet.ts correctly handles non-record schema', async () => {

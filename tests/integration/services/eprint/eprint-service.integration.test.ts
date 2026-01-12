@@ -1,8 +1,8 @@
 /**
- * PreprintService integration tests.
+ * EprintService integration tests.
  *
  * @remarks
- * Tests PreprintService against real PostgreSQL and Elasticsearch instances:
+ * Tests EprintService against real PostgreSQL and Elasticsearch instances:
  * - Indexing from firehose events
  * - Query operations
  * - Version chain traversal
@@ -18,7 +18,7 @@ import { Client } from '@elastic/elasticsearch';
 import { Pool } from 'pg';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 
-import { PreprintService, type RecordMetadata } from '@/services/preprint/preprint-service.js';
+import { EprintService, type RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { createElasticsearchClient } from '@/storage/elasticsearch/setup.js';
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
 import { getDatabaseConfig } from '@/storage/postgresql/config.js';
@@ -28,10 +28,10 @@ import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IRepository } from '@/types/interfaces/repository.interface.js';
 import type {
   ISearchEngine,
-  IndexablePreprintDocument,
+  IndexableEprintDocument,
 } from '@/types/interfaces/search.interface.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
-import type { Preprint } from '@/types/models/preprint.js';
+import type { EprintAuthor } from '@/types/models/author.js';
+import type { Eprint } from '@/types/models/eprint.js';
 
 // Test constants
 const TEST_AUTHOR = 'did:plc:testauthor123' as DID;
@@ -40,7 +40,7 @@ const TEST_PDS_URL = 'https://pds.test.example.com';
 // Generate unique test URIs to avoid conflicts
 function createTestUri(suffix: string): AtUri {
   const timestamp = Date.now();
-  return `at://${TEST_AUTHOR}/pub.chive.preprint.submission/test${timestamp}${suffix}` as AtUri;
+  return `at://${TEST_AUTHOR}/pub.chive.eprint.submission/test${timestamp}${suffix}` as AtUri;
 }
 
 function createTestCid(suffix: string): CID {
@@ -90,10 +90,10 @@ function createMockRepository(): IRepository {
  * Creates a simple search engine wrapper for Elasticsearch.
  */
 function createSearchEngine(client: Client): ISearchEngine {
-  const INDEX_NAME = 'preprints-test';
+  const INDEX_NAME = 'eprints-test';
 
   return {
-    indexPreprint: async (doc: IndexablePreprintDocument): Promise<void> => {
+    indexEprint: async (doc: IndexableEprintDocument): Promise<void> => {
       await client.index({
         index: INDEX_NAME,
         id: doc.uri,
@@ -159,10 +159,10 @@ function createSearchEngine(client: Client): ISearchEngine {
 }
 
 /**
- * Creates test preprint record.
+ * Creates test eprint record.
  */
-function createTestPreprint(overrides: Partial<Preprint> = {}): Preprint {
-  const testAuthor: PreprintAuthor = {
+function createTestEprint(overrides: Partial<Eprint> = {}): Eprint {
+  const testAuthor: EprintAuthor = {
     did: TEST_AUTHOR,
     name: 'Test Integration Author',
     order: 1,
@@ -173,13 +173,13 @@ function createTestPreprint(overrides: Partial<Preprint> = {}): Preprint {
   };
 
   return {
-    $type: 'pub.chive.preprint.submission',
+    $type: 'pub.chive.eprint.submission',
     uri: overrides.uri ?? createTestUri('default'),
     cid: overrides.cid ?? createTestCid('default'),
     authors: overrides.authors ?? [testAuthor],
     submittedBy: TEST_AUTHOR,
-    title: overrides.title ?? 'Test Preprint Title',
-    abstract: overrides.abstract ?? 'This is a test abstract for the preprint.',
+    title: overrides.title ?? 'Test Eprint Title',
+    abstract: overrides.abstract ?? 'This is a test abstract for the eprint.',
     keywords: overrides.keywords ?? ['test', 'integration'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
     version: overrides.version ?? 1,
@@ -191,10 +191,10 @@ function createTestPreprint(overrides: Partial<Preprint> = {}): Preprint {
       size: 1024000,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     createdAt: overrides.createdAt ?? (Date.now() as Timestamp),
     ...overrides,
-  } as Preprint;
+  } as Eprint;
 }
 
 /**
@@ -209,12 +209,12 @@ function createTestMetadata(uri: AtUri, cid: CID): RecordMetadata {
   };
 }
 
-describe('PreprintService Integration', () => {
+describe('EprintService Integration', () => {
   let pool: Pool;
   let esClient: Client;
   let storage: PostgreSQLAdapter;
   let search: ISearchEngine;
-  let service: PreprintService;
+  let service: EprintService;
 
   beforeAll(async () => {
     // Initialize PostgreSQL
@@ -227,10 +227,10 @@ describe('PreprintService Integration', () => {
     search = createSearchEngine(esClient);
 
     // Create test index if it doesn't exist
-    const indexExists = await esClient.indices.exists({ index: 'preprints-test' });
+    const indexExists = await esClient.indices.exists({ index: 'eprints-test' });
     if (!indexExists) {
       await esClient.indices.create({
-        index: 'preprints-test',
+        index: 'eprints-test',
         mappings: {
           properties: {
             uri: { type: 'keyword' },
@@ -248,7 +248,7 @@ describe('PreprintService Integration', () => {
     }
 
     // Create service
-    service = new PreprintService({
+    service = new EprintService({
       storage,
       search,
       repository: createMockRepository(),
@@ -260,7 +260,7 @@ describe('PreprintService Integration', () => {
   afterAll(async () => {
     // Clean up test index
     try {
-      await esClient.indices.delete({ index: 'preprints-test' });
+      await esClient.indices.delete({ index: 'eprints-test' });
     } catch {
       // Index may not exist
     }
@@ -273,7 +273,7 @@ describe('PreprintService Integration', () => {
     // Clean up test data from Elasticsearch
     try {
       await esClient.deleteByQuery({
-        index: 'preprints-test',
+        index: 'eprints-test',
         query: { match_all: {} },
         refresh: true,
       });
@@ -282,33 +282,33 @@ describe('PreprintService Integration', () => {
     }
   });
 
-  describe('indexPreprint', () => {
-    it('indexes preprint to PostgreSQL storage', async () => {
+  describe('indexEprint', () => {
+    it('indexes eprint to PostgreSQL storage', async () => {
       const uri = createTestUri('pg1');
       const cid = createTestCid('pg1');
-      const preprint = createTestPreprint({ title: 'PostgreSQL Test Preprint' });
+      const eprint = createTestEprint({ title: 'PostgreSQL Test Eprint' });
       const metadata = createTestMetadata(uri, cid);
 
-      const result = await service.indexPreprint(preprint, metadata);
+      const result = await service.indexEprint(eprint, metadata);
 
       expect(result.ok).toBe(true);
 
       // Verify in PostgreSQL
-      const stored = await storage.getPreprint(uri);
+      const stored = await storage.getEprint(uri);
       expect(stored).not.toBeNull();
-      expect(stored?.title).toBe('PostgreSQL Test Preprint');
+      expect(stored?.title).toBe('PostgreSQL Test Eprint');
       expect(stored?.submittedBy).toBe(TEST_AUTHOR);
       expect(stored?.authors[0]?.did).toBe(TEST_AUTHOR);
       expect(stored?.pdsUrl).toBe(TEST_PDS_URL);
     });
 
-    it('indexes preprint to Elasticsearch for search', async () => {
+    it('indexes eprint to Elasticsearch for search', async () => {
       const uri = createTestUri('es1');
       const cid = createTestCid('es1');
-      const preprint = createTestPreprint({ title: 'Elasticsearch Searchable Preprint' });
+      const eprint = createTestEprint({ title: 'Elasticsearch Searchable Eprint' });
       const metadata = createTestMetadata(uri, cid);
 
-      const result = await service.indexPreprint(preprint, metadata);
+      const result = await service.indexEprint(eprint, metadata);
       expect(result.ok).toBe(true);
 
       // Verify searchable in Elasticsearch
@@ -320,10 +320,10 @@ describe('PreprintService Integration', () => {
     it('tracks PDS source for staleness detection', async () => {
       const uri = createTestUri('pds1');
       const cid = createTestCid('pds1');
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
       const metadata = createTestMetadata(uri, cid);
 
-      await service.indexPreprint(preprint, metadata);
+      await service.indexEprint(eprint, metadata);
 
       // Verify PDS tracking via staleness check
       const stalenessStatus = await service.checkStaleness(uri);
@@ -337,107 +337,107 @@ describe('PreprintService Integration', () => {
       const cid2 = createTestCid('v2');
 
       // Index initial version
-      const preprint1 = createTestPreprint({ title: 'Original Title' });
-      await service.indexPreprint(preprint1, createTestMetadata(uri, cid1));
+      const eprint1 = createTestEprint({ title: 'Original Title' });
+      await service.indexEprint(eprint1, createTestMetadata(uri, cid1));
 
       // Index updated version
-      const preprint2 = createTestPreprint({ title: 'Updated Title' });
-      await service.indexPreprintUpdate(uri, preprint2, createTestMetadata(uri, cid2));
+      const eprint2 = createTestEprint({ title: 'Updated Title' });
+      await service.indexEprintUpdate(uri, eprint2, createTestMetadata(uri, cid2));
 
       // Verify update
-      const stored = await storage.getPreprint(uri);
+      const stored = await storage.getEprint(uri);
       expect(stored?.title).toBe('Updated Title');
       expect(stored?.cid).toBe(cid2);
     });
   });
 
-  describe('getPreprint', () => {
-    it('returns null for non-existent preprint', async () => {
+  describe('getEprint', () => {
+    it('returns null for non-existent eprint', async () => {
       const uri = createTestUri('nonexistent');
-      const result = await service.getPreprint(uri);
+      const result = await service.getEprint(uri);
       expect(result).toBeNull();
     });
 
-    it('returns preprint with version history', async () => {
+    it('returns eprint with version history', async () => {
       const uri = createTestUri('get1');
       const cid = createTestCid('get1');
-      const preprint = createTestPreprint({ title: 'Retrievable Preprint' });
+      const eprint = createTestEprint({ title: 'Retrievable Eprint' });
 
-      await service.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await service.indexEprint(eprint, createTestMetadata(uri, cid));
 
-      const result = await service.getPreprint(uri);
+      const result = await service.getEprint(uri);
 
       expect(result).not.toBeNull();
-      expect(result?.title).toBe('Retrievable Preprint');
+      expect(result?.title).toBe('Retrievable Eprint');
       expect(result?.uri).toBe(uri);
       expect(result?.versions).toBeDefined();
     });
   });
 
-  describe('getPreprintsByAuthor', () => {
-    it('returns empty array for author with no preprints', async () => {
+  describe('getEprintsByAuthor', () => {
+    it('returns empty array for author with no eprints', async () => {
       const unknownAuthor = 'did:plc:unknownauthor' as DID;
-      const result = await service.getPreprintsByAuthor(unknownAuthor);
+      const result = await service.getEprintsByAuthor(unknownAuthor);
 
-      expect(result.preprints).toEqual([]);
+      expect(result.eprints).toEqual([]);
       expect(result.total).toBe(0);
     });
 
-    it('returns preprints by author with pagination', async () => {
-      // Index multiple preprints by same author
-      const preprints = [];
+    it('returns eprints by author with pagination', async () => {
+      // Index multiple eprints by same author
+      const eprints = [];
       for (let i = 0; i < 3; i++) {
         const uri = createTestUri(`author${i}`);
         const cid = createTestCid(`author${i}`);
-        const preprint = createTestPreprint({ title: `Author Preprint ${i}` });
-        await service.indexPreprint(preprint, createTestMetadata(uri, cid));
-        preprints.push(uri);
+        const eprint = createTestEprint({ title: `Author Eprint ${i}` });
+        await service.indexEprint(eprint, createTestMetadata(uri, cid));
+        eprints.push(uri);
       }
 
       // Query with limit
-      const result = await service.getPreprintsByAuthor(TEST_AUTHOR, { limit: 2 });
+      const result = await service.getEprintsByAuthor(TEST_AUTHOR, { limit: 2 });
 
-      expect(result.preprints.length).toBeLessThanOrEqual(2);
+      expect(result.eprints.length).toBeLessThanOrEqual(2);
       expect(result.total).toBeGreaterThanOrEqual(0);
     });
   });
 
-  describe('indexPreprintDelete', () => {
-    it('removes preprint from search index', async () => {
+  describe('indexEprintDelete', () => {
+    it('removes eprint from search index', async () => {
       const uri = createTestUri('delete1');
       const cid = createTestCid('delete1');
-      const preprint = createTestPreprint({ title: 'Deletable Preprint' });
+      const eprint = createTestEprint({ title: 'Deletable Eprint' });
 
       // Index
-      await service.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await service.indexEprint(eprint, createTestMetadata(uri, cid));
 
       // Verify searchable
-      let searchResults = await search.search({ q: 'Deletable Preprint', limit: 10 });
+      let searchResults = await search.search({ q: 'Deletable Eprint', limit: 10 });
       expect(searchResults.hits.some((h) => h.uri === uri)).toBe(true);
 
       // Delete
-      const deleteResult = await service.indexPreprintDelete(uri);
+      const deleteResult = await service.indexEprintDelete(uri);
       expect(deleteResult.ok).toBe(true);
 
       // Verify removed from search
-      searchResults = await search.search({ q: 'Deletable Preprint', limit: 10 });
+      searchResults = await search.search({ q: 'Deletable Eprint', limit: 10 });
       expect(searchResults.hits.some((h) => h.uri === uri)).toBe(false);
     });
   });
 
   describe('checkStaleness', () => {
-    it('throws NotFoundError for non-existent preprint', async () => {
+    it('throws NotFoundError for non-existent eprint', async () => {
       const uri = createTestUri('stalenotfound');
 
       await expect(service.checkStaleness(uri)).rejects.toThrow();
     });
 
-    it('returns staleness status for indexed preprint', async () => {
+    it('returns staleness status for indexed eprint', async () => {
       const uri = createTestUri('stale1');
       const cid = createTestCid('stale1');
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
 
-      await service.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await service.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const status = await service.checkStaleness(uri);
 
@@ -451,9 +451,9 @@ describe('PreprintService Integration', () => {
     it('returns version history for single version', async () => {
       const uri = createTestUri('version1');
       const cid = createTestCid('version1');
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
 
-      await service.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await service.indexEprint(eprint, createTestMetadata(uri, cid));
 
       const versions = await service.getVersionHistory(uri);
 
@@ -466,7 +466,7 @@ describe('PreprintService Integration', () => {
     it('stores BlobRef, not blob data', async () => {
       const uri = createTestUri('blobref1');
       const cid = createTestCid('blobref1');
-      const preprint = createTestPreprint({
+      const eprint = createTestEprint({
         documentBlobRef: {
           $type: 'blob',
           ref: 'bafyreiblob123' as CID,
@@ -475,9 +475,9 @@ describe('PreprintService Integration', () => {
         },
       });
 
-      await service.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await service.indexEprint(eprint, createTestMetadata(uri, cid));
 
-      const stored = await storage.getPreprint(uri);
+      const stored = await storage.getEprint(uri);
 
       // Verify BlobRef structure stored
       expect(stored?.documentBlobRef).toBeDefined();
@@ -495,11 +495,11 @@ describe('PreprintService Integration', () => {
     it('tracks PDS URL for every indexed record', async () => {
       const uri = createTestUri('pdstrack1');
       const cid = createTestCid('pdstrack1');
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
 
-      await service.indexPreprint(preprint, createTestMetadata(uri, cid));
+      await service.indexEprint(eprint, createTestMetadata(uri, cid));
 
-      const stored = await storage.getPreprint(uri);
+      const stored = await storage.getEprint(uri);
       expect(stored?.pdsUrl).toBe(TEST_PDS_URL);
       expect(stored?.pdsUrl).not.toBeNull();
     });

@@ -226,7 +226,7 @@ describe('SessionManager', () => {
 
     it('should update session scope', async () => {
       const created = await manager.createSession(testDid, testMetadata);
-      const newScope = ['read:preprints', 'write:reviews'];
+      const newScope = ['read:eprints', 'write:reviews'];
 
       await manager.updateSession(created.id, { scope: newScope });
 

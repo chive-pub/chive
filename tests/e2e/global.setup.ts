@@ -70,11 +70,11 @@ const TEST_AUTHORS = [
 ];
 
 /**
- * Test preprints - real papers from computational semantics.
+ * Test eprints - real papers from computational semantics.
  */
-const TEST_PREPRINTS = [
+const TEST_EPRINTS = [
   {
-    uri: 'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab01',
+    uri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab01',
     cid: 'bafyreigxyz123abc',
     authorDid: 'did:plc:aswhite123abc',
     title: 'Frequency, Acceptability, and Selection: A Case Study of Clause-Embedding',
@@ -90,7 +90,7 @@ const TEST_PREPRINTS = [
     pdsUrl: 'https://bsky.social',
   },
   {
-    uri: 'at://did:plc:jgrove456def/pub.chive.preprint.submission/3kt8m0abcde02',
+    uri: 'at://did:plc:jgrove456def/pub.chive.eprint.submission/3kt8m0abcde02',
     cid: 'bafyreiabc456def',
     authorDid: 'did:plc:jgrove456def',
     title: 'Algebraic Effects for Extensible Dynamic Semantics',
@@ -106,7 +106,7 @@ const TEST_PREPRINTS = [
     pdsUrl: 'https://bsky.social',
   },
   {
-    uri: 'at://did:plc:scharlow789ghi/pub.chive.preprint.submission/4lu9n1bcdef03',
+    uri: 'at://did:plc:scharlow789ghi/pub.chive.eprint.submission/4lu9n1bcdef03',
     cid: 'bafyreighi789jkl',
     authorDid: 'did:plc:scharlow789ghi',
     title: 'On the Semantics of Exceptional Scope',
@@ -124,22 +124,22 @@ const TEST_PREPRINTS = [
 ];
 
 /**
- * Test tags for preprints.
+ * Test tags for eprints.
  */
 const TEST_TAGS = [
   {
-    uri: 'at://did:plc:aswhite123abc/pub.chive.preprint.userTag/tag001',
+    uri: 'at://did:plc:aswhite123abc/pub.chive.eprint.userTag/tag001',
     cid: 'bafkreitag001',
-    preprintUri: 'at://did:plc:jgrove456def/pub.chive.preprint.submission/3kt8m0abcde02',
+    eprintUri: 'at://did:plc:jgrove456def/pub.chive.eprint.submission/3kt8m0abcde02',
     taggerDid: 'did:plc:aswhite123abc',
     tag: 'monads',
     createdAt: '2023-04-01T10:00:00.000Z',
     pdsUrl: 'https://bsky.social',
   },
   {
-    uri: 'at://did:plc:jgrove456def/pub.chive.preprint.userTag/tag002',
+    uri: 'at://did:plc:jgrove456def/pub.chive.eprint.userTag/tag002',
     cid: 'bafkreitag002',
-    preprintUri: 'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab01',
+    eprintUri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab01',
     taggerDid: 'did:plc:jgrove456def',
     tag: 'megaattitude',
     createdAt: '2023-04-02T11:00:00.000Z',
@@ -149,14 +149,14 @@ const TEST_TAGS = [
 
 /**
  * Test backlinks from ATProto ecosystem.
- * These represent references to Chive preprints from Semble, Bluesky, WhiteWind, and Leaflet.
+ * These represent references to Chive eprints from Semble, Bluesky, WhiteWind, and Leaflet.
  */
 const TEST_BACKLINKS = [
   {
     sourceUri: 'at://did:plc:semble001/xyz.semble.collection/col001',
     sourceType: 'semble.collection',
     sourceDid: 'did:plc:semble001',
-    targetUri: 'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab01',
+    targetUri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab01',
     context: 'Computational Semantics Reading List',
     indexedAt: '2024-01-15T10:00:00.000Z',
   },
@@ -164,7 +164,7 @@ const TEST_BACKLINKS = [
     sourceUri: 'at://did:plc:bskyuser001/app.bsky.feed.post/post001',
     sourceType: 'bluesky.post',
     sourceDid: 'did:plc:bskyuser001',
-    targetUri: 'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab01',
+    targetUri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab01',
     context: 'Check out this fascinating paper on clause-embedding verbs! 🧵',
     indexedAt: '2024-02-20T14:30:00.000Z',
   },
@@ -172,7 +172,7 @@ const TEST_BACKLINKS = [
     sourceUri: 'at://did:plc:whitewind001/com.whitewind.blog.entry/blog001',
     sourceType: 'whitewind.blog',
     sourceDid: 'did:plc:whitewind001',
-    targetUri: 'at://did:plc:jgrove456def/pub.chive.preprint.submission/3kt8m0abcde02',
+    targetUri: 'at://did:plc:jgrove456def/pub.chive.eprint.submission/3kt8m0abcde02',
     context: 'A deep dive into algebraic effects in semantics',
     indexedAt: '2024-03-10T09:15:00.000Z',
   },
@@ -180,7 +180,7 @@ const TEST_BACKLINKS = [
     sourceUri: 'at://did:plc:leaflet001/xyz.leaflet.list/list001',
     sourceType: 'leaflet.list',
     sourceDid: 'did:plc:leaflet001',
-    targetUri: 'at://did:plc:scharlow789ghi/pub.chive.preprint.submission/4lu9n1bcdef03',
+    targetUri: 'at://did:plc:scharlow789ghi/pub.chive.eprint.submission/4lu9n1bcdef03',
     context: 'Scope and Continuations Papers',
     indexedAt: '2024-04-05T16:45:00.000Z',
   },
@@ -191,7 +191,7 @@ const TEST_BACKLINKS = [
  */
 const TEST_ENRICHMENTS = [
   {
-    uri: 'at://did:plc:aswhite123abc/pub.chive.preprint.submission/3jt7k9xyzab01',
+    uri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab01',
     semanticScholarId: 'e2a5c6b8d9f0123456789abcdef01234',
     openAlexId: 'W2123456789',
     citationCount: 42,
@@ -233,7 +233,7 @@ const TEST_ENRICHMENTS = [
     enrichedAt: '2024-01-16T12:00:00.000Z',
   },
   {
-    uri: 'at://did:plc:jgrove456def/pub.chive.preprint.submission/3kt8m0abcde02',
+    uri: 'at://did:plc:jgrove456def/pub.chive.eprint.submission/3kt8m0abcde02',
     semanticScholarId: 'f3b6d7c9e0a1234567890bcdef12345',
     openAlexId: 'W3234567890',
     citationCount: 15,
@@ -381,7 +381,7 @@ async function seedPostgres(): Promise<void> {
     await client.query("DELETE FROM user_tags_index WHERE uri LIKE 'at://did:plc:%'");
     await client.query("DELETE FROM endorsements_index WHERE uri LIKE 'at://did:plc:%'");
     await client.query("DELETE FROM reviews_index WHERE uri LIKE 'at://did:plc:%'");
-    await client.query("DELETE FROM preprints_index WHERE uri LIKE 'at://did:plc:%'");
+    await client.query("DELETE FROM eprints_index WHERE uri LIKE 'at://did:plc:%'");
     await client.query("DELETE FROM authors_index WHERE did LIKE 'did:plc:%'");
 
     // Seed authors
@@ -403,13 +403,13 @@ async function seedPostgres(): Promise<void> {
       );
     }
 
-    // Seed preprints with new author model
-    for (const preprint of TEST_PREPRINTS) {
-      const author = TEST_AUTHORS.find((a) => a.did === preprint.authorDid);
+    // Seed eprints with new author model
+    for (const eprint of TEST_EPRINTS) {
+      const author = TEST_AUTHORS.find((a) => a.did === eprint.authorDid);
       const authorsArray = [
         {
-          did: preprint.authorDid,
-          name: author?.displayName ?? preprint.authorDid,
+          did: eprint.authorDid,
+          name: author?.displayName ?? eprint.authorDid,
           order: 1,
           affiliations: author?.affiliations?.map((name) => ({ name })) ?? [],
           contributions: [],
@@ -419,7 +419,7 @@ async function seedPostgres(): Promise<void> {
       ];
 
       await client.query(
-        `INSERT INTO preprints_index (
+        `INSERT INTO eprints_index (
           uri, cid, authors, submitted_by, title, abstract,
           document_blob_cid, document_blob_mime_type, document_blob_size,
           document_format, keywords, license, publication_status,
@@ -428,22 +428,22 @@ async function seedPostgres(): Promise<void> {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          ON CONFLICT (uri) DO UPDATE SET title = EXCLUDED.title, indexed_at = EXCLUDED.indexed_at`,
         [
-          preprint.uri,
-          preprint.cid,
+          eprint.uri,
+          eprint.cid,
           JSON.stringify(authorsArray),
-          preprint.authorDid,
-          preprint.title,
-          preprint.abstract,
-          preprint.documentBlobCid,
-          preprint.documentBlobMimeType,
-          preprint.documentBlobSize,
+          eprint.authorDid,
+          eprint.title,
+          eprint.abstract,
+          eprint.documentBlobCid,
+          eprint.documentBlobMimeType,
+          eprint.documentBlobSize,
           'pdf',
-          preprint.keywords,
-          preprint.license,
-          'preprint',
-          preprint.createdAt,
+          eprint.keywords,
+          eprint.license,
+          'eprint',
+          eprint.createdAt,
           new Date().toISOString(),
-          preprint.pdsUrl,
+          eprint.pdsUrl,
         ]
       );
     }
@@ -451,10 +451,10 @@ async function seedPostgres(): Promise<void> {
     // Seed tags
     for (const tag of TEST_TAGS) {
       await client.query(
-        `INSERT INTO user_tags_index (uri, cid, preprint_uri, tagger_did, tag, created_at, pds_url)
+        `INSERT INTO user_tags_index (uri, cid, eprint_uri, tagger_did, tag, created_at, pds_url)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (uri) DO UPDATE SET tag = EXCLUDED.tag`,
-        [tag.uri, tag.cid, tag.preprintUri, tag.taggerDid, tag.tag, tag.createdAt, tag.pdsUrl]
+        [tag.uri, tag.cid, tag.eprintUri, tag.taggerDid, tag.tag, tag.createdAt, tag.pdsUrl]
       );
     }
 
@@ -497,9 +497,9 @@ async function seedPostgres(): Promise<void> {
       console.log(`  PostgreSQL: Seeded ${TEST_BACKLINKS.length} backlinks`);
     }
 
-    // Create preprint_enrichment table if it doesn't exist
+    // Create eprint_enrichment table if it doesn't exist
     await client.query(`
-      CREATE TABLE IF NOT EXISTS preprint_enrichment (
+      CREATE TABLE IF NOT EXISTS eprint_enrichment (
         uri TEXT PRIMARY KEY,
         semantic_scholar_id TEXT,
         openalex_id TEXT,
@@ -513,12 +513,12 @@ async function seedPostgres(): Promise<void> {
     `);
 
     // Clear existing test enrichment data
-    await client.query("DELETE FROM preprint_enrichment WHERE uri LIKE 'at://did:plc:%'");
+    await client.query("DELETE FROM eprint_enrichment WHERE uri LIKE 'at://did:plc:%'");
 
     // Seed enrichment data
     for (const enrichment of TEST_ENRICHMENTS) {
       await client.query(
-        `INSERT INTO preprint_enrichment (
+        `INSERT INTO eprint_enrichment (
           uri, semantic_scholar_id, openalex_id, citation_count,
           influential_citation_count, references_count, concepts, topics, enriched_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -595,7 +595,7 @@ async function seedPostgres(): Promise<void> {
     );
 
     console.log(
-      `  PostgreSQL: Seeded ${TEST_AUTHORS.length + 1} authors, ${TEST_PREPRINTS.length} preprints, ${TEST_TAGS.length} tags`
+      `  PostgreSQL: Seeded ${TEST_AUTHORS.length + 1} authors, ${TEST_EPRINTS.length} eprints, ${TEST_TAGS.length} tags`
     );
   } catch (error) {
     console.error(`  PostgreSQL: Seed FAILED - ${(error as Error).message}`);
@@ -627,7 +627,7 @@ async function seedElasticsearch(): Promise<void> {
     // Data streams are created from templates, not manually
     let dataStreamExists = false;
     try {
-      const dsResponse = await client.indices.getDataStream({ name: 'preprints' });
+      const dsResponse = await client.indices.getDataStream({ name: 'eprints' });
       dataStreamExists = dsResponse.data_streams.length > 0;
     } catch {
       // Data stream doesn't exist yet
@@ -644,19 +644,19 @@ async function seedElasticsearch(): Promise<void> {
     // Delete existing test documents from data stream
     await client
       .deleteByQuery({
-        index: 'preprints',
+        index: 'eprints',
         body: { query: { wildcard: { uri: 'at://did:plc:*' } } },
         refresh: true,
       })
       .catch(() => {});
 
-    // Index preprints into data stream
+    // Index eprints into data stream
     // Data streams require @timestamp and use `create` action
-    const operations = TEST_PREPRINTS.flatMap((p) => {
+    const operations = TEST_EPRINTS.flatMap((p) => {
       const author = TEST_AUTHORS.find((a) => a.did === p.authorDid);
       return [
         // Use `create` action for data streams (or `index` with data stream name)
-        { create: { _index: 'preprints' } },
+        { create: { _index: 'eprints' } },
         {
           // Required for data streams
           '@timestamp': new Date().toISOString(),
@@ -709,7 +709,7 @@ async function seedElasticsearch(): Promise<void> {
       const errors = result.items.filter((item) => item.create?.error);
       console.error('  Elasticsearch: Bulk indexing had errors:', JSON.stringify(errors, null, 2));
     }
-    console.log(`  Elasticsearch: Indexed ${TEST_PREPRINTS.length} preprints to data stream`);
+    console.log(`  Elasticsearch: Indexed ${TEST_EPRINTS.length} eprints to data stream`);
   } catch (error) {
     console.error(`  Elasticsearch: Seed FAILED - ${(error as Error).message}`);
     throw error; // Fail fast: tests require seeded data.

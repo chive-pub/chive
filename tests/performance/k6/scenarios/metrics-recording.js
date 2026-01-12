@@ -41,7 +41,7 @@ const operationSuccessRate = new Rate('operation_success_rate');
  * Pre-generated URIs for testing.
  */
 const testURIs = testData.sampleDIDs.flatMap((did) =>
-  Array.from({ length: 20 }, (_, i) => `at://${did}/pub.chive.preprint.submission/perf${i}`)
+  Array.from({ length: 20 }, (_, i) => `at://${did}/pub.chive.eprint.submission/perf${i}`)
 );
 
 /**
@@ -106,7 +106,7 @@ export const options = {
  */
 export function setup() {
   console.log(`Running metrics recording benchmark against ${config.baseUrl}`);
-  console.log(`Testing with ${testURIs.length} preprint URIs`);
+  console.log(`Testing with ${testURIs.length} eprint URIs`);
 
   return {
     baseUrl: config.baseUrl,

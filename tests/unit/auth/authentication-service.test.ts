@@ -117,7 +117,7 @@ const createMockJWTService = (): JWTService => {
       claims: {
         sub: 'did:plc:test123',
         sessionId: 'sess_123',
-        scope: 'read:preprints',
+        scope: 'read:eprints',
         jti: 'jti_auth_123',
         exp: Math.floor(Date.now() / 1000) + 3600,
       },
@@ -173,14 +173,14 @@ const createMockRefreshTokenManager = (): RefreshTokenManager => {
     verifyToken: vi.fn().mockResolvedValue({
       did: 'did:plc:test123' as DID,
       sessionId: 'sess_123',
-      scope: ['read:preprints'],
+      scope: ['read:eprints'],
     }),
     revokeToken: vi.fn().mockResolvedValue(undefined),
     rotateToken: vi.fn().mockResolvedValue({
       data: {
         did: 'did:plc:test123' as DID,
         sessionId: 'sess_123',
-        scope: ['read:preprints'],
+        scope: ['read:eprints'],
       },
       newToken: {
         token: 'mock_new_refresh_token',
@@ -277,7 +277,7 @@ describe('AuthenticationService', () => {
     });
 
     it('should respect scope in token options', async () => {
-      const scopes = ['read:preprints', 'write:reviews'];
+      const scopes = ['read:eprints', 'write:reviews'];
 
       const token = await service.issueSessionToken(testDid, {
         scope: scopes,
@@ -303,7 +303,7 @@ describe('AuthenticationService', () => {
         lastActivity: new Date(),
         ipAddress: '192.168.1.1',
         userAgent: 'Test Browser',
-        scope: ['read:preprints'],
+        scope: ['read:eprints'],
       };
       (sessionManager.getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockSession);
 

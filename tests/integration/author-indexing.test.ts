@@ -3,7 +3,7 @@
  *
  * @remarks
  * Tests the complete flow:
- * - Preprint with authors → Elasticsearch index → Query by author
+ * - Eprint with authors → Elasticsearch index → Query by author
  * - Multiple author types (DID, ORCID, external collaborators)
  * - Author filtering in search results
  *
@@ -17,14 +17,14 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import { createElasticsearchClient } from '@/storage/elasticsearch/setup.js';
 import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
-import type { Preprint } from '@/types/models/preprint.js';
+import type { EprintAuthor } from '@/types/models/author.js';
+import type { Eprint } from '@/types/models/eprint.js';
 
 // Test constants
 const TEST_INDEX_NAME = 'test-author-indexing';
 
 // Test authors with different configurations
-const AUTHOR_WITH_DID: PreprintAuthor = {
+const AUTHOR_WITH_DID: EprintAuthor = {
   did: 'did:plc:author1' as DID,
   name: 'Dr. Alice Smith',
   orcid: '0000-0001-2345-6789',
@@ -56,7 +56,7 @@ const AUTHOR_WITH_DID: PreprintAuthor = {
   isHighlighted: false,
 };
 
-const AUTHOR_WITH_ORCID_ONLY: PreprintAuthor = {
+const AUTHOR_WITH_ORCID_ONLY: EprintAuthor = {
   name: 'Bob Johnson',
   orcid: '0000-0002-3456-7890',
   email: 'bob@external.edu',
@@ -78,7 +78,7 @@ const AUTHOR_WITH_ORCID_ONLY: PreprintAuthor = {
   isHighlighted: true, // Co-first author
 };
 
-const EXTERNAL_COLLABORATOR: PreprintAuthor = {
+const EXTERNAL_COLLABORATOR: EprintAuthor = {
   name: 'Dr. Carol Davis',
   email: 'carol@partner.org',
   order: 3,
@@ -100,7 +100,7 @@ const EXTERNAL_COLLABORATOR: PreprintAuthor = {
   isHighlighted: false,
 };
 
-const AUTHOR_WITH_DID_2: PreprintAuthor = {
+const AUTHOR_WITH_DID_2: EprintAuthor = {
   did: 'did:plc:author2' as DID,
   name: 'Dr. Diana Evans',
   orcid: '0000-0003-4567-8901',
@@ -126,7 +126,7 @@ const AUTHOR_WITH_DID_2: PreprintAuthor = {
 /**
  * Map author to Elasticsearch document format.
  */
-function mapAuthorToDocument(author: PreprintAuthor): object {
+function mapAuthorToDocument(author: EprintAuthor): object {
   return {
     did: author.did,
     name: author.name,
@@ -149,28 +149,28 @@ function mapAuthorToDocument(author: PreprintAuthor): object {
 }
 
 /**
- * Map preprint to Elasticsearch document format.
+ * Map eprint to Elasticsearch document format.
  */
-function mapPreprintToDocument(preprint: Preprint, pdsUrl: string): object {
+function mapEprintToDocument(eprint: Eprint, pdsUrl: string): object {
   return {
-    uri: preprint.uri,
-    cid: preprint.cid,
-    title: preprint.title,
-    abstract: preprint.abstract,
-    submittedBy: preprint.submittedBy,
-    paperDid: preprint.paperDid,
-    authors: preprint.authors.map(mapAuthorToDocument),
+    uri: eprint.uri,
+    cid: eprint.cid,
+    title: eprint.title,
+    abstract: eprint.abstract,
+    submittedBy: eprint.submittedBy,
+    paperDid: eprint.paperDid,
+    authors: eprint.authors.map(mapAuthorToDocument),
     // Flatten author fields for filtering
-    author_dids: preprint.authors.filter((a) => a.did).map((a) => a.did),
-    author_names: preprint.authors.map((a) => a.name),
-    author_orcids: preprint.authors.filter((a) => a.orcid).map((a) => a.orcid),
-    author_emails: preprint.authors.filter((a) => a.email).map((a) => a.email),
-    corresponding_authors: preprint.authors
+    author_dids: eprint.authors.filter((a) => a.did).map((a) => a.did),
+    author_names: eprint.authors.map((a) => a.name),
+    author_orcids: eprint.authors.filter((a) => a.orcid).map((a) => a.orcid),
+    author_emails: eprint.authors.filter((a) => a.email).map((a) => a.email),
+    corresponding_authors: eprint.authors
       .filter((a) => a.isCorrespondingAuthor)
       .map((a) => a.did ?? a.name),
-    highlighted_authors: preprint.authors.filter((a) => a.isHighlighted).map((a) => a.name),
+    highlighted_authors: eprint.authors.filter((a) => a.isHighlighted).map((a) => a.name),
     pds_url: pdsUrl,
-    created_at: new Date(preprint.createdAt).toISOString(),
+    created_at: new Date(eprint.createdAt).toISOString(),
     indexed_at: new Date().toISOString(),
   };
 }
@@ -260,9 +260,9 @@ describe('Author Indexing Integration', () => {
   });
 
   describe('Author with DID indexing', () => {
-    it('indexes preprint with DID author correctly', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:author1/pub.chive.preprint.submission/test1' as AtUri,
+    it('indexes eprint with DID author correctly', async () => {
+      const eprint: Eprint = {
+        uri: 'at://did:plc:author1/pub.chive.eprint.submission/test1' as AtUri,
         cid: 'bafytest1' as CID,
         title: 'Test Paper with DID Author',
         abstract: 'This paper has an author with a DID.',
@@ -279,14 +279,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
-      const doc = mapPreprintToDocument(preprint, 'https://bsky.social');
+      const doc = mapEprintToDocument(eprint, 'https://bsky.social');
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
+        id: eprint.uri,
         document: doc,
         refresh: true,
       });
@@ -294,7 +294,7 @@ describe('Author Indexing Integration', () => {
       // Verify indexed
       const result = await client.get({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
+        id: eprint.uri,
       });
 
       expect(result._source).toBeDefined();
@@ -304,8 +304,8 @@ describe('Author Indexing Integration', () => {
     });
 
     it('can filter by author DID', async () => {
-      const preprint1: Preprint = {
-        uri: 'at://did:plc:author1/pub.chive.preprint.submission/p1' as AtUri,
+      const eprint1: Eprint = {
+        uri: 'at://did:plc:author1/pub.chive.eprint.submission/p1' as AtUri,
         cid: 'bafyp1' as CID,
         title: 'Paper by Author 1',
         abstract: 'Abstract for paper 1.',
@@ -322,12 +322,12 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
-      const preprint2: Preprint = {
-        uri: 'at://did:plc:author2/pub.chive.preprint.submission/p2' as AtUri,
+      const eprint2: Eprint = {
+        uri: 'at://did:plc:author2/pub.chive.eprint.submission/p2' as AtUri,
         cid: 'bafyp2' as CID,
         title: 'Paper by Author 2',
         abstract: 'Abstract for paper 2.',
@@ -344,20 +344,20 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       // Index both
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint1.uri,
-        document: mapPreprintToDocument(preprint1, 'https://bsky.social'),
+        id: eprint1.uri,
+        document: mapEprintToDocument(eprint1, 'https://bsky.social'),
       });
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint2.uri,
-        document: mapPreprintToDocument(preprint2, 'https://bsky.social'),
+        id: eprint2.uri,
+        document: mapEprintToDocument(eprint2, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -370,14 +370,14 @@ describe('Author Indexing Integration', () => {
       });
 
       expect(result.hits.hits).toHaveLength(1);
-      expect((result.hits.hits[0]?._source as Record<string, unknown>).uri).toBe(preprint1.uri);
+      expect((result.hits.hits[0]?._source as Record<string, unknown>).uri).toBe(eprint1.uri);
     });
   });
 
   describe('Author with ORCID indexing', () => {
-    it('indexes preprint with ORCID-only author', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:submitter/pub.chive.preprint.submission/orcid1' as AtUri,
+    it('indexes eprint with ORCID-only author', async () => {
+      const eprint: Eprint = {
+        uri: 'at://did:plc:submitter/pub.chive.eprint.submission/orcid1' as AtUri,
         cid: 'bafyorcid1' as CID,
         title: 'Paper with ORCID Author',
         abstract: 'This paper has an external author with ORCID.',
@@ -394,14 +394,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -419,8 +419,8 @@ describe('Author Indexing Integration', () => {
     });
 
     it('can filter by ORCID', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/orcid2' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/orcid2' as AtUri,
         cid: 'bafyorcid2' as CID,
         title: 'Another ORCID Paper',
         abstract: 'Testing ORCID filtering.',
@@ -437,14 +437,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -461,9 +461,9 @@ describe('Author Indexing Integration', () => {
   });
 
   describe('External collaborator indexing', () => {
-    it('indexes preprint with external collaborator (no DID)', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/ext1' as AtUri,
+    it('indexes eprint with external collaborator (no DID)', async () => {
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/ext1' as AtUri,
         cid: 'bafyext1' as CID,
         title: 'Paper with External Collaborator',
         abstract: 'This paper includes an external collaborator without DID.',
@@ -480,14 +480,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -503,8 +503,8 @@ describe('Author Indexing Integration', () => {
     });
 
     it('can filter by email for external collaborators', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/ext2' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/ext2' as AtUri,
         cid: 'bafyext2' as CID,
         title: 'Another External Paper',
         abstract: 'Testing email filtering.',
@@ -521,14 +521,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -546,8 +546,8 @@ describe('Author Indexing Integration', () => {
 
   describe('Highlighted and corresponding author indexing', () => {
     it('indexes highlighted (co-first) authors correctly', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/hl1' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/hl1' as AtUri,
         cid: 'bafyhl1' as CID,
         title: 'Paper with Co-First Authors',
         abstract: 'This paper has co-first authors.',
@@ -567,20 +567,20 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
       const result = await client.get({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
+        id: eprint.uri,
       });
 
       const source = result._source as Record<string, unknown>;
@@ -590,8 +590,8 @@ describe('Author Indexing Integration', () => {
     });
 
     it('indexes corresponding authors correctly', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/ca1' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/ca1' as AtUri,
         cid: 'bafyca1' as CID,
         title: 'Paper with Corresponding Author',
         abstract: 'Testing corresponding author indexing.',
@@ -608,20 +608,20 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
       const result = await client.get({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
+        id: eprint.uri,
       });
 
       const source = result._source as Record<string, unknown>;
@@ -633,8 +633,8 @@ describe('Author Indexing Integration', () => {
 
   describe('Author affiliation indexing', () => {
     it('indexes author affiliations with ROR IDs', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/aff1' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/aff1' as AtUri,
         cid: 'bafyaff1' as CID,
         title: 'Paper with ROR Affiliations',
         abstract: 'Testing affiliation indexing.',
@@ -651,14 +651,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -681,8 +681,8 @@ describe('Author Indexing Integration', () => {
 
   describe('Author contribution indexing', () => {
     it('indexes author contributions with types and degrees', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/contrib1' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/contrib1' as AtUri,
         cid: 'bafycontrib1' as CID,
         title: 'Paper with Contribution Types',
         abstract: 'Testing contribution indexing.',
@@ -699,14 +699,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -727,8 +727,8 @@ describe('Author Indexing Integration', () => {
     });
 
     it('can filter by contribution degree', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:sub/pub.chive.preprint.submission/deg1' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:sub/pub.chive.eprint.submission/deg1' as AtUri,
         cid: 'bafydeg1' as CID,
         title: 'Paper with Lead Contributions',
         abstract: 'Testing degree filtering.',
@@ -745,14 +745,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
@@ -775,8 +775,8 @@ describe('Author Indexing Integration', () => {
 
   describe('Paper-centric vs traditional submission indexing', () => {
     it('indexes traditional submission (no paperDid)', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:user123/pub.chive.preprint.submission/trad1' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:user123/pub.chive.eprint.submission/trad1' as AtUri,
         cid: 'bafytrad1' as CID,
         title: 'Traditional Submission',
         abstract: 'Paper lives in submitter PDS.',
@@ -794,20 +794,20 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://bsky.social'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://bsky.social'),
         refresh: true,
       });
 
       const result = await client.get({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
+        id: eprint.uri,
       });
 
       const source = result._source as Record<string, unknown>;
@@ -816,8 +816,8 @@ describe('Author Indexing Integration', () => {
     });
 
     it('indexes paper-centric submission (with paperDid)', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:paper-abc/pub.chive.preprint.submission/pc1' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:paper-abc/pub.chive.eprint.submission/pc1' as AtUri,
         cid: 'bafypc1' as CID,
         title: 'Paper-Centric Submission',
         abstract: 'Paper has its own PDS.',
@@ -835,20 +835,20 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://paper-pds.example.com'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://paper-pds.example.com'),
         refresh: true,
       });
 
       const result = await client.get({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
+        id: eprint.uri,
       });
 
       const source = result._source as Record<string, unknown>;
@@ -857,8 +857,8 @@ describe('Author Indexing Integration', () => {
     });
 
     it('can filter by paperDid', async () => {
-      const preprint: Preprint = {
-        uri: 'at://did:plc:paper-xyz/pub.chive.preprint.submission/pc2' as AtUri,
+      const eprint: Eprint = {
+        uri: 'at://did:plc:paper-xyz/pub.chive.eprint.submission/pc2' as AtUri,
         cid: 'bafypc2' as CID,
         title: 'Another Paper-Centric',
         abstract: 'Testing paperDid filtering.',
@@ -876,14 +876,14 @@ describe('Author Indexing Integration', () => {
           size: 1024000,
         },
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         createdAt: Date.now() as Timestamp,
       };
 
       await client.index({
         index: TEST_INDEX_NAME,
-        id: preprint.uri,
-        document: mapPreprintToDocument(preprint, 'https://paper-pds.example.com'),
+        id: eprint.uri,
+        document: mapEprintToDocument(eprint, 'https://paper-pds.example.com'),
         refresh: true,
       });
 
