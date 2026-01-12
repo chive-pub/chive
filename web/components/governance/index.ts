@@ -9,3 +9,9 @@
  */
 
 export { ProposalForm, type ProposalFormProps, type ProposalFormValues } from './proposal-form';
+export {
+  ContributionTypeVotePanel,
+  ContributionTypeVoteList,
+  type ContributionTypeVotePanelProps,
+  type ContributionTypeVoteListProps,
+} from './contribution-type-vote';

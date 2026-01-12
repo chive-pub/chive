@@ -49,6 +49,23 @@ export interface UploadBlobResult {
 }
 
 /**
+ * Supplementary material category.
+ */
+type SupplementaryCategory =
+  | 'appendix'
+  | 'figure'
+  | 'table'
+  | 'dataset'
+  | 'code'
+  | 'notebook'
+  | 'video'
+  | 'audio'
+  | 'presentation'
+  | 'protocol'
+  | 'questionnaire'
+  | 'other';
+
+/**
  * Preprint record as stored in ATProto.
  */
 export interface PreprintRecord {
@@ -58,12 +75,16 @@ export interface PreprintRecord {
   abstract: string;
   authors: AuthorRef[];
   document: BlobRef;
+  documentFormat?: string;
   fieldNodes: FieldNodeRef[];
   createdAt: string;
   supplementaryMaterials?: Array<{
-    file: BlobRef;
-    description: string;
-    type?: string;
+    blob: BlobRef;
+    label: string;
+    description?: string;
+    category: SupplementaryCategory;
+    detectedFormat?: string;
+    order: number;
   }>;
   facets?: FacetValue[];
   keywords?: string[];
@@ -169,25 +190,19 @@ export async function uploadBlob(agent: Agent, file: File): Promise<UploadBlobRe
 }
 
 /**
- * Upload a PDF document to the user's PDS.
+ * Upload a document to the user's PDS.
  *
  * @param agent - Authenticated ATProto Agent
- * @param file - PDF file to upload
+ * @param file - Document file to upload (PDF, DOCX, HTML, Markdown, LaTeX, etc.)
  * @returns Upload result with BlobRef
- *
- * @throws Error if file is not a PDF
  *
  * @example
  * ```typescript
- * const result = await uploadPdfDocument(agent, pdfFile);
+ * const result = await uploadDocument(agent, documentFile);
  * // Use result.blobRef in preprint record
  * ```
  */
-export async function uploadPdfDocument(agent: Agent, file: File): Promise<UploadBlobResult> {
-  if (file.type !== 'application/pdf') {
-    throw new Error('File must be a PDF');
-  }
-
+export async function uploadDocument(agent: Agent, file: File): Promise<UploadBlobResult> {
   return uploadBlob(agent, file);
 }
 
@@ -200,7 +215,7 @@ export async function uploadPdfDocument(agent: Agent, file: File): Promise<Uploa
  *
  * @remarks
  * This is the primary function for submitting preprints. It:
- * 1. Uploads the PDF document to the user's PDS
+ * 1. Uploads the document to the user's PDS (PDF, DOCX, HTML, etc.)
  * 2. Uploads any supplementary materials
  * 3. Creates the preprint record with blob references
  *
@@ -212,7 +227,7 @@ export async function uploadPdfDocument(agent: Agent, file: File): Promise<Uploa
  * @returns Created record result
  *
  * @throws Error if agent is not authenticated
- * @throws Error if PDF upload fails
+ * @throws Error if document upload fails
  * @throws Error if record creation fails
  *
  * @example
@@ -221,7 +236,7 @@ export async function uploadPdfDocument(agent: Agent, file: File): Promise<Uploa
  * if (!agent) throw new Error('Not authenticated');
  *
  * const result = await createPreprintRecord(agent, {
- *   pdfFile: myPdfFile,
+ *   documentFile: myDocFile,
  *   title: 'My Research Paper',
  *   abstract: 'This paper presents...',
  *   authors: [{ did: agent.session.did, order: 1, name: 'Alice' }],
@@ -240,23 +255,29 @@ export async function createPreprintRecord(
     throw new Error('Agent is not authenticated');
   }
 
-  // 1. Upload PDF document
-  const pdfUpload = await uploadPdfDocument(agent, data.pdfFile);
+  // 1. Upload document
+  const docUpload = await uploadDocument(agent, data.documentFile);
 
   // 2. Upload supplementary materials (if any)
   const supplementaryBlobs: Array<{
-    file: BlobRef;
-    description: string;
-    type?: string;
+    blob: BlobRef;
+    label: string;
+    description?: string;
+    category: SupplementaryCategory;
+    detectedFormat?: string;
+    order: number;
   }> = [];
 
-  if (data.supplementaryFiles && data.supplementaryFiles.length > 0) {
-    for (const supplementary of data.supplementaryFiles) {
+  if (data.supplementaryMaterials && data.supplementaryMaterials.length > 0) {
+    for (const supplementary of data.supplementaryMaterials) {
       const upload = await uploadBlob(agent, supplementary.file);
       supplementaryBlobs.push({
-        file: upload.blobRef,
+        blob: upload.blobRef,
+        label: supplementary.label,
         description: supplementary.description,
-        type: supplementary.type,
+        category: supplementary.category as SupplementaryCategory,
+        detectedFormat: supplementary.detectedFormat,
+        order: supplementary.order,
       });
     }
   }
@@ -267,7 +288,8 @@ export async function createPreprintRecord(
     title: data.title,
     abstract: data.abstract,
     authors: data.authors,
-    document: pdfUpload.blobRef,
+    document: docUpload.blobRef,
+    documentFormat: data.documentFormat,
     fieldNodes: data.fieldNodes,
     createdAt: new Date().toISOString(),
   };

@@ -4,6 +4,8 @@ import { authApi } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
 import type {
   ClaimRequest,
+  ClaimRequestWithPaper,
+  ClaimPaperDetails,
   ClaimablePreprint,
   ClaimStatus,
   ClaimEvidenceType,
@@ -11,6 +13,9 @@ import type {
   SuggestedPaperAuthor,
   SuggestionsProfileMetadata,
 } from '@/lib/api/schema';
+
+// Re-export the new types for consumer convenience
+export type { ClaimRequestWithPaper, ClaimPaperDetails };
 
 // Re-export suggestion types for consumer convenience
 export type { SuggestedPaper, SuggestedPaperAuthor, SuggestionsProfileMetadata };
@@ -57,7 +62,7 @@ interface UseUserClaimsOptions {
  * Fetches the authenticated user's claims with pagination.
  *
  * @param options - Query options
- * @returns Infinite query result with paginated claims
+ * @returns Infinite query result with paginated claims including paper details
  */
 export function useUserClaims(options: UseUserClaimsOptions = {}) {
   const { status, limit = 20, enabled = true } = options;
@@ -67,7 +72,7 @@ export function useUserClaims(options: UseUserClaimsOptions = {}) {
     queryFn: async ({
       pageParam,
     }): Promise<{
-      claims: ClaimRequest[];
+      claims: ClaimRequestWithPaper[];
       cursor?: string;
       hasMore: boolean;
     }> => {
@@ -87,7 +92,12 @@ export function useUserClaims(options: UseUserClaimsOptions = {}) {
           '/xrpc/pub.chive.claiming.getUserClaims'
         );
       }
-      return data!;
+      // Cast to ClaimRequestWithPaper since the API now returns paper details
+      return data as unknown as {
+        claims: ClaimRequestWithPaper[];
+        cursor?: string;
+        hasMore: boolean;
+      };
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),

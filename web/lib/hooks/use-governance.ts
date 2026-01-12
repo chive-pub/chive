@@ -42,6 +42,8 @@ import type {
   VoterRole,
   ProposalStatus,
   ProposalType,
+  ProposalCategory,
+  VoteAction,
   VoteValue,
   Proposal,
   ProposalChanges,
@@ -56,6 +58,8 @@ export type {
   VoterRole,
   ProposalStatus,
   ProposalType,
+  ProposalCategory,
+  VoteAction,
   VoteValue,
   Proposal,
   ProposalChanges,
@@ -108,6 +112,8 @@ export const governanceKeys = {
  * Parameters for listing proposals.
  */
 export interface ProposalListParams {
+  /** Filter by category (field, contribution-type) */
+  category?: ProposalCategory;
   /** Filter by status */
   status?: ProposalStatus;
   /** Filter by proposal type */
@@ -132,6 +138,8 @@ export interface UseGovernanceOptions {
  * Input for creating a proposal.
  */
 export interface CreateProposalInput {
+  /** Proposal category (field, contribution-type) */
+  category: ProposalCategory;
   /** Proposal type */
   type: ProposalType;
   /** Target field ID (for update/merge/delete) */
@@ -479,16 +487,27 @@ export const STATUS_LABELS: Record<ProposalStatus, string> = {
  * Human-readable proposal type labels.
  */
 export const TYPE_LABELS: Record<ProposalType, string> = {
-  create: 'Create Field',
-  update: 'Update Field',
-  merge: 'Merge Fields',
-  delete: 'Delete Field',
+  create: 'Create',
+  update: 'Update',
+  merge: 'Merge',
+  delete: 'Delete',
+};
+
+/**
+ * Human-readable category labels.
+ */
+export const CATEGORY_LABELS: Record<ProposalCategory, string> = {
+  field: 'Knowledge Graph Field',
+  'contribution-type': 'Contribution Type',
+  facet: 'Facet Value',
+  organization: 'Organization',
+  reconciliation: 'Reconciliation',
 };
 
 /**
  * Human-readable vote labels.
  */
-export const VOTE_LABELS: Record<VoteValue, string> = {
+export const VOTE_LABELS: Record<VoteAction, string> = {
   approve: 'Approve',
   reject: 'Reject',
   abstain: 'Abstain',

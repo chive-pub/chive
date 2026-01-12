@@ -1,12 +1,12 @@
 import { Calendar, FileText, Tag } from 'lucide-react';
 
-import { AuthorChipList } from './author-chip';
+import { AuthorChipList, type PreprintAuthor } from './author-chip';
 import { FieldBadgeList } from './field-badge';
 import { PreprintMetrics } from './preprint-metrics';
 import { LicenseBadge, DoiLink } from './preprint-metadata';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
-import type { Preprint, Author } from '@/lib/api/schema';
+import type { Preprint } from '@/lib/api/schema';
 
 /**
  * Props for the PreprintHeader component.
@@ -34,8 +34,6 @@ export interface PreprintHeaderProps {
  * @returns React element displaying the preprint header
  */
 export function PreprintHeader({ preprint, className }: PreprintHeaderProps) {
-  const allAuthors: Author[] = [preprint.author, ...(preprint.coAuthors ?? [])];
-
   return (
     <header className={cn('space-y-6', className)}>
       {/* Version indicator */}
@@ -49,14 +47,16 @@ export function PreprintHeader({ preprint, className }: PreprintHeaderProps) {
       )}
 
       {/* Title */}
-      <h1 className="text-3xl font-bold leading-tight tracking-tight md:text-4xl">
+      <h1 className="text-2xl font-bold leading-tight tracking-tight break-words md:text-4xl">
         {preprint.title}
       </h1>
 
       {/* Authors */}
-      <div role="list" aria-label="Authors" className="flex flex-wrap items-center gap-4">
-        <AuthorChipList authors={allAuthors} showAvatars />
-      </div>
+      {preprint.authors && preprint.authors.length > 0 && (
+        <div role="list" aria-label="Authors" className="flex flex-wrap items-center gap-4">
+          <AuthorChipList authors={preprint.authors as PreprintAuthor[]} showAvatars showBadges />
+        </div>
+      )}
 
       {/* Date and metrics row */}
       <div className="flex flex-wrap items-center gap-4 border-y py-4 text-sm">
@@ -187,17 +187,15 @@ export interface CompactPreprintHeaderProps {
  * ```
  */
 export function CompactPreprintHeader({ preprint, className }: CompactPreprintHeaderProps) {
-  const allAuthors: Author[] = [preprint.author, ...(preprint.coAuthors ?? [])];
-
   return (
     <header className={cn('space-y-3', className)}>
       <h2 className="text-xl font-semibold leading-tight">{preprint.title}</h2>
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        {allAuthors.map((author, index) => (
-          <span key={author.did}>
-            {author.displayName ?? author.handle}
-            {index < allAuthors.length - 1 && ', '}
+        {preprint.authors.map((author, index) => (
+          <span key={author.did ?? `author-${index}`}>
+            {author.name ?? author.handle}
+            {index < preprint.authors.length - 1 && ', '}
           </span>
         ))}
         <span>·</span>

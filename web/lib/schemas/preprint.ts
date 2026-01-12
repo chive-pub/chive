@@ -16,14 +16,30 @@ import { z } from 'zod';
 // =============================================================================
 
 /**
- * Maximum file size for PDF documents (50MB).
+ * Maximum file size for primary documents (50MB).
  */
-export const MAX_PDF_SIZE_BYTES = 52_428_800;
+export const MAX_DOCUMENT_SIZE_BYTES = 52_428_800;
 
 /**
  * Maximum file size for supplementary materials (100MB).
  */
 export const MAX_SUPPLEMENTARY_SIZE_BYTES = 104_857_600;
+
+/**
+ * Supported document formats for manuscripts.
+ */
+export const SUPPORTED_DOCUMENT_FORMATS = [
+  'pdf',
+  'docx',
+  'html',
+  'markdown',
+  'latex',
+  'jupyter',
+  'odt',
+  'rtf',
+  'epub',
+  'txt',
+] as const;
 
 /**
  * Supported content licenses.
@@ -38,9 +54,22 @@ export const SUPPORTED_LICENSES = [
 ] as const;
 
 /**
- * Supplementary material types.
+ * Supplementary material categories.
  */
-export const SUPPLEMENTARY_TYPES = ['data', 'code', 'figure', 'appendix', 'other'] as const;
+export const SUPPLEMENTARY_CATEGORIES = [
+  'appendix',
+  'figure',
+  'table',
+  'dataset',
+  'code',
+  'notebook',
+  'video',
+  'audio',
+  'presentation',
+  'protocol',
+  'questionnaire',
+  'other',
+] as const;
 
 /**
  * External link types for repositories.
@@ -109,56 +138,58 @@ export type ExternalProfile = z.infer<typeof externalProfileSchema>;
  * Required fields: did, order. All others are optional but recommended.
  */
 export const authorRefSchema = z.object({
-  /** Author's decentralized identifier (required) */
-  did: z.string().regex(/^did:[a-z]+:[a-zA-Z0-9._:%-]+$/, 'Invalid DID format'),
+  /** Author's decentralized identifier (optional for external collaborators) */
+  did: z
+    .string()
+    .regex(/^did:[a-z]+:[a-zA-Z0-9._:%-]+$/, 'Invalid DID format')
+    .optional(),
 
   /** Author order in byline (required, 1-indexed) */
   order: z.number().int().min(1),
 
-  /** Display name */
-  name: z.string().max(200).optional(),
+  /** Display name (required) */
+  name: z.string().min(1).max(200),
 
-  /** Institutional affiliation (free text) */
-  affiliation: z.string().max(500).optional(),
+  /** ORCID identifier */
+  orcid: z.string().optional(),
 
-  /** ROR identifier for institution (https://ror.org/...) */
-  affiliationRor: z.string().url().optional(),
+  /** Contact email */
+  email: z.string().email().optional().or(z.literal('')),
 
-  /** ORCID identifier (https://orcid.org/...) */
-  orcid: z
-    .string()
-    .regex(/^https:\/\/orcid\.org\/\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/, 'Invalid ORCID format')
-    .optional(),
+  /** Author affiliations */
+  affiliations: z
+    .array(
+      z.object({
+        name: z.string(),
+        rorId: z.string().optional(),
+        department: z.string().optional(),
+      })
+    )
+    .default([]),
 
-  /** ISNI identifier */
-  isni: z.string().url().optional(),
-
-  /** Scopus Author ID */
-  scopusAuthorId: z.string().optional(),
-
-  /** Semantic Scholar Author ID */
-  semanticScholarId: z.string().optional(),
-
-  /** OpenAlex author identifier */
-  openAlexId: z.string().url().optional(),
-
-  /** Google Scholar user ID */
-  googleScholarId: z.string().optional(),
-
-  /** Web of Science Researcher ID */
-  researcherId: z.string().optional(),
-
-  /** Additional external profiles */
-  externalProfiles: z.array(externalProfileSchema).max(10).optional(),
-
-  /** Reconciliation status */
-  reconciliationStatus: reconciliationStatusSchema.optional(),
+  /** CRediT contributions */
+  contributions: z
+    .array(
+      z.object({
+        typeUri: z.string(),
+        typeId: z.string().optional(),
+        typeLabel: z.string().optional(),
+        degree: z.enum(['lead', 'equal', 'supporting']),
+      })
+    )
+    .default([]),
 
   /** Whether this is the corresponding author */
-  corresponding: z.boolean().optional(),
+  isCorrespondingAuthor: z.boolean().default(false),
 
-  /** Indicates equal contribution */
-  equalContribution: z.boolean().optional(),
+  /** Whether this author is highlighted (co-first, co-last) */
+  isHighlighted: z.boolean().default(false),
+
+  /** Handle (optional, from ATProto profile) */
+  handle: z.string().optional(),
+
+  /** Avatar URL if available */
+  avatarUrl: z.string().url().optional(),
 });
 
 export type AuthorRef = z.infer<typeof authorRefSchema>;
@@ -210,26 +241,34 @@ export type FacetValue = z.infer<typeof facetValueSchema>;
 // =============================================================================
 
 /**
- * Supplementary material blob reference.
+ * Supplementary material with full metadata.
  *
  * @remarks
- * Used for data, code, figures, and appendices.
+ * Used for data, code, figures, appendices, videos, and other materials.
+ * Includes user-provided label, description, auto-detected category,
+ * and display order.
  */
-export const supplementaryBlobSchema = z.object({
+export const supplementaryMaterialSchema = z.object({
   /** File reference (set after upload to PDS) */
   file: z.any().optional(), // BlobRef (runtime type)
 
-  /** Description of this material */
-  description: z.string().max(500),
+  /** User-provided label (e.g., "Figure S1", "Appendix A") */
+  label: z.string().min(1).max(200),
 
-  /** Type of supplementary material */
-  type: z.enum(SUPPLEMENTARY_TYPES).optional(),
+  /** Optional description of this material */
+  description: z.string().max(1000).optional(),
 
-  /** Original filename */
-  filename: z.string().max(255).optional(),
+  /** Material category (auto-detected or user-specified) */
+  category: z.enum(SUPPLEMENTARY_CATEGORIES),
+
+  /** Auto-detected file format */
+  detectedFormat: z.string().max(50).optional(),
+
+  /** Display order (1-indexed) */
+  order: z.number().int().min(1),
 });
 
-export type SupplementaryBlob = z.infer<typeof supplementaryBlobSchema>;
+export type SupplementaryMaterial = z.infer<typeof supplementaryMaterialSchema>;
 
 // =============================================================================
 // EXTERNAL LINK AND FUNDING SCHEMAS
@@ -355,7 +394,7 @@ export const preprintSubmissionSchema = z.object({
 
   // Optional fields
   /** Supplementary materials */
-  supplementaryMaterials: z.array(supplementaryBlobSchema).max(20).optional(),
+  supplementaryMaterials: z.array(supplementaryMaterialSchema).max(50).optional(),
 
   /** Multi-dimensional faceted classification */
   facets: z.array(facetValueSchema).max(30).optional(),
@@ -395,31 +434,50 @@ export type PreprintSubmission = z.infer<typeof preprintSubmissionSchema>;
 // =============================================================================
 
 /**
- * Step 1: Files - PDF and supplementary materials.
+ * Supplementary material input for form handling (with File object).
+ */
+export const supplementaryMaterialInputSchema = z.object({
+  /** File object (before upload) */
+  file: z
+    .instanceof(File)
+    .refine((f) => f.size <= MAX_SUPPLEMENTARY_SIZE_BYTES, 'File must be at most 100MB'),
+
+  /** User-provided label */
+  label: z.string().min(1).max(200),
+
+  /** Optional description */
+  description: z.string().max(1000).optional(),
+
+  /** Material category */
+  category: z.enum(SUPPLEMENTARY_CATEGORIES),
+
+  /** Auto-detected file format */
+  detectedFormat: z.string(),
+
+  /** Display order */
+  order: z.number().int().min(1),
+});
+
+export type SupplementaryMaterialInput = z.infer<typeof supplementaryMaterialInputSchema>;
+
+/**
+ * Step 1: Files - Document and supplementary materials.
  *
  * @remarks
  * Used for validating the first step of the submission wizard.
+ * Supports multiple document formats (PDF, DOCX, HTML, Markdown, LaTeX, etc.).
  */
 export const stepFilesSchema = z.object({
-  /** PDF file (File object before upload) */
-  pdfFile: z
-    .instanceof(File, { message: 'PDF file is required' })
-    .refine((file) => file.size <= MAX_PDF_SIZE_BYTES, 'PDF must be at most 50MB')
-    .refine((file) => file.type === 'application/pdf', 'File must be a PDF'),
+  /** Document file (File object before upload) */
+  documentFile: z
+    .instanceof(File, { message: 'Document file is required' })
+    .refine((file) => file.size <= MAX_DOCUMENT_SIZE_BYTES, 'Document must be at most 50MB'),
 
-  /** Supplementary files */
-  supplementaryFiles: z
-    .array(
-      z.object({
-        file: z
-          .instanceof(File)
-          .refine((f) => f.size <= MAX_SUPPLEMENTARY_SIZE_BYTES, 'File must be at most 100MB'),
-        description: z.string().max(500),
-        type: z.enum(SUPPLEMENTARY_TYPES).optional(),
-      })
-    )
-    .max(20)
-    .optional(),
+  /** Detected document format */
+  documentFormat: z.enum(SUPPORTED_DOCUMENT_FORMATS).optional(),
+
+  /** Supplementary materials with full metadata */
+  supplementaryMaterials: z.array(supplementaryMaterialInputSchema).max(50).optional(),
 });
 
 export type StepFilesData = z.infer<typeof stepFilesSchema>;

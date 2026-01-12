@@ -29,10 +29,13 @@ import { createPreprintRecord, type CreateRecordResult } from '@/lib/atproto';
 
 import { WizardProgress, WizardProgressCompact, type WizardStep } from './wizard-progress';
 import { StepFiles } from './step-files';
+import { StepSupplementary } from './step-supplementary';
 import { StepMetadata } from './step-metadata';
 import { StepAuthors } from './step-authors';
 import { StepFields } from './step-fields';
+import { StepPublication } from './step-publication';
 import { StepReview } from './step-review';
+import type { PreprintAuthorFormData } from '@/components/forms/preprint-author-editor';
 
 // =============================================================================
 // TYPES
@@ -50,34 +53,167 @@ type LicenseValue =
   | 'arxiv-perpetual';
 
 /**
+ * Supported document format values.
+ */
+export type DocumentFormatValue =
+  | 'pdf'
+  | 'docx'
+  | 'html'
+  | 'markdown'
+  | 'latex'
+  | 'jupyter'
+  | 'odt'
+  | 'rtf'
+  | 'epub'
+  | 'txt';
+
+/**
+ * Supplementary material category.
+ */
+export type SupplementaryCategoryValue =
+  | 'appendix'
+  | 'figure'
+  | 'table'
+  | 'dataset'
+  | 'code'
+  | 'notebook'
+  | 'video'
+  | 'audio'
+  | 'presentation'
+  | 'protocol'
+  | 'questionnaire'
+  | 'other';
+
+/**
+ * Supplementary material input with metadata.
+ */
+export interface SupplementaryMaterialInput {
+  file: File;
+  label: string;
+  description?: string;
+  category: SupplementaryCategoryValue;
+  detectedFormat: string;
+  order: number;
+}
+
+/**
  * Form values for the submission wizard.
  */
+/**
+ * Publication status values.
+ */
+export type PublicationStatusValue =
+  | 'preprint'
+  | 'under_review'
+  | 'revision_requested'
+  | 'accepted'
+  | 'in_press'
+  | 'published'
+  | 'retracted';
+
+/**
+ * Code platform values.
+ */
+export type CodePlatformValue =
+  | 'github'
+  | 'gitlab'
+  | 'bitbucket'
+  | 'codeberg'
+  | 'sourcehut'
+  | 'software_heritage'
+  | 'other';
+
+/**
+ * Data platform values.
+ */
+export type DataPlatformValue =
+  | 'zenodo'
+  | 'figshare'
+  | 'dryad'
+  | 'osf'
+  | 'dataverse'
+  | 'mendeley_data'
+  | 'other';
+
+/**
+ * Pre-registration platform values.
+ */
+export type PreregistrationPlatformValue =
+  | 'osf'
+  | 'aspredicted'
+  | 'clinicaltrials'
+  | 'prospero'
+  | 'other';
+
+/**
+ * Presentation type values.
+ */
+export type PresentationTypeValue = 'oral' | 'poster' | 'keynote' | 'workshop' | 'demo' | 'other';
+
 export interface PreprintFormValues {
   // Step 1: Files
-  pdfFile?: File;
+  documentFile?: File;
+  documentFormat?: DocumentFormatValue;
   supplementaryFiles?: File[];
 
-  // Step 2: Metadata
+  // Step 2: Supplementary Materials
+  supplementaryMaterials?: SupplementaryMaterialInput[];
+
+  // Step 3: Metadata
   title: string;
   abstract: string;
   keywords?: string[];
   license: LicenseValue;
 
-  // Step 3: Authors
-  authors: Array<{
-    did: string;
-    displayName?: string;
-    handle?: string;
-    avatar?: string;
-    orcid?: string;
-    isPrimary?: boolean;
-  }>;
+  // Step 4: Authors
+  authors: PreprintAuthorFormData[];
 
-  // Step 4: Fields
+  // Step 5: Fields
   fieldNodes: Array<{
     id: string;
     name: string;
   }>;
+
+  // Step 6: Publication Metadata
+  publicationStatus?: PublicationStatusValue;
+  publishedVersion?: {
+    doi?: string;
+    url?: string;
+    journal?: string;
+    publisher?: string;
+  };
+  externalIds?: {
+    arxivId?: string;
+    pmid?: string;
+    ssrnId?: string;
+    osf?: string;
+    zenodoDoi?: string;
+    openAlexId?: string;
+  };
+  codeRepositories?: Array<{
+    url?: string;
+    platform?: CodePlatformValue;
+    label?: string;
+  }>;
+  dataRepositories?: Array<{
+    url?: string;
+    platform?: DataPlatformValue;
+    label?: string;
+  }>;
+  preregistration?: {
+    url?: string;
+    platform?: PreregistrationPlatformValue;
+  };
+  funding?: Array<{
+    funderName?: string;
+    grantNumber?: string;
+  }>;
+  conferencePresentation?: {
+    conferenceName?: string;
+    conferenceLocation?: string;
+    presentationType?: PresentationTypeValue;
+    conferenceUrl?: string;
+  };
 }
 
 /**
@@ -101,9 +237,11 @@ export interface SubmissionWizardProps {
  */
 const WIZARD_STEPS: WizardStep[] = [
   { id: 'files', title: 'Files', description: 'Upload your preprint' },
+  { id: 'supplementary', title: 'Supplementary', description: 'Add supporting files' },
   { id: 'metadata', title: 'Metadata', description: 'Title & abstract' },
   { id: 'authors', title: 'Authors', description: 'Add co-authors' },
   { id: 'fields', title: 'Fields', description: 'Categorize your work' },
+  { id: 'publication', title: 'Publication', description: 'Status & links' },
   { id: 'review', title: 'Review', description: 'Confirm & submit' },
 ];
 
@@ -120,14 +258,64 @@ const LICENSE_VALUES = [
 ] as const;
 
 /**
+ * Document format values for validation.
+ */
+const DOCUMENT_FORMAT_VALUES = [
+  'pdf',
+  'docx',
+  'html',
+  'markdown',
+  'latex',
+  'jupyter',
+  'odt',
+  'rtf',
+  'epub',
+  'txt',
+] as const;
+
+/**
+ * Supplementary category values for validation.
+ */
+const SUPPLEMENTARY_CATEGORY_VALUES = [
+  'appendix',
+  'figure',
+  'table',
+  'dataset',
+  'code',
+  'notebook',
+  'video',
+  'audio',
+  'presentation',
+  'protocol',
+  'questionnaire',
+  'other',
+] as const;
+
+/**
+ * Supplementary material schema for validation.
+ */
+const supplementaryMaterialSchema = z.object({
+  file: z.instanceof(File),
+  label: z.string().min(1).max(200),
+  description: z.string().max(1000).optional(),
+  category: z.enum(SUPPLEMENTARY_CATEGORY_VALUES),
+  detectedFormat: z.string(),
+  order: z.number().int().min(1),
+});
+
+/**
  * Validation schema for the full form.
  */
 const formSchema = z.object({
-  // Step 1
-  pdfFile: z.instanceof(File, { message: 'PDF file is required' }).optional(),
+  // Step 1: Files
+  documentFile: z.instanceof(File, { message: 'Document file is required' }).optional(),
+  documentFormat: z.enum(DOCUMENT_FORMAT_VALUES).optional(),
   supplementaryFiles: z.array(z.instanceof(File)).optional(),
 
-  // Step 2
+  // Step 2: Supplementary Materials
+  supplementaryMaterials: z.array(supplementaryMaterialSchema).max(50).optional(),
+
+  // Step 3: Metadata
   title: z.string().min(1, 'Title is required').max(500, 'Title too long'),
   abstract: z.string().min(50, 'Abstract must be at least 50 characters').max(10000),
   keywords: z.array(z.string()).max(20).optional(),
@@ -165,8 +353,12 @@ const formSchema = z.object({
  */
 const stepSchemas = {
   files: z.object({
-    pdfFile: z.instanceof(File, { message: 'PDF file is required' }),
+    documentFile: z.instanceof(File, { message: 'Document file is required' }),
+    documentFormat: z.enum(DOCUMENT_FORMAT_VALUES).optional(),
     supplementaryFiles: z.array(z.instanceof(File)).optional(),
+  }),
+  supplementary: z.object({
+    supplementaryMaterials: z.array(supplementaryMaterialSchema).max(50).optional(),
   }),
   metadata: z.object({
     title: z.string().min(1, 'Title is required').max(500),
@@ -178,12 +370,30 @@ const stepSchemas = {
     authors: z
       .array(
         z.object({
-          did: z.string().min(1),
-          displayName: z.string().nullish(),
+          did: z.string().nullish(),
+          name: z.string().min(1, 'Author name is required'),
           handle: z.string().nullish(),
           avatar: z.string().nullish(),
           orcid: z.string().nullish(),
-          isPrimary: z.boolean().optional(),
+          email: z.string().email().nullish().or(z.literal('')),
+          order: z.number().int().min(1),
+          affiliations: z.array(
+            z.object({
+              name: z.string(),
+              rorId: z.string().nullish(),
+              department: z.string().nullish(),
+            })
+          ),
+          contributions: z.array(
+            z.object({
+              typeUri: z.string(),
+              typeId: z.string().nullish(),
+              typeLabel: z.string().nullish(),
+              degree: z.enum(['lead', 'equal', 'supporting']),
+            })
+          ),
+          isCorrespondingAuthor: z.boolean(),
+          isHighlighted: z.boolean(),
         })
       )
       .min(1, 'At least one author is required'),
@@ -198,6 +408,67 @@ const stepSchemas = {
       )
       .min(1, 'At least one field is required')
       .max(10),
+  }),
+  publication: z.object({
+    publicationStatus: z.string().optional(),
+    publishedVersion: z
+      .object({
+        doi: z.string().optional(),
+        url: z.string().url().optional().or(z.literal('')),
+        journal: z.string().optional(),
+        publisher: z.string().optional(),
+      })
+      .optional(),
+    externalIds: z
+      .object({
+        arxivId: z.string().optional(),
+        pmid: z.string().optional(),
+        ssrnId: z.string().optional(),
+        osf: z.string().optional(),
+        zenodoDoi: z.string().optional(),
+        openAlexId: z.string().optional(),
+      })
+      .optional(),
+    codeRepositories: z
+      .array(
+        z.object({
+          url: z.string().url().optional().or(z.literal('')),
+          platform: z.string().optional(),
+          label: z.string().optional(),
+        })
+      )
+      .optional(),
+    dataRepositories: z
+      .array(
+        z.object({
+          url: z.string().url().optional().or(z.literal('')),
+          platform: z.string().optional(),
+          label: z.string().optional(),
+        })
+      )
+      .optional(),
+    preregistration: z
+      .object({
+        url: z.string().url().optional().or(z.literal('')),
+        platform: z.string().optional(),
+      })
+      .optional(),
+    funding: z
+      .array(
+        z.object({
+          funderName: z.string().optional(),
+          grantNumber: z.string().optional(),
+        })
+      )
+      .optional(),
+    conferencePresentation: z
+      .object({
+        conferenceName: z.string().optional(),
+        conferenceLocation: z.string().optional(),
+        presentationType: z.string().optional(),
+        conferenceUrl: z.string().url().optional().or(z.literal('')),
+      })
+      .optional(),
   }),
   review: z.object({}), // No additional validation for review step
 };
@@ -234,6 +505,15 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
       authors: [],
       fieldNodes: [],
       supplementaryFiles: [],
+      supplementaryMaterials: [],
+      publicationStatus: 'preprint',
+      publishedVersion: {},
+      externalIds: {},
+      codeRepositories: [],
+      dataRepositories: [],
+      preregistration: {},
+      funding: [],
+      conferencePresentation: {},
     },
   });
 
@@ -316,12 +596,17 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
       const values = form.getValues();
 
       // Transform wizard data to match PreprintFormData schema
-      // Authors need: did, order, name (optional), orcid (optional)
+      // Use author data directly since it already matches the unified model
       const transformedAuthors = values.authors.map((a, index) => ({
         did: a.did,
-        order: index + 1,
-        name: a.displayName,
+        order: a.order ?? index + 1,
+        name: a.name,
         orcid: a.orcid,
+        email: a.email,
+        affiliations: a.affiliations,
+        contributions: a.contributions,
+        isCorrespondingAuthor: a.isCorrespondingAuthor,
+        isHighlighted: a.isHighlighted,
       }));
 
       // Field nodes need: uri (use id as AT-URI), weight (optional)
@@ -330,18 +615,21 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
         weight: undefined,
       }));
 
-      // Supplementary files need: file, description, type
-      // For now, convert bare files to objects with default descriptions
-      const transformedSupplementary = (values.supplementaryFiles ?? []).map((file) => ({
-        file,
-        description: file.name,
-        type: undefined,
+      // Transform supplementary materials with full metadata
+      const transformedSupplementary = (values.supplementaryMaterials ?? []).map((m) => ({
+        file: m.file,
+        label: m.label,
+        description: m.description,
+        category: m.category,
+        detectedFormat: m.detectedFormat,
+        order: m.order,
       }));
 
       // Create the preprint record in the user's PDS
       const result = await createPreprintRecord(agent, {
-        pdfFile: values.pdfFile!,
-        supplementaryFiles: transformedSupplementary,
+        documentFile: values.documentFile!,
+        documentFormat: values.documentFormat,
+        supplementaryMaterials: transformedSupplementary,
         title: values.title,
         abstract: values.abstract,
         keywords: values.keywords ?? [],
@@ -367,12 +655,16 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
       case 0:
         return <StepFiles form={form} />;
       case 1:
-        return <StepMetadata form={form} />;
+        return <StepSupplementary form={form} />;
       case 2:
-        return <StepAuthors form={form} />;
+        return <StepMetadata form={form} />;
       case 3:
-        return <StepFields form={form} />;
+        return <StepAuthors form={form} />;
       case 4:
+        return <StepFields form={form} />;
+      case 5:
+        return <StepPublication form={form} />;
+      case 6:
         return <StepReview form={form} isSubmitting={isSubmitting} submitError={submitError} />;
       default:
         return null;

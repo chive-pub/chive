@@ -106,3 +106,27 @@ export type { AuthorPreprintsProps, AuthorPreprintsSkeletonProps } from './autho
 
 export { OrcidBadge, OrcidLink, isValidOrcid } from './orcid-badge';
 export type { OrcidBadgeProps, OrcidLinkProps } from './orcid-badge';
+
+// Publication badge
+export { PublicationBadge } from './publication-badge';
+export type {
+  PublicationBadgeProps,
+  PublicationStatus,
+  PublishedVersion,
+} from './publication-badge';
+
+// Supplementary materials panel
+export { SupplementaryPanel } from './supplementary-panel';
+export type {
+  SupplementaryPanelProps,
+  SupplementaryItem,
+  SupplementaryCategory,
+} from './supplementary-panel';
+
+// Funding panel
+export { FundingPanel } from './funding-panel';
+export type { FundingPanelProps, FundingSource } from './funding-panel';
+
+// Citation visualization
+export { CitationVisualization, CitationVisualizationSkeleton } from './citation-visualization';
+export type { CitationVisualizationProps } from './citation-visualization';
