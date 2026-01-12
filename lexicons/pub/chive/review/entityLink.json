@@ -8,12 +8,12 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["preprintUri", "target", "linkedEntity", "createdAt"],
+        "required": ["eprintUri", "target", "linkedEntity", "createdAt"],
         "properties": {
-          "preprintUri": {
+          "eprintUri": {
             "type": "string",
             "format": "at-uri",
-            "description": "AT-URI of the preprint containing the linked text"
+            "description": "AT-URI of the eprint containing the linked text"
           },
           "target": {
             "type": "ref",
@@ -216,7 +216,7 @@
         "uri": {
           "type": "string",
           "format": "at-uri",
-          "description": "AT-URI of the preprint"
+          "description": "AT-URI of the eprint"
         },
         "title": {
           "type": "string",

@@ -1,10 +1,10 @@
 {
   "lexicon": 1,
-  "id": "pub.chive.preprint.getSubmission",
+  "id": "pub.chive.eprint.getSubmission",
   "defs": {
     "main": {
       "type": "query",
-      "description": "Retrieve a preprint submission by URI",
+      "description": "Retrieve a eprint submission by URI",
       "parameters": {
         "type": "params",
         "required": ["uri"],
@@ -12,7 +12,7 @@
           "uri": {
             "type": "string",
             "format": "at-uri",
-            "description": "Preprint URI"
+            "description": "Eprint URI"
           },
           "cid": {
             "type": "string",
@@ -37,7 +37,7 @@
             },
             "value": {
               "type": "ref",
-              "ref": "pub.chive.preprint.submission"
+              "ref": "pub.chive.eprint.submission"
             },
             "indexedAt": {
               "type": "string",

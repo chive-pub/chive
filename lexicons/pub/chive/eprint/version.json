@@ -1,19 +1,19 @@
 {
   "lexicon": 1,
-  "id": "pub.chive.preprint.version",
+  "id": "pub.chive.eprint.version",
   "defs": {
     "main": {
       "type": "record",
-      "description": "Preprint version metadata",
+      "description": "Eprint version metadata",
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["preprintUri", "versionNumber", "changes", "createdAt"],
+        "required": ["eprintUri", "versionNumber", "changes", "createdAt"],
         "properties": {
-          "preprintUri": {
+          "eprintUri": {
             "type": "string",
             "format": "at-uri",
-            "description": "URI of preprint record"
+            "description": "URI of eprint record"
           },
           "versionNumber": {
             "type": "integer",

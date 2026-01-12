@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "pub.chive.preprint.searchSubmissions",
+  "id": "pub.chive.eprint.searchSubmissions",
   "defs": {
     "main": {
       "type": "query",

@@ -1,10 +1,10 @@
 {
   "lexicon": 1,
-  "id": "pub.chive.preprint.submission",
+  "id": "pub.chive.eprint.submission",
   "defs": {
     "main": {
       "type": "record",
-      "description": "A scholarly preprint submission record",
+      "description": "A scholarly eprint submission record",
       "key": "tid",
       "record": {
         "type": "object",
@@ -20,7 +20,7 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Preprint title",
+            "description": "Eprint title",
             "maxLength": 500
           },
           "abstract": {
@@ -77,7 +77,7 @@
             "description": "All authors with contributions, affiliations, and metadata",
             "items": {
               "type": "ref",
-              "ref": "pub.chive.preprint.authorContribution"
+              "ref": "pub.chive.eprint.authorContribution"
             },
             "minLength": 1,
             "maxLength": 100
@@ -85,7 +85,7 @@
           "submittedBy": {
             "type": "string",
             "format": "did",
-            "description": "DID of the human user who submitted this preprint"
+            "description": "DID of the human user who submitted this eprint"
           },
           "paperDid": {
             "type": "string",
@@ -146,7 +146,7 @@
           },
           "relatedWorks": {
             "type": "array",
-            "description": "Related preprints, datasets, software, and prior versions",
+            "description": "Related eprints, datasets, software, and prior versions",
             "items": {
               "type": "ref",
               "ref": "#relatedWork"

@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "pub.chive.preprint.authorContribution",
+  "id": "pub.chive.eprint.authorContribution",
   "defs": {
     "affiliation": {
       "type": "object",

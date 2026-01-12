@@ -1,19 +1,19 @@
 {
   "lexicon": 1,
-  "id": "pub.chive.preprint.userTag",
+  "id": "pub.chive.eprint.userTag",
   "defs": {
     "main": {
       "type": "record",
-      "description": "User-generated tag on preprint (TaxoFolk)",
+      "description": "User-generated tag on eprint (TaxoFolk)",
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["preprintUri", "tag", "createdAt"],
+        "required": ["eprintUri", "tag", "createdAt"],
         "properties": {
-          "preprintUri": {
+          "eprintUri": {
             "type": "string",
             "format": "at-uri",
-            "description": "Tagged preprint URI"
+            "description": "Tagged eprint URI"
           },
           "tag": {
             "type": "string",
