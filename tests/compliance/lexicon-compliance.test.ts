@@ -132,7 +132,7 @@ describe('Lexicon ATProto Compliance', () => {
 
   it('loads all schemas successfully', () => {
     expect(schemas.length).toBeGreaterThan(0);
-    expect(schemas.length).toBe(13); // 11 records + 2 XRPC queries
+    expect(schemas.length).toBe(16); // 14 records + 2 XRPC queries (includes contribution types)
   });
 
   it('all schemas have valid lexicon version', () => {
@@ -270,14 +270,14 @@ describe('Lexicon ATProto Compliance', () => {
     const props = mainDef.record?.properties;
     expect(props).toBeDefined();
 
-    // Check pdf is blob
-    expect(props?.pdf?.type).toBe('blob');
+    // Check document is blob (renamed from pdf to support multiple formats)
+    expect(props?.document?.type).toBe('blob');
 
-    // Check coAuthors use DID format
-    if (props?.coAuthors) {
-      expect(props.coAuthors.type).toBe('array');
-      const items = props.coAuthors.items;
-      expect(items?.format).toBe('did');
+    // Check authors array uses refs to authorContribution schema
+    if (props?.authors) {
+      expect(props.authors.type).toBe('array');
+      const items = props.authors.items;
+      expect(items?.type).toBe('ref');
     }
 
     // Check previousVersion uses AT URI format

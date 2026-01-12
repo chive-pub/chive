@@ -156,7 +156,7 @@ echo ""
 
 # Run database migrations
 echo "Running database migrations..."
-DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive_test" \
+DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive" \
   pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up \
   --migrations-dir src/storage/postgresql/migrations 2>/dev/null || true
 echo "✓ Migrations complete"
@@ -165,7 +165,7 @@ echo ""
 echo "Test stack is ready!"
 echo ""
 echo "Connection details:"
-echo "  PostgreSQL: postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive_test"
+echo "  PostgreSQL: postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive"
 echo "  Redis:      redis://127.0.0.1:6379"
 echo "  Elasticsearch: http://127.0.0.1:9200"
 echo "  Neo4j:      bolt://127.0.0.1:7687 (neo4j/$NEO4J_PASSWORD)"

@@ -25,6 +25,7 @@ import {
 import { createElasticsearchClient } from '../../src/storage/elasticsearch/setup.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../src/types/atproto.js';
 import type { Facet } from '../../src/types/interfaces/graph.interface.js';
+import type { PreprintAuthor } from '../../src/types/models/author.js';
 import type { Preprint } from '../../src/types/models/preprint.js';
 
 describe('ATProto Search Compliance', () => {
@@ -62,7 +63,7 @@ describe('ATProto Search Compliance', () => {
           },
           pds_url: { type: 'keyword' },
           pds_endpoint: { type: 'keyword' },
-          pdf_blob_ref: {
+          document_blob_ref: {
             properties: {
               cid: { type: 'keyword' },
               mime_type: { type: 'keyword' },
@@ -94,14 +95,26 @@ describe('ATProto Search Compliance', () => {
         size: 1024000,
       };
 
+      const testAuthor: PreprintAuthor = {
+        did: 'did:plc:author123' as DID,
+        name: 'Test Author',
+        order: 1,
+        affiliations: [],
+        contributions: [],
+        isCorrespondingAuthor: true,
+        isHighlighted: false,
+      };
+
       const testPreprint: Preprint = {
         uri: 'at://did:plc:test123/pub.chive.preprint/abc123' as AtUri,
         cid: 'bafytest123' as CID,
-        author: 'did:plc:author123' as DID,
-        coAuthors: [],
+        authors: [testAuthor],
+        submittedBy: 'did:plc:author123' as DID,
         title: 'Test Preprint for Compliance',
         abstract: 'Testing ATProto compliance in search index',
-        pdfBlobRef: mockPdfBlob,
+        documentBlobRef: mockPdfBlob,
+        documentFormat: 'pdf',
+        publicationStatus: 'preprint',
         keywords: ['test'],
         facets: [{ dimension: 'matter', value: 'Computer Science' }] satisfies readonly Facet[],
         version: 1,
@@ -189,8 +202,8 @@ describe('ATProto Search Compliance', () => {
 
         expect(source.pdf_base64).toBeUndefined();
 
-        if (source.pdf_blob_ref) {
-          const blobRef = source.pdf_blob_ref as Record<string, unknown>;
+        if (source.document_blob_ref) {
+          const blobRef = source.document_blob_ref as Record<string, unknown>;
           expect(blobRef).not.toHaveProperty('data');
           expect(blobRef).not.toHaveProperty('bytes');
           expect(blobRef).not.toHaveProperty('content');
@@ -210,8 +223,8 @@ describe('ATProto Search Compliance', () => {
       for (const doc of docs) {
         const source = doc._source as Record<string, unknown>;
 
-        if (source.pdf_blob_ref) {
-          const blobRef = source.pdf_blob_ref as Record<string, unknown>;
+        if (source.document_blob_ref) {
+          const blobRef = source.document_blob_ref as Record<string, unknown>;
           expect(blobRef.cid).toBeDefined();
           expect(blobRef.mime_type).toBeDefined();
           expect(blobRef.size).toBeDefined();
@@ -233,8 +246,8 @@ describe('ATProto Search Compliance', () => {
       for (const doc of docs) {
         const source = doc._source as Record<string, unknown>;
 
-        if (source.pdf_blob_ref) {
-          const blobRef = source.pdf_blob_ref as Record<string, unknown>;
+        if (source.document_blob_ref) {
+          const blobRef = source.document_blob_ref as Record<string, unknown>;
           const cid = String(blobRef.cid);
           expect(cid).toMatch(/^bafy/);
         }
@@ -348,7 +361,7 @@ describe('ATProto Search Compliance', () => {
             title: { type: 'text' },
             abstract: { type: 'text' },
             pds_url: { type: 'keyword' },
-            pdf_blob_ref: {
+            document_blob_ref: {
               properties: {
                 cid: { type: 'keyword' },
                 mime_type: { type: 'keyword' },

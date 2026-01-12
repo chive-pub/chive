@@ -12,13 +12,28 @@ import path from 'path';
 
 const { Client: PgClient } = pg;
 
-// Database credentials from .env / docker-compose.yml (test stack)
+// Database credentials from .env / docker-compose.local.yml
 const POSTGRES_URL =
-  process.env.DATABASE_URL ?? 'postgresql://chive:chive_test_password@127.0.0.1:5432/chive_test';
+  process.env.DATABASE_URL ?? 'postgresql://chive:chive_test_password@127.0.0.1:5432/chive';
 const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL ?? 'http://127.0.0.1:9200';
 const NEO4J_URI = process.env.NEO4J_URI ?? 'bolt://127.0.0.1:7687';
 const NEO4J_USER = process.env.NEO4J_USER ?? 'neo4j';
 const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD ?? 'chive_test_password';
+
+/**
+ * E2E test user - must match auth.setup.ts TEST_USER.
+ * This user must be seeded as an approved alpha tester.
+ */
+const E2E_TEST_USER = {
+  did: 'did:plc:e2etestuser123',
+  handle: 'e2e-test.bsky.social',
+  displayName: 'E2E Test User',
+  email: 'e2e-test@chive.pub',
+  sector: 'academia',
+  careerStage: 'postdoc',
+  researchField: 'Computational Linguistics',
+  pdsUrl: 'https://bsky.social',
+};
 
 /**
  * Test authors - real researchers from linguistics literature.
@@ -65,9 +80,9 @@ const TEST_PREPRINTS = [
     title: 'Frequency, Acceptability, and Selection: A Case Study of Clause-Embedding',
     abstract:
       'We investigate the relationship between the frequency with which a predicate occurs in a particular syntactic frame in naturally occurring text and the acceptability of that predicate in that frame.',
-    pdfBlobCid: 'bafkreiabc123',
-    pdfBlobMimeType: 'application/pdf',
-    pdfBlobSize: 524288,
+    documentBlobCid: 'bafkreiabc123',
+    documentBlobMimeType: 'application/pdf',
+    documentBlobSize: 524288,
     keywords: ['clause-embedding verbs', 'acceptability', 'corpus frequency'],
     version: 1,
     license: 'CC-BY-4.0',
@@ -81,9 +96,9 @@ const TEST_PREPRINTS = [
     title: 'Algebraic Effects for Extensible Dynamic Semantics',
     abstract:
       'We present a framework for dynamic semantics based on algebraic effects, allowing modular treatment of anaphora and presupposition.',
-    pdfBlobCid: 'bafkreidef456',
-    pdfBlobMimeType: 'application/pdf',
-    pdfBlobSize: 612000,
+    documentBlobCid: 'bafkreidef456',
+    documentBlobMimeType: 'application/pdf',
+    documentBlobSize: 612000,
     keywords: ['dynamic semantics', 'algebraic effects', 'Montague semantics'],
     version: 1,
     license: 'CC-BY-4.0',
@@ -97,9 +112,9 @@ const TEST_PREPRINTS = [
     title: 'On the Semantics of Exceptional Scope',
     abstract:
       'This dissertation develops a theory of exceptional scope-taking using continuations and monads.',
-    pdfBlobCid: 'bafkreighi789',
-    pdfBlobMimeType: 'application/pdf',
-    pdfBlobSize: 1048576,
+    documentBlobCid: 'bafkreighi789',
+    documentBlobMimeType: 'application/pdf',
+    documentBlobSize: 1048576,
     keywords: ['scope', 'continuations', 'monads', 'indefinites'],
     version: 1,
     license: 'CC-BY-NC-4.0',
@@ -263,9 +278,11 @@ const TEST_FIELDS = [
  * Test governance proposals.
  */
 const TEST_PROPOSALS = [
+  // Field proposals
   {
     id: 'proposal-test-001',
     uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-001',
+    category: 'field' as const,
     fieldName: 'Quantum Semantics',
     alternateNames: ['Quantum Linguistics', 'QS'],
     description: 'Application of quantum mechanics concepts to natural language semantics.',
@@ -293,6 +310,7 @@ const TEST_PROPOSALS = [
   {
     id: 'proposal-test-002',
     uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-002',
+    category: 'field' as const,
     fieldName: 'Computational Pragmatics',
     alternateNames: ['Pragmatic NLP'],
     description: 'Computational modeling of pragmatic inference and implicature.',
@@ -310,6 +328,29 @@ const TEST_PROPOSALS = [
     status: 'pending',
     proposerDid: 'did:plc:jgrove456def',
     createdAt: '2024-02-15T14:30:00.000Z',
+  },
+  // Contribution type proposal for voting tests
+  {
+    id: 'proposal-test-003',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-003',
+    category: 'contribution-type' as const,
+    fieldName: 'Data Stewardship',
+    alternateNames: ['Data Curation', 'Data Management'],
+    description: 'Management and curation of research data throughout the project lifecycle.',
+    proposalType: 'create' as const,
+    rationale:
+      'Emerging contribution type not covered by standard CRediT roles. Recognizes specialized data management work.',
+    evidence: JSON.stringify([
+      {
+        type: 'community-request',
+        description: 'Multiple requests from data science community',
+        confidence: 0.8,
+      },
+    ]),
+    references: null,
+    status: 'pending',
+    proposerDid: 'did:plc:aswhite123abc',
+    createdAt: '2024-03-01T09:00:00.000Z',
   },
 ];
 
@@ -362,26 +403,46 @@ async function seedPostgres(): Promise<void> {
       );
     }
 
-    // Seed preprints
+    // Seed preprints with new author model
     for (const preprint of TEST_PREPRINTS) {
+      const author = TEST_AUTHORS.find((a) => a.did === preprint.authorDid);
+      const authorsArray = [
+        {
+          did: preprint.authorDid,
+          name: author?.displayName ?? preprint.authorDid,
+          order: 1,
+          affiliations: author?.affiliations?.map((name) => ({ name })) ?? [],
+          contributions: [],
+          isCorrespondingAuthor: true,
+          isHighlighted: false,
+        },
+      ];
+
       await client.query(
-        `INSERT INTO preprints_index (uri, cid, author_did, title, abstract, pdf_blob_cid, pdf_blob_mime_type, pdf_blob_size, keywords, version, license, created_at, indexed_at, pds_url)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        `INSERT INTO preprints_index (
+          uri, cid, authors, submitted_by, title, abstract,
+          document_blob_cid, document_blob_mime_type, document_blob_size,
+          document_format, keywords, license, publication_status,
+          created_at, indexed_at, pds_url
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
          ON CONFLICT (uri) DO UPDATE SET title = EXCLUDED.title, indexed_at = EXCLUDED.indexed_at`,
         [
           preprint.uri,
           preprint.cid,
+          JSON.stringify(authorsArray),
           preprint.authorDid,
           preprint.title,
           preprint.abstract,
-          preprint.pdfBlobCid,
-          preprint.pdfBlobMimeType,
-          preprint.pdfBlobSize,
+          preprint.documentBlobCid,
+          preprint.documentBlobMimeType,
+          preprint.documentBlobSize,
+          'pdf',
           preprint.keywords,
-          preprint.version,
           preprint.license,
+          'preprint',
           preprint.createdAt,
-          new Date().toISOString(), // indexed_at (when Chive indexed this record)
+          new Date().toISOString(),
           preprint.pdsUrl,
         ]
       );
@@ -486,8 +547,55 @@ async function seedPostgres(): Promise<void> {
 
     console.log(`  PostgreSQL: Seeded ${TEST_ENRICHMENTS.length} enrichment records`);
 
+    // Seed E2E test user as approved alpha tester
+    // This allows the test user to access gated features like dashboard, submit, governance
+    const alphaTableCheck = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'alpha_applications'
+      )
+    `);
+
+    if (alphaTableCheck.rows[0].exists) {
+      // Delete existing test user application if present
+      await client.query('DELETE FROM alpha_applications WHERE did = $1', [E2E_TEST_USER.did]);
+
+      // Insert E2E test user as approved alpha tester
+      await client.query(
+        `INSERT INTO alpha_applications (
+          did, handle, email, sector, career_stage, research_field, status,
+          created_at, updated_at, reviewed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'approved', NOW(), NOW(), NOW())`,
+        [
+          E2E_TEST_USER.did,
+          E2E_TEST_USER.handle,
+          E2E_TEST_USER.email,
+          E2E_TEST_USER.sector,
+          E2E_TEST_USER.careerStage,
+          E2E_TEST_USER.researchField,
+        ]
+      );
+      console.log('  PostgreSQL: Seeded E2E test user as approved alpha tester');
+    }
+
+    // Also seed E2E test user as an author so they can be found in author lookups
+    await client.query(
+      `INSERT INTO authors_index (did, handle, display_name, bio, affiliations, field_ids, pds_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (did) DO UPDATE SET display_name = EXCLUDED.display_name`,
+      [
+        E2E_TEST_USER.did,
+        E2E_TEST_USER.handle,
+        E2E_TEST_USER.displayName,
+        'E2E Test User account for automated testing',
+        ['Chive Test Lab'],
+        ['computational-linguistics'],
+        E2E_TEST_USER.pdsUrl,
+      ]
+    );
+
     console.log(
-      `  PostgreSQL: Seeded ${TEST_AUTHORS.length} authors, ${TEST_PREPRINTS.length} preprints, ${TEST_TAGS.length} tags`
+      `  PostgreSQL: Seeded ${TEST_AUTHORS.length + 1} authors, ${TEST_PREPRINTS.length} preprints, ${TEST_TAGS.length} tags`
     );
   } catch (error) {
     console.error(`  PostgreSQL: Seed FAILED - ${(error as Error).message}`);
@@ -582,15 +690,15 @@ async function seedElasticsearch(): Promise<void> {
           license: p.license,
           pds_url: p.pdsUrl,
           pds_endpoint: new URL(p.pdsUrl).host,
-          // PDF metadata
-          pdf_blob_ref: {
-            cid: p.pdfBlobCid,
-            mime_type: p.pdfBlobMimeType,
-            size: p.pdfBlobSize,
+          // Document metadata
+          document_blob_ref: {
+            cid: p.documentBlobCid,
+            mime_type: p.documentBlobMimeType,
+            size: p.documentBlobSize,
           },
-          pdf_metadata: {
-            content_type: p.pdfBlobMimeType,
-            file_size: p.pdfBlobSize,
+          document_metadata: {
+            content_type: p.documentBlobMimeType,
+            file_size: p.documentBlobSize,
           },
         },
       ];
@@ -653,6 +761,7 @@ async function seedNeo4j(): Promise<void> {
         `CREATE (p:FieldProposal {
           id: $id,
           uri: $uri,
+          category: $category,
           fieldName: $fieldName,
           alternateNames: $alternateNames,
           description: $description,
@@ -661,13 +770,14 @@ async function seedNeo4j(): Promise<void> {
           evidence: $evidence,
           references: $references,
           status: $status,
-          proposerDid: $proposerDid,
+          proposedBy: $proposedBy,
           createdAt: datetime($createdAt),
           updatedAt: datetime($createdAt)
         })`,
         {
           id: proposal.id,
           uri: proposal.uri,
+          category: proposal.category,
           fieldName: proposal.fieldName,
           alternateNames: proposal.alternateNames,
           description: proposal.description,
@@ -676,7 +786,7 @@ async function seedNeo4j(): Promise<void> {
           evidence: proposal.evidence,
           references: proposal.references,
           status: proposal.status,
-          proposerDid: proposal.proposerDid,
+          proposedBy: proposal.proposerDid,
           createdAt: proposal.createdAt,
         }
       );

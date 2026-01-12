@@ -13,6 +13,7 @@ import { toTimestamp } from '@/types/atproto-validators.js';
 import type { AtUri, BlobRef, CID, DID } from '@/types/atproto.js';
 import { DatabaseError, NotFoundError } from '@/types/errors.js';
 import type { IStorageBackend, StoredPreprint } from '@/types/interfaces/storage.interface.js';
+import type { PreprintAuthor } from '@/types/models/author.js';
 
 interface MockStorage {
   storage: IStorageBackend;
@@ -35,19 +36,32 @@ const createMockStorage = (): MockStorage => {
   };
 };
 
+const mockAuthor: PreprintAuthor = {
+  did: 'did:plc:author' as DID,
+  name: 'Test Author',
+  order: 1,
+  affiliations: [],
+  contributions: [],
+  isCorrespondingAuthor: true,
+  isHighlighted: false,
+};
+
 const createMockStoredPreprint = (overrides?: Partial<StoredPreprint>): StoredPreprint => ({
   uri: 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri,
   cid: 'bafyreicid123' as CID,
-  author: 'did:plc:author' as DID,
+  authors: [mockAuthor],
+  submittedBy: 'did:plc:author' as DID,
   title: 'Frequency, acceptability, and selection: A case study of clause-embedding',
   abstract:
     'We investigate the relationship between the frequency with which verbs are found in particular subcategorization frames and the acceptability of those verbs in those frames, focusing in particular on subordinate clause-taking verbs, such as think, want, and tell.',
-  pdfBlobRef: {
+  documentBlobRef: {
     $type: 'blob',
     ref: 'bafyreiabc123' as CID,
     mimeType: 'application/pdf',
     size: 1000,
   } as BlobRef,
+  documentFormat: 'pdf',
+  publicationStatus: 'preprint',
   previousVersionUri: undefined,
   versionNotes: undefined,
   license: 'CC-BY-4.0',

@@ -71,6 +71,8 @@ setup('authenticate', async ({ page }) => {
   // Set up session metadata in localStorage
   await page.evaluate((metadata) => {
     localStorage.setItem('chive_session_metadata', JSON.stringify(metadata));
+    // Mark as E2E test mode to enable auth bypass in API client
+    localStorage.setItem('chive_e2e_skip_oauth', 'true');
   }, SESSION_METADATA);
 
   // Set up a mock access token cookie (if needed by the app)

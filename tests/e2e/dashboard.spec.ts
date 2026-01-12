@@ -48,16 +48,16 @@ test.describe('Dashboard', () => {
     await expect(page.getByText(/preprints/i).first()).toBeVisible();
   });
 
-  test('displays activity feed section', async ({ page }) => {
+  test('displays For You recommendations section', async ({ page }) => {
     const dashboardPage = new DashboardPage(page);
     await dashboardPage.goto();
 
-    // Activity section should be present with proper role
-    const activityFeed = page.getByRole('feed', { name: /recent activity/i });
-    await expect(activityFeed).toBeVisible();
+    // For You recommendations section should be present
+    const forYouSection = page.getByRole('region', { name: /for you recommendations/i });
+    await expect(forYouSection).toBeVisible();
 
-    // Should show "Recent Activity" title inside the feed section
-    await expect(activityFeed.getByText('Recent Activity')).toBeVisible();
+    // Should show "For You" heading
+    await expect(forYouSection.getByRole('heading', { name: /for you/i })).toBeVisible();
   });
 
   test('displays quick actions with submit button', async ({ page }) => {

@@ -21,23 +21,45 @@ import { reviewCommentSchema } from '@/lexicons/validators/pub/chive/review/comm
 import { reviewEndorsementSchema } from '@/lexicons/validators/pub/chive/review/endorsement.js';
 
 describe('Generated Zod Validators', () => {
+  // Helper function to create valid preprint base data
+  function createValidPreprintBase(
+    overrides: Record<string, unknown> = {}
+  ): Record<string, unknown> {
+    return {
+      title: 'Test Preprint',
+      abstract: 'Test abstract',
+      document: {
+        $type: 'blob',
+        ref: {
+          $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
+        },
+        mimeType: 'application/pdf',
+        size: 1000,
+      },
+      authors: [
+        {
+          name: 'Test Author',
+          order: 1,
+          affiliations: [{ name: 'University' }],
+          contributions: [],
+          isCorrespondingAuthor: true,
+          isHighlighted: false,
+        },
+      ],
+      submittedBy: 'did:plc:abc123',
+      license: 'CC-BY-4.0',
+      createdAt: new Date().toISOString(),
+      ...overrides,
+    };
+  }
+
   describe('preprintSubmissionSchema', () => {
     it('validates valid preprint', () => {
-      const valid = {
+      const valid = createValidPreprintBase({
         title: 'Quantum Entanglement in Photonic Systems',
         abstract: 'We demonstrate quantum entanglement in photonic systems.',
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-          },
-          mimeType: 'application/pdf',
-          size: 1024000,
-        },
-        license: 'CC-BY-4.0',
         keywords: ['quantum', 'photonics'],
-        createdAt: new Date().toISOString(),
-      };
+      });
 
       expect(() => preprintSubmissionSchema.parse(valid)).not.toThrow();
     });
@@ -45,46 +67,24 @@ describe('Generated Zod Validators', () => {
     it('rejects preprint missing required fields', () => {
       const invalid = {
         title: 'Test',
-        // Missing abstract, pdf, license, createdAt
+        // Missing abstract, document, authors, submittedBy, license, createdAt
       };
 
       expect(() => preprintSubmissionSchema.parse(invalid)).toThrow();
     });
 
     it('enforces title max length (500)', () => {
-      const tooLong = {
+      const tooLong = createValidPreprintBase({
         title: 'a'.repeat(501),
-        abstract: 'Abstract',
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-          },
-          mimeType: 'application/pdf',
-          size: 1000,
-        },
-        license: 'CC-BY-4.0',
-        createdAt: new Date().toISOString(),
-      };
+      });
 
       expect(() => preprintSubmissionSchema.parse(tooLong)).toThrow();
     });
 
     it('enforces abstract max length (5000)', () => {
-      const tooLong = {
-        title: 'Test',
+      const tooLong = createValidPreprintBase({
         abstract: 'a'.repeat(5001),
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-          },
-          mimeType: 'application/pdf',
-          size: 1000,
-        },
-        license: 'CC-BY-4.0',
-        createdAt: new Date().toISOString(),
-      };
+      });
 
       expect(() => preprintSubmissionSchema.parse(tooLong)).toThrow();
     });
@@ -93,120 +93,58 @@ describe('Generated Zod Validators', () => {
       const validLicenses = ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC0-1.0', 'MIT', 'Apache-2.0'];
 
       for (const license of validLicenses) {
-        const data = {
-          title: 'Test',
-          abstract: 'Abstract',
-          pdf: {
-            $type: 'blob',
-            ref: {
-              $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-            },
-            mimeType: 'application/pdf',
-            size: 1000,
-          },
-          license,
-          createdAt: new Date().toISOString(),
-        };
-
+        const data = createValidPreprintBase({ license });
         expect(() => preprintSubmissionSchema.parse(data)).not.toThrow();
       }
     });
 
     it('rejects invalid license value', () => {
-      const invalid = {
-        title: 'Test',
-        abstract: 'Abstract',
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-          },
-          mimeType: 'application/pdf',
-          size: 1000,
-        },
+      const invalid = createValidPreprintBase({
         license: 'INVALID-LICENSE',
-        createdAt: new Date().toISOString(),
-      };
+      });
 
       expect(() => preprintSubmissionSchema.parse(invalid)).toThrow();
     });
 
-    it('validates DID format for coAuthors', () => {
-      const valid = {
-        title: 'Test',
-        abstract: 'Abstract',
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
+    it('validates multiple authors', () => {
+      const valid = createValidPreprintBase({
+        authors: [
+          {
+            did: 'did:plc:abc123',
+            name: 'Test Author 1',
+            order: 1,
+            affiliations: [{ name: 'University' }],
+            contributions: [],
+            isCorrespondingAuthor: true,
+            isHighlighted: false,
           },
-          mimeType: 'application/pdf',
-          size: 1000,
-        },
-        coAuthors: ['did:plc:abc123', 'did:web:example.com'],
-        license: 'CC-BY-4.0',
-        createdAt: new Date().toISOString(),
-      };
+          {
+            did: 'did:web:example.com',
+            name: 'Test Author 2',
+            order: 2,
+            affiliations: [],
+            contributions: [],
+            isCorrespondingAuthor: false,
+            isHighlighted: false,
+          },
+        ],
+      });
 
       expect(() => preprintSubmissionSchema.parse(valid)).not.toThrow();
     });
 
-    it('rejects invalid DID format', () => {
-      const invalid = {
-        title: 'Test',
-        abstract: 'Abstract',
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-          },
-          mimeType: 'application/pdf',
-          size: 1000,
-        },
-        coAuthors: ['not-a-did'],
-        license: 'CC-BY-4.0',
-        createdAt: new Date().toISOString(),
-      };
-
-      expect(() => preprintSubmissionSchema.parse(invalid)).toThrow();
-    });
-
     it('validates AT URI format for previousVersion', () => {
-      const valid = {
-        title: 'Test',
-        abstract: 'Abstract',
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-          },
-          mimeType: 'application/pdf',
-          size: 1000,
-        },
+      const valid = createValidPreprintBase({
         previousVersion: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
-        license: 'CC-BY-4.0',
-        createdAt: new Date().toISOString(),
-      };
+      });
 
       expect(() => preprintSubmissionSchema.parse(valid)).not.toThrow();
     });
 
     it('enforces keywords array max length (20)', () => {
-      const tooMany = {
-        title: 'Test',
-        abstract: 'Abstract',
-        pdf: {
-          $type: 'blob',
-          ref: {
-            $link: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
-          },
-          mimeType: 'application/pdf',
-          size: 1000,
-        },
+      const tooMany = createValidPreprintBase({
         keywords: Array(21).fill('keyword'),
-        license: 'CC-BY-4.0',
-        createdAt: new Date().toISOString(),
-      };
+      });
 
       expect(() => preprintSubmissionSchema.parse(tooMany)).toThrow();
     });
@@ -507,7 +445,7 @@ describe('Generated Zod Validators', () => {
         value: {
           title: 'Test Preprint',
           abstract: 'This is a test abstract',
-          pdf: {
+          document: {
             $type: 'blob',
             ref: {
               $link: 'bafkreihgv2crvahfy7lp2o7q7igdv3kd7eaeyyfuwepqwvr24bxq6vhgcy',
@@ -515,6 +453,17 @@ describe('Generated Zod Validators', () => {
             mimeType: 'application/pdf',
             size: 1024000,
           },
+          authors: [
+            {
+              name: 'Test Author',
+              order: 1,
+              affiliations: [{ name: 'University' }],
+              contributions: [],
+              isCorrespondingAuthor: true,
+              isHighlighted: false,
+            },
+          ],
+          submittedBy: 'did:plc:abc123',
           license: 'CC-BY-4.0',
           createdAt: new Date().toISOString(),
         },

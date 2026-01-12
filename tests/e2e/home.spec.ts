@@ -1,7 +1,9 @@
 /**
  * E2E tests for home page.
  *
- * Tests hero section, features, and CTAs.
+ * @remarks
+ * Tests the alpha landing page. Some tests are skipped during alpha
+ * and will be re-enabled when the full marketing page is restored.
  */
 
 import { test, expect } from '@playwright/test';
@@ -13,10 +15,21 @@ test.describe('Home page', () => {
     await homePage.goto();
 
     await expect(homePage.heroTitle).toBeVisible();
-    await expect(homePage.heroTitle).toContainText(/decentralized|preprints/i);
+    // Alpha landing page has "Chive" as title and "Decentralized Preprints" as tagline
+    await expect(homePage.heroTitle).toContainText(/chive/i);
   });
 
-  test('displays browse preprints button', async ({ page }) => {
+  test('displays tagline with decentralized preprints', async ({ page }) => {
+    const homePage = new HomePage(page);
+    await homePage.goto();
+
+    // Check tagline is visible
+    await expect(homePage.heroSubtitle).toBeVisible();
+    await expect(homePage.heroSubtitle).toContainText(/decentralized preprints/i);
+  });
+
+  // Skip: Browse button not present during alpha - will be restored post-alpha
+  test.skip('displays browse preprints button', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
@@ -24,7 +37,8 @@ test.describe('Home page', () => {
     await expect(browseButton).toBeVisible();
   });
 
-  test('browse button navigates to preprints page', async ({ page }) => {
+  // Skip: Browse button not present during alpha - will be restored post-alpha
+  test.skip('browse button navigates to preprints page', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
@@ -34,7 +48,8 @@ test.describe('Home page', () => {
     await expect(page).toHaveURL(/\/preprints/);
   });
 
-  test('displays submit preprint CTA', async ({ page }) => {
+  // Skip: Submit CTA not present during alpha - will be restored post-alpha
+  test.skip('displays submit preprint CTA', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
@@ -46,7 +61,8 @@ test.describe('Home page', () => {
     await expect(submitButton).toBeVisible();
   });
 
-  test('displays features section with Why Chive heading', async ({ page }) => {
+  // Skip: Features section not present during alpha - will be restored post-alpha
+  test.skip('displays features section with Why Chive heading', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
@@ -54,7 +70,8 @@ test.describe('Home page', () => {
     await expect(featuresHeading).toBeVisible();
   });
 
-  test('displays feature cards', async ({ page }) => {
+  // Skip: Feature cards not present during alpha - will be restored post-alpha
+  test.skip('displays feature cards', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
@@ -94,9 +111,8 @@ test.describe('Home page', () => {
     const h1Count = await page.locator('h1').count();
     expect(h1Count).toBe(1);
 
-    // Check for h2 sections
-    const h2Count = await page.locator('h2').count();
-    expect(h2Count).toBeGreaterThan(0);
+    // Alpha landing page has no h2 sections - just a simple sign-in page
+    // h2 sections will be present post-alpha when full marketing page is restored
   });
 
   test('page has meta description', async ({ page }) => {
@@ -105,5 +121,30 @@ test.describe('Home page', () => {
 
     const metaDescription = page.locator('meta[name="description"]');
     await expect(metaDescription).toHaveAttribute('content', /.+/);
+  });
+
+  test('displays sign in button', async ({ page }) => {
+    const homePage = new HomePage(page);
+    await homePage.goto();
+
+    const signInButton = page.getByRole('button', { name: /sign in with bluesky/i });
+    await expect(signInButton).toBeVisible();
+  });
+
+  test('displays external links', async ({ page }) => {
+    const homePage = new HomePage(page);
+    await homePage.goto();
+
+    // Check for documentation link
+    const docsLink = page.getByRole('link', { name: /read the docs/i });
+    await expect(docsLink).toBeVisible();
+
+    // Check for GitHub link
+    const githubLink = page.getByRole('link', { name: /github/i });
+    await expect(githubLink).toBeVisible();
+
+    // Check for Bluesky link
+    const blueskyLink = page.getByRole('link', { name: /bluesky/i });
+    await expect(blueskyLink).toBeVisible();
   });
 });

@@ -7,21 +7,35 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { BatchOperations } from '@/storage/postgresql/batch-operations.js';
 import type { StoredPreprint } from '@/types/interfaces/storage.interface.js';
+import type { PreprintAuthor } from '@/types/models/author.js';
 import { isOk, isErr } from '@/types/result.js';
+
+const mockAuthor: PreprintAuthor = {
+  did: 'did:plc:abc123' as never,
+  name: 'Test Author',
+  order: 1,
+  affiliations: [],
+  contributions: [],
+  isCorrespondingAuthor: true,
+  isHighlighted: false,
+};
 
 function createMockPreprint(uri: string): StoredPreprint {
   return {
     uri: uri as never,
     cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,
-    author: 'did:plc:abc123' as never,
+    authors: [mockAuthor],
+    submittedBy: 'did:plc:abc123' as never,
     title: `Preprint ${uri}`,
     abstract: 'Abstract text',
-    pdfBlobRef: {
+    documentBlobRef: {
       $type: 'blob',
       ref: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,
       mimeType: 'application/pdf',
       size: 1024,
     },
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     license: 'CC-BY-4.0',
     pdsUrl: 'https://pds.example.com',
     indexedAt: new Date('2024-01-01'),

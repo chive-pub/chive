@@ -282,7 +282,7 @@ describe('PostgreSQL Schema', () => {
       const preprintIndexes = indexes.filter((idx) => idx.table_name === 'preprints_index');
       const indexedColumns = preprintIndexes.map((idx) => idx.column_name);
 
-      expect(indexedColumns).toContain('author_did');
+      expect(indexedColumns).toContain('submitted_by');
       expect(indexedColumns).toContain('created_at');
       expect(indexedColumns).toContain('pds_url');
     });
@@ -314,7 +314,7 @@ describe('PostgreSQL Schema', () => {
         FROM information_schema.columns
         WHERE table_schema = 'public'
           AND table_name = 'preprints_index'
-          AND column_name IN ('uri', 'cid', 'author_did', 'title', 'abstract', 'pds_url')
+          AND column_name IN ('uri', 'cid', 'submitted_by', 'title', 'abstract', 'pds_url')
       `);
 
       for (const row of result.rows) {
@@ -339,86 +339,88 @@ describe('PostgreSQL Schema', () => {
     it('separate-bluesky-counts migration can be rolled back', async () => {
       const migrationConfig = getMigrationConfig();
 
-      // Test rollback of separate-bluesky-counts migration (1734700000000)
-      // This migration adds bluesky_post_count, bluesky_embed_count, other_count columns
-      // and removes the combined bluesky_count column
+      // CRITICAL: Always re-apply migrations in finally block to prevent test pollution
+      try {
+        // Test rollback of separate-bluesky-counts migration (1734700000000)
+        // This migration adds bluesky_post_count, bluesky_embed_count, other_count columns
+        // and removes the combined bluesky_count column
 
-      // First, roll back alpha-applications (the latest) to get to separate-bluesky-counts
-      // Use execSync with tsx to support TypeScript migrations
-      execSync(
-        `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
-        {
-          env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
-          stdio: 'pipe',
-        }
-      );
+        // First, roll back alpha-applications (the latest migration) to get to separate-bluesky-counts
+        execSync(
+          `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
+          {
+            env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
+            stdio: 'pipe',
+          }
+        );
 
-      // Verify new columns exist before rolling back separate-bluesky-counts
-      const beforeResult = await pool.query<{ column_name: string }>(
+        // Verify new columns exist before rolling back separate-bluesky-counts
+        const beforeResult = await pool.query<{ column_name: string }>(
+          `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'backlink_counts'
+            AND column_name IN ('bluesky_post_count', 'bluesky_embed_count', 'other_count')
         `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'backlink_counts'
-          AND column_name IN ('bluesky_post_count', 'bluesky_embed_count', 'other_count')
-      `
-      );
+        );
 
-      expect(beforeResult.rows).toHaveLength(3);
+        expect(beforeResult.rows).toHaveLength(3);
 
-      // Rollback separate-bluesky-counts migration
-      execSync(
-        `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
-        {
-          env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
-          stdio: 'pipe',
-        }
-      );
+        // Rollback separate-bluesky-counts migration
+        execSync(
+          `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
+          {
+            env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
+            stdio: 'pipe',
+          }
+        );
 
-      // Verify new columns are dropped and old column is restored
-      const afterResult = await pool.query<{ column_name: string }>(
+        // Verify new columns are dropped and old column is restored
+        const afterResult = await pool.query<{ column_name: string }>(
+          `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'backlink_counts'
+            AND column_name IN ('bluesky_post_count', 'bluesky_embed_count', 'other_count')
         `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'backlink_counts'
-          AND column_name IN ('bluesky_post_count', 'bluesky_embed_count', 'other_count')
-      `
-      );
+        );
 
-      expect(afterResult.rows).toHaveLength(0);
+        expect(afterResult.rows).toHaveLength(0);
 
-      // Verify bluesky_count column is restored
-      const restoredResult = await pool.query<{ column_name: string }>(
+        // Verify bluesky_count column is restored
+        const restoredResult = await pool.query<{ column_name: string }>(
+          `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'backlink_counts'
+            AND column_name = 'bluesky_count'
         `
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'backlink_counts'
-          AND column_name = 'bluesky_count'
-      `
-      );
+        );
 
-      expect(restoredResult.rows).toHaveLength(1);
+        expect(restoredResult.rows).toHaveLength(1);
 
-      // Verify index tables from earlier migrations still exist
-      const indexResult = await pool.query<{ table_name: string }>(`
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-          AND table_name LIKE '%_index'
-      `);
+        // Verify index tables from earlier migrations still exist
+        const indexResult = await pool.query<{ table_name: string }>(`
+          SELECT table_name
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name LIKE '%_index'
+        `);
 
-      expect(indexResult.rows.length).toBeGreaterThan(0);
-
-      // Re-apply all migrations for other tests
-      execSync(
-        `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir ${migrationConfig.dir}`,
-        {
-          env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
-          stdio: 'pipe',
-        }
-      );
+        expect(indexResult.rows.length).toBeGreaterThan(0);
+      } finally {
+        // ALWAYS re-apply all migrations regardless of test outcome
+        execSync(
+          `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir ${migrationConfig.dir}`,
+          {
+            env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
+            stdio: 'pipe',
+          }
+        );
+      }
     });
   });
 });

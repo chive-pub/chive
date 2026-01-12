@@ -595,9 +595,10 @@ describe('DiscoveryService', () => {
       const result = await service.findRelatedPreprints(SAMPLE_PREPRINT_URI, {
         signals: ['citations'],
       });
+      const firstResult = result[0];
 
       expect(result.length).toBeGreaterThan(0);
-      expect(result[0]!.relationshipType).toBe('co-cited');
+      expect(firstResult?.relationshipType).toBe('co-cited');
       expect(citationGraph.findCoCitedPapers).toHaveBeenCalled();
     });
 
@@ -841,9 +842,10 @@ describe('DiscoveryService', () => {
         signals: ['fields'],
       });
 
-      if (result.recommendations.length > 0) {
-        expect(result.recommendations[0]!.explanation).toBeDefined();
-        expect(result.recommendations[0]!.explanation.text).toBeDefined();
+      const firstRecommendation = result.recommendations[0];
+      if (firstRecommendation) {
+        expect(firstRecommendation.explanation).toBeDefined();
+        expect(firstRecommendation.explanation.text).toBeDefined();
       }
     });
   });

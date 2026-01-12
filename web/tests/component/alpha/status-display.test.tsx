@@ -62,29 +62,40 @@ describe('AlphaStatusDisplay', () => {
     });
   });
 
-  describe('Rejected Status', () => {
-    it('renders rejected state correctly', () => {
+  describe('Rejected Status (shown as pending)', () => {
+    it('renders rejected as pending state', () => {
       renderWithProviders(<AlphaStatusDisplay status="rejected" />);
 
-      expect(screen.getByText(/not approved/i)).toBeInTheDocument();
-      expect(screen.getByText(/not able to approve/i)).toBeInTheDocument();
+      // Should show pending-style messaging, NOT rejected
+      expect(screen.getByText(/under review/i)).toBeInTheDocument();
+      expect(screen.getByText(/reviewing applications/i)).toBeInTheDocument();
     });
 
-    it('shows reviewed date when provided', () => {
+    it('never shows rejection messaging', () => {
+      renderWithProviders(<AlphaStatusDisplay status="rejected" />);
+
+      // These should NOT be present for rejected status
+      expect(screen.queryByText(/not approved/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/rejected/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/declined/i)).not.toBeInTheDocument();
+    });
+
+    it('shows applied date when provided (not reviewed)', () => {
       renderWithProviders(
-        <AlphaStatusDisplay status="rejected" reviewedAt="2024-01-16T10:00:00Z" />
+        <AlphaStatusDisplay status="rejected" appliedAt="2024-01-15T10:00:00Z" />
       );
 
-      expect(screen.getByText(/reviewed on/i)).toBeInTheDocument();
-      expect(screen.getByText(/january 16, 2024/i)).toBeInTheDocument();
+      // Should show applied date like pending, not reviewed date
+      expect(screen.getByText(/applied on/i)).toBeInTheDocument();
+      expect(screen.getByText(/january 15, 2024/i)).toBeInTheDocument();
     });
 
-    it('includes support contact link', () => {
-      renderWithProviders(<AlphaStatusDisplay status="rejected" />);
+    it('renders clock icon like pending', () => {
+      const { container } = renderWithProviders(<AlphaStatusDisplay status="rejected" />);
 
-      const supportLink = screen.getByRole('link', { name: /support@chive.pub/i });
-      expect(supportLink).toBeInTheDocument();
-      expect(supportLink).toHaveAttribute('href', 'mailto:support@chive.pub');
+      // Check for icon (Clock component like pending)
+      const icon = container.querySelector('svg');
+      expect(icon).toBeInTheDocument();
     });
   });
 
@@ -92,22 +103,22 @@ describe('AlphaStatusDisplay', () => {
     it('pending card has proper structure', () => {
       renderWithProviders(<AlphaStatusDisplay status="pending" />);
 
-      // Should have heading
-      expect(screen.getByRole('heading')).toBeInTheDocument();
+      // Should have title
+      expect(screen.getByText(/under review/i)).toBeInTheDocument();
     });
 
     it('approved card has proper structure', () => {
       renderWithProviders(<AlphaStatusDisplay status="approved" />);
 
-      // Should have heading
-      expect(screen.getByRole('heading')).toBeInTheDocument();
+      // Should have title
+      expect(screen.getByText(/welcome to the alpha/i)).toBeInTheDocument();
     });
 
-    it('rejected card has proper structure', () => {
+    it('rejected (shown as pending) card has proper structure', () => {
       renderWithProviders(<AlphaStatusDisplay status="rejected" />);
 
-      // Should have heading
-      expect(screen.getByRole('heading')).toBeInTheDocument();
+      // Should have title (same as pending)
+      expect(screen.getByText(/under review/i)).toBeInTheDocument();
     });
   });
 

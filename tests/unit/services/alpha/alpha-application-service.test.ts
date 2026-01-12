@@ -222,9 +222,10 @@ describe('AlphaApplicationService', () => {
       const result = await service.getByDid(SAMPLE_DID);
 
       expect(result).not.toBeNull();
-      expect(result!.id).toBe('app-uuid-123');
-      expect(result!.did).toBe(SAMPLE_DID);
-      expect(result!.email).toBe('researcher@university.edu');
+      if (!result) throw new Error('Expected result to be defined');
+      expect(result.id).toBe('app-uuid-123');
+      expect(result.did).toBe(SAMPLE_DID);
+      expect(result.email).toBe('researcher@university.edu');
       expect(db.query).toHaveBeenCalledWith('SELECT * FROM alpha_applications WHERE did = $1', [
         SAMPLE_DID,
       ]);
@@ -251,10 +252,12 @@ describe('AlphaApplicationService', () => {
 
       const result = await service.getByDid(SAMPLE_DID);
 
-      expect(result!.status).toBe('approved');
-      expect(result!.reviewedAt).toEqual(new Date('2024-01-16T10:00:00Z'));
-      expect(result!.reviewedBy).toBe('did:plc:admin123');
-      expect(result!.zulipInvited).toBe(true);
+      expect(result).not.toBeNull();
+      if (!result) throw new Error('Expected result to be defined');
+      expect(result.status).toBe('approved');
+      expect(result.reviewedAt).toEqual(new Date('2024-01-16T10:00:00Z'));
+      expect(result.reviewedBy).toBe('did:plc:admin123');
+      expect(result.zulipInvited).toBe(true);
     });
 
     it('should handle database errors gracefully', async () => {
@@ -366,13 +369,15 @@ describe('AlphaApplicationService', () => {
 
       const result = await service.getByDid(SAMPLE_DID);
 
-      expect(result!.handle).toBeUndefined();
-      expect(result!.sectorOther).toBeUndefined();
-      expect(result!.careerStageOther).toBeUndefined();
-      expect(result!.affiliation).toBeUndefined();
-      expect(result!.motivation).toBeUndefined();
-      expect(result!.reviewedAt).toBeUndefined();
-      expect(result!.reviewedBy).toBeUndefined();
+      expect(result).not.toBeNull();
+      if (!result) throw new Error('Expected result to be defined');
+      expect(result.handle).toBeUndefined();
+      expect(result.sectorOther).toBeUndefined();
+      expect(result.careerStageOther).toBeUndefined();
+      expect(result.affiliation).toBeUndefined();
+      expect(result.motivation).toBeUndefined();
+      expect(result.reviewedAt).toBeUndefined();
+      expect(result.reviewedBy).toBeUndefined();
     });
 
     it('should handle affiliation with name but no ROR ID', async () => {
@@ -386,7 +391,9 @@ describe('AlphaApplicationService', () => {
 
       const result = await service.getByDid(SAMPLE_DID);
 
-      expect(result!.affiliation).toEqual({
+      expect(result).not.toBeNull();
+      if (!result) throw new Error('Expected result to be defined');
+      expect(result.affiliation).toEqual({
         name: 'Small Research Lab',
         rorId: undefined,
       });

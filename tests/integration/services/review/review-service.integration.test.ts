@@ -135,14 +135,24 @@ describe('ReviewService Integration', () => {
     // Insert required preprint for foreign key constraint
     await pool.query(
       `INSERT INTO preprints_index (
-        uri, cid, author_did, title, abstract, pdf_blob_cid, pdf_blob_mime_type,
-        pdf_blob_size, license, created_at, pds_url, indexed_at, last_synced_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, NOW(), NOW())
+        uri, cid, submitted_by, authors, title, abstract, document_blob_cid, document_blob_mime_type,
+        document_blob_size, license, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
         TEST_PREPRINT_URI,
         'bafysubject',
         'did:plc:author',
+        JSON.stringify([
+          {
+            name: 'Test Author',
+            order: 1,
+            affiliations: [],
+            contributions: [],
+            isCorrespondingAuthor: true,
+            isHighlighted: false,
+          },
+        ]),
         'Test Preprint for Reviews',
         'This is a test preprint used for review integration tests.',
         'bafyreipdfblob123',

@@ -59,7 +59,9 @@ const createMockClaimingService = (): MockClaimingService => ({
   startClaimFromExternal: vi.fn(),
 });
 
-const createMockUser = (overrides: Partial<{ did: DID; handle: string }> = {}) => ({
+const createMockUser = (
+  overrides: Partial<{ did: DID; handle: string }> = {}
+): { did: DID; handle: string } => ({
   did: 'did:plc:testuser123' as DID,
   handle: 'testuser.test',
   ...overrides,

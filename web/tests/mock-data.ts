@@ -8,8 +8,11 @@ import type {
   EndorsementsResponse,
   EndorsementSummary,
   ExternalId,
+  ExternalMapping,
+  FacetDimension,
   FacetedPreprintSummary,
   FacetedSearchResponse,
+  FacetProposalChanges,
   FacetValue,
   FieldDetail,
   FieldListResponse,
@@ -17,11 +20,22 @@ import type {
   FieldRelationship,
   FieldSummary,
   GetTrendingResponse,
+  Organization,
+  OrganizationProposalChanges,
+  OrganizationType,
   Preprint,
+  PreprintAuthor,
+  AuthorAffiliation,
+  AuthorContribution,
   PreprintMetrics,
   PreprintSource,
   PreprintSummary,
   PreprintTagsResponse,
+  Reconciliation,
+  ReconciliationMatchType,
+  ReconciliationProposalChanges,
+  ReconciliationSystem,
+  ReconcilableEntityType,
   Review,
   ReviewsResponse,
   ReviewThread,
@@ -34,9 +48,14 @@ import type {
   TrendingTagsResponse,
   UserTag,
 } from '@/lib/api/schema';
+import type {
+  ContributionTypeProposal,
+  CreditContributionType,
+} from '@/lib/hooks/use-contribution-types';
 
 /**
- * Creates a mock Author.
+ * Creates a mock Author (authenticated user, e.g., for reviews).
+ * Uses required `did` since reviewers must be authenticated.
  */
 export function createMockAuthor(overrides: Partial<Author> = {}): Author {
   return {
@@ -44,6 +63,27 @@ export function createMockAuthor(overrides: Partial<Author> = {}): Author {
     handle: 'testuser.bsky.social',
     displayName: 'Test User',
     avatar: 'https://example.com/avatar.jpg',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock PreprintAuthor (for preprint contributor lists).
+ * Uses optional `did` to support external collaborators.
+ */
+export function createMockPreprintAuthor(overrides: Partial<PreprintAuthor> = {}): PreprintAuthor {
+  return {
+    did: 'did:plc:test123',
+    name: 'Test User',
+    handle: 'testuser.bsky.social',
+    avatarUrl: 'https://example.com/avatar.jpg',
+    orcid: undefined,
+    email: undefined,
+    order: 1,
+    isCorrespondingAuthor: false,
+    isHighlighted: false,
+    contributions: [],
+    affiliations: [],
     ...overrides,
   };
 }
@@ -111,17 +151,24 @@ export function createMockPreprint(overrides: Partial<Preprint> = {}): Preprint 
     title: 'A Novel Approach to Machine Learning',
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
-    author: createMockAuthor(),
-    coAuthors: [createMockAuthor({ did: 'did:plc:coauthor1', displayName: 'Co-Author One' })],
+    submittedBy: 'did:plc:test123',
+    authors: [
+      createMockPreprintAuthor({ order: 1, isCorrespondingAuthor: true }),
+      createMockPreprintAuthor({
+        did: 'did:plc:coauthor1',
+        name: 'Co-Author One',
+        order: 2,
+        isHighlighted: true,
+      }),
+    ],
     document: createMockBlobRef(),
-    supplementary: [],
+    supplementaryMaterials: [],
     fields: [createMockFieldRef()],
     keywords: ['machine learning', 'artificial intelligence', 'deep learning'],
     license: 'CC-BY-4.0',
     doi: '10.1234/chive.2024.001',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-16T14:20:00Z',
-    indexedAt: '2024-01-15T10:35:00Z',
     source: createMockPreprintSource(),
     metrics: createMockPreprintMetrics(),
     versions: [
@@ -147,11 +194,10 @@ export function createMockPreprintSummary(
     title: 'A Novel Approach to Machine Learning',
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
-    author: createMockAuthor(),
+    submittedBy: 'did:plc:test123',
+    authors: [createMockPreprintAuthor({ order: 1, isCorrespondingAuthor: true })],
     fields: [createMockFieldRef()],
-    license: 'CC-BY-4.0',
     createdAt: '2024-01-15T10:30:00Z',
-    indexedAt: '2024-01-15T10:35:00Z',
     source: createMockPreprintSource(),
     ...overrides,
   };
@@ -183,12 +229,20 @@ export function createMockFacetedPreprintSummary(
     title: 'A Novel Approach to Machine Learning',
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
-    author: {
-      did: 'did:plc:test123',
-      handle: 'testuser.bsky.social',
-      displayName: 'Test User',
-      avatar: 'https://example.com/avatar.jpg',
-    },
+    authors: [
+      {
+        did: 'did:plc:test123',
+        name: 'Test User',
+        handle: 'testuser.bsky.social',
+        avatarUrl: 'https://example.com/avatar.jpg',
+        order: 1,
+        affiliations: [],
+        contributions: [],
+        isCorrespondingAuthor: true,
+        isHighlighted: false,
+      },
+    ],
+    submittedBy: 'did:plc:test123',
     fields: [
       { id: 'cs', uri: 'at://did:plc:chive/pub.chive.graph.field/cs', name: 'Computer Science' },
     ],
@@ -216,9 +270,15 @@ export function createMockSearchResults(
 ): SearchResultsResponse {
   return {
     hits: [
-      createMockPreprintSummary({ uri: 'at://did:plc:test1/pub.chive.preprint.submission/1' }),
-      createMockPreprintSummary({ uri: 'at://did:plc:test2/pub.chive.preprint.submission/2' }),
-      createMockPreprintSummary({ uri: 'at://did:plc:test3/pub.chive.preprint.submission/3' }),
+      createMockFacetedPreprintSummary({
+        uri: 'at://did:plc:test1/pub.chive.preprint.submission/1',
+      }),
+      createMockFacetedPreprintSummary({
+        uri: 'at://did:plc:test2/pub.chive.preprint.submission/2',
+      }),
+      createMockFacetedPreprintSummary({
+        uri: 'at://did:plc:test3/pub.chive.preprint.submission/3',
+      }),
     ],
     cursor: 'cursor123',
     hasMore: true,
@@ -819,4 +879,722 @@ export function createMockTrendingTagsResponse(
     timeWindow: 'week',
     ...overrides,
   };
+}
+
+// ============================================================================
+// Contribution Type Mocks (Author Model Redesign)
+// ============================================================================
+
+/**
+ * Creates a mock AuthorAffiliation.
+ */
+export function createMockAuthorAffiliation(
+  overrides: Partial<AuthorAffiliation> = {}
+): AuthorAffiliation {
+  return {
+    name: 'University of Example',
+    rorId: 'https://ror.org/02mhbdp94',
+    department: 'Computer Science',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock AuthorContribution.
+ */
+export function createMockAuthorContribution(
+  overrides: Partial<AuthorContribution> = {}
+): AuthorContribution {
+  return {
+    typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    typeId: 'conceptualization',
+    typeLabel: 'Conceptualization',
+    degree: 'lead',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock PreprintAuthor with DID (authenticated ATProto user).
+ *
+ * @remarks
+ * Use this for authors who have an ATProto account.
+ */
+export function createMockPreprintAuthorWithDid(
+  overrides: Partial<PreprintAuthor> = {}
+): PreprintAuthor {
+  return {
+    did: 'did:plc:test123',
+    name: 'Dr. Jane Smith',
+    handle: 'janesmith.bsky.social',
+    avatarUrl: 'https://example.com/avatar.jpg',
+    orcid: '0000-0001-2345-6789',
+    email: undefined,
+    order: 1,
+    affiliations: [createMockAuthorAffiliation()],
+    contributions: [
+      createMockAuthorContribution(),
+      createMockAuthorContribution({
+        typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/writing-original-draft',
+        typeId: 'writing-original-draft',
+        typeLabel: 'Writing - Original Draft',
+        degree: 'lead',
+      }),
+    ],
+    isCorrespondingAuthor: true,
+    isHighlighted: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock external author (collaborator without ATProto account).
+ *
+ * @remarks
+ * Use this for external collaborators who don't have ATProto DIDs.
+ * They are identified by name, ORCID, or email instead.
+ */
+export function createMockExternalAuthor(overrides: Partial<PreprintAuthor> = {}): PreprintAuthor {
+  return {
+    did: undefined,
+    name: 'John External',
+    handle: undefined,
+    avatarUrl: undefined,
+    orcid: '0000-0002-3456-7890',
+    email: 'john@external.edu',
+    order: 2,
+    affiliations: [
+      createMockAuthorAffiliation({
+        name: 'External Institute',
+        rorId: undefined,
+        department: undefined,
+      }),
+    ],
+    contributions: [
+      createMockAuthorContribution({
+        typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/investigation',
+        typeId: 'investigation',
+        typeLabel: 'Investigation',
+        degree: 'equal',
+      }),
+    ],
+    isCorrespondingAuthor: false,
+    isHighlighted: true, // Co-first author
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock CreditContributionType (CRediT-based).
+ */
+export function createMockContributionType(
+  overrides: Partial<CreditContributionType> = {}
+): CreditContributionType {
+  return {
+    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    id: 'conceptualization',
+    label: 'Conceptualization',
+    description: 'Ideas; formulation or evolution of overarching research goals and aims',
+    externalMappings: [
+      {
+        system: 'credit',
+        identifier: 'conceptualization',
+        uri: 'https://credit.niso.org/contributor-roles/conceptualization/',
+        matchType: 'exact-match',
+      },
+    ],
+    status: 'established',
+    proposalUri: undefined,
+    createdAt: '2025-01-08T00:00:00Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock ContributionTypeProposal.
+ */
+export function createMockContributionTypeProposal(
+  overrides: Partial<ContributionTypeProposal> = {}
+): ContributionTypeProposal {
+  return {
+    uri: 'at://did:plc:user123/pub.chive.contribution.typeProposal/abc',
+    proposerDid: 'did:plc:user123',
+    proposerName: 'Test User',
+    proposalType: 'create',
+    proposedId: 'clinical-trials',
+    proposedLabel: 'Clinical Trials',
+    proposedDescription: 'Conducting clinical trials for medical research',
+    externalMappings: [],
+    rationale: 'Needed for medical research papers where clinical trials are a key contribution',
+    status: 'pending',
+    votes: {
+      approve: 2,
+      reject: 0,
+      abstain: 0,
+      weightedApprove: 2,
+      weightedReject: 0,
+      total: 2,
+    },
+    createdAt: '2025-01-08T00:00:00Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock traditional Preprint (paper lives in submitter's PDS).
+ *
+ * @remarks
+ * In the traditional model, the paper record lives in the submitter's PDS.
+ * The `paperDid` field is undefined, and the record URI uses the submitter's DID.
+ */
+export function createMockTraditionalPreprint(overrides: Partial<Preprint> = {}): Preprint {
+  return {
+    uri: 'at://did:plc:user123/pub.chive.preprint.submission/xyz',
+    cid: 'bafyreib2a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7',
+    title: 'A Traditional Preprint',
+    abstract:
+      'This preprint uses the traditional submission model where the paper lives in the submitter PDS.',
+    submittedBy: 'did:plc:user123',
+    paperDid: undefined, // Traditional model - no paper DID
+    authors: [createMockPreprintAuthorWithDid(), createMockExternalAuthor()],
+    document: createMockBlobRef(),
+    supplementaryMaterials: [],
+    fields: [createMockFieldRef()],
+    keywords: ['traditional', 'submission', 'preprint'],
+    license: 'CC-BY-4.0',
+    createdAt: '2024-01-15T10:30:00Z',
+    updatedAt: '2024-01-16T14:20:00Z',
+    source: createMockPreprintSource({
+      recordUrl: 'at://did:plc:user123/pub.chive.preprint.submission/xyz',
+    }),
+    metrics: createMockPreprintMetrics(),
+    versions: [
+      {
+        version: 1,
+        cid: 'bafyreib2a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7',
+        createdAt: '2024-01-15T10:30:00Z',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock paper-centric Preprint (paper has its own PDS).
+ *
+ * @remarks
+ * In the paper-centric model, the paper has its own DID and PDS.
+ * The `paperDid` field is set, and the record URI uses the paper's DID.
+ * The `submittedBy` field still refers to the human who submitted.
+ */
+export function createMockPaperCentricPreprint(overrides: Partial<Preprint> = {}): Preprint {
+  return {
+    uri: 'at://did:plc:paper-abc123/pub.chive.preprint.submission/xyz',
+    cid: 'bafyreic3b4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z8',
+    title: 'A Paper-Centric Preprint',
+    abstract: 'This preprint uses the paper-centric model where the paper has its own PDS and DID.',
+    submittedBy: 'did:plc:user123', // Human who submitted (same person)
+    paperDid: 'did:plc:paper-abc123', // Paper's own DID
+    authors: [createMockPreprintAuthorWithDid(), createMockExternalAuthor()],
+    document: createMockBlobRef(),
+    supplementaryMaterials: [],
+    fields: [createMockFieldRef()],
+    keywords: ['paper-centric', 'submission', 'preprint'],
+    license: 'CC-BY-4.0',
+    createdAt: '2024-01-15T10:30:00Z',
+    updatedAt: '2024-01-16T14:20:00Z',
+    source: createMockPreprintSource({
+      pdsEndpoint: 'https://paper-abc123.pds.example.com',
+      recordUrl: 'at://did:plc:paper-abc123/pub.chive.preprint.submission/xyz',
+    }),
+    metrics: createMockPreprintMetrics(),
+    versions: [
+      {
+        version: 1,
+        cid: 'bafyreic3b4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z8',
+        createdAt: '2024-01-15T10:30:00Z',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a list of all 14 CRediT contribution types.
+ */
+export function createMockCreditContributionTypes(): CreditContributionType[] {
+  const creditRoles = [
+    {
+      id: 'conceptualization',
+      label: 'Conceptualization',
+      description: 'Ideas; formulation or evolution of overarching research goals and aims',
+    },
+    {
+      id: 'data-curation',
+      label: 'Data Curation',
+      description: 'Management activities to annotate, scrub data and maintain research data',
+    },
+    {
+      id: 'formal-analysis',
+      label: 'Formal Analysis',
+      description:
+        'Application of statistical, mathematical, computational, or other formal techniques',
+    },
+    {
+      id: 'funding-acquisition',
+      label: 'Funding Acquisition',
+      description: 'Acquisition of the financial support for the project',
+    },
+    {
+      id: 'investigation',
+      label: 'Investigation',
+      description: 'Conducting research and investigation process, performing experiments',
+    },
+    {
+      id: 'methodology',
+      label: 'Methodology',
+      description: 'Development or design of methodology; creation of models',
+    },
+    {
+      id: 'project-administration',
+      label: 'Project Administration',
+      description: 'Management and coordination responsibility for research activity',
+    },
+    {
+      id: 'resources',
+      label: 'Resources',
+      description: 'Provision of study materials, reagents, materials, or other analysis tools',
+    },
+    {
+      id: 'software',
+      label: 'Software',
+      description: 'Programming, software development; designing computer programs',
+    },
+    {
+      id: 'supervision',
+      label: 'Supervision',
+      description: 'Oversight and leadership responsibility for research activity planning',
+    },
+    {
+      id: 'validation',
+      label: 'Validation',
+      description: 'Verification of overall replication/reproducibility of results',
+    },
+    {
+      id: 'visualization',
+      label: 'Visualization',
+      description: 'Preparation, creation of the published work, specifically visualization',
+    },
+    {
+      id: 'writing-original-draft',
+      label: 'Writing - Original Draft',
+      description: 'Preparation and creation of the initial draft',
+    },
+    {
+      id: 'writing-review-editing',
+      label: 'Writing - Review & Editing',
+      description: 'Critical review, commentary or revision of the work',
+    },
+  ];
+
+  return creditRoles.map((role) =>
+    createMockContributionType({
+      uri: `at://did:plc:chive-governance/pub.chive.contribution.type/${role.id}`,
+      id: role.id,
+      label: role.label,
+      description: role.description,
+      externalMappings: [
+        {
+          system: 'credit',
+          identifier: role.id,
+          uri: `https://credit.niso.org/contributor-roles/${role.id}/`,
+          matchType: 'exact-match',
+        },
+      ],
+    })
+  );
+}
+
+// =============================================================================
+// FACET MOCK DATA
+// =============================================================================
+
+/**
+ * Facet proposal type for mock data.
+ */
+export interface MockFacetProposal {
+  uri: string;
+  proposer: string;
+  proposalType: 'create' | 'update' | 'deprecate';
+  dimension: FacetDimension;
+  proposedId: string;
+  proposedLabel: string;
+  proposedDescription: string;
+  parentId?: string;
+  externalMappings: ExternalMapping[];
+  rationale: string;
+  status: 'pending' | 'approved' | 'rejected';
+  voteTally: {
+    approve: number;
+    reject: number;
+    total: number;
+    expertVotes: number;
+    quorumMet: boolean;
+    thresholdsMet: boolean;
+  };
+  createdAt: string;
+  votingDeadline?: string;
+}
+
+/**
+ * Creates a mock governance FacetValue (for knowledge graph).
+ */
+export function createMockGovernanceFacetValue(overrides: Partial<FacetValue> = {}): FacetValue {
+  return {
+    id: 'machine-learning',
+    label: 'Machine Learning',
+    dimension: 'personality',
+    description:
+      'A branch of artificial intelligence focused on building systems that learn from data',
+    externalMappings: [
+      {
+        system: 'lcsh',
+        identifier: 'sh85079324',
+        uri: 'http://id.loc.gov/authorities/subjects/sh85079324',
+      },
+    ],
+    parentId: 'artificial-intelligence',
+    status: 'established',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock Facet Proposal.
+ */
+export function createMockFacetProposal(
+  overrides: Partial<MockFacetProposal> = {}
+): MockFacetProposal {
+  return {
+    uri: 'at://did:plc:user123/pub.chive.graph.facetProposal/abc',
+    proposer: 'did:plc:user123',
+    proposalType: 'create',
+    dimension: 'personality',
+    proposedId: 'deep-learning',
+    proposedLabel: 'Deep Learning',
+    proposedDescription: 'A subset of machine learning using neural networks with multiple layers',
+    parentId: 'machine-learning',
+    externalMappings: [
+      {
+        system: 'fast',
+        identifier: 'fst00890098',
+        uri: 'http://id.worldcat.org/fast/890098',
+      },
+    ],
+    rationale:
+      'Deep learning has become a distinct subfield with its own methodologies and applications',
+    status: 'pending',
+    voteTally: {
+      approve: 3,
+      reject: 1,
+      total: 4,
+      expertVotes: 2,
+      quorumMet: false,
+      thresholdsMet: false,
+    },
+    createdAt: '2025-01-08T00:00:00Z',
+    votingDeadline: '2025-01-13T00:00:00Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates mock PMEST facet values.
+ */
+export function createMockPMESTFacetValues(): FacetValue[] {
+  return [
+    createMockGovernanceFacetValue({
+      id: 'machine-learning',
+      label: 'Machine Learning',
+      dimension: 'personality',
+      description: 'What the subject is fundamentally about',
+    }),
+    createMockGovernanceFacetValue({
+      id: 'neural-networks',
+      label: 'Neural Networks',
+      dimension: 'matter',
+      description: 'Materials or constituents used',
+    }),
+    createMockGovernanceFacetValue({
+      id: 'training',
+      label: 'Training',
+      dimension: 'energy',
+      description: 'Processes or operations performed',
+    }),
+    createMockGovernanceFacetValue({
+      id: 'europe',
+      label: 'Europe',
+      dimension: 'space',
+      description: 'Geographic location',
+    }),
+    createMockGovernanceFacetValue({
+      id: '21st-century',
+      label: '21st Century',
+      dimension: 'time',
+      description: 'Temporal period',
+    }),
+  ];
+}
+
+// =============================================================================
+// ORGANIZATION MOCK DATA
+// =============================================================================
+
+/**
+ * Organization proposal type for mock data.
+ */
+export interface MockOrganizationProposal {
+  uri: string;
+  proposer: string;
+  proposalType: 'create' | 'update' | 'merge' | 'deprecate';
+  name: string;
+  type: OrganizationType;
+  rorId?: string;
+  wikidataId?: string;
+  country?: string;
+  city?: string;
+  website?: string;
+  aliases?: string[];
+  parentId?: string;
+  mergeTargetId?: string;
+  rationale: string;
+  status: 'pending' | 'approved' | 'rejected';
+  voteTally: {
+    approve: number;
+    reject: number;
+    total: number;
+    expertVotes: number;
+    quorumMet: boolean;
+    thresholdsMet: boolean;
+  };
+  createdAt: string;
+  votingDeadline?: string;
+}
+
+/**
+ * Creates a mock Organization.
+ */
+export function createMockOrganization(overrides: Partial<Organization> = {}): Organization {
+  return {
+    id: 'mit',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.organization/mit',
+    name: 'Massachusetts Institute of Technology',
+    type: 'university',
+    rorId: 'https://ror.org/042nb2s44',
+    wikidataId: 'Q49108',
+    country: 'US',
+    city: 'Cambridge',
+    website: 'https://www.mit.edu',
+    aliases: ['MIT', 'M.I.T.'],
+    parentId: undefined,
+    status: 'established',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock Organization Proposal.
+ */
+export function createMockOrganizationProposal(
+  overrides: Partial<MockOrganizationProposal> = {}
+): MockOrganizationProposal {
+  return {
+    uri: 'at://did:plc:user123/pub.chive.graph.organizationProposal/abc',
+    proposer: 'did:plc:user123',
+    proposalType: 'create',
+    name: 'Stanford Artificial Intelligence Laboratory',
+    type: 'research-lab',
+    rorId: undefined,
+    wikidataId: 'Q7598316',
+    country: 'US',
+    city: 'Stanford',
+    website: 'https://ai.stanford.edu',
+    aliases: ['SAIL'],
+    parentId: 'stanford-university',
+    rationale:
+      'SAIL is a major AI research lab that should be tracked separately from the university',
+    status: 'pending',
+    voteTally: {
+      approve: 2,
+      reject: 0,
+      total: 2,
+      expertVotes: 1,
+      quorumMet: false,
+      thresholdsMet: false,
+    },
+    createdAt: '2025-01-08T00:00:00Z',
+    votingDeadline: '2025-01-13T00:00:00Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a list of mock organizations.
+ */
+export function createMockOrganizations(): Organization[] {
+  return [
+    createMockOrganization(),
+    createMockOrganization({
+      id: 'stanford',
+      uri: 'at://did:plc:chive-governance/pub.chive.graph.organization/stanford',
+      name: 'Stanford University',
+      type: 'university',
+      rorId: 'https://ror.org/00f54p054',
+      wikidataId: 'Q41506',
+      country: 'US',
+      city: 'Stanford',
+      website: 'https://www.stanford.edu',
+      aliases: ['Stanford'],
+    }),
+    createMockOrganization({
+      id: 'nih',
+      uri: 'at://did:plc:chive-governance/pub.chive.graph.organization/nih',
+      name: 'National Institutes of Health',
+      type: 'funding-body',
+      rorId: 'https://ror.org/01cwqze88',
+      wikidataId: 'Q390551',
+      country: 'US',
+      city: 'Bethesda',
+      website: 'https://www.nih.gov',
+      aliases: ['NIH'],
+    }),
+  ];
+}
+
+// =============================================================================
+// RECONCILIATION MOCK DATA
+// =============================================================================
+
+/**
+ * Reconciliation proposal type for mock data.
+ */
+export interface MockReconciliationProposal {
+  uri: string;
+  proposer: string;
+  proposalType: 'create' | 'update' | 'remove';
+  sourceType: ReconcilableEntityType;
+  sourceUri: string;
+  sourceLabel: string;
+  targetSystem: ReconciliationSystem;
+  targetId: string;
+  targetUri: string;
+  targetLabel: string;
+  matchType: ReconciliationMatchType;
+  confidence?: number;
+  rationale: string;
+  status: 'pending' | 'approved' | 'rejected';
+  voteTally: {
+    approve: number;
+    reject: number;
+    total: number;
+    expertVotes: number;
+    quorumMet: boolean;
+    thresholdsMet: boolean;
+  };
+  createdAt: string;
+  votingDeadline?: string;
+}
+
+/**
+ * Creates a mock Reconciliation.
+ */
+export function createMockReconciliation(overrides: Partial<Reconciliation> = {}): Reconciliation {
+  return {
+    id: 'ml-wikidata',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.reconciliation/ml-wikidata',
+    sourceType: 'field',
+    sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.field/machine-learning',
+    sourceLabel: 'Machine Learning',
+    targetSystem: 'wikidata',
+    targetId: 'Q2539',
+    targetUri: 'https://www.wikidata.org/wiki/Q2539',
+    targetLabel: 'machine learning',
+    matchType: 'exact-match',
+    method: 'expert-validation',
+    confidence: 0.98,
+    validatedBy: 'did:plc:expert123',
+    status: 'established',
+    createdAt: '2025-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock Reconciliation Proposal.
+ */
+export function createMockReconciliationProposal(
+  overrides: Partial<MockReconciliationProposal> = {}
+): MockReconciliationProposal {
+  return {
+    uri: 'at://did:plc:user123/pub.chive.graph.reconciliationProposal/abc',
+    proposer: 'did:plc:user123',
+    proposalType: 'create',
+    sourceType: 'field',
+    sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.field/deep-learning',
+    sourceLabel: 'Deep Learning',
+    targetSystem: 'wikidata',
+    targetId: 'Q197536',
+    targetUri: 'https://www.wikidata.org/wiki/Q197536',
+    targetLabel: 'deep learning',
+    matchType: 'exact-match',
+    confidence: 0.95,
+    rationale: 'Direct mapping to Wikidata concept for deep learning',
+    status: 'pending',
+    voteTally: {
+      approve: 4,
+      reject: 0,
+      total: 4,
+      expertVotes: 2,
+      quorumMet: true,
+      thresholdsMet: false,
+    },
+    createdAt: '2025-01-08T00:00:00Z',
+    votingDeadline: '2025-01-13T00:00:00Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a list of mock reconciliations.
+ */
+export function createMockReconciliations(): Reconciliation[] {
+  return [
+    createMockReconciliation(),
+    createMockReconciliation({
+      id: 'mit-ror',
+      uri: 'at://did:plc:chive-governance/pub.chive.graph.reconciliation/mit-ror',
+      sourceType: 'organization',
+      sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.organization/mit',
+      sourceLabel: 'Massachusetts Institute of Technology',
+      targetSystem: 'ror',
+      targetId: '042nb2s44',
+      targetUri: 'https://ror.org/042nb2s44',
+      targetLabel: 'Massachusetts Institute of Technology',
+      matchType: 'exact-match',
+      confidence: 1.0,
+    }),
+    createMockReconciliation({
+      id: 'cs-lcsh',
+      uri: 'at://did:plc:chive-governance/pub.chive.graph.reconciliation/cs-lcsh',
+      sourceType: 'field',
+      sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
+      sourceLabel: 'Computer Science',
+      targetSystem: 'lcsh',
+      targetId: 'sh85029552',
+      targetUri: 'http://id.loc.gov/authorities/subjects/sh85029552',
+      targetLabel: 'Computer science',
+      matchType: 'exact-match',
+      confidence: 0.99,
+    }),
+  ];
 }

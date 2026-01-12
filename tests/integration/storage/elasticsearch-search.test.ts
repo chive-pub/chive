@@ -28,6 +28,7 @@ import {
 } from '../../../src/storage/elasticsearch/setup.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../../src/types/atproto.js';
 import type { Facet } from '../../../src/types/interfaces/graph.interface.js';
+import type { PreprintAuthor } from '../../../src/types/models/author.js';
 import type { Preprint } from '../../../src/types/models/preprint.js';
 
 describe('Elasticsearch Search Integration', () => {
@@ -97,15 +98,37 @@ describe('Elasticsearch Search Integration', () => {
       size: 1024000,
     };
 
+    const author1: PreprintAuthor = {
+      did: 'did:plc:author1' as DID,
+      name: 'Test Author 1',
+      order: 1,
+      affiliations: [],
+      contributions: [],
+      isCorrespondingAuthor: true,
+      isHighlighted: false,
+    };
+
+    const author2: PreprintAuthor = {
+      did: 'did:plc:author2' as DID,
+      name: 'Test Author 2',
+      order: 1,
+      affiliations: [],
+      contributions: [],
+      isCorrespondingAuthor: true,
+      isHighlighted: false,
+    };
+
     const testPreprints: Preprint[] = [
       {
         uri: 'at://did:plc:test1/pub.chive.preprint/abc123' as AtUri,
         cid: 'bafytest1' as CID,
-        author: 'did:plc:author1' as DID,
-        coAuthors: [],
+        authors: [author1],
+        submittedBy: 'did:plc:author1' as DID,
         title: 'Machine Learning in Healthcare',
         abstract: 'Deep learning models for medical diagnosis',
-        pdfBlobRef: mockPdfBlob,
+        documentBlobRef: mockPdfBlob,
+        documentFormat: 'pdf',
+        publicationStatus: 'preprint',
         keywords: ['machine learning', 'healthcare', 'diagnosis'],
         facets: [
           { dimension: 'matter', value: 'Computer Science' },
@@ -119,11 +142,13 @@ describe('Elasticsearch Search Integration', () => {
       {
         uri: 'at://did:plc:test2/pub.chive.preprint/def456' as AtUri,
         cid: 'bafytest2' as CID,
-        author: 'did:plc:author2' as DID,
-        coAuthors: [],
+        authors: [author2],
+        submittedBy: 'did:plc:author2' as DID,
         title: 'Neural Networks for Image Classification',
         abstract: 'Convolutional neural networks and computer vision',
-        pdfBlobRef: mockPdfBlob,
+        documentBlobRef: mockPdfBlob,
+        documentFormat: 'pdf',
+        publicationStatus: 'preprint',
         keywords: ['neural networks', 'image classification'],
         facets: [
           { dimension: 'matter', value: 'Computer Science' },
@@ -137,11 +162,13 @@ describe('Elasticsearch Search Integration', () => {
       {
         uri: 'at://did:plc:test3/pub.chive.preprint/ghi789' as AtUri,
         cid: 'bafytest3' as CID,
-        author: 'did:plc:author1' as DID,
-        coAuthors: [],
+        authors: [author1],
+        submittedBy: 'did:plc:author1' as DID,
         title: 'Quantum Computing Algorithms',
         abstract: 'Novel quantum algorithms for optimization problems',
-        pdfBlobRef: mockPdfBlob,
+        documentBlobRef: mockPdfBlob,
+        documentFormat: 'pdf',
+        publicationStatus: 'preprint',
         keywords: ['quantum computing', 'algorithms'],
         facets: [
           { dimension: 'matter', value: 'Physics' },

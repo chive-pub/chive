@@ -45,6 +45,7 @@ import type {
   IStorageBackend,
   StoredPreprint,
 } from '../../src/types/interfaces/storage.interface.js';
+import type { PreprintAuthor } from '../../src/types/models/author.js';
 import type { Preprint } from '../../src/types/models/preprint.js';
 
 // Test constants
@@ -175,22 +176,35 @@ function createMockIdentity(): IIdentityResolver {
  * Creates test preprint record.
  */
 function createTestPreprint(): Preprint {
+  const testAuthor: PreprintAuthor = {
+    did: TEST_AUTHOR,
+    name: 'Test Compliance Author',
+    order: 1,
+    affiliations: [],
+    contributions: [],
+    isCorrespondingAuthor: true,
+    isHighlighted: false,
+  };
+
   return {
     uri: TEST_URI,
     cid: TEST_CID,
-    author: TEST_AUTHOR,
+    authors: [testAuthor],
+    submittedBy: TEST_AUTHOR,
     title: 'Compliance Test Preprint',
     abstract: 'Testing ATProto compliance.',
     keywords: ['compliance', 'test'],
     facets: [],
     version: 1,
     license: 'CC-BY-4.0',
-    pdfBlobRef: {
+    documentBlobRef: {
       $type: 'blob',
       ref: 'bafyreiblob123' as CID,
       mimeType: 'application/pdf',
       size: 1024,
     },
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     createdAt: Date.now() as Timestamp,
   };
 }
@@ -294,15 +308,15 @@ describe('ATProto Core Services Compliance', () => {
       expect(storeOp).toBeDefined();
 
       const storedPreprint = storeOp?.args[0] as StoredPreprint;
-      expect(storedPreprint.pdfBlobRef).toBeDefined();
+      expect(storedPreprint.documentBlobRef).toBeDefined();
 
       // BlobRef should have structure: $type, ref, mimeType, size
-      expect(storedPreprint.pdfBlobRef?.$type).toBe('blob');
-      expect(storedPreprint.pdfBlobRef?.ref).toBeDefined();
-      expect(storedPreprint.pdfBlobRef?.mimeType).toBeDefined();
+      expect(storedPreprint.documentBlobRef?.$type).toBe('blob');
+      expect(storedPreprint.documentBlobRef?.ref).toBeDefined();
+      expect(storedPreprint.documentBlobRef?.mimeType).toBeDefined();
 
       // Verify no blob data fields exist
-      const blobRefKeys = Object.keys(storedPreprint.pdfBlobRef ?? {});
+      const blobRefKeys = Object.keys(storedPreprint.documentBlobRef ?? {});
       expect(blobRefKeys).not.toContain('data');
       expect(blobRefKeys).not.toContain('content');
       expect(blobRefKeys).not.toContain('buffer');

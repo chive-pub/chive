@@ -21,7 +21,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.local.yml"
 
 # Expected credentials (must match docker-compose.local.yml)
-NEO4J_PASSWORD="chive_local_password"
+NEO4J_PASSWORD="chive_test_password"
 
 clean_start=false
 if [[ "$1" == "--clean" ]]; then
@@ -161,7 +161,7 @@ if $clean_start; then
   export POSTGRES_PORT=5432
   export POSTGRES_DB=chive
   export POSTGRES_USER=chive
-  export POSTGRES_PASSWORD=chive_local_password
+  export POSTGRES_PASSWORD=chive_test_password
   pnpm db:migrate:up || {
     echo "❌ Migration failed"
     exit 1
@@ -172,7 +172,7 @@ echo ""
 echo "✅ All databases ready!"
 echo ""
 echo "Connection details:"
-echo "   PostgreSQL: postgresql://chive:chive_local_password@127.0.0.1:5432/chive"
+echo "   PostgreSQL: postgresql://chive:chive_test_password@127.0.0.1:5432/chive"
 echo "   Redis:      redis://127.0.0.1:6379"
 echo "   Elasticsearch: http://127.0.0.1:9200"
-echo "   Neo4j:      bolt://127.0.0.1:7687 (neo4j/chive_local_password)"
+echo "   Neo4j:      bolt://127.0.0.1:7687 (neo4j/chive_test_password)"

@@ -251,9 +251,10 @@ describe('SemanticScholarPlugin', () => {
       global.fetch = mockFetch as unknown as typeof fetch;
 
       const result = await plugin.getRecommendations(mockPaper.paperId);
+      const firstResult = result[0];
 
       expect(result.length).toBeGreaterThan(0);
-      expect(result[0]!.source).toBe('semanticscholar');
+      expect(firstResult?.source).toBe('semanticscholar');
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/recommendations/v1/papers/forpaper/'),
         expect.any(Object)
@@ -370,9 +371,10 @@ describe('SemanticScholarPlugin', () => {
       global.fetch = mockFetch as unknown as typeof fetch;
 
       const result = await plugin.getCitations(mockPaper.paperId);
+      const firstCitation = result.citations[0];
 
       expect(result.citations.length).toBeGreaterThan(0);
-      expect(result.citations[0]!.isInfluential).toBeDefined();
+      expect(firstCitation?.isInfluential).toBeDefined();
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining(`/paper/${mockPaper.paperId}/citations`),
         expect.any(Object)

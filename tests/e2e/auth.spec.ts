@@ -115,14 +115,17 @@ test.describe('Authentication', () => {
   test('submit page requires authentication', async ({ page }) => {
     await page.goto('/submit', { waitUntil: 'domcontentloaded' });
 
-    // Submit page MUST show authentication required message for unauthenticated users
-    // Use text matcher to avoid matching the Next.js route announcer (also has role="alert")
-    const authAlert = page.getByText(/authentication required/i);
-    await expect(authAlert).toBeVisible({ timeout: 10000 });
+    // Submit page shows sign-in form for unauthenticated users
+    const signInHeading = page.getByRole('heading', { name: /sign in to chive/i });
+    await expect(signInHeading).toBeVisible({ timeout: 10000 });
 
-    // Should show sign-in button specific to submit page (not header button)
-    const signInButton = page.getByRole('button', { name: 'Sign In to Submit' });
+    // Should show sign-in button and redirect indicator
+    const signInButton = page.getByRole('button', { name: /continue with at protocol/i });
     await expect(signInButton).toBeVisible();
+
+    // Should indicate redirect to /submit after signing in
+    const redirectIndicator = page.getByText(/redirected to \/submit/i);
+    await expect(redirectIndicator).toBeVisible();
   });
 
   test('login page shows ATProto description', async ({ page }) => {

@@ -559,7 +559,11 @@ describe('CitationGraph Integration', () => {
 
       // Results should be sorted by coCitationCount descending
       for (let i = 1; i < result.length; i++) {
-        expect(result[i - 1]!.coCitationCount).toBeGreaterThanOrEqual(result[i]!.coCitationCount);
+        const prev = result[i - 1];
+        const curr = result[i];
+        if (prev && curr) {
+          expect(prev.coCitationCount).toBeGreaterThanOrEqual(curr.coCitationCount);
+        }
       }
     });
   });

@@ -31,6 +31,7 @@ import type {
   FacetedSearchQuery,
   FacetedSearchResults,
 } from '@/types/interfaces/search.interface.js';
+import type { IStorageBackend } from '@/types/interfaces/storage.interface.js';
 
 /**
  * Creates a mock authorization service for tests.
@@ -365,6 +366,7 @@ export function createMockPreprintService(): ServerConfig['preprintService'] {
     getPreprint: vi.fn().mockResolvedValue(null),
     getPreprintByUri: vi.fn().mockResolvedValue(null),
     listPreprints: vi.fn().mockResolvedValue({ preprints: [], cursor: undefined }),
+    getPreprintsByAuthor: vi.fn().mockResolvedValue({ preprints: [], total: 0 }),
     indexPreprint: vi.fn().mockResolvedValue(undefined),
     deletePreprint: vi.fn().mockResolvedValue(undefined),
   } as unknown as ServerConfig['preprintService'];
@@ -373,7 +375,7 @@ export function createMockPreprintService(): ServerConfig['preprintService'] {
 /**
  * Creates a no-op relevance logger.
  */
-export function createNoOpRelevanceLogger() {
+export function createNoOpRelevanceLogger(): NoOpRelevanceLogger {
   return new NoOpRelevanceLogger();
 }
 
@@ -398,4 +400,32 @@ export function createMockServiceAuthVerifier(
       return Promise.resolve(null);
     }),
   };
+}
+
+/**
+ * Creates a mock contribution type manager.
+ */
+export function createMockContributionTypeManager(): ServerConfig['contributionTypeManager'] {
+  return {
+    listContributionTypes: vi.fn().mockResolvedValue([]),
+    getContributionType: vi.fn().mockResolvedValue(null),
+    searchContributionTypes: vi.fn().mockResolvedValue([]),
+    initializeContributionTypes: vi.fn().mockResolvedValue(undefined),
+    createContributionType: vi.fn().mockResolvedValue(undefined),
+    updateContributionType: vi.fn().mockResolvedValue(undefined),
+    deprecateContributionType: vi.fn().mockResolvedValue(undefined),
+  } as unknown as ServerConfig['contributionTypeManager'];
+}
+
+/**
+ * Creates a mock storage backend.
+ */
+export function createMockStorageBackend(): IStorageBackend {
+  return {
+    storePreprint: vi.fn().mockResolvedValue(undefined),
+    getPreprint: vi.fn().mockResolvedValue(null),
+    updatePreprint: vi.fn().mockResolvedValue(undefined),
+    deletePreprint: vi.fn().mockResolvedValue(undefined),
+    getPreprintsByAuthor: vi.fn().mockResolvedValue({ preprints: [], total: 0 }),
+  } as unknown as IStorageBackend;
 }

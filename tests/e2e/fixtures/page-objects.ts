@@ -44,35 +44,72 @@ export class HeaderComponent {
 }
 
 /**
- * Home page.
+ * Alpha landing page (simple page with handle input).
+ *
+ * @remarks
+ * The landing page is a simple page matching the static landing.html design,
+ * with a handle input field for Bluesky/ATProto login.
  */
-export class HomePage {
+export class AlphaLandingPage {
   readonly page: Page;
-  readonly header: HeaderComponent;
-  readonly heroTitle: Locator;
-  readonly heroSubtitle: Locator;
-  readonly searchCta: Locator;
-  readonly submitCta: Locator;
-  readonly featuredPreprints: Locator;
-  readonly recentPreprints: Locator;
+  readonly logo: Locator;
+  readonly title: Locator;
+  readonly tagline: Locator;
+  readonly description: Locator;
+  readonly handleInput: Locator;
+  readonly signInButton: Locator;
+  readonly errorMessage: Locator;
+  readonly docsLink: Locator;
+  readonly githubLink: Locator;
+  readonly blueskyLink: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.header = new HeaderComponent(page);
-    this.heroTitle = page.getByRole('heading', { level: 1 });
-    // Use role-based selectors for resilience
-    this.heroSubtitle = page
-      .getByRole('heading', { level: 2 })
-      .first()
-      .or(page.locator('p').first());
-    this.searchCta = page.getByRole('link', { name: /explore|browse|search/i }).first();
-    this.submitCta = page.getByRole('link', { name: /submit/i }).first();
-    this.featuredPreprints = page.getByRole('region', { name: /featured/i });
-    this.recentPreprints = page.getByRole('region', { name: /recent/i });
+    this.logo = page.getByRole('img', { name: /chive/i });
+    this.title = page.getByRole('heading', { level: 1 });
+    this.tagline = page.getByText(/decentralized preprints/i);
+    this.description = page.getByText(/next-generation preprint server/i);
+    this.handleInput = page.getByRole('textbox', { name: /bsky\.social/i });
+    this.signInButton = page.getByRole('button', { name: /sign in with bluesky/i });
+    this.errorMessage = page.locator('.text-destructive');
+    this.docsLink = page.getByRole('link', { name: /read the docs/i });
+    this.githubLink = page.getByRole('link', { name: /github/i });
+    this.blueskyLink = page.getByRole('link', { name: /bluesky/i });
   }
 
   async goto(): Promise<void> {
     await this.page.goto('/');
+  }
+
+  async enterHandle(handle: string): Promise<void> {
+    await this.handleInput.fill(handle);
+  }
+
+  async signIn(handle: string): Promise<void> {
+    await this.enterHandle(handle);
+    await this.signInButton.click();
+  }
+}
+
+/**
+ * Home page (alias for AlphaLandingPage for backwards compatibility).
+ */
+export class HomePage extends AlphaLandingPage {
+  // Backwards compatibility aliases
+  readonly heroTitle: Locator;
+  readonly heroSubtitle: Locator;
+  readonly searchCta: Locator;
+  readonly submitCta: Locator;
+  readonly header: HeaderComponent;
+
+  constructor(page: Page) {
+    super(page);
+    this.header = new HeaderComponent(page);
+    this.heroTitle = this.title;
+    this.heroSubtitle = this.tagline;
+    // These don't exist on the new landing page but provide stubs
+    this.searchCta = page.getByRole('link', { name: /explore|browse|search/i }).first();
+    this.submitCta = page.getByRole('link', { name: /submit/i }).first();
   }
 }
 
@@ -155,9 +192,7 @@ export class PreprintPage {
     this.title = page.getByRole('heading', { level: 1 });
     // Use role-based selectors for resilience
     this.abstract = page.getByRole('region', { name: /abstract/i });
-    this.authors = page
-      .getByRole('list', { name: /authors/i })
-      .or(page.locator('[aria-label*="author" i]'));
+    this.authors = page.getByRole('list', { name: 'Authors' });
     this.keywords = page
       .getByRole('list', { name: /keywords|tags/i })
       .or(page.locator('[aria-label*="keyword" i]'));
@@ -298,10 +333,13 @@ export class DashboardPage {
 
 /**
  * Alpha signup form page (authenticated but not yet an alpha tester).
+ *
+ * @remarks
+ * Simple application form at /apply for users without an existing application.
  */
 export class AlphaSignupPage {
   readonly page: Page;
-  readonly header: HeaderComponent;
+  readonly logo: Locator;
   readonly formTitle: Locator;
   readonly emailInput: Locator;
   readonly sectorSelect: Locator;
@@ -318,7 +356,7 @@ export class AlphaSignupPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.header = new HeaderComponent(page);
+    this.logo = page.getByRole('img', { name: /chive/i });
     this.formTitle = page.getByRole('heading', { name: /join.*alpha|alpha.*sign|apply/i });
     this.emailInput = page.getByRole('textbox', { name: /email/i });
     this.sectorSelect = page.getByRole('combobox', { name: /sector|organization/i });
@@ -339,7 +377,7 @@ export class AlphaSignupPage {
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/');
+    await this.page.goto('/apply');
   }
 
   async fillForm(data: {
@@ -376,36 +414,38 @@ export class AlphaSignupPage {
 }
 
 /**
- * Alpha status page (shows pending/approved/rejected status).
+ * Alpha pending status page.
+ *
+ * @remarks
+ * Simple page at /pending showing application under review status.
+ * Both pending AND rejected users see this page (rejected is never shown).
  */
 export class AlphaStatusPage {
   readonly page: Page;
-  readonly header: HeaderComponent;
+  readonly logo: Locator;
+  readonly statusIcon: Locator;
   readonly statusHeading: Locator;
-  readonly statusMessage: Locator;
-  readonly pendingIcon: Locator;
-  readonly approvedIcon: Locator;
-  readonly rejectedIcon: Locator;
   readonly appliedDate: Locator;
-  readonly reviewedDate: Locator;
+  readonly statusMessage: Locator;
+  readonly signOutButton: Locator;
+  readonly blueskyLink: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.header = new HeaderComponent(page);
-    this.statusHeading = page.getByRole('heading', { name: /status|application/i });
-    this.statusMessage = page.getByRole('status').or(page.locator('[role="alert"]'));
-    this.pendingIcon = page
-      .getByTestId('status-pending')
-      .or(page.getByText(/under review|pending/i));
-    this.approvedIcon = page.getByTestId('status-approved').or(page.getByText(/approved|welcome/i));
-    this.rejectedIcon = page
-      .getByTestId('status-rejected')
-      .or(page.getByText(/rejected|declined/i));
-    this.appliedDate = page.getByText(/applied|submitted/i);
-    this.reviewedDate = page.getByText(/reviewed/i);
+    this.logo = page.getByRole('img', { name: /chive/i });
+    this.statusIcon = page.locator('svg').first(); // Clock icon
+    this.statusHeading = page.getByRole('heading', { name: /under review|application/i });
+    this.appliedDate = page.getByText(/applied on/i);
+    this.statusMessage = page.getByText(/reviewing applications/i);
+    this.signOutButton = page.getByRole('button', { name: /sign out/i });
+    this.blueskyLink = page.getByRole('link', { name: /bluesky/i });
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/alpha/status');
+    await this.page.goto('/pending');
+  }
+
+  async signOut(): Promise<void> {
+    await this.signOutButton.click();
   }
 }

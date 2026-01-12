@@ -62,7 +62,7 @@ export default defineConfig({
         storageState: AUTHENTICATED_STATE,
       },
       dependencies: ['setup:auth'],
-      testIgnore: ['**/auth.spec.ts', '**/auth.setup.ts'],
+      testIgnore: ['**/auth.spec.ts', '**/auth.setup.ts', '**/home.spec.ts'],
     },
     // Firefox and WebKit only run in CI to speed up local development
     ...(process.env.CI
@@ -74,7 +74,7 @@ export default defineConfig({
               storageState: AUTHENTICATED_STATE,
             },
             dependencies: ['setup:auth'],
-            testIgnore: ['**/auth.spec.ts', '**/auth.setup.ts'],
+            testIgnore: ['**/auth.spec.ts', '**/auth.setup.ts', '**/home.spec.ts'],
           },
           {
             name: 'webkit:authenticated',
@@ -83,13 +83,13 @@ export default defineConfig({
               storageState: AUTHENTICATED_STATE,
             },
             dependencies: ['setup:auth'],
-            testIgnore: ['**/auth.spec.ts', '**/auth.setup.ts'],
+            testIgnore: ['**/auth.spec.ts', '**/auth.setup.ts', '**/home.spec.ts'],
           },
         ]
       : []),
 
     // ============================================
-    // UNAUTHENTICATED TESTS - For auth flow testing
+    // UNAUTHENTICATED TESTS - For auth flow and public page testing
     // ============================================
     {
       name: 'chromium:unauthenticated',
@@ -98,7 +98,7 @@ export default defineConfig({
         storageState: UNAUTHENTICATED_STATE,
       },
       dependencies: ['setup:auth'],
-      testMatch: ['**/auth.spec.ts'],
+      testMatch: ['**/auth.spec.ts', '**/home.spec.ts'],
     },
 
     // ============================================
@@ -129,18 +129,19 @@ export default defineConfig({
         ...process.env,
         // Disable rate limiting during E2E tests
         DISABLE_RATE_LIMITING: 'true',
-        // Use test database credentials (matches docker/docker-compose.yml)
-        // PostgreSQL: user=chive, password=chive_test_password, db=chive_test
+        // Enable E2E auth bypass to allow testing without real OAuth tokens
+        // This is standard practice for E2E testing OAuth-protected APIs
+        ENABLE_E2E_AUTH_BYPASS: 'true',
+        // Database credentials matching test docker containers
         POSTGRES_USER: 'chive',
         POSTGRES_PASSWORD: 'chive_test_password',
-        POSTGRES_DB: 'chive_test',
+        POSTGRES_DB: 'chive',
         POSTGRES_HOST: '127.0.0.1',
         POSTGRES_PORT: '5432',
-        // Neo4j: user=neo4j, password=chive_test_password
+        DATABASE_URL: 'postgresql://chive:chive_test_password@127.0.0.1:5432/chive',
         NEO4J_USER: 'neo4j',
         NEO4J_PASSWORD: 'chive_test_password',
         NEO4J_URI: 'bolt://127.0.0.1:7687',
-        // Redis and Elasticsearch use defaults (no auth)
         REDIS_URL: 'redis://127.0.0.1:6379',
         ELASTICSEARCH_URL: 'http://127.0.0.1:9200',
       },
