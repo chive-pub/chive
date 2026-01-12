@@ -56,17 +56,18 @@ import type { BlobRef } from './types';
 
 // ✅ Correct: Store BlobRef
 const preprint = {
-  pdfBlobRef: {
+  documentBlobRef: {
     $type: 'blob',
     ref: toCID('bafyreib...')!,
     mimeType: 'application/pdf',
     size: 2048576,
   },
+  documentFormat: 'pdf',
 };
 
 // ❌ Wrong: Don't store blob data
 const preprint = {
-  pdfData: new Uint8Array([...]); // ATProto violation!
+  documentData: new Uint8Array([...]); // ATProto violation!
 };
 ```
 
@@ -149,7 +150,7 @@ class PreprintService {
       author: record.author,
       title: record.value.title,
       abstract: record.value.abstract,
-      pdfBlobRef: record.value.pdfBlobRef, // BlobRef, not blob data
+      documentBlobRef: record.value.document, // BlobRef, not blob data
       pdsUrl: await this.identity.getPDSEndpoint(record.author),
       indexedAt: new Date(),
       createdAt: new Date(record.value.createdAt),
@@ -185,12 +186,13 @@ const preprint: Preprint = {
   author: toDID('did:plc:abc')!,
   title: 'Neural Networks in Biology',
   abstract: 'This paper explores...',
-  pdfBlobRef: {
+  documentBlobRef: {
     $type: 'blob',
     ref: toCID('bafyreib...')!,
     mimeType: 'application/pdf',
     size: 2048576,
   },
+  documentFormat: 'pdf',
   keywords: ['neural networks', 'biology'],
   facets: [],
   version: 1,
