@@ -20,7 +20,6 @@ export * from './did/index.js';
 export * from './jwt/index.js';
 export * from './session/index.js';
 export * from './authorization/index.js';
-export * from './oauth/index.js';
 export * from './webauthn/index.js';
 export * from './mfa/index.js';
 export * from './zero-trust/index.js';
