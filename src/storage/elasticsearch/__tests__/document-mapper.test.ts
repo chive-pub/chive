@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../../types/atproto.js';
 import type { Facet } from '../../../types/interfaces/graph.interface.js';
+import type { PreprintAuthor } from '../../../types/models/author.js';
 import type { Preprint } from '../../../types/models/preprint.js';
 import type { EnrichmentData } from '../document-mapper.js';
 import { mapPreprintToDocument } from '../document-mapper.js';
@@ -36,15 +37,56 @@ describe('mapPreprintToDocument', () => {
     },
   ];
 
+  const mockAuthors: PreprintAuthor[] = [
+    {
+      did: 'did:plc:abc123' as DID,
+      name: 'Jane Smith',
+      orcid: '0000-0001-2345-6789',
+      email: 'jane@example.edu',
+      order: 1,
+      affiliations: [{ name: 'University of Example', rorId: 'https://ror.org/02mhbdp94' }],
+      contributions: [
+        {
+          typeUri: 'at://did:plc:governance/pub.chive.contribution.type/conceptualization' as AtUri,
+          typeId: 'conceptualization',
+          typeLabel: 'Conceptualization',
+          degree: 'lead',
+        },
+      ],
+      isCorrespondingAuthor: true,
+      isHighlighted: true,
+    },
+    {
+      did: 'did:plc:def456' as DID,
+      name: 'John Doe',
+      order: 2,
+      affiliations: [],
+      contributions: [],
+      isCorrespondingAuthor: false,
+      isHighlighted: false,
+    },
+    {
+      did: 'did:plc:ghi789' as DID,
+      name: 'Bob Wilson',
+      order: 3,
+      affiliations: [],
+      contributions: [],
+      isCorrespondingAuthor: false,
+      isHighlighted: false,
+    },
+  ];
+
   const mockPreprint: Preprint = {
     uri: 'at://did:plc:abc123/pub.chive.preprint/3jzfcijpj2z2a' as AtUri,
     cid: 'bafyreid27zk7lbis4zw5fz4podbvbs4fc5ivwji3dmrwa6zggnj4bnd57u' as CID,
-    author: 'did:plc:abc123' as DID,
-    coAuthors: ['did:plc:def456' as DID, 'did:plc:ghi789' as DID],
+    authors: mockAuthors,
+    submittedBy: 'did:plc:abc123' as DID,
     title: 'Advances in Neural Machine Translation',
     abstract:
       'This paper presents novel approaches to neural machine translation using transformer architectures with attention mechanisms.',
-    pdfBlobRef: mockBlobRef,
+    documentBlobRef: mockBlobRef,
+    documentFormat: 'pdf',
+    publicationStatus: 'preprint',
     keywords: ['machine learning', 'NMT', 'transformers'],
     facets: mockFacets,
     version: 1,
@@ -104,10 +146,20 @@ describe('mapPreprintToDocument', () => {
   });
 
   describe('author mapping', () => {
-    it('should map primary author', () => {
+    it('should map single author', () => {
+      const singleAuthor: PreprintAuthor = {
+        did: 'did:plc:abc123' as DID,
+        name: 'Jane Smith',
+        order: 1,
+        affiliations: [],
+        contributions: [],
+        isCorrespondingAuthor: true,
+        isHighlighted: false,
+      };
+
       const singleAuthorPreprint: Preprint = {
         ...mockPreprint,
-        coAuthors: undefined,
+        authors: [singleAuthor],
       };
 
       const document = mapPreprintToDocument(singleAuthorPreprint, 'https://example.pds.host');
@@ -115,31 +167,37 @@ describe('mapPreprintToDocument', () => {
       expect(document.authors).toBeDefined();
       expect(document.authors).toHaveLength(1);
       expect(document.authors?.[0]?.did).toBe('did:plc:abc123');
-      expect(document.authors?.[0]?.name).toBe('did:plc:abc123');
-      expect(document.authors?.[0]?.order).toBe(0);
+      expect(document.authors?.[0]?.name).toBe('Jane Smith');
+      expect(document.authors?.[0]?.order).toBe(1);
     });
 
-    it('should map co-authors', () => {
+    it('should map multiple authors', () => {
       const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
 
       expect(document.authors).toBeDefined();
       expect(document.authors).toHaveLength(3);
 
       expect(document.authors?.[0]?.did).toBe('did:plc:abc123');
-      expect(document.authors?.[0]?.order).toBe(0);
+      expect(document.authors?.[0]?.name).toBe('Jane Smith');
+      expect(document.authors?.[0]?.order).toBe(1);
 
       expect(document.authors?.[1]?.did).toBe('did:plc:def456');
-      expect(document.authors?.[1]?.order).toBe(1);
+      expect(document.authors?.[1]?.name).toBe('John Doe');
+      expect(document.authors?.[1]?.order).toBe(2);
 
       expect(document.authors?.[2]?.did).toBe('did:plc:ghi789');
-      expect(document.authors?.[2]?.order).toBe(2);
+      expect(document.authors?.[2]?.name).toBe('Bob Wilson');
+      expect(document.authors?.[2]?.order).toBe(3);
     });
 
-    it('should use DID as placeholder name', () => {
+    it('should map author metadata', () => {
       const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
 
-      expect(document.authors?.[0]?.name).toBe(document.authors?.[0]?.did);
-      expect(document.authors?.[1]?.name).toBe(document.authors?.[1]?.did);
+      // First author should have full metadata
+      expect(document.authors?.[0]?.orcid).toBe('0000-0001-2345-6789');
+      expect(document.authors?.[0]?.email).toBe('jane@example.edu');
+      expect(document.authors?.[0]?.isCorrespondingAuthor).toBe(true);
+      expect(document.authors?.[0]?.isHighlighted).toBe(true);
     });
   });
 
@@ -273,29 +331,29 @@ describe('mapPreprintToDocument', () => {
     });
   });
 
-  describe('PDF metadata mapping', () => {
-    it('should map BlobRef to PDF metadata', () => {
+  describe('document metadata mapping', () => {
+    it('should map BlobRef to document metadata', () => {
       const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
 
-      expect(document.pdf_metadata).toBeDefined();
-      expect(document.pdf_metadata?.file_size).toBe(1024000);
-      expect(document.pdf_metadata?.content_type).toBe('application/pdf');
-      expect(document.pdf_metadata?.page_count).toBeUndefined();
+      expect(document.document_metadata).toBeDefined();
+      expect(document.document_metadata?.file_size).toBe(1024000);
+      expect(document.document_metadata?.content_type).toBe('application/pdf');
+      expect(document.document_metadata?.page_count).toBeUndefined();
     });
 
-    it('should map BlobRef to document structure', () => {
+    it('should map BlobRef to document_blob_ref', () => {
       const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
 
-      expect(document.pdf_blob_ref).toBeDefined();
-      expect(document.pdf_blob_ref?.cid).toBe(mockBlobRef.ref);
-      expect(document.pdf_blob_ref?.mime_type).toBe(mockBlobRef.mimeType);
-      expect(document.pdf_blob_ref?.size).toBe(mockBlobRef.size);
+      expect(document.document_blob_ref).toBeDefined();
+      expect(document.document_blob_ref?.cid).toBe(mockBlobRef.ref);
+      expect(document.document_blob_ref?.mime_type).toBe(mockBlobRef.mimeType);
+      expect(document.document_blob_ref?.size).toBe(mockBlobRef.size);
     });
 
-    it('should not include blob data', () => {
+    it('should not include blob data by default', () => {
       const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host');
 
-      expect(document.pdf_base64).toBeUndefined();
+      expect(document.document_base64).toBeUndefined();
     });
   });
 
@@ -372,14 +430,14 @@ describe('mapPreprintToDocument', () => {
       expect(document.tag_count).toBe(0);
     });
 
-    it('should include PDF base64 from enrichment', () => {
+    it('should include document base64 from enrichment', () => {
       const enrichment: EnrichmentData = {
-        pdfBase64: 'JVBERi0xLjQKJeLjz9MK...',
+        documentBase64: 'JVBERi0xLjQKJeLjz9MK...',
       };
 
       const document = mapPreprintToDocument(mockPreprint, 'https://example.pds.host', enrichment);
 
-      expect(document.pdf_base64).toBe('JVBERi0xLjQKJeLjz9MK...');
+      expect(document.document_base64).toBe('JVBERi0xLjQKJeLjz9MK...');
     });
 
     it('should handle partial enrichment data', () => {
@@ -400,13 +458,26 @@ describe('mapPreprintToDocument', () => {
 
   describe('edge cases', () => {
     it('should handle minimal preprint', () => {
+      const minimalAuthor: PreprintAuthor = {
+        did: 'did:plc:test' as DID,
+        name: 'Test Author',
+        order: 1,
+        affiliations: [],
+        contributions: [],
+        isCorrespondingAuthor: true,
+        isHighlighted: false,
+      };
+
       const minimalPreprint: Preprint = {
         uri: 'at://did:plc:test/pub.chive.preprint/abc' as AtUri,
         cid: 'bafytest' as CID,
-        author: 'did:plc:test' as DID,
+        authors: [minimalAuthor],
+        submittedBy: 'did:plc:test' as DID,
         title: 'Test',
         abstract: 'Abstract',
-        pdfBlobRef: mockBlobRef,
+        documentBlobRef: mockBlobRef,
+        documentFormat: 'pdf',
+        publicationStatus: 'preprint',
         keywords: [],
         facets: [],
         version: 1,
@@ -452,21 +523,33 @@ describe('mapPreprintToDocument', () => {
       expect(document.doi).toBeUndefined();
     });
 
-    it('should handle supplementary blob refs', () => {
+    it('should handle supplementary materials', () => {
       const preprintWithSupplementary: Preprint = {
         ...mockPreprint,
-        supplementaryBlobRefs: [
+        supplementaryMaterials: [
           {
-            $type: 'blob',
-            ref: 'bafysupplementary1' as CID,
-            mimeType: 'text/csv',
-            size: 50000,
+            blobRef: {
+              $type: 'blob',
+              ref: 'bafysupplementary1' as CID,
+              mimeType: 'text/csv',
+              size: 50000,
+            },
+            label: 'Dataset 1',
+            description: 'Raw experimental data',
+            category: 'dataset',
+            order: 1,
           },
           {
-            $type: 'blob',
-            ref: 'bafysupplementary2' as CID,
-            mimeType: 'application/zip',
-            size: 250000,
+            blobRef: {
+              $type: 'blob',
+              ref: 'bafysupplementary2' as CID,
+              mimeType: 'application/zip',
+              size: 250000,
+            },
+            label: 'Code Archive',
+            description: 'Analysis scripts',
+            category: 'code',
+            order: 2,
           },
         ],
       };
@@ -474,6 +557,8 @@ describe('mapPreprintToDocument', () => {
       const document = mapPreprintToDocument(preprintWithSupplementary, 'https://example.pds.host');
 
       expect(document).toBeDefined();
+      expect(document.supplementary_count).toBe(2);
+      expect(document.supplementary_materials).toHaveLength(2);
     });
   });
 });

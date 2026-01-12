@@ -306,7 +306,7 @@
         "language": {
           "type": "keyword"
         },
-        "pdf_metadata": {
+        "document_metadata": {
           "properties": {
             "page_count": {
               "type": "integer"
@@ -316,10 +316,19 @@
             },
             "content_type": {
               "type": "keyword"
+            },
+            "word_count": {
+              "type": "integer"
+            },
+            "character_count": {
+              "type": "integer"
+            },
+            "language": {
+              "type": "keyword"
             }
           }
         },
-        "pdf_blob_ref": {
+        "document_blob_ref": {
           "properties": {
             "cid": {
               "type": "keyword"
@@ -331,6 +340,70 @@
               "type": "long"
             }
           }
+        },
+        "document_format": {
+          "type": "keyword"
+        },
+        "publication_status": {
+          "type": "keyword"
+        },
+        "published_version": {
+          "properties": {
+            "doi": {
+              "type": "keyword"
+            },
+            "url": {
+              "type": "keyword"
+            },
+            "published_at": {
+              "type": "date"
+            },
+            "journal": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "publisher": {
+              "type": "keyword"
+            },
+            "access_type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "external_ids": {
+          "properties": {
+            "arxiv_id": {
+              "type": "keyword"
+            },
+            "pmid": {
+              "type": "keyword"
+            },
+            "pmcid": {
+              "type": "keyword"
+            },
+            "ssrn_id": {
+              "type": "keyword"
+            },
+            "open_alex_id": {
+              "type": "keyword"
+            }
+          }
+        },
+        "supplementary_count": {
+          "type": "integer"
+        },
+        "has_code_repository": {
+          "type": "boolean"
+        },
+        "has_data_repository": {
+          "type": "boolean"
+        },
+        "funder_names": {
+          "type": "keyword"
         },
         "author_count": {
           "type": "integer"
