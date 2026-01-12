@@ -7,8 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { KnowledgeGraphService } from '@/services/knowledge-graph/graph-service.js';
 import type { RecordMetadata } from '@/services/eprint/eprint-service.js';
+import { KnowledgeGraphService } from '@/services/knowledge-graph/graph-service.js';
 import type { AtUri, CID } from '@/types/atproto.js';
 import type { IGraphDatabase } from '@/types/interfaces/graph.interface.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';

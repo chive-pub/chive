@@ -9,8 +9,8 @@ import type { Hono } from 'hono';
 
 import type { ChiveEnv } from '../../../types/context.js';
 
-import { registerIntegrationRoutes } from './integrations.js';
 import { registerEprintRoutes } from './eprints.js';
+import { registerIntegrationRoutes } from './integrations.js';
 import { registerSearchRoutes } from './search.js';
 
 /**

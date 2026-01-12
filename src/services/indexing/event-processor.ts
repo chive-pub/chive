@@ -26,8 +26,8 @@ import type { IIdentityResolver } from '../../types/interfaces/identity.interfac
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { Eprint } from '../../types/models/eprint.js';
 import type { ActivityService } from '../activity/activity-service.js';
-import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
+import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
 import type { ReviewService, ReviewComment, Endorsement } from '../review/review-service.js';
 
 import type { ProcessedEvent } from './indexing-service.js';

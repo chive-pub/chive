@@ -17,11 +17,11 @@ import type { BacklinkService } from '../../services/backlink/backlink-service.j
 import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
 import type { DiscoveryService } from '../../services/discovery/discovery-service.js';
+import type { EprintService } from '../../services/eprint/eprint-service.js';
 import type { ImportService } from '../../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../../services/metrics/metrics-service.js';
 import type { PDSSyncService } from '../../services/pds-sync/sync-service.js';
-import type { EprintService } from '../../services/eprint/eprint-service.js';
 import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';

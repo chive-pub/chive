@@ -12,8 +12,8 @@
 
 import type { Context } from 'hono';
 
-import type { MetricsService } from '../../../../services/metrics/metrics-service.js';
 import type { EprintService } from '../../../../services/eprint/eprint-service.js';
+import type { MetricsService } from '../../../../services/metrics/metrics-service.js';
 import type { DID } from '../../../../types/atproto.js';
 import { NotFoundError } from '../../../../types/errors.js';
 import type { ILogger } from '../../../../types/interfaces/logger.interface.js';

@@ -62,8 +62,8 @@ import type {
 } from '../../types/interfaces/storage.interface.js';
 import type { Result } from '../../types/result.js';
 
-import { PDSTracker } from './pds-tracker.js';
 import { EprintsRepository } from './eprints-repository.js';
+import { PDSTracker } from './pds-tracker.js';
 import { StalenessDetector } from './staleness-detector.js';
 
 /**

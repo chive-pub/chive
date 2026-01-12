@@ -7,8 +7,6 @@
 import { describe, it, expect } from 'vitest';
 
 import { actorProfileSchema } from '@/lexicons/validators/pub/chive/actor/profile.js';
-import { graphFieldProposalSchema } from '@/lexicons/validators/pub/chive/graph/fieldProposal.js';
-import { graphVoteSchema } from '@/lexicons/validators/pub/chive/graph/vote.js';
 import {
   eprintGetSubmissionParamsSchema,
   eprintGetSubmissionOutputSchema,
@@ -17,6 +15,8 @@ import { eprintSearchSubmissionsParamsSchema } from '@/lexicons/validators/pub/c
 import { eprintSubmissionSchema } from '@/lexicons/validators/pub/chive/eprint/submission.js';
 import { eprintUserTagSchema } from '@/lexicons/validators/pub/chive/eprint/userTag.js';
 import { eprintVersionSchema } from '@/lexicons/validators/pub/chive/eprint/version.js';
+import { graphFieldProposalSchema } from '@/lexicons/validators/pub/chive/graph/fieldProposal.js';
+import { graphVoteSchema } from '@/lexicons/validators/pub/chive/graph/vote.js';
 import { reviewCommentSchema } from '@/lexicons/validators/pub/chive/review/comment.js';
 import { reviewEndorsementSchema } from '@/lexicons/validators/pub/chive/review/endorsement.js';
 

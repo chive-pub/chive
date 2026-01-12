@@ -14,9 +14,9 @@ FOR (a:AuthorityRecord) ON (a.authorizedForm);
 CREATE INDEX authority_status_idx IF NOT EXISTS
 FOR (a:AuthorityRecord) ON (a.status);
 
-// Preprint facet dimension index (for faceted browse)
-CREATE INDEX preprint_facet_dim_idx IF NOT EXISTS
-FOR (p:Preprint) ON (p.facet_dimensions);
+// Eprint facet dimension index (for faceted browse)
+CREATE INDEX eprint_facet_dim_idx IF NOT EXISTS
+FOR (p:Eprint) ON (p.facet_dimensions);
 
 // Facet hierarchy index (composite for efficient hierarchy queries)
 CREATE INDEX facet_hierarchy_idx IF NOT EXISTS

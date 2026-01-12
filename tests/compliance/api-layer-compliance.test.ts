@@ -23,9 +23,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
 import type { BlobProxyService } from '@/services/blob-proxy/proxy-service.js';
+import { EprintService, type RecordMetadata } from '@/services/eprint/eprint-service.js';
 import type { KnowledgeGraphService } from '@/services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '@/services/metrics/metrics-service.js';
-import { EprintService, type RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
 import type { SearchService } from '@/services/search/search-service.js';
 import { createElasticsearchClient } from '@/storage/elasticsearch/setup.js';
