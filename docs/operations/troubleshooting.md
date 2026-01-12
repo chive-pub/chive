@@ -181,7 +181,7 @@ LIMIT 10;
 -- Check missing indexes
 SELECT schemaname, tablename, attname, n_distinct, correlation
 FROM pg_stats
-WHERE tablename = 'preprints_index';
+WHERE tablename = 'eprints_index';
 ```
 
 #### Lock contention
@@ -230,14 +230,14 @@ curl -s localhost:9200/_cluster/allocation/explain?pretty
 
 ```bash
 # Rebuild index from PostgreSQL
-tsx scripts/db/reindex-from-pg.ts --target preprints-new
+tsx scripts/db/reindex-from-pg.ts --target eprints-new
 
 # Switch alias
 curl -X POST "localhost:9200/_aliases" -H 'Content-Type: application/json' -d'
 {
   "actions": [
-    { "remove": { "index": "preprints-old", "alias": "preprints" }},
-    { "add": { "index": "preprints-new", "alias": "preprints" }}
+    { "remove": { "index": "eprints-old", "alias": "eprints" }},
+    { "add": { "index": "eprints-new", "alias": "eprints" }}
   ]
 }'
 ```
@@ -354,13 +354,13 @@ If all indexes are corrupted:
 kubectl scale deploy/chive-indexer --replicas=0 -n chive
 
 # 2. Truncate PostgreSQL indexes
-psql -c "TRUNCATE preprints_index, reviews_index, endorsements_index CASCADE;"
+psql -c "TRUNCATE eprints_index, reviews_index, endorsements_index CASCADE;"
 
 # 3. Reset firehose cursor
 psql -c "UPDATE firehose_cursor SET cursor = 0;"
 
 # 4. Clear Elasticsearch
-curl -X DELETE "localhost:9200/preprints-*"
+curl -X DELETE "localhost:9200/eprints-*"
 tsx scripts/db/setup-elasticsearch.ts
 
 # 5. Clear Neo4j graph data (keep schema)

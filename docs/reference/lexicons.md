@@ -6,22 +6,22 @@ Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. This refere
 
 | Namespace                | Purpose                                    |
 | ------------------------ | ------------------------------------------ |
-| `pub.chive.preprint.*`   | Preprint submissions and versions          |
+| `pub.chive.eprint.*`   | Eprint submissions and versions          |
 | `pub.chive.review.*`     | Reviews and endorsements                   |
 | `pub.chive.graph.*`      | Knowledge graph (fields, proposals, votes) |
 | `pub.chive.actor.*`      | User profiles and settings                 |
 | `pub.chive.tag.*`        | User-generated tags                        |
 | `pub.chive.governance.*` | Governance records (in Governance PDS)     |
 
-## Preprint lexicons
+## Eprint lexicons
 
-### pub.chive.preprint.submission
+### pub.chive.eprint.submission
 
-Core preprint record.
+Core eprint record.
 
 ```typescript
 {
-  "$type": "pub.chive.preprint.submission",
+  "$type": "pub.chive.eprint.submission",
   "title": string,              // Required, max 500 chars
   "abstract": string,           // Required, max 5000 chars
   "authors": Author[],          // Required, 1-50 authors
@@ -47,13 +47,13 @@ interface Author {
 }
 ```
 
-### pub.chive.preprint.version
+### pub.chive.eprint.version
 
-Version metadata for preprint revisions.
+Version metadata for eprint revisions.
 
 ```typescript
 {
-  "$type": "pub.chive.preprint.version",
+  "$type": "pub.chive.eprint.version",
   "submission": StrongRef,      // Reference to submission
   "version": number,            // Version number (1, 2, 3...)
   "changelog": string,          // What changed
@@ -62,14 +62,14 @@ Version metadata for preprint revisions.
 }
 ```
 
-### pub.chive.preprint.userTag
+### pub.chive.eprint.userTag
 
-User-contributed tag on a preprint.
+User-contributed tag on a eprint.
 
 ```typescript
 {
-  "$type": "pub.chive.preprint.userTag",
-  "subject": StrongRef,         // Reference to preprint
+  "$type": "pub.chive.eprint.userTag",
+  "subject": StrongRef,         // Reference to eprint
   "tag": string,                // Tag text, max 50 chars
   "createdAt": string
 }
@@ -84,7 +84,7 @@ Review comment or reply.
 ```typescript
 {
   "$type": "pub.chive.review.comment",
-  "subject": StrongRef,         // Reference to preprint
+  "subject": StrongRef,         // Reference to eprint
   "parent": StrongRef,          // Optional, for replies
   "text": string,               // Comment text, max 10000 chars
   "reviewType": ReviewType,     // Type of review
@@ -112,12 +112,12 @@ interface Highlight {
 
 ### pub.chive.review.endorsement
 
-Formal endorsement of a preprint.
+Formal endorsement of a eprint.
 
 ```typescript
 {
   "$type": "pub.chive.review.endorsement",
-  "subject": StrongRef,         // Reference to preprint
+  "subject": StrongRef,         // Reference to eprint
   "endorsementType": EndorsementType,
   "statement": string,          // Optional, max 500 chars
   "createdAt": string
@@ -306,7 +306,7 @@ Current versions:
 
 | Lexicon                | Version |
 | ---------------------- | ------- |
-| `pub.chive.preprint.*` | 1.0.0   |
+| `pub.chive.eprint.*` | 1.0.0   |
 | `pub.chive.review.*`   | 1.0.0   |
 | `pub.chive.graph.*`    | 1.0.0   |
 | `pub.chive.actor.*`    | 1.0.0   |

@@ -53,8 +53,8 @@ pnpm test:e2e            # End-to-end tests
 pnpm test:compliance     # ATProto compliance tests
 
 # Run tests for specific file/pattern
-pnpm test -- tests/unit/services/preprint
-pnpm test -- --grep "should index preprint"
+pnpm test -- tests/unit/services/eprint
+pnpm test -- --grep "should index eprint"
 
 # Watch mode
 pnpm test:watch
@@ -313,7 +313,7 @@ Additional scripts in `scripts/`:
 tsx scripts/db/setup-elasticsearch.ts
 
 # With arguments
-tsx scripts/db/reindex-from-pg.ts --target preprints-new
+tsx scripts/db/reindex-from-pg.ts --target eprints-new
 ```
 
 ## Environment-specific commands

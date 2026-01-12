@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Chive Documentation',
-  tagline: 'Decentralized preprint server built on AT Protocol',
+  tagline: 'Decentralized eprint service built on AT Protocol',
   favicon: 'img/logo.svg',
   url: 'https://docs.chive.pub',
   baseUrl: '/',

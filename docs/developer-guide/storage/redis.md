@@ -11,7 +11,7 @@ All Redis keys follow a namespace pattern:
 | `session:`        | User sessions              | 7 days          |
 | `user_sessions:`  | User's active session list | 7 days          |
 | `ratelimit:`      | Rate limit counters        | 1 minute        |
-| `cache:preprint:` | Preprint cache             | 5 minutes       |
+| `cache:eprint:` | Eprint cache             | 5 minutes       |
 | `cache:search:`   | Search result cache        | 5 minutes       |
 | `cache:user:`     | User profile cache         | 10 minutes      |
 | `blob:`           | Blob cache (L1)            | 1 hour          |
@@ -72,14 +72,14 @@ const sessions = await redis.smembers('user_sessions:did:plc:abc');
 ### Sorted sets (ranked data)
 
 ```typescript
-// Trending preprints (score = view count)
-await redis.zadd('metrics:trending:24h', viewCount, preprintUri);
+// Trending eprints (score = view count)
+await redis.zadd('metrics:trending:24h', viewCount, eprintUri);
 
 // Get top 10
 const trending = await redis.zrevrange('metrics:trending:24h', 0, 9, 'WITHSCORES');
 
 // Increment score
-await redis.zincrby('metrics:trending:24h', 1, preprintUri);
+await redis.zincrby('metrics:trending:24h', 1, eprintUri);
 
 // Remove old entries
 const dayAgo = Date.now() - 86400000;
@@ -90,10 +90,10 @@ await redis.zremrangebyscore('metrics:trending:24h', '-inf', dayAgo);
 
 ```typescript
 // Unique viewers (probabilistic)
-await redis.pfadd('metrics:unique:' + preprintUri, viewerDid);
+await redis.pfadd('metrics:unique:' + eprintUri, viewerDid);
 
 // Get approximate count
-const uniqueViews = await redis.pfcount('metrics:unique:' + preprintUri);
+const uniqueViews = await redis.pfcount('metrics:unique:' + eprintUri);
 
 // Merge multiple HLLs
 await redis.pfmerge('metrics:unique:total', 'metrics:unique:uri1', 'metrics:unique:uri2');
@@ -139,20 +139,20 @@ if (result.allowed) {
 ### Cache-aside pattern
 
 ```typescript
-async function getPreprint(uri: string): Promise<Preprint | null> {
+async function getEprint(uri: string): Promise<Eprint | null> {
   // Check cache
-  const cached = await redis.get('cache:preprint:' + uri);
+  const cached = await redis.get('cache:eprint:' + uri);
   if (cached) {
     return JSON.parse(cached);
   }
 
   // Fetch from database
-  const preprint = await db.findPreprintByUri(uri);
-  if (preprint) {
-    await redis.set('cache:preprint:' + uri, JSON.stringify(preprint), 'EX', 300);
+  const eprint = await db.findEprintByUri(uri);
+  if (eprint) {
+    await redis.set('cache:eprint:' + uri, JSON.stringify(eprint), 'EX', 300);
   }
 
-  return preprint;
+  return eprint;
 }
 ```
 
@@ -168,7 +168,7 @@ const cache = new XFetchCache(redis, {
   keyPrefix: 'cache:',
 });
 
-const result = await cache.get('preprint:' + uri);
+const result = await cache.get('eprint:' + uri);
 if (result.shouldRefresh) {
   // Background refresh before TTL expires
   refreshInBackground(uri);
@@ -180,10 +180,10 @@ return result.value;
 
 ```typescript
 // Invalidate single key
-await redis.del('cache:preprint:' + uri);
+await redis.del('cache:eprint:' + uri);
 
 // Invalidate by pattern
-const keys = await redis.keys('cache:preprint:*');
+const keys = await redis.keys('cache:eprint:*');
 if (keys.length > 0) {
   await redis.del(...keys);
 }
@@ -191,7 +191,7 @@ if (keys.length > 0) {
 // Invalidate with pipeline
 const pipeline = redis.pipeline();
 for (const uri of invalidatedUris) {
-  pipeline.del('cache:preprint:' + uri);
+  pipeline.del('cache:eprint:' + uri);
 }
 await pipeline.exec();
 ```
@@ -243,8 +243,8 @@ const indexingQueue = new Queue('indexing', {
 });
 
 // Add job
-await indexingQueue.add('index-preprint', {
-  uri: preprintUri,
+await indexingQueue.add('index-eprint', {
+  uri: eprintUri,
   event: firehoseEvent,
 });
 
@@ -252,7 +252,7 @@ await indexingQueue.add('index-preprint', {
 const worker = new Worker(
   'indexing',
   async (job) => {
-    await indexPreprint(job.data.uri, job.data.event);
+    await indexEprint(job.data.uri, job.data.event);
   },
   { connection: redis }
 );
@@ -274,16 +274,16 @@ Real-time event broadcasting:
 ```typescript
 // Publisher
 await redis.publish(
-  'preprint:indexed',
+  'eprint:indexed',
   JSON.stringify({
-    uri: preprintUri,
+    uri: eprintUri,
     action: 'create',
   })
 );
 
 // Subscriber
 const subscriber = redis.duplicate();
-await subscriber.subscribe('preprint:indexed');
+await subscriber.subscribe('eprint:indexed');
 
 subscriber.on('message', (channel, message) => {
   const event = JSON.parse(message);
@@ -301,16 +301,16 @@ const metrics = new MetricsStore(redis, {
 });
 
 // Increment counter
-await metrics.increment('views:' + preprintUri);
+await metrics.increment('views:' + eprintUri);
 
 // Record in time window
-await metrics.recordInWindow('views:24h:' + preprintUri, 86400);
+await metrics.recordInWindow('views:24h:' + eprintUri, 86400);
 
 // Get count
-const count = await metrics.get('views:' + preprintUri);
+const count = await metrics.get('views:' + eprintUri);
 
 // Get time-windowed count
-const last24h = await metrics.getWindowCount('views:24h:' + preprintUri);
+const last24h = await metrics.getWindowCount('views:24h:' + eprintUri);
 ```
 
 ## Configuration

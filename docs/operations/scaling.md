@@ -112,7 +112,7 @@ The indexer must remain a single instance to preserve event ordering. Scale by:
 
 | Metric    | Small | Medium | Large |
 | --------- | ----- | ------ | ----- |
-| Preprints | 100K  | 1M     | 10M   |
+| Eprints | 100K  | 1M     | 10M   |
 | Storage   | 50 GB | 200 GB | 1 TB  |
 | RAM       | 4 GB  | 16 GB  | 64 GB |
 | CPUs      | 2     | 8      | 32    |
@@ -188,9 +188,9 @@ Pre-populate caches on startup:
 
 ```typescript
 async function warmCache(): Promise<void> {
-  // Warm trending preprints
-  const trending = await db.getTrendingPreprints(100);
-  await Promise.all(trending.map((p) => cache.set(`preprint:${p.uri}`, p, 600)));
+  // Warm trending eprints
+  const trending = await db.getTrendingEprints(100);
+  await Promise.all(trending.map((p) => cache.set(`eprint:${p.uri}`, p, 600)));
 
   // Warm field taxonomy
   const fields = await neo4j.getAllFields();
@@ -203,12 +203,12 @@ async function warmCache(): Promise<void> {
 Event-driven invalidation via Redis Pub/Sub:
 
 ```typescript
-// On preprint update
+// On eprint update
 await redis.publish(
   'cache:invalidate',
   JSON.stringify({
-    type: 'preprint',
-    uri: preprintUri,
+    type: 'eprint',
+    uri: eprintUri,
   })
 );
 
@@ -333,7 +333,7 @@ thread_pool.write.queue_size: 1000
 
 | Metric     | Growth rate |
 | ---------- | ----------- |
-| Preprints  | ~1000/day   |
+| Eprints  | ~1000/day   |
 | Reviews    | ~500/day    |
 | Blob cache | ~10 GB/day  |
 | Logs       | ~5 GB/day   |

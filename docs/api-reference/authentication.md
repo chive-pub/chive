@@ -225,8 +225,8 @@ After authentication, Chive checks authorization using role-based access control
 
 | Operation                | Anonymous | User | Researcher | Editor |
 | ------------------------ | --------- | ---- | ---------- | ------ |
-| Read preprints           | Yes       | Yes  | Yes        | Yes    |
-| Submit preprint          | No        | Yes  | Yes        | Yes    |
+| Read eprints           | Yes       | Yes  | Yes        | Yes    |
+| Submit eprint          | No        | Yes  | Yes        | Yes    |
 | Write review             | No        | Yes  | Yes        | Yes    |
 | Create endorsement       | No        | Yes  | Yes        | Yes    |
 | Propose field            | No        | Yes  | Yes        | Yes    |

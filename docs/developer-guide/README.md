@@ -4,7 +4,7 @@ This guide covers the technical architecture and implementation details of Chive
 
 ## Architecture overview
 
-Chive is an AT Protocol AppView that indexes scholarly preprints from the decentralized network. The system consists of:
+Chive is an AT Protocol AppView that indexes scholarly eprints from the decentralized network. The system consists of:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -46,7 +46,7 @@ Services use dependency injection via TSyringe. All major components implement i
 
 ```typescript
 interface ISearchEngine {
-  indexPreprint(doc: IndexablePreprintDocument): Promise<void>;
+  indexEprint(doc: IndexableEprintDocument): Promise<void>;
   search(query: SearchQuery): Promise<SearchResults>;
 }
 ```

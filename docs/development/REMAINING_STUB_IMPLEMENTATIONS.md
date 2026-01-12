@@ -205,26 +205,26 @@ export async function searchHandler(
 
 ---
 
-#### 2.4 listForPreprint
+#### 2.4 listForEprint
 
-**Location**: `src/api/handlers/xrpc/tag/listForPreprint.ts:41`
+**Location**: `src/api/handlers/xrpc/tag/listForEprint.ts:41`
 
 **Current State**: Returns empty tags array.
 
 **Required Implementation**:
 
 1. Inject `TagManager` from Neo4j storage
-2. Query tags linked to specific preprint URI
+2. Query tags linked to specific eprint URI
 3. Include tagger information
 4. Sort by usage count or recency
 
 ```typescript
-export async function listForPreprintHandler(
+export async function listForEprintHandler(
   c: Context<ChiveEnv>,
-  params: ListTagsForPreprintParams
-): Promise<PreprintTagsResponse> {
+  params: ListTagsForEprintParams
+): Promise<EprintTagsResponse> {
   const tagManager = c.get('services').tagManager;
-  const tags = await tagManager.getTagsForPreprint(params.preprintUri, {
+  const tags = await tagManager.getTagsForEprint(params.eprintUri, {
     limit: params.limit ?? 50,
     cursor: params.cursor,
     includeTaggers: true,
@@ -246,9 +246,9 @@ export async function listForPreprintHandler(
 
 **Tests Required**:
 
-- Unit test: Preprint URI validation
+- Unit test: Eprint URI validation
 - Unit test: Tagger list aggregation
-- Integration test: Tag-preprint relationships in Neo4j
+- Integration test: Tag-eprint relationships in Neo4j
 
 ---
 
@@ -282,7 +282,7 @@ export async function getDetailHandler(
     displayForm: tag.displayForm,
     usageCount: tag.usageCount,
     uniqueUsers: tag.uniqueUsers,
-    uniquePreprints: tag.uniquePreprints,
+    uniqueEprints: tag.uniqueEprints,
     qualityScore: tag.qualityScore,
     spamScore: tag.spamScore,
     createdAt: tag.createdAt.toISOString(),
@@ -302,32 +302,32 @@ export async function getDetailHandler(
 
 ### 3. Endorsement Query Handlers
 
-#### 3.1 listForPreprint
+#### 3.1 listForEprint
 
-**Location**: `src/api/handlers/xrpc/endorsement/listForPreprint.ts:44-54`
+**Location**: `src/api/handlers/xrpc/endorsement/listForEprint.ts:44-54`
 
 **Current State**: Returns empty endorsements array with zero counts.
 
 **Required Implementation**:
 
 1. Inject `EndorsementRepository` from PostgreSQL storage
-2. Query endorsements for preprint URI
+2. Query endorsements for eprint URI
 3. Aggregate by contribution type
 4. Support pagination
 
 ```typescript
-export async function listForPreprintHandler(
+export async function listForEprintHandler(
   c: Context<ChiveEnv>,
-  params: ListEndorsementsForPreprintParams
+  params: ListEndorsementsForEprintParams
 ): Promise<EndorsementsResponse> {
   const endorsementRepo = c.get('services').endorsementRepository;
-  const result = await endorsementRepo.listForPreprint(params.preprintUri, {
+  const result = await endorsementRepo.listForEprint(params.eprintUri, {
     contributionType: params.contributionType,
     limit: params.limit ?? 50,
     cursor: params.cursor,
   });
 
-  const summary = await endorsementRepo.getSummaryForPreprint(params.preprintUri);
+  const summary = await endorsementRepo.getSummaryForEprint(params.eprintUri);
 
   return {
     endorsements: result.items.map(mapEndorsementToResponse),
@@ -371,10 +371,10 @@ export async function getSummaryHandler(
   params: GetEndorsementSummaryParams
 ): Promise<EndorsementSummaryResponse> {
   const endorsementRepo = c.get('services').endorsementRepository;
-  const summary = await endorsementRepo.getSummaryForPreprint(params.preprintUri);
+  const summary = await endorsementRepo.getSummaryForEprint(params.eprintUri);
 
   return {
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
     total: summary.total,
     endorserCount: summary.uniqueEndorsers,
     byType: summary.byContributionType,
@@ -404,7 +404,7 @@ export async function getSummaryHandler(
 **Required Implementation**:
 
 1. Inject `EndorsementRepository`
-2. Query for specific user's endorsement of a preprint
+2. Query for specific user's endorsement of a eprint
 3. Return full endorsement details if exists
 4. Return 404 only if user hasn't endorsed
 
@@ -414,16 +414,16 @@ export async function getUserEndorsementHandler(
   params: GetUserEndorsementParams
 ): Promise<UserEndorsementResponse> {
   const endorsementRepo = c.get('services').endorsementRepository;
-  const endorsement = await endorsementRepo.getUserEndorsement(params.preprintUri, params.userDid);
+  const endorsement = await endorsementRepo.getUserEndorsement(params.eprintUri, params.userDid);
 
   if (!endorsement) {
-    throw new NotFoundError('Endorsement', `${params.userDid}:${params.preprintUri}`);
+    throw new NotFoundError('Endorsement', `${params.userDid}:${params.eprintUri}`);
   }
 
   return {
     uri: endorsement.uri,
     cid: endorsement.cid,
-    preprintUri: endorsement.preprintUri,
+    eprintUri: endorsement.eprintUri,
     endorserDid: endorsement.endorserDid,
     contributions: endorsement.contributions,
     comment: endorsement.comment,
@@ -442,27 +442,27 @@ export async function getUserEndorsementHandler(
 
 ### 4. Review Query Handlers
 
-#### 4.1 listForPreprint
+#### 4.1 listForEprint
 
-**Location**: `src/api/handlers/xrpc/review/listForPreprint.ts:45-51`
+**Location**: `src/api/handlers/xrpc/review/listForEprint.ts:45-51`
 
 **Current State**: Returns empty reviews array.
 
 **Required Implementation**:
 
 1. Inject `ReviewsRepository` from PostgreSQL storage
-2. Query reviews for preprint URI
+2. Query reviews for eprint URI
 3. Support filtering by motivation type
 4. Support inline-only filter for annotations
 5. Handle pagination
 
 ```typescript
-export async function listForPreprintHandler(
+export async function listForEprintHandler(
   c: Context<ChiveEnv>,
-  params: ListReviewsForPreprintParams
+  params: ListReviewsForEprintParams
 ): Promise<ReviewsResponse> {
   const reviewsRepo = c.get('services').reviewsRepository;
-  const result = await reviewsRepo.listForPreprint(params.preprintUri, {
+  const result = await reviewsRepo.listForEprint(params.eprintUri, {
     motivation: params.motivation,
     inlineOnly: params.inlineOnly ?? false,
     limit: params.limit ?? 50,
@@ -868,16 +868,16 @@ tests/unit/api/handlers/xrpc/tag/
   getSuggestions.test.ts
   getTrending.test.ts
   search.test.ts
-  listForPreprint.test.ts
+  listForEprint.test.ts
   getDetail.test.ts
 
 tests/unit/api/handlers/xrpc/endorsement/
-  listForPreprint.test.ts
+  listForEprint.test.ts
   getSummary.test.ts
   getUserEndorsement.test.ts
 
 tests/unit/api/handlers/xrpc/review/
-  listForPreprint.test.ts
+  listForEprint.test.ts
   getThread.test.ts
 
 tests/unit/api/handlers/xrpc/governance/

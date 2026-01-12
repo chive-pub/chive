@@ -1,12 +1,12 @@
-# Submitting Preprints
+# Submitting Eprints
 
-This guide covers the preprint submission process in detail.
+This guide covers the eprint submission process in detail.
 
 ## Before You Submit
 
 Ensure you have:
 
-- A PDF of your preprint (maximum 100 MB)
+- A PDF of your eprint (maximum 100 MB)
 - Required metadata: title, abstract, keywords
 - An AT Protocol account (e.g., Bluesky)
 - Co-author consent for multi-author submissions
@@ -19,13 +19,13 @@ Click "Sign In" and authenticate with your PDS. Chive uses OAuth 2.0 for authent
 
 ### Step 2: Start Submission
 
-Click "Submit Preprint" to open the submission form. The form has four sections.
+Click "Submit Eprint" to open the submission form. The form has four sections.
 
 ### Step 3: Basic Information
 
 | Field    | Required | Description                                  |
 | -------- | -------- | -------------------------------------------- |
-| Title    | Yes      | Full title of your preprint                  |
+| Title    | Yes      | Full title of your eprint                  |
 | Abstract | Yes      | Plain text summary (recommended: 300 words)  |
 | Keywords | Yes      | At least one author-provided keyword         |
 | License  | Yes      | Creative Commons license (CC-BY recommended) |
@@ -61,11 +61,11 @@ Select fields from the knowledge graph:
 
 ### Step 7: Review and Submit
 
-Review all information on the summary page. Click "Submit" to create the preprint record in your PDS.
+Review all information on the summary page. Click "Submit" to create the eprint record in your PDS.
 
 ## After Submission
 
-Your preprint is indexed within minutes. You receive a permanent URL to share with colleagues.
+Your eprint is indexed within minutes. You receive a permanent URL to share with colleagues.
 
 ### Editing Metadata
 
@@ -73,15 +73,15 @@ You can update metadata at any time from your dashboard. Changes are reflected i
 
 ### Uploading New Versions
 
-Click "New Version" on your preprint page to upload a revision. Include a changelog describing the changes.
+Click "New Version" on your eprint page to upload a revision. Include a changelog describing the changes.
 
 ### Withdrawing
 
-Click "Withdraw" to remove your preprint from Chive. The record remains in your PDS but is no longer indexed.
+Click "Withdraw" to remove your eprint from Chive. The record remains in your PDS but is no longer indexed.
 
 ## Multi-Author Submissions
 
-For preprints with multiple authors:
+For eprints with multiple authors:
 
 1. One author (the submitter) creates the submission
 2. Co-authors are notified via email if addresses are provided
@@ -99,4 +99,4 @@ If your field is not in the knowledge graph, propose it via the governance syste
 
 **Indexing delayed**
 
-New submissions typically appear within five minutes. If your preprint is not visible after one hour, contact support.
+New submissions typically appear within five minutes. If your eprint is not visible after one hour, contact support.

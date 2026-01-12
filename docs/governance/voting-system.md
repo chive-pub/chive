@@ -7,7 +7,7 @@ Chive uses a weighted voting system where expertise in the relevant domain incre
 | Tier               | Weight | Criteria                                      |
 | ------------------ | ------ | --------------------------------------------- |
 | Community member   | 1.0x   | Any authenticated user                        |
-| Active contributor | 1.5x   | 10+ preprints or 20+ reviews                  |
+| Active contributor | 1.5x   | 10+ eprints or 20+ reviews                  |
 | Domain expert      | 2.5x   | Publications in the proposal's field          |
 | Trusted editor     | 3.5x   | Appointed by governance committee             |
 | Authority editor   | 4.5x   | Library science credentials (MLIS/equivalent) |
@@ -18,7 +18,7 @@ Chive uses a weighted voting system where expertise in the relevant domain incre
 function calculateVoteWeight(voter: Voter, proposal: Proposal): number {
   let weight = 1.0; // Base weight
 
-  if (voter.preprintCount >= 10 || voter.reviewCount >= 20) {
+  if (voter.eprintCount >= 10 || voter.reviewCount >= 20) {
     weight = 1.5; // Active contributor
   }
 

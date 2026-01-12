@@ -1,6 +1,6 @@
-# Searching for Preprints
+# Searching for Eprints
 
-Chive provides full-text search and faceted filtering to help you discover relevant preprints.
+Chive provides full-text search and faceted filtering to help you discover relevant eprints.
 
 ## Basic Search
 
@@ -17,8 +17,8 @@ Enter keywords in the search box on any page. Results are ranked by relevance us
 
 ### Searchable Fields
 
-- `title:` - Preprint title
-- `abstract:` - Preprint abstract
+- `title:` - Eprint title
+- `abstract:` - Eprint abstract
 - `author:` - Author name
 - `keyword:` - Author-provided keywords
 - `field:` - Knowledge graph field
@@ -33,7 +33,7 @@ Click "Filters" to open the facet panel. Facets narrow results without changing 
 
 **Date Range**: Filter by submission date (e.g., last week, last month, custom range).
 
-**Status**: Filter by preprint status (under review, endorsed, published).
+**Status**: Filter by eprint status (under review, endorsed, published).
 
 **Author Affiliation**: Filter by institutional affiliation when available.
 
@@ -44,11 +44,11 @@ Results can be sorted by:
 - **Relevance** (default): Text match score combined with citation signals
 - **Date (newest)**: Most recent submissions first
 - **Date (oldest)**: Earliest submissions first
-- **Citations**: Most cited preprints first
+- **Citations**: Most cited eprints first
 
 ## Saved Searches
 
-Sign in to save frequently used searches. Saved searches appear in your dashboard and can trigger email notifications when new preprints match.
+Sign in to save frequently used searches. Saved searches appear in your dashboard and can trigger email notifications when new eprints match.
 
 ## Search Tips
 

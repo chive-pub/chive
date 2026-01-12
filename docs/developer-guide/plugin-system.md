@@ -51,7 +51,7 @@ All plugins follow ATProto compliance rules: they can read events and cache comp
 2. PluginLoader validates the manifest using JSON Schema
 3. PluginManager creates scoped context via PluginContextFactory
 4. Plugin initializes with context (logger, cache, metrics, eventBus)
-5. Plugin subscribes to permitted hooks (e.g., `preprint.indexed`)
+5. Plugin subscribes to permitted hooks (e.g., `eprint.indexed`)
 6. When events fire, plugin handlers execute with resource limits
 7. Plugin caches computed results (ephemeral, rebuildable)
 
@@ -70,7 +70,7 @@ Every plugin requires a `manifest.json`:
   "author": "Your Name",
   "license": "MIT",
   "permissions": {
-    "hooks": ["preprint.indexed", "preprint.updated"],
+    "hooks": ["eprint.indexed", "eprint.updated"],
     "network": {
       "allowedDomains": ["api.example.com"]
     },
@@ -117,7 +117,7 @@ export class MyPlugin extends BasePlugin {
     author: 'Your Name',
     license: 'MIT',
     permissions: {
-      hooks: ['preprint.indexed'],
+      hooks: ['eprint.indexed'],
       network: { allowedDomains: ['api.example.com'] },
       storage: { maxSize: 1024 * 1024 },
     },
@@ -126,7 +126,7 @@ export class MyPlugin extends BasePlugin {
 
   protected async onInitialize(): Promise<void> {
     // Subscribe to events
-    this.context.eventBus.on('preprint.indexed', this.handlePreprintIndexed.bind(this));
+    this.context.eventBus.on('eprint.indexed', this.handleEprintIndexed.bind(this));
 
     this.context.logger.info('Plugin initialized');
   }
@@ -135,8 +135,8 @@ export class MyPlugin extends BasePlugin {
     this.context.logger.info('Plugin shutting down');
   }
 
-  private async handlePreprintIndexed(event: { uri: string; title: string }): Promise<void> {
-    this.context.logger.debug('Preprint indexed', { uri: event.uri });
+  private async handleEprintIndexed(event: { uri: string; title: string }): Promise<void> {
+    this.context.logger.debug('Eprint indexed', { uri: event.uri });
 
     // Cache computed result
     await this.context.cache.set(
@@ -146,7 +146,7 @@ export class MyPlugin extends BasePlugin {
     );
 
     // Record metrics
-    this.context.metrics.incrementCounter('preprints_processed', { status: 'success' });
+    this.context.metrics.incrementCounter('eprints_processed', { status: 'success' });
   }
 }
 ```
@@ -180,9 +180,9 @@ interface IPluginContext {
 
 | Hook                  | Payload                            | Description             |
 | --------------------- | ---------------------------------- | ----------------------- |
-| `preprint.indexed`    | `{ uri, title, author, ... }`      | New preprint indexed    |
-| `preprint.updated`    | `{ uri, previousCid, currentCid }` | Preprint record updated |
-| `preprint.deleted`    | `{ uri }`                          | Preprint record deleted |
+| `eprint.indexed`    | `{ uri, title, author, ... }`      | New eprint indexed    |
+| `eprint.updated`    | `{ uri, previousCid, currentCid }` | Eprint record updated |
+| `eprint.deleted`    | `{ uri }`                          | Eprint record deleted |
 | `review.created`      | `{ uri, subject, author }`         | New review comment      |
 | `review.deleted`      | `{ uri }`                          | Review deleted          |
 | `endorsement.created` | `{ uri, subject, author, type }`   | New endorsement         |
@@ -196,15 +196,15 @@ interface IPluginContext {
 
 ```typescript
 // Exact hook match
-this.context.eventBus.on('preprint.indexed', (event) => {
+this.context.eventBus.on('eprint.indexed', (event) => {
   // Handle event
 });
 
 // Wildcard patterns (if declared in manifest)
-// manifest.permissions.hooks: ['preprint.*']
-this.context.eventBus.on('preprint.indexed', handler);
-this.context.eventBus.on('preprint.updated', handler);
-this.context.eventBus.on('preprint.deleted', handler);
+// manifest.permissions.hooks: ['eprint.*']
+this.context.eventBus.on('eprint.indexed', handler);
+this.context.eventBus.on('eprint.updated', handler);
+this.context.eventBus.on('eprint.deleted', handler);
 ```
 
 ### Emitting events
@@ -213,9 +213,9 @@ Plugins can emit events they have permission for:
 
 ```typescript
 // Must be declared in manifest.permissions.hooks
-this.context.eventBus.emit('preprint.indexed', {
-  uri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz',
-  title: 'New Preprint',
+this.context.eventBus.emit('eprint.indexed', {
+  uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
+  title: 'New Eprint',
 });
 ```
 
@@ -224,7 +224,7 @@ this.context.eventBus.emit('preprint.indexed', {
 Handler errors are isolated and logged without affecting other handlers:
 
 ```typescript
-this.context.eventBus.on('preprint.indexed', async (event) => {
+this.context.eventBus.on('eprint.indexed', async (event) => {
   throw new Error('Handler failed');
   // Error is logged but other handlers still execute
 });
@@ -291,19 +291,19 @@ Chive includes five builtin plugins:
 
 ### GitHub Integration
 
-Links preprints to GitHub repositories.
+Links eprints to GitHub repositories.
 
 ```typescript
 import { GitHubIntegrationPlugin } from '@/plugins/builtin/github-integration.js';
 
 // Permissions
-hooks: ['preprint.indexed', 'preprint.updated']
+hooks: ['eprint.indexed', 'eprint.updated']
 network: ['api.github.com']
 
 // Functionality
-- Creates issues when preprints reference repositories
-- Syncs preprint metadata to repository discussions
-- Links code repositories to preprints
+- Creates issues when eprints reference repositories
+- Syncs eprint metadata to repository discussions
+- Links code repositories to eprints
 ```
 
 ### ORCID Linking
@@ -314,7 +314,7 @@ Verifies author identities via ORCID.
 import { ORCIDLinkingPlugin } from '@/plugins/builtin/orcid-linking.js';
 
 // Permissions
-hooks: ['author.linked', 'preprint.indexed']
+hooks: ['author.linked', 'eprint.indexed']
 network: ['pub.orcid.org', 'orcid.org']
 
 // Functionality
@@ -331,18 +331,18 @@ Registers DOIs via DataCite API.
 import { DOIRegistrationPlugin } from '@/plugins/builtin/doi-registration.js';
 
 // Permissions
-hooks: ['preprint.indexed']
+hooks: ['eprint.indexed']
 network: ['api.datacite.org']
 
 // Functionality
-- Mints DOIs for new preprints
-- Updates DOI metadata on preprint updates
+- Mints DOIs for new eprints
+- Updates DOI metadata on eprint updates
 - Caches DOI mappings
 ```
 
 ### Semantics Archive
 
-Imports linguistics preprints from Semantics Archive.
+Imports linguistics eprints from Semantics Archive.
 
 ```typescript
 import { SemanticsArchivePlugin } from '@/plugins/builtin/semantics-archive.js';
@@ -360,7 +360,7 @@ network: ['semanticsarchive.net']
 
 ### LingBuzz
 
-Imports linguistics preprints from LingBuzz RSS feed.
+Imports linguistics eprints from LingBuzz RSS feed.
 
 ```typescript
 import { LingBuzzPlugin } from '@/plugins/builtin/lingbuzz.js';
@@ -476,13 +476,13 @@ describe('MyPlugin', () => {
     plugin = new MyPlugin();
   });
 
-  it('should handle preprint.indexed event', async () => {
+  it('should handle eprint.indexed event', async () => {
     await plugin.initialize(mockContext);
 
     // Trigger event
-    mockContext.eventBus.emit('preprint.indexed', {
-      uri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz',
-      title: 'Test Preprint',
+    mockContext.eventBus.emit('eprint.indexed', {
+      uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
+      title: 'Test Eprint',
     });
 
     // Verify cache was set

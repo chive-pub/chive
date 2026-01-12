@@ -10,7 +10,7 @@ Services use TSyringe for dependency injection with abstract `I*` interfaces:
 import { injectable, inject } from 'tsyringe';
 
 @injectable()
-export class PreprintService {
+export class EprintService {
   constructor(
     @inject('IStorageBackend') private storage: IStorageBackend,
     @inject('ISearchEngine') private search: ISearchEngine,
@@ -28,7 +28,7 @@ All services return `Result<T, Error>` types for explicit error handling.
 | Service                          | Purpose                     | Key operations                     |
 | -------------------------------- | --------------------------- | ---------------------------------- |
 | [IndexingService](./indexing.md) | Firehose consumption        | `start()`, `stop()`, `getStatus()` |
-| PreprintService                  | Preprint indexing           | `indexPreprint()`, `getPreprint()` |
+| EprintService                  | Eprint indexing           | `indexEprint()`, `getEprint()` |
 | ReviewService                    | Review/endorsement indexing | `indexReview()`, `getReviews()`    |
 
 ### Search and discovery
@@ -36,7 +36,7 @@ All services return `Result<T, Error>` types for explicit error handling.
 | Service                            | Purpose          | Key operations                                    |
 | ---------------------------------- | ---------------- | ------------------------------------------------- |
 | SearchService                      | Full-text search | `search()`, `autocomplete()`                      |
-| [DiscoveryService](./discovery.md) | Recommendations  | `getRecommendationsForUser()`, `enrichPreprint()` |
+| [DiscoveryService](./discovery.md) | Recommendations  | `getRecommendationsForUser()`, `enrichEprint()` |
 | KnowledgeGraphService              | Field taxonomy   | `getField()`, `browseFaceted()`                   |
 
 ### User engagement
@@ -69,7 +69,7 @@ Services are initialized in dependency order:
 ```
 1. Storage adapters (PostgreSQL, Redis, Elasticsearch, Neo4j)
 2. Infrastructure services (BlobProxy, GovernancePDS)
-3. Core indexing services (Preprint, Review)
+3. Core indexing services (Eprint, Review)
 4. Query services (Search, Discovery, KnowledgeGraph)
 5. Engagement services (Metrics, Activity, Notification)
 6. Application services (Claiming, Reconciliation)
@@ -83,10 +83,10 @@ Services use the Result type for operations that can fail:
 ```typescript
 import { Result, ok, err } from 'neverthrow';
 
-async getPreprint(uri: AtUri): Promise<Result<PreprintView, PreprintError>> {
-  const record = await this.storage.getPreprint(uri);
+async getEprint(uri: AtUri): Promise<Result<EprintView, EprintError>> {
+  const record = await this.storage.getEprint(uri);
   if (!record) {
-    return err(new PreprintNotFoundError(uri));
+    return err(new EprintNotFoundError(uri));
   }
   return ok(this.toView(record));
 }
@@ -95,9 +95,9 @@ async getPreprint(uri: AtUri): Promise<Result<PreprintView, PreprintError>> {
 Callers handle both success and failure:
 
 ```typescript
-const result = await preprintService.getPreprint(uri);
+const result = await eprintService.getEprint(uri);
 result.match(
-  (preprint) => console.log(preprint.title),
+  (eprint) => console.log(eprint.title),
   (error) => console.error(error.message)
 );
 ```
@@ -153,17 +153,17 @@ Services are tested at multiple levels:
 
 ```typescript
 // Unit test with mocked dependencies
-describe('PreprintService', () => {
-  let service: PreprintService;
+describe('EprintService', () => {
+  let service: EprintService;
   let mockStorage: MockStorageBackend;
 
   beforeEach(() => {
     mockStorage = new MockStorageBackend();
-    service = new PreprintService(mockStorage, mockSearch, mockLogger);
+    service = new EprintService(mockStorage, mockSearch, mockLogger);
   });
 
-  it('indexes preprint from firehose event', async () => {
-    const result = await service.indexPreprint(record, metadata);
+  it('indexes eprint from firehose event', async () => {
+    const result = await service.indexEprint(record, metadata);
     expect(result.isOk()).toBe(true);
     expect(mockStorage.store).toHaveBeenCalledWith(
       expect.objectContaining({

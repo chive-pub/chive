@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A decentralized preprint server built on AT Protocol",
+  "description": "A decentralized eprint service built on AT Protocol",
   "author": {
     "name": "Aaron Steven White",
     "email": "contact@chive.pub",

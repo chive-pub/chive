@@ -60,13 +60,13 @@ Open `http://localhost:3000` in your browser. You should see the Chive homepage.
 
 ## Optional: Seed Test Data
 
-For development, you may want sample preprints:
+For development, you may want sample eprints:
 
 ```bash
 pnpm seed:dev
 ```
 
-This creates test users and preprints for local testing.
+This creates test users and eprints for local testing.
 
 ## Common Issues
 

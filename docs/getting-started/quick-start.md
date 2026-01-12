@@ -1,20 +1,20 @@
 # Quick Start
 
-Submit your first preprint to Chive in under five minutes.
+Submit your first eprint to Chive in under five minutes.
 
 ## Prerequisites
 
 - A Bluesky account (or any AT Protocol-compatible PDS)
-- A preprint PDF (maximum 100 MB)
+- A eprint PDF (maximum 100 MB)
 - Metadata: title, abstract, and at least one keyword
 
 ## Step 1: Sign In
 
 Navigate to [chive.pub](https://chive.pub) and click "Sign In" in the header. You will be redirected to authenticate via OAuth with your PDS.
 
-## Step 2: Create a New Preprint
+## Step 2: Create a New Eprint
 
-After signing in, click "Submit Preprint" in the navigation bar. You will see a multi-step form.
+After signing in, click "Submit Eprint" in the navigation bar. You will see a multi-step form.
 
 ### Basic Information
 
@@ -22,7 +22,7 @@ Enter the required metadata:
 
 | Field    | Description                                              |
 | -------- | -------------------------------------------------------- |
-| Title    | Full title of your preprint                              |
+| Title    | Full title of your eprint                              |
 | Abstract | Summary of your work (plain text, 300 words recommended) |
 | Keywords | Author-provided keywords for discovery                   |
 
@@ -36,11 +36,11 @@ Select fields from the knowledge graph hierarchy. Start typing to search for rel
 
 ## Step 3: Submit
 
-Review your submission and click "Submit Preprint". The preprint record is created in your PDS and automatically indexed by Chive.
+Review your submission and click "Submit Eprint". The eprint record is created in your PDS and automatically indexed by Chive.
 
 ## Step 4: Share
 
-Your preprint is now available at a permanent URL. Share this link with colleagues or post it to social media.
+Your eprint is now available at a permanent URL. Share this link with colleagues or post it to social media.
 
 ## Next Steps
 

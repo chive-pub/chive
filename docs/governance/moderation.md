@@ -45,9 +45,9 @@ Anyone can report content:
 POST /xrpc/pub.chive.moderation.report
 
 {
-  "subject": "at://did:plc:author.../pub.chive.preprint.submission/abc...",
+  "subject": "at://did:plc:author.../pub.chive.eprint.submission/abc...",
   "violationType": "plagiarism",
-  "description": "This preprint contains substantial uncredited text from...",
+  "description": "This eprint contains substantial uncredited text from...",
   "evidence": [
     {
       "type": "url",

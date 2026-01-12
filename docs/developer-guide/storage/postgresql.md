@@ -1,6 +1,6 @@
 # PostgreSQL storage
 
-PostgreSQL serves as Chive's primary index storage for preprints, reviews, and metadata. All tables store **indexes only**, never source data.
+PostgreSQL serves as Chive's primary index storage for eprints, reviews, and metadata. All tables store **indexes only**, never source data.
 
 ## ATProto compliance
 
@@ -10,7 +10,7 @@ All user data tables use `_index` suffix to emphasize they are indexes, not auth
 
 | Table                | Purpose                                       |
 | -------------------- | --------------------------------------------- |
-| `preprints_index`    | Preprint metadata (title, abstract, keywords) |
+| `eprints_index`    | Eprint metadata (title, abstract, keywords) |
 | `authors_index`      | Author profiles (name, bio, affiliations)     |
 | `reviews_index`      | Review comments (threaded discussions)        |
 | `endorsements_index` | Endorsements (methods, results, overall)      |
@@ -47,8 +47,8 @@ Blobs are fetched on-demand from the user's PDS and optionally cached.
 All index tables use AT URIs as primary keys (not auto-incrementing IDs):
 
 ```sql
-CREATE TABLE preprints_index (
-  uri TEXT PRIMARY KEY,  -- e.g., at://did:plc:abc/pub.chive.preprint.submission/xyz
+CREATE TABLE eprints_index (
+  uri TEXT PRIMARY KEY,  -- e.g., at://did:plc:abc/pub.chive.eprint.submission/xyz
   cid TEXT NOT NULL,
   author_did TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -71,13 +71,13 @@ Foreign keys reference AT URIs:
 ```sql
 CREATE TABLE reviews_index (
   uri TEXT PRIMARY KEY,
-  preprint_uri TEXT NOT NULL,
+  eprint_uri TEXT NOT NULL,
   author_did TEXT NOT NULL,
   parent_uri TEXT,  -- For threaded replies
 
-  CONSTRAINT fk_preprint
-    FOREIGN KEY (preprint_uri)
-    REFERENCES preprints_index(uri)
+  CONSTRAINT fk_eprint
+    FOREIGN KEY (eprint_uri)
+    REFERENCES eprints_index(uri)
     ON DELETE CASCADE,
 
   CONSTRAINT fk_parent
@@ -92,17 +92,17 @@ CREATE TABLE reviews_index (
 Indexes on frequently queried columns:
 
 ```sql
--- Find preprints by author
-CREATE INDEX idx_preprints_author ON preprints_index(author_did);
+-- Find eprints by author
+CREATE INDEX idx_eprints_author ON eprints_index(author_did);
 
--- Recent preprints
-CREATE INDEX idx_preprints_created ON preprints_index(created_at DESC);
+-- Recent eprints
+CREATE INDEX idx_eprints_created ON eprints_index(created_at DESC);
 
 -- Find records by PDS (for staleness detection)
-CREATE INDEX idx_preprints_pds ON preprints_index(pds_url);
+CREATE INDEX idx_eprints_pds ON eprints_index(pds_url);
 
 -- Keyword search
-CREATE INDEX idx_preprints_keywords ON preprints_index USING GIN(keywords);
+CREATE INDEX idx_eprints_keywords ON eprints_index USING GIN(keywords);
 ```
 
 ## Infrastructure tables
@@ -154,14 +154,14 @@ CREATE TABLE pds_sync_status (
 
 ## Repositories
 
-### PreprintsRepository
+### EprintsRepository
 
 ```typescript
-import { PreprintsRepository } from '@/storage/postgresql/preprints-repository.js';
+import { EprintsRepository } from '@/storage/postgresql/eprints-repository.js';
 
-const repo = new PreprintsRepository(pool, logger);
+const repo = new EprintsRepository(pool, logger);
 
-// Store indexed preprint
+// Store indexed eprint
 await repo.upsert({
   uri,
   cid,
@@ -174,10 +174,10 @@ await repo.upsert({
 });
 
 // Retrieve by URI
-const preprint = await repo.findByUri(uri);
+const eprint = await repo.findByUri(uri);
 
 // List by author
-const preprints = await repo.findByAuthor(authorDid, { limit: 20 });
+const eprints = await repo.findByAuthor(authorDid, { limit: 20 });
 
 // Find stale records (older than 7 days)
 const stale = await repo.findStale({ olderThan: 7 * 24 * 60 * 60 * 1000 });
@@ -196,15 +196,15 @@ const repo = new ReviewsRepository(pool, logger);
 // Store review
 await repo.upsert({
   uri,
-  preprintUri,
+  eprintUri,
   authorDid,
   parentUri,
   text,
   reviewType,
 });
 
-// Get thread for preprint
-const reviews = await repo.findByPreprint(preprintUri, {
+// Get thread for eprint
+const reviews = await repo.findByEprint(eprintUri, {
   includeReplies: true,
   sort: 'oldest',
 });
@@ -220,7 +220,7 @@ The `QueryBuilder` class provides type-safe query construction:
 ```typescript
 import { QueryBuilder } from '@/storage/postgresql/query-builder.js';
 
-const query = new QueryBuilder('preprints_index')
+const query = new QueryBuilder('eprints_index')
   .select(['uri', 'title', 'author_did'])
   .where('author_did', '=', authorDid)
   .where('created_at', '>=', startDate)
@@ -252,14 +252,14 @@ import { BatchOperations } from '@/storage/postgresql/batch-operations.js';
 
 const batch = new BatchOperations(pool, logger);
 
-// Upsert many preprints
-await batch.upsertPreprints(preprints, {
+// Upsert many eprints
+await batch.upsertEprints(eprints, {
   chunkSize: 100,
   onConflict: 'update',
 });
 
 // Bulk delete
-await batch.deletePreprints(uris);
+await batch.deleteEprints(uris);
 
 // Bulk update sync timestamps
 await batch.updateSyncTimestamps(uris, new Date());
@@ -272,7 +272,7 @@ import { withTransaction } from '@/storage/postgresql/transaction.js';
 
 await withTransaction(pool, async (client) => {
   // All operations use same transaction
-  await preprintsRepo.upsert(preprint, client);
+  await eprintsRepo.upsert(eprint, client);
   await reviewsRepo.upsert(review, client);
 
   // Automatic commit on success, rollback on error
@@ -306,7 +306,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable('endorsements_index')
     .addColumn('uri', 'text', (col) => col.primaryKey())
-    .addColumn('preprint_uri', 'text', (col) => col.notNull())
+    .addColumn('eprint_uri', 'text', (col) => col.notNull())
     .addColumn('endorser_did', 'text', (col) => col.notNull())
     .addColumn('endorsement_type', 'text', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) => col.notNull())
@@ -338,7 +338,7 @@ If indexes become corrupted, rebuild from scratch:
 
 ```bash
 # 1. Truncate all index tables
-psql -c "TRUNCATE preprints_index, reviews_index, endorsements_index CASCADE;"
+psql -c "TRUNCATE eprints_index, reviews_index, endorsements_index CASCADE;"
 
 # 2. Reset firehose cursor
 psql -c "UPDATE firehose_cursor SET cursor = 0;"

@@ -115,13 +115,13 @@ Chive supports push notifications via WebSocket and Server-Sent Events (SSE).
 
 | Type                | Description                | Example                             |
 | ------------------- | -------------------------- | ----------------------------------- |
-| `new-review`        | Preprint received a review | "Alice reviewed your preprint"      |
-| `new-endorsement`   | Preprint endorsed          | "Bob endorsed your methodology"     |
+| `new-review`        | Eprint received a review | "Alice reviewed your eprint"      |
+| `new-endorsement`   | Eprint endorsed          | "Bob endorsed your methodology"     |
 | `proposal-approved` | Field proposal approved    | "Your field proposal was approved"  |
 | `proposal-rejected` | Field proposal rejected    | "Your field proposal was rejected"  |
-| `new-version`       | Preprint updated           | "New version of preprint available" |
+| `new-version`       | Eprint updated           | "New version of eprint available" |
 | `mention`           | Mentioned in a comment     | "Carol mentioned you in a comment"  |
-| `citation`          | Preprint cited             | "Your preprint was cited"           |
+| `citation`          | Eprint cited             | "Your eprint was cited"           |
 | `system`            | System notification        | "Maintenance scheduled"             |
 
 ### Creating notifications
@@ -135,9 +135,9 @@ const notifications = new NotificationService({ logger, redis });
 const result = await notifications.createNotification({
   type: 'new-review',
   recipient: 'did:plc:author123' as DID,
-  subject: 'New review on your preprint',
+  subject: 'New review on your eprint',
   message: 'Alice reviewed "Quantum Computing Advances"',
-  resourceUri: 'at://did:plc:author123/pub.chive.preprint.submission/xyz' as AtUri,
+  resourceUri: 'at://did:plc:author123/pub.chive.eprint.submission/xyz' as AtUri,
   actorDid: 'did:plc:reviewer456' as DID,
 });
 
@@ -299,8 +299,8 @@ const subscription = governance.subscribeToUpdates(async (event) => {
   console.log(`${event.type}: ${event.uri}`);
 
   if (event.type === 'authority-created') {
-    // Re-index affected preprints
-    await reindexPreprints(event.uri);
+    // Re-index affected eprints
+    await reindexEprints(event.uri);
   }
 });
 
@@ -310,7 +310,7 @@ subscription.unsubscribe();
 
 ## Metrics and analytics
 
-Track preprint views, downloads, and trending.
+Track eprint views, downloads, and trending.
 
 ### Recording metrics
 
@@ -320,17 +320,17 @@ import { MetricsService } from '@chive/services/metrics';
 const metrics = new MetricsService({ redis, storage, logger });
 
 // Record view
-await metrics.recordView(preprintUri, viewerDid);
+await metrics.recordView(eprintUri, viewerDid);
 
 // Record download
-await metrics.recordDownload(preprintUri, viewerDid);
+await metrics.recordDownload(eprintUri, viewerDid);
 ```
 
 ### Fetching metrics
 
 ```typescript
-// Get preprint metrics
-const stats = await metrics.getMetrics(preprintUri);
+// Get eprint metrics
+const stats = await metrics.getMetrics(eprintUri);
 console.log('Total views:', stats.totalViews);
 console.log('Unique views:', stats.uniqueViews);
 console.log('Downloads:', stats.downloads);
@@ -339,10 +339,10 @@ console.log('Views (7d):', stats.views7d);
 console.log('Views (30d):', stats.views30d);
 ```
 
-### Trending preprints
+### Trending eprints
 
 ```typescript
-// Get trending preprints
+// Get trending eprints
 const trending = await metrics.getTrending('24h', 10);
 for (const item of trending) {
   console.log(`${item.uri}: ${item.score} views`);

@@ -1,6 +1,6 @@
 # API reference
 
-The Chive API provides programmatic access to preprints, reviews, endorsements, and the knowledge graph. This section documents both the XRPC (AT Protocol native) and REST interfaces.
+The Chive API provides programmatic access to eprints, reviews, endorsements, and the knowledge graph. This section documents both the XRPC (AT Protocol native) and REST interfaces.
 
 ## API styles
 
@@ -15,16 +15,16 @@ Both provide access to the same functionality. Choose based on your client requi
 
 ## Quick start
 
-### Fetch a preprint (XRPC)
+### Fetch a eprint (XRPC)
 
 ```bash
-curl "https://api.chive.pub/xrpc/pub.chive.preprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.preprint.submission/3k5..."
+curl "https://api.chive.pub/xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.eprint.submission/3k5..."
 ```
 
-### Search preprints (REST)
+### Search eprints (REST)
 
 ```bash
-curl "https://api.chive.pub/api/v1/preprints?q=quantum+computing&limit=10"
+curl "https://api.chive.pub/api/v1/eprints?q=quantum+computing&limit=10"
 ```
 
 ### Authenticated request
@@ -68,8 +68,8 @@ const client = new ChiveClient({
   baseUrl: 'https://api.chive.pub',
 });
 
-const preprint = await client.preprint.getSubmission({
-  uri: 'at://did:plc:abc123.../pub.chive.preprint.submission/3k5...',
+const eprint = await client.eprint.getSubmission({
+  uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...',
 });
 ```
 

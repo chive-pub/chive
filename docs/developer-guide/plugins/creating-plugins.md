@@ -40,7 +40,7 @@ Create `plugin.json` with your plugin metadata:
     "storage": {
       "maxSize": "10MB"
     },
-    "hooks": ["preprint.indexed", "system.startup"]
+    "hooks": ["eprint.indexed", "system.startup"]
   }
 }
 ```
@@ -64,7 +64,7 @@ Create `plugin.json` with your plugin metadata:
 Create `src/index.ts`:
 
 ```typescript
-import { BasePlugin, PluginContext, Preprint } from '@chive/plugin-sdk';
+import { BasePlugin, PluginContext, Eprint } from '@chive/plugin-sdk';
 
 export default class ExamplePlugin extends BasePlugin {
   readonly id = 'pub.chive.plugin.example';
@@ -77,7 +77,7 @@ export default class ExamplePlugin extends BasePlugin {
     this.http = context.httpClient;
 
     // Subscribe to events
-    context.eventBus.on('preprint.indexed', this.onPreprintIndexed.bind(this));
+    context.eventBus.on('eprint.indexed', this.onEprintIndexed.bind(this));
 
     this.logger.info('Example plugin initialized');
   }
@@ -88,13 +88,13 @@ export default class ExamplePlugin extends BasePlugin {
     this.logger.info('Example plugin shut down');
   }
 
-  private async onPreprintIndexed(event: { preprint: Preprint }): Promise<void> {
-    const { preprint } = event;
+  private async onEprintIndexed(event: { eprint: Eprint }): Promise<void> {
+    const { eprint } = event;
 
     // Fetch additional data from external API
-    const metadata = await this.fetchMetadata(preprint.doi);
+    const metadata = await this.fetchMetadata(eprint.doi);
     if (metadata) {
-      this.cache.set(preprint.uri, metadata);
+      this.cache.set(eprint.uri, metadata);
     }
   }
 
@@ -116,10 +116,10 @@ export default class ExamplePlugin extends BasePlugin {
 
 ## Importing plugin
 
-Create a plugin that imports preprints from an external source:
+Create a plugin that imports eprints from an external source:
 
 ```typescript
-import { ImportingPlugin, ImportedPreprint, PluginContext } from '@chive/plugin-sdk';
+import { ImportingPlugin, ImportedEprint, PluginContext } from '@chive/plugin-sdk';
 
 export default class ExampleImporter extends ImportingPlugin {
   readonly id = 'pub.chive.plugin.example-importer';
@@ -132,7 +132,7 @@ export default class ExampleImporter extends ImportingPlugin {
     this.logger.info('Importer initialized');
   }
 
-  async *fetchPreprints(): AsyncIterable<ImportedPreprint> {
+  async *fetchEprints(): AsyncIterable<ImportedEprint> {
     const response = await this.http.get('https://api.example.com/papers');
 
     for (const paper of response.data.papers) {
@@ -143,7 +143,7 @@ export default class ExampleImporter extends ImportingPlugin {
     }
   }
 
-  async search(query: string): Promise<ImportedPreprint[]> {
+  async search(query: string): Promise<ImportedEprint[]> {
     const response = await this.http.get(
       `https://api.example.com/search?q=${encodeURIComponent(query)}`
     );
@@ -151,7 +151,7 @@ export default class ExampleImporter extends ImportingPlugin {
     return response.data.results.map(this.transformPaper);
   }
 
-  private transformPaper(paper: unknown): ImportedPreprint {
+  private transformPaper(paper: unknown): ImportedEprint {
     return {
       externalId: paper.id,
       source: 'example',
@@ -190,8 +190,8 @@ export default class ExampleBacklinks extends BacklinkTrackingPlugin {
   async extractBacklinks(record: unknown, event: RepoEvent): Promise<Backlink[]> {
     const backlinks: Backlink[] = [];
 
-    // Check for Chive preprint references
-    if (record.embed?.uri?.startsWith('at://') && record.embed.uri.includes('pub.chive.preprint')) {
+    // Check for Chive eprint references
+    if (record.embed?.uri?.startsWith('at://') && record.embed.uri.includes('pub.chive.eprint')) {
       backlinks.push({
         sourceUri: `at://${event.repo}/${event.path}`,
         targetUri: record.embed.uri,
@@ -238,9 +238,9 @@ interface PluginContext {
 Use structured logging:
 
 ```typescript
-this.logger.info('Processing preprint', {
-  uri: preprint.uri,
-  title: preprint.title,
+this.logger.info('Processing eprint', {
+  uri: eprint.uri,
+  title: eprint.title,
 });
 
 this.logger.warn('Rate limited', {
@@ -249,7 +249,7 @@ this.logger.warn('Rate limited', {
 
 this.logger.error('Failed to fetch', {
   error: error.message,
-  doi: preprint.doi,
+  doi: eprint.doi,
 });
 ```
 
@@ -307,17 +307,17 @@ describe('ExamplePlugin', () => {
     await expect(plugin.initialize(context)).resolves.not.toThrow();
   });
 
-  it('fetches metadata for preprints with DOI', async () => {
+  it('fetches metadata for eprints with DOI', async () => {
     context.mockHttp.get.mockResolvedValue({
       data: { citations: 42 },
     });
 
     await plugin.initialize(context);
 
-    // Simulate preprint indexed event
-    await context.eventBus.emit('preprint.indexed', {
-      preprint: {
-        uri: 'at://did:plc:abc.../pub.chive.preprint.submission/123',
+    // Simulate eprint indexed event
+    await context.eventBus.emit('eprint.indexed', {
+      eprint: {
+        uri: 'at://did:plc:abc.../pub.chive.eprint.submission/123',
         doi: '10.1234/example',
       },
     });

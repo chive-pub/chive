@@ -31,7 +31,7 @@ A PDS stores your data and serves it to applications. Think of it as your person
 ┌─────────────────────────────────────────────────────────────┐
 │                      Your PDS                               │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  Preprints  │  │   Reviews   │  │  Endorsements       │  │
+│  │  Eprints  │  │   Reviews   │  │  Endorsements       │  │
 │  │  (records)  │  │  (records)  │  │  (records)          │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 │  ┌─────────────────────────────────────────────────────────┐│
@@ -52,9 +52,9 @@ Key properties of PDSes:
 Your PDS contains a **repository**, a collection of signed records organized by type.
 
 ```typescript
-// Example: A preprint submission record
+// Example: A eprint submission record
 {
-  "$type": "pub.chive.preprint.submission",
+  "$type": "pub.chive.eprint.submission",
   "title": "Novel Approach to Quantum Computing",
   "abstract": "We present a new method...",
   "authors": [
@@ -72,7 +72,7 @@ Your PDS contains a **repository**, a collection of signed records organized by 
 
 Each record has:
 
-- A **type** (e.g., `pub.chive.preprint.submission`)
+- A **type** (e.g., `pub.chive.eprint.submission`)
 - A **record key** (unique identifier within the collection)
 - **Content** (the actual data)
 - A **signature** (proves authenticity)
@@ -82,12 +82,12 @@ Each record has:
 Records are addressed using AT URIs:
 
 ```
-at://did:plc:abc123.../pub.chive.preprint.submission/3k5...
+at://did:plc:abc123.../pub.chive.eprint.submission/3k5...
      └─────────┬────┘  └───────────┬──────────────┘   └┬┘
            DID              Collection             Record Key
 ```
 
-This URI uniquely identifies a specific preprint by a specific author.
+This URI uniquely identifies a specific eprint by a specific author.
 
 ### Lexicons
 
@@ -97,8 +97,8 @@ Chive uses the `pub.chive.*` namespace for all its record types:
 
 | Lexicon                         | Purpose                    |
 | ------------------------------- | -------------------------- |
-| `pub.chive.preprint.submission` | Core preprint metadata     |
-| `pub.chive.preprint.version`    | Version tracking           |
+| `pub.chive.eprint.submission` | Core eprint metadata     |
+| `pub.chive.eprint.version`    | Version tracking           |
 | `pub.chive.review.comment`      | Peer review comments       |
 | `pub.chive.review.endorsement`  | Formal endorsements        |
 | `pub.chive.graph.fieldProposal` | Knowledge graph proposals  |
@@ -159,9 +159,9 @@ The firehose delivers events in near real-time:
   "commit": {
     "rev": "3k5...",
     "operation": "create",
-    "collection": "pub.chive.preprint.submission",
+    "collection": "pub.chive.eprint.submission",
     "rkey": "abc123",
-    "record": { /* preprint data */ }
+    "record": { /* eprint data */ }
   }
 }
 ```
@@ -205,17 +205,17 @@ If Chive's database is deleted, no user data is lost - everything remains in use
 
 ### Your data is portable
 
-Since your preprints live in your PDS, you can:
+Since your eprints live in your PDS, you can:
 
 - Switch PDS providers without losing work
-- Use your preprints in other AT Protocol apps
+- Use your eprints in other AT Protocol apps
 - Export everything at any time
 
 ### No platform lock-in
 
 If Chive shuts down tomorrow:
 
-- Your preprints remain in your PDS
+- Your eprints remain in your PDS
 - Another AppView could index them
 - Your DOIs, ORCIDs, and citations stay valid
 
@@ -231,7 +231,7 @@ Your DID stays the same even if:
 
 Every record you create is signed with your private key. This means:
 
-- No one can forge your preprints
+- No one can forge your eprints
 - Modifications are detectable
 - Authorship is provable
 
@@ -243,7 +243,7 @@ Every record you create is signed with your private key. This means:
 | **DID**         | Decentralized Identifier, your permanent identity         |
 | **PDS**         | Personal Data Server, where your data lives               |
 | **Repository**  | Your collection of signed records in a PDS                |
-| **Record**      | A single data object (preprint, review, etc.)             |
+| **Record**      | A single data object (eprint, review, etc.)             |
 | **Lexicon**     | Schema definition for record types                        |
 | **Blob**        | Binary large object (PDFs, images)                        |
 | **BlobRef**     | A pointer to a blob, containing its CID                   |
@@ -256,4 +256,4 @@ Every record you create is signed with your private key. This means:
 
 - [Data sovereignty](./data-sovereignty.md): How Chive protects your ownership
 - [Knowledge graph](./knowledge-graph.md): Community-curated classification
-- [Quick start](/getting-started/quick-start): Submit your first preprint
+- [Quick start](/getting-started/quick-start): Submit your first eprint

@@ -121,18 +121,18 @@ await plugin.search(query);
 await plugin.autocomplete(prefix);
 ```
 
-## Preprint archives
+## Eprint archives
 
 ### arXiv
 
 **ID:** `pub.chive.plugin.arxiv`
 
-Imports preprints from arXiv using OAI-PMH and the Atom API.
+Imports eprints from arXiv using OAI-PMH and the Atom API.
 
 ```typescript
 // Bulk import via OAI-PMH
-for await (const preprint of plugin.fetchPreprints()) {
-  // Process preprints
+for await (const eprint of plugin.fetchEprints()) {
+  // Process eprints
 }
 
 // Search via Atom API
@@ -153,11 +153,11 @@ const paper = await plugin.fetchPaperDetails(arxivId);
 
 **ID:** `pub.chive.plugin.lingbuzz`
 
-Imports linguistics preprints from LingBuzz.
+Imports linguistics eprints from LingBuzz.
 
 ```typescript
-for await (const preprint of plugin.fetchPreprints()) {
-  // Process preprints
+for await (const eprint of plugin.fetchEprints()) {
+  // Process eprints
 }
 
 const results = await plugin.search(query);
@@ -169,11 +169,11 @@ Uses RSS feed and web scraping with a 10-second delay between requests.
 
 **ID:** `pub.chive.plugin.semanticsarchive`
 
-Imports semantics preprints from Semantics Archive.
+Imports semantics eprints from Semantics Archive.
 
 ```typescript
-for await (const preprint of plugin.fetchPreprints()) {
-  // Process preprints
+for await (const eprint of plugin.fetchEprints()) {
+  // Process eprints
 }
 ```
 
@@ -183,7 +183,7 @@ Uses web scraping with a 5-second delay between requests.
 
 **ID:** `pub.chive.plugin.psyarxiv`
 
-Imports psychology preprints from PsyArXiv via the OSF API.
+Imports psychology eprints from PsyArXiv via the OSF API.
 
 ### OpenReview
 
@@ -192,7 +192,7 @@ Imports psychology preprints from PsyArXiv via the OSF API.
 Imports conference papers from OpenReview with peer review metadata.
 
 ```typescript
-for await (const preprint of plugin.fetchPreprints({ venue })) {
+for await (const eprint of plugin.fetchEprints({ venue })) {
   // Process submissions
 }
 
@@ -207,7 +207,7 @@ Supports OAuth authentication for author profile verification.
 
 **ID:** `pub.chive.plugin.zenodo`
 
-Links preprints to software and datasets archived on Zenodo.
+Links eprints to software and datasets archived on Zenodo.
 
 ```typescript
 await plugin.getRecord(doi);
@@ -218,25 +218,25 @@ await plugin.search(query, { type: 'dataset' });
 
 **ID:** `pub.chive.plugin.figshare`
 
-Links preprints to supplementary materials on Figshare.
+Links eprints to supplementary materials on Figshare.
 
 ### Dryad
 
 **ID:** `pub.chive.plugin.dryad`
 
-Links preprints to research data on Dryad.
+Links eprints to research data on Dryad.
 
 ### Software Heritage
 
 **ID:** `pub.chive.plugin.software-heritage`
 
-Links preprints to archived source code on Software Heritage.
+Links eprints to archived source code on Software Heritage.
 
 ### OSF
 
 **ID:** `pub.chive.plugin.osf`
 
-Links preprints to Open Science Framework projects.
+Links eprints to Open Science Framework projects.
 
 ## Code repositories
 
@@ -244,11 +244,11 @@ Links preprints to Open Science Framework projects.
 
 **ID:** `pub.chive.plugin.github`
 
-Detects and links GitHub repositories mentioned in preprints.
+Detects and links GitHub repositories mentioned in eprints.
 
 ```typescript
 await plugin.getRepositoryInfo(owner, repo);
-await plugin.detectRepositories(preprint);
+await plugin.detectRepositories(eprint);
 ```
 
 Extracts repository metadata including stars, forks, license, and language.
@@ -257,7 +257,7 @@ Extracts repository metadata including stars, forks, license, and language.
 
 **ID:** `pub.chive.plugin.gitlab`
 
-Links preprints to GitLab repositories.
+Links eprints to GitLab repositories.
 
 ## Subject classification
 
@@ -280,10 +280,10 @@ FAST provides 1.7 million controlled vocabulary terms from OCLC.
 
 **ID:** `pub.chive.plugin.doi`
 
-Registers DOIs for preprints via DataCite.
+Registers DOIs for eprints via DataCite.
 
 ```typescript
-await plugin.registerDoi(preprint);
+await plugin.registerDoi(eprint);
 await plugin.updateDoi(doi, metadata);
 ```
 
@@ -291,7 +291,7 @@ Requires DataCite credentials.
 
 ## Backlink tracking
 
-These plugins track references to Chive preprints from ATProto apps.
+These plugins track references to Chive eprints from ATProto apps.
 
 ### Bluesky Backlinks
 
@@ -299,7 +299,7 @@ These plugins track references to Chive preprints from ATProto apps.
 
 Tracks references from Bluesky posts (`app.bsky.feed.post`).
 
-Detects embedded preprint links and external URLs pointing to Chive.
+Detects embedded eprint links and external URLs pointing to Chive.
 
 ### Semble Backlinks
 

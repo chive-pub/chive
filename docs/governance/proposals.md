@@ -42,7 +42,7 @@ Elevating user tags to authority terms:
 
 | Phase                    | Description                               |
 | ------------------------ | ----------------------------------------- |
-| **Automatic nomination** | Tag used by 3+ users on 10+ preprints     |
+| **Automatic nomination** | Tag used by 3+ users on 10+ eprints     |
 | **Community vote**       | Standard proposal process (60%, 3+ votes) |
 
 ## Creating a proposal
