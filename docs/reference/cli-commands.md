@@ -1,23 +1,26 @@
 # CLI commands reference
 
-npm/pnpm scripts and CLI tools for developing and operating Chive.
+npm/pnpm scripts for developing and operating Chive.
 
 ## Development
 
 ### Starting services
 
 ```bash
-# Start development server (API + frontend)
+# Start full development environment (API + frontend)
 pnpm dev
 
-# Start API only
+# Start API server only (on port 3001)
 pnpm dev:api
 
-# Start frontend only
-pnpm dev:web
+# Start database containers
+pnpm dev:db
 
-# Start with hot reload
-pnpm dev:watch
+# Stop development services
+pnpm dev:stop
+
+# Stop all services (including databases)
+pnpm dev:stop:all
 ```
 
 ### Building
@@ -26,16 +29,16 @@ pnpm dev:watch
 # Build all packages
 pnpm build
 
-# Build specific package
-pnpm build:api
-pnpm build:web
-
 # Type checking only
 pnpm typecheck
 
 # Lint code
 pnpm lint
 pnpm lint:fix
+
+# Format code
+pnpm format
+pnpm format:check
 ```
 
 ## Testing
@@ -48,35 +51,15 @@ pnpm test
 
 # Run specific test suites
 pnpm test:unit           # Unit tests only
+pnpm test:unit:watch     # Unit tests in watch mode
+pnpm test:unit:ui        # Unit tests with Vitest UI
 pnpm test:integration    # Integration tests
 pnpm test:e2e            # End-to-end tests
 pnpm test:compliance     # ATProto compliance tests
-
-# Run tests for specific file/pattern
-pnpm test -- tests/unit/services/eprint
-pnpm test -- --grep "should index eprint"
-
-# Watch mode
-pnpm test:watch
+pnpm test:performance    # Performance tests with k6
 
 # Coverage report
 pnpm test:coverage
-```
-
-### Test infrastructure
-
-```bash
-# Start test stack (databases in Docker)
-./scripts/start-test-stack.sh
-
-# Stop test stack
-./scripts/stop-test-stack.sh
-
-# Seed test data
-pnpm seed:test
-
-# Clean up test data
-pnpm cleanup:test
 ```
 
 ### E2E testing
@@ -88,11 +71,24 @@ pnpm test:e2e
 # Run with UI
 pnpm test:e2e:ui
 
-# Run specific test file
-pnpm test:e2e -- tests/e2e/search.spec.ts
-
 # Debug mode
 pnpm test:e2e:debug
+```
+
+### Test infrastructure
+
+```bash
+# Start test stack (databases in Docker)
+pnpm test:stack:start
+
+# Stop test stack
+pnpm test:stack:stop
+
+# Seed test data
+pnpm seed:test
+
+# Clean up test data
+pnpm cleanup:test
 ```
 
 ## Database
@@ -106,12 +102,6 @@ pnpm db:migrate:up
 # Rollback last migration
 pnpm db:migrate:down
 
-# Rollback all migrations
-pnpm db:migrate:reset
-
-# Check migration status
-pnpm db:migrate:status
-
 # Create new migration
 pnpm db:migrate:create <name>
 ```
@@ -119,225 +109,58 @@ pnpm db:migrate:create <name>
 ### Setup
 
 ```bash
-# Initialize all databases
+# Initialize all databases (PostgreSQL, Elasticsearch, Neo4j)
 pnpm db:init
 
-# Setup specific database
-pnpm db:setup:postgres
-pnpm db:setup:elasticsearch
-pnpm db:setup:neo4j
-
-# Verify database connections
-pnpm db:verify
-```
-
-### Data management
-
-```bash
-# Seed development data
-pnpm db:seed
-
-# Export data
-pnpm db:export --output backup.json
-
-# Import data
-pnpm db:import --input backup.json
-
-# Clear all data (development only)
-pnpm db:clear
-```
-
-## Queue management
-
-### BullMQ queues
-
-```bash
-# View queue status
-pnpm queue:status
-
-# View specific queue
-pnpm queue:status indexing
-
-# Retry failed jobs
-pnpm queue:retry indexing
-
-# Retry all failed jobs
-pnpm queue:retry --all
-
-# Clean completed jobs
-pnpm queue:clean indexing --grace 3600
-
-# Pause queue
-pnpm queue:pause indexing
-
-# Resume queue
-pnpm queue:resume indexing
-```
-
-### Dead letter queue
-
-```bash
-# View DLQ contents
-pnpm dlq:list
-
-# Retry DLQ events
-pnpm dlq:retry
-
-# Clear old DLQ events
-pnpm dlq:clear --older-than 7d
-```
-
-## Firehose
-
-### Cursor management
-
-```bash
-# Get current cursor
-pnpm firehose:cursor
-
-# Set cursor (for replay)
-pnpm firehose:cursor:set <seq>
-
-# Reset cursor to beginning
-pnpm firehose:cursor:reset
-```
-
-### Replay events
-
-```bash
-# Replay from specific cursor
-pnpm firehose:replay --from <seq> --to <seq>
-
-# Replay last N events
-pnpm firehose:replay --last 1000
-```
-
-## API type generation
-
-```bash
-# Generate frontend types from OpenAPI
-pnpm openapi:generate
-
-# Verify generated types
-pnpm openapi:verify
+# Seed knowledge graph data
+pnpm db:seed:knowledge-graph
 ```
 
 ## Code generation
 
-### Lexicons
-
 ```bash
 # Generate TypeScript from lexicon definitions
-pnpm lexicon:codegen
+pnpm lexicons:generate
 
-# Validate lexicon schemas
-pnpm lexicon:validate
+# Generate frontend types from OpenAPI spec
+pnpm openapi:generate
 ```
 
-## Production
-
-### Build for production
-
-```bash
-# Build optimized bundles
-pnpm build:prod
-
-# Build Docker images
-docker compose -f docker-compose.prod.yml build
-```
-
-### Health checks
+## Health checks
 
 ```bash
 # Check API health
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 
-# Detailed health
-curl http://localhost:3000/health/ready
-```
+# Readiness check (includes database checks)
+curl http://localhost:3001/health/ready
 
-### Maintenance
-
-```bash
-# Run database maintenance
-pnpm db:maintenance
-
-# Vacuum PostgreSQL
-pnpm db:vacuum
-
-# Optimize Elasticsearch indices
-pnpm es:optimize
-```
-
-## Debugging
-
-### Logging
-
-```bash
-# Enable debug logging
-DEBUG=chive:* pnpm dev
-
-# Specific namespace
-DEBUG=chive:firehose,chive:indexing pnpm dev
-```
-
-### Profiling
-
-```bash
-# CPU profiling
-pnpm dev --inspect
-
-# Memory profiling
-pnpm dev --inspect --expose-gc
+# Liveness check
+curl http://localhost:3001/health/live
 ```
 
 ## Scripts directory
 
 Additional scripts in `scripts/`:
 
-| Script                              | Description                        |
-| ----------------------------------- | ---------------------------------- |
-| `scripts/dev.sh`                    | Start full development environment |
-| `scripts/start-test-stack.sh`       | Start Docker test databases        |
-| `scripts/stop-test-stack.sh`        | Stop Docker test databases         |
-| `scripts/db/setup-elasticsearch.ts` | Initialize Elasticsearch           |
-| `scripts/db/setup-neo4j.ts`         | Initialize Neo4j                   |
-| `scripts/db/reindex-from-pg.ts`     | Rebuild ES index from PostgreSQL   |
-| `scripts/db/create-index.ts`        | Create new Elasticsearch index     |
-| `scripts/db/switch-alias.ts`        | Switch Elasticsearch alias         |
+| Script                          | Description                        |
+| ------------------------------- | ---------------------------------- |
+| `scripts/dev.sh`                | Start full development environment |
+| `scripts/dev-db.sh`             | Start database containers          |
+| `scripts/start-test-stack.sh`   | Start Docker test databases        |
+| `scripts/generate-lexicons.sh`  | Generate TypeScript from lexicons  |
+| `scripts/generate-api-types.sh` | Generate API types from OpenAPI    |
+| `scripts/db/init-all.sh`        | Initialize all databases           |
+| `scripts/db/migrate.ts`         | Run database migrations            |
 
 ### Usage
 
 ```bash
 # Run TypeScript script
-tsx scripts/db/setup-elasticsearch.ts
+tsx scripts/db/migrate.ts up
 
 # With arguments
-tsx scripts/db/reindex-from-pg.ts --target eprints-new
-```
-
-## Environment-specific commands
-
-### Development
-
-```bash
-pnpm dev              # Full dev server
-pnpm dev:debug        # With Node inspector
-```
-
-### CI/CD
-
-```bash
-pnpm ci:lint          # Lint with CI reporter
-pnpm ci:test          # Tests with coverage
-pnpm ci:build         # Production build
-```
-
-### Production
-
-```bash
-pnpm start            # Start production server
-pnpm start:cluster    # Start with PM2 clustering
+tsx scripts/db/migrate.ts create migration_name
 ```
 
 ## Package manager
@@ -357,14 +180,9 @@ pnpm update
 
 # Check for outdated packages
 pnpm outdated
-
-# Clean install
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
 ```
 
 ## Related documentation
 
-- [Configuration](./configuration.md): Configuration reference
 - [Environment Variables](./environment-variables.md): Env var reference
 - [Deployment](../operations/deployment.md): Production setup

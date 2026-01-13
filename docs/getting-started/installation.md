@@ -6,7 +6,7 @@ Set up a local Chive development environment.
 
 - Node.js 22 or later
 - Docker and Docker Compose
-- pnpm 9 or later
+- pnpm 8 or later
 - Git
 
 ## Clone the Repository
@@ -24,24 +24,20 @@ pnpm install
 
 ## Start Infrastructure
 
-The development stack requires PostgreSQL, Elasticsearch, Neo4j, and Redis. Start these services with Docker Compose:
+The development stack requires PostgreSQL, Elasticsearch, Neo4j, and Redis. Start these services:
 
 ```bash
-docker compose up -d
+pnpm dev:db
 ```
 
-Wait for all services to become healthy:
-
-```bash
-docker compose ps
-```
+This starts the database containers using Docker Compose.
 
 ## Run Database Migrations
 
 Apply the database schema:
 
 ```bash
-pnpm db:migrate
+pnpm db:migrate:up
 ```
 
 ## Start Development Server
@@ -52,7 +48,7 @@ Run the backend and frontend in development mode:
 pnpm dev
 ```
 
-The API server runs on `http://localhost:4000` and the web interface on `http://localhost:3000`.
+The API server runs on `http://localhost:3001` and the web interface on `http://localhost:3000`.
 
 ## Verify Installation
 
@@ -60,13 +56,13 @@ Open `http://localhost:3000` in your browser. You should see the Chive homepage.
 
 ## Optional: Seed Test Data
 
-For development, you may want sample eprints:
+For development, you may want sample data:
 
 ```bash
-pnpm seed:dev
+pnpm seed:test
 ```
 
-This creates test users and eprints for local testing.
+This creates test data for local testing.
 
 ## Common Issues
 

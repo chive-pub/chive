@@ -1036,7 +1036,7 @@ Get backlink counts for a eprint.
 
 Endpoints for user activity.
 
-### pub.chive.activity.getActivityFeed
+### pub.chive.activity.getFeed
 
 Get the user's activity feed.
 
@@ -1045,7 +1045,7 @@ Get the user's activity feed.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-### pub.chive.activity.logActivity
+### pub.chive.activity.log
 
 Log an activity event.
 

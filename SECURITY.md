@@ -44,8 +44,8 @@ Chive implements Zero Trust Architecture following NIST SP 800-207:
 
 ### Authentication
 
-- OAuth 2.0 with PKCE for authorization flows
-- DID-based authentication via AT Protocol
+- AT Protocol OAuth for user authentication (OAuth 2.0 + PKCE/DPoP)
+- DID-based cryptographic identity verification
 - No centralized password storage
 - Scoped access tokens with automatic rotation
 

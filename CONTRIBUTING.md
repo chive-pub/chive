@@ -26,15 +26,15 @@ Thank you for your interest in contributing to Chive!
 
 ## Commit conventions
 
-We use [Conventional Commits](https://www.conventionalcommits.org/):
+Commit messages must be exactly one sentence in the imperative mood:
 
-- `feat:` New features
-- `fix:` Bug fixes
-- `docs:` Documentation changes
-- `style:` Code style changes (formatting, etc.)
-- `refactor:` Code refactoring
-- `test:` Test additions or changes
-- `chore:` Build process or auxiliary tool changes
+- Good: "Add search functionality to homepage"
+- Good: "Fix authentication bug in login flow"
+- Bad: "Added search" (past tense)
+- Bad: "Adds search" (third person)
+- Bad: "Adding search functionality" (gerund)
+
+Keep commit messages concise and focused on what the change does.
 
 ## Code style
 

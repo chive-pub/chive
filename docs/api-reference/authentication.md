@@ -4,95 +4,68 @@ Chive uses AT Protocol OAuth for user authentication and JWT tokens for session 
 
 ## Authentication methods
 
-| Method                | Use case         | How it works                        |
-| --------------------- | ---------------- | ----------------------------------- |
-| **AT Protocol OAuth** | User login       | OAuth 2.0 + PKCE with user's PDS    |
-| **Service auth JWT**  | Server-to-server | Signed JWTs for inter-service calls |
-| **Session tokens**    | API requests     | Bearer tokens from OAuth flow       |
+| Method                | Use case         | How it works                                           |
+| --------------------- | ---------------- | ------------------------------------------------------ |
+| **AT Protocol OAuth** | User login       | OAuth 2.0 + PKCE/DPoP via `@atproto/oauth-client-node` |
+| **Service auth JWT**  | Server-to-server | Signed JWTs for inter-service calls                    |
+| **Session tokens**    | API requests     | Bearer tokens from OAuth flow                          |
 
 ## AT Protocol OAuth flow
 
-Chive implements the AT Protocol OAuth specification for user authentication:
+Chive implements the AT Protocol OAuth specification using `@atproto/oauth-client-node`. The OAuth flow is handled by the Next.js frontend, not the API server.
 
 ```
 ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│  Client  │     │  Chive   │     │ User PDS │     │  User    │
+│  Browser │     │  Next.js │     │ User PDS │     │  User    │
 └────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘
      │                │                │                │
      │  1. Login      │                │                │
      │───────────────►│                │                │
      │                │                │                │
-     │  2. Redirect   │                │                │
+     │  2. Redirect to PDS             │                │
      │◄───────────────│                │                │
      │                │                │                │
-     │  3. Auth request                │                │
+     │  3. Auth at PDS                 │                │
      │────────────────────────────────►│                │
      │                │                │                │
      │                │                │  4. Consent    │
      │                │                │◄───────────────│
      │                │                │                │
-     │  5. Auth code  │                │                │
+     │  5. Callback with tokens        │                │
      │◄────────────────────────────────│                │
      │                │                │                │
-     │  6. Exchange   │                │                │
+     │  6. Session created             │                │
      │───────────────►│                │                │
-     │                │                │                │
-     │  7. Tokens     │                │                │
-     │◄───────────────│                │                │
      └────────────────┴────────────────┴────────────────┘
 ```
 
-### Step 1: Initiate login
+### Implementation
 
-```http
-GET /oauth/authorize?
-  handle=alice.bsky.social&
-  redirect_uri=https://yourapp.com/callback&
-  state=random-state-value
+The OAuth flow is implemented in the frontend using `@atproto/oauth-client-node`:
+
+```typescript
+// web/lib/auth/oauth-client.ts
+import { NodeOAuthClient } from '@atproto/oauth-client-node';
+
+const oauthClient = new NodeOAuthClient({
+  clientMetadata: {
+    client_id: 'https://chive.pub/oauth/client-metadata.json',
+    // ...
+  },
+});
+
+// Start login
+const url = await oauthClient.authorize(handle, {
+  scope: 'atproto transition:generic',
+});
+
+// Handle callback
+const { session } = await oauthClient.callback(params);
 ```
 
-### Step 2: User redirected to PDS
+### Session tokens
 
-Chive resolves the user's DID and redirects to their PDS's authorization endpoint with PKCE parameters.
-
-### Step 3: User grants consent
-
-The user authenticates with their PDS and grants Chive permission to access their data.
-
-### Step 4: Authorization code returned
-
-```http
-GET https://yourapp.com/callback?
-  code=auth-code-here&
-  state=random-state-value
-```
-
-### Step 5: Exchange code for tokens
-
-```http
-POST /oauth/token
-Content-Type: application/json
-
-{
-  "grant_type": "authorization_code",
-  "code": "auth-code-here",
-  "redirect_uri": "https://yourapp.com/callback",
-  "code_verifier": "pkce-verifier"
-}
-```
-
-### Step 6: Receive tokens
-
-```json
-{
-  "access_token": "eyJhbGciOiJFUzI1NiIs...",
-  "refresh_token": "eyJhbGciOiJFUzI1NiIs...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "did": "did:plc:abc123...",
-  "handle": "alice.bsky.social"
-}
-```
+After successful OAuth, the frontend receives DPoP-bound tokens that are used for API requests.
 
 ## Using access tokens
 
