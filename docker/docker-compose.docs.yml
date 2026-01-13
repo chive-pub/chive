@@ -37,10 +37,11 @@ services:
     networks:
       - chive-network
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/getting-started/introduction/"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.docs.rule=Host(`docs.chive.pub`)"
