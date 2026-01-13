@@ -25,30 +25,37 @@ Any authenticated user can:
 
 ### Trusted editors
 
-Appointed community members with demonstrated expertise:
+Community members elevated for consistent quality contributions:
 
 - Review and approve routine proposals
-- Moderate content and enforce policies
 - Mentor new contributors
-- Weighted votes (3.5x standard)
+- Weighted votes (2.0x standard)
+
+### Domain experts
+
+Users recognized for expertise in specific fields:
+
+- Vote on proposals in their area of expertise
+- Provide specialist input on field changes
+- Weighted votes (2.5x standard)
 
 ### Authority editors
 
-Library science professionals (MLIS or equivalent) who:
+Users responsible for maintaining authority records:
 
 - Manage authority records
 - Reconcile with external vocabularies (Wikidata, LCSH, VIAF)
 - Approve authority record changes
-- Highest vote weight (4.5x standard)
+- Weighted votes (3.0x standard)
 
-### Governance committee
+### Administrators
 
-Elected body that:
+Platform administrators with oversight responsibilities:
 
-- Sets overall policy direction
-- Resolves disputes
-- Appoints trusted and authority editors
-- Manages the Governance PDS
+- Resolve disputes
+- Manage the Governance PDS
+- Veto power on proposals
+- Highest vote weight (5.0x)
 
 ## Governance scope
 
@@ -59,7 +66,7 @@ Elected body that:
 | **Knowledge graph fields** | Community proposals and voting |
 | **Authority records**      | Authority editor approval      |
 | **Facet definitions**      | Proposal with lower threshold  |
-| **Content policies**       | Governance committee decisions |
+| **Content policies**       | Administrator decisions        |
 | **Tag promotion**          | Two-stage nomination and vote  |
 
 ### What is not governed
@@ -113,34 +120,22 @@ See [Proposals](./proposals.md) for details.
 
 Not all votes are equal. Vote weight depends on:
 
-| Factor                                   | Weight multiplier |
-| ---------------------------------------- | ----------------- |
-| Base (any authenticated user)            | 1.0x              |
-| Active contributor (10+ eprints/reviews) | 1.5x              |
-| Domain expert (publications in field)    | 2.5x              |
-| Trusted editor                           | 3.5x              |
-| Authority editor                         | 4.5x              |
+| Role             | Weight multiplier |
+| ---------------- | ----------------- |
+| Community member | 1.0x              |
+| Trusted editor   | 2.0x              |
+| Domain expert    | 2.5x              |
+| Authority editor | 3.0x              |
+| Administrator    | 5.0x              |
 
 See [Voting system](./voting-system.md) for thresholds and quorum requirements.
-
-## Content moderation
-
-Chive enforces community standards through:
-
-1. **User reports**: Anyone can flag policy violations
-2. **Trusted editor review**: Editors assess reports
-3. **Action**: Warnings, content hiding, or escalation
-4. **Appeals**: 14-day window for disputed decisions
-
-See [Moderation](./moderation.md) for policies and procedures.
 
 ## Transparency
 
 All governance actions are public:
 
 - Proposals and voting records are visible to all
-- Moderation decisions are logged (with privacy protections)
-- Governance committee meeting summaries are published
+- Administrator decisions are logged
 - Annual transparency reports detail statistics
 
 ## Governance documentation
@@ -150,9 +145,7 @@ All governance actions are public:
 | [Voting system](./voting-system.md)         | Thresholds, weights, and quorum    |
 | [Proposals](./proposals.md)                 | Types, lifecycle, and requirements |
 | [Authority control](./authority-control.md) | Managing authority records         |
-| [Moderation](./moderation.md)               | Content policies and enforcement   |
 | [Governance PDS](./governance-pds.md)       | Technical architecture             |
-| [Organization](./organization.md)           | Non-profit structure and funding   |
 
 ## Getting involved
 
@@ -168,14 +161,7 @@ All governance actions are public:
 1. Contribute actively (eprints, reviews, tags)
 2. Demonstrate expertise in your field
 3. Apply or be nominated
-4. Governance committee review
-
-### Join the governance committee
-
-1. Be an active trusted editor for 6+ months
-2. Participate in governance discussions
-3. Stand for election (annual cycle)
-4. Serve 2-year terms
+4. Administrator review and approval
 
 ## Next steps
 

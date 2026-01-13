@@ -50,16 +50,14 @@ interface AuthorityRecord {
 
 ## Authority editors
 
-Authority editors are library science professionals responsible for maintaining authority records:
+Authority editors are responsible for maintaining authority records:
 
 ### Qualifications
 
 | Requirement     | Description                           |
 | --------------- | ------------------------------------- |
-| **Education**   | MLIS, MLS, or equivalent degree       |
-| **Experience**  | 2+ years cataloging or metadata work  |
 | **Knowledge**   | Familiarity with LCSH, FAST, Wikidata |
-| **Appointment** | Governance committee approval         |
+| **Appointment** | Administrator approval                |
 
 ### Responsibilities
 
@@ -67,7 +65,7 @@ Authority editors are library science professionals responsible for maintaining 
 - Reconcile with external vocabularies
 - Review authority-related proposals
 - Train community on authority standards
-- Vote on authority changes (4.5x weight)
+- Vote on authority changes (3.0x weight)
 
 ### Current authority editors
 

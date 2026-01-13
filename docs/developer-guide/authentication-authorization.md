@@ -406,50 +406,58 @@ m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
 
 ---
 
-## OAuth 2.0 + PKCE
+## ATProto OAuth
 
-### Supported Flows
+Chive uses the ATProto OAuth specification for authentication, which includes PKCE and DPoP automatically.
 
-- Authorization Code with PKCE (recommended)
-- Client Credentials (service-to-service)
-
-### Authorization Flow
+### Client Setup
 
 ```typescript
-import { OAuthService } from '@/auth/oauth/oauth-service.js';
+import { ATProtoOAuthClient } from '@/auth/atproto-oauth/node-oauth-client.js';
 
-const oauthService = new OAuthService({ redis, logger });
-
-// 1. Generate authorization URL
-const { authorizationUrl, state, codeVerifier } = await oauthService.startAuthorization({
-  clientId: 'client_abc123',
-  redirectUri: 'https://app.example.com/callback',
-  scope: ['read:eprints'],
-  codeChallengeMethod: 'S256',
+const oauthClient = new ATProtoOAuthClient({
+  clientMetadata: {
+    clientId: 'https://chive.pub/oauth/client-metadata.json',
+    redirectUri: 'https://chive.pub/oauth/callback',
+    scopes: ['atproto', 'transition:generic'],
+  },
+  redis,
+  logger,
 });
 
-// 2. User authorizes, receives code at callback
-
-// 3. Exchange code for tokens
-const tokens = await oauthService.exchangeCode({
-  code: 'auth_code_xyz',
-  clientId: 'client_abc123',
-  redirectUri: 'https://app.example.com/callback',
-  codeVerifier,
-});
+await oauthClient.initialize();
 ```
 
-### Client Registration
+### Authentication Flow
+
+The `@atproto/oauth-client-node` library handles the OAuth flow including:
+
+- PKCE code challenges (S256)
+- DPoP token binding
+- Pushed Authorization Requests (PAR)
+- Session management
 
 ```typescript
-const client = await oauthService.registerClient({
-  name: 'My Research App',
-  redirectUris: ['https://app.example.com/callback'],
-  clientType: 'public',
-  scopes: ['read:eprints', 'write:reviews'],
-  ownerDid: 'did:plc:abc123',
+// 1. Generate authorization URL for a PDS handle
+const authUrl = await oauthClient.authorize(handle, {
+  scope: 'atproto transition:generic',
 });
+
+// 2. User authorizes at their PDS
+
+// 3. Handle callback with authorization code
+const session = await oauthClient.callback(callbackParams);
+
+// Session provides authenticated agent for PDS operations
+const agent = session.agent;
 ```
+
+### Session Storage
+
+Sessions are persisted in Redis:
+
+- `RedisSessionStore` - Stores authenticated sessions
+- `RedisStateStore` - Stores OAuth state parameters during flow
 
 ---
 
