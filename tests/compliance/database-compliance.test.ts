@@ -39,7 +39,7 @@ describe('ATProto Database Compliance', () => {
         FROM information_schema.tables
         WHERE table_schema = 'public'
           AND table_name IN (
-            'preprints_index',
+            'eprints_index',
             'authors_index',
             'reviews_index',
             'endorsements_index',
@@ -74,7 +74,7 @@ describe('ATProto Database Compliance', () => {
   describe('CRITICAL: PDS Source Tracking', () => {
     it('all index tables track PDS URL', async () => {
       const indexTables = [
-        'preprints_index',
+        'eprints_index',
         'authors_index',
         'reviews_index',
         'endorsements_index',
@@ -104,7 +104,7 @@ describe('ATProto Database Compliance', () => {
 
     it('all index tables track indexed_at timestamp', async () => {
       const indexTables = [
-        'preprints_index',
+        'eprints_index',
         'authors_index',
         'reviews_index',
         'endorsements_index',
@@ -170,7 +170,7 @@ describe('ATProto Database Compliance', () => {
       expect(result.rows).toHaveLength(0);
     });
 
-    it('preprints_index stores BlobRef CIDs only', async () => {
+    it('eprints_index stores BlobRef CIDs only', async () => {
       const result = await pool.query<{
         column_name: string;
         data_type: string;
@@ -178,7 +178,7 @@ describe('ATProto Database Compliance', () => {
         SELECT column_name, data_type
         FROM information_schema.columns
         WHERE table_schema = 'public'
-          AND table_name = 'preprints_index'
+          AND table_name = 'eprints_index'
           AND column_name IN ('document_blob_cid', 'document_blob_mime_type', 'document_blob_size')
       `);
 
@@ -214,7 +214,7 @@ describe('ATProto Database Compliance', () => {
   describe('CRITICAL: AT URI References', () => {
     it('all index tables use AT URI as primary key', async () => {
       const indexTables = [
-        'preprints_index',
+        'eprints_index',
         'reviews_index',
         'endorsements_index',
         'user_tags_index',
@@ -269,7 +269,7 @@ describe('ATProto Database Compliance', () => {
 
     it('NO auto-incrementing ID columns as primary keys', async () => {
       const indexTables = [
-        'preprints_index',
+        'eprints_index',
         'authors_index',
         'reviews_index',
         'endorsements_index',
@@ -376,15 +376,15 @@ describe('ATProto Database Compliance', () => {
       }
     });
 
-    it('preprints_index supports UPSERT operations', async () => {
-      const testUri = 'at://did:plc:test/pub.chive.preprint.submission/test-upsert';
+    it('eprints_index supports UPSERT operations', async () => {
+      const testUri = 'at://did:plc:test/pub.chive.eprint.submission/test-upsert';
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
         await client.query(
           `
-          INSERT INTO preprints_index (
+          INSERT INTO eprints_index (
             uri, cid, submitted_by, authors, title, abstract,
             document_blob_cid, document_blob_mime_type, document_blob_size,
             document_format, publication_status, pds_url, indexed_at, created_at, license
@@ -411,14 +411,14 @@ describe('ATProto Database Compliance', () => {
             'application/pdf',
             1024,
             'pdf',
-            'preprint',
+            'eprint',
             'https://pds.test',
             'CC-BY-4.0',
           ]
         );
 
         const result = await client.query<{ title: string }>(
-          'SELECT title FROM preprints_index WHERE uri = $1',
+          'SELECT title FROM eprints_index WHERE uri = $1',
           [testUri]
         );
 
@@ -432,10 +432,10 @@ describe('ATProto Database Compliance', () => {
 
     it('indexes exist for query performance', async () => {
       const requiredIndexes = [
-        { table: 'preprints_index', column: 'submitted_by' },
-        { table: 'preprints_index', column: 'created_at' },
-        { table: 'preprints_index', column: 'pds_url' },
-        { table: 'reviews_index', column: 'preprint_uri' },
+        { table: 'eprints_index', column: 'submitted_by' },
+        { table: 'eprints_index', column: 'created_at' },
+        { table: 'eprints_index', column: 'pds_url' },
+        { table: 'reviews_index', column: 'eprint_uri' },
         { table: 'reviews_index', column: 'reviewer_did' },
       ];
 
@@ -461,7 +461,7 @@ describe('ATProto Database Compliance', () => {
         await client.query('BEGIN');
 
         const values = Array.from({ length: 3 }, (_, i) => [
-          `at://did:plc:test/pub.chive.preprint.submission/batch-${i}`,
+          `at://did:plc:test/pub.chive.eprint.submission/batch-${i}`,
           'bafytest',
           'did:plc:test',
           JSON.stringify([
@@ -479,7 +479,7 @@ describe('ATProto Database Compliance', () => {
           'application/pdf',
           1024,
           'pdf',
-          'preprint',
+          'eprint',
           'https://pds.test',
           'CC-BY-4.0',
         ]);
@@ -493,7 +493,7 @@ describe('ATProto Database Compliance', () => {
 
         await client.query(
           `
-          INSERT INTO preprints_index (
+          INSERT INTO eprints_index (
             uri, cid, submitted_by, authors, title, abstract,
             document_blob_cid, document_blob_mime_type, document_blob_size,
             document_format, publication_status, pds_url, indexed_at, created_at, license
@@ -504,7 +504,7 @@ describe('ATProto Database Compliance', () => {
         );
 
         const result = await client.query<{ count: string }>(
-          `SELECT COUNT(*) as count FROM preprints_index WHERE uri LIKE 'at://did:plc:test/pub.chive.preprint.submission/batch-%'`
+          `SELECT COUNT(*) as count FROM eprints_index WHERE uri LIKE 'at://did:plc:test/pub.chive.eprint.submission/batch-%'`
         );
 
         const count = parseInt(result.rows[0]?.count ?? '0', 10);
@@ -517,14 +517,14 @@ describe('ATProto Database Compliance', () => {
     });
 
     it('PDS tracking updates work correctly', async () => {
-      const testUri = 'at://did:plc:test/pub.chive.preprint.submission/test-pds-tracking';
+      const testUri = 'at://did:plc:test/pub.chive.eprint.submission/test-pds-tracking';
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
         await client.query(
           `
-          INSERT INTO preprints_index (
+          INSERT INTO eprints_index (
             uri, cid, submitted_by, authors, title, abstract,
             document_blob_cid, document_blob_mime_type, document_blob_size,
             document_format, publication_status, pds_url, indexed_at, created_at, license
@@ -550,19 +550,19 @@ describe('ATProto Database Compliance', () => {
             'application/pdf',
             1024,
             'pdf',
-            'preprint',
+            'eprint',
             'https://old-pds.test',
             'CC-BY-4.0',
           ]
         );
 
         await client.query(
-          `UPDATE preprints_index SET pds_url = $2, indexed_at = NOW() WHERE uri = $1`,
+          `UPDATE eprints_index SET pds_url = $2, indexed_at = NOW() WHERE uri = $1`,
           [testUri, 'https://new-pds.test']
         );
 
         const result = await client.query<{ pds_url: string }>(
-          'SELECT pds_url FROM preprints_index WHERE uri = $1',
+          'SELECT pds_url FROM eprints_index WHERE uri = $1',
           [testUri]
         );
 

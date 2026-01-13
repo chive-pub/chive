@@ -1,6 +1,6 @@
 'use client';
 
-import { PreprintCard, PreprintCardSkeleton } from '@/components/preprints';
+import { EprintCard, EprintCardSkeleton } from '@/components/eprints';
 import { HighlightedSnippet } from './search-highlight';
 import { SearchEmpty, SearchError } from './search-empty';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,7 @@ export interface SearchResultsProps {
  *
  * @remarks
  * Client component that handles all search result display states.
- * Integrates with the preprint card component and shows highlights.
+ * Integrates with the eprint card component and shows highlights.
  *
  * @example
  * ```tsx
@@ -99,10 +99,10 @@ export function SearchResults({
 
       {/* Results list */}
       <div className={layoutClasses}>
-        {data.hits.map((preprint) => (
+        {data.hits.map((eprint) => (
           <SearchResultCard
-            key={preprint.uri}
-            preprint={preprint}
+            key={eprint.uri}
+            eprint={eprint}
             onPrefetch={onPrefetch}
             layout={layout}
           />
@@ -142,7 +142,7 @@ export function SearchResultsHeader({ total, query, className }: SearchResultsHe
  * Props for the SearchResultCard component.
  */
 interface SearchResultCardProps {
-  preprint: SearchHit;
+  eprint: SearchHit;
   onPrefetch?: (uri: string) => void;
   layout?: 'list' | 'grid';
 }
@@ -150,20 +150,20 @@ interface SearchResultCardProps {
 /**
  * Individual search result card with highlights.
  */
-function SearchResultCard({ preprint, onPrefetch, layout }: SearchResultCardProps) {
+function SearchResultCard({ eprint, onPrefetch, layout }: SearchResultCardProps) {
   // API returns highlights as { [field: string]: string[] }
-  const highlightEntries = preprint.highlights ? Object.entries(preprint.highlights) : [];
+  const highlightEntries = eprint.highlights ? Object.entries(eprint.highlights) : [];
   const hasHighlights = highlightEntries.length > 0;
 
   // In grid layout or if no highlights, use standard card
   if (layout === 'grid' || !hasHighlights) {
-    return <PreprintCard preprint={preprint} onPrefetch={onPrefetch} variant="default" />;
+    return <EprintCard eprint={eprint} onPrefetch={onPrefetch} variant="default" />;
   }
 
   // In list layout with highlights, show expanded card with snippets
   return (
     <div className="rounded-lg border bg-card p-4 transition-shadow hover:shadow-md">
-      <PreprintCard preprint={preprint} onPrefetch={onPrefetch} variant="compact" />
+      <EprintCard eprint={eprint} onPrefetch={onPrefetch} variant="compact" />
 
       {/* Highlighted snippets */}
       {hasHighlights && (
@@ -178,9 +178,9 @@ function SearchResultCard({ preprint, onPrefetch, layout }: SearchResultCardProp
       )}
 
       {/* Relevance score (if available) */}
-      {preprint.score !== undefined && (
+      {eprint.score !== undefined && (
         <div className="mt-2 text-xs text-muted-foreground">
-          Relevance: {(preprint.score * 100).toFixed(0)}%
+          Relevance: {(eprint.score * 100).toFixed(0)}%
         </div>
       )}
     </div>
@@ -220,7 +220,7 @@ export function SearchResultsSkeleton({
       {/* Results skeleton */}
       <div className={layoutClasses}>
         {Array.from({ length: count }).map((_, index) => (
-          <PreprintCardSkeleton key={index} />
+          <EprintCardSkeleton key={index} />
         ))}
       </div>
     </div>

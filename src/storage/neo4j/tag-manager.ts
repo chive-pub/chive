@@ -79,7 +79,7 @@ export interface FieldCandidate {
  *
  * // Add a tag to a record
  * await tagManager.addTag(
- *   'at://did:plc:user/pub.chive.preprint/123',
+ *   'at://did:plc:user/pub.chive.eprint/123',
  *   'neural networks',
  *   'did:plc:user'
  * );
@@ -186,7 +186,7 @@ export class TagManager {
    * Creates or updates the tag node and creates TAGGED_WITH relationship.
    * Automatically normalizes the tag and updates usage statistics.
    *
-   * @param recordUri - Record AT-URI (preprint, review, etc.)
+   * @param recordUri - Record AT-URI (eprint, review, etc.)
    * @param rawTag - Raw tag string from user
    * @param userDid - DID of user adding the tag
    * @returns Normalization result
@@ -194,7 +194,7 @@ export class TagManager {
    * @example
    * ```typescript
    * const result = await tagManager.addTag(
-   *   'at://did:plc:user/pub.chive.preprint/123',
+   *   'at://did:plc:user/pub.chive.eprint/123',
    *   'Machine Learning',
    *   'did:plc:user'
    * );

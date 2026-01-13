@@ -180,11 +180,11 @@ describe('ArxivPlugin', () => {
     });
   });
 
-  describe('buildPreprintUrl', () => {
+  describe('buildEprintUrl', () => {
     it('should build correct abstract URL for new format ID', async () => {
       await plugin.initialize(context);
 
-      const url = plugin.buildPreprintUrl('2401.12345');
+      const url = plugin.buildEprintUrl('2401.12345');
 
       expect(url).toBe('https://arxiv.org/abs/2401.12345');
     });
@@ -192,7 +192,7 @@ describe('ArxivPlugin', () => {
     it('should build correct abstract URL for old format ID', async () => {
       await plugin.initialize(context);
 
-      const url = plugin.buildPreprintUrl('hep-th/9901001');
+      const url = plugin.buildEprintUrl('hep-th/9901001');
 
       expect(url).toBe('https://arxiv.org/abs/hep-th/9901001');
     });
@@ -250,7 +250,7 @@ describe('ArxivPlugin', () => {
     });
   });
 
-  describe('fetchPreprints', () => {
+  describe('fetchEprints', () => {
     it('should fetch papers from OAI-PMH endpoint', async () => {
       await plugin.initialize(context);
       plugin.disableRateLimiting();
@@ -261,7 +261,7 @@ describe('ArxivPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -282,7 +282,7 @@ describe('ArxivPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -322,7 +322,7 @@ describe('ArxivPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -339,7 +339,7 @@ describe('ArxivPlugin', () => {
 
       await expect(async () => {
         const papers: unknown[] = [];
-        for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+        for await (const paper of plugin.fetchEprints({ limit: 1 })) {
           papers.push(paper);
         }
       }).rejects.toThrow('arXiv OAI-PMH error: 503');

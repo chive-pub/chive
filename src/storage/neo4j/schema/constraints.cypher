@@ -16,9 +16,9 @@ FOR (a:AuthorityRecord) REQUIRE a.uri IS UNIQUE;
 CREATE CONSTRAINT wikidata_id_unique IF NOT EXISTS
 FOR (w:WikidataEntity) REQUIRE w.qid IS UNIQUE;
 
-// Preprint node constraints (for graph associations)
-CREATE CONSTRAINT preprint_uri_unique IF NOT EXISTS
-FOR (p:Preprint) REQUIRE p.uri IS UNIQUE;
+// Eprint node constraints (for graph associations)
+CREATE CONSTRAINT eprint_uri_unique IF NOT EXISTS
+FOR (p:Eprint) REQUIRE p.uri IS UNIQUE;
 
 // Author node constraints
 CREATE CONSTRAINT author_did_unique IF NOT EXISTS

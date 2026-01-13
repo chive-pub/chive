@@ -20,9 +20,9 @@
  * ```typescript
  * const repo = new ReviewsRepository(pool);
  *
- * // Find reviews for a preprint
- * const reviews = await repo.findByPreprint(
- *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+ * // Find reviews for a eprint
+ * const reviews = await repo.findByEprint(
+ *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
  * );
  *
  * // Find reviews by reviewer
@@ -72,13 +72,13 @@ export type ReviewMotivation =
  * Review anchor for inline annotations.
  *
  * @remarks
- * Specifies a target location within a preprint for inline reviews/comments.
+ * Specifies a target location within a eprint for inline reviews/comments.
  *
  * @public
  */
 export interface ReviewAnchor {
   /**
-   * AT URI of the target document (preprint).
+   * AT URI of the target document (eprint).
    */
   readonly source: AtUri;
 
@@ -134,14 +134,14 @@ export interface StoredReview {
   readonly rkey: string;
 
   /**
-   * Preprint being reviewed.
+   * Eprint being reviewed.
    */
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
 
   /**
-   * CID of the preprint at time of review.
+   * CID of the eprint at time of review.
    */
-  readonly preprintCid: CID;
+  readonly eprintCid: CID;
 
   /**
    * Reviewer DID.
@@ -222,8 +222,8 @@ interface ReviewRow {
   uri: string;
   cid: string;
   rkey: string;
-  preprint_uri: string;
-  preprint_cid: string;
+  eprint_uri: string;
+  eprint_cid: string;
   reviewer_did: string;
   content: string;
   content_format: string;
@@ -247,9 +247,9 @@ interface ReviewRow {
  * All database operations for reviews go through this repository.
  *
  * **Operations Provided:**
- * - Find reviews by preprint
+ * - Find reviews by eprint
  * - Find reviews by reviewer
- * - Count reviews for a preprint
+ * - Count reviews for a eprint
  * - Store and update reviews
  *
  * @public
@@ -282,8 +282,8 @@ export class ReviewsRepository {
       uri: row.uri as AtUri,
       cid: row.cid as CID,
       rkey: row.rkey,
-      preprintUri: row.preprint_uri as AtUri,
-      preprintCid: row.preprint_cid as CID,
+      eprintUri: row.eprint_uri as AtUri,
+      eprintCid: row.eprint_cid as CID,
       reviewerDid: row.reviewer_did as DID,
       content: row.content,
       contentFormat: row.content_format as ReviewContentFormat,
@@ -301,19 +301,19 @@ export class ReviewsRepository {
   }
 
   /**
-   * Finds reviews for a preprint.
+   * Finds reviews for a eprint.
    *
-   * @param preprintUri - AT URI of the preprint
+   * @param eprintUri - AT URI of the eprint
    * @param options - Query options (limit, offset)
-   * @returns Array of reviews for this preprint
+   * @returns Array of reviews for this eprint
    *
    * @remarks
    * Returns reviews in chronological order (newest first).
    *
    * @example
    * ```typescript
-   * const reviews = await repo.findByPreprint(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   * const reviews = await repo.findByEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   { limit: 20 }
    * );
    *
@@ -322,8 +322,8 @@ export class ReviewsRepository {
    *
    * @public
    */
-  async findByPreprint(
-    preprintUri: AtUri,
+  async findByEprint(
+    eprintUri: AtUri,
     options: { limit?: number; offset?: number } = {}
   ): Promise<StoredReview[]> {
     const limit = Math.min(options.limit ?? 50, 100);
@@ -331,21 +331,21 @@ export class ReviewsRepository {
 
     try {
       const result = await this.pool.query<ReviewRow>(
-        `SELECT uri, cid, rkey, preprint_uri, preprint_cid, reviewer_did, content,
+        `SELECT uri, cid, rkey, eprint_uri, eprint_cid, reviewer_did, content,
                 content_format, motivation, parent_uri, root_uri, reply_depth,
                 anchor, reply_count, endorsement_count, pds_url, created_at, indexed_at
          FROM reviews_index
-         WHERE preprint_uri = $1
+         WHERE eprint_uri = $1
          ORDER BY created_at DESC
          LIMIT $2 OFFSET $3`,
-        [preprintUri, limit, offset]
+        [eprintUri, limit, offset]
       );
 
       return result.rows.map((row) => this.mapRowToStoredReview(row));
     } catch (error) {
       throw new DatabaseError(
         'READ',
-        `Failed to find reviews for preprint: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to find reviews for eprint: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
       );
     }
@@ -382,7 +382,7 @@ export class ReviewsRepository {
 
     try {
       const result = await this.pool.query<ReviewRow>(
-        `SELECT uri, cid, rkey, preprint_uri, preprint_cid, reviewer_did, content,
+        `SELECT uri, cid, rkey, eprint_uri, eprint_cid, reviewer_did, content,
                 content_format, motivation, parent_uri, root_uri, reply_depth,
                 anchor, reply_count, endorsement_count, pds_url, created_at, indexed_at
          FROM reviews_index
@@ -403,15 +403,15 @@ export class ReviewsRepository {
   }
 
   /**
-   * Counts reviews for a preprint.
+   * Counts reviews for a eprint.
    *
-   * @param preprintUri - AT URI of the preprint
-   * @returns Number of reviews for this preprint
+   * @param eprintUri - AT URI of the eprint
+   * @returns Number of reviews for this eprint
    *
    * @example
    * ```typescript
-   * const count = await repo.countByPreprint(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   * const count = await repo.countByEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
    * console.log(`${count} reviews`);
@@ -419,11 +419,11 @@ export class ReviewsRepository {
    *
    * @public
    */
-  async countByPreprint(preprintUri: AtUri): Promise<number> {
+  async countByEprint(eprintUri: AtUri): Promise<number> {
     try {
       const result = await this.pool.query<{ count: string }>(
-        'SELECT COUNT(*) as count FROM reviews_index WHERE preprint_uri = $1',
-        [preprintUri]
+        'SELECT COUNT(*) as count FROM reviews_index WHERE eprint_uri = $1',
+        [eprintUri]
       );
 
       const row = result.rows[0];
@@ -450,7 +450,7 @@ export class ReviewsRepository {
    * ```typescript
    * const result = await repo.store({
    *   uri: toAtUri('at://did:plc:def/pub.chive.review.comment/abc')!,
-   *   preprintUri: toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   *   eprintUri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   reviewerDid: toDID('did:plc:def')!,
    *   content: 'Excellent methodology!',
    *   pdsUrl: 'https://pds.example.com',
@@ -465,7 +465,7 @@ export class ReviewsRepository {
     try {
       await this.pool.query(
         `INSERT INTO reviews_index (
-           uri, cid, rkey, preprint_uri, preprint_cid, reviewer_did, content,
+           uri, cid, rkey, eprint_uri, eprint_cid, reviewer_did, content,
            content_format, motivation, parent_uri, root_uri, reply_depth,
            anchor, reply_count, endorsement_count, pds_url, created_at, indexed_at
          )
@@ -481,8 +481,8 @@ export class ReviewsRepository {
           review.uri,
           review.cid,
           review.rkey,
-          review.preprintUri,
-          review.preprintCid,
+          review.eprintUri,
+          review.eprintCid,
           review.reviewerDid,
           review.content,
           review.contentFormat,
@@ -571,7 +571,7 @@ export class ReviewsRepository {
   async getByUri(uri: AtUri): Promise<StoredReview | null> {
     try {
       const result = await this.pool.query<ReviewRow>(
-        `SELECT uri, cid, rkey, preprint_uri, preprint_cid, reviewer_did, content,
+        `SELECT uri, cid, rkey, eprint_uri, eprint_cid, reviewer_did, content,
                 content_format, motivation, parent_uri, root_uri, reply_depth,
                 anchor, reply_count, endorsement_count, pds_url, created_at, indexed_at
          FROM reviews_index
@@ -621,7 +621,7 @@ export class ReviewsRepository {
     try {
       // First try using the stored function if it exists
       const result = await this.pool.query<ReviewRow>(
-        `SELECT uri, cid, rkey, preprint_uri, preprint_cid, reviewer_did, content,
+        `SELECT uri, cid, rkey, eprint_uri, eprint_cid, reviewer_did, content,
                 content_format, motivation, parent_uri, root_uri, reply_depth,
                 anchor, reply_count, endorsement_count, pds_url, created_at, indexed_at
          FROM get_review_thread($1, $2)`,
@@ -648,7 +648,7 @@ export class ReviewsRepository {
     const result = await this.pool.query<ReviewRow>(
       `WITH RECURSIVE thread AS (
          -- Base case: the root review
-         SELECT uri, cid, rkey, preprint_uri, preprint_cid, reviewer_did, content,
+         SELECT uri, cid, rkey, eprint_uri, eprint_cid, reviewer_did, content,
                 content_format, motivation, parent_uri, root_uri, reply_depth,
                 anchor, reply_count, endorsement_count, pds_url, created_at, indexed_at,
                 0 AS depth
@@ -658,7 +658,7 @@ export class ReviewsRepository {
          UNION ALL
 
          -- Recursive case: direct replies
-         SELECT r.uri, r.cid, r.rkey, r.preprint_uri, r.preprint_cid, r.reviewer_did, r.content,
+         SELECT r.uri, r.cid, r.rkey, r.eprint_uri, r.eprint_cid, r.reviewer_did, r.content,
                 r.content_format, r.motivation, r.parent_uri, r.root_uri, r.reply_depth,
                 r.anchor, r.reply_count, r.endorsement_count, r.pds_url, r.created_at, r.indexed_at,
                 t.depth + 1
@@ -666,7 +666,7 @@ export class ReviewsRepository {
          INNER JOIN thread t ON r.parent_uri = t.uri
          WHERE t.depth < $2
        )
-       SELECT uri, cid, rkey, preprint_uri, preprint_cid, reviewer_did, content,
+       SELECT uri, cid, rkey, eprint_uri, eprint_cid, reviewer_did, content,
               content_format, motivation, parent_uri, root_uri, reply_depth,
               anchor, reply_count, endorsement_count, pds_url, created_at, indexed_at
        FROM thread

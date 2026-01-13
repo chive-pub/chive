@@ -99,12 +99,12 @@ export function getActiveSpan(): Span | undefined {
  * @example
  * ```typescript
  * // Add single attribute
- * addSpanAttributes({ 'preprint.uri': preprintUri });
+ * addSpanAttributes({ 'eprint.uri': eprintUri });
  *
  * // Add multiple attributes
  * addSpanAttributes({
  *   'http.method': 'GET',
- *   'http.route': '/api/preprints/:id',
+ *   'http.route': '/api/eprints/:id',
  *   'http.status_code': 200,
  * });
  * ```
@@ -182,10 +182,10 @@ export interface WithSpanOptions extends SpanOptions {
  * @example
  * ```typescript
  * // Async operation
- * const result = await withSpan('indexPreprint', async () => {
- *   const preprint = await fetchPreprint(uri);
- *   await indexToElasticsearch(preprint);
- *   return preprint;
+ * const result = await withSpan('indexEprint', async () => {
+ *   const eprint = await fetchEprint(uri);
+ *   await indexToElasticsearch(eprint);
+ *   return eprint;
  * });
  *
  * // With attributes
@@ -194,7 +194,7 @@ export interface WithSpanOptions extends SpanOptions {
  *   async () => {
  *     return await handleRequest(req);
  *   },
- *   { attributes: { 'http.method': 'GET', 'http.route': '/api/preprints' } }
+ *   { attributes: { 'http.method': 'GET', 'http.route': '/api/eprints' } }
  * );
  *
  * // Sync operation
@@ -312,11 +312,11 @@ export function withSpanSync<T>(name: string, fn: () => T, options?: WithSpanOpt
  * @example
  * ```typescript
  * const [fetchResult, indexResult, notifyResult] = await withChildSpans(
- *   'processPreprint',
+ *   'processEprint',
  *   [
- *     { name: 'fetchPreprint', fn: () => fetchPreprint(uri) },
- *     { name: 'indexToSearch', fn: () => indexToElasticsearch(preprint) },
- *     { name: 'sendNotification', fn: () => sendNotification(preprint) },
+ *     { name: 'fetchEprint', fn: () => fetchEprint(uri) },
+ *     { name: 'indexToSearch', fn: () => indexToElasticsearch(eprint) },
+ *     { name: 'sendNotification', fn: () => sendNotification(eprint) },
  *   ]
  * );
  * ```
@@ -395,7 +395,7 @@ export function getTraceContext(): {
  * ```typescript
  * addSpanAttributes({
  *   [SpanAttributes.HTTP_METHOD]: 'GET',
- *   [SpanAttributes.HTTP_ROUTE]: '/api/preprints/:id',
+ *   [SpanAttributes.HTTP_ROUTE]: '/api/eprints/:id',
  *   [SpanAttributes.HTTP_STATUS_CODE]: 200,
  * });
  * ```
@@ -421,8 +421,8 @@ export const SpanAttributes = {
   MESSAGING_DESTINATION: 'messaging.destination',
 
   // Custom: Chive specific
-  PREPRINT_URI: 'chive.preprint.uri',
-  PREPRINT_DID: 'chive.preprint.did',
+  EPRINT_URI: 'chive.eprint.uri',
+  EPRINT_DID: 'chive.eprint.did',
   USER_DID: 'chive.user.did',
   OPERATION: 'chive.operation',
   REQUEST_ID: 'chive.request.id',

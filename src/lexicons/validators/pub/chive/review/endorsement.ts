@@ -17,7 +17,7 @@ import { z } from 'zod';
  * @internal
  */
 export const reviewEndorsementSchema = z.object({
-  preprintUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }),
+  eprintUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }),
   contributions: z.array(z.enum(["methodological", "analytical", "theoretical", "empirical", "conceptual", "technical", "data", "replication", "reproducibility", "synthesis", "interdisciplinary", "pedagogical", "visualization", "societal-impact", "clinical"])).min(1).max(15),
   comment: z.string().max(5000).optional(),
   createdAt: z.string().datetime(),

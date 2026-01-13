@@ -56,3 +56,16 @@ runs:
         echo "ERROR: Neo4j failed to start within 90 seconds"
         docker compose -f docker/docker-compose.yml logs neo4j
         exit 1
+
+    - name: Seed test data
+      if: inputs.services == 'all'
+      shell: bash
+      env:
+        DATABASE_URL: postgresql://chive:chive_test_password@localhost:5432/chive_test
+        ELASTICSEARCH_URL: http://localhost:9200
+        NEO4J_URI: bolt://localhost:7687
+        NEO4J_USER: neo4j
+        NEO4J_PASSWORD: chive_test_password
+      run: |
+        echo "Seeding test data..."
+        pnpm exec tsx scripts/seed-test-data.ts

@@ -103,7 +103,7 @@ test.describe('Reconciliation Proposal - Source Entity Fields', () => {
       await expect(page.getByRole('option', { name: /facet value/i })).toBeVisible();
       await expect(page.getByRole('option', { name: /organization/i })).toBeVisible();
       await expect(page.getByRole('option', { name: /author/i })).toBeVisible();
-      await expect(page.getByRole('option', { name: /preprint/i })).toBeVisible();
+      await expect(page.getByRole('option', { name: /eprint/i })).toBeVisible();
     }
   });
 

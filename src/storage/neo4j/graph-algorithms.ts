@@ -164,7 +164,7 @@ export class GraphAlgorithms {
    * ```typescript
    * await algorithms.projectGraph({
    *   name: 'knowledge-graph',
-   *   nodeLabels: ['FieldNode', 'PreprintSubmission'],
+   *   nodeLabels: ['FieldNode', 'EprintSubmission'],
    *   relationshipTypes: ['RELATED_TO', 'CLASSIFIED_AS'],
    *   relationshipProperties: ['weight']
    * });

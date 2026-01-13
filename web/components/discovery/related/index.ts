@@ -3,7 +3,7 @@
  *
  * @remarks
  * Components for displaying related papers, citation networks,
- * and relationship badges on preprint detail pages.
+ * and relationship badges on eprint detail pages.
  *
  * @packageDocumentation
  */

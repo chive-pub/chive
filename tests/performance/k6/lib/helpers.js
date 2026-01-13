@@ -29,7 +29,7 @@ export const customMetrics = {
  * @param {string} collection - Lexicon collection name
  * @returns {string} AT-URI string
  */
-export function generateAtUri(did, collection = 'pub.chive.preprint.submission') {
+export function generateAtUri(did, collection = 'pub.chive.eprint.submission') {
   const rkey = `perf${Date.now()}${Math.random().toString(36).substring(2, 8)}`;
   return `at://${did}/${collection}/${rkey}`;
 }
@@ -45,17 +45,17 @@ export function generateCid() {
 }
 
 /**
- * Generates test preprint data.
+ * Generates test eprint data.
  *
  * @param {string} did - Author DID
- * @returns {object} Preprint submission object
+ * @returns {object} Eprint submission object
  */
-export function generatePreprint(did) {
+export function generateEprint(did) {
   const timestamp = Date.now();
   return {
-    $type: 'pub.chive.preprint.submission',
+    $type: 'pub.chive.eprint.submission',
     author: did,
-    title: `Performance Test Preprint ${timestamp}`,
+    title: `Performance Test Eprint ${timestamp}`,
     abstract: `This is a test abstract for performance benchmarking. Timestamp: ${timestamp}`,
     keywords: ['performance', 'test', 'benchmark'],
     facets: [],
@@ -66,7 +66,7 @@ export function generatePreprint(did) {
       size: 1024000 + Math.floor(Math.random() * 5000000),
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     createdAt: new Date().toISOString(),
   };
 }

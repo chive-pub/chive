@@ -2,13 +2,13 @@
  * Validation schemas for Chive forms.
  *
  * @remarks
- * Exports Zod schemas for preprint submissions and governance proposals.
+ * Exports Zod schemas for eprint submissions and governance proposals.
  * These schemas match the ATProto lexicon specifications.
  *
  * @packageDocumentation
  */
 
-// Preprint submission schemas
+// Eprint submission schemas
 export {
   // Constants
   MAX_DOCUMENT_SIZE_BYTES,
@@ -32,13 +32,13 @@ export {
   fundingSourceSchema,
   externalIdentifierSchema,
   versionRefSchema,
-  preprintSubmissionSchema,
+  eprintSubmissionSchema,
   // Step schemas
   stepFilesSchema,
   stepMetadataSchema,
   stepAuthorsSchema,
   stepFieldsSchema,
-  preprintFormDataSchema,
+  eprintFormDataSchema,
   // Types
   type ReconciliationStatus,
   type ExternalProfile,
@@ -51,17 +51,17 @@ export {
   type FundingSource,
   type ExternalIdentifier,
   type VersionRef,
-  type PreprintSubmission,
+  type EprintSubmission,
   type StepFilesData,
   type StepMetadataData,
   type StepAuthorsData,
   type StepFieldsData,
-  type PreprintFormData,
+  type EprintFormData,
   // Helpers
   isValidOrcid,
   isValidAtUri,
   normalizeOrcid,
-} from './preprint';
+} from './eprint';
 
 // Governance proposal schemas
 export {

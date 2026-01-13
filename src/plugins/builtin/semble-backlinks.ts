@@ -2,11 +2,11 @@
  * Semble backlinks tracking plugin.
  *
  * @remarks
- * Tracks references to Chive preprints from Semble collections.
+ * Tracks references to Chive eprints from Semble collections.
  * Semble (https://semble.app) is an ATProto-based collection manager
  * that allows users to curate research collections.
  *
- * When a Semble collection includes a Chive preprint, this plugin
+ * When a Semble collection includes a Chive eprint, this plugin
  * creates a backlink for aggregation and discovery.
  *
  * Collection schema: xyz.semble.collection
@@ -57,7 +57,7 @@ interface SembleCollectionItem {
  * Semble backlinks tracking plugin.
  *
  * @remarks
- * Tracks preprint references in Semble collections via firehose
+ * Tracks eprint references in Semble collections via firehose
  * and creates backlinks for discovery and aggregation.
  *
  * Only processes public and unlisted collections to respect privacy.
@@ -93,7 +93,7 @@ export class SembleBacklinksPlugin extends BacklinkTrackingPlugin {
     id: 'pub.chive.plugin.semble-backlinks',
     name: 'Semble Backlinks',
     version: '0.1.0',
-    description: 'Tracks references to Chive preprints from Semble collections',
+    description: 'Tracks references to Chive eprints from Semble collections',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -106,19 +106,19 @@ export class SembleBacklinksPlugin extends BacklinkTrackingPlugin {
   };
 
   /**
-   * Extracts preprint AT-URIs from a Semble collection.
+   * Extracts eprint AT-URIs from a Semble collection.
    *
    * @param record - Semble collection record
-   * @returns Array of preprint AT-URIs
+   * @returns Array of eprint AT-URIs
    */
-  extractPreprintRefs(record: unknown): string[] {
+  extractEprintRefs(record: unknown): string[] {
     const collection = record as SembleCollection;
 
     if (!collection.items || !Array.isArray(collection.items)) {
       return [];
     }
 
-    return collection.items.filter((item) => this.isPreprintUri(item.uri)).map((item) => item.uri);
+    return collection.items.filter((item) => this.isEprintUri(item.uri)).map((item) => item.uri);
   }
 
   /**

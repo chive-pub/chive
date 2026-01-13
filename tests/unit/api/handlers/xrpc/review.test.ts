@@ -2,14 +2,14 @@
  * Unit tests for XRPC review handlers.
  *
  * @remarks
- * Tests listForPreprint and getThread handlers.
+ * Tests listForEprint and getThread handlers.
  * Validates ReviewService integration and thread traversal.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { getThreadHandler } from '@/api/handlers/xrpc/review/getThread.js';
-import { listForPreprintHandler } from '@/api/handlers/xrpc/review/listForPreprint.js';
+import { listForEprintHandler } from '@/api/handlers/xrpc/review/listForEprint.js';
 import type { AtUri } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -54,7 +54,7 @@ const createMockReviewService = (): MockReviewService => ({
 const createMockReviewView = (overrides?: Partial<MockReviewView>): MockReviewView => ({
   uri: 'at://did:plc:reviewer/pub.chive.review.comment/abc123' as AtUri,
   author: 'did:plc:reviewer',
-  subject: 'at://did:plc:author/pub.chive.preprint.submission/xyz' as AtUri,
+  subject: 'at://did:plc:author/pub.chive.eprint.submission/xyz' as AtUri,
   text: 'This is a thoughtful review of the methodology...',
   createdAt: new Date(),
   replyCount: 0,
@@ -99,8 +99,8 @@ describe('XRPC Review Handlers', () => {
     };
   });
 
-  describe('listForPreprintHandler', () => {
-    it('returns reviews for a preprint', async () => {
+  describe('listForEprintHandler', () => {
+    it('returns reviews for a eprint', async () => {
       const rootView = createMockReviewView();
       const replyView = createMockReviewView({
         uri: 'at://did:plc:reviewer2/pub.chive.review.comment/def456' as AtUri,
@@ -115,9 +115,9 @@ describe('XRPC Review Handlers', () => {
 
       mockReviewService.getReviews.mockResolvedValue([rootThread]);
 
-      const result = await listForPreprintHandler(
-        mockContext as unknown as Parameters<typeof listForPreprintHandler>[0],
-        { preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz', limit: 20 }
+      const result = await listForEprintHandler(
+        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
+        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
       );
 
       expect(result.reviews).toBeDefined();
@@ -128,9 +128,9 @@ describe('XRPC Review Handlers', () => {
     it('returns empty array when no reviews exist', async () => {
       mockReviewService.getReviews.mockResolvedValue([]);
 
-      const result = await listForPreprintHandler(
-        mockContext as unknown as Parameters<typeof listForPreprintHandler>[0],
-        { preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz', limit: 20 }
+      const result = await listForEprintHandler(
+        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
+        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
       );
 
       expect(result.reviews).toHaveLength(0);
@@ -155,9 +155,9 @@ describe('XRPC Review Handlers', () => {
 
       mockReviewService.getReviews.mockResolvedValue([root1Thread, root2Thread]);
 
-      const result = await listForPreprintHandler(
-        mockContext as unknown as Parameters<typeof listForPreprintHandler>[0],
-        { preprintUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz', limit: 20 }
+      const result = await listForEprintHandler(
+        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
+        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
       );
 
       // Should have reviews returned (flattened from threads)

@@ -10,12 +10,12 @@
 
 // Re-export response types from schemas
 export type {
-  PreprintResponse,
-  PreprintSummary,
-  PreprintListResponse,
+  EprintResponse,
+  EprintSummary,
+  EprintListResponse,
   SearchResultsResponse,
-  PreprintSourceInfo,
-} from '@/api/schemas/preprint.js';
+  EprintSourceInfo,
+} from '@/api/schemas/eprint.js';
 
 export type {
   FieldNode,
@@ -84,10 +84,10 @@ export interface HealthResponse {
 }
 
 /**
- * Trending preprints response.
+ * Trending eprints response.
  */
 export interface TrendingResponse {
-  preprints: {
+  eprints: {
     uri: string;
     title: string;
     score: number;

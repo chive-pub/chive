@@ -20,7 +20,7 @@ import { atUriSchema, authorRefSchema, paginationQuerySchema } from './common.js
  */
 export const userTagSchema = z.object({
   uri: atUriSchema.describe('Tag AT-URI'),
-  preprintUri: atUriSchema.describe('Tagged preprint AT-URI'),
+  eprintUri: atUriSchema.describe('Tagged eprint AT-URI'),
   author: authorRefSchema.describe('Tag creator'),
   displayForm: z.string().describe('Original display form'),
   normalizedForm: z.string().describe('Normalized form (lowercase, hyphenated)'),
@@ -42,7 +42,7 @@ export type UserTag = z.infer<typeof userTagSchema>;
 export const tagSummarySchema = z.object({
   normalizedForm: z.string().describe('Normalized tag form'),
   displayForms: z.array(z.string()).describe('All display forms used'),
-  usageCount: z.number().int().describe('Number of preprints tagged'),
+  usageCount: z.number().int().describe('Number of eprints tagged'),
   qualityScore: z.number().min(0).max(1).describe('Tag quality score'),
   isPromoted: z.boolean().describe('Promoted to facet/authority'),
   promotedTo: z
@@ -82,20 +82,20 @@ export const tagSuggestionSchema = z.object({
 export type TagSuggestion = z.infer<typeof tagSuggestionSchema>;
 
 /**
- * List tags for preprint params schema.
+ * List tags for eprint params schema.
  *
  * @public
  */
-export const listTagsForPreprintParamsSchema = z.object({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+export const listTagsForEprintParamsSchema = z.object({
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
 });
 
 /**
- * List tags for preprint params type.
+ * List tags for eprint params type.
  *
  * @public
  */
-export type ListTagsForPreprintParams = z.infer<typeof listTagsForPreprintParamsSchema>;
+export type ListTagsForEprintParams = z.infer<typeof listTagsForEprintParamsSchema>;
 
 /**
  * Get tag suggestions params schema.
@@ -171,7 +171,7 @@ export type GetTagDetailParams = z.infer<typeof getTagDetailParamsSchema>;
  * @public
  */
 export const createTagInputSchema = z.object({
-  preprintUri: atUriSchema.describe('Preprint AT-URI'),
+  eprintUri: atUriSchema.describe('Eprint AT-URI'),
   displayForm: z.string().min(1).max(100).describe('Tag display form'),
 });
 
@@ -199,21 +199,21 @@ export const deleteTagInputSchema = z.object({
 export type DeleteTagInput = z.infer<typeof deleteTagInputSchema>;
 
 /**
- * Preprint tags response schema.
+ * Eprint tags response schema.
  *
  * @public
  */
-export const preprintTagsResponseSchema = z.object({
-  tags: z.array(userTagSchema).describe('Tags for the preprint'),
+export const eprintTagsResponseSchema = z.object({
+  tags: z.array(userTagSchema).describe('Tags for the eprint'),
   suggestions: z.array(tagSuggestionSchema).optional().describe('TaxoFolk suggestions'),
 });
 
 /**
- * Preprint tags response type.
+ * Eprint tags response type.
  *
  * @public
  */
-export type PreprintTagsResponse = z.infer<typeof preprintTagsResponseSchema>;
+export type EprintTagsResponse = z.infer<typeof eprintTagsResponseSchema>;
 
 /**
  * Tag suggestions response schema.

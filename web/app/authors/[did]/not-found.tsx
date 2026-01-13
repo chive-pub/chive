@@ -25,7 +25,7 @@ export default function AuthorNotFound() {
           <Link href="/">Go home</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/search">Search preprints</Link>
+          <Link href="/search">Search eprints</Link>
         </Button>
       </div>
     </div>

@@ -1,10 +1,10 @@
 # Data sovereignty
 
-Data sovereignty means you own and control your scholarly work. In Chive, your preprints, reviews, and endorsements belong to you, not the platform.
+Data sovereignty means you own and control your scholarly work. In Chive, your eprints, reviews, and endorsements belong to you, not the platform.
 
 ## The ownership model
 
-Traditional preprint servers store your work on their servers. You're a guest in their house. Chive inverts this relationship:
+Traditional eprint services store your work on their servers. You're a guest in their house. Chive inverts this relationship:
 
 ```
 Traditional Model                    Chive Model
@@ -12,7 +12,7 @@ Traditional Model                    Chive Model
 │   Platform Server   │              │      Your PDS       │
 │                     │              │                     │
 │  ┌───────────────┐  │              │  ┌───────────────┐  │
-│  │ Your preprint │  │              │  │ Your preprint │  │
+│  │ Your eprint │  │              │  │ Your eprint │  │
 │  │ (they own it) │  │              │  │ (you own it)  │  │
 │  └───────────────┘  │              │  └───────────────┘  │
 │                     │              │                     │
@@ -65,7 +65,7 @@ When you upload a PDF to Chive, it goes to your PDS, not to Chive's servers. Chi
 }
 ```
 
-When someone views your preprint, Chive fetches the PDF from your PDS using the BlobRef. The CID (Content Identifier) ensures the file hasn't been tampered with.
+When someone views your eprint, Chive fetches the PDF from your PDS using the BlobRef. The CID (Content Identifier) ensures the file hasn't been tampered with.
 
 ### Benefits of BlobRefs
 
@@ -151,7 +151,7 @@ Your DID remains constant. When you migrate to a new PDS:
 3. Update your DID document to point to the new PDS
 4. Chive detects the change and re-indexes
 
-Your preprints, reviews, and endorsements move with you. No broken links. No lost citations.
+Your eprints, reviews, and endorsements move with you. No broken links. No lost citations.
 
 ### Using multiple AppViews
 
@@ -167,7 +167,7 @@ Your data is accessible to any compliant AppView:
            ▼               ▼               ▼
     ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
     │    Chive     │ │  Future App  │ │  Another App │
-    │  (preprints) │ │  (analytics) │ │  (citations) │
+    │  (eprints) │ │  (analytics) │ │  (citations) │
     └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
@@ -184,7 +184,7 @@ atproto repo export did:plc:abc123... --output my-research.car
 
 The export contains:
 
-- All your records (preprints, reviews, endorsements)
+- All your records (eprints, reviews, endorsements)
 - Cryptographic signatures proving authenticity
 - Complete revision history
 - BlobRefs (pointers to your files)
@@ -198,7 +198,7 @@ Every record you create is cryptographically signed:
 ```typescript
 {
   "record": {
-    "$type": "pub.chive.preprint.submission",
+    "$type": "pub.chive.eprint.submission",
     "title": "My Research",
     // ... content
   },
@@ -228,7 +228,7 @@ If Chive shuts down:
 
 | What happens               | What doesn't happen           |
 | -------------------------- | ----------------------------- |
-| Chive's indexes go offline | Your preprints are deleted    |
+| Chive's indexes go offline | Your eprints are deleted      |
 | Search becomes unavailable | Your PDFs become inaccessible |
 | Discovery features stop    | Your DOIs break               |
 |                            | Your citations vanish         |
@@ -237,15 +237,15 @@ Your work remains in your PDS. Another AppView could index it. Your DOIs (regist
 
 ## Comparison with traditional platforms
 
-| Feature               | Traditional preprint server | Chive                 |
-| --------------------- | --------------------------- | --------------------- |
-| Data location         | Platform servers            | Your PDS              |
-| Ownership             | Platform owns copy          | You own original      |
-| Portability           | Export/import required      | Automatic via DID     |
-| Backup responsibility | Platform                    | You (or PDS provider) |
-| Platform shutdown     | Data at risk                | Data unaffected       |
-| Terms of service      | Can restrict access         | You set terms         |
-| API access            | Platform controls           | Open AT Protocol      |
+| Feature               | Traditional eprint service | Chive                 |
+| --------------------- | -------------------------- | --------------------- |
+| Data location         | Platform servers           | Your PDS              |
+| Ownership             | Platform owns copy         | You own original      |
+| Portability           | Export/import required     | Automatic via DID     |
+| Backup responsibility | Platform                   | You (or PDS provider) |
+| Platform shutdown     | Data at risk               | Data unaffected       |
+| Terms of service      | Can restrict access        | You set terms         |
+| API access            | Platform controls          | Open AT Protocol      |
 
 ## Your responsibilities
 
@@ -262,4 +262,4 @@ Data sovereignty comes with responsibility:
 
 - [AT Protocol](./at-protocol.md): Technical foundations
 - [Knowledge graph](./knowledge-graph.md): Community classification
-- [Submitting preprints](/user-guide/submitting-preprints): Get started
+- [Submitting eprints](/user-guide/submitting-eprints): Get started

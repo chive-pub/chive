@@ -303,7 +303,7 @@ describe('Real-world category matching scenarios', () => {
     expect(score).toBe(1.0); // Exact match on cs.lg
   });
 
-  it('matches linguistics preprints to NLP researchers', () => {
+  it('matches linguistics eprints to NLP researchers', () => {
     const userFields = ['cs.cl', 'cs.ai'];
     const paperCategories = ['linguistics.syntax', 'linguistics.semantics'];
 

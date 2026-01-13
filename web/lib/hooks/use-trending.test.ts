@@ -40,7 +40,7 @@ describe('useTrending', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches trending preprints with default window (7d)', async () => {
+  it('fetches trending eprints with default window (7d)', async () => {
     const mockResponse = createMockTrendingResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -60,7 +60,7 @@ describe('useTrending', () => {
     });
   });
 
-  it('fetches trending preprints with 24h window', async () => {
+  it('fetches trending eprints with 24h window', async () => {
     const mockResponse = createMockTrendingResponse({ window: '24h' });
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -79,7 +79,7 @@ describe('useTrending', () => {
     });
   });
 
-  it('fetches trending preprints with 30d window', async () => {
+  it('fetches trending eprints with 30d window', async () => {
     const mockResponse = createMockTrendingResponse({ window: '30d' });
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,

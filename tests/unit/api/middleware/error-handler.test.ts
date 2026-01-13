@@ -71,7 +71,7 @@ describe('Error Handler Middleware', () => {
 
     it('returns 404 for NotFoundError', async () => {
       app.get('/test', () => {
-        throw new NotFoundError('Preprint', 'at://did/collection/123');
+        throw new NotFoundError('Eprint', 'at://did/collection/123');
       });
 
       const res = await app.request('/test');
@@ -82,7 +82,7 @@ describe('Error Handler Middleware', () => {
       };
       expect(body.error).toMatchObject({
         code: 'NOT_FOUND',
-        message: 'Preprint not found: at://did/collection/123',
+        message: 'Eprint not found: at://did/collection/123',
         requestId: 'req_test123',
       });
     });

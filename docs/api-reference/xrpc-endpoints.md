@@ -2,13 +2,13 @@
 
 This page documents all XRPC endpoints available in the Chive API. Endpoints are organized by namespace.
 
-## Preprint namespace
+## Eprint namespace
 
-Endpoints for querying preprint submissions.
+Endpoints for querying eprint submissions.
 
-### pub.chive.preprint.getSubmission
+### pub.chive.eprint.getSubmission
 
-Retrieve a single preprint by its AT URI.
+Retrieve a single eprint by its AT URI.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -17,15 +17,15 @@ Retrieve a single preprint by its AT URI.
 
 **Parameters**
 
-| Name  | Type   | Required | Description            |
-| ----- | ------ | -------- | ---------------------- |
-| `uri` | string | Yes      | AT URI of the preprint |
+| Name  | Type   | Required | Description          |
+| ----- | ------ | -------- | -------------------- |
+| `uri` | string | Yes      | AT URI of the eprint |
 
 **Response**
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "cid": "bafyreib...",
   "author": {
     "did": "did:plc:abc123...",
@@ -54,9 +54,9 @@ Retrieve a single preprint by its AT URI.
 }
 ```
 
-### pub.chive.preprint.searchSubmissions
+### pub.chive.eprint.searchSubmissions
 
-Search for preprints by query string.
+Search for eprints by query string.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -82,7 +82,7 @@ Search for preprints by query string.
 {
   "submissions": [
     {
-      "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+      "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
       "title": "Novel Approach to Quantum Computing",
       "authors": [...],
       "abstract": "We present...",
@@ -94,9 +94,9 @@ Search for preprints by query string.
 }
 ```
 
-### pub.chive.preprint.listByAuthor
+### pub.chive.eprint.listByAuthor
 
-List preprints by a specific author.
+List eprints by a specific author.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -119,7 +119,7 @@ Endpoints for peer reviews and comments.
 
 ### pub.chive.review.getThread
 
-Get a review thread for a preprint.
+Get a review thread for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -128,10 +128,10 @@ Get a review thread for a preprint.
 
 **Parameters**
 
-| Name    | Type    | Required | Description                        |
-| ------- | ------- | -------- | ---------------------------------- |
-| `uri`   | string  | Yes      | URI of the preprint or root review |
-| `depth` | integer | No       | Thread depth (default: 6)          |
+| Name    | Type    | Required | Description                      |
+| ------- | ------- | -------- | -------------------------------- |
+| `uri`   | string  | Yes      | URI of the eprint or root review |
+| `depth` | integer | No       | Thread depth (default: 6)        |
 
 **Response**
 
@@ -145,7 +145,7 @@ Get a review thread for a preprint.
     },
     "record": {
       "text": "This is an excellent contribution...",
-      "subject": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+      "subject": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
       "createdAt": "2025-01-16T14:00:00Z"
     },
     "replies": [...]
@@ -153,9 +153,9 @@ Get a review thread for a preprint.
 }
 ```
 
-### pub.chive.review.listForPreprint
+### pub.chive.review.listForEprint
 
-List all reviews for a preprint.
+List all reviews for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -166,7 +166,7 @@ List all reviews for a preprint.
 
 | Name     | Type    | Required | Description               |
 | -------- | ------- | -------- | ------------------------- |
-| `uri`    | string  | Yes      | Preprint URI              |
+| `uri`    | string  | Yes      | Eprint URI                |
 | `sortBy` | string  | No       | Sort: `recent`, `helpful` |
 | `limit`  | integer | No       | Results per page          |
 | `cursor` | string  | No       | Pagination cursor         |
@@ -179,7 +179,7 @@ Endpoints for formal endorsements.
 
 ### pub.chive.endorsement.getSummary
 
-Get endorsement summary for a preprint.
+Get endorsement summary for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -188,15 +188,15 @@ Get endorsement summary for a preprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Preprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 **Response**
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "totalEndorsements": 15,
   "byContribution": {
     "methodology": 8,
@@ -214,9 +214,9 @@ Get endorsement summary for a preprint.
 }
 ```
 
-### pub.chive.endorsement.listForPreprint
+### pub.chive.endorsement.listForEprint
 
-List all endorsements for a preprint.
+List all endorsements for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -227,13 +227,13 @@ List all endorsements for a preprint.
 
 | Name     | Type    | Required | Description       |
 | -------- | ------- | -------- | ----------------- |
-| `uri`    | string  | Yes      | Preprint URI      |
+| `uri`    | string  | Yes      | Eprint URI        |
 | `limit`  | integer | No       | Results per page  |
 | `cursor` | string  | No       | Pagination cursor |
 
 ### pub.chive.endorsement.getUserEndorsement
 
-Get a specific user's endorsement for a preprint.
+Get a specific user's endorsement for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -244,7 +244,7 @@ Get a specific user's endorsement for a preprint.
 
 | Name  | Type   | Required | Description                               |
 | ----- | ------ | -------- | ----------------------------------------- |
-| `uri` | string | Yes      | Preprint URI                              |
+| `uri` | string | Yes      | Eprint URI                                |
 | `did` | string | No       | User DID (defaults to authenticated user) |
 
 ---
@@ -283,7 +283,7 @@ Get details for a specific field.
     "wikidata": "Q339",
     "lcsh": "sh2008010405"
   },
-  "preprintCount": 4523
+  "eprintCount": 4523
 }
 ```
 
@@ -339,7 +339,7 @@ Get a specific authority record.
 
 ### pub.chive.graph.browseFaceted
 
-Browse preprints using PMEST facets.
+Browse eprints using PMEST facets.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -358,9 +358,9 @@ Browse preprints using PMEST facets.
 | `limit`       | integer  | No       | Results per page  |
 | `cursor`      | string   | No       | Pagination cursor |
 
-### pub.chive.graph.getFieldPreprints
+### pub.chive.graph.getFieldEprints
 
-Get preprints in a specific field.
+Get eprints in a specific field.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -414,9 +414,9 @@ Search tags.
 | `query` | string  | Yes      | Search query     |
 | `limit` | integer | No       | Results per page |
 
-### pub.chive.tag.listForPreprint
+### pub.chive.tag.listForEprint
 
-List tags on a preprint.
+List tags on a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -425,9 +425,9 @@ List tags on a preprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Preprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ### pub.chive.tag.getTrending
 
@@ -458,7 +458,7 @@ Get tag suggestions based on content.
 
 | Name   | Type   | Required | Description     |
 | ------ | ------ | -------- | --------------- |
-| `uri`  | string | No       | Preprint URI    |
+| `uri`  | string | No       | Eprint URI      |
 | `text` | string | No       | Text to analyze |
 
 ### pub.chive.tag.getDetail
@@ -593,7 +593,7 @@ Endpoints for analytics and engagement metrics.
 
 ### pub.chive.metrics.getMetrics
 
-Get metrics for a preprint.
+Get metrics for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -602,15 +602,15 @@ Get metrics for a preprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Preprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 **Response**
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "views": 12453,
   "downloads": 3421,
   "citations": 45,
@@ -628,7 +628,7 @@ Get metrics for a preprint.
 
 ### pub.chive.metrics.getViewCount
 
-Get view count for a preprint.
+Get view count for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -637,13 +637,13 @@ Get view count for a preprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Preprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ### pub.chive.metrics.getTrending
 
-Get trending preprints.
+Get trending eprints.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -671,7 +671,7 @@ Record a view event.
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "source": "search"
 }
 ```
@@ -689,7 +689,7 @@ Record a download event.
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "format": "pdf"
 }
 ```
@@ -708,14 +708,14 @@ Record a search result click.
 ```json
 {
   "query": "quantum computing",
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "position": 3
 }
 ```
 
 ### pub.chive.metrics.recordDwellTime
 
-Record time spent on a preprint.
+Record time spent on a eprint.
 
 | Property | Value            |
 | -------- | ---------------- |
@@ -726,7 +726,7 @@ Record time spent on a preprint.
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "durationMs": 45000
 }
 ```
@@ -759,7 +759,7 @@ Get personalized recommendations for the authenticated user.
 {
   "recommendations": [
     {
-      "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+      "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
       "title": "Advances in Quantum Error Correction",
       "reason": "Based on your reading history in quantum computing",
       "score": 0.92
@@ -771,7 +771,7 @@ Get personalized recommendations for the authenticated user.
 
 ### pub.chive.discovery.getSimilar
 
-Get preprints similar to a given preprint.
+Get eprints similar to a given eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -782,12 +782,12 @@ Get preprints similar to a given preprint.
 
 | Name    | Type    | Required | Description       |
 | ------- | ------- | -------- | ----------------- |
-| `uri`   | string  | Yes      | Preprint URI      |
+| `uri`   | string  | Yes      | Eprint URI        |
 | `limit` | integer | No       | Number of results |
 
 ### pub.chive.discovery.getCitations
 
-Get citation graph for a preprint.
+Get citation graph for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -798,13 +798,13 @@ Get citation graph for a preprint.
 
 | Name        | Type    | Required | Description               |
 | ----------- | ------- | -------- | ------------------------- |
-| `uri`       | string  | Yes      | Preprint URI              |
+| `uri`       | string  | Yes      | Eprint URI                |
 | `direction` | string  | No       | `citing`, `cited`, `both` |
 | `limit`     | integer | No       | Number of results         |
 
 ### pub.chive.discovery.getEnrichment
 
-Get enriched metadata for a preprint.
+Get enriched metadata for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -813,9 +813,9 @@ Get enriched metadata for a preprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Preprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ### pub.chive.discovery.recordInteraction
 
@@ -830,7 +830,7 @@ Record a user interaction for recommendation training.
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "type": "click",
   "context": "recommendations"
 }
@@ -855,7 +855,7 @@ Start a new authorship claim.
 
 ```json
 {
-  "preprintUri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "authorPosition": 1,
   "orcid": "0000-0002-1825-0097"
 }
@@ -923,7 +923,7 @@ Get claims for the authenticated user.
 
 ### pub.chive.claiming.findClaimable
 
-Find preprints claimable by the user.
+Find eprints claimable by the user.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -939,9 +939,9 @@ Autocomplete for claim search.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-### pub.chive.claiming.searchPreprints
+### pub.chive.claiming.searchEprints
 
-Search preprints for claiming.
+Search eprints for claiming.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -983,7 +983,7 @@ Endpoints for AT Protocol app references.
 
 ### pub.chive.backlink.list
 
-List backlinks for a preprint.
+List backlinks for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -994,7 +994,7 @@ List backlinks for a preprint.
 
 | Name     | Type   | Required | Description          |
 | -------- | ------ | -------- | -------------------- |
-| `uri`    | string | Yes      | Preprint URI         |
+| `uri`    | string | Yes      | Eprint URI           |
 | `source` | string | No       | Filter by source app |
 
 ### pub.chive.backlink.create
@@ -1017,7 +1017,7 @@ Delete a backlink.
 
 ### pub.chive.backlink.getCounts
 
-Get backlink counts for a preprint.
+Get backlink counts for a eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -1026,9 +1026,9 @@ Get backlink counts for a preprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Preprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ---
 
@@ -1080,7 +1080,7 @@ Endpoints for importing from external sources.
 
 ### pub.chive.import.search
 
-Search external sources for preprints.
+Search external sources for eprints.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -1096,7 +1096,7 @@ Search external sources for preprints.
 
 ### pub.chive.import.exists
 
-Check if an external preprint already exists.
+Check if an external eprint already exists.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -1111,7 +1111,7 @@ Check if an external preprint already exists.
 
 ### pub.chive.import.get
 
-Get details for an external preprint.
+Get details for an external eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -1149,7 +1149,7 @@ Get the authenticated user's profile.
   "orcid": "0000-0002-1825-0097",
   "affiliation": "MIT",
   "bio": "Quantum computing researcher",
-  "preprintCount": 12,
+  "eprintCount": 12,
   "endorsementCount": 45
 }
 ```
@@ -1278,7 +1278,7 @@ Force refresh a record from PDS.
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5..."
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5..."
 }
 ```
 

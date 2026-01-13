@@ -1,6 +1,6 @@
 # Architecture
 
-Chive is an AT Protocol AppView that indexes and presents scholarly preprints from the decentralized network. This document provides a high-level overview of the system architecture.
+Chive is an AT Protocol AppView that indexes and presents scholarly eprints from the decentralized network. This document provides a high-level overview of the system architecture.
 
 ## System overview
 
@@ -38,7 +38,7 @@ Chive is an AT Protocol AppView that indexes and presents scholarly preprints fr
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           Service Layer                                 │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │
-│  │  Preprint   │ │   Search    │ │  Discovery  │ │  Knowledge      │   │
+│  │  Eprint   │ │   Search    │ │  Discovery  │ │  Knowledge      │   │
 │  │  Service    │ │   Service   │ │  Service    │ │  Graph Service  │   │
 │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -77,7 +77,7 @@ Relay WebSocket → Event Parser → Collection Filter → Event Handler → Sto
 
 The consumer filters for `pub.chive.*` records and processes:
 
-- Preprint submissions
+- Eprint submissions
 - Reviews and comments
 - Endorsements
 - Governance proposals and votes
@@ -89,7 +89,7 @@ Business logic is encapsulated in services:
 
 | Service               | Responsibility                    |
 | --------------------- | --------------------------------- |
-| PreprintService       | Preprint CRUD, version management |
+| EprintService         | Eprint CRUD, version management   |
 | SearchService         | Full-text search, faceted queries |
 | DiscoveryService      | Recommendations, similar papers   |
 | KnowledgeGraphService | Field taxonomy, authority control |

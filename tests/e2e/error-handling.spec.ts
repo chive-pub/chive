@@ -11,8 +11,8 @@ import { test, expect, type Page } from '@playwright/test';
 // =============================================================================
 
 test.describe('404 Handling', () => {
-  test('non-existent preprint shows error message', async ({ page }) => {
-    await page.goto('/preprints/at%3A%2F%2Fdid%3Aplc%3Anonexistent%2Ftest%2F123');
+  test('non-existent eprint shows error message', async ({ page }) => {
+    await page.goto('/eprints/at%3A%2F%2Fdid%3Aplc%3Anonexistent%2Ftest%2F123');
     const errorMessage = page.getByRole('alert').or(page.getByText(/not found|404|error/i));
     await expect(errorMessage).toBeVisible();
   });

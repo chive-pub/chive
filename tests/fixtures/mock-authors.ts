@@ -10,9 +10,9 @@
 
 import type { DID } from '../../src/types/atproto.js';
 import type {
-  PreprintAuthor,
-  PreprintAuthorAffiliation,
-  PreprintAuthorContribution,
+  EprintAuthor,
+  EprintAuthorAffiliation,
+  EprintAuthorContribution,
   ContributionDegree,
 } from '../../src/types/models/author.js';
 
@@ -23,8 +23,8 @@ import type {
  * @returns Mock affiliation
  */
 export function createMockAffiliation(
-  overrides: Partial<PreprintAuthorAffiliation> = {}
-): PreprintAuthorAffiliation {
+  overrides: Partial<EprintAuthorAffiliation> = {}
+): EprintAuthorAffiliation {
   return {
     name: 'University of Example',
     rorId: 'https://ror.org/02mhbdp94',
@@ -40,8 +40,8 @@ export function createMockAffiliation(
  * @returns Mock contribution
  */
 export function createMockContribution(
-  overrides: Partial<PreprintAuthorContribution> = {}
-): PreprintAuthorContribution {
+  overrides: Partial<EprintAuthorContribution> = {}
+): EprintAuthorContribution {
   return {
     typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization' as never,
     typeId: 'conceptualization',
@@ -52,12 +52,12 @@ export function createMockContribution(
 }
 
 /**
- * Creates a mock preprint author.
+ * Creates a mock eprint author.
  *
  * @param overrides - Optional overrides for the author
- * @returns Mock preprint author
+ * @returns Mock eprint author
  */
-export function createMockAuthor(overrides: Partial<PreprintAuthor> = {}): PreprintAuthor {
+export function createMockAuthor(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
   return {
     did: 'did:plc:test123' as DID,
     name: 'Jane Smith',
@@ -78,7 +78,7 @@ export function createMockAuthor(overrides: Partial<PreprintAuthor> = {}): Prepr
  * @param overrides - Optional overrides for the author
  * @returns Mock external author without DID
  */
-export function createMockExternalAuthor(overrides: Partial<PreprintAuthor> = {}): PreprintAuthor {
+export function createMockExternalAuthor(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
   return {
     did: undefined,
     name: 'John External',
@@ -105,8 +105,8 @@ export function createMockExternalAuthor(overrides: Partial<PreprintAuthor> = {}
  * @param count - Number of authors to create (default: 2)
  * @returns Array of mock authors
  */
-export function createMockAuthors(count = 2): readonly PreprintAuthor[] {
-  const authors: PreprintAuthor[] = [];
+export function createMockAuthors(count = 2): readonly EprintAuthor[] {
+  const authors: EprintAuthor[] = [];
   for (let i = 0; i < count; i++) {
     authors.push(
       createMockAuthor({
@@ -122,15 +122,15 @@ export function createMockAuthors(count = 2): readonly PreprintAuthor[] {
 }
 
 /**
- * Creates mock preprint base data with new author model.
+ * Creates mock eprint base data with new author model.
  *
- * @param overrides - Optional overrides for the preprint data
- * @returns Mock preprint data suitable for tests
+ * @param overrides - Optional overrides for the eprint data
+ * @returns Mock eprint data suitable for tests
  */
-interface MockPreprintData {
+interface MockEprintData {
   readonly uri: string;
   readonly cid: string;
-  readonly authors: readonly PreprintAuthor[];
+  readonly authors: readonly EprintAuthor[];
   readonly submittedBy: DID;
   readonly paperDid?: DID;
   readonly title: string;
@@ -138,30 +138,30 @@ interface MockPreprintData {
   readonly license: string;
 }
 
-export function createMockPreprintData(
+export function createMockEprintData(
   overrides: {
     uri?: string;
     cid?: string;
-    authors?: readonly PreprintAuthor[];
+    authors?: readonly EprintAuthor[];
     submittedBy?: DID;
     paperDid?: DID;
     title?: string;
     abstract?: string;
     license?: string;
   } = {}
-): MockPreprintData {
+): MockEprintData {
   const defaultAuthors = createMockAuthors(2);
   const firstAuthorDid = defaultAuthors[0]?.did;
   const submittedBy = overrides.submittedBy ?? firstAuthorDid ?? ('did:plc:submitter' as DID);
 
   return {
-    uri: overrides.uri ?? 'at://did:plc:test123/pub.chive.preprint.submission/xyz',
+    uri: overrides.uri ?? 'at://did:plc:test123/pub.chive.eprint.submission/xyz',
     cid: overrides.cid ?? 'bafyreiabc123',
     authors: overrides.authors ?? defaultAuthors,
     submittedBy,
     paperDid: overrides.paperDid,
-    title: overrides.title ?? 'Test Preprint Title',
-    abstract: overrides.abstract ?? 'This is a test abstract for the preprint.',
+    title: overrides.title ?? 'Test Eprint Title',
+    abstract: overrides.abstract ?? 'This is a test abstract for the eprint.',
     license: overrides.license ?? 'CC-BY-4.0',
   };
 }

@@ -2,7 +2,7 @@
  * Metadata enrichment services.
  *
  * @remarks
- * Provides services for enriching preprint metadata from external sources
+ * Provides services for enriching eprint metadata from external sources
  * including CrossRef, OpenAlex, and Semantic Scholar.
  *
  * @packageDocumentation
@@ -15,7 +15,7 @@ export {
   searchFunders,
   getFunderByDoi,
   searchJournals,
-  enrichPreprint,
+  enrichEprint,
   type CrossRefWork,
   type CrossRefAuthor,
   type CrossRefFunder,

@@ -2,7 +2,7 @@
  * Handler for pub.chive.claiming.findClaimable.
  *
  * @remarks
- * Finds claimable preprints matching the user's identity.
+ * Finds claimable eprints matching the user's identity.
  * Requires authentication.
  *
  * @packageDocumentation
@@ -26,7 +26,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @param c - Hono context
  * @param params - Search parameters
- * @returns Claimable preprints
+ * @returns Claimable eprints
  *
  * @public
  */
@@ -42,7 +42,7 @@ export async function findClaimableHandler(
     throw new AuthenticationError('Authentication required');
   }
 
-  logger.debug('Finding claimable preprints', {
+  logger.debug('Finding claimable eprints', {
     q: params.q,
     source: params.source,
     claimantDid: user.did,
@@ -65,7 +65,7 @@ export async function findClaimableHandler(
   });
 
   return {
-    preprints: result.preprints.map((p) => ({
+    eprints: result.eprints.map((p) => ({
       id: p.id,
       source: p.source,
       externalId: p.externalId,
@@ -92,7 +92,7 @@ export async function findClaimableHandler(
 export const findClaimableEndpoint: XRPCEndpoint<FindClaimableParams, FindClaimableResponse> = {
   method: 'pub.chive.claiming.findClaimable' as never,
   type: 'query',
-  description: 'Find claimable preprints matching identity',
+  description: 'Find claimable eprints matching identity',
   inputSchema: findClaimableParamsSchema,
   outputSchema: findClaimableResponseSchema,
   handler: findClaimableHandler,

@@ -11,7 +11,7 @@
  *   FieldCard,
  *   FieldBreadcrumb,
  *   FieldRelationships,
- *   FieldPreprints,
+ *   FieldEprints,
  * } from '@/components/knowledge-graph';
  * ```
  */
@@ -50,9 +50,9 @@ export type {
 export { FieldExternalIds, FieldExternalIdsSkeleton } from './field-external-ids';
 export type { FieldExternalIdsProps, FieldExternalIdsSkeletonProps } from './field-external-ids';
 
-// Field preprints
-export { FieldPreprints, FieldPreprintsSkeleton } from './field-preprints';
-export type { FieldPreprintsProps, FieldPreprintsSkeletonProps } from './field-preprints';
+// Field eprints
+export { FieldEprints, FieldEprintsSkeleton } from './field-eprints';
+export type { FieldEprintsProps, FieldEprintsSkeletonProps } from './field-eprints';
 
 // Field visualization
 export { FieldVisualization, FieldVisualizationSkeleton } from './field-visualization';

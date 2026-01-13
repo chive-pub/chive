@@ -29,14 +29,14 @@ const mockReviews = [
     uri: 'at://did:plc:testauthor/pub.chive.review.comment/review1',
     author: createMockAuthor({ did: testDid, displayName: 'Test Author' }),
     content: 'This is an excellent paper with solid methodology.',
-    preprintUri: 'at://did:plc:other/pub.chive.preprint.submission/preprint1',
+    eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint1',
     createdAt: '2024-06-15T10:00:00Z',
   }),
   createMockInlineReview({
     uri: 'at://did:plc:testauthor/pub.chive.review.comment/review2',
     author: createMockAuthor({ did: testDid, displayName: 'Test Author' }),
     content: 'The statistical analysis here needs more explanation.',
-    preprintUri: 'at://did:plc:other/pub.chive.preprint.submission/preprint2',
+    eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint2',
     target: createMockTextSpanTarget({
       selector: {
         type: 'TextQuoteSelector',
@@ -51,7 +51,7 @@ const mockReviews = [
     content: 'A very long review content that exceeds 200 characters to test truncation. '.repeat(
       3
     ),
-    preprintUri: 'at://did:plc:other/pub.chive.preprint.submission/preprint3',
+    eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint3',
     createdAt: '2024-06-13T08:00:00Z',
   }),
 ];
@@ -157,11 +157,11 @@ describe('AuthorReviews', () => {
       expect(timeElements.length).toBe(3);
     });
 
-    it('includes link to preprint for each review', () => {
+    it('includes link to eprint for each review', () => {
       render(<AuthorReviews did={testDid} />);
 
-      const preprintLinks = screen.getAllByText('View preprint');
-      expect(preprintLinks).toHaveLength(3);
+      const eprintLinks = screen.getAllByText('View eprint');
+      expect(eprintLinks).toHaveLength(3);
     });
   });
 

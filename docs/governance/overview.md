@@ -20,7 +20,7 @@ Any authenticated user can:
 
 - Propose new fields or changes to the knowledge graph
 - Vote on pending proposals
-- Tag preprints with user-generated tags
+- Tag eprints with user-generated tags
 - Report content policy violations
 
 ### Trusted editors
@@ -64,12 +64,12 @@ Elected body that:
 
 ### What is not governed
 
-| Area                  | Rationale                                     |
-| --------------------- | --------------------------------------------- |
-| **User content**      | Lives in user PDSes; users control their data |
-| **Preprint metadata** | Entered by authors; Chive only indexes        |
-| **Personal tags**     | User-generated; no approval needed            |
-| **User identity**     | Managed by AT Protocol DIDs                   |
+| Area                | Rationale                                     |
+| ------------------- | --------------------------------------------- |
+| **User content**    | Lives in user PDSes; users control their data |
+| **Eprint metadata** | Entered by authors; Chive only indexes        |
+| **Personal tags**   | User-generated; no approval needed            |
+| **User identity**   | Managed by AT Protocol DIDs                   |
 
 ## The Governance PDS
 
@@ -113,13 +113,13 @@ See [Proposals](./proposals.md) for details.
 
 Not all votes are equal. Vote weight depends on:
 
-| Factor                                     | Weight multiplier |
-| ------------------------------------------ | ----------------- |
-| Base (any authenticated user)              | 1.0x              |
-| Active contributor (10+ preprints/reviews) | 1.5x              |
-| Domain expert (publications in field)      | 2.5x              |
-| Trusted editor                             | 3.5x              |
-| Authority editor                           | 4.5x              |
+| Factor                                   | Weight multiplier |
+| ---------------------------------------- | ----------------- |
+| Base (any authenticated user)            | 1.0x              |
+| Active contributor (10+ eprints/reviews) | 1.5x              |
+| Domain expert (publications in field)    | 2.5x              |
+| Trusted editor                           | 3.5x              |
+| Authority editor                         | 4.5x              |
 
 See [Voting system](./voting-system.md) for thresholds and quorum requirements.
 
@@ -165,7 +165,7 @@ All governance actions are public:
 
 ### Become a trusted editor
 
-1. Contribute actively (preprints, reviews, tags)
+1. Contribute actively (eprints, reviews, tags)
 2. Demonstrate expertise in your field
 3. Apply or be nominated
 4. Governance committee review

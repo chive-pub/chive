@@ -130,7 +130,7 @@ describe('JWTService', () => {
       const result = await service.issueToken({
         subject: testDid,
         sessionId: 'session-123',
-        scopes: ['read:preprints', 'write:reviews'],
+        scopes: ['read:eprints', 'write:reviews'],
       });
 
       expect(result).toBeDefined();
@@ -145,7 +145,7 @@ describe('JWTService', () => {
       const result = await service.issueToken({
         subject: testDid,
         sessionId: 'session-123',
-        scopes: ['read:preprints'],
+        scopes: ['read:eprints'],
       });
 
       expect(result.token).toBeDefined();
@@ -153,7 +153,7 @@ describe('JWTService', () => {
       // Verify the token to check claims
       const verified = await service.verifyToken(result.token);
       expect(verified.claims.sessionId).toBe('session-123');
-      expect(verified.claims.scope).toContain('read:preprints');
+      expect(verified.claims.scope).toContain('read:eprints');
     });
 
     it('should use custom expiration when provided', async () => {
@@ -178,13 +178,13 @@ describe('JWTService', () => {
       const issued = await service.issueToken({
         subject: testDid,
         sessionId: 'session-789',
-        scopes: ['read:preprints'],
+        scopes: ['read:eprints'],
       });
 
       const verified = await service.verifyToken(issued.token);
 
       expect(verified.claims.sub).toBe(testDid);
-      expect(verified.claims.scope).toContain('read:preprints');
+      expect(verified.claims.scope).toContain('read:eprints');
     });
 
     it('should reject an invalid token', async () => {

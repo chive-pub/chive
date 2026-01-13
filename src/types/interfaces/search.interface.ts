@@ -2,7 +2,7 @@
  * Search engine interface for Elasticsearch.
  *
  * @remarks
- * This interface provides full-text search capabilities across indexed preprints.
+ * This interface provides full-text search capabilities across indexed eprints.
  * It complements IStorageBackend by enabling complex queries, faceted search,
  * and autocomplete.
  *
@@ -13,7 +13,7 @@
 import type { AtUri, DID } from '../atproto.js';
 
 /**
- * Indexable preprint document for Elasticsearch.
+ * Indexable eprint document for Elasticsearch.
  *
  * @remarks
  * This is the document structure stored in Elasticsearch for searching.
@@ -21,9 +21,9 @@ import type { AtUri, DID } from '../atproto.js';
  *
  * @public
  */
-export interface IndexablePreprintDocument {
+export interface IndexableEprintDocument {
   /**
-   * AT URI of the preprint.
+   * AT URI of the eprint.
    */
   readonly uri: AtUri;
 
@@ -41,7 +41,7 @@ export interface IndexablePreprintDocument {
   readonly authorName: string;
 
   /**
-   * Preprint title.
+   * Eprint title.
    *
    * @remarks
    * Analyzed with standard analyzer for full-text search.
@@ -49,7 +49,7 @@ export interface IndexablePreprintDocument {
   readonly title: string;
 
   /**
-   * Preprint abstract.
+   * Eprint abstract.
    *
    * @remarks
    * Analyzed with standard analyzer for full-text search.
@@ -82,7 +82,7 @@ export interface IndexablePreprintDocument {
   readonly subjects: readonly string[];
 
   /**
-   * Preprint creation timestamp.
+   * Eprint creation timestamp.
    */
   readonly createdAt: Date;
 
@@ -166,7 +166,7 @@ export interface SearchResults {
    */
   readonly hits: readonly {
     /**
-     * AT URI of the preprint.
+     * AT URI of the eprint.
      */
     readonly uri: AtUri;
 
@@ -249,11 +249,11 @@ export interface FacetedSearchResults extends SearchResults {
  * Search engine interface for Elasticsearch.
  *
  * @remarks
- * Provides full-text search, faceted search, and autocomplete for preprints.
+ * Provides full-text search, faceted search, and autocomplete for eprints.
  *
  * Implementation notes:
  * - Uses Elasticsearch 8+
- * - Indices prefixed with `chive-preprints-`
+ * - Indices prefixed with `chive-eprints-`
  * - Ingest pipeline for PDF text extraction
  * - Custom analyzers for academic text
  *
@@ -261,19 +261,19 @@ export interface FacetedSearchResults extends SearchResults {
  */
 export interface ISearchEngine {
   /**
-   * Indexes a preprint document.
+   * Indexes a eprint document.
    *
-   * @param preprint - Preprint to index
+   * @param eprint - Eprint to index
    * @returns Promise resolving when indexed
    *
    * @remarks
-   * Indexes or updates the preprint in Elasticsearch. If full-text extraction
+   * Indexes or updates the eprint in Elasticsearch. If full-text extraction
    * is enabled, triggers PDF processing via ingest pipeline.
    *
    * @example
    * ```typescript
-   * await searchEngine.indexPreprint({
-   *   uri: toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   * await searchEngine.indexEprint({
+   *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   author: toDID('did:plc:abc')!,
    *   authorName: 'Dr. Jane Smith',
    *   title: 'Neural Networks in Biology',
@@ -287,10 +287,10 @@ export interface ISearchEngine {
    *
    * @public
    */
-  indexPreprint(preprint: IndexablePreprintDocument): Promise<void>;
+  indexEprint(eprint: IndexableEprintDocument): Promise<void>;
 
   /**
-   * Searches preprints.
+   * Searches eprints.
    *
    * @param query - Search query
    * @returns Search results
@@ -373,12 +373,12 @@ export interface ISearchEngine {
    * @returns Promise resolving when deleted
    *
    * @remarks
-   * Use when a preprint is deleted from the user's PDS.
+   * Use when a eprint is deleted from the user's PDS.
    *
    * @example
    * ```typescript
    * await searchEngine.deleteDocument(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    * ```
    *

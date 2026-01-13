@@ -9,7 +9,7 @@
  * This plugin is used to:
  * - Provide autocomplete suggestions for research keywords
  * - Link keywords to controlled vocabulary IDs
- * - Support faceted classification of preprints
+ * - Support faceted classification of eprints
  *
  * Uses FAST searchFAST API (free, open access):
  * - Base URL: https://fast.oclc.org/searchfast/select

@@ -2,7 +2,7 @@
  * E2E tests for related papers panel.
  *
  * @remarks
- * Tests the related papers sidebar on preprint pages including:
+ * Tests the related papers sidebar on eprint pages including:
  * - Related papers display
  * - Relationship badges
  * - Citation summary
@@ -10,19 +10,19 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { SEEDED_PREPRINTS } from './fixtures/test-data.js';
+import { SEEDED_EPRINTS } from './fixtures/test-data.js';
 
 /**
  * Mock related papers API response.
  */
 const MOCK_SIMILAR_RESPONSE = {
-  preprint: {
-    uri: SEEDED_PREPRINTS.white.uri,
-    title: SEEDED_PREPRINTS.white.title,
+  eprint: {
+    uri: SEEDED_EPRINTS.white.uri,
+    title: SEEDED_EPRINTS.white.title,
   },
   related: [
     {
-      uri: 'at://did:plc:test/pub.chive.preprint/related1',
+      uri: 'at://did:plc:test/pub.chive.eprint/related1',
       title: 'A Semantically Related Paper on Clause Embedding',
       relationshipType: 'semantically-similar',
       score: 0.92,
@@ -32,7 +32,7 @@ const MOCK_SIMILAR_RESPONSE = {
       categories: ['Linguistics'],
     },
     {
-      uri: 'at://did:plc:test/pub.chive.preprint/related2',
+      uri: 'at://did:plc:test/pub.chive.eprint/related2',
       title: 'Citation Analysis of Acceptability Judgments',
       relationshipType: 'cites',
       score: 0.88,
@@ -42,7 +42,7 @@ const MOCK_SIMILAR_RESPONSE = {
       categories: ['Psycholinguistics'],
     },
     {
-      uri: 'at://did:plc:test/pub.chive.preprint/related3',
+      uri: 'at://did:plc:test/pub.chive.eprint/related3',
       title: 'Corpus Studies in Computational Linguistics',
       relationshipType: 'cited-by',
       score: 0.85,
@@ -52,7 +52,7 @@ const MOCK_SIMILAR_RESPONSE = {
       categories: ['Computational Linguistics'],
     },
     {
-      uri: 'at://did:plc:test/pub.chive.preprint/related4',
+      uri: 'at://did:plc:test/pub.chive.eprint/related4',
       title: 'Syntax-Semantics Interface in Natural Language',
       relationshipType: 'same-topic',
       score: 0.82,
@@ -62,7 +62,7 @@ const MOCK_SIMILAR_RESPONSE = {
       categories: ['Linguistics'],
     },
     {
-      uri: 'at://did:plc:test/pub.chive.preprint/related5',
+      uri: 'at://did:plc:test/pub.chive.eprint/related5',
       title: 'Collaborative Research in Linguistic Theory',
       relationshipType: 'same-author',
       score: 0.78,
@@ -75,17 +75,17 @@ const MOCK_SIMILAR_RESPONSE = {
 };
 
 const MOCK_EMPTY_SIMILAR_RESPONSE = {
-  preprint: {
-    uri: SEEDED_PREPRINTS.white.uri,
-    title: SEEDED_PREPRINTS.white.title,
+  eprint: {
+    uri: SEEDED_EPRINTS.white.uri,
+    title: SEEDED_EPRINTS.white.title,
   },
   related: [],
 };
 
 const MOCK_CITATIONS_RESPONSE = {
-  preprint: {
-    uri: SEEDED_PREPRINTS.white.uri,
-    title: SEEDED_PREPRINTS.white.title,
+  eprint: {
+    uri: SEEDED_EPRINTS.white.uri,
+    title: SEEDED_EPRINTS.white.title,
   },
   counts: {
     citedByCount: 15,
@@ -94,20 +94,20 @@ const MOCK_CITATIONS_RESPONSE = {
   },
   citations: [
     {
-      citingUri: 'at://did:plc:test/pub.chive.preprint/citing1',
-      citedUri: SEEDED_PREPRINTS.white.uri,
+      citingUri: 'at://did:plc:test/pub.chive.eprint/citing1',
+      citedUri: SEEDED_EPRINTS.white.uri,
       isInfluential: true,
       source: 'semantic-scholar',
     },
     {
-      citingUri: 'at://did:plc:test/pub.chive.preprint/citing2',
-      citedUri: SEEDED_PREPRINTS.white.uri,
+      citingUri: 'at://did:plc:test/pub.chive.eprint/citing2',
+      citedUri: SEEDED_EPRINTS.white.uri,
       isInfluential: false,
       source: 'semantic-scholar',
     },
     {
-      citingUri: SEEDED_PREPRINTS.white.uri,
-      citedUri: 'at://did:plc:test/pub.chive.preprint/reference1',
+      citingUri: SEEDED_EPRINTS.white.uri,
+      citedUri: 'at://did:plc:test/pub.chive.eprint/reference1',
       isInfluential: false,
       source: 'semantic-scholar',
     },
@@ -149,12 +149,12 @@ async function mockDiscoveryApis(
 // =============================================================================
 
 /**
- * Helper to navigate to preprint page and click Related tab.
+ * Helper to navigate to eprint page and click Related tab.
  */
 async function navigateToRelatedTab(page: import('@playwright/test').Page, uri: string) {
-  await page.goto(`/preprints/${encodeURIComponent(uri)}`);
+  await page.goto(`/eprints/${encodeURIComponent(uri)}`);
 
-  // Wait for preprint page to load (look for Abstract tab which is default)
+  // Wait for eprint page to load (look for Abstract tab which is default)
   await page.waitForLoadState('domcontentloaded');
 
   // Click the Related tab to show RelatedPapersPanel
@@ -168,8 +168,8 @@ test.describe('Related Papers Panel', () => {
     await mockDiscoveryApis(page);
   });
 
-  test('displays related papers heading on preprint page', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+  test('displays related papers heading on eprint page', async ({ page }) => {
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for the related papers panel to load (CardTitle renders as text, not heading)
     const heading = page.getByText('Related Papers').first();
@@ -177,7 +177,7 @@ test.describe('Related Papers Panel', () => {
   });
 
   test('shows related paper cards with titles', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for related papers to load
     const relatedHeading = page.getByText('Related Papers').first();
@@ -192,7 +192,7 @@ test.describe('Related Papers Panel', () => {
   });
 
   test('displays relationship badges', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for related papers to load
     await expect(page.getByText('Related Papers').first()).toBeVisible({
@@ -209,7 +209,7 @@ test.describe('Related Papers Panel', () => {
   });
 
   test('shows author names on related paper cards', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for related papers to load
     await expect(page.getByText('Related Papers').first()).toBeVisible({
@@ -222,7 +222,7 @@ test.describe('Related Papers Panel', () => {
   });
 
   test('shows publication year on related paper cards', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for related papers to load
     await expect(page.getByText('Related Papers').first()).toBeVisible({
@@ -235,7 +235,7 @@ test.describe('Related Papers Panel', () => {
   });
 
   test('clicking related paper navigates to its page', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for related papers to load
     await expect(page.getByText('Related Papers').first()).toBeVisible({
@@ -246,12 +246,12 @@ test.describe('Related Papers Panel', () => {
     const relatedPaperLink = page.getByText(/semantically related paper/i);
     await relatedPaperLink.click();
 
-    // Should navigate to that preprint's page
-    await expect(page).toHaveURL(/\/preprints\//);
+    // Should navigate to that eprint's page
+    await expect(page).toHaveURL(/\/eprints\//);
   });
 
   test('shows view all related papers link when more papers exist', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for related papers to load (mock returns 5 papers, meeting limit=5)
     await expect(page.getByText('Related Papers').first()).toBeVisible({
@@ -274,7 +274,7 @@ test.describe('Related Papers - Empty State', () => {
       similar: MOCK_EMPTY_SIMILAR_RESPONSE,
     });
 
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for the panel to load
     await expect(page.getByText('Related Papers').first()).toBeVisible({
@@ -301,7 +301,7 @@ test.describe('Related Papers - Error State', () => {
       });
     });
 
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Should show error message
     const errorMessage = page.getByText(/failed to load related papers/i);
@@ -318,8 +318,8 @@ test.describe('Citation Summary', () => {
     await mockDiscoveryApis(page);
   });
 
-  test('displays citation network collapsible on preprint page', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+  test('displays citation network collapsible on eprint page', async ({ page }) => {
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Citation network trigger button should be visible
     const citationTrigger = page.getByRole('button', { name: /citation network/i });
@@ -327,7 +327,7 @@ test.describe('Citation Summary', () => {
   });
 
   test('shows citation counts in collapsed state', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     // Wait for citation summary to load
     const citationTrigger = page.getByRole('button', { name: /citation network/i });
@@ -345,7 +345,7 @@ test.describe('Citation Summary', () => {
   });
 
   test('shows influential citations indicator', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     const citationTrigger = page.getByRole('button', { name: /citation network/i });
     await expect(citationTrigger).toBeVisible({ timeout: 15000 });
@@ -358,7 +358,7 @@ test.describe('Citation Summary', () => {
   });
 
   test('expands to show citation sections', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     const citationTrigger = page.getByRole('button', { name: /citation network/i });
     await expect(citationTrigger).toBeVisible({ timeout: 15000 });
@@ -376,7 +376,7 @@ test.describe('Citation Summary', () => {
   });
 
   test('shows view full citation network link when more citations exist', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     const citationTrigger = page.getByRole('button', { name: /citation network/i });
     await expect(citationTrigger).toBeVisible({ timeout: 15000 });
@@ -389,7 +389,7 @@ test.describe('Citation Summary', () => {
   });
 
   test('collapses when clicked again', async ({ page }) => {
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     const citationTrigger = page.getByRole('button', { name: /citation network/i });
     await expect(citationTrigger).toBeVisible({ timeout: 15000 });
@@ -415,9 +415,9 @@ test.describe('Citation Summary - Empty State', () => {
   test('shows empty state when no citation data', async ({ page }) => {
     await mockDiscoveryApis(page, {
       citations: {
-        preprint: {
-          uri: SEEDED_PREPRINTS.white.uri,
-          title: SEEDED_PREPRINTS.white.title,
+        eprint: {
+          uri: SEEDED_EPRINTS.white.uri,
+          title: SEEDED_EPRINTS.white.title,
         },
         counts: {
           citedByCount: 0,
@@ -429,7 +429,7 @@ test.describe('Citation Summary - Empty State', () => {
       },
     });
 
-    await navigateToRelatedTab(page, SEEDED_PREPRINTS.white.uri);
+    await navigateToRelatedTab(page, SEEDED_EPRINTS.white.uri);
 
     const citationTrigger = page.getByRole('button', { name: /citation network/i });
     await expect(citationTrigger).toBeVisible({ timeout: 15000 });

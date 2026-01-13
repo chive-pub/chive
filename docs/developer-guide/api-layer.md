@@ -8,7 +8,7 @@
 
 ## Overview
 
-Chive's API layer provides two primary interfaces for accessing preprint data:
+Chive's API layer provides two primary interfaces for accessing eprint data:
 
 1. **XRPC Endpoints** (`/xrpc/pub.chive.*`) - ATProto-native procedure calls
 2. **REST Endpoints** (`/api/v1/*`) - Traditional REST API for broader compatibility
@@ -40,7 +40,7 @@ src/api/
 │   └── validation.ts      # Zod schema validation
 ├── handlers/
 │   ├── xrpc/
-│   │   ├── preprint/      # Preprint XRPC handlers
+│   │   ├── eprint/      # Eprint XRPC handlers
 │   │   ├── graph/         # Knowledge graph handlers
 │   │   └── metrics/       # Metrics handlers
 │   └── rest/
@@ -49,7 +49,7 @@ src/api/
 ├── schemas/
 │   ├── common.ts          # Shared schemas
 │   ├── error.ts           # Error response schemas
-│   ├── preprint.ts        # Preprint schemas
+│   ├── eprint.ts        # Eprint schemas
 │   └── graph.ts           # Graph schemas
 └── types/
     ├── context.ts         # Hono context extensions
@@ -66,7 +66,7 @@ src/api/
 import { createServer } from '@/api/server.js';
 
 const app = createServer({
-  preprintService,
+  eprintService,
   searchService,
   metricsService,
   graphService,
@@ -86,14 +86,14 @@ export default { port: 3000, fetch: app.fetch };
 ### Making Requests
 
 ```bash
-# XRPC: Get a preprint
-curl "https://api.chive.pub/xrpc/pub.chive.preprint.getSubmission?uri=at://did:plc:abc/pub.chive.preprint.submission/xyz"
+# XRPC: Get a eprint
+curl "https://api.chive.pub/xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc/pub.chive.eprint.submission/xyz"
 
-# REST: Get a preprint
-curl "https://api.chive.pub/api/v1/preprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.preprint.submission%2Fxyz"
+# REST: Get a eprint
+curl "https://api.chive.pub/api/v1/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.eprint.submission%2Fxyz"
 
-# Search preprints
-curl -X POST "https://api.chive.pub/xrpc/pub.chive.preprint.searchSubmissions" \
+# Search eprints
+curl -X POST "https://api.chive.pub/xrpc/pub.chive.eprint.searchSubmissions" \
   -H "Content-Type: application/json" \
   -d '{"q": "quantum computing", "limit": 20}'
 ```
@@ -102,16 +102,16 @@ curl -X POST "https://api.chive.pub/xrpc/pub.chive.preprint.searchSubmissions" \
 
 ## XRPC Endpoints
 
-### Preprint Endpoints
+### Eprint Endpoints
 
-#### `pub.chive.preprint.getSubmission`
+#### `pub.chive.eprint.getSubmission`
 
-Retrieves a single preprint by AT URI.
+Retrieves a single eprint by AT URI.
 
 **Request:**
 
 ```
-GET /xrpc/pub.chive.preprint.getSubmission?uri={atUri}
+GET /xrpc/pub.chive.eprint.getSubmission?uri={atUri}
 ```
 
 **Parameters:**
@@ -123,7 +123,7 @@ GET /xrpc/pub.chive.preprint.getSubmission?uri={atUri}
 
 ```json
 {
-  "uri": "at://did:plc:abc/pub.chive.preprint.submission/xyz",
+  "uri": "at://did:plc:abc/pub.chive.eprint.submission/xyz",
   "cid": "bafyreiabc123",
   "title": "Quantum Computing Advances",
   "abstract": "This paper presents...",
@@ -158,14 +158,14 @@ GET /xrpc/pub.chive.preprint.getSubmission?uri={atUri}
 }
 ```
 
-#### `pub.chive.preprint.listByAuthor`
+#### `pub.chive.eprint.listByAuthor`
 
-Lists preprints by author DID.
+Lists eprints by author DID.
 
 **Request:**
 
 ```
-GET /xrpc/pub.chive.preprint.listByAuthor?did={did}&limit={n}&cursor={c}&sort={sort}
+GET /xrpc/pub.chive.eprint.listByAuthor?did={did}&limit={n}&cursor={c}&sort={sort}
 ```
 
 **Parameters:**
@@ -176,14 +176,14 @@ GET /xrpc/pub.chive.preprint.listByAuthor?did={did}&limit={n}&cursor={c}&sort={s
 | cursor | string | No | Pagination cursor |
 | sort | string | No | Sort order: "date" or "relevance" |
 
-#### `pub.chive.preprint.searchSubmissions`
+#### `pub.chive.eprint.searchSubmissions`
 
-Full-text search across preprints.
+Full-text search across eprints.
 
 **Request:**
 
 ```
-POST /xrpc/pub.chive.preprint.searchSubmissions
+POST /xrpc/pub.chive.eprint.searchSubmissions
 Content-Type: application/json
 
 {
@@ -220,7 +220,7 @@ GET /xrpc/pub.chive.graph.searchAuthorities?query={q}&type={type}&status={status
 
 #### `pub.chive.graph.browseFaceted`
 
-Browse preprints using PMEST faceted classification.
+Browse eprints using PMEST faceted classification.
 
 **Request:**
 
@@ -232,7 +232,7 @@ GET /xrpc/pub.chive.graph.browseFaceted?facets.matter=physics&facets.time=2024
 
 #### `pub.chive.metrics.getTrending`
 
-Retrieves trending preprints.
+Retrieves trending eprints.
 
 **Request:**
 
@@ -244,18 +244,18 @@ GET /xrpc/pub.chive.metrics.getTrending?window={24h|7d|30d}&limit={n}
 
 ## REST Endpoints
 
-### Preprints
+### Eprints
 
-| Method | Path                     | Description         |
-| ------ | ------------------------ | ------------------- |
-| GET    | `/api/v1/preprints`      | List preprints      |
-| GET    | `/api/v1/preprints/:uri` | Get preprint by URI |
+| Method | Path                   | Description       |
+| ------ | ---------------------- | ----------------- |
+| GET    | `/api/v1/eprints`      | List eprints      |
+| GET    | `/api/v1/eprints/:uri` | Get eprint by URI |
 
 ### Search
 
-| Method | Path                       | Description      |
-| ------ | -------------------------- | ---------------- |
-| GET    | `/api/v1/search?q={query}` | Search preprints |
+| Method | Path                       | Description    |
+| ------ | -------------------------- | -------------- |
+| GET    | `/api/v1/search?q={query}` | Search eprints |
 
 ### Health
 
@@ -307,9 +307,9 @@ Documents are returned as BlobRefs, never inline data:
 
 The API is read-only. These endpoints do NOT exist:
 
-- `pub.chive.preprint.create`
-- `pub.chive.preprint.update`
-- `pub.chive.preprint.delete`
+- `pub.chive.eprint.create`
+- `pub.chive.eprint.update`
+- `pub.chive.eprint.delete`
 - `com.atproto.repo.uploadBlob`
 
 Users create content in their PDSes directly. Chive indexes via firehose.
@@ -526,10 +526,10 @@ Ensure handler returns source object:
 return {
   ...data,
   source: {
-    pdsEndpoint: preprint.pdsUrl,
-    recordUrl: buildRecordUrl(preprint),
-    lastVerifiedAt: preprint.indexedAt.toISOString(),
-    stale: isStale(preprint.indexedAt),
+    pdsEndpoint: eprint.pdsUrl,
+    recordUrl: buildRecordUrl(eprint),
+    lastVerifiedAt: eprint.indexedAt.toISOString(),
+    stale: isStale(eprint.indexedAt),
   },
 };
 ```

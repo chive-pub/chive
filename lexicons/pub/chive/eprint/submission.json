@@ -1,0 +1,680 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.submission",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A scholarly eprint submission record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "title",
+          "abstract",
+          "document",
+          "license",
+          "authors",
+          "submittedBy",
+          "createdAt"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Eprint title",
+            "maxLength": 500
+          },
+          "abstract": {
+            "type": "string",
+            "description": "Abstract or summary",
+            "maxLength": 5000
+          },
+          "document": {
+            "type": "blob",
+            "description": "Primary manuscript document (PDF, DOCX, HTML, Markdown, LaTeX, or Jupyter)",
+            "accept": [
+              "application/pdf",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "text/html",
+              "text/markdown",
+              "text/x-markdown",
+              "text/x-tex",
+              "application/x-tex",
+              "application/x-ipynb+json",
+              "application/vnd.oasis.opendocument.text",
+              "application/rtf",
+              "application/epub+zip",
+              "text/plain"
+            ],
+            "maxSize": 52428800
+          },
+          "documentFormat": {
+            "type": "string",
+            "description": "Detected or user-specified document format",
+            "knownValues": [
+              "pdf",
+              "docx",
+              "html",
+              "markdown",
+              "latex",
+              "jupyter",
+              "odt",
+              "rtf",
+              "epub",
+              "txt"
+            ]
+          },
+          "supplementaryMaterials": {
+            "type": "array",
+            "description": "Additional materials (appendices, data, code, figures)",
+            "items": {
+              "type": "ref",
+              "ref": "#supplementaryItem"
+            },
+            "maxLength": 50
+          },
+          "authors": {
+            "type": "array",
+            "description": "All authors with contributions, affiliations, and metadata",
+            "items": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.authorContribution"
+            },
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "submittedBy": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the human user who submitted this eprint"
+          },
+          "paperDid": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the paper's own account (if paper has its own PDS)"
+          },
+          "keywords": {
+            "type": "array",
+            "description": "Author-provided keywords",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "maxLength": 20
+          },
+          "facets": {
+            "type": "array",
+            "description": "10-dimensional faceted classification",
+            "items": {
+              "type": "ref",
+              "ref": "pub.chive.graph.facet"
+            },
+            "maxLength": 30
+          },
+          "version": {
+            "type": "integer",
+            "description": "Version number (1-indexed)",
+            "minimum": 1
+          },
+          "previousVersion": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Previous version URI"
+          },
+          "license": {
+            "type": "string",
+            "description": "SPDX license identifier",
+            "knownValues": ["CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "MIT", "Apache-2.0"]
+          },
+          "publicationStatus": {
+            "type": "string",
+            "description": "Current status in publication lifecycle",
+            "knownValues": [
+              "preprint",
+              "under_review",
+              "revision_requested",
+              "accepted",
+              "in_press",
+              "published",
+              "retracted"
+            ],
+            "default": "preprint"
+          },
+          "publishedVersion": {
+            "type": "ref",
+            "ref": "#publishedVersion",
+            "description": "Link to the published version (Version of Record)"
+          },
+          "relatedWorks": {
+            "type": "array",
+            "description": "Related eprints, datasets, software, and prior versions",
+            "items": {
+              "type": "ref",
+              "ref": "#relatedWork"
+            },
+            "maxLength": 50
+          },
+          "externalIds": {
+            "type": "ref",
+            "ref": "#externalIds",
+            "description": "External persistent identifiers"
+          },
+          "repositories": {
+            "type": "ref",
+            "ref": "#repositories",
+            "description": "Linked code, data, and materials repositories"
+          },
+          "funding": {
+            "type": "array",
+            "description": "Funding sources and grants",
+            "items": {
+              "type": "ref",
+              "ref": "#fundingSource"
+            },
+            "maxLength": 20
+          },
+          "conferencePresentation": {
+            "type": "ref",
+            "ref": "#conferencePresentation",
+            "description": "Conference where this work was presented"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Creation timestamp"
+          }
+        }
+      }
+    },
+    "supplementaryItem": {
+      "type": "object",
+      "description": "A supplementary material item with metadata",
+      "required": ["blob", "label"],
+      "properties": {
+        "blob": {
+          "type": "blob",
+          "description": "Supplementary file blob reference",
+          "maxSize": 104857600
+        },
+        "label": {
+          "type": "string",
+          "description": "User-provided label (e.g., 'Appendix A', 'Figure S1')",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the supplementary material",
+          "maxLength": 1000
+        },
+        "category": {
+          "type": "string",
+          "description": "Auto-detected or user-specified category",
+          "knownValues": [
+            "appendix",
+            "figure",
+            "table",
+            "dataset",
+            "code",
+            "notebook",
+            "video",
+            "audio",
+            "presentation",
+            "protocol",
+            "questionnaire",
+            "other"
+          ]
+        },
+        "detectedFormat": {
+          "type": "string",
+          "description": "Auto-detected file format"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order (1-indexed)",
+          "minimum": 1
+        }
+      }
+    },
+    "publishedVersion": {
+      "type": "object",
+      "description": "Link to the published version (Version of Record)",
+      "properties": {
+        "doi": {
+          "type": "string",
+          "description": "DOI of the published version (e.g., 10.1234/example)"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the published version"
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Publication date"
+        },
+        "journal": {
+          "type": "string",
+          "description": "Journal name",
+          "maxLength": 500
+        },
+        "journalAbbreviation": {
+          "type": "string",
+          "description": "Journal abbreviation",
+          "maxLength": 100
+        },
+        "journalIssn": {
+          "type": "string",
+          "description": "Journal ISSN"
+        },
+        "publisher": {
+          "type": "string",
+          "description": "Publisher name",
+          "maxLength": 300
+        },
+        "volume": {
+          "type": "string",
+          "description": "Volume number",
+          "maxLength": 50
+        },
+        "issue": {
+          "type": "string",
+          "description": "Issue number",
+          "maxLength": 50
+        },
+        "pages": {
+          "type": "string",
+          "description": "Page range",
+          "maxLength": 50
+        },
+        "articleNumber": {
+          "type": "string",
+          "description": "Article number",
+          "maxLength": 50
+        },
+        "eLocationId": {
+          "type": "string",
+          "description": "Electronic location ID for online-only journals"
+        },
+        "accessType": {
+          "type": "string",
+          "description": "Open access status",
+          "knownValues": ["open_access", "green_oa", "gold_oa", "hybrid_oa", "bronze_oa", "closed"]
+        },
+        "licenseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "License URL"
+        }
+      }
+    },
+    "relatedWork": {
+      "type": "object",
+      "description": "A related work with DataCite-compatible relation type",
+      "required": ["identifier", "identifierType", "relationType"],
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "description": "Identifier value"
+        },
+        "identifierType": {
+          "type": "string",
+          "description": "Type of identifier",
+          "knownValues": [
+            "doi",
+            "arxiv",
+            "pmid",
+            "pmcid",
+            "url",
+            "urn",
+            "handle",
+            "isbn",
+            "issn",
+            "at-uri"
+          ]
+        },
+        "relationType": {
+          "type": "string",
+          "description": "DataCite-compatible relation type",
+          "knownValues": [
+            "isPreprintOf",
+            "hasPreprint",
+            "isVersionOf",
+            "hasVersion",
+            "isNewVersionOf",
+            "isPreviousVersionOf",
+            "isPartOf",
+            "hasPart",
+            "references",
+            "isReferencedBy",
+            "isSupplementTo",
+            "isSupplementedBy",
+            "isContinuedBy",
+            "continues",
+            "isDocumentedBy",
+            "documents",
+            "isCompiledBy",
+            "compiles",
+            "isVariantFormOf",
+            "isOriginalFormOf",
+            "isIdenticalTo",
+            "isReviewedBy",
+            "reviews",
+            "isDerivedFrom",
+            "isSourceOf",
+            "isRequiredBy",
+            "requires",
+            "isObsoletedBy",
+            "obsoletes"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the related work"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the relation"
+        }
+      }
+    },
+    "externalIds": {
+      "type": "object",
+      "description": "External persistent identifiers",
+      "properties": {
+        "arxivId": {
+          "type": "string",
+          "description": "arXiv identifier"
+        },
+        "pmid": {
+          "type": "string",
+          "description": "PubMed ID"
+        },
+        "pmcid": {
+          "type": "string",
+          "description": "PubMed Central ID"
+        },
+        "ssrnId": {
+          "type": "string",
+          "description": "SSRN identifier"
+        },
+        "osf": {
+          "type": "string",
+          "description": "OSF identifier"
+        },
+        "zenodoDoi": {
+          "type": "string",
+          "description": "Zenodo DOI"
+        },
+        "openAlexId": {
+          "type": "string",
+          "description": "OpenAlex identifier"
+        },
+        "semanticScholarId": {
+          "type": "string",
+          "description": "Semantic Scholar identifier"
+        },
+        "coreSid": {
+          "type": "string",
+          "description": "CORE identifier"
+        },
+        "magId": {
+          "type": "string",
+          "description": "Microsoft Academic Graph ID (legacy)"
+        }
+      }
+    },
+    "repositories": {
+      "type": "object",
+      "description": "Linked code, data, and materials repositories",
+      "properties": {
+        "code": {
+          "type": "array",
+          "description": "Code repositories",
+          "items": {
+            "type": "ref",
+            "ref": "#codeRepository"
+          },
+          "maxLength": 10
+        },
+        "data": {
+          "type": "array",
+          "description": "Data repositories",
+          "items": {
+            "type": "ref",
+            "ref": "#dataRepository"
+          },
+          "maxLength": 20
+        },
+        "preregistration": {
+          "type": "ref",
+          "ref": "#preregistration",
+          "description": "Pre-registration or registered report link"
+        },
+        "protocols": {
+          "type": "array",
+          "description": "Protocol links",
+          "items": {
+            "type": "ref",
+            "ref": "#protocol"
+          },
+          "maxLength": 10
+        },
+        "materials": {
+          "type": "array",
+          "description": "Physical materials, reagents, plasmids, etc.",
+          "items": {
+            "type": "ref",
+            "ref": "#material"
+          },
+          "maxLength": 20
+        }
+      }
+    },
+    "codeRepository": {
+      "type": "object",
+      "description": "A code repository link",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Repository URL"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Hosting platform",
+          "knownValues": [
+            "github",
+            "gitlab",
+            "bitbucket",
+            "codeberg",
+            "sourcehut",
+            "software_heritage",
+            "other"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "description": "User-provided label"
+        },
+        "archiveUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Software Heritage archive URL"
+        },
+        "swhid": {
+          "type": "string",
+          "description": "Software Heritage Identifier"
+        }
+      }
+    },
+    "dataRepository": {
+      "type": "object",
+      "description": "A data repository link",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Repository URL"
+        },
+        "doi": {
+          "type": "string",
+          "description": "Dataset DOI"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Hosting platform",
+          "knownValues": [
+            "zenodo",
+            "figshare",
+            "dryad",
+            "osf",
+            "dataverse",
+            "mendeley_data",
+            "other"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "description": "User-provided label"
+        },
+        "accessStatement": {
+          "type": "string",
+          "description": "Data availability statement"
+        }
+      }
+    },
+    "preregistration": {
+      "type": "object",
+      "description": "Pre-registration or registered report link",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Pre-registration URL"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Hosting platform",
+          "knownValues": ["osf", "aspredicted", "clinicaltrials", "prospero", "other"]
+        },
+        "registrationDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Registration date"
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "description": "A protocol link",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Protocol URL"
+        },
+        "doi": {
+          "type": "string",
+          "description": "Protocol DOI"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Hosting platform",
+          "knownValues": ["protocols_io", "bio_protocol", "other"]
+        }
+      }
+    },
+    "material": {
+      "type": "object",
+      "description": "A physical material, reagent, or plasmid",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Material URL"
+        },
+        "rrid": {
+          "type": "string",
+          "description": "Research Resource Identifier"
+        },
+        "label": {
+          "type": "string",
+          "description": "User-provided label"
+        }
+      }
+    },
+    "fundingSource": {
+      "type": "object",
+      "description": "A funding source",
+      "properties": {
+        "funderName": {
+          "type": "string",
+          "description": "Funder name",
+          "maxLength": 300
+        },
+        "funderDoi": {
+          "type": "string",
+          "description": "CrossRef Funder Registry DOI"
+        },
+        "funderRor": {
+          "type": "string",
+          "description": "ROR identifier"
+        },
+        "grantNumber": {
+          "type": "string",
+          "description": "Grant number",
+          "maxLength": 100
+        },
+        "grantTitle": {
+          "type": "string",
+          "description": "Grant title",
+          "maxLength": 500
+        },
+        "grantUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Grant URL"
+        }
+      }
+    },
+    "conferencePresentation": {
+      "type": "object",
+      "description": "Conference where this work was presented",
+      "properties": {
+        "conferenceName": {
+          "type": "string",
+          "description": "Conference name",
+          "maxLength": 500
+        },
+        "conferenceAcronym": {
+          "type": "string",
+          "description": "Conference acronym",
+          "maxLength": 50
+        },
+        "conferenceUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Conference website URL"
+        },
+        "conferenceLocation": {
+          "type": "string",
+          "description": "Conference location"
+        },
+        "presentationDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Presentation date"
+        },
+        "presentationType": {
+          "type": "string",
+          "description": "Type of presentation",
+          "knownValues": ["oral", "poster", "keynote", "workshop", "demo", "other"]
+        },
+        "proceedingsDoi": {
+          "type": "string",
+          "description": "Proceedings DOI"
+        }
+      }
+    }
+  }
+}

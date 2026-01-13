@@ -187,7 +187,7 @@ export function createCircuitBreaker(config: CircuitBreakerConfig): IPolicy {
  * @example
  * ```typescript
  * const retryPolicy = createRetryPolicy({
- *   name: 'fetch-preprint',
+ *   name: 'fetch-eprint',
  *   maxAttempts: 3,
  *   baseDelay: 100,
  *   logger

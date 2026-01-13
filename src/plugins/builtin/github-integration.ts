@@ -2,11 +2,11 @@
  * GitHub integration plugin for repository linking.
  *
  * @remarks
- * Links preprints to GitHub repositories for supplementary materials,
+ * Links eprints to GitHub repositories for supplementary materials,
  * code, and data. Fetches repository metadata via GitHub API.
  *
  * Features:
- * - Detects GitHub URLs in preprint supplementary links
+ * - Detects GitHub URLs in eprint supplementary links
  * - Fetches repository metadata (stars, forks, license, etc.)
  * - Caches metadata to reduce API calls
  * - Emits events for repository linking
@@ -74,11 +74,11 @@ export interface GitHubRepoInfo {
 }
 
 /**
- * Preprint indexed event data.
+ * Eprint indexed event data.
  *
  * @internal
  */
-interface PreprintIndexedEvent {
+interface EprintIndexedEvent {
   uri: string;
   title: string;
   supplementaryLinks?: readonly string[];
@@ -103,7 +103,7 @@ interface GitHubApiResponse {
  * GitHub integration plugin.
  *
  * @remarks
- * Automatically links preprints to GitHub repositories when they
+ * Automatically links eprints to GitHub repositories when they
  * reference GitHub URLs in their supplementary materials.
  *
  * @example
@@ -129,14 +129,14 @@ export class GitHubIntegrationPlugin extends BasePlugin {
     id: 'pub.chive.plugin.github',
     name: 'GitHub Integration',
     version: '0.1.0',
-    description: 'Links preprints to GitHub repositories for code and supplementary materials',
+    description: 'Links eprints to GitHub repositories for code and supplementary materials',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
       network: {
         allowedDomains: ['api.github.com'],
       },
-      hooks: ['preprint.indexed', 'preprint.updated'],
+      hooks: ['eprint.indexed', 'eprint.updated'],
       storage: {
         maxSize: 10 * 1024 * 1024, // 10MB for caching
       },
@@ -171,12 +171,12 @@ export class GitHubIntegrationPlugin extends BasePlugin {
     // Load optional GitHub token from config
     this.githubToken = this.getConfig<string>('githubToken');
 
-    // Subscribe to preprint events
-    this.context.eventBus.on('preprint.indexed', (...args: readonly unknown[]) => {
-      void this.handlePreprintIndexed(args[0] as PreprintIndexedEvent);
+    // Subscribe to eprint events
+    this.context.eventBus.on('eprint.indexed', (...args: readonly unknown[]) => {
+      void this.handleEprintIndexed(args[0] as EprintIndexedEvent);
     });
-    this.context.eventBus.on('preprint.updated', (...args: readonly unknown[]) => {
-      void this.handlePreprintUpdated(args[0] as PreprintIndexedEvent);
+    this.context.eventBus.on('eprint.updated', (...args: readonly unknown[]) => {
+      void this.handleEprintUpdated(args[0] as EprintIndexedEvent);
     });
 
     this.logger.info('GitHub integration initialized', {
@@ -187,23 +187,23 @@ export class GitHubIntegrationPlugin extends BasePlugin {
   }
 
   /**
-   * Handles preprint indexed events.
+   * Handles eprint indexed events.
    */
-  private async handlePreprintIndexed(data: PreprintIndexedEvent): Promise<void> {
+  private async handleEprintIndexed(data: EprintIndexedEvent): Promise<void> {
     await this.processGitHubLinks(data.uri, data.supplementaryLinks);
   }
 
   /**
-   * Handles preprint updated events.
+   * Handles eprint updated events.
    */
-  private async handlePreprintUpdated(data: PreprintIndexedEvent): Promise<void> {
+  private async handleEprintUpdated(data: EprintIndexedEvent): Promise<void> {
     await this.processGitHubLinks(data.uri, data.supplementaryLinks);
   }
 
   /**
-   * Processes GitHub links from a preprint.
+   * Processes GitHub links from a eprint.
    */
-  private async processGitHubLinks(preprintUri: string, links?: readonly string[]): Promise<void> {
+  private async processGitHubLinks(eprintUri: string, links?: readonly string[]): Promise<void> {
     if (!links || links.length === 0) {
       return;
     }
@@ -220,7 +220,7 @@ export class GitHubIntegrationPlugin extends BasePlugin {
         const metadata = await this.fetchRepoMetadata(repoInfo.owner, repoInfo.repo);
 
         this.logger.info('GitHub repository linked', {
-          preprintUri,
+          eprintUri,
           repo: `${repoInfo.owner}/${repoInfo.repo}`,
           stars: metadata.stars,
           language: metadata.language,
@@ -231,7 +231,7 @@ export class GitHubIntegrationPlugin extends BasePlugin {
 
         // Emit repository linked event
         this.context.eventBus.emit('github.repo.linked', {
-          preprintUri,
+          eprintUri,
           owner: repoInfo.owner,
           repo: repoInfo.repo,
           metadata,

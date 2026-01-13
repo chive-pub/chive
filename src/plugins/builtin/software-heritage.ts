@@ -269,7 +269,7 @@ interface SwhApiSaveResponse {
  *
  * @remarks
  * Provides code archival verification and SWHID lookup.
- * Used to verify that preprint code is permanently archived.
+ * Used to verify that eprint code is permanently archived.
  *
  * @example
  * ```typescript

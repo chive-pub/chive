@@ -101,7 +101,7 @@ export function up(pgm: MigrationBuilder): void {
     scopes: {
       type: 'text[]',
       notNull: true,
-      default: pgm.func("ARRAY['read:preprints']"),
+      default: pgm.func("ARRAY['read:eprints']"),
       comment: 'Allowed scopes',
     },
     owner_did: {

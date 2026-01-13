@@ -19,7 +19,7 @@ import { extname, basename } from 'path';
 
 import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type';
 
-import type { DocumentFormat, SupplementaryCategory } from '../../types/models/preprint.js';
+import type { DocumentFormat, SupplementaryCategory } from '../../types/models/eprint.js';
 
 /**
  * Confidence level for format detection.

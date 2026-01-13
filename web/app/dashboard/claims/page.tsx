@@ -19,10 +19,10 @@ import {
 
 import {
   useUserClaims,
-  usePreprintSearchState,
+  useEprintSearchState,
   useStartClaimFromExternal,
   usePaperSuggestions,
-  type ExternalPreprint,
+  type ExternalEprint,
   type ImportSource,
   type SuggestedPaper,
 } from '@/lib/hooks';
@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { PreprintSearchAutocomplete } from '@/components/search';
+import { EprintSearchAutocomplete } from '@/components/search';
 import type { ClaimRequestWithPaper, ClaimStatus } from '@/lib/api/schema';
 
 // =============================================================================
@@ -116,7 +116,7 @@ function ClaimedPapersProvider({ children }: { children: React.ReactNode }) {
  * Claims dashboard page.
  *
  * @remarks
- * Allows users to search for claimable preprints and manage their claims.
+ * Allows users to search for claimable eprints and manage their claims.
  */
 export default function ClaimsPage() {
   return (
@@ -124,10 +124,9 @@ export default function ClaimsPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Claim Preprints</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Claim Eprints</h1>
           <p className="text-muted-foreground">
-            Claim ownership of your preprints from external repositories like arXiv, bioRxiv, and
-            more
+            Claim ownership of your eprints from external repositories like arXiv, bioRxiv, and more
           </p>
         </div>
 
@@ -215,9 +214,9 @@ function PaperSuggestions() {
       <>
         <ProfileInfoCard profileUsed={null} isLoading />
         <div className="space-y-4">
-          <ExternalPreprintCardSkeleton />
-          <ExternalPreprintCardSkeleton />
-          <ExternalPreprintCardSkeleton />
+          <ExternalEprintCardSkeleton />
+          <ExternalEprintCardSkeleton />
+          <ExternalEprintCardSkeleton />
         </div>
       </>
     );
@@ -510,7 +509,7 @@ function getSourceDisplayName(source: ImportSource): string {
 }
 
 /**
- * Search for claimable preprints in external repositories.
+ * Search for claimable eprints in external repositories.
  *
  * @remarks
  * Uses federated search across multiple external sources:
@@ -538,7 +537,7 @@ function ClaimableSearch() {
     handleSubmit,
     handleSelectSuggestion,
     toggleSource,
-  } = usePreprintSearchState();
+  } = useEprintSearchState();
 
   return (
     <>
@@ -554,7 +553,7 @@ function ClaimableSearch() {
           {/* Autocomplete search input */}
           <div className="flex gap-2">
             <div className="flex-1">
-              <PreprintSearchAutocomplete
+              <EprintSearchAutocomplete
                 value={query}
                 onChange={setQuery}
                 onSubmit={handleSubmit}
@@ -636,16 +635,16 @@ function ClaimableSearch() {
           {/* Loading state */}
           {isSearchLoading ? (
             <>
-              <ExternalPreprintCardSkeleton />
-              <ExternalPreprintCardSkeleton />
-              <ExternalPreprintCardSkeleton />
+              <ExternalEprintCardSkeleton />
+              <ExternalEprintCardSkeleton />
+              <ExternalEprintCardSkeleton />
             </>
           ) : searchResults.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Search className="mx-auto h-12 w-12 text-muted-foreground/50" />
                 <p className="text-muted-foreground mt-4">
-                  No preprints found for &ldquo;{submittedQuery}&rdquo;
+                  No eprints found for &ldquo;{submittedQuery}&rdquo;
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   Try searching with different keywords or check your spelling
@@ -657,7 +656,7 @@ function ClaimableSearch() {
               {/* Result count with loading indicator */}
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Found {searchResults.length} preprint{searchResults.length !== 1 ? 's' : ''}
+                  Found {searchResults.length} eprint{searchResults.length !== 1 ? 's' : ''}
                 </p>
                 {isSearchFetching && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -668,11 +667,8 @@ function ClaimableSearch() {
               </div>
 
               {/* Results */}
-              {searchResults.map((preprint) => (
-                <ExternalPreprintCard
-                  key={`${preprint.source}:${preprint.externalId}`}
-                  preprint={preprint}
-                />
+              {searchResults.map((eprint) => (
+                <ExternalEprintCard key={`${eprint.source}:${eprint.externalId}`} eprint={eprint} />
               ))}
             </>
           )}
@@ -683,30 +679,30 @@ function ClaimableSearch() {
 }
 
 /**
- * Card for an external preprint from federated search.
+ * Card for an external eprint from federated search.
  */
-function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
+function ExternalEprintCard({ eprint }: { eprint: ExternalEprint }) {
   const { isClaimed, markAsClaimed } = useClaimedPapers();
   const startClaim = useStartClaimFromExternal();
 
-  const alreadyClaimed = isClaimed(preprint.source, preprint.externalId);
+  const alreadyClaimed = isClaimed(eprint.source, eprint.externalId);
 
   const handleClaim = () => {
     startClaim.mutate(
       {
-        source: preprint.source,
-        externalId: preprint.externalId,
+        source: eprint.source,
+        externalId: eprint.externalId,
       },
       {
         onSuccess: () => {
-          markAsClaimed(preprint.source, preprint.externalId);
+          markAsClaimed(eprint.source, eprint.externalId);
         },
       }
     );
   };
 
   // Format author names
-  const authorNames = preprint.authors.map((a) => a.name);
+  const authorNames = eprint.authors.map((a) => a.name);
   const displayAuthors = authorNames.slice(0, 3).join(', ');
   const additionalAuthors = authorNames.length > 3 ? ` +${authorNames.length - 3} more` : '';
 
@@ -715,14 +711,14 @@ function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 min-w-0">
-            <CardTitle className="text-lg line-clamp-2">{preprint.title}</CardTitle>
+            <CardTitle className="text-lg line-clamp-2">{eprint.title}</CardTitle>
             <CardDescription className="line-clamp-1">
               {displayAuthors}
               {additionalAuthors}
             </CardDescription>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <Badge variant="secondary">{getSourceDisplayName(preprint.source)}</Badge>
+            <Badge variant="secondary">{getSourceDisplayName(eprint.source)}</Badge>
             {alreadyClaimed && (
               <Badge variant="outline" className="text-xs font-medium text-green-600 bg-green-50">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -734,20 +730,20 @@ function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Abstract preview */}
-        {preprint.abstract && (
-          <p className="text-sm text-muted-foreground line-clamp-3">{preprint.abstract}</p>
+        {eprint.abstract && (
+          <p className="text-sm text-muted-foreground line-clamp-3">{eprint.abstract}</p>
         )}
 
         {/* Metadata and actions */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-            {preprint.doi && <span className="font-mono text-xs">DOI: {preprint.doi}</span>}
-            {preprint.publicationDate && (
-              <span>Published: {new Date(preprint.publicationDate).toLocaleDateString()}</span>
+            {eprint.doi && <span className="font-mono text-xs">DOI: {eprint.doi}</span>}
+            {eprint.publicationDate && (
+              <span>Published: {new Date(eprint.publicationDate).toLocaleDateString()}</span>
             )}
-            {preprint.categories && preprint.categories.length > 0 && (
+            {eprint.categories && eprint.categories.length > 0 && (
               <div className="flex gap-1">
-                {preprint.categories.slice(0, 3).map((cat) => (
+                {eprint.categories.slice(0, 3).map((cat) => (
                   <Badge key={cat} variant="outline" className="text-xs">
                     {cat}
                   </Badge>
@@ -756,9 +752,9 @@ function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {preprint.url && (
+            {eprint.url && (
               <Button variant="outline" size="sm" asChild>
-                <a href={preprint.url} target="_blank" rel="noopener noreferrer">
+                <a href={eprint.url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View Source
                 </a>
@@ -811,7 +807,7 @@ function ExternalPreprintCard({ preprint }: { preprint: ExternalPreprint }) {
   );
 }
 
-function ExternalPreprintCardSkeleton() {
+function ExternalEprintCardSkeleton() {
   return (
     <Card>
       <CardHeader>
@@ -855,7 +851,7 @@ function UserClaims() {
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <p className="text-muted-foreground">You haven&apos;t claimed any preprints yet</p>
+          <p className="text-muted-foreground">You haven&apos;t claimed any eprints yet</p>
           <p className="text-sm text-muted-foreground mt-2">
             Search for your papers in the &ldquo;Find Claimable&rdquo; tab to get started
           </p>
@@ -963,7 +959,7 @@ function ClaimCard({ claim }: { claim: ClaimRequestWithPaper }) {
 
           {claim.canonicalUri && (
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/preprints/${encodeURIComponent(claim.canonicalUri)}`}>
+              <Link href={`/eprints/${encodeURIComponent(claim.canonicalUri)}`}>
                 <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
                 View on Chive
               </Link>

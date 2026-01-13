@@ -4,7 +4,7 @@
  * arXiv autocomplete input component.
  *
  * @remarks
- * Searches arXiv API for preprints by title or ID.
+ * Searches arXiv API for eprints by title or ID.
  * Displays arXiv ID, title, and authors.
  *
  * @example
@@ -253,7 +253,7 @@ export function ArxivAutocomplete({
     <AutocompleteInput<ArxivEntry>
       id={id}
       placeholder={placeholder}
-      groupLabel="arXiv Preprints"
+      groupLabel="arXiv Eprints"
       queryFn={searchArxiv}
       queryKeyPrefix="arxiv-search"
       onSelect={onSelect}
@@ -266,7 +266,7 @@ export function ArxivAutocomplete({
       minChars={3}
       debounceMs={500}
       staleTime={60 * 1000}
-      emptyMessage="No arXiv preprints found."
+      emptyMessage="No arXiv eprints found."
       disabled={disabled}
       className={className}
     />

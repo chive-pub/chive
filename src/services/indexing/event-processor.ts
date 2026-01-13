@@ -24,10 +24,10 @@ import type { Pool } from 'pg';
 import type { AtUri, CID, DID, NSID } from '../../types/atproto.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
-import type { Preprint } from '../../types/models/preprint.js';
+import type { Eprint } from '../../types/models/eprint.js';
 import type { ActivityService } from '../activity/activity-service.js';
+import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
-import type { PreprintService, RecordMetadata } from '../preprint/preprint-service.js';
 import type { ReviewService, ReviewComment, Endorsement } from '../review/review-service.js';
 
 import type { ProcessedEvent } from './indexing-service.js';
@@ -38,7 +38,7 @@ import type { ProcessedEvent } from './indexing-service.js';
  * @public
  */
 export interface UserTagRecord {
-  readonly preprintUri: string;
+  readonly eprintUri: string;
   readonly tag: string;
   readonly createdAt: string;
 }
@@ -74,9 +74,9 @@ export interface EventProcessorOptions {
   readonly activity: ActivityService;
 
   /**
-   * Preprint service for indexing preprints.
+   * Eprint service for indexing eprints.
    */
-  readonly preprintService: PreprintService;
+  readonly eprintService: EprintService;
 
   /**
    * Review service for indexing comments and endorsements.
@@ -134,8 +134,7 @@ export interface EventProcessorOptions {
 export function createEventProcessor(
   options: EventProcessorOptions
 ): (event: ProcessedEvent) => Promise<void> {
-  const { pool, activity, preprintService, reviewService, graphService, identity, logger } =
-    options;
+  const { pool, activity, eprintService, reviewService, graphService, identity, logger } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
     const { repo, collection, rkey, action, cid, seq, record } = event;
@@ -158,7 +157,7 @@ export function createEventProcessor(
     await processRecord(
       {
         pool,
-        preprintService,
+        eprintService,
         reviewService,
         graphService,
         logger,
@@ -203,7 +202,7 @@ export function createEventProcessor(
  */
 interface ProcessRecordContext {
   readonly pool: Pool;
-  readonly preprintService: PreprintService;
+  readonly eprintService: EprintService;
   readonly reviewService: ReviewService;
   readonly graphService: KnowledgeGraphService;
   readonly logger: ILogger;
@@ -231,7 +230,7 @@ interface RecordData {
  * @internal
  */
 async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promise<void> {
-  const { preprintService, reviewService, graphService, pool, logger } = ctx;
+  const { eprintService, reviewService, graphService, pool, logger } = ctx;
   const { uri, cid, collection, action, record, pdsUrl } = data;
 
   // Build metadata for indexing
@@ -244,22 +243,22 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
 
   // Route to appropriate handler based on collection
   switch (collection) {
-    case 'pub.chive.preprint.submission': {
-      logger.debug('Processing preprint submission', { action, uri });
+    case 'pub.chive.eprint.submission': {
+      logger.debug('Processing eprint submission', { action, uri });
 
       if (action === 'delete') {
-        const result = await preprintService.indexPreprintDelete(uri);
+        const result = await eprintService.indexEprintDelete(uri);
         if (!result.ok) {
-          logger.error('Failed to delete preprint', result.error as Error, { uri });
+          logger.error('Failed to delete eprint', result.error as Error, { uri });
         }
       } else if (record) {
-        const preprintRecord = record as Preprint;
+        const eprintRecord = record as Eprint;
         const result =
           action === 'update'
-            ? await preprintService.indexPreprintUpdate(uri, preprintRecord, metadata)
-            : await preprintService.indexPreprint(preprintRecord, metadata);
+            ? await eprintService.indexEprintUpdate(uri, eprintRecord, metadata)
+            : await eprintService.indexEprint(eprintRecord, metadata);
         if (!result.ok) {
-          logger.error('Failed to index preprint', result.error as Error, { uri, action });
+          logger.error('Failed to index eprint', result.error as Error, { uri, action });
         }
       }
       break;
@@ -299,8 +298,8 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       break;
     }
 
-    case 'pub.chive.preprint.tag':
-    case 'pub.chive.preprint.userTag': {
+    case 'pub.chive.eprint.tag':
+    case 'pub.chive.eprint.userTag': {
       logger.debug('Processing tag', { action, uri });
 
       if (action === 'delete') {
@@ -314,7 +313,7 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
 
         await pool.query(
           `INSERT INTO user_tags_index (
-            uri, cid, preprint_uri, tagger_did, tag, created_at, pds_url, indexed_at, last_synced_at
+            uri, cid, eprint_uri, tagger_did, tag, created_at, pds_url, indexed_at, last_synced_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
           ON CONFLICT (uri) DO UPDATE SET
             cid = EXCLUDED.cid,
@@ -323,14 +322,14 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
           [
             uri,
             cid ?? '',
-            tagRecord.preprintUri,
+            tagRecord.eprintUri,
             taggerDid,
             tagRecord.tag,
             new Date(tagRecord.createdAt),
             pdsUrl,
           ]
         );
-        logger.info('Indexed tag', { uri, preprintUri: tagRecord.preprintUri, tag: tagRecord.tag });
+        logger.info('Indexed tag', { uri, eprintUri: tagRecord.eprintUri, tag: tagRecord.tag });
       }
       break;
     }
@@ -471,8 +470,7 @@ async function correlateActivity(
 export function createBatchEventProcessor(
   options: EventProcessorOptions
 ): (events: readonly ProcessedEvent[]) => Promise<void> {
-  const { pool, activity, preprintService, reviewService, graphService, identity, logger } =
-    options;
+  const { pool, activity, eprintService, reviewService, graphService, identity, logger } = options;
 
   return async (events: readonly ProcessedEvent[]): Promise<void> => {
     // Process records
@@ -481,7 +479,7 @@ export function createBatchEventProcessor(
       const pdsUrl = await identity.getPDSEndpoint(event.repo as DID);
 
       await processRecord(
-        { pool, preprintService, reviewService, graphService, logger },
+        { pool, eprintService, reviewService, graphService, logger },
         {
           uri,
           repo: event.repo as DID,

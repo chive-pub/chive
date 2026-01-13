@@ -58,7 +58,7 @@ export async function listForAuthorHandler(
       did: item.author,
       handle: 'unknown', // Handle would need DID resolution
     },
-    preprintUri: item.subject as string,
+    eprintUri: item.subject as string,
     content: item.text,
     body: undefined,
     target: undefined,

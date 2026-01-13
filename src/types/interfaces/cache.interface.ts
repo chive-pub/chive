@@ -33,9 +33,9 @@ export interface ICacheProvider {
    *
    * @example
    * ```typescript
-   * const preprint = await cache.get<StoredPreprint>('preprint:xyz');
-   * if (preprint) {
-   *   console.log('Cache hit:', preprint.title);
+   * const eprint = await cache.get<StoredEprint>('eprint:xyz');
+   * if (eprint) {
+   *   console.log('Cache hit:', eprint.title);
    * }
    * ```
    *
@@ -54,7 +54,7 @@ export interface ICacheProvider {
    *
    * @example
    * ```typescript
-   * await cache.set('preprint:xyz', preprint, 3600); // 1 hour TTL
+   * await cache.set('eprint:xyz', eprint, 3600); // 1 hour TTL
    * ```
    *
    * @public
@@ -69,7 +69,7 @@ export interface ICacheProvider {
    *
    * @example
    * ```typescript
-   * await cache.delete('preprint:xyz');
+   * await cache.delete('eprint:xyz');
    * ```
    *
    * @public
@@ -84,7 +84,7 @@ export interface ICacheProvider {
    *
    * @example
    * ```typescript
-   * if (await cache.exists('preprint:xyz')) {
+   * if (await cache.exists('eprint:xyz')) {
    *   console.log('Key exists');
    * }
    * ```
@@ -102,7 +102,7 @@ export interface ICacheProvider {
    *
    * @example
    * ```typescript
-   * await cache.expire('preprint:xyz', 1800); // 30 minutes
+   * await cache.expire('eprint:xyz', 1800); // 30 minutes
    * ```
    *
    * @public

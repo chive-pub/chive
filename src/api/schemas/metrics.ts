@@ -11,9 +11,9 @@
 import { z } from 'zod';
 
 /**
- * Preprint metrics schema.
+ * Eprint metrics schema.
  */
-export const preprintMetricsSchema = z.object({
+export const eprintMetricsSchema = z.object({
   totalViews: z.number().int(),
   uniqueViews: z.number().int(),
   totalDownloads: z.number().int(),
@@ -22,7 +22,7 @@ export const preprintMetricsSchema = z.object({
   views30d: z.number().int(),
 });
 
-export type PreprintMetrics = z.infer<typeof preprintMetricsSchema>;
+export type EprintMetrics = z.infer<typeof eprintMetricsSchema>;
 
 /**
  * Trending entry schema.
@@ -86,7 +86,7 @@ export const viewCountResponseSchema = z.object({
 export type ViewCountResponse = z.infer<typeof viewCountResponseSchema>;
 
 /**
- * Parameters for getting trending preprints.
+ * Parameters for getting trending eprints.
  */
 export const getTrendingParamsSchema = z.object({
   window: z.enum(['24h', '7d', '30d']).optional(),
@@ -96,7 +96,7 @@ export const getTrendingParamsSchema = z.object({
 export type GetTrendingParams = z.infer<typeof getTrendingParamsSchema>;
 
 /**
- * Response for trending preprints.
+ * Response for trending eprints.
  */
 export const trendingResponseSchema = z.object({
   trending: z.array(trendingEntrySchema),

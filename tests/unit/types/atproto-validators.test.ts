@@ -20,7 +20,7 @@ import {
 describe('toAtUri', () => {
   it('should validate correct AT URIs', () => {
     const validUris = [
-      'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+      'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
       'at://did:web:example.com/app.bsky.feed.post/3k2akj',
       'at://did:plc:z72i7hdynmk6r22z27h6tvur/pub.chive.review.comment/comment123',
     ];
@@ -35,8 +35,8 @@ describe('toAtUri', () => {
       'https://example.com',
       'at://not-a-did/collection/rkey',
       'at://did:plc:abc123/InvalidNSID/rkey',
-      'at://did:plc:abc123/pub.chive.preprint.submission/',
-      'at://did:plc:abc123/pub.chive.preprint.submission',
+      'at://did:plc:abc123/pub.chive.eprint.submission/',
+      'at://did:plc:abc123/pub.chive.eprint.submission',
       '',
       'at://',
     ];
@@ -83,7 +83,7 @@ describe('toNSID', () => {
   it('should validate correct NSIDs', () => {
     const validNsids = [
       'pub.chive',
-      'pub.chive.preprint.submission',
+      'pub.chive.eprint.submission',
       'app.bsky.feed.post',
       'com.atproto.sync.subscribeRepos',
       'pub.chive.review.comment',
@@ -98,7 +98,7 @@ describe('toNSID', () => {
   it('should reject invalid NSIDs', () => {
     const invalidNsids = [
       'InvalidNSID',
-      'pub.Chive.preprint', // uppercase
+      'pub.Chive.eprint', // uppercase
       'pub',
       'pub.',
       '.pub.chive',

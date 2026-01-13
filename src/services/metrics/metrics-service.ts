@@ -69,11 +69,11 @@ export interface MetricsServiceOptions {
 }
 
 /**
- * Preprint metrics.
+ * Eprint metrics.
  *
  * @public
  */
-export interface PreprintMetrics {
+export interface EprintMetrics {
   /**
    * Total views (all-time).
    */
@@ -106,13 +106,13 @@ export interface PreprintMetrics {
 }
 
 /**
- * Trending preprint entry.
+ * Trending eprint entry.
  *
  * @public
  */
 export interface TrendingEntry {
   /**
-   * Preprint URI.
+   * Eprint URI.
    */
   readonly uri: AtUri;
 
@@ -168,15 +168,15 @@ export interface TrendingEntry {
  * const service = new MetricsService({ storage, redis, logger });
  *
  * // Record view (increments counters atomically)
- * await service.recordView(preprintUri, viewerDid);
+ * await service.recordView(eprintUri, viewerDid);
  *
  * // Get metrics
- * const metrics = await service.getMetrics(preprintUri);
+ * const metrics = await service.getMetrics(eprintUri);
  * console.log(`Total views: ${metrics.totalViews}`);
  * console.log(`Unique viewers: ${metrics.uniqueViews}`);
  * console.log(`Trending (24h): ${metrics.views24h}`);
  *
- * // Get trending preprints
+ * // Get trending eprints
  * const trending = await service.getTrending('24h', 10);
  * ```
  *
@@ -196,9 +196,9 @@ export class MetricsService {
   }
 
   /**
-   * Records preprint view.
+   * Records eprint view.
    *
-   * @param uri - Preprint URI
+   * @param uri - Eprint URI
    * @param viewerDid - Optional viewer DID for unique tracking
    * @returns Result indicating success or failure
    *
@@ -272,9 +272,9 @@ export class MetricsService {
   }
 
   /**
-   * Records preprint download.
+   * Records eprint download.
    *
-   * @param uri - Preprint URI
+   * @param uri - Eprint URI
    * @param viewerDid - Optional viewer DID
    * @returns Result indicating success or failure
    *
@@ -322,10 +322,10 @@ export class MetricsService {
   }
 
   /**
-   * Gets comprehensive metrics for preprint.
+   * Gets comprehensive metrics for eprint.
    *
-   * @param uri - Preprint URI
-   * @returns Preprint metrics
+   * @param uri - Eprint URI
+   * @returns Eprint metrics
    *
    * @remarks
    * **Operations (batched via pipeline):**
@@ -342,7 +342,7 @@ export class MetricsService {
    *
    * @public
    */
-  async getMetrics(uri: AtUri): Promise<PreprintMetrics> {
+  async getMetrics(uri: AtUri): Promise<EprintMetrics> {
     try {
       const now = Date.now();
       const pipeline = this.redis.pipeline();
@@ -419,9 +419,9 @@ export class MetricsService {
   }
 
   /**
-   * Gets view count for preprint.
+   * Gets view count for eprint.
    *
-   * @param uri - Preprint URI
+   * @param uri - Eprint URI
    * @returns View count
    *
    * @public
@@ -446,11 +446,11 @@ export class MetricsService {
   }
 
   /**
-   * Gets trending preprints for time window.
+   * Gets trending eprints for time window.
    *
    * @param window - Time window ('24h', '7d', '30d')
    * @param limit - Maximum number of results
-   * @returns Trending preprints sorted by score
+   * @returns Trending eprints sorted by score
    *
    * @remarks
    * **Algorithm:**
@@ -468,7 +468,7 @@ export class MetricsService {
    *
    * @example
    * ```typescript
-   * // Get top 10 trending preprints in last 24h
+   * // Get top 10 trending eprints in last 24h
    * const trending = await service.getTrending('24h', 10);
    * ```
    *
@@ -676,7 +676,7 @@ export class MetricsService {
    * **Process:**
    * 1. Scan all metric keys
    * 2. Read counters
-   * 3. Batch upsert to PostgreSQL using upsert_preprint_metrics function
+   * 3. Batch upsert to PostgreSQL using upsert_eprint_metrics function
    * 4. Do NOT delete from Redis (keep for real-time queries)
    *
    * **Concurrency:**
@@ -791,7 +791,7 @@ export class MetricsService {
             await client.query('BEGIN');
 
             for (const metric of metricsToFlush) {
-              await client.query('SELECT upsert_preprint_metrics($1, $2, $3, $4, $5)', [
+              await client.query('SELECT upsert_eprint_metrics($1, $2, $3, $4, $5)', [
                 metric.uri,
                 metric.views,
                 metric.downloads,
@@ -846,7 +846,7 @@ export class MetricsService {
    *
    * @private
    */
-  private emptyMetrics(): PreprintMetrics {
+  private emptyMetrics(): EprintMetrics {
     return {
       totalViews: 0,
       uniqueViews: 0,

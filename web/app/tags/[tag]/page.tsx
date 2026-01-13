@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: TagPageProps): Promise<Metada
 
   return {
     title: `${decodedTag} | Tags | Chive`,
-    description: `Browse preprints tagged with "${decodedTag}" on Chive.`,
+    description: `Browse eprints tagged with "${decodedTag}" on Chive.`,
   };
 }
 
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: TagPageProps): Promise<Metada
  * Tag detail page.
  *
  * @remarks
- * Displays all preprints with a specific tag.
+ * Displays all eprints with a specific tag.
  *
  * @example
  * URL: /tags/machine-learning
@@ -46,7 +46,7 @@ export default async function TagPage({ params }: TagPageProps) {
     <div className="space-y-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">#{decodedTag}</h1>
-        <p className="mt-2 text-muted-foreground">Preprints tagged with &quot;{decodedTag}&quot;</p>
+        <p className="mt-2 text-muted-foreground">Eprints tagged with &quot;{decodedTag}&quot;</p>
       </header>
 
       <Suspense fallback={<TagDetailSkeleton />}>

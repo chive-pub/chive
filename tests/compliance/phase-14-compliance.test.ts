@@ -219,8 +219,8 @@ describe('ATProto Advanced Features Compliance', () => {
         type: 'new-review',
         recipient: TEST_USER_DID,
         subject: 'New review',
-        message: 'Your preprint received a review',
-        resourceUri: 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri,
+        message: 'Your eprint received a review',
+        resourceUri: 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri,
       };
 
       const result = await service.createNotification(input);
@@ -257,15 +257,15 @@ describe('ATProto Advanced Features Compliance', () => {
       expect(true).toBe(true); // Design verification
     });
 
-    it('references preprints via AT-URI, not local IDs', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/xyz' as AtUri;
+    it('references eprints via AT-URI, not local IDs', async () => {
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/xyz' as AtUri;
 
       const input: CreateNotificationInput = {
         type: 'new-review',
         recipient: TEST_USER_DID,
         subject: 'New review',
         message: 'Review received',
-        resourceUri: preprintUri, // AT-URI reference
+        resourceUri: eprintUri, // AT-URI reference
       };
 
       const result = await service.createNotification(input);
@@ -273,7 +273,7 @@ describe('ATProto Advanced Features Compliance', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         // Resource reference uses AT-URI format
-        expect(result.value.resourceUri).toBe(preprintUri);
+        expect(result.value.resourceUri).toBe(eprintUri);
         expect(result.value.resourceUri).toMatch(/^at:\/\//);
       }
     });
@@ -368,10 +368,10 @@ describe('ATProto Advanced Features Compliance', () => {
     it('metrics can be rebuilt from firehose events', () => {
       // Metrics derived from:
       // - Page view events (logged, not ATProto records)
-      // - Firehose indexing timestamps (when preprints were indexed)
+      // - Firehose indexing timestamps (when eprints were indexed)
       //
       // Note: View counts are NOT rebuildable (ephemeral analytics)
-      // But preprint existence/metadata IS rebuildable from firehose
+      // But eprint existence/metadata IS rebuildable from firehose
       expect(true).toBe(true); // Design verification
     });
 

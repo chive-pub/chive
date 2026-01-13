@@ -7,7 +7,7 @@
  * source code management, CI/CD, and more.
  *
  * This plugin is used to:
- * - Link preprints to GitLab repositories
+ * - Link eprints to GitLab repositories
  * - Verify repository ownership for claiming
  * - Track releases and commits
  *
@@ -226,7 +226,7 @@ interface GitLabApiRelease {
  * GitLab integration plugin.
  *
  * @remarks
- * Provides repository metadata lookup and code linking for preprints.
+ * Provides repository metadata lookup and code linking for eprints.
  * Supports both gitlab.com and self-hosted GitLab instances.
  *
  * @example

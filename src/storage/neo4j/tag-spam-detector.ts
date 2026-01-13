@@ -53,9 +53,9 @@ export interface TagUsageStats {
   uniqueUsers: number;
 
   /**
-   * Number of unique preprints tagged.
+   * Number of unique eprints tagged.
    */
-  uniquePreprints: number;
+  uniqueEprints: number;
 
   /**
    * Timestamp of first use.
@@ -385,16 +385,16 @@ export class TagSpamDetector {
   private async getTagStats(normalizedTag: string): Promise<TagUsageStats | null> {
     const query = `
       MATCH (tag:UserTag {normalizedForm: $normalizedTag})
-      OPTIONAL MATCH (tag)<-[:TAGGED_WITH]-(p:Preprint)
+      OPTIONAL MATCH (tag)<-[:TAGGED_WITH]-(p:Eprint)
       OPTIONAL MATCH (u:User)-[:CREATED_TAG]->(tag)
       WITH tag,
-           count(DISTINCT p) as uniquePreprints,
+           count(DISTINCT p) as uniqueEprints,
            collect(DISTINCT u.did) as userDids
       RETURN tag.normalizedForm as normalizedForm,
              tag.displayForm as displayForm,
              tag.usageCount as usageCount,
              tag.uniqueUsers as uniqueUsers,
-             uniquePreprints,
+             uniqueEprints,
              tag.createdAt as createdAt,
              tag.lastUsedAt as lastUsedAt,
              userDids
@@ -406,7 +406,7 @@ export class TagSpamDetector {
         displayForm: string;
         usageCount: number;
         uniqueUsers: number;
-        uniquePreprints: number;
+        uniqueEprints: number;
         createdAt: Date;
         lastUsedAt: Date;
         userDids: string[];
@@ -426,7 +426,7 @@ export class TagSpamDetector {
         displayForm: record.get('displayForm'),
         usageCount: record.get('usageCount'),
         uniqueUsers: record.get('uniqueUsers'),
-        uniquePreprints: record.get('uniquePreprints'),
+        uniqueEprints: record.get('uniqueEprints'),
         createdAt: createdAtRaw instanceof Date ? createdAtRaw : new Date(String(createdAtRaw)),
         lastUsedAt: lastUsedAtRaw instanceof Date ? lastUsedAtRaw : new Date(String(lastUsedAtRaw)),
         userDids: record.get('userDids'),
@@ -544,13 +544,11 @@ export class TagSpamDetector {
       return 0; // Not enough data
     }
 
-    // Ratio of unique preprints to total uses
-    const diversityRatio = stats.uniquePreprints / stats.usageCount;
+    // Ratio of unique eprints to total uses
+    const diversityRatio = stats.uniqueEprints / stats.usageCount;
 
     if (diversityRatio < 0.2) {
-      reasons.push(
-        `Low diversity: ${stats.uniquePreprints} preprints for ${stats.usageCount} uses`
-      );
+      reasons.push(`Low diversity: ${stats.uniqueEprints} eprints for ${stats.usageCount} uses`);
       return 1 - diversityRatio;
     }
 

@@ -14,7 +14,7 @@ import { LoginDialog } from './login-dialog';
 export interface LoginPromptProps {
   /**
    * Action label to show in the prompt.
-   * @example "endorse this preprint"
+   * @example "endorse this eprint"
    */
   action: string;
 
@@ -97,7 +97,7 @@ export function LoginPrompt({
  * @example
  * ```tsx
  * <p>
- *   <InlineLoginPrompt action="endorse" /> this preprint
+ *   <InlineLoginPrompt action="endorse" /> this eprint
  * </p>
  * ```
  */

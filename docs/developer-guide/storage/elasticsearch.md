@@ -6,29 +6,29 @@ Elasticsearch provides full-text search and faceted filtering for Chive. Like al
 
 ### Index naming
 
-Preprint indexes use time-based naming with aliases:
+Eprint indexes use time-based naming with aliases:
 
 ```
-preprints-000001  ← Current write index
-preprints-000002  ← Rolled over index
-preprints         ← Write alias (points to current)
-preprints-read    ← Read alias (points to all)
+eprints-000001  ← Current write index
+eprints-000002  ← Rolled over index
+eprints         ← Write alias (points to current)
+eprints-read    ← Read alias (points to all)
 ```
 
 ### Index template
 
-The `preprints` template applies to all `preprints-*` indexes:
+The `eprints` template applies to all `eprints-*` indexes:
 
 ```json
 {
-  "index_patterns": ["preprints-*"],
+  "index_patterns": ["eprints-*"],
   "template": {
     "settings": {
       "number_of_shards": 3,
       "number_of_replicas": 2,
       "analysis": {
         "analyzer": {
-          "preprint_analyzer": {
+          "eprint_analyzer": {
             "type": "custom",
             "tokenizer": "standard",
             "filter": ["lowercase", "porter_stem", "asciifolding"]
@@ -41,13 +41,13 @@ The `preprints` template applies to all `preprints-*` indexes:
         "uri": { "type": "keyword" },
         "title": {
           "type": "text",
-          "analyzer": "preprint_analyzer",
+          "analyzer": "eprint_analyzer",
           "fields": {
             "keyword": { "type": "keyword" },
             "suggest": { "type": "completion" }
           }
         },
-        "abstract": { "type": "text", "analyzer": "preprint_analyzer" },
+        "abstract": { "type": "text", "analyzer": "eprint_analyzer" },
         "keywords": { "type": "keyword" },
         "author_did": { "type": "keyword" },
         "author_name": { "type": "text" },
@@ -111,9 +111,9 @@ import { ElasticsearchAdapter } from '@/storage/elasticsearch/adapter.js';
 
 const adapter = new ElasticsearchAdapter(client, logger);
 
-// Index a preprint
-await adapter.indexPreprint({
-  uri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz',
+// Index a eprint
+await adapter.indexEprint({
+  uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
   title: 'Attention Is All You Need',
   abstract: 'We propose a new simple network architecture...',
   keywords: ['transformers', 'attention', 'neural networks'],
@@ -124,7 +124,7 @@ await adapter.indexPreprint({
 });
 
 // Bulk index
-await adapter.bulkIndex(preprints, { chunkSize: 500 });
+await adapter.bulkIndex(eprints, { chunkSize: 500 });
 
 // Delete
 await adapter.delete(uri);
@@ -262,16 +262,16 @@ import { IndexManager } from '@/storage/elasticsearch/index-manager.js';
 const manager = new IndexManager(client, logger);
 
 // Create index with template
-await manager.createIndex('preprints-000001');
+await manager.createIndex('eprints-000001');
 
 // Apply template updates
-await manager.updateTemplate('preprints', templateDefinition);
+await manager.updateTemplate('eprints', templateDefinition);
 
 // Reindex (e.g., after mapping changes)
-await manager.reindex('preprints-000001', 'preprints-000002');
+await manager.reindex('eprints-000001', 'eprints-000002');
 
 // Force merge for read optimization
-await manager.forceMerge('preprints-000001', { maxSegments: 1 });
+await manager.forceMerge('eprints-000001', { maxSegments: 1 });
 ```
 
 ## Pipelines
@@ -282,7 +282,7 @@ Pre-process documents before indexing:
 
 ```json
 {
-  "description": "Preprint ingest pipeline",
+  "description": "Eprint ingest pipeline",
   "processors": [
     {
       "set": {
@@ -302,7 +302,7 @@ Pre-process documents before indexing:
 ### Usage
 
 ```typescript
-await adapter.indexPreprint(doc, { pipeline: 'preprint-ingest' });
+await adapter.indexEprint(doc, { pipeline: 'eprint-ingest' });
 ```
 
 ## Configuration
@@ -339,7 +339,7 @@ curl http://localhost:9200/_cluster/health?pretty
 ### Index stats
 
 ```bash
-curl http://localhost:9200/preprints/_stats?pretty
+curl http://localhost:9200/eprints/_stats?pretty
 ```
 
 ### Slow queries
@@ -359,16 +359,16 @@ If search indexes need rebuilding:
 
 ```bash
 # 1. Create new index
-tsx scripts/db/create-index.ts preprints-new
+tsx scripts/db/create-index.ts eprints-new
 
 # 2. Reindex from PostgreSQL
-tsx scripts/db/reindex-from-pg.ts --target preprints-new
+tsx scripts/db/reindex-from-pg.ts --target eprints-new
 
 # 3. Switch alias
-tsx scripts/db/switch-alias.ts preprints preprints-new
+tsx scripts/db/switch-alias.ts eprints eprints-new
 
 # 4. Delete old index
-curl -X DELETE http://localhost:9200/preprints-old
+curl -X DELETE http://localhost:9200/eprints-old
 ```
 
 ## Testing

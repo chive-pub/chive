@@ -2,12 +2,12 @@
  * DOI registration plugin via DataCite.
  *
  * @remarks
- * Mints DOIs for preprints using the DataCite REST API.
+ * Mints DOIs for eprints using the DataCite REST API.
  *
  * ATProto Compliance Note:
  * - DOI registration is a SIDE EFFECT, not data storage
  * - The DOI is stored by DataCite, not by Chive
- * - Preprint records reference DOIs via metadata
+ * - Eprint records reference DOIs via metadata
  *
  * @packageDocumentation
  * @public
@@ -64,11 +64,11 @@ export interface DoiAuthor {
 }
 
 /**
- * Preprint indexed event data.
+ * Eprint indexed event data.
  *
  * @internal
  */
-interface PreprintIndexedEvent {
+interface EprintIndexedEvent {
   uri: string;
   title: string;
   authors: readonly DoiAuthor[];
@@ -96,7 +96,7 @@ interface DataCiteResponse {
  * DOI registration plugin.
  *
  * @remarks
- * Mints DOIs for preprints via DataCite when requested.
+ * Mints DOIs for eprints via DataCite when requested.
  * Requires DataCite credentials configured in plugin config.
  *
  * @example
@@ -125,14 +125,14 @@ export class DoiRegistrationPlugin extends BasePlugin {
     id: 'pub.chive.plugin.doi',
     name: 'DOI Registration',
     version: '0.1.0',
-    description: 'Mints DOIs for preprints via DataCite',
+    description: 'Mints DOIs for eprints via DataCite',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
       network: {
         allowedDomains: ['api.datacite.org', 'api.test.datacite.org'],
       },
-      hooks: ['preprint.indexed'],
+      hooks: ['eprint.indexed'],
       storage: {
         maxSize: 1 * 1024 * 1024, // 1MB
       },
@@ -183,17 +183,17 @@ export class DoiRegistrationPlugin extends BasePlugin {
       this.logger.warn('DOI registration not configured - credentials missing');
     }
 
-    this.context.eventBus.on('preprint.indexed', (...args: readonly unknown[]) => {
-      void this.handlePreprintIndexed(args[0] as PreprintIndexedEvent);
+    this.context.eventBus.on('eprint.indexed', (...args: readonly unknown[]) => {
+      void this.handleEprintIndexed(args[0] as EprintIndexedEvent);
     });
 
     return Promise.resolve();
   }
 
   /**
-   * Handles preprint indexed events.
+   * Handles eprint indexed events.
    */
-  private async handlePreprintIndexed(data: PreprintIndexedEvent): Promise<void> {
+  private async handleEprintIndexed(data: EprintIndexedEvent): Promise<void> {
     if (!data.requestDoi) {
       return;
     }
@@ -207,7 +207,7 @@ export class DoiRegistrationPlugin extends BasePlugin {
       const doi = await this.mintDoi(data);
 
       this.logger.info('DOI minted', {
-        preprintUri: data.uri,
+        eprintUri: data.uri,
         doi: doi.doi,
         state: doi.state,
       });
@@ -216,13 +216,13 @@ export class DoiRegistrationPlugin extends BasePlugin {
 
       // Emit DOI minted event
       this.context.eventBus.emit('doi.minted', {
-        preprintUri: data.uri,
+        eprintUri: data.uri,
         doi: doi.doi,
         url: doi.url,
       });
     } catch (err) {
       this.logger.error('Failed to mint DOI', err as Error, {
-        preprintUri: data.uri,
+        eprintUri: data.uri,
       });
 
       this.recordCounter('mint_errors');
@@ -230,9 +230,9 @@ export class DoiRegistrationPlugin extends BasePlugin {
   }
 
   /**
-   * Mints a DOI for a preprint.
+   * Mints a DOI for a eprint.
    *
-   * @param data - Preprint data
+   * @param data - Eprint data
    * @returns DOI metadata
    *
    * @public
@@ -249,7 +249,7 @@ export class DoiRegistrationPlugin extends BasePlugin {
 
     const suffix = this.generateSuffix(data.uri);
     const doi = `${this.datacitePrefix}/${suffix}`;
-    const url = `https://chive.pub/preprint/${encodeURIComponent(data.uri)}`;
+    const url = `https://chive.pub/eprint/${encodeURIComponent(data.uri)}`;
 
     // Build DataCite metadata
     const payload = {
@@ -271,11 +271,11 @@ export class DoiRegistrationPlugin extends BasePlugin {
               : [],
           })),
           titles: [{ title: data.title }],
-          publisher: 'Chive Preprint Server',
+          publisher: 'Chive Eprint Server',
           publicationYear: new Date().getFullYear(),
           types: {
-            resourceTypeGeneral: 'Preprint',
-            resourceType: 'Preprint',
+            resourceTypeGeneral: 'Eprint',
+            resourceType: 'Eprint',
           },
           url,
           descriptions: data.abstract
@@ -320,15 +320,15 @@ export class DoiRegistrationPlugin extends BasePlugin {
   }
 
   /**
-   * Gets DOI for a preprint if already minted.
+   * Gets DOI for a eprint if already minted.
    *
-   * @param preprintUri - Preprint AT URI
+   * @param eprintUri - Eprint AT URI
    * @returns DOI metadata or null
    *
    * @public
    */
-  async getDoi(preprintUri: string): Promise<DoiMetadata | null> {
-    return this.cache.get<DoiMetadata>(`doi:${preprintUri}`);
+  async getDoi(eprintUri: string): Promise<DoiMetadata | null> {
+    return this.cache.get<DoiMetadata>(`doi:${eprintUri}`);
   }
 
   /**
@@ -342,7 +342,7 @@ export class DoiRegistrationPlugin extends BasePlugin {
     const parts = uri.split('/');
     const rkey = parts[parts.length - 1] ?? '';
 
-    // Use rkey as suffix (already unique per preprint)
+    // Use rkey as suffix (already unique per eprint)
     return `chive.${rkey}`;
   }
 }

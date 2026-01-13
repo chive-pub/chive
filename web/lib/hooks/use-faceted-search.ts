@@ -103,7 +103,7 @@ export function useFacetedSearch(params: UseFacetedSearchParams) {
 }
 
 /**
- * Fetches only facet counts without preprint results.
+ * Fetches only facet counts without eprint results.
  *
  * @remarks
  * Useful for displaying available filters before a search is performed.

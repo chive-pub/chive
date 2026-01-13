@@ -326,7 +326,7 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
 
         {/* Results */}
         <SearchResults
-          query={query || 'all preprints'}
+          query={query || 'all eprints'}
           data={searchResults}
           isLoading={isLoading}
           error={error}

@@ -6,11 +6,11 @@ import type { Pool, PoolClient } from 'pg';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { BatchOperations } from '@/storage/postgresql/batch-operations.js';
-import type { StoredPreprint } from '@/types/interfaces/storage.interface.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
+import type { StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { EprintAuthor } from '@/types/models/author.js';
 import { isOk, isErr } from '@/types/result.js';
 
-const mockAuthor: PreprintAuthor = {
+const mockAuthor: EprintAuthor = {
   did: 'did:plc:abc123' as never,
   name: 'Test Author',
   order: 1,
@@ -20,13 +20,13 @@ const mockAuthor: PreprintAuthor = {
   isHighlighted: false,
 };
 
-function createMockPreprint(uri: string): StoredPreprint {
+function createMockEprint(uri: string): StoredEprint {
   return {
     uri: uri as never,
     cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,
     authors: [mockAuthor],
     submittedBy: 'did:plc:abc123' as never,
-    title: `Preprint ${uri}`,
+    title: `Eprint ${uri}`,
     abstract: 'Abstract text',
     documentBlobRef: {
       $type: 'blob',
@@ -35,7 +35,7 @@ function createMockPreprint(uri: string): StoredPreprint {
       size: 1024,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     license: 'CC-BY-4.0',
     pdsUrl: 'https://pds.example.com',
     indexedAt: new Date('2024-01-01'),
@@ -63,15 +63,15 @@ describe('BatchOperations', () => {
     batch = new BatchOperations(mockPool);
   });
 
-  describe('batchInsertPreprints', () => {
-    it('should insert preprints successfully', async () => {
-      const preprints = [
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/1'),
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/2'),
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/3'),
+  describe('batchInsertEprints', () => {
+    it('should insert eprints successfully', async () => {
+      const eprints = [
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/1'),
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/2'),
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/3'),
       ];
 
-      const result = await batch.batchInsertPreprints(preprints);
+      const result = await batch.batchInsertEprints(eprints);
 
       expect(isOk(result)).toBe(true);
       if (isOk(result)) {
@@ -83,7 +83,7 @@ describe('BatchOperations', () => {
     });
 
     it('should handle empty array', async () => {
-      const result = await batch.batchInsertPreprints([]);
+      const result = await batch.batchInsertEprints([]);
 
       expect(isOk(result)).toBe(true);
       if (isOk(result)) {
@@ -94,11 +94,11 @@ describe('BatchOperations', () => {
     });
 
     it('should chunk large batches', async () => {
-      const preprints = Array.from({ length: 2500 }, (_, i) =>
-        createMockPreprint(`at://did:plc:abc/pub.chive.preprint.submission/${i}`)
+      const eprints = Array.from({ length: 2500 }, (_, i) =>
+        createMockEprint(`at://did:plc:abc/pub.chive.eprint.submission/${i}`)
       );
 
-      const result = await batch.batchInsertPreprints(preprints, { batchSize: 1000 });
+      const result = await batch.batchInsertEprints(eprints, { batchSize: 1000 });
 
       expect(isOk(result)).toBe(true);
       if (isOk(result)) {
@@ -107,8 +107,8 @@ describe('BatchOperations', () => {
     });
 
     it('should call progress callback', async () => {
-      const preprints = Array.from({ length: 10 }, (_, i) =>
-        createMockPreprint(`at://did:plc:abc/pub.chive.preprint.submission/${i}`)
+      const eprints = Array.from({ length: 10 }, (_, i) =>
+        createMockEprint(`at://did:plc:abc/pub.chive.eprint.submission/${i}`)
       );
 
       const progressCalls: { processed: number; total: number }[] = [];
@@ -116,7 +116,7 @@ describe('BatchOperations', () => {
         progressCalls.push({ processed, total });
       };
 
-      await batch.batchInsertPreprints(preprints, { batchSize: 5 }, onProgress);
+      await batch.batchInsertEprints(eprints, { batchSize: 5 }, onProgress);
 
       expect(progressCalls.length).toBeGreaterThan(0);
       expect(progressCalls[progressCalls.length - 1]?.total).toBe(10);
@@ -132,13 +132,13 @@ describe('BatchOperations', () => {
 
       (mockClient.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      const preprints = [
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/1'),
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/2'),
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/3'),
+      const eprints = [
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/1'),
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/2'),
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/3'),
       ];
 
-      const result = await batch.batchInsertPreprints(preprints, {
+      const result = await batch.batchInsertEprints(eprints, {
         continueOnError: true,
         batchSize: 1,
       });
@@ -154,12 +154,12 @@ describe('BatchOperations', () => {
       const mockClient = await mockPool.connect();
       (mockClient.query as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Insert failed'));
 
-      const preprints = [
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/1'),
-        createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/2'),
+      const eprints = [
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/1'),
+        createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/2'),
       ];
 
-      const result = await batch.batchInsertPreprints(preprints, {
+      const result = await batch.batchInsertEprints(eprints, {
         continueOnError: false,
         batchSize: 10,
       });
@@ -168,20 +168,20 @@ describe('BatchOperations', () => {
     });
 
     it('should respect custom batch size', async () => {
-      const preprints = Array.from({ length: 100 }, (_, i) =>
-        createMockPreprint(`at://did:plc:abc/pub.chive.preprint.submission/${i}`)
+      const eprints = Array.from({ length: 100 }, (_, i) =>
+        createMockEprint(`at://did:plc:abc/pub.chive.eprint.submission/${i}`)
       );
 
-      await batch.batchInsertPreprints(preprints, { batchSize: 25 });
+      await batch.batchInsertEprints(eprints, { batchSize: 25 });
 
       const connectCalls = (mockPool.connect as ReturnType<typeof vi.fn>).mock.calls.length;
       expect(connectCalls).toBeGreaterThanOrEqual(4);
     });
 
     it('should include duration in result', async () => {
-      const preprints = [createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/1')];
+      const eprints = [createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/1')];
 
-      const result = await batch.batchInsertPreprints(preprints);
+      const result = await batch.batchInsertEprints(eprints);
 
       expect(isOk(result)).toBe(true);
       if (isOk(result)) {
@@ -194,12 +194,12 @@ describe('BatchOperations', () => {
     it('should update PDS tracking successfully', async () => {
       const updates = [
         {
-          uri: 'at://did:plc:abc/pub.chive.preprint.submission/1',
+          uri: 'at://did:plc:abc/pub.chive.eprint.submission/1',
           pdsUrl: 'https://pds.example.com',
           lastSynced: new Date(),
         },
         {
-          uri: 'at://did:plc:abc/pub.chive.preprint.submission/2',
+          uri: 'at://did:plc:abc/pub.chive.eprint.submission/2',
           pdsUrl: 'https://pds.example.com',
           lastSynced: new Date(),
         },
@@ -227,7 +227,7 @@ describe('BatchOperations', () => {
 
     it('should chunk large updates', async () => {
       const updates = Array.from({ length: 1500 }, (_, i) => ({
-        uri: `at://did:plc:abc/pub.chive.preprint.submission/${i}`,
+        uri: `at://did:plc:abc/pub.chive.eprint.submission/${i}`,
         pdsUrl: 'https://pds.example.com',
         lastSynced: new Date(),
       }));
@@ -242,7 +242,7 @@ describe('BatchOperations', () => {
 
     it('should call progress callback for updates', async () => {
       const updates = Array.from({ length: 10 }, (_, i) => ({
-        uri: `at://did:plc:abc/pub.chive.preprint.submission/${i}`,
+        uri: `at://did:plc:abc/pub.chive.eprint.submission/${i}`,
         pdsUrl: 'https://pds.example.com',
         lastSynced: new Date(),
       }));
@@ -269,17 +269,17 @@ describe('BatchOperations', () => {
 
       const updates = [
         {
-          uri: 'at://did:plc:abc/pub.chive.preprint.submission/1',
+          uri: 'at://did:plc:abc/pub.chive.eprint.submission/1',
           pdsUrl: 'https://pds.example.com',
           lastSynced: new Date(),
         },
         {
-          uri: 'at://did:plc:abc/pub.chive.preprint.submission/2',
+          uri: 'at://did:plc:abc/pub.chive.eprint.submission/2',
           pdsUrl: 'https://pds.example.com',
           lastSynced: new Date(),
         },
         {
-          uri: 'at://did:plc:abc/pub.chive.preprint.submission/3',
+          uri: 'at://did:plc:abc/pub.chive.eprint.submission/3',
           pdsUrl: 'https://pds.example.com',
           lastSynced: new Date(),
         },
@@ -296,11 +296,11 @@ describe('BatchOperations', () => {
 
   describe('default configuration', () => {
     it('should use default batch size', async () => {
-      const preprints = Array.from({ length: 2000 }, (_, i) =>
-        createMockPreprint(`at://did:plc:abc/pub.chive.preprint.submission/${i}`)
+      const eprints = Array.from({ length: 2000 }, (_, i) =>
+        createMockEprint(`at://did:plc:abc/pub.chive.eprint.submission/${i}`)
       );
 
-      await batch.batchInsertPreprints(preprints);
+      await batch.batchInsertEprints(eprints);
 
       const connectCalls = (mockPool.connect as ReturnType<typeof vi.fn>).mock.calls.length;
       expect(connectCalls).toBeGreaterThanOrEqual(2);
@@ -312,11 +312,11 @@ describe('BatchOperations', () => {
         continueOnError: false,
       });
 
-      const preprints = Array.from({ length: 250 }, (_, i) =>
-        createMockPreprint(`at://did:plc:abc/pub.chive.preprint.submission/${i}`)
+      const eprints = Array.from({ length: 250 }, (_, i) =>
+        createMockEprint(`at://did:plc:abc/pub.chive.eprint.submission/${i}`)
       );
 
-      await customBatch.batchInsertPreprints(preprints);
+      await customBatch.batchInsertEprints(eprints);
 
       const connectCalls = (mockPool.connect as ReturnType<typeof vi.fn>).mock.calls.length;
       expect(connectCalls).toBeGreaterThanOrEqual(3);
@@ -329,9 +329,9 @@ describe('BatchOperations', () => {
       const specificError = new Error('Unique constraint violation');
       (mockClient.query as ReturnType<typeof vi.fn>).mockRejectedValue(specificError);
 
-      const preprints = [createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/1')];
+      const eprints = [createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/1')];
 
-      const result = await batch.batchInsertPreprints(preprints, {
+      const result = await batch.batchInsertEprints(eprints, {
         continueOnError: true,
         batchSize: 1,
       });
@@ -351,11 +351,11 @@ describe('BatchOperations', () => {
         .mockRejectedValueOnce(new Error('Failed'))
         .mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
-      const preprints = Array.from({ length: 3 }, (_, i) =>
-        createMockPreprint(`at://did:plc:abc/pub.chive.preprint.submission/${i}`)
+      const eprints = Array.from({ length: 3 }, (_, i) =>
+        createMockEprint(`at://did:plc:abc/pub.chive.eprint.submission/${i}`)
       );
 
-      const result = await batch.batchInsertPreprints(preprints, {
+      const result = await batch.batchInsertEprints(eprints, {
         continueOnError: true,
         batchSize: 1,
       });
@@ -369,22 +369,22 @@ describe('BatchOperations', () => {
   });
 
   describe('performance', () => {
-    it('should handle single preprint efficiently', async () => {
-      const preprints = [createMockPreprint('at://did:plc:abc/pub.chive.preprint.submission/1')];
+    it('should handle single eprint efficiently', async () => {
+      const eprints = [createMockEprint('at://did:plc:abc/pub.chive.eprint.submission/1')];
 
       const startTime = Date.now();
-      await batch.batchInsertPreprints(preprints);
+      await batch.batchInsertEprints(eprints);
       const duration = Date.now() - startTime;
 
       expect(duration).toBeLessThan(1000);
     });
 
     it('should provide accurate duration measurement', async () => {
-      const preprints = Array.from({ length: 10 }, (_, i) =>
-        createMockPreprint(`at://did:plc:abc/pub.chive.preprint.submission/${i}`)
+      const eprints = Array.from({ length: 10 }, (_, i) =>
+        createMockEprint(`at://did:plc:abc/pub.chive.eprint.submission/${i}`)
       );
 
-      const result = await batch.batchInsertPreprints(preprints);
+      const result = await batch.batchInsertEprints(eprints);
 
       expect(isOk(result)).toBe(true);
       if (isOk(result)) {

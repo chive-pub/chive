@@ -6,10 +6,10 @@ import {
   createMockFieldDetail,
   createMockFieldListResponse,
   createMockFieldSummary,
-  createMockPreprintSummary,
+  createMockEprintSummary,
 } from '@/tests/mock-data';
 
-import { fieldKeys, useField, useFields, useFieldChildren, useFieldPreprints } from './use-field';
+import { fieldKeys, useField, useFields, useFieldChildren, useFieldEprints } from './use-field';
 
 // Mock functions using vi.hoisted for proper hoisting
 const { mockApiGet } = vi.hoisted(() => ({
@@ -62,8 +62,8 @@ describe('fieldKeys', () => {
     ]);
   });
 
-  it('generates preprints key', () => {
-    expect(fieldKeys.preprints('physics')).toEqual(['fields', 'detail', 'physics', 'preprints']);
+  it('generates eprints key', () => {
+    expect(fieldKeys.eprints('physics')).toEqual(['fields', 'detail', 'physics', 'eprints']);
   });
 });
 
@@ -254,16 +254,16 @@ describe('useFieldChildren', () => {
   });
 });
 
-describe('useFieldPreprints', () => {
+describe('useFieldEprints', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches field preprints with pagination', async () => {
+  it('fetches field eprints with pagination', async () => {
     const mockResponse = {
-      preprints: [
-        createMockPreprintSummary({ uri: 'at://did:plc:test1/pub.chive.preprint.submission/1' }),
-        createMockPreprintSummary({ uri: 'at://did:plc:test2/pub.chive.preprint.submission/2' }),
+      eprints: [
+        createMockEprintSummary({ uri: 'at://did:plc:test1/pub.chive.eprint.submission/1' }),
+        createMockEprintSummary({ uri: 'at://did:plc:test2/pub.chive.eprint.submission/2' }),
       ],
       cursor: 'next-cursor',
       hasMore: true,
@@ -275,7 +275,7 @@ describe('useFieldPreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldPreprints('machine-learning'), {
+    const { result } = renderHook(() => useFieldEprints('machine-learning'), {
       wrapper: Wrapper,
     });
 
@@ -285,7 +285,7 @@ describe('useFieldPreprints', () => {
 
     expect(result.current.data?.pages[0]).toEqual(mockResponse);
     expect(result.current.hasNextPage).toBe(true);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getFieldPreprints', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getFieldEprints', {
       params: {
         query: expect.objectContaining({
           fieldId: 'machine-learning',
@@ -297,7 +297,7 @@ describe('useFieldPreprints', () => {
 
   it('handles custom limit', async () => {
     const mockResponse = {
-      preprints: [],
+      eprints: [],
       hasMore: false,
       total: 0,
     };
@@ -307,7 +307,7 @@ describe('useFieldPreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldPreprints('physics', { limit: 25 }), {
+    const { result } = renderHook(() => useFieldEprints('physics', { limit: 25 }), {
       wrapper: Wrapper,
     });
 
@@ -315,7 +315,7 @@ describe('useFieldPreprints', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getFieldPreprints', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getFieldEprints', {
       params: {
         query: expect.objectContaining({
           fieldId: 'physics',
@@ -327,7 +327,7 @@ describe('useFieldPreprints', () => {
 
   it('is disabled when fieldId is empty', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldPreprints(''), { wrapper: Wrapper });
+    const { result } = renderHook(() => useFieldEprints(''), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
   });

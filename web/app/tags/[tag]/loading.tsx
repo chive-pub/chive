@@ -13,7 +13,7 @@ export function TagDetailSkeleton() {
         <Skeleton className="h-6 w-32" />
       </div>
 
-      {/* Preprints list skeleton */}
+      {/* Eprints list skeleton */}
       <div className="space-y-4">
         {Array.from({ length: 5 }, (_, i) => (
           <Card key={i}>

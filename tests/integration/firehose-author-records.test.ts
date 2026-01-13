@@ -13,8 +13,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import type { AtUri, CID, DID } from '@/types/atproto.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
-import type { Preprint } from '@/types/models/preprint.js';
+import type { EprintAuthor } from '@/types/models/author.js';
+import type { Eprint } from '@/types/models/eprint.js';
 
 // =============================================================================
 // Mock Firehose Event Types
@@ -37,14 +37,14 @@ interface CommitEvent {
   cid?: CID;
 }
 
-interface IndexedPreprint {
+interface IndexedEprint {
   uri: AtUri;
   cid: CID;
   title: string;
   abstract: string;
   submittedBy: DID;
   paperDid?: DID;
-  authors: PreprintAuthor[];
+  authors: EprintAuthor[];
   pdsUrl: string;
   indexedAt: Date;
 }
@@ -72,8 +72,8 @@ class MockFirehoseConsumer {
 // Mock Indexer
 // =============================================================================
 
-class MockPreprintIndexer {
-  private indexed = new Map<AtUri, IndexedPreprint>();
+class MockEprintIndexer {
+  private indexed = new Map<AtUri, IndexedEprint>();
   private pdsRegistry = new Map<DID, string>();
 
   constructor() {
@@ -87,11 +87,11 @@ class MockPreprintIndexer {
     return this.pdsRegistry.get(did) ?? 'https://bsky.social';
   }
 
-  indexPreprint(
+  indexEprint(
     record: Record<string, unknown>,
     metadata: { uri: AtUri; cid: CID; repo: DID }
-  ): Promise<IndexedPreprint> {
-    const authors = (record.authors as PreprintAuthor[]) ?? [];
+  ): Promise<IndexedEprint> {
+    const authors = (record.authors as EprintAuthor[]) ?? [];
     const submittedBy = (record.submittedBy as DID) ?? metadata.repo;
     const paperDid = record.paperDid as DID | undefined;
 
@@ -99,7 +99,7 @@ class MockPreprintIndexer {
     const pdsHost = paperDid ?? submittedBy;
     const pdsUrl = this.resolvePds(pdsHost);
 
-    const indexed: IndexedPreprint = {
+    const indexed: IndexedEprint = {
       uri: metadata.uri,
       cid: metadata.cid,
       title: record.title as string,
@@ -115,28 +115,28 @@ class MockPreprintIndexer {
     return Promise.resolve(indexed);
   }
 
-  getIndexed(uri: AtUri): IndexedPreprint | undefined {
+  getIndexed(uri: AtUri): IndexedEprint | undefined {
     return this.indexed.get(uri);
   }
 
-  getAllIndexed(): IndexedPreprint[] {
+  getAllIndexed(): IndexedEprint[] {
     return Array.from(this.indexed.values());
   }
 
-  updatePreprint(
+  updateEprint(
     uri: AtUri,
     record: Record<string, unknown>,
     cid: CID
-  ): Promise<IndexedPreprint | null> {
+  ): Promise<IndexedEprint | null> {
     const existing = this.indexed.get(uri);
     if (!existing) return Promise.resolve(null);
 
-    const updated: IndexedPreprint = {
+    const updated: IndexedEprint = {
       ...existing,
       cid,
       title: (record.title as string) ?? existing.title,
       abstract: (record.abstract as string) ?? existing.abstract,
-      authors: (record.authors as PreprintAuthor[]) ?? existing.authors,
+      authors: (record.authors as EprintAuthor[]) ?? existing.authors,
       indexedAt: new Date(),
     };
 
@@ -144,7 +144,7 @@ class MockPreprintIndexer {
     return Promise.resolve(updated);
   }
 
-  deletePreprint(uri: AtUri): Promise<void> {
+  deleteEprint(uri: AtUri): Promise<void> {
     this.indexed.delete(uri);
     return Promise.resolve();
   }
@@ -178,8 +178,8 @@ function createFirehoseEvent(
   };
 }
 
-function createPreprintRecord(overrides: Partial<Preprint> = {}): Record<string, unknown> {
-  const defaultAuthor: PreprintAuthor = {
+function createEprintRecord(overrides: Partial<Eprint> = {}): Record<string, unknown> {
+  const defaultAuthor: EprintAuthor = {
     did: 'did:plc:author1' as DID,
     name: 'Test Author',
     order: 1,
@@ -198,8 +198,8 @@ function createPreprintRecord(overrides: Partial<Preprint> = {}): Record<string,
   };
 
   return {
-    $type: 'pub.chive.preprint.submission',
-    title: 'Test Preprint',
+    $type: 'pub.chive.eprint.submission',
+    title: 'Test Eprint',
     abstract: 'This is a test abstract.',
     submittedBy: 'did:plc:user1',
     authors: [defaultAuthor],
@@ -210,7 +210,7 @@ function createPreprintRecord(overrides: Partial<Preprint> = {}): Record<string,
       size: 1024000,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     version: 1,
     license: 'CC-BY-4.0',
     createdAt: Date.now(),
@@ -224,21 +224,21 @@ function createPreprintRecord(overrides: Partial<Preprint> = {}): Record<string,
 
 describe('Firehose Author Records Integration', () => {
   let firehose: MockFirehoseConsumer;
-  let indexer: MockPreprintIndexer;
+  let indexer: MockEprintIndexer;
 
   beforeEach(() => {
     firehose = new MockFirehoseConsumer();
-    indexer = new MockPreprintIndexer();
+    indexer = new MockEprintIndexer();
 
     // Set up firehose handler
     firehose.on('commit', async (event) => {
       if (
-        event.commit?.collection === 'pub.chive.preprint.submission' &&
+        event.commit?.collection === 'pub.chive.eprint.submission' &&
         event.commit.operation === 'create' &&
         event.commit.cid
       ) {
         const uri = `at://${event.repo}/${event.commit.collection}/${event.commit.rkey}` as AtUri;
-        await indexer.indexPreprint(event.commit.record ?? {}, {
+        await indexer.indexEprint(event.commit.record ?? {}, {
           uri,
           cid: event.commit.cid,
           repo: event.repo,
@@ -246,27 +246,27 @@ describe('Firehose Author Records Integration', () => {
       }
 
       if (
-        event.commit?.collection === 'pub.chive.preprint.submission' &&
+        event.commit?.collection === 'pub.chive.eprint.submission' &&
         event.commit.operation === 'update' &&
         event.commit.cid
       ) {
         const uri = `at://${event.repo}/${event.commit.collection}/${event.commit.rkey}` as AtUri;
-        await indexer.updatePreprint(uri, event.commit.record ?? {}, event.commit.cid);
+        await indexer.updateEprint(uri, event.commit.record ?? {}, event.commit.cid);
       }
 
       if (
-        event.commit?.collection === 'pub.chive.preprint.submission' &&
+        event.commit?.collection === 'pub.chive.eprint.submission' &&
         event.commit.operation === 'delete'
       ) {
         const uri = `at://${event.repo}/${event.commit.collection}/${event.commit.rkey}` as AtUri;
-        await indexer.deletePreprint(uri);
+        await indexer.deleteEprint(uri);
       }
     });
   });
 
   describe('Create Operation', () => {
-    it('indexes new preprint with authors from firehose', async () => {
-      const author: PreprintAuthor = {
+    it('indexes new eprint with authors from firehose', async () => {
+      const author: EprintAuthor = {
         did: 'did:plc:alice' as DID,
         name: 'Dr. Alice Smith',
         orcid: '0000-0001-2345-6789',
@@ -284,7 +284,7 @@ describe('Firehose Author Records Integration', () => {
         isHighlighted: false,
       };
 
-      const record = createPreprintRecord({
+      const record = createEprintRecord({
         title: 'Firehose Indexed Paper',
         submittedBy: 'did:plc:user1' as DID,
         authors: [author],
@@ -294,14 +294,14 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'test123',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/test123' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/test123' as AtUri
       );
 
       expect(indexed).toBeDefined();
@@ -311,7 +311,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('indexes multiple authors with correct order', async () => {
-      const authors: PreprintAuthor[] = [
+      const authors: EprintAuthor[] = [
         {
           did: 'did:plc:first' as DID,
           name: 'First Author',
@@ -342,20 +342,20 @@ describe('Firehose Author Records Integration', () => {
         },
       ];
 
-      const record = createPreprintRecord({ authors });
+      const record = createEprintRecord({ authors });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'multi-author',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/multi-author' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/multi-author' as AtUri
       );
 
       expect(indexed?.authors).toHaveLength(3);
@@ -365,7 +365,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('indexes external collaborators without DID', async () => {
-      const externalAuthor: PreprintAuthor = {
+      const externalAuthor: EprintAuthor = {
         name: 'External Collaborator',
         email: 'external@partner.org',
         orcid: '0000-0003-9999-8888',
@@ -383,7 +383,7 @@ describe('Firehose Author Records Integration', () => {
         isHighlighted: false,
       };
 
-      const record = createPreprintRecord({
+      const record = createEprintRecord({
         authors: [
           {
             did: 'did:plc:primary' as DID,
@@ -402,14 +402,14 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'external-collab',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/external-collab' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/external-collab' as AtUri
       );
 
       expect(indexed?.authors[1]?.did).toBeUndefined();
@@ -418,7 +418,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('indexes author affiliations with ROR IDs', async () => {
-      const authorWithAffiliations: PreprintAuthor = {
+      const authorWithAffiliations: EprintAuthor = {
         did: 'did:plc:multi-affil' as DID,
         name: 'Multi-Affiliation Author',
         order: 1,
@@ -438,20 +438,20 @@ describe('Firehose Author Records Integration', () => {
         isHighlighted: false,
       };
 
-      const record = createPreprintRecord({ authors: [authorWithAffiliations] });
+      const record = createEprintRecord({ authors: [authorWithAffiliations] });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'multi-affil',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/multi-affil' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/multi-affil' as AtUri
       );
 
       expect(indexed?.authors[0]?.affiliations).toHaveLength(2);
@@ -460,7 +460,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('indexes author contributions with degrees', async () => {
-      const authorWithContributions: PreprintAuthor = {
+      const authorWithContributions: EprintAuthor = {
         did: 'did:plc:contributor' as DID,
         name: 'Contributing Author',
         order: 1,
@@ -489,20 +489,20 @@ describe('Firehose Author Records Integration', () => {
         isHighlighted: false,
       };
 
-      const record = createPreprintRecord({ authors: [authorWithContributions] });
+      const record = createEprintRecord({ authors: [authorWithContributions] });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'contributions',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/contributions' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/contributions' as AtUri
       );
 
       expect(indexed?.authors[0]?.contributions).toHaveLength(3);
@@ -514,7 +514,7 @@ describe('Firehose Author Records Integration', () => {
 
   describe('Traditional vs Paper-Centric Submissions', () => {
     it('indexes traditional submission (no paperDid)', async () => {
-      const record = createPreprintRecord({
+      const record = createEprintRecord({
         submittedBy: 'did:plc:user1' as DID,
         // paperDid is undefined - traditional model
       });
@@ -523,14 +523,14 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'traditional',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/traditional' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/traditional' as AtUri
       );
 
       expect(indexed?.submittedBy).toBe('did:plc:user1');
@@ -539,7 +539,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('indexes paper-centric submission (with paperDid)', async () => {
-      const record = createPreprintRecord({
+      const record = createEprintRecord({
         submittedBy: 'did:plc:user1' as DID,
         paperDid: 'did:plc:paper-abc' as DID,
       });
@@ -548,14 +548,14 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:paper-abc' as DID, // Record lives in paper's repo
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'paper-centric',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:paper-abc/pub.chive.preprint.submission/paper-centric' as AtUri
+        'at://did:plc:paper-abc/pub.chive.eprint.submission/paper-centric' as AtUri
       );
 
       expect(indexed?.submittedBy).toBe('did:plc:user1');
@@ -564,7 +564,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('distinguishes submitter from paper identity', async () => {
-      const author: PreprintAuthor = {
+      const author: EprintAuthor = {
         did: 'did:plc:actual-author' as DID,
         name: 'Actual Author',
         order: 1,
@@ -574,7 +574,7 @@ describe('Firehose Author Records Integration', () => {
         isHighlighted: false,
       };
 
-      const record = createPreprintRecord({
+      const record = createEprintRecord({
         submittedBy: 'did:plc:user2' as DID, // Human submitter
         paperDid: 'did:plc:paper-abc' as DID, // Paper's own DID
         authors: [author],
@@ -584,14 +584,14 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:paper-abc' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'distinct-identity',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:paper-abc/pub.chive.preprint.submission/distinct-identity' as AtUri
+        'at://did:plc:paper-abc/pub.chive.eprint.submission/distinct-identity' as AtUri
       );
 
       // All three DIDs are distinct
@@ -602,9 +602,9 @@ describe('Firehose Author Records Integration', () => {
   });
 
   describe('Update Operation', () => {
-    it('updates indexed preprint with new authors', async () => {
+    it('updates indexed eprint with new authors', async () => {
       // First create
-      const createRecord = createPreprintRecord({
+      const createRecord = createEprintRecord({
         title: 'Original Title',
         authors: [
           {
@@ -623,14 +623,14 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'to-update',
           createRecord
         )
       );
 
       // Then update with new author
-      const updateRecord = createPreprintRecord({
+      const updateRecord = createEprintRecord({
         title: 'Updated Title',
         authors: [
           {
@@ -658,7 +658,7 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'update',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'to-update',
           updateRecord,
           'bafynewcid' as CID
@@ -666,7 +666,7 @@ describe('Firehose Author Records Integration', () => {
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/to-update' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/to-update' as AtUri
       );
 
       expect(indexed?.title).toBe('Updated Title');
@@ -675,13 +675,13 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('updates CID on update operation', async () => {
-      const record = createPreprintRecord();
+      const record = createEprintRecord();
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'cid-update',
           record,
           'bafyoriginal' as CID
@@ -692,7 +692,7 @@ describe('Firehose Author Records Integration', () => {
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'update',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'cid-update',
           record,
           'bafynewcid' as CID
@@ -700,7 +700,7 @@ describe('Firehose Author Records Integration', () => {
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/cid-update' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/cid-update' as AtUri
       );
 
       expect(indexed?.cid).toBe('bafynewcid');
@@ -708,41 +708,41 @@ describe('Firehose Author Records Integration', () => {
   });
 
   describe('Delete Operation', () => {
-    it('removes preprint from index on delete', async () => {
-      const record = createPreprintRecord();
+    it('removes eprint from index on delete', async () => {
+      const record = createEprintRecord();
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'to-delete',
           record
         )
       );
 
       expect(
-        indexer.getIndexed('at://did:plc:user1/pub.chive.preprint.submission/to-delete' as AtUri)
+        indexer.getIndexed('at://did:plc:user1/pub.chive.eprint.submission/to-delete' as AtUri)
       ).toBeDefined();
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'delete',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'to-delete'
         )
       );
 
       expect(
-        indexer.getIndexed('at://did:plc:user1/pub.chive.preprint.submission/to-delete' as AtUri)
+        indexer.getIndexed('at://did:plc:user1/pub.chive.eprint.submission/to-delete' as AtUri)
       ).toBeUndefined();
     });
   });
 
   describe('Highlighted and Corresponding Authors', () => {
     it('preserves highlighted author flag through indexing', async () => {
-      const authors: PreprintAuthor[] = [
+      const authors: EprintAuthor[] = [
         {
           did: 'did:plc:first' as DID,
           name: 'First Author',
@@ -772,20 +772,20 @@ describe('Firehose Author Records Integration', () => {
         },
       ];
 
-      const record = createPreprintRecord({ authors });
+      const record = createEprintRecord({ authors });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'highlighted',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/highlighted' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/highlighted' as AtUri
       );
 
       expect(indexed?.authors[0]?.isHighlighted).toBe(true);
@@ -794,7 +794,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('preserves corresponding author flag through indexing', async () => {
-      const authors: PreprintAuthor[] = [
+      const authors: EprintAuthor[] = [
         {
           did: 'did:plc:first' as DID,
           name: 'First Author',
@@ -815,20 +815,20 @@ describe('Firehose Author Records Integration', () => {
         },
       ];
 
-      const record = createPreprintRecord({ authors });
+      const record = createEprintRecord({ authors });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'corresponding',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/corresponding' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/corresponding' as AtUri
       );
 
       expect(indexed?.authors[0]?.isCorrespondingAuthor).toBe(true);
@@ -838,27 +838,27 @@ describe('Firehose Author Records Integration', () => {
 
   describe('Edge Cases', () => {
     it('handles empty authors array', async () => {
-      const record = createPreprintRecord({ authors: [] });
+      const record = createEprintRecord({ authors: [] });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'no-authors',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/no-authors' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/no-authors' as AtUri
       );
 
       expect(indexed?.authors).toHaveLength(0);
     });
 
     it('handles author with minimal fields', async () => {
-      const minimalAuthor: PreprintAuthor = {
+      const minimalAuthor: EprintAuthor = {
         name: 'Minimal Author',
         order: 1,
         affiliations: [],
@@ -867,20 +867,20 @@ describe('Firehose Author Records Integration', () => {
         isHighlighted: false,
       };
 
-      const record = createPreprintRecord({ authors: [minimalAuthor] });
+      const record = createEprintRecord({ authors: [minimalAuthor] });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'minimal-author',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/minimal-author' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/minimal-author' as AtUri
       );
 
       expect(indexed?.authors[0]?.name).toBe('Minimal Author');
@@ -890,7 +890,7 @@ describe('Firehose Author Records Integration', () => {
     });
 
     it('handles large author list (50+ authors)', async () => {
-      const manyAuthors: PreprintAuthor[] = Array.from({ length: 50 }, (_, i) => ({
+      const manyAuthors: EprintAuthor[] = Array.from({ length: 50 }, (_, i) => ({
         did: `did:plc:author${i}` as DID,
         name: `Author ${i + 1}`,
         order: i + 1,
@@ -900,20 +900,20 @@ describe('Firehose Author Records Integration', () => {
         isHighlighted: i < 3, // First 3 are co-first
       }));
 
-      const record = createPreprintRecord({ authors: manyAuthors });
+      const record = createEprintRecord({ authors: manyAuthors });
 
       await firehose.emit(
         createFirehoseEvent(
           'did:plc:user1' as DID,
           'create',
-          'pub.chive.preprint.submission',
+          'pub.chive.eprint.submission',
           'many-authors',
           record
         )
       );
 
       const indexed = indexer.getIndexed(
-        'at://did:plc:user1/pub.chive.preprint.submission/many-authors' as AtUri
+        'at://did:plc:user1/pub.chive.eprint.submission/many-authors' as AtUri
       );
 
       expect(indexed?.authors).toHaveLength(50);

@@ -34,12 +34,12 @@ const __dirname = path.dirname(__filename);
  * await validator.loadSchemas();
  *
  * const result = validator.validateRecord(
- *   'pub.chive.preprint.submission',
- *   preprintData
+ *   'pub.chive.eprint.submission',
+ *   eprintData
  * );
  *
  * if (result.valid) {
- *   console.log('Valid preprint!');
+ *   console.log('Valid eprint!');
  * } else {
  *   console.error('Validation errors:', result.errors);
  * }
@@ -92,7 +92,7 @@ export class LexiconValidator {
   /**
    * Validates a record against its Lexicon schema.
    *
-   * @param nsid - Schema NSID (e.g., "pub.chive.preprint.submission")
+   * @param nsid - Schema NSID (e.g., "pub.chive.eprint.submission")
    * @param value - Record value to validate
    * @returns Validation result with errors if invalid
    *
@@ -103,7 +103,7 @@ export class LexiconValidator {
    * @example
    * ```typescript
    * const result = validator.validateRecord(
-   *   'pub.chive.preprint.submission',
+   *   'pub.chive.eprint.submission',
    *   {
    *     title: 'My Paper',
    *     abstract: 'Abstract text',
@@ -151,7 +151,7 @@ export class LexiconValidator {
    * @example
    * ```typescript
    * const result = validator.validateParams(
-   *   'pub.chive.preprint.searchSubmissions',
+   *   'pub.chive.eprint.searchSubmissions',
    *   {
    *     q: 'neural networks',
    *     limit: 25

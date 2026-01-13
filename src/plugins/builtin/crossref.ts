@@ -7,7 +7,7 @@
  * and provides rich bibliographic metadata.
  *
  * This plugin is used to:
- * - Enrich preprints with citation metadata
+ * - Enrich eprints with citation metadata
  * - Verify DOI ownership for claiming
  * - Track citations and references
  *
@@ -46,7 +46,7 @@ export interface CrossRefWork {
   title: readonly string[];
 
   /**
-   * Work type (journal-article, preprint, book-chapter, etc.).
+   * Work type (journal-article, eprint, book-chapter, etc.).
    */
   type: string;
 
@@ -304,7 +304,7 @@ interface CrossRefApiLicense {
  * CrossRef metadata enrichment plugin.
  *
  * @remarks
- * Provides DOI metadata lookup for preprint enrichment and claiming
+ * Provides DOI metadata lookup for eprint enrichment and claiming
  * verification. Uses the polite pool for better rate limits.
  *
  * @example

@@ -65,7 +65,7 @@ test.describe('Fields page', () => {
     }
   });
 
-  test('field page displays preprints', async ({ page }) => {
+  test('field page displays eprints', async ({ page }) => {
     // Look for field links within main content (exclude sr-only skip link)
     const mainContent = page.locator('#main-content');
     const fieldLink = mainContent.getByRole('link', { name: /.+/ }).first();
@@ -74,14 +74,14 @@ test.describe('Fields page', () => {
     // Page must show either field links OR empty state
     await expect(fieldLink.or(emptyState)).toBeVisible();
 
-    // If field links exist, verify field page shows preprints or empty state
+    // If field links exist, verify field page shows eprints or empty state
     if (await fieldLink.isVisible().catch(() => false)) {
       await fieldLink.click();
 
-      // Field detail page must show preprints list OR empty state
-      const preprintList = page.getByRole('list').first().or(page.getByRole('article').first());
-      const fieldEmptyState = page.getByText(/no preprints|0 preprints/i);
-      await expect(preprintList.or(fieldEmptyState)).toBeVisible();
+      // Field detail page must show eprints list OR empty state
+      const eprintList = page.getByRole('list').first().or(page.getByRole('article').first());
+      const fieldEmptyState = page.getByText(/no eprints|0 eprints/i);
+      await expect(eprintList.or(fieldEmptyState)).toBeVisible();
     } else {
       // If no field links, empty state must be visible
       await expect(emptyState).toBeVisible();
@@ -118,9 +118,9 @@ test.describe('Fields page', () => {
     if (await fieldLink.isVisible().catch(() => false)) {
       await fieldLink.click();
 
-      // Field page must show stats, no preprints message, OR error state
-      const stats = page.getByText(/\d+\s*(preprints?|results?|items?)/i).first();
-      const noStats = page.getByText(/no preprints|0 preprints/i).first();
+      // Field page must show stats, no eprints message, OR error state
+      const stats = page.getByText(/\d+\s*(eprints?|results?|items?)/i).first();
+      const noStats = page.getByText(/no eprints|0 eprints/i).first();
       // Use heading for error state as it's more reliable
       const errorHeading = page.getByRole('heading', { name: /failed to load/i });
       await expect(stats.or(noStats).or(errorHeading)).toBeVisible();

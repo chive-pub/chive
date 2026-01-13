@@ -102,7 +102,7 @@ export function ReviewList({
       >
         <p className="text-muted-foreground">No reviews yet</p>
         <p className="text-sm text-muted-foreground">
-          Be the first to share your thoughts on this preprint.
+          Be the first to share your thoughts on this eprint.
         </p>
       </div>
     );

@@ -55,7 +55,7 @@ const createMockGovernancePdsClient = (): MockGovernancePdsClient => ({
  * Uses White & Rawlins (2020) as example paper.
  */
 const SAMPLE_IMPORT_URI = 'chive:import:arxiv:2001.12345';
-const SAMPLE_CANONICAL_URI = 'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude';
+const SAMPLE_CANONICAL_URI = 'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude';
 
 const SAMPLE_RECONCILIATION_ROW = {
   id: 1,

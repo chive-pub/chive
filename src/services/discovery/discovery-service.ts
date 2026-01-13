@@ -1,11 +1,11 @@
 /**
- * Discovery service for personalized preprint recommendations.
+ * Discovery service for personalized eprint recommendations.
  *
  * @remarks
  * This module implements the {@link IDiscoveryService} interface for enhanced
- * preprint discovery using Semantic Scholar and OpenAlex integration.
+ * eprint discovery using Semantic Scholar and OpenAlex integration.
  *
- * **Critical Constraint**: All discovery features recommend only preprints
+ * **Critical Constraint**: All discovery features recommend only eprints
  * indexed in Chive, not external papers. External APIs (S2, OpenAlex) are
  * used strictly as enrichment signals.
  *
@@ -33,9 +33,9 @@
  *   { limit: 10 }
  * );
  *
- * // Find related preprints
- * const related = await discoveryService.findRelatedPreprints(
- *   preprintUri,
+ * // Find related eprints
+ * const related = await discoveryService.findRelatedEprints(
+ *   eprintUri,
  *   { signals: ['citations', 'concepts'] }
  * );
  * ```
@@ -65,8 +65,8 @@ import type {
   PaperIdentifier,
   RecommendationOptions,
   RecommendationResult,
-  RelatedPreprint,
-  RelatedPreprintOptions,
+  RelatedEprint,
+  RelatedEprintOptions,
   ScoredRecommendation,
   UnifiedPaperMetadata,
   UserInteraction,
@@ -82,14 +82,14 @@ import type { ISearchEngine } from '../../types/interfaces/search.interface.js';
 interface InteractionRow {
   readonly id: number;
   readonly user_did: string;
-  readonly preprint_uri: string;
+  readonly eprint_uri: string;
   readonly interaction_type: string;
   readonly recommendation_id: string | null;
   readonly created_at: Date;
 }
 
 /**
- * Database row for preprint enrichment.
+ * Database row for eprint enrichment.
  */
 interface EnrichmentRow {
   readonly uri: string;
@@ -118,9 +118,9 @@ export interface EnrichmentData {
 }
 
 /**
- * Database row for preprints.
+ * Database row for eprints.
  */
-interface PreprintRow {
+interface EprintRow {
   readonly uri: string;
   readonly title: string;
   readonly abstract: string | null;
@@ -136,11 +136,11 @@ interface PreprintRow {
  * Discovery service implementation.
  *
  * @remarks
- * Orchestrates preprint enrichment and discovery using external APIs
+ * Orchestrates eprint enrichment and discovery using external APIs
  * (Semantic Scholar, OpenAlex) and internal data (citation graph, search).
  *
  * **Key Features**:
- * - Preprint enrichment with citations and concepts
+ * - Eprint enrichment with citations and concepts
  * - Personalized recommendations based on user's claimed papers
  * - Related paper discovery using multiple signals
  * - User interaction tracking for feedback loop
@@ -195,9 +195,9 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Enriches a preprint with data from Semantic Scholar and OpenAlex.
+   * Enriches a eprint with data from Semantic Scholar and OpenAlex.
    *
-   * @param preprint - Preprint to enrich
+   * @param eprint - Eprint to enrich
    * @returns Enrichment result with external data
    *
    * @remarks
@@ -206,8 +206,8 @@ export class DiscoveryService implements IDiscoveryService {
    *
    * @example
    * ```typescript
-   * const result = await discoveryService.enrichPreprint({
-   *   uri: preprintUri,
+   * const result = await discoveryService.enrichEprint({
+   *   uri: eprintUri,
    *   doi: '10.1234/example',
    *   title: 'Example Paper',
    * });
@@ -217,9 +217,9 @@ export class DiscoveryService implements IDiscoveryService {
    * }
    * ```
    */
-  async enrichPreprint(preprint: EnrichmentInput): Promise<EnrichmentResult> {
+  async enrichEprint(eprint: EnrichmentInput): Promise<EnrichmentResult> {
     const result: EnrichmentResult = {
-      uri: preprint.uri,
+      uri: eprint.uri,
       success: false,
     };
 
@@ -238,10 +238,10 @@ export class DiscoveryService implements IDiscoveryService {
       // Fetch from Semantic Scholar (graceful degradation on errors)
       if (s2Plugin) {
         try {
-          const s2Paper = preprint.doi
-            ? await s2Plugin.getPaperByDoi(preprint.doi)
-            : preprint.arxivId
-              ? await s2Plugin.getPaperByArxiv(preprint.arxivId)
+          const s2Paper = eprint.doi
+            ? await s2Plugin.getPaperByDoi(eprint.doi)
+            : eprint.arxivId
+              ? await s2Plugin.getPaperByArxiv(eprint.arxivId)
               : null;
 
           if (s2Paper) {
@@ -252,7 +252,7 @@ export class DiscoveryService implements IDiscoveryService {
             // Fetch citations and index Chive-to-Chive relationships
             const citationsResult = await s2Plugin.getCitations(s2Paper.paperId, { limit: 100 });
             const chiveCitations = await this.filterToChiveCitations(
-              preprint.uri,
+              eprint.uri,
               citationsResult.citations.map((c) => ({
                 paperId: c.paper.paperId,
                 externalIds: c.paper.externalIds,
@@ -266,7 +266,7 @@ export class DiscoveryService implements IDiscoveryService {
           }
         } catch (s2Error) {
           this.logger.debug('Semantic Scholar enrichment failed (graceful degradation)', {
-            uri: preprint.uri,
+            uri: eprint.uri,
             error: s2Error instanceof Error ? s2Error.message : String(s2Error),
           });
         }
@@ -275,11 +275,11 @@ export class DiscoveryService implements IDiscoveryService {
       // Fetch from OpenAlex (graceful degradation on errors)
       if (oaPlugin) {
         try {
-          const oaWork = preprint.doi ? await oaPlugin.getWorkByDoi(preprint.doi) : null;
+          const oaWork = eprint.doi ? await oaPlugin.getWorkByDoi(eprint.doi) : null;
 
-          if (!oaWork && preprint.title) {
+          if (!oaWork && eprint.title) {
             // Fallback: classify by title/abstract
-            const classification = await oaPlugin.classifyText(preprint.title, preprint.abstract);
+            const classification = await oaPlugin.classifyText(eprint.title, eprint.abstract);
 
             if (classification.topics.length > 0 || classification.concepts.length > 0) {
               topics = classification.topics.map((t) => ({
@@ -315,15 +315,15 @@ export class DiscoveryService implements IDiscoveryService {
           }
         } catch (oaError) {
           this.logger.debug('OpenAlex enrichment failed (graceful degradation)', {
-            uri: preprint.uri,
+            uri: eprint.uri,
             error: oaError instanceof Error ? oaError.message : String(oaError),
           });
         }
       }
 
-      // Update the preprint record with enrichment data
+      // Update the eprint record with enrichment data
       if (semanticScholarId || openAlexId) {
-        await this.updatePreprintEnrichment(preprint.uri, {
+        await this.updateEprintEnrichment(eprint.uri, {
           semanticScholarId,
           openAlexId,
           citationCount,
@@ -332,7 +332,7 @@ export class DiscoveryService implements IDiscoveryService {
       }
 
       return {
-        uri: preprint.uri,
+        uri: eprint.uri,
         semanticScholarId,
         openAlexId,
         citationCount,
@@ -343,8 +343,8 @@ export class DiscoveryService implements IDiscoveryService {
         success: true,
       };
     } catch (error) {
-      this.logger.warn('Preprint enrichment failed', {
-        uri: preprint.uri,
+      this.logger.warn('Eprint enrichment failed', {
+        uri: eprint.uri,
         error: error instanceof Error ? error.message : String(error),
       });
 
@@ -437,35 +437,35 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Finds related Chive preprints using multiple signals.
+   * Finds related Chive eprints using multiple signals.
    *
-   * @param preprintUri - AT-URI of the source preprint
+   * @param eprintUri - AT-URI of the source eprint
    * @param options - Query options
-   * @returns Related preprints with relationship metadata
+   * @returns Related eprints with relationship metadata
    *
    * @remarks
    * Combines citation graph, concept overlap, and semantic similarity
-   * to find related preprints. All results are from Chive's index.
+   * to find related eprints. All results are from Chive's index.
    */
-  async findRelatedPreprints(
-    preprintUri: AtUri,
-    options?: RelatedPreprintOptions
-  ): Promise<readonly RelatedPreprint[]> {
+  async findRelatedEprints(
+    eprintUri: AtUri,
+    options?: RelatedEprintOptions
+  ): Promise<readonly RelatedEprint[]> {
     const limit = options?.limit ?? 10;
     const minScore = options?.minScore ?? 0.3;
     const signals = options?.signals ?? ['citations', 'concepts', 'semantic'];
 
-    const relatedMap = new Map<string, RelatedPreprint>();
+    const relatedMap = new Map<string, RelatedEprint>();
 
-    // Get preprint data
-    const preprint = await this.getPreprintByUri(preprintUri);
-    if (!preprint) {
+    // Get eprint data
+    const eprint = await this.getEprintByUri(eprintUri);
+    if (!eprint) {
       return [];
     }
 
     // Signal 1: Citation-based (co-citation)
     if (signals.includes('citations')) {
-      const coCited = await this.citationGraph.findCoCitedPapers(preprintUri, 2);
+      const coCited = await this.citationGraph.findCoCitedPapers(eprintUri, 2);
 
       for (const paper of coCited) {
         if (paper.strength >= minScore) {
@@ -487,19 +487,19 @@ export class DiscoveryService implements IDiscoveryService {
     // Signal 2: Direct citations
     if (signals.includes('citations')) {
       const [citingResult, referencesResult] = await Promise.all([
-        this.citationGraph.getCitingPapers(preprintUri, { limit: 5 }),
-        this.citationGraph.getReferences(preprintUri, { limit: 5 }),
+        this.citationGraph.getCitingPapers(eprintUri, { limit: 5 }),
+        this.citationGraph.getReferences(eprintUri, { limit: 5 }),
       ]);
 
       for (const citation of citingResult.citations) {
-        const citingPreprint = await this.getPreprintByUri(citation.citingUri);
-        if (citingPreprint && !relatedMap.has(citation.citingUri)) {
+        const citingEprint = await this.getEprintByUri(citation.citingUri);
+        if (citingEprint && !relatedMap.has(citation.citingUri)) {
           relatedMap.set(citation.citingUri, {
             uri: citation.citingUri,
-            title: citingPreprint.title,
-            abstract: citingPreprint.abstract ?? undefined,
-            categories: citingPreprint.categories ?? undefined,
-            publicationDate: citingPreprint.publication_date ?? undefined,
+            title: citingEprint.title,
+            abstract: citingEprint.abstract ?? undefined,
+            categories: citingEprint.categories ?? undefined,
+            publicationDate: citingEprint.publication_date ?? undefined,
             score: citation.isInfluential ? 0.9 : 0.7,
             relationshipType: 'cited-by',
             explanation: 'Cites this paper',
@@ -509,14 +509,14 @@ export class DiscoveryService implements IDiscoveryService {
       }
 
       for (const reference of referencesResult.citations) {
-        const refPreprint = await this.getPreprintByUri(reference.citedUri);
-        if (refPreprint && !relatedMap.has(reference.citedUri)) {
+        const refEprint = await this.getEprintByUri(reference.citedUri);
+        if (refEprint && !relatedMap.has(reference.citedUri)) {
           relatedMap.set(reference.citedUri, {
             uri: reference.citedUri,
-            title: refPreprint.title,
-            abstract: refPreprint.abstract ?? undefined,
-            categories: refPreprint.categories ?? undefined,
-            publicationDate: refPreprint.publication_date ?? undefined,
+            title: refEprint.title,
+            abstract: refEprint.abstract ?? undefined,
+            categories: refEprint.categories ?? undefined,
+            publicationDate: refEprint.publication_date ?? undefined,
             score: reference.isInfluential ? 0.9 : 0.7,
             relationshipType: 'cites',
             explanation: 'Referenced by this paper',
@@ -527,27 +527,27 @@ export class DiscoveryService implements IDiscoveryService {
     }
 
     // Signal 3: Semantic similarity (via S2 recommendations if available)
-    if (signals.includes('semantic') && preprint.semantic_scholar_id) {
+    if (signals.includes('semantic') && eprint.semantic_scholar_id) {
       const s2Plugin = this.getSemanticScholarPlugin();
       if (s2Plugin) {
         try {
-          const recommendations = await s2Plugin.getRecommendations(preprint.semantic_scholar_id, {
+          const recommendations = await s2Plugin.getRecommendations(eprint.semantic_scholar_id, {
             limit: 10,
           });
 
           for (const rec of recommendations) {
             // Only include if paper is in Chive
-            const chivePreprint = await this.findPreprintByExternalId(
+            const chiveEprint = await this.findEprintByExternalId(
               rec.paperId,
               rec.externalIds?.DOI ?? undefined
             );
-            if (chivePreprint && !relatedMap.has(chivePreprint.uri)) {
-              relatedMap.set(chivePreprint.uri, {
-                uri: chivePreprint.uri as AtUri,
-                title: chivePreprint.title,
-                abstract: chivePreprint.abstract ?? undefined,
-                categories: chivePreprint.categories ?? undefined,
-                publicationDate: chivePreprint.publication_date ?? undefined,
+            if (chiveEprint && !relatedMap.has(chiveEprint.uri)) {
+              relatedMap.set(chiveEprint.uri, {
+                uri: chiveEprint.uri as AtUri,
+                title: chiveEprint.title,
+                abstract: chiveEprint.abstract ?? undefined,
+                categories: chiveEprint.categories ?? undefined,
+                publicationDate: chiveEprint.publication_date ?? undefined,
                 score: 0.7, // SPECTER2 similarity
                 relationshipType: 'semantically-similar',
                 explanation: 'Semantically similar based on content',
@@ -610,14 +610,14 @@ export class DiscoveryService implements IDiscoveryService {
 
       for (const hit of fieldBasedResults.hits) {
         if (!dismissedUris.has(hit.uri) && !claimedPapers.has(hit.uri)) {
-          // Fetch full preprint data since search hits only contain uri and score
-          const preprint = await this.getPreprintByUri(hit.uri);
-          if (preprint) {
+          // Fetch full eprint data since search hits only contain uri and score
+          const eprint = await this.getEprintByUri(hit.uri);
+          if (eprint) {
             candidateMap.set(hit.uri, {
-              title: preprint.title,
-              abstract: preprint.abstract ?? undefined,
-              categories: preprint.categories ?? undefined,
-              publicationDate: preprint.publication_date ?? undefined,
+              title: eprint.title,
+              abstract: eprint.abstract ?? undefined,
+              categories: eprint.categories ?? undefined,
+              publicationDate: eprint.publication_date ?? undefined,
               explanation: `Matches your research fields`,
               signalType: 'fields',
             });
@@ -633,13 +633,13 @@ export class DiscoveryService implements IDiscoveryService {
 
         for (const citation of citing.citations) {
           if (!dismissedUris.has(citation.citingUri) && !claimedPapers.has(citation.citingUri)) {
-            const preprint = await this.getPreprintByUri(citation.citingUri);
-            if (preprint && !candidateMap.has(citation.citingUri)) {
+            const eprint = await this.getEprintByUri(citation.citingUri);
+            if (eprint && !candidateMap.has(citation.citingUri)) {
               candidateMap.set(citation.citingUri, {
-                title: preprint.title,
-                abstract: preprint.abstract ?? undefined,
-                categories: preprint.categories ?? undefined,
-                publicationDate: preprint.publication_date ?? undefined,
+                title: eprint.title,
+                abstract: eprint.abstract ?? undefined,
+                categories: eprint.categories ?? undefined,
+                publicationDate: eprint.publication_date ?? undefined,
                 explanation: 'Cites your work',
                 signalType: 'citations',
               });
@@ -654,7 +654,7 @@ export class DiscoveryService implements IDiscoveryService {
       const s2Plugin = this.getSemanticScholarPlugin();
       if (s2Plugin) {
         // Get S2 paper IDs for claimed papers
-        const s2Ids = await this.getSemanticScholarIdsForPreprints(
+        const s2Ids = await this.getSemanticScholarIdsForEprints(
           Array.from(claimedPapers) as AtUri[]
         );
 
@@ -666,21 +666,21 @@ export class DiscoveryService implements IDiscoveryService {
             });
 
             for (const rec of recommendations) {
-              const chivePreprint = await this.findPreprintByExternalId(
+              const chiveEprint = await this.findEprintByExternalId(
                 rec.paperId,
                 rec.externalIds?.DOI ?? undefined
               );
               if (
-                chivePreprint &&
-                !dismissedUris.has(chivePreprint.uri) &&
-                !claimedPapers.has(chivePreprint.uri) &&
-                !candidateMap.has(chivePreprint.uri)
+                chiveEprint &&
+                !dismissedUris.has(chiveEprint.uri) &&
+                !claimedPapers.has(chiveEprint.uri) &&
+                !candidateMap.has(chiveEprint.uri)
               ) {
-                candidateMap.set(chivePreprint.uri, {
-                  title: chivePreprint.title,
-                  abstract: chivePreprint.abstract ?? undefined,
-                  categories: chivePreprint.categories ?? undefined,
-                  publicationDate: chivePreprint.publication_date ?? undefined,
+                candidateMap.set(chiveEprint.uri, {
+                  title: chiveEprint.title,
+                  abstract: chiveEprint.abstract ?? undefined,
+                  categories: chiveEprint.categories ?? undefined,
+                  publicationDate: chiveEprint.publication_date ?? undefined,
                   explanation: 'Similar to your claimed papers',
                   signalType: 'semantic',
                 });
@@ -759,21 +759,21 @@ export class DiscoveryService implements IDiscoveryService {
    * future recommendations. Uses dismissals as negative signals.
    */
   async recordInteraction(userDid: DID, interaction: UserInteraction): Promise<void> {
-    if (!interaction.preprintUri) {
-      throw new ValidationError('Preprint URI is required', 'preprintUri', 'required');
+    if (!interaction.eprintUri) {
+      throw new ValidationError('Eprint URI is required', 'eprintUri', 'required');
     }
 
     await this.db.query(
       `INSERT INTO user_interactions (
-        user_did, preprint_uri, interaction_type, recommendation_id, created_at
+        user_did, eprint_uri, interaction_type, recommendation_id, created_at
       ) VALUES ($1, $2, $3, $4, NOW())`,
-      [userDid, interaction.preprintUri, interaction.type, interaction.recommendationId ?? null]
+      [userDid, interaction.eprintUri, interaction.type, interaction.recommendationId ?? null]
     );
 
     this.logger.debug('Recorded user interaction', {
       userDid,
       type: interaction.type,
-      preprintUri: interaction.preprintUri,
+      eprintUri: interaction.eprintUri,
     });
   }
 
@@ -782,9 +782,9 @@ export class DiscoveryService implements IDiscoveryService {
   // =============================================================================
 
   /**
-   * Gets citation counts for a preprint.
+   * Gets citation counts for a eprint.
    *
-   * @param uri - AT-URI of the preprint
+   * @param uri - AT-URI of the eprint
    * @returns Citation statistics
    *
    * @remarks
@@ -799,11 +799,11 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Gets papers that cite a given preprint.
+   * Gets papers that cite a given eprint.
    *
-   * @param uri - AT-URI of the cited preprint
+   * @param uri - AT-URI of the cited eprint
    * @param options - Query options
-   * @returns Papers that cite the given preprint
+   * @returns Papers that cite the given eprint
    *
    * @remarks
    * Delegates to the underlying citation graph service.
@@ -829,11 +829,11 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Gets papers that a given preprint cites (references).
+   * Gets papers that a given eprint cites (references).
    *
-   * @param uri - AT-URI of the citing preprint
+   * @param uri - AT-URI of the citing eprint
    * @param options - Query options
-   * @returns Papers referenced by the given preprint
+   * @returns Papers referenced by the given eprint
    *
    * @remarks
    * Delegates to the underlying citation graph service.
@@ -859,9 +859,9 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Gets enrichment data for a preprint.
+   * Gets enrichment data for a eprint.
    *
-   * @param uri - AT-URI of the preprint
+   * @param uri - AT-URI of the eprint
    * @returns Enrichment data or null if not available
    *
    * @remarks
@@ -873,7 +873,7 @@ export class DiscoveryService implements IDiscoveryService {
       `SELECT uri, semantic_scholar_id, openalex_id, citation_count,
               influential_citation_count, references_count, concepts, topics,
               enriched_at
-       FROM preprint_enrichment WHERE uri = $1`,
+       FROM eprint_enrichment WHERE uri = $1`,
       [uri]
     );
 
@@ -919,13 +919,13 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Gets a preprint by URI from the database.
+   * Gets a eprint by URI from the database.
    */
-  private async getPreprintByUri(uri: AtUri): Promise<PreprintRow | null> {
-    const result = await this.db.query<PreprintRow>(
+  private async getEprintByUri(uri: AtUri): Promise<EprintRow | null> {
+    const result = await this.db.query<EprintRow>(
       `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
               semantic_scholar_id, openalex_id
-       FROM preprints WHERE uri = $1`,
+       FROM eprints WHERE uri = $1`,
       [uri]
     );
 
@@ -933,14 +933,14 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Finds a preprint by external ID (S2 or DOI).
+   * Finds a eprint by external ID (S2 or DOI).
    */
-  private async findPreprintByExternalId(s2Id?: string, doi?: string): Promise<PreprintRow | null> {
+  private async findEprintByExternalId(s2Id?: string, doi?: string): Promise<EprintRow | null> {
     if (s2Id) {
-      const result = await this.db.query<PreprintRow>(
+      const result = await this.db.query<EprintRow>(
         `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
                 semantic_scholar_id, openalex_id
-         FROM preprints WHERE semantic_scholar_id = $1`,
+         FROM eprints WHERE semantic_scholar_id = $1`,
         [s2Id]
       );
 
@@ -948,10 +948,10 @@ export class DiscoveryService implements IDiscoveryService {
     }
 
     if (doi) {
-      const result = await this.db.query<PreprintRow>(
+      const result = await this.db.query<EprintRow>(
         `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
                 semantic_scholar_id, openalex_id
-         FROM preprints WHERE doi = $1`,
+         FROM eprints WHERE doi = $1`,
         [doi]
       );
 
@@ -962,9 +962,9 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Updates preprint with enrichment data.
+   * Updates eprint with enrichment data.
    */
-  private async updatePreprintEnrichment(
+  private async updateEprintEnrichment(
     uri: AtUri,
     data: {
       semanticScholarId?: string;
@@ -1003,7 +1003,7 @@ export class DiscoveryService implements IDiscoveryService {
     values.push(uri);
 
     await this.db.query(
-      `UPDATE preprints SET ${updates.join(', ')} WHERE uri = $${paramIndex}`,
+      `UPDATE eprints SET ${updates.join(', ')} WHERE uri = $${paramIndex}`,
       values
     );
   }
@@ -1018,15 +1018,15 @@ export class DiscoveryService implements IDiscoveryService {
     const chiveCitations: CitationRelationship[] = [];
 
     for (const citation of s2Citations) {
-      const chivePreprint = await this.findPreprintByExternalId(
+      const chiveEprint = await this.findEprintByExternalId(
         citation.paperId,
         citation.externalIds?.DOI
       );
 
-      if (chivePreprint) {
+      if (chiveEprint) {
         chiveCitations.push({
           citingUri,
-          citedUri: chivePreprint.uri as AtUri,
+          citedUri: chiveEprint.uri as AtUri,
           source: 'semantic-scholar',
         });
       }
@@ -1040,7 +1040,7 @@ export class DiscoveryService implements IDiscoveryService {
    */
   private async getUserClaimedPapers(userDid: DID): Promise<Set<string>> {
     const result = await this.db.query<{ uri: string }>(
-      `SELECT p.uri FROM preprints p
+      `SELECT p.uri FROM eprints p
        JOIN claim_requests c ON c.import_id = p.import_id
        WHERE c.claimant_did = $1 AND c.status = 'approved'`,
       [userDid]
@@ -1054,22 +1054,22 @@ export class DiscoveryService implements IDiscoveryService {
    */
   private async getDismissedRecommendations(userDid: DID): Promise<Set<string>> {
     const result = await this.db.query<InteractionRow>(
-      `SELECT preprint_uri FROM user_interactions
+      `SELECT eprint_uri FROM user_interactions
        WHERE user_did = $1 AND interaction_type = 'dismiss'`,
       [userDid]
     );
 
-    return new Set(result.rows.map((r) => r.preprint_uri));
+    return new Set(result.rows.map((r) => r.eprint_uri));
   }
 
   /**
-   * Gets Semantic Scholar paper IDs for a list of Chive preprints.
+   * Gets Semantic Scholar paper IDs for a list of Chive eprints.
    */
-  private async getSemanticScholarIdsForPreprints(uris: AtUri[]): Promise<string[]> {
+  private async getSemanticScholarIdsForEprints(uris: AtUri[]): Promise<string[]> {
     if (uris.length === 0) return [];
 
     const result = await this.db.query<{ semantic_scholar_id: string }>(
-      `SELECT semantic_scholar_id FROM preprints
+      `SELECT semantic_scholar_id FROM eprints
        WHERE uri = ANY($1) AND semantic_scholar_id IS NOT NULL`,
       [uris]
     );

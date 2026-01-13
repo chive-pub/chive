@@ -1,6 +1,6 @@
 # Sharing to Bluesky
 
-Chive is built on AT Protocol, the same network that powers Bluesky. You can share preprints, reviews, and discussions directly to Bluesky.
+Chive is built on AT Protocol, the same network that powers Bluesky. You can share eprints, reviews, and discussions directly to Bluesky.
 
 ## Connecting your Bluesky account
 
@@ -10,11 +10,11 @@ If you signed into Chive with your Bluesky account, you're already connected. Ot
 2. Click **Connect Bluesky**
 3. Authorize Chive to post on your behalf
 
-## Sharing a preprint
+## Sharing a eprint
 
 ### Quick share
 
-1. On any preprint page, click **Share**
+1. On any eprint page, click **Share**
 2. Select **Share to Bluesky**
 3. A compose window opens with:
    - Paper title
@@ -64,11 +64,11 @@ To share someone else's review:
 
 ## Backlinks
 
-When someone mentions a Chive preprint on Bluesky, it creates a backlink:
+When someone mentions a Chive eprint on Bluesky, it creates a backlink:
 
 ### Viewing backlinks
 
-1. Go to any preprint page
+1. Go to any eprint page
 2. Click the **Bluesky** tab
 3. See all Bluesky posts mentioning this paper
 
@@ -82,7 +82,7 @@ When someone mentions a Chive preprint on Bluesky, it creates a backlink:
 
 ### Backlink metrics
 
-The preprint page shows:
+The eprint page shows:
 
 - Total Bluesky mentions
 - Recent posts
@@ -100,7 +100,7 @@ When composing a Bluesky post through Chive:
    - Your Bluesky follows
 3. Select to insert their handle
 
-### Mentioning preprints
+### Mentioning eprints
 
 Paste a Chive URL into your post:
 
@@ -173,8 +173,8 @@ With your permission, Chive can:
 ### Card preview not loading
 
 - Wait a few seconds for the preview to generate
-- Check that the preprint URL is correct
-- Some older preprints may not have preview images
+- Check that the eprint URL is correct
+- Some older eprints may not have preview images
 
 ## Related topics
 

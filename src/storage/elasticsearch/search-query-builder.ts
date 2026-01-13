@@ -107,7 +107,7 @@ export interface FieldBoostConfig {
  * Default field boost configuration.
  *
  * @remarks
- * Optimized for academic preprint search:
+ * Optimized for academic eprint search:
  * - Titles are most important (3x weight)
  * - Abstracts are very important (2x weight)
  * - Authors and keywords are important (1.5-2x weight)

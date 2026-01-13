@@ -127,7 +127,7 @@ describe('ReviewCard', () => {
     it('shows target span excerpt when present', () => {
       const inlineReview = createMockInlineReview({
         target: {
-          source: 'at://test/preprint/1',
+          source: 'at://test/eprint/1',
           selector: {
             type: 'TextQuoteSelector',
             exact: 'neural network architecture',

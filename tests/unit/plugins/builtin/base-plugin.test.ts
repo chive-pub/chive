@@ -106,7 +106,7 @@ class TestPlugin extends BasePlugin {
     author: 'Chive Team',
     license: 'MIT',
     permissions: {
-      hooks: ['preprint.indexed'],
+      hooks: ['eprint.indexed'],
       network: { allowedDomains: [] },
       storage: { maxSize: 1024 },
     },

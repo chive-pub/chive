@@ -329,7 +329,7 @@ describe('ATProto Firehose Compliance', () => {
       const filter = new EventFilter({ strictValidation: false });
 
       const chiveCollections = [
-        'pub.chive.preprint.submission',
+        'pub.chive.eprint.submission',
         'pub.chive.review.comment',
         'pub.chive.graph.vote',
         'pub.chive.graph.fieldproposal',
@@ -367,14 +367,14 @@ describe('ATProto Firehose Compliance', () => {
 
     it('filters by specific collections when configured', () => {
       const filter = new EventFilter({
-        collections: ['pub.chive.preprint.submission' as NSID],
+        collections: ['pub.chive.eprint.submission' as NSID],
       });
 
       // Allowed
       expect(
         filter.shouldProcess({
           action: 'create',
-          path: 'pub.chive.preprint.submission/abc123',
+          path: 'pub.chive.eprint.submission/abc123',
         })
       ).toBe(true);
 
@@ -394,7 +394,7 @@ describe('ATProto Firehose Compliance', () => {
 
       const createOp = {
         action: 'create' as const,
-        path: 'pub.chive.preprint.submission/abc123',
+        path: 'pub.chive.eprint.submission/abc123',
         cid: 'bafyreiabc123' as CID,
         record: { title: 'Test' },
       };
@@ -402,7 +402,7 @@ describe('ATProto Firehose Compliance', () => {
       expect(handler.validateOperation(createOp)).toBe(true);
 
       const { collection, rkey } = handler.parsePath(createOp.path);
-      expect(collection).toBe('pub.chive.preprint.submission');
+      expect(collection).toBe('pub.chive.eprint.submission');
       expect(rkey).toBe('abc123');
     });
 
@@ -411,7 +411,7 @@ describe('ATProto Firehose Compliance', () => {
 
       const updateOp = {
         action: 'update' as const,
-        path: 'pub.chive.preprint.submission/abc123',
+        path: 'pub.chive.eprint.submission/abc123',
         cid: 'bafyreiabc456' as CID,
         record: { title: 'Updated' },
       };
@@ -424,7 +424,7 @@ describe('ATProto Firehose Compliance', () => {
 
       const deleteOp = {
         action: 'delete' as const,
-        path: 'pub.chive.preprint.submission/abc123',
+        path: 'pub.chive.eprint.submission/abc123',
       };
 
       expect(handler.validateOperation(deleteOp)).toBe(true);
@@ -432,7 +432,7 @@ describe('ATProto Firehose Compliance', () => {
       // Delete should not have cid or record
       const invalidDelete = {
         action: 'delete' as const,
-        path: 'pub.chive.preprint.submission/abc123',
+        path: 'pub.chive.eprint.submission/abc123',
         cid: 'bafyreiabc123' as CID,
       };
 

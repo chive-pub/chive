@@ -9,7 +9,7 @@ import { AuthorsPageSkeleton } from './loading';
  */
 export const metadata: Metadata = {
   title: 'Authors | Chive',
-  description: 'Discover researchers and their preprints on Chive.',
+  description: 'Discover researchers and their eprints on Chive.',
 };
 
 /**

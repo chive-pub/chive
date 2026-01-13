@@ -3,7 +3,7 @@
  *
  * @remarks
  * CRITICAL tests verifying ATProto specification compliance for:
- * - PreprintService (indexing, storage, staleness)
+ * - EprintService (indexing, storage, staleness)
  * - BlobProxyService (caching, no authoritative storage)
  * - MetricsService (AppView-local metrics)
  * - PDSSyncService (read-only PDS access)
@@ -24,10 +24,7 @@
 import type { Pool } from 'pg';
 import { describe, it, expect, vi } from 'vitest';
 
-import {
-  PreprintService,
-  type RecordMetadata,
-} from '../../src/services/preprint/preprint-service.js';
+import { EprintService, type RecordMetadata } from '../../src/services/eprint/eprint-service.js';
 import {
   ReviewService,
   type ReviewComment,
@@ -43,14 +40,14 @@ import type {
 import type { ISearchEngine } from '../../src/types/interfaces/search.interface.js';
 import type {
   IStorageBackend,
-  StoredPreprint,
+  StoredEprint,
 } from '../../src/types/interfaces/storage.interface.js';
-import type { PreprintAuthor } from '../../src/types/models/author.js';
-import type { Preprint } from '../../src/types/models/preprint.js';
+import type { EprintAuthor } from '../../src/types/models/author.js';
+import type { Eprint } from '../../src/types/models/eprint.js';
 
 // Test constants
 const TEST_AUTHOR = 'did:plc:compliance' as DID;
-const TEST_URI = 'at://did:plc:compliance/pub.chive.preprint.submission/test' as AtUri;
+const TEST_URI = 'at://did:plc:compliance/pub.chive.eprint.submission/test' as AtUri;
 const TEST_CID = 'bafyreicompliance123' as CID;
 const TEST_PDS_URL = 'https://pds.compliance.test';
 
@@ -86,20 +83,20 @@ function createTrackedStorage(): IStorageBackend & {
 
   return {
     operations,
-    storePreprint: vi.fn().mockImplementation((preprint: StoredPreprint) => {
-      operations.push({ method: 'storePreprint', args: [preprint] });
+    storeEprint: vi.fn().mockImplementation((eprint: StoredEprint) => {
+      operations.push({ method: 'storeEprint', args: [eprint] });
       return Promise.resolve({ ok: true, value: undefined });
     }),
-    getPreprint: vi.fn().mockImplementation((uri: AtUri) => {
-      operations.push({ method: 'getPreprint', args: [uri] });
+    getEprint: vi.fn().mockImplementation((uri: AtUri) => {
+      operations.push({ method: 'getEprint', args: [uri] });
       return Promise.resolve(null);
     }),
-    getPreprintsByAuthor: vi.fn().mockImplementation((author: DID) => {
-      operations.push({ method: 'getPreprintsByAuthor', args: [author] });
+    getEprintsByAuthor: vi.fn().mockImplementation((author: DID) => {
+      operations.push({ method: 'getEprintsByAuthor', args: [author] });
       return Promise.resolve([]);
     }),
-    listPreprintUris: vi.fn().mockImplementation(() => {
-      operations.push({ method: 'listPreprintUris', args: [] });
+    listEprintUris: vi.fn().mockImplementation(() => {
+      operations.push({ method: 'listEprintUris', args: [] });
       return Promise.resolve([]);
     }),
     trackPDSSource: vi.fn().mockImplementation((uri: AtUri, pdsUrl: string, lastSynced: Date) => {
@@ -150,7 +147,7 @@ function createTrackedRepository(): IRepository & {
  */
 function createMockSearch(): ISearchEngine {
   return {
-    indexPreprint: vi.fn().mockResolvedValue(undefined),
+    indexEprint: vi.fn().mockResolvedValue(undefined),
     search: vi.fn().mockResolvedValue({ hits: [], total: 0 }),
     facetedSearch: vi.fn().mockResolvedValue({ hits: [], total: 0, facets: {} }),
     autocomplete: vi.fn().mockResolvedValue([]),
@@ -173,10 +170,10 @@ function createMockIdentity(): IIdentityResolver {
 }
 
 /**
- * Creates test preprint record.
+ * Creates test eprint record.
  */
-function createTestPreprint(): Preprint {
-  const testAuthor: PreprintAuthor = {
+function createTestEprint(): Eprint {
+  const testAuthor: EprintAuthor = {
     did: TEST_AUTHOR,
     name: 'Test Compliance Author',
     order: 1,
@@ -191,7 +188,7 @@ function createTestPreprint(): Preprint {
     cid: TEST_CID,
     authors: [testAuthor],
     submittedBy: TEST_AUTHOR,
-    title: 'Compliance Test Preprint',
+    title: 'Compliance Test Eprint',
     abstract: 'Testing ATProto compliance.',
     keywords: ['compliance', 'test'],
     facets: [],
@@ -204,7 +201,7 @@ function createTestPreprint(): Preprint {
       size: 1024,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     createdAt: Date.now() as Timestamp,
   };
 }
@@ -222,7 +219,7 @@ function createTestMetadata(): RecordMetadata {
 }
 
 describe('ATProto Core Services Compliance', () => {
-  describe('CRITICAL: PreprintService - No PDS Writes', () => {
+  describe('CRITICAL: EprintService - No PDS Writes', () => {
     it('never writes to user PDSes during indexing', async () => {
       const storage = createTrackedStorage();
       const repository = createTrackedRepository();
@@ -230,7 +227,7 @@ describe('ATProto Core Services Compliance', () => {
       const identity = createMockIdentity();
       const logger = createMockLogger();
 
-      const service = new PreprintService({
+      const service = new EprintService({
         storage,
         search,
         repository,
@@ -238,10 +235,10 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      // Index preprint
-      const preprint = createTestPreprint();
+      // Index eprint
+      const eprint = createTestEprint();
       const metadata = createTestMetadata();
-      await service.indexPreprint(preprint, metadata);
+      await service.indexEprint(eprint, metadata);
 
       // Repository should NOT have any write operations
       // IRepository interface only has read methods (getRecord, listRecords, getBlob)
@@ -265,7 +262,7 @@ describe('ATProto Core Services Compliance', () => {
       const identity = createMockIdentity();
       const logger = createMockLogger();
 
-      const service = new PreprintService({
+      const service = new EprintService({
         storage,
         search,
         repository,
@@ -273,17 +270,17 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
       const metadata = createTestMetadata();
-      await service.indexPreprint(preprint, metadata);
+      await service.indexEprint(eprint, metadata);
 
-      // Storage should have storePreprint call (local index)
-      const storeOps = storage.operations.filter((op) => op.method === 'storePreprint');
+      // Storage should have storeEprint call (local index)
+      const storeOps = storage.operations.filter((op) => op.method === 'storeEprint');
       expect(storeOps.length).toBe(1);
     });
   });
 
-  describe('CRITICAL: PreprintService - BlobRef Only Storage', () => {
+  describe('CRITICAL: EprintService - BlobRef Only Storage', () => {
     it('stores BlobRef structure, never blob data', async () => {
       const storage = createTrackedStorage();
       const repository = createTrackedRepository();
@@ -291,7 +288,7 @@ describe('ATProto Core Services Compliance', () => {
       const identity = createMockIdentity();
       const logger = createMockLogger();
 
-      const service = new PreprintService({
+      const service = new EprintService({
         storage,
         search,
         repository,
@@ -299,24 +296,24 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
       const metadata = createTestMetadata();
-      await service.indexPreprint(preprint, metadata);
+      await service.indexEprint(eprint, metadata);
 
-      // Get the stored preprint from operations
-      const storeOp = storage.operations.find((op) => op.method === 'storePreprint');
+      // Get the stored eprint from operations
+      const storeOp = storage.operations.find((op) => op.method === 'storeEprint');
       expect(storeOp).toBeDefined();
 
-      const storedPreprint = storeOp?.args[0] as StoredPreprint;
-      expect(storedPreprint.documentBlobRef).toBeDefined();
+      const storedEprint = storeOp?.args[0] as StoredEprint;
+      expect(storedEprint.documentBlobRef).toBeDefined();
 
       // BlobRef should have structure: $type, ref, mimeType, size
-      expect(storedPreprint.documentBlobRef?.$type).toBe('blob');
-      expect(storedPreprint.documentBlobRef?.ref).toBeDefined();
-      expect(storedPreprint.documentBlobRef?.mimeType).toBeDefined();
+      expect(storedEprint.documentBlobRef?.$type).toBe('blob');
+      expect(storedEprint.documentBlobRef?.ref).toBeDefined();
+      expect(storedEprint.documentBlobRef?.mimeType).toBeDefined();
 
       // Verify no blob data fields exist
-      const blobRefKeys = Object.keys(storedPreprint.documentBlobRef ?? {});
+      const blobRefKeys = Object.keys(storedEprint.documentBlobRef ?? {});
       expect(blobRefKeys).not.toContain('data');
       expect(blobRefKeys).not.toContain('content');
       expect(blobRefKeys).not.toContain('buffer');
@@ -324,7 +321,7 @@ describe('ATProto Core Services Compliance', () => {
     });
   });
 
-  describe('CRITICAL: PreprintService - PDS Source Tracking', () => {
+  describe('CRITICAL: EprintService - PDS Source Tracking', () => {
     it('tracks PDS URL for every indexed record', async () => {
       const storage = createTrackedStorage();
       const repository = createTrackedRepository();
@@ -332,7 +329,7 @@ describe('ATProto Core Services Compliance', () => {
       const identity = createMockIdentity();
       const logger = createMockLogger();
 
-      const service = new PreprintService({
+      const service = new EprintService({
         storage,
         search,
         repository,
@@ -340,9 +337,9 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
       const metadata = createTestMetadata();
-      await service.indexPreprint(preprint, metadata);
+      await service.indexEprint(eprint, metadata);
 
       // Should call trackPDSSource
       const trackOps = storage.operations.filter((op) => op.method === 'trackPDSSource');
@@ -352,14 +349,14 @@ describe('ATProto Core Services Compliance', () => {
       expect(trackOps[0]?.args[1]).toBe(TEST_PDS_URL);
     });
 
-    it('includes pdsUrl in stored preprint', async () => {
+    it('includes pdsUrl in stored eprint', async () => {
       const storage = createTrackedStorage();
       const repository = createTrackedRepository();
       const search = createMockSearch();
       const identity = createMockIdentity();
       const logger = createMockLogger();
 
-      const service = new PreprintService({
+      const service = new EprintService({
         storage,
         search,
         repository,
@@ -367,20 +364,20 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
       const metadata = createTestMetadata();
-      await service.indexPreprint(preprint, metadata);
+      await service.indexEprint(eprint, metadata);
 
-      const storeOp = storage.operations.find((op) => op.method === 'storePreprint');
-      const storedPreprint = storeOp?.args[0] as StoredPreprint;
+      const storeOp = storage.operations.find((op) => op.method === 'storeEprint');
+      const storedEprint = storeOp?.args[0] as StoredEprint;
 
-      expect(storedPreprint.pdsUrl).toBe(TEST_PDS_URL);
-      expect(storedPreprint.pdsUrl).not.toBeNull();
-      expect(storedPreprint.pdsUrl).not.toBeUndefined();
+      expect(storedEprint.pdsUrl).toBe(TEST_PDS_URL);
+      expect(storedEprint.pdsUrl).not.toBeNull();
+      expect(storedEprint.pdsUrl).not.toBeUndefined();
     });
   });
 
-  describe('CRITICAL: PreprintService - AT-URI Identifiers', () => {
+  describe('CRITICAL: EprintService - AT-URI Identifiers', () => {
     it('uses AT-URI as primary identifier', async () => {
       const storage = createTrackedStorage();
       const repository = createTrackedRepository();
@@ -388,7 +385,7 @@ describe('ATProto Core Services Compliance', () => {
       const identity = createMockIdentity();
       const logger = createMockLogger();
 
-      const service = new PreprintService({
+      const service = new EprintService({
         storage,
         search,
         repository,
@@ -396,16 +393,16 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      const preprint = createTestPreprint();
+      const eprint = createTestEprint();
       const metadata = createTestMetadata();
-      await service.indexPreprint(preprint, metadata);
+      await service.indexEprint(eprint, metadata);
 
-      const storeOp = storage.operations.find((op) => op.method === 'storePreprint');
-      const storedPreprint = storeOp?.args[0] as StoredPreprint;
+      const storeOp = storage.operations.find((op) => op.method === 'storeEprint');
+      const storedEprint = storeOp?.args[0] as StoredEprint;
 
       // URI should be AT-URI format
-      expect(storedPreprint.uri).toMatch(/^at:\/\//);
-      expect(storedPreprint.uri).toBe(TEST_URI);
+      expect(storedEprint.uri).toMatch(/^at:\/\//);
+      expect(storedEprint.uri).toBe(TEST_URI);
     });
   });
 
@@ -533,10 +530,10 @@ describe('ATProto Core Services Compliance', () => {
     it('100% compliance with ATProto AppView requirements', () => {
       // Summary of all compliance requirements verified above
       const requirements = {
-        'PreprintService: No PDS writes': true,
-        'PreprintService: BlobRef only storage': true,
-        'PreprintService: PDS source tracking': true,
-        'PreprintService: AT-URI identifiers': true,
+        'EprintService: No PDS writes': true,
+        'EprintService: BlobRef only storage': true,
+        'EprintService: PDS source tracking': true,
+        'EprintService: AT-URI identifiers': true,
         'ReviewService: No PDS writes': true,
         'MetricsService: AppView-local only': true,
         'BlobProxyService: Ephemeral cache': true,

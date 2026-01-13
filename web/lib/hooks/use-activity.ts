@@ -33,9 +33,9 @@ export type ActivityAction = 'create' | 'update' | 'delete';
  * Activity categories (semantic action types).
  */
 export type ActivityCategory =
-  | 'preprint_submit'
-  | 'preprint_update'
-  | 'preprint_delete'
+  | 'eprint_submit'
+  | 'eprint_update'
+  | 'eprint_delete'
   | 'review_create'
   | 'review_update'
   | 'review_delete'
@@ -162,16 +162,16 @@ export function generateRkey(): string {
  *
  * // Log activity before PDS write
  * await logActivityMutation.mutateAsync({
- *   collection: 'pub.chive.preprint.submission',
+ *   collection: 'pub.chive.eprint.submission',
  *   rkey,
  *   action: 'create',
- *   category: 'preprint_submit',
+ *   category: 'eprint_submit',
  * });
  *
  * // Perform PDS write with the same rkey
  * await agent.com.atproto.repo.createRecord({
  *   repo: did,
- *   collection: 'pub.chive.preprint.submission',
+ *   collection: 'pub.chive.eprint.submission',
  *   rkey, // Use generated rkey for correlation
  *   record,
  * });
@@ -221,7 +221,7 @@ export function useLogActivity(): UseMutationResult<
  *   await agent.com.atproto.repo.createRecord({ ... });
  * } catch (error) {
  *   await markFailed.mutateAsync({
- *     collection: 'pub.chive.preprint.submission',
+ *     collection: 'pub.chive.eprint.submission',
  *     rkey,
  *     errorCode: 'PDS_WRITE_FAILED',
  *     errorMessage: error.message,
@@ -263,7 +263,7 @@ export function useMarkActivityFailed(): UseMutationResult<
  * @example
  * ```typescript
  * const { data, isLoading } = useActivityFeed({
- *   category: 'preprint_submit',
+ *   category: 'eprint_submit',
  *   limit: 20,
  * });
  * ```
@@ -310,11 +310,11 @@ export function useActivityFeed(
  * ```typescript
  * const { withActivityLogging, generateRkey } = useActivityLogging();
  *
- * // Create a preprint with activity tracking
+ * // Create a eprint with activity tracking
  * await withActivityLogging({
- *   category: 'preprint_submit',
+ *   category: 'eprint_submit',
  *   action: 'create',
- *   targetTitle: 'My Preprint',
+ *   targetTitle: 'My Eprint',
  *   perform: async (collection, rkey) => {
  *     return await agent.com.atproto.repo.createRecord({
  *       repo: did,
@@ -456,10 +456,10 @@ export function useActivityLogging() {
  * ATProto collection NSIDs for Chive.
  */
 export const COLLECTIONS = {
-  PREPRINT_SUBMISSION: 'pub.chive.preprint.submission',
+  EPRINT_SUBMISSION: 'pub.chive.eprint.submission',
   REVIEW_COMMENT: 'pub.chive.review.comment',
   REVIEW_ENDORSEMENT: 'pub.chive.review.endorsement',
-  PREPRINT_TAG: 'pub.chive.preprint.userTag',
+  EPRINT_TAG: 'pub.chive.eprint.userTag',
   FIELD_PROPOSAL: 'pub.chive.graph.fieldProposal',
   VOTE: 'pub.chive.graph.vote',
   ACTOR_PROFILE: 'pub.chive.actor.profile',

@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { Search, FileText, User, Tag, ArrowRight, Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import type { PreprintSummary, Author, FieldRef } from '@/lib/api/schema';
+import type { EprintSummary, Author, FieldRef } from '@/lib/api/schema';
 
 /**
  * Autocomplete suggestion types.
  */
-export type SuggestionType = 'preprint' | 'author' | 'field' | 'keyword';
+export type SuggestionType = 'eprint' | 'author' | 'field' | 'keyword';
 
 /**
  * A single autocomplete suggestion.
@@ -29,8 +29,8 @@ export interface AutocompleteSuggestion {
 export interface SearchAutocompleteProps {
   /** Search query */
   query: string;
-  /** Preprint suggestions */
-  preprints?: PreprintSummary[];
+  /** Eprint suggestions */
+  eprints?: EprintSummary[];
   /** Author suggestions */
   authors?: Author[];
   /** Field suggestions */
@@ -58,7 +58,7 @@ export interface SearchAutocompleteProps {
  * ```tsx
  * <SearchAutocomplete
  *   query={searchQuery}
- *   preprints={instantSearchResults.hits}
+ *   eprints={instantSearchResults.hits}
  *   isLoading={isSearching}
  *   onSelect={(s) => navigate(s.href)}
  * />
@@ -69,7 +69,7 @@ export interface SearchAutocompleteProps {
  */
 export function SearchAutocomplete({
   query,
-  preprints = [],
+  eprints = [],
   authors = [],
   fields = [],
   keywords = [],
@@ -79,7 +79,7 @@ export function SearchAutocomplete({
   className,
 }: SearchAutocompleteProps) {
   const hasResults =
-    preprints.length > 0 || authors.length > 0 || fields.length > 0 || keywords.length > 0;
+    eprints.length > 0 || authors.length > 0 || fields.length > 0 || keywords.length > 0;
 
   if (!hasResults && !isLoading) {
     return null;
@@ -98,18 +98,18 @@ export function SearchAutocomplete({
         </div>
       ) : (
         <div className="max-h-96 overflow-y-auto">
-          {/* Preprint suggestions */}
-          {preprints.length > 0 && (
-            <SuggestionGroup title="Preprints" icon={<FileText className="h-4 w-4" />}>
-              {preprints.slice(0, 3).map((preprint) => (
+          {/* Eprint suggestions */}
+          {eprints.length > 0 && (
+            <SuggestionGroup title="Eprints" icon={<FileText className="h-4 w-4" />}>
+              {eprints.slice(0, 3).map((eprint) => (
                 <SuggestionItem
-                  key={preprint.uri}
+                  key={eprint.uri}
                   suggestion={{
-                    type: 'preprint',
-                    id: preprint.uri,
-                    label: preprint.title,
-                    sublabel: preprint.authors[0]?.name,
-                    href: `/preprints/${encodeURIComponent(preprint.uri)}`,
+                    type: 'eprint',
+                    id: eprint.uri,
+                    label: eprint.title,
+                    sublabel: eprint.authors[0]?.name,
+                    href: `/eprints/${encodeURIComponent(eprint.uri)}`,
                   }}
                   onSelect={onSelect}
                 />

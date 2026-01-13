@@ -13,7 +13,7 @@
  * @example
  * ```tsx
  * <ReviewForm
- *   preprintUri="at://did:plc:.../pub.chive.preprint.submission/..."
+ *   eprintUri="at://did:plc:.../pub.chive.eprint.submission/..."
  *   onSubmit={handleSubmit}
  *   onCancel={handleCancel}
  * />
@@ -40,8 +40,8 @@ import type { Review, TextSpanTarget, AnnotationMotivation } from '@/lib/api/sch
  * Props for the ReviewForm component.
  */
 export interface ReviewFormProps {
-  /** URI of the preprint being reviewed */
-  preprintUri: string;
+  /** URI of the eprint being reviewed */
+  eprintUri: string;
 
   /** Review to edit (if editing) */
   editingReview?: Review;
@@ -84,8 +84,8 @@ export interface ReviewFormData {
   /** Review content */
   content: string;
 
-  /** Preprint being reviewed */
-  preprintUri: string;
+  /** Eprint being reviewed */
+  eprintUri: string;
 
   /** Target span (for inline annotations) */
   target?: TextSpanTarget;
@@ -229,7 +229,7 @@ function CharacterCount({ current, min, max }: { current: number; min?: number; 
  * @returns Review form element
  */
 export function ReviewForm({
-  preprintUri,
+  eprintUri,
   editingReview,
   parentReview,
   target,
@@ -237,7 +237,7 @@ export function ReviewForm({
   onCancel,
   isLoading = false,
   error,
-  placeholder = 'Share your thoughts on this preprint...',
+  placeholder = 'Share your thoughts on this eprint...',
   maxLength = 10000,
   minLength = 10,
   className,
@@ -281,7 +281,7 @@ export function ReviewForm({
 
       const formData: ReviewFormData = {
         content: content.trim(),
-        preprintUri,
+        eprintUri,
         target: currentTarget,
         parentReviewUri: parentReview?.uri,
         motivation: getMotivation(),
@@ -289,7 +289,7 @@ export function ReviewForm({
 
       await onSubmit(formData);
     },
-    [content, preprintUri, currentTarget, parentReview, getMotivation, isValid, isLoading, onSubmit]
+    [content, eprintUri, currentTarget, parentReview, getMotivation, isValid, isLoading, onSubmit]
   );
 
   const handleKeyDown = useCallback(
@@ -403,7 +403,7 @@ export function ReviewForm({
  * Compact inline form for quick replies.
  */
 export function InlineReplyForm({
-  preprintUri,
+  eprintUri,
   parentReview,
   onSubmit,
   onCancel,
@@ -427,14 +427,14 @@ export function InlineReplyForm({
 
       await onSubmit({
         content: content.trim(),
-        preprintUri,
+        eprintUri,
         parentReviewUri: parentReview.uri,
         motivation: 'replying',
       });
 
       setContent('');
     },
-    [content, preprintUri, parentReview, isLoading, onSubmit]
+    [content, eprintUri, parentReview, isLoading, onSubmit]
   );
 
   return (

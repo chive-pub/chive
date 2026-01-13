@@ -7,7 +7,7 @@
  * Redis is used for:
  * - Session management (L1 cache, fast lookup)
  * - Rate limiting (4-tier: anonymous, authenticated, premium, admin)
- * - L2 cache (preprints, authors, search results)
+ * - L2 cache (eprints, authors, search results)
  * - Firehose cursor backup (redundancy with PostgreSQL)
  * - PDS health status (transient)
  * - Job queues (BullMQ backing store)
@@ -111,16 +111,16 @@ export const RedisKeys = {
   RATE_LIMIT_ADMIN: (did: DID): string => `ratelimit:admin:${did}`,
 
   /**
-   * L2 cache key for preprint metadata.
+   * L2 cache key for eprint metadata.
    *
-   * @param uri - Preprint AT URI
-   * @returns Redis key for cached preprint
+   * @param uri - Eprint AT URI
+   * @returns Redis key for cached eprint
    *
    * @remarks
-   * Caches preprint index records from PostgreSQL.
-   * Reduces database load for frequently accessed preprints.
+   * Caches eprint index records from PostgreSQL.
+   * Reduces database load for frequently accessed eprints.
    */
-  CACHE_PREPRINT: (uri: AtUri): string => `cache:preprint:${uri}`,
+  CACHE_EPRINT: (uri: AtUri): string => `cache:eprint:${uri}`,
 
   /**
    * L2 cache key for author profile.
@@ -202,7 +202,7 @@ export const RedisKeys = {
  *
  * Design considerations:
  * - Short TTLs for frequently changing data (sessions, rate limits)
- * - Longer TTLs for stable data (preprints, authors)
+ * - Longer TTLs for stable data (eprints, authors)
  * - Very short TTLs for transient data (PDS health)
  *
  * @public
@@ -227,18 +227,18 @@ export const RedisTTL = {
   RATE_LIMIT_WINDOW: 60,
 
   /**
-   * Preprint cache TTL: 5 minutes.
+   * Eprint cache TTL: 5 minutes.
    *
    * @remarks
    * Short TTL ensures index updates propagate quickly.
    */
-  CACHE_PREPRINT: 300,
+  CACHE_EPRINT: 300,
 
   /**
    * Author cache TTL: 10 minutes.
    *
    * @remarks
-   * Author profiles change less frequently than preprints.
+   * Author profiles change less frequently than eprints.
    */
   CACHE_AUTHOR: 600,
 
@@ -246,7 +246,7 @@ export const RedisTTL = {
    * Search results cache TTL: 3 minutes.
    *
    * @remarks
-   * Search results change as new preprints are indexed.
+   * Search results change as new eprints are indexed.
    */
   CACHE_SEARCH: 180,
 

@@ -3,7 +3,7 @@
  *
  * @remarks
  * Zod schemas for claiming-related XRPC endpoints.
- * Claiming allows authors to claim ownership of preprints imported
+ * Claiming allows authors to claim ownership of eprints imported
  * from external sources (arXiv, LingBuzz, etc.).
  *
  * @packageDocumentation
@@ -77,7 +77,7 @@ export type ClaimRequest = z.infer<typeof claimRequestSchema>;
  * Parameters for starting a claim.
  */
 export const startClaimParamsSchema = z.object({
-  importId: z.number().int().describe('ID of the imported preprint to claim'),
+  importId: z.number().int().describe('ID of the imported eprint to claim'),
 });
 
 export type StartClaimParams = z.infer<typeof startClaimParamsSchema>;
@@ -230,7 +230,7 @@ export const getUserClaimsResponseSchema = z.object({
 export type GetUserClaimsResponse = z.infer<typeof getUserClaimsResponseSchema>;
 
 /**
- * Parameters for finding claimable preprints.
+ * Parameters for finding claimable eprints.
  */
 export const findClaimableParamsSchema = z.object({
   q: z.string().optional().describe('Search query (title, author name, DOI)'),
@@ -242,10 +242,10 @@ export const findClaimableParamsSchema = z.object({
 export type FindClaimableParams = z.infer<typeof findClaimableParamsSchema>;
 
 /**
- * Response for finding claimable preprints.
+ * Response for finding claimable eprints.
  */
 export const findClaimableResponseSchema = z.object({
-  preprints: z.array(
+  eprints: z.array(
     z.object({
       id: z.number().int(),
       source: z.string(),
@@ -310,7 +310,7 @@ export type GetPendingClaimsResponse = z.infer<typeof getPendingClaimsResponseSc
  * - No special characters, hyphens, or underscores
  *
  * **Known built-in sources (for documentation, not validation):**
- * - Preprint servers: arxiv, biorxiv, medrxiv, psyarxiv, lingbuzz, semanticsarchive, openreview, ssrn, osf
+ * - Eprint servers: arxiv, biorxiv, medrxiv, psyarxiv, lingbuzz, semanticsarchive, openreview, ssrn, osf
  * - Data/code repositories: zenodo, figshare, dryad, softwareheritage, gitlab
  * - Academic databases: openalex, semanticscholar, crossref, philpapers
  * - Authority/vocabulary: ror, wikidata, fast
@@ -345,16 +345,16 @@ export type ImportSourceType = z.infer<typeof importSourceSchema>;
  * Plugins may add their own sources without being listed here.
  */
 export const WELL_KNOWN_SOURCES = {
-  // Preprint servers
-  arxiv: { name: 'arXiv', category: 'preprint' },
-  biorxiv: { name: 'bioRxiv', category: 'preprint' },
-  medrxiv: { name: 'medRxiv', category: 'preprint' },
-  psyarxiv: { name: 'PsyArXiv', category: 'preprint' },
-  lingbuzz: { name: 'LingBuzz', category: 'preprint' },
-  semanticsarchive: { name: 'Semantics Archive', category: 'preprint' },
-  openreview: { name: 'OpenReview', category: 'preprint' },
-  ssrn: { name: 'SSRN', category: 'preprint' },
-  osf: { name: 'OSF Preprints', category: 'preprint' },
+  // Eprint servers
+  arxiv: { name: 'arXiv', category: 'eprint' },
+  biorxiv: { name: 'bioRxiv', category: 'eprint' },
+  medrxiv: { name: 'medRxiv', category: 'eprint' },
+  psyarxiv: { name: 'PsyArXiv', category: 'eprint' },
+  lingbuzz: { name: 'LingBuzz', category: 'eprint' },
+  semanticsarchive: { name: 'Semantics Archive', category: 'eprint' },
+  openreview: { name: 'OpenReview', category: 'eprint' },
+  ssrn: { name: 'SSRN', category: 'eprint' },
+  osf: { name: 'OSF Eprints', category: 'eprint' },
   // Data/code repositories
   zenodo: { name: 'Zenodo', category: 'repository' },
   figshare: { name: 'figshare', category: 'repository' },
@@ -375,16 +375,16 @@ export const WELL_KNOWN_SOURCES = {
 } as const;
 
 /**
- * External preprint author schema.
+ * External eprint author schema.
  */
-export const externalPreprintAuthorSchema = z.object({
+export const externalEprintAuthorSchema = z.object({
   name: z.string(),
   orcid: z.string().optional(),
   affiliation: z.string().optional(),
   email: z.string().email().optional(),
 });
 
-export type ExternalPreprintAuthor = z.infer<typeof externalPreprintAuthorSchema>;
+export type ExternalEprintAuthor = z.infer<typeof externalEprintAuthorSchema>;
 
 /**
  * Paper details embedded in claim response.
@@ -392,9 +392,9 @@ export type ExternalPreprintAuthor = z.infer<typeof externalPreprintAuthorSchema
 export const claimPaperDetailsSchema = z.object({
   source: importSourceSchema.describe('Source system'),
   externalId: z.string().describe('Source-specific identifier'),
-  externalUrl: z.string().url().describe('URL to the preprint'),
-  title: z.string().describe('Preprint title'),
-  authors: z.array(externalPreprintAuthorSchema).describe('Author list'),
+  externalUrl: z.string().url().describe('URL to the eprint'),
+  title: z.string().describe('Eprint title'),
+  authors: z.array(externalEprintAuthorSchema).describe('Author list'),
   publicationDate: z.string().optional().describe('Publication date'),
   doi: z.string().optional().describe('DOI if assigned'),
 });
@@ -411,14 +411,14 @@ export const claimRequestWithPaperSchema = claimRequestSchema.extend({
 export type ClaimRequestWithPaper = z.infer<typeof claimRequestWithPaperSchema>;
 
 /**
- * External preprint schema.
+ * External eprint schema.
  */
-export const externalPreprintSchema = z.object({
+export const externalEprintSchema = z.object({
   externalId: z.string().describe('Source-specific identifier'),
-  url: z.string().url().describe('Full URL to the preprint'),
-  title: z.string().describe('Preprint title'),
+  url: z.string().url().describe('Full URL to the eprint'),
+  title: z.string().describe('Eprint title'),
   abstract: z.string().optional().describe('Abstract text'),
-  authors: z.array(externalPreprintAuthorSchema).describe('Author list'),
+  authors: z.array(externalEprintAuthorSchema).describe('Author list'),
   publicationDate: z.string().datetime().optional().describe('Publication date'),
   doi: z.string().optional().describe('DOI if assigned'),
   pdfUrl: z.string().url().optional().describe('URL to PDF'),
@@ -426,25 +426,25 @@ export const externalPreprintSchema = z.object({
   source: importSourceSchema.describe('Source system'),
 });
 
-export type ExternalPreprintResponse = z.infer<typeof externalPreprintSchema>;
+export type ExternalEprintResponse = z.infer<typeof externalEprintSchema>;
 
 /**
- * Parameters for searching external preprint sources.
+ * Parameters for searching external eprint sources.
  */
-export const searchPreprintsParamsSchema = z.object({
+export const searchEprintsParamsSchema = z.object({
   query: z.string().optional().describe('Title or keyword search query'),
   author: z.string().optional().describe('Author name to search for'),
   sources: z.string().optional().describe('Comma-separated list of sources to search'),
   limit: z.coerce.number().int().min(1).max(50).optional().describe('Maximum results'),
 });
 
-export type SearchPreprintsParams = z.infer<typeof searchPreprintsParamsSchema>;
+export type SearchEprintsParams = z.infer<typeof searchEprintsParamsSchema>;
 
 /**
- * Response for searching external preprint sources.
+ * Response for searching external eprint sources.
  */
-export const searchPreprintsResponseSchema = z.object({
-  preprints: z.array(externalPreprintSchema),
+export const searchEprintsResponseSchema = z.object({
+  eprints: z.array(externalEprintSchema),
   facets: z
     .object({
       sources: z.record(z.string(), z.number()).describe('Result counts by source'),
@@ -452,7 +452,7 @@ export const searchPreprintsResponseSchema = z.object({
     .optional(),
 });
 
-export type SearchPreprintsResponse = z.infer<typeof searchPreprintsResponseSchema>;
+export type SearchEprintsResponse = z.infer<typeof searchEprintsResponseSchema>;
 
 /**
  * Parameters for autocomplete search.
@@ -468,7 +468,7 @@ export type AutocompleteParams = z.infer<typeof autocompleteParamsSchema>;
  * Autocomplete suggestion schema.
  */
 export const autocompleteSuggestionSchema = z.object({
-  title: z.string().describe('Preprint title'),
+  title: z.string().describe('Eprint title'),
   authors: z.string().describe('First 2 authors joined'),
   source: importSourceSchema.describe('Source system'),
   externalId: z.string().describe('Source-specific identifier'),
@@ -515,10 +515,10 @@ export type StartClaimFromExternalResponse = z.infer<typeof startClaimFromExtern
  */
 export const suggestedPaperSchema = z.object({
   externalId: z.string().describe('Source-specific identifier'),
-  url: z.string().url().describe('Full URL to the preprint'),
-  title: z.string().describe('Preprint title'),
+  url: z.string().url().describe('Full URL to the eprint'),
+  title: z.string().describe('Eprint title'),
   abstract: z.string().optional().describe('Abstract text'),
-  authors: z.array(externalPreprintAuthorSchema).describe('Author list'),
+  authors: z.array(externalEprintAuthorSchema).describe('Author list'),
   publicationDate: z.string().datetime().optional().describe('Publication date'),
   doi: z.string().optional().describe('DOI if assigned'),
   pdfUrl: z.string().url().optional().describe('URL to PDF'),

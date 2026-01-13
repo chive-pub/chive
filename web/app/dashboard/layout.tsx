@@ -19,8 +19,8 @@ export const metadata: Metadata = {
  */
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/preprints', label: 'My Preprints', icon: FileText },
-  { href: '/dashboard/claims', label: 'Claim Preprints', icon: Upload },
+  { href: '/dashboard/eprints', label: 'My Eprints', icon: FileText },
+  { href: '/dashboard/claims', label: 'Claim Eprints', icon: Upload },
   { href: '/dashboard/reviews', label: 'My Reviews', icon: MessageSquare },
   { href: '/dashboard/endorsements', label: 'My Endorsements', icon: ThumbsUp },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },

@@ -9,8 +9,8 @@ import type { Hono } from 'hono';
 
 import type { ChiveEnv } from '../../../types/context.js';
 
+import { registerEprintRoutes } from './eprints.js';
 import { registerIntegrationRoutes } from './integrations.js';
-import { registerPreprintRoutes } from './preprints.js';
 import { registerSearchRoutes } from './search.js';
 
 /**
@@ -21,11 +21,11 @@ import { registerSearchRoutes } from './search.js';
  * @public
  */
 export function registerV1Routes(app: Hono<ChiveEnv>): void {
-  registerPreprintRoutes(app);
+  registerEprintRoutes(app);
   registerSearchRoutes(app);
   registerIntegrationRoutes(app);
 }
 
 export { registerIntegrationRoutes } from './integrations.js';
-export { registerPreprintRoutes } from './preprints.js';
+export { registerEprintRoutes } from './eprints.js';
 export { registerSearchRoutes } from './search.js';

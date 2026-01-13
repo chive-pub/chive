@@ -20,7 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ElasticsearchConnectionPool } from '../../../src/storage/elasticsearch/connection.js';
 import {
   ElasticsearchAdapter,
-  mapPreprintToDocument,
+  mapEprintToDocument,
 } from '../../../src/storage/elasticsearch/index.js';
 import {
   createElasticsearchClient,
@@ -28,15 +28,15 @@ import {
 } from '../../../src/storage/elasticsearch/setup.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../../src/types/atproto.js';
 import type { Facet } from '../../../src/types/interfaces/graph.interface.js';
-import type { PreprintAuthor } from '../../../src/types/models/author.js';
-import type { Preprint } from '../../../src/types/models/preprint.js';
+import type { EprintAuthor } from '../../../src/types/models/author.js';
+import type { Eprint } from '../../../src/types/models/eprint.js';
 
 describe('Elasticsearch Search Integration', () => {
   let client: Client;
   let connectionPool: ElasticsearchConnectionPool;
   let adapter: ElasticsearchAdapter;
 
-  const testIndexName = 'test-preprints-search';
+  const testIndexName = 'test-eprints-search';
 
   beforeAll(async () => {
     client = createElasticsearchClient();
@@ -98,7 +98,7 @@ describe('Elasticsearch Search Integration', () => {
       size: 1024000,
     };
 
-    const author1: PreprintAuthor = {
+    const author1: EprintAuthor = {
       did: 'did:plc:author1' as DID,
       name: 'Test Author 1',
       order: 1,
@@ -108,7 +108,7 @@ describe('Elasticsearch Search Integration', () => {
       isHighlighted: false,
     };
 
-    const author2: PreprintAuthor = {
+    const author2: EprintAuthor = {
       did: 'did:plc:author2' as DID,
       name: 'Test Author 2',
       order: 1,
@@ -118,9 +118,9 @@ describe('Elasticsearch Search Integration', () => {
       isHighlighted: false,
     };
 
-    const testPreprints: Preprint[] = [
+    const testEprints: Eprint[] = [
       {
-        uri: 'at://did:plc:test1/pub.chive.preprint/abc123' as AtUri,
+        uri: 'at://did:plc:test1/pub.chive.eprint/abc123' as AtUri,
         cid: 'bafytest1' as CID,
         authors: [author1],
         submittedBy: 'did:plc:author1' as DID,
@@ -128,7 +128,7 @@ describe('Elasticsearch Search Integration', () => {
         abstract: 'Deep learning models for medical diagnosis',
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         keywords: ['machine learning', 'healthcare', 'diagnosis'],
         facets: [
           { dimension: 'matter', value: 'Computer Science' },
@@ -140,7 +140,7 @@ describe('Elasticsearch Search Integration', () => {
         createdAt: new Date('2024-01-15').getTime() as Timestamp,
       },
       {
-        uri: 'at://did:plc:test2/pub.chive.preprint/def456' as AtUri,
+        uri: 'at://did:plc:test2/pub.chive.eprint/def456' as AtUri,
         cid: 'bafytest2' as CID,
         authors: [author2],
         submittedBy: 'did:plc:author2' as DID,
@@ -148,7 +148,7 @@ describe('Elasticsearch Search Integration', () => {
         abstract: 'Convolutional neural networks and computer vision',
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         keywords: ['neural networks', 'image classification'],
         facets: [
           { dimension: 'matter', value: 'Computer Science' },
@@ -160,7 +160,7 @@ describe('Elasticsearch Search Integration', () => {
         createdAt: new Date('2024-02-20').getTime() as Timestamp,
       },
       {
-        uri: 'at://did:plc:test3/pub.chive.preprint/ghi789' as AtUri,
+        uri: 'at://did:plc:test3/pub.chive.eprint/ghi789' as AtUri,
         cid: 'bafytest3' as CID,
         authors: [author1],
         submittedBy: 'did:plc:author1' as DID,
@@ -168,7 +168,7 @@ describe('Elasticsearch Search Integration', () => {
         abstract: 'Novel quantum algorithms for optimization problems',
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         keywords: ['quantum computing', 'algorithms'],
         facets: [
           { dimension: 'matter', value: 'Physics' },
@@ -181,9 +181,9 @@ describe('Elasticsearch Search Integration', () => {
       },
     ];
 
-    for (const preprint of testPreprints) {
-      const document = mapPreprintToDocument(preprint, 'https://pds.test');
-      await adapter.indexPreprint(document);
+    for (const eprint of testEprints) {
+      const document = mapEprintToDocument(eprint, 'https://pds.test');
+      await adapter.indexEprint(document);
     }
 
     await client.indices.refresh({ index: testIndexName });
@@ -201,7 +201,7 @@ describe('Elasticsearch Search Integration', () => {
       const results = await adapter.search({ q: 'machine learning' });
 
       expect(results.hits.length).toBeGreaterThan(0);
-      expect(results.hits[0]?.uri).toBe('at://did:plc:test1/pub.chive.preprint/abc123');
+      expect(results.hits[0]?.uri).toBe('at://did:plc:test1/pub.chive.eprint/abc123');
       expect(results.total).toBeGreaterThan(0);
       expect(results.took).toBeGreaterThan(0);
     });
@@ -211,7 +211,7 @@ describe('Elasticsearch Search Integration', () => {
 
       expect(results.hits.length).toBeGreaterThan(0);
       const topResult = results.hits[0];
-      expect(topResult?.uri).toBe('at://did:plc:test2/pub.chive.preprint/def456');
+      expect(topResult?.uri).toBe('at://did:plc:test2/pub.chive.eprint/def456');
       if (topResult?.score !== undefined) {
         expect(topResult.score).toBeGreaterThan(0);
       }

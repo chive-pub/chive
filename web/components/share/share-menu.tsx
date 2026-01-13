@@ -64,11 +64,11 @@ function isWebShareSupported(): boolean {
  * ```tsx
  * <ShareMenu
  *   content={{
- *     type: 'preprint',
- *     url: 'https://chive.pub/preprints/...',
- *     title: 'My Preprint',
+ *     type: 'eprint',
+ *     url: 'https://chive.pub/eprints/...',
+ *     title: 'My Eprint',
  *     description: 'Abstract...',
- *     ogImageUrl: '/api/og?type=preprint&...'
+ *     ogImageUrl: '/api/og?type=eprint&...'
  *   }}
  *   onShareToBluesky={() => setShowDialog(true)}
  * />

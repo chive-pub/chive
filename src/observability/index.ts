@@ -58,7 +58,7 @@ export {
   getMetrics,
   metricsContentType,
   httpMetrics,
-  preprintMetrics,
+  eprintMetrics,
   firehoseMetrics,
   databaseMetrics,
   DEFAULT_HISTOGRAM_BUCKETS,

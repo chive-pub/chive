@@ -21,7 +21,7 @@
  *
  * // Check if a record needs re-indexing
  * const isStale = await detector.isStale(
- *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+ *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
  * );
  *
  * if (isStale) {
@@ -105,7 +105,7 @@ export class StalenessDetector {
    * @example
    * ```typescript
    * const isStale = await detector.isStale(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
    * );
    *
    * if (isStale) {
@@ -120,7 +120,7 @@ export class StalenessDetector {
       // Fetch indexed record CID and PDS URL
       const query = new SelectBuilder<StalenessCheckRow>()
         .select('cid', 'pds_url', 'indexed_at')
-        .from('preprints_index')
+        .from('eprints_index')
         .where({ uri })
         .build();
 
@@ -194,7 +194,7 @@ export class StalenessDetector {
    * @example
    * ```typescript
    * const cid = await detector.fetchRecordCID(
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
    *   'https://pds.example.com'
    * );
    *
@@ -279,8 +279,8 @@ export class StalenessDetector {
    * @example
    * ```typescript
    * const uris = [
-   *   toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')!,
-   *   toAtUri('at://did:plc:def/pub.chive.preprint.submission/uvw')!,
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
+   *   toAtUri('at://did:plc:def/pub.chive.eprint.submission/uvw')!,
    * ];
    *
    * const stalenessMap = await detector.checkBatch(uris);
@@ -301,7 +301,7 @@ export class StalenessDetector {
     const placeholders = uris.map((_, i) => `$${i + 1}`).join(', ');
     const query = `
       SELECT uri, cid, pds_url, indexed_at
-      FROM preprints_index
+      FROM eprints_index
       WHERE uri IN (${placeholders})
     `;
 

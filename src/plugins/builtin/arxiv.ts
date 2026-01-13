@@ -1,8 +1,8 @@
 /**
- * arXiv integration plugin for preprint harvesting.
+ * arXiv integration plugin for eprint harvesting.
  *
  * @remarks
- * Imports preprints from arXiv (https://arxiv.org) using the OAI-PMH protocol.
+ * Imports eprints from arXiv (https://arxiv.org) using the OAI-PMH protocol.
  *
  * arXiv provides an official OAI-PMH endpoint for bulk metadata harvesting:
  * - Base URL: http://export.arxiv.org/oai2
@@ -14,7 +14,7 @@
  * ATProto Compliance:
  * - All imported data is AppView cache (ephemeral, rebuildable)
  * - Never writes to user PDSes
- * - Users claim preprints by creating records in THEIR PDS
+ * - Users claim eprints by creating records in THEIR PDS
  *
  * @packageDocumentation
  * @public
@@ -27,7 +27,7 @@ import { parseDocument } from 'htmlparser2';
 import { PluginError } from '../../types/errors.js';
 import type {
   ExternalAuthor,
-  ExternalPreprint,
+  ExternalEprint,
   ExternalSearchQuery,
   FetchOptions,
   IPluginManifest,
@@ -111,8 +111,8 @@ interface OaiListRecordsResponse {
  * arXiv integration plugin.
  *
  * @remarks
- * Fetches preprints from arXiv using OAI-PMH protocol and imports them
- * into the Chive AppView cache. Users can claim preprints they authored.
+ * Fetches eprints from arXiv using OAI-PMH protocol and imports them
+ * into the Chive AppView cache. Users can claim eprints they authored.
  *
  * Extends ImportingPlugin for standardized import/claiming workflow.
  *
@@ -157,7 +157,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
     id: 'pub.chive.plugin.arxiv',
     name: 'arXiv Integration',
     version: '0.1.0',
-    description: 'Imports preprints from arXiv via OAI-PMH protocol with claiming support',
+    description: 'Imports eprints from arXiv via OAI-PMH protocol with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -217,12 +217,12 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
   }
 
   /**
-   * Fetches preprints from arXiv via OAI-PMH.
+   * Fetches eprints from arXiv via OAI-PMH.
    *
    * @param options - Fetch options (limit, cursor is resumptionToken)
-   * @returns Async iterable of external preprints
+   * @returns Async iterable of external eprints
    */
-  async *fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint> {
+  async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
     const limit = options?.limit ?? 100;
     let resumptionToken = options?.cursor;
     let count = 0;
@@ -240,8 +240,8 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
         for (const paper of response.records) {
           if (count >= limit) break;
 
-          const preprint = this.paperToExternalPreprint(paper);
-          yield preprint;
+          const eprint = this.paperToExternalEprint(paper);
+          yield eprint;
           count++;
         }
 
@@ -277,7 +277,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+        'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
         Accept: 'application/xml, text/xml',
       },
     });
@@ -444,9 +444,9 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
   }
 
   /**
-   * Converts an arXiv paper to ExternalPreprint format.
+   * Converts an arXiv paper to ExternalEprint format.
    */
-  private paperToExternalPreprint(paper: ArxivPaper): ExternalPreprint {
+  private paperToExternalEprint(paper: ArxivPaper): ExternalEprint {
     const authors: ExternalAuthor[] = paper.authors.map((name) => ({ name }));
 
     return {
@@ -468,7 +468,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
    * @param externalId - arXiv ID
    * @returns Full URL to the abstract page
    */
-  buildPreprintUrl(externalId: string): string {
+  buildEprintUrl(externalId: string): string {
     return `${this.ABSTRACT_URL_BASE}/${externalId}`;
   }
 
@@ -523,7 +523,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
     try {
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/atom+xml',
         },
       });
@@ -554,10 +554,10 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
   }
 
   /**
-   * Searches arXiv for preprints matching the query.
+   * Searches arXiv for eprints matching the query.
    *
    * @param query - Search parameters (author, title, externalId, doi)
-   * @returns Matching preprints from arXiv
+   * @returns Matching eprints from arXiv
    *
    * @throws {PluginError} If the search request fails
    *
@@ -581,12 +581,12 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
    *
    * @public
    */
-  async search(query: ExternalSearchQuery): Promise<readonly ExternalPreprint[]> {
+  async search(query: ExternalSearchQuery): Promise<readonly ExternalEprint[]> {
     // Handle exact ID lookup separately (more efficient)
     if (query.externalId) {
       const paper = await this.fetchPaperDetails(query.externalId);
       if (paper) {
-        return [this.paperToExternalPreprint(paper)];
+        return [this.paperToExternalEprint(paper)];
       }
       return [];
     }
@@ -603,7 +603,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
     try {
       const response = await fetch(searchUrl, {
         headers: {
-          'User-Agent': 'Chive-AppView/1.0 (Academic preprint aggregator; contact@chive.pub)',
+          'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/atom+xml',
         },
       });
@@ -627,7 +627,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
       this.recordCounter('search_requests');
       this.recordCounter('search_results', { count: String(papers.length) });
 
-      return papers.map((paper) => this.paperToExternalPreprint(paper));
+      return papers.map((paper) => this.paperToExternalEprint(paper));
     } catch (err) {
       if (err instanceof PluginError) {
         throw err;

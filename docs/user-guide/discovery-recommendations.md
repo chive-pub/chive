@@ -1,6 +1,6 @@
 # Discovery and recommendations
 
-Chive helps you find relevant preprints through personalized recommendations, related paper suggestions, and citation networks.
+Chive helps you find relevant eprints through personalized recommendations, related paper suggestions, and citation networks.
 
 ## For You feed
 
@@ -35,7 +35,7 @@ Click the **X** on any recommendation to dismiss it and improve future suggestio
 
 ## Related papers
 
-Each preprint page shows related papers in the sidebar:
+Each eprint page shows related papers in the sidebar:
 
 ### How similarity is calculated
 
@@ -49,8 +49,8 @@ Each preprint page shows related papers in the sidebar:
 Click **Filter** above the related papers panel:
 
 - **All**: Default mixed ranking
-- **Cites this**: Papers that cite this preprint
-- **Cited by this**: References from this preprint
+- **Cites this**: Papers that cite this eprint
+- **Cited by this**: References from this eprint
 - **Similar methods**: Papers using similar methodology
 - **Same authors**: Other papers by the same authors
 
@@ -58,7 +58,7 @@ Click **Filter** above the related papers panel:
 
 ### Exploring citations
 
-On any preprint page:
+On any eprint page:
 
 1. Click the **Citations** tab
 2. View **Cited by** (incoming citations)
@@ -164,7 +164,7 @@ Go to **Profile** → **Following** to see and manage all your follows.
 | Setting                       | Options                        | Default |
 | ----------------------------- | ------------------------------ | ------- |
 | Recommendation diversity      | Low / Medium / High            | Medium  |
-| Include preprints from        | All sources / Selected sources | All     |
+| Include eprints from          | All sources / Selected sources | All     |
 | Show papers in languages      | Select languages               | English |
 | Minimum endorsement threshold | 0 / 1 / 3 / 5                  | 0       |
 

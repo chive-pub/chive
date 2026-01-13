@@ -6,7 +6,7 @@ This guide covers the core services that form Chive's business logic layer. Thes
 
 Chive's core services handle:
 
-- **PreprintService**: Indexes preprints from the firehose into PostgreSQL and Elasticsearch
+- **EprintService**: Indexes eprints from the firehose into PostgreSQL and Elasticsearch
 - **BlobProxyService**: Proxies PDF and image blobs from user PDSes with 3-tier caching
 - **MetricsService**: Tracks view counts and downloads using Redis data structures
 - **PDSSyncService**: Detects stale indexes and triggers re-sync from source PDSes
@@ -27,7 +27,7 @@ All services follow ATProto compliance rules: they index data from the firehose 
            ┌───────────────┼───────────────┐
            ▼               ▼               ▼
     ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-    │  Preprint   │ │   Review    │ │   Metrics   │
+    │  Eprint   │ │   Review    │ │   Metrics   │
     │   Service   │ │   Service   │ │   Service   │
     └──────┬──────┘ └──────┬──────┘ └──────┬──────┘
            │               │               │
@@ -50,24 +50,24 @@ All services follow ATProto compliance rules: they index data from the firehose 
 
 ### Data flow
 
-1. User creates a preprint record in their PDS
+1. User creates a eprint record in their PDS
 2. PDS publishes event to the ATProto relay
 3. Chive's firehose consumer receives the event
-4. PreprintService indexes the record to PostgreSQL and Elasticsearch
-5. MetricsService tracks views when users access the preprint
+4. EprintService indexes the record to PostgreSQL and Elasticsearch
+5. MetricsService tracks views when users access the eprint
 6. BlobProxyService fetches PDFs from the user's PDS on demand
 7. PDSSyncService periodically checks for stale records
 
-## PreprintService
+## EprintService
 
-Indexes preprints from firehose events into local storage for search and discovery.
+Indexes eprints from firehose events into local storage for search and discovery.
 
 ### Key methods
 
 ```typescript
-import { PreprintService } from '@/services/preprint/preprint-service.js';
+import { EprintService } from '@/services/eprint/eprint-service.js';
 
-const service = new PreprintService({
+const service = new EprintService({
   storage, // IStorageBackend (PostgreSQL adapter)
   search, // ISearchEngine (Elasticsearch adapter)
   repository, // IRepository (PDS client)
@@ -75,31 +75,31 @@ const service = new PreprintService({
   logger,
 });
 
-// Index a preprint from firehose event
-await service.indexPreprint(preprint, {
-  uri: 'at://did:plc:abc/pub.chive.preprint.submission/xyz' as AtUri,
+// Index a eprint from firehose event
+await service.indexEprint(eprint, {
+  uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' as AtUri,
   cid: 'bafyrei...' as CID,
   pdsUrl: 'https://pds.example.com',
   indexedAt: new Date(),
 });
 
 // Retrieve by URI
-const result = await service.getPreprint(uri);
+const result = await service.getEprint(uri);
 
 // List by author
-const preprints = await service.getPreprintsByAuthor(authorDid);
+const eprints = await service.getEprintsByAuthor(authorDid);
 
 // Handle deletion
-await service.indexPreprintDelete(uri);
+await service.indexEprintDelete(uri);
 ```
 
 ### ATProto compliance
 
-PreprintService stores BlobRefs (CID pointers), not blob data:
+EprintService stores BlobRefs (CID pointers), not blob data:
 
 ```typescript
 // Correct: Store BlobRef metadata
-const storedPreprint: StoredPreprint = {
+const storedEprint: StoredEprint = {
   uri,
   cid,
   author: record.author,
@@ -168,7 +168,7 @@ The cache uses XFetch algorithm to prevent cache stampedes. As a cached entry ap
 
 ## MetricsService
 
-Tracks views, downloads, and trending preprints using Redis data structures.
+Tracks views, downloads, and trending eprints using Redis data structures.
 
 ### Data structures
 
@@ -189,10 +189,10 @@ const service = new MetricsService({
 });
 
 // Record a view (with optional viewer DID for unique tracking)
-await service.recordView(preprintUri, viewerDid);
+await service.recordView(eprintUri, viewerDid);
 
 // Record a download
-await service.recordDownload(preprintUri, viewerDid);
+await service.recordDownload(eprintUri, viewerDid);
 
 // Batch operations (uses Redis pipeline)
 await service.batchIncrement([
@@ -205,17 +205,17 @@ await service.batchIncrement([
 ### Querying metrics
 
 ```typescript
-// Get all metrics for a preprint
-const metrics = await service.getMetrics(preprintUri);
+// Get all metrics for a eprint
+const metrics = await service.getMetrics(eprintUri);
 console.log(`Total views: ${metrics.totalViews}`);
 console.log(`Unique viewers: ${metrics.uniqueViews}`);
 console.log(`Views (24h): ${metrics.views24h}`);
 console.log(`Views (7d): ${metrics.views7d}`);
 
 // Get view count only
-const viewCount = await service.getViewCount(preprintUri);
+const viewCount = await service.getViewCount(eprintUri);
 
-// Get trending preprints
+// Get trending eprints
 const trending = await service.getTrending('24h', 10);
 for (const entry of trending) {
   console.log(`${entry.uri}: ${entry.score} views`);
@@ -313,7 +313,7 @@ const service = new ReviewService({
 // Index a review comment
 const review: ReviewComment = {
   $type: 'pub.chive.review.comment',
-  subject: { uri: preprintUri, cid: preprintCid },
+  subject: { uri: eprintUri, cid: eprintCid },
   text: 'The methodology section needs more detail on sample size.',
   reviewType: 'methodology',
   parent: parentReviewUri, // Optional: for threaded replies
@@ -325,7 +325,7 @@ await service.indexReview(review, metadata);
 // Index an endorsement
 const endorsement: Endorsement = {
   $type: 'pub.chive.review.endorsement',
-  subject: { uri: preprintUri, cid: preprintCid },
+  subject: { uri: eprintUri, cid: eprintCid },
   endorsementType: 'reproducibility',
   createdAt: new Date().toISOString(),
 };
@@ -344,7 +344,7 @@ const handler = new ThreadingHandler({
 });
 
 // Build thread tree from flat review list
-const reviews = await service.getReviews(preprintUri);
+const reviews = await service.getReviews(eprintUri);
 const threads = handler.buildThreads(reviews);
 
 // Each thread has nested replies
@@ -381,7 +381,7 @@ Integration tests require the Docker test stack:
 npm run test:integration
 
 # Run specific service tests
-npx vitest run tests/integration/services/preprint
+npx vitest run tests/integration/services/eprint
 npx vitest run tests/integration/services/metrics
 npx vitest run tests/integration/services/blob-proxy
 npx vitest run tests/integration/services/pds-sync
@@ -406,7 +406,7 @@ brew install k6  # macOS
 # or: https://k6.io/docs/getting-started/installation/
 
 # Run benchmarks
-k6 run tests/performance/k6/scenarios/preprint-indexing.js
+k6 run tests/performance/k6/scenarios/eprint-indexing.js
 k6 run tests/performance/k6/scenarios/blob-proxy-load.js
 k6 run tests/performance/k6/scenarios/search-query.js
 k6 run tests/performance/k6/scenarios/metrics-recording.js
@@ -416,7 +416,7 @@ k6 run tests/performance/k6/scenarios/metrics-recording.js
 
 | Operation               | Target p95 |
 | ----------------------- | ---------- |
-| Preprint indexing       | < 200ms    |
+| Eprint indexing         | < 200ms    |
 | Blob cache hit (L1)     | < 50ms     |
 | Blob cache miss (L2/L3) | < 200ms    |
 | Search query            | < 300ms    |
@@ -427,14 +427,14 @@ k6 run tests/performance/k6/scenarios/metrics-recording.js
 All services return `Result<T, Error>` types for operations that can fail:
 
 ```typescript
-const result = await service.indexPreprint(preprint, metadata);
+const result = await service.indexEprint(eprint, metadata);
 
 if (result.ok) {
   console.log('Indexed successfully');
 } else {
   // Handle typed errors
   if (result.error instanceof ValidationError) {
-    console.log('Invalid preprint data:', result.error.message);
+    console.log('Invalid eprint data:', result.error.message);
   } else if (result.error instanceof DatabaseError) {
     console.log('Storage failed:', result.error.message);
   }
@@ -443,11 +443,11 @@ if (result.ok) {
 
 ## DiscoveryService
 
-Provides personalized preprint recommendations and related paper discovery using Semantic Scholar, OpenAlex, and citation graph data.
+Provides personalized eprint recommendations and related paper discovery using Semantic Scholar, OpenAlex, and citation graph data.
 
 ### Key constraint
 
-All discovery features recommend only preprints indexed in Chive. External APIs (Semantic Scholar, OpenAlex) are used as enrichment signals, not as recommendation sources.
+All discovery features recommend only eprints indexed in Chive. External APIs (Semantic Scholar, OpenAlex) are used as enrichment signals, not as recommendation sources.
 
 ### Key methods
 
@@ -459,16 +459,16 @@ const service = new DiscoveryService(logger, db, searchEngine, rankingService, c
 // Optional: Enable external API enrichment
 service.setPluginManager(pluginManager);
 
-// Enrich a preprint with external metadata
-const enrichment = await service.enrichPreprint({
-  uri: preprintUri,
+// Enrich a eprint with external metadata
+const enrichment = await service.enrichEprint({
+  uri: eprintUri,
   doi: '10.1234/example',
   title: 'Example Paper',
 });
 console.log(`Citations: ${enrichment.citationCount}`);
 
-// Find related Chive preprints
-const related = await service.findRelatedPreprints(preprintUri, {
+// Find related Chive eprints
+const related = await service.findRelatedEprints(eprintUri, {
   signals: ['citations', 'concepts', 'semantic'],
   limit: 10,
   minScore: 0.3,
@@ -482,15 +482,15 @@ const recommendations = await service.getRecommendationsForUser(userDid, {
 
 // Record user interaction for feedback loop
 await service.recordInteraction(userDid, {
-  preprintUri,
+  eprintUri,
   type: 'dismiss',
   recommendationId: 'rec-123',
 });
 
 // Get citation network data
-const counts = await service.getCitationCounts(preprintUri);
-const citing = await service.getCitingPapers(preprintUri, { limit: 20 });
-const references = await service.getReferences(preprintUri, { limit: 20 });
+const counts = await service.getCitationCounts(eprintUri);
+const citing = await service.getCitingPapers(eprintUri, { limit: 20 });
+const references = await service.getReferences(eprintUri, { limit: 20 });
 ```
 
 ### Recommendation signals
@@ -568,7 +568,7 @@ interface LTRFeatureVector {
 
 ## ClaimingService
 
-Manages authorship claims for imported preprints using multi-authority verification.
+Manages authorship claims for imported eprints using multi-authority verification.
 
 ### Evidence types and weights
 
@@ -602,7 +602,7 @@ import { ClaimingService } from '@/services/claiming/claiming-service.js';
 const service = new ClaimingService(logger, db, importService, identity);
 service.setPluginManager(pluginManager); // Enable external search
 
-// Search external sources for preprints
+// Search external sources for eprints
 const papers = await service.searchAllSources({
   query: 'attention mechanisms',
   author: 'Vaswani',
@@ -689,29 +689,29 @@ const suggestions = await service.autocomplete('atten', 8);
 
 ## BacklinkService
 
-Tracks references to Chive preprints from Bluesky posts.
+Tracks references to Chive eprints from Bluesky posts.
 
 ### Backlink sources
 
-| Source          | Description                          |
-| --------------- | ------------------------------------ |
-| `bluesky_post`  | Bluesky post mentioning the preprint |
-| `bluesky_reply` | Reply discussing the preprint        |
-| `bluesky_quote` | Quote post of the preprint           |
+| Source          | Description                        |
+| --------------- | ---------------------------------- |
+| `bluesky_post`  | Bluesky post mentioning the eprint |
+| `bluesky_reply` | Reply discussing the eprint        |
+| `bluesky_quote` | Quote post of the eprint           |
 
 ```typescript
 import { BacklinkService } from '@/services/backlink/backlink-service.js';
 
 const service = new BacklinkService(db, firehoseClient, logger);
 
-// Get backlinks for a preprint
-const backlinks = await service.getBacklinks(preprintUri, {
+// Get backlinks for a eprint
+const backlinks = await service.getBacklinks(eprintUri, {
   limit: 20,
   sourceTypes: ['bluesky_post', 'bluesky_quote'],
 });
 
 // Get backlink counts
-const counts = await service.getBacklinkCounts(preprintUri);
+const counts = await service.getBacklinkCounts(eprintUri);
 console.log(`Total: ${counts.total}, Bluesky posts: ${counts.blueskyPosts}`);
 ```
 
@@ -737,8 +737,8 @@ await service.logActivity({
   userDid,
   category: 'read',
   action: 'view',
-  targetUri: preprintUri,
-  collection: 'pub.chive.preprint.submission',
+  targetUri: eprintUri,
+  collection: 'pub.chive.eprint.submission',
   metadata: { source: 'search', query: 'neural networks' },
 });
 
@@ -758,13 +758,13 @@ Server-sent events (SSE) for real-time notifications.
 
 ### Notification types
 
-| Type              | Description                        |
-| ----------------- | ---------------------------------- |
-| `new_review`      | New review on user's preprint      |
-| `review_reply`    | Reply to user's review             |
-| `endorsement`     | New endorsement on user's preprint |
-| `claim_update`    | Claim status change                |
-| `proposal_update` | Governance proposal update         |
+| Type              | Description                      |
+| ----------------- | -------------------------------- |
+| `new_review`      | New review on user's eprint      |
+| `review_reply`    | Reply to user's review           |
+| `endorsement`     | New endorsement on user's eprint |
+| `claim_update`    | Claim status change              |
+| `proposal_update` | Governance proposal update       |
 
 ```typescript
 import { NotificationService } from '@/services/notification/notification-service.js';
@@ -777,10 +777,10 @@ const stream = service.subscribe(userDid);
 // Send notification
 await service.send(userDid, {
   type: 'new_review',
-  title: 'New review on your preprint',
+  title: 'New review on your eprint',
   body: 'Alice left a review on "Attention Is All You Need"',
   targetUri: reviewUri,
-  preprintUri,
+  eprintUri,
 });
 
 // Batch notifications
@@ -812,8 +812,8 @@ const related = await service.getRelatedFields('cs.AI');
 // Search fields
 const matches = await service.searchFields('artificial intelligence');
 
-// Get preprints in field
-const preprints = await service.getFieldPreprints('cs.AI', {
+// Get eprints in field
+const eprints = await service.getFieldEprints('cs.AI', {
   limit: 20,
   sort: 'recent',
 });
@@ -915,7 +915,7 @@ npm run test:compliance
 
 | Operation                 | Target p95 |
 | ------------------------- | ---------- |
-| Preprint indexing         | < 200ms    |
+| Eprint indexing           | < 200ms    |
 | Search query              | < 300ms    |
 | Discovery recommendations | < 500ms    |
 | Claim evidence collection | < 2000ms   |

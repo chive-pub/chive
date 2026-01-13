@@ -44,8 +44,8 @@ test.describe('Dashboard', () => {
     const statsRegion = page.getByRole('region', { name: /statistics/i });
     await expect(statsRegion).toBeVisible();
 
-    // Should show preprints stats card
-    await expect(page.getByText(/preprints/i).first()).toBeVisible();
+    // Should show eprints stats card
+    await expect(page.getByText(/eprints/i).first()).toBeVisible();
   });
 
   test('displays For You recommendations section', async ({ page }) => {
@@ -68,8 +68,8 @@ test.describe('Dashboard', () => {
     const quickActions = page.getByRole('region', { name: /quick actions/i });
     await expect(quickActions).toBeVisible();
 
-    // Submit preprint link MUST be visible and functional
-    const submitLink = page.getByRole('link', { name: /submit preprint/i });
+    // Submit eprint link MUST be visible and functional
+    const submitLink = page.getByRole('link', { name: /submit eprint/i });
     await expect(submitLink).toBeVisible();
     await expect(submitLink).toHaveAttribute('href', '/submit');
   });
@@ -79,13 +79,13 @@ test.describe('Dashboard', () => {
     await dashboardPage.goto();
 
     // Click submit link
-    const submitLink = page.getByRole('link', { name: /submit preprint/i });
+    const submitLink = page.getByRole('link', { name: /submit eprint/i });
     await expect(submitLink).toBeVisible();
     await Promise.all([page.waitForURL('/submit'), submitLink.click()]);
 
     // Should navigate to submit page
     await expect(page).toHaveURL('/submit');
-    await expect(page.getByRole('heading', { name: /submit.*preprint/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /submit.*eprint/i })).toBeVisible();
   });
 
   test('browse link navigates to browse page', async ({ page }) => {
@@ -93,12 +93,12 @@ test.describe('Dashboard', () => {
     await dashboardPage.goto();
 
     // Click browse link
-    const browseLink = page.getByRole('link', { name: /browse preprints/i });
+    const browseLink = page.getByRole('link', { name: /browse eprints/i });
     await expect(browseLink).toBeVisible();
-    await Promise.all([page.waitForURL('/preprints'), browseLink.click()]);
+    await Promise.all([page.waitForURL('/eprints'), browseLink.click()]);
 
-    // Should navigate to preprints page
-    await expect(page).toHaveURL('/preprints');
+    // Should navigate to eprints page
+    await expect(page).toHaveURL('/eprints');
   });
 
   test('faceted search link navigates to browse page', async ({ page }) => {

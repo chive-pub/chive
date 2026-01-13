@@ -2,7 +2,7 @@
  * Handler for pub.chive.import.get.
  *
  * @remarks
- * Gets an imported preprint by source and external ID.
+ * Gets an imported eprint by source and external ID.
  *
  * @packageDocumentation
  * @public
@@ -13,9 +13,9 @@ import type { Context } from 'hono';
 import { NotFoundError } from '../../../../types/errors.js';
 import {
   getImportParamsSchema,
-  importedPreprintSchema,
+  importedEprintSchema,
   type GetImportParams,
-  type ImportedPreprint,
+  type ImportedEprint,
 } from '../../../schemas/import.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
@@ -25,7 +25,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @param c - Hono context
  * @param params - Request parameters
- * @returns Imported preprint
+ * @returns Imported eprint
  *
  * @throws {NotFoundError} When import is not found
  *
@@ -34,7 +34,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
 export async function getImportHandler(
   c: Context<ChiveEnv>,
   params: GetImportParams
-): Promise<ImportedPreprint> {
+): Promise<ImportedEprint> {
   const logger = c.get('logger');
   const { import: importService } = c.get('services');
 
@@ -43,7 +43,7 @@ export async function getImportHandler(
   const result = await importService.get(params.source, params.externalId);
 
   if (!result) {
-    throw new NotFoundError('ImportedPreprint', `${params.source}:${params.externalId}`);
+    throw new NotFoundError('ImportedEprint', `${params.source}:${params.externalId}`);
   }
 
   return {
@@ -79,12 +79,12 @@ export async function getImportHandler(
  *
  * @public
  */
-export const getImportEndpoint: XRPCEndpoint<GetImportParams, ImportedPreprint> = {
+export const getImportEndpoint: XRPCEndpoint<GetImportParams, ImportedEprint> = {
   method: 'pub.chive.import.get' as never,
   type: 'query',
-  description: 'Get an imported preprint by source and external ID',
+  description: 'Get an imported eprint by source and external ID',
   inputSchema: getImportParamsSchema,
-  outputSchema: importedPreprintSchema,
+  outputSchema: importedEprintSchema,
   handler: getImportHandler,
   auth: 'none',
   rateLimit: 'anonymous',

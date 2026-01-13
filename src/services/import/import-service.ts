@@ -1,9 +1,9 @@
 /**
- * Import service for tracking imported preprints.
+ * Import service for tracking imported eprints.
  *
  * @remarks
  * This module implements the import service that manages the AppView
- * cache of preprints imported from external sources (arXiv, LingBuzz, etc.).
+ * cache of eprints imported from external sources (arXiv, LingBuzz, etc.).
  *
  * ATProto Compliance:
  * - All data is ephemeral (AppView cache, not source of truth)
@@ -21,14 +21,14 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type {
   ExternalAuthor,
   IImportService,
-  ImportedPreprint,
+  ImportedEprint,
   ImportSource,
 } from '../../types/interfaces/plugin.interface.js';
 
 /**
- * Database row type for imported preprints.
+ * Database row type for imported eprints.
  */
-interface ImportedPreprintRow {
+interface ImportedEprintRow {
   id: number;
   source: string;
   external_id: string;
@@ -55,8 +55,8 @@ interface ImportedPreprintRow {
  * Import service implementation.
  *
  * @remarks
- * Manages the PostgreSQL table `imported_preprints` which caches
- * preprints from external sources. All data is rebuildable.
+ * Manages the PostgreSQL table `imported_eprints` which caches
+ * eprints from external sources. All data is rebuildable.
  *
  * @public
  */
@@ -70,12 +70,12 @@ export class ImportService implements IImportService {
   }
 
   /**
-   * Checks if a preprint has been imported.
+   * Checks if a eprint has been imported.
    */
   async exists(source: ImportSource, externalId: string): Promise<boolean> {
     const result = await this.db.query<{ exists: boolean }>(
       `SELECT EXISTS(
-        SELECT 1 FROM imported_preprints
+        SELECT 1 FROM imported_eprints
         WHERE source = $1 AND external_id = $2
       ) as exists`,
       [source, externalId]
@@ -84,11 +84,11 @@ export class ImportService implements IImportService {
   }
 
   /**
-   * Gets an imported preprint by source and external ID.
+   * Gets an imported eprint by source and external ID.
    */
-  async get(source: ImportSource, externalId: string): Promise<ImportedPreprint | null> {
-    const result = await this.db.query<ImportedPreprintRow>(
-      `SELECT * FROM imported_preprints
+  async get(source: ImportSource, externalId: string): Promise<ImportedEprint | null> {
+    const result = await this.db.query<ImportedEprintRow>(
+      `SELECT * FROM imported_eprints
        WHERE source = $1 AND external_id = $2`,
       [source, externalId]
     );
@@ -98,15 +98,15 @@ export class ImportService implements IImportService {
       return null;
     }
 
-    return this.rowToPreprint(row);
+    return this.rowToEprint(row);
   }
 
   /**
-   * Gets an imported preprint by internal ID.
+   * Gets an imported eprint by internal ID.
    */
-  async getById(id: number): Promise<ImportedPreprint | null> {
-    const result = await this.db.query<ImportedPreprintRow>(
-      `SELECT * FROM imported_preprints WHERE id = $1`,
+  async getById(id: number): Promise<ImportedEprint | null> {
+    const result = await this.db.query<ImportedEprintRow>(
+      `SELECT * FROM imported_eprints WHERE id = $1`,
       [id]
     );
 
@@ -115,11 +115,11 @@ export class ImportService implements IImportService {
       return null;
     }
 
-    return this.rowToPreprint(row);
+    return this.rowToEprint(row);
   }
 
   /**
-   * Creates a new imported preprint.
+   * Creates a new imported eprint.
    */
   async create(data: {
     source: ImportSource;
@@ -134,9 +134,9 @@ export class ImportService implements IImportService {
     categories?: readonly string[];
     importedByPlugin: string;
     metadata?: Record<string, unknown>;
-  }): Promise<ImportedPreprint> {
-    const result = await this.db.query<ImportedPreprintRow>(
-      `INSERT INTO imported_preprints (
+  }): Promise<ImportedEprint> {
+    const result = await this.db.query<ImportedEprintRow>(
+      `INSERT INTO imported_eprints (
         source, external_id, external_url, title, abstract,
         authors, publication_date, doi, pdf_url, original_categories,
         imported_by_plugin, metadata, imported_at, sync_status, claim_status
@@ -175,7 +175,7 @@ export class ImportService implements IImportService {
     if (!row) {
       throw new DatabaseError(
         'CREATE',
-        'Failed to create imported preprint: no row returned from database'
+        'Failed to create imported eprint: no row returned from database'
       );
     }
 
@@ -185,11 +185,11 @@ export class ImportService implements IImportService {
       externalId: data.externalId,
     });
 
-    return this.rowToPreprint(row);
+    return this.rowToEprint(row);
   }
 
   /**
-   * Updates an imported preprint.
+   * Updates an imported eprint.
    */
   async update(
     id: number,
@@ -206,7 +206,7 @@ export class ImportService implements IImportService {
       claimedByDid: string;
       claimedAt: Date;
     }>
-  ): Promise<ImportedPreprint> {
+  ): Promise<ImportedEprint> {
     const updates: string[] = [];
     const values: unknown[] = [];
     let paramIndex = 1;
@@ -259,15 +259,15 @@ export class ImportService implements IImportService {
     if (updates.length === 0) {
       const existing = await this.getById(id);
       if (!existing) {
-        throw new NotFoundError('ImportedPreprint', id.toString());
+        throw new NotFoundError('ImportedEprint', id.toString());
       }
       return existing;
     }
 
     values.push(id);
 
-    const result = await this.db.query<ImportedPreprintRow>(
-      `UPDATE imported_preprints
+    const result = await this.db.query<ImportedEprintRow>(
+      `UPDATE imported_eprints
        SET ${updates.join(', ')}
        WHERE id = $${paramIndex}
        RETURNING *`,
@@ -276,14 +276,14 @@ export class ImportService implements IImportService {
 
     const row = result.rows[0];
     if (!row) {
-      throw new NotFoundError('ImportedPreprint', id.toString());
+      throw new NotFoundError('ImportedEprint', id.toString());
     }
 
-    return this.rowToPreprint(row);
+    return this.rowToEprint(row);
   }
 
   /**
-   * Searches imported preprints.
+   * Searches imported eprints.
    */
   async search(options: {
     query?: string;
@@ -293,7 +293,7 @@ export class ImportService implements IImportService {
     authorOrcid?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<{ preprints: ImportedPreprint[]; cursor?: string }> {
+  }): Promise<{ eprints: ImportedEprint[]; cursor?: string }> {
     const conditions: string[] = [];
     const values: unknown[] = [];
     let paramIndex = 1;
@@ -335,8 +335,8 @@ export class ImportService implements IImportService {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const result = await this.db.query<ImportedPreprintRow>(
-      `SELECT * FROM imported_preprints
+    const result = await this.db.query<ImportedEprintRow>(
+      `SELECT * FROM imported_eprints
        ${whereClause}
        ORDER BY id ASC
        LIMIT $${paramIndex}`,
@@ -345,17 +345,17 @@ export class ImportService implements IImportService {
 
     const hasMore = result.rows.length > limit;
     const rows = hasMore ? result.rows.slice(0, limit) : result.rows;
-    const preprints = rows.map((row) => this.rowToPreprint(row));
+    const eprints = rows.map((row) => this.rowToEprint(row));
 
     const lastRow = rows[rows.length - 1];
     return {
-      preprints,
+      eprints,
       cursor: hasMore && lastRow ? lastRow.id.toString() : undefined,
     };
   }
 
   /**
-   * Marks a preprint as claimed.
+   * Marks a eprint as claimed.
    */
   async markClaimed(id: number, canonicalUri: string, claimedByDid: string): Promise<void> {
     await this.update(id, {
@@ -373,9 +373,9 @@ export class ImportService implements IImportService {
   }
 
   /**
-   * Converts a database row to ImportedPreprint.
+   * Converts a database row to ImportedEprint.
    */
-  private rowToPreprint(row: ImportedPreprintRow): ImportedPreprint {
+  private rowToEprint(row: ImportedEprintRow): ImportedEprint {
     // PostgreSQL JSONB columns are auto-parsed by pg driver; handle both cases.
     const authors = (
       typeof row.authors === 'string' ? JSON.parse(row.authors) : row.authors

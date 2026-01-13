@@ -34,8 +34,8 @@ export const config = environments[currentEnv];
  * Standard threshold definitions.
  */
 export const thresholds = {
-  // Preprint indexing
-  preprintIndexing: {
+  // Eprint indexing
+  eprintIndexing: {
     http_req_duration: ['p(95)<200', 'p(99)<500'],
     http_req_failed: ['rate<0.01'],
   },

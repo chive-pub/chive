@@ -268,9 +268,9 @@ Traces propagate automatically through:
 ### Structured logging
 
 ```typescript
-logger.info('Preprint indexed', {
-  uri: preprint.uri,
-  authorDid: preprint.authorDid,
+logger.info('Eprint indexed', {
+  uri: eprint.uri,
+  authorDid: eprint.authorDid,
   duration: indexDurationMs,
 });
 ```

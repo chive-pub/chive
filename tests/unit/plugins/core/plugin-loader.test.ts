@@ -45,7 +45,7 @@ const createValidManifest = (overrides: Partial<IPluginManifest> = {}): IPluginM
   author: 'Chive Team',
   license: 'MIT',
   permissions: {
-    hooks: ['preprint.indexed'],
+    hooks: ['eprint.indexed'],
     network: {
       allowedDomains: ['api.example.com'],
     },
@@ -205,7 +205,7 @@ describe('PluginLoader', () => {
     it('should accept manifest with multiple hooks', async () => {
       const manifest = createValidManifest({
         permissions: {
-          hooks: ['preprint.indexed', 'preprint.updated', 'system.startup'],
+          hooks: ['eprint.indexed', 'eprint.updated', 'system.startup'],
           network: { allowedDomains: [] },
           storage: { maxSize: 1024 },
         },

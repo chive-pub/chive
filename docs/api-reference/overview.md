@@ -9,7 +9,7 @@ Chive exposes two API styles: XRPC (AT Protocol native) and REST (traditional HT
 XRPC (Cross-Server Remote Procedure Call) is the AT Protocol's native API style. Endpoints follow a namespaced pattern:
 
 ```
-/xrpc/pub.chive.preprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.preprint.submission/3k5...
+/xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.eprint.submission/3k5...
 ```
 
 XRPC characteristics:
@@ -26,7 +26,7 @@ XRPC characteristics:
 REST endpoints provide a familiar HTTP API for web clients:
 
 ```
-GET /api/v1/preprints/at:did:plc:abc123.../pub.chive.preprint.submission/3k5...
+GET /api/v1/eprints/at:did:plc:abc123.../pub.chive.eprint.submission/3k5...
 ```
 
 REST characteristics:
@@ -121,7 +121,7 @@ XRPC endpoints may return AT Protocol error codes:
 List endpoints use cursor-based pagination:
 
 ```http
-GET /xrpc/pub.chive.preprint.searchSubmissions?query=quantum&limit=25
+GET /xrpc/pub.chive.eprint.searchSubmissions?query=quantum&limit=25
 
 Response:
 {
@@ -133,7 +133,7 @@ Response:
 To fetch the next page:
 
 ```http
-GET /xrpc/pub.chive.preprint.searchSubmissions?query=quantum&limit=25&cursor=eyJvZmZzZXQiOjI1fQ==
+GET /xrpc/pub.chive.eprint.searchSubmissions?query=quantum&limit=25&cursor=eyJvZmZzZXQiOjI1fQ==
 ```
 
 Pagination parameters:
@@ -148,7 +148,7 @@ Pagination parameters:
 Many endpoints accept or return AT URIs, which identify records in the AT Protocol:
 
 ```
-at://did:plc:abc123.../pub.chive.preprint.submission/3k5xyzabc
+at://did:plc:abc123.../pub.chive.eprint.submission/3k5xyzabc
      └──────┬───────┘  └───────────┬─────────────┘   └───┬────┘
           DID               Collection             Record Key
 ```
@@ -156,7 +156,7 @@ at://did:plc:abc123.../pub.chive.preprint.submission/3k5xyzabc
 When passing AT URIs as URL parameters, encode them:
 
 ```
-/xrpc/pub.chive.preprint.getSubmission?uri=at%3A%2F%2Fdid%3Aplc%3Aabc123...
+/xrpc/pub.chive.eprint.getSubmission?uri=at%3A%2F%2Fdid%3Aplc%3Aabc123...
 ```
 
 ## CORS
@@ -183,7 +183,7 @@ XRPC endpoints are organized by namespace:
 
 | Namespace                 | Purpose               | Endpoints |
 | ------------------------- | --------------------- | --------- |
-| `pub.chive.preprint.*`    | Preprint operations   | 4         |
+| `pub.chive.eprint.*`      | Eprint operations     | 4         |
 | `pub.chive.review.*`      | Reviews and comments  | 2         |
 | `pub.chive.endorsement.*` | Endorsements          | 3         |
 | `pub.chive.graph.*`       | Knowledge graph       | 8         |
@@ -227,8 +227,8 @@ const client = new ChiveClient({
   token: 'your-session-token',
 });
 
-const preprint = await client.preprint.getSubmission({
-  uri: 'at://did:plc:abc123.../pub.chive.preprint.submission/3k5...',
+const eprint = await client.eprint.getSubmission({
+  uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...',
 });
 ```
 
@@ -249,16 +249,16 @@ Generated files:
 
 ## Quick examples
 
-### Fetch a preprint
+### Fetch a eprint
 
 ```bash
-curl "https://api.chive.pub/xrpc/pub.chive.preprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.preprint.submission/3k5..."
+curl "https://api.chive.pub/xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.eprint.submission/3k5..."
 ```
 
-### Search preprints
+### Search eprints
 
 ```bash
-curl "https://api.chive.pub/xrpc/pub.chive.preprint.searchSubmissions?query=quantum+computing&limit=10"
+curl "https://api.chive.pub/xrpc/pub.chive.eprint.searchSubmissions?query=quantum+computing&limit=10"
 ```
 
 ### Get recommendations (authenticated)

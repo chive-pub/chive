@@ -31,7 +31,7 @@ interface AlphaGateProps {
  * Users who are not approved alpha testers are redirected to the homepage
  * where they can see the signup form or their application status.
  *
- * Public routes (preprints, search, authors) should NOT use this gate.
+ * Public routes (eprints, search, authors) should NOT use this gate.
  *
  * @example
  * ```tsx

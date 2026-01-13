@@ -6,7 +6,7 @@
  * research software, datasets, and other research outputs.
  *
  * This plugin is used to:
- * - Link preprints to archived software/data on Zenodo
+ * - Link eprints to archived software/data on Zenodo
  * - Verify DOI ownership for datasets
  * - Track citation metrics
  *
@@ -260,7 +260,7 @@ interface ZenodoSearchResult {
  *
  * @remarks
  * Provides record lookup and linking for software/data archival on Zenodo.
- * Used to link preprints to their associated code and data deposits.
+ * Used to link eprints to their associated code and data deposits.
  *
  * @example
  * ```typescript

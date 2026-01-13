@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.endorsement.getUserEndorsement.
  *
  * @remarks
- * Gets a user's endorsement for a specific preprint.
+ * Gets a user's endorsement for a specific eprint.
  *
  * @packageDocumentation
  * @public
@@ -58,27 +58,24 @@ export async function getUserEndorsementHandler(
   const reviewService = c.get('services').review;
 
   logger.debug('Getting user endorsement', {
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
     userDid: params.userDid,
   });
 
   // Get user's endorsement from ReviewService
   const endorsement = await reviewService.getEndorsementByUser(
-    params.preprintUri as AtUri,
+    params.eprintUri as AtUri,
     params.userDid as DID
   );
 
   if (!endorsement) {
-    throw new NotFoundError(
-      'Endorsement',
-      `user=${params.userDid}, preprint=${params.preprintUri}`
-    );
+    throw new NotFoundError('Endorsement', `user=${params.userDid}, eprint=${params.eprintUri}`);
   }
 
   // Map to API format
   const response: Endorsement = {
     uri: endorsement.uri,
-    preprintUri: endorsement.preprintUri,
+    eprintUri: endorsement.eprintUri,
     endorser: {
       did: endorsement.endorser,
       handle: 'unknown', // Handle would need to be resolved via DID
@@ -89,7 +86,7 @@ export async function getUserEndorsementHandler(
   };
 
   logger.info('User endorsement returned', {
-    preprintUri: params.preprintUri,
+    eprintUri: params.eprintUri,
     userDid: params.userDid,
     uri: response.uri,
   });
@@ -105,7 +102,7 @@ export async function getUserEndorsementHandler(
 export const getUserEndorsementEndpoint: XRPCEndpoint<GetUserEndorsementParams, Endorsement> = {
   method: 'pub.chive.endorsement.getUserEndorsement' as never,
   type: 'query',
-  description: "Get a user's endorsement for a preprint",
+  description: "Get a user's endorsement for a eprint",
   inputSchema: getUserEndorsementParamsSchema,
   outputSchema: endorsementSchema,
   handler: getUserEndorsementHandler,

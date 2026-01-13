@@ -6,14 +6,14 @@ Neo4j stores Chive's knowledge graph: field taxonomy, authority records, citatio
 
 ### Node types
 
-| Label             | Description                      | Key Properties                  |
-| ----------------- | -------------------------------- | ------------------------------- |
-| `Field`           | Hierarchical field taxonomy      | `id`, `label`, `description`    |
-| `AuthorityRecord` | Controlled vocabulary terms      | `id`, `name`, `type`, `aliases` |
-| `WikidataEntity`  | Wikidata Q-IDs for linking       | `qid`, `label`, `description`   |
-| `Preprint`        | Preprint nodes for graph queries | `uri`, `title`                  |
-| `Author`          | Author nodes for collaboration   | `did`, `name`                   |
-| `FacetDimension`  | PMEST dimension templates        | `id`, `type`, `name`            |
+| Label             | Description                    | Key Properties                  |
+| ----------------- | ------------------------------ | ------------------------------- |
+| `Field`           | Hierarchical field taxonomy    | `id`, `label`, `description`    |
+| `AuthorityRecord` | Controlled vocabulary terms    | `id`, `name`, `type`, `aliases` |
+| `WikidataEntity`  | Wikidata Q-IDs for linking     | `qid`, `label`, `description`   |
+| `Eprint`          | Eprint nodes for graph queries | `uri`, `title`                  |
+| `Author`          | Author nodes for collaboration | `did`, `name`                   |
+| `FacetDimension`  | PMEST dimension templates      | `id`, `type`, `name`            |
 
 ### Relationship types
 
@@ -22,9 +22,9 @@ Neo4j stores Chive's knowledge graph: field taxonomy, authority records, citatio
 | `PARENT_OF`         | Field           | Field          | Hierarchy            |
 | `RELATED_TO`        | Field           | Field          | Semantic similarity  |
 | `MAPPED_TO`         | AuthorityRecord | WikidataEntity | External linking     |
-| `TAGGED_WITH`       | Preprint        | Field          | Field classification |
-| `AUTHORED`          | Author          | Preprint       | Authorship           |
-| `CITES`             | Preprint        | Preprint       | Citations            |
+| `TAGGED_WITH`       | Eprint          | Field          | Field classification |
+| `AUTHORED`          | Author          | Eprint         | Authorship           |
+| `CITES`             | Eprint          | Eprint         | Citations            |
 | `COLLABORATES_WITH` | Author          | Author         | Co-authorship        |
 
 ## Constraints and indexes
@@ -41,8 +41,8 @@ FOR (a:AuthorityRecord) REQUIRE a.id IS UNIQUE;
 CREATE CONSTRAINT wikidata_qid_unique
 FOR (w:WikidataEntity) REQUIRE w.qid IS UNIQUE;
 
-CREATE CONSTRAINT preprint_uri_unique
-FOR (p:Preprint) REQUIRE p.uri IS UNIQUE;
+CREATE CONSTRAINT eprint_uri_unique
+FOR (p:Eprint) REQUIRE p.uri IS UNIQUE;
 
 CREATE CONSTRAINT author_did_unique
 FOR (a:Author) REQUIRE a.did IS UNIQUE;
@@ -59,8 +59,8 @@ CREATE TEXT INDEX field_label_text FOR (f:Field) ON (f.label);
 CREATE INDEX authority_name_idx FOR (a:AuthorityRecord) ON (a.name);
 CREATE INDEX authority_type_idx FOR (a:AuthorityRecord) ON (a.type);
 
--- Preprint lookup
-CREATE INDEX preprint_created_idx FOR (p:Preprint) ON (p.createdAt);
+-- Eprint lookup
+CREATE INDEX eprint_created_idx FOR (p:Eprint) ON (p.createdAt);
 ```
 
 ## Adapter usage
@@ -136,17 +136,17 @@ const graph = new CitationGraph(driver, logger);
 // Add citation
 await graph.addCitation(citingUri, citedUri);
 
-// Get citations for a preprint
-const citations = await graph.getCitations(preprintUri, {
+// Get citations for a eprint
+const citations = await graph.getCitations(eprintUri, {
   direction: 'outgoing', // or 'incoming'
   limit: 50,
 });
 
 // Get citation count
-const count = await graph.getCitationCount(preprintUri);
+const count = await graph.getCitationCount(eprintUri);
 
 // Find co-citation clusters
-const clusters = await graph.findCoCitationClusters(preprintUri, {
+const clusters = await graph.findCoCitationClusters(eprintUri, {
   minSharedCitations: 3,
 });
 ```
@@ -173,7 +173,7 @@ const communities = await algorithms.detectCommunities('Author', 'COLLABORATES_W
 const path = await algorithms.shortestPath('cs.AI', 'physics.comp-ph');
 
 // Node similarity
-const similar = await algorithms.nodeSimilarity('Preprint', 'TAGGED_WITH', {
+const similar = await algorithms.nodeSimilarity('Eprint', 'TAGGED_WITH', {
   topK: 10,
 });
 ```
@@ -239,8 +239,8 @@ const values = await facets.getFacetValues('matter', {
   includeCount: true,
 });
 
-// Assign facets to preprint
-await facets.assignFacets(preprintUri, [
+// Assign facets to eprint
+await facets.assignFacets(eprintUri, [
   { dimension: 'matter', value: 'cs.AI' },
   { dimension: 'energy', value: 'empirical' },
 ]);
@@ -259,9 +259,9 @@ const trending = await tags.getTrending({
   limit: 20,
 });
 
-// Get tag suggestions for preprint
-const suggestions = await tags.getSuggestions(preprintUri, {
-  basedOn: 'similar-preprints',
+// Get tag suggestions for eprint
+const suggestions = await tags.getSuggestions(eprintUri, {
+  basedOn: 'similar-eprints',
   limit: 10,
 });
 

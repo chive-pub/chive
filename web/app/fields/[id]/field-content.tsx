@@ -10,8 +10,8 @@ import {
   FieldRelationshipsSkeleton,
   FieldExternalIds,
   FieldExternalIdsSkeleton,
-  FieldPreprints,
-  FieldPreprintsSkeleton,
+  FieldEprints,
+  FieldEprintsSkeleton,
 } from '@/components/knowledge-graph';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -31,7 +31,7 @@ export interface FieldDetailContentProps {
  *
  * @remarks
  * Fetches and displays field details including hierarchy,
- * relationships, external IDs, and preprints.
+ * relationships, external IDs, and eprints.
  *
  * @param props - Component props
  * @returns React element with field detail content
@@ -87,10 +87,10 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
 
         {/* Stats */}
         <div className="flex items-center gap-6 text-sm">
-          {field.preprintCount !== undefined && (
+          {field.eprintCount !== undefined && (
             <div>
-              <span className="font-semibold">{formatCompactNumber(field.preprintCount)}</span>{' '}
-              <span className="text-muted-foreground">preprints</span>
+              <span className="font-semibold">{formatCompactNumber(field.eprintCount)}</span>{' '}
+              <span className="text-muted-foreground">eprints</span>
             </div>
           )}
           {field.children && field.children.length > 0 && (
@@ -105,10 +105,10 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         {/* Main content */}
         <div className="space-y-8">
-          {/* Preprints section */}
+          {/* Eprints section */}
           <section>
-            <h2 className="mb-6 text-2xl font-semibold">Preprints</h2>
-            <FieldPreprints fieldId={fieldId} layout="list" />
+            <h2 className="mb-6 text-2xl font-semibold">Eprints</h2>
+            <FieldEprints fieldId={fieldId} layout="list" />
           </section>
         </div>
 
@@ -179,7 +179,7 @@ function FieldDetailLoadingSkeleton() {
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <div className="space-y-8">
           <div className="h-8 w-32 animate-pulse rounded bg-muted" />
-          <FieldPreprintsSkeleton count={5} />
+          <FieldEprintsSkeleton count={5} />
         </div>
         <aside className="space-y-6">
           <FieldRelationshipsSkeleton />

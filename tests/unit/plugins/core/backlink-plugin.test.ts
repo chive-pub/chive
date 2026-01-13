@@ -86,7 +86,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
     id: 1,
     sourceUri: 'at://did:plc:test/collection/rkey',
     sourceType: 'semble.collection',
-    targetUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+    targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
     indexedAt: new Date(),
     deleted: false,
   } as Backlink),
@@ -142,10 +142,10 @@ class TestBacklinkPlugin extends BacklinkTrackingPlugin {
   };
 
   // Expose for testing
-  public extractPreprintRefs(record: unknown): string[] {
+  public extractEprintRefs(record: unknown): string[] {
     const rec = record as { items?: { uri?: string }[] };
     if (!rec.items) return [];
-    return rec.items.filter((item) => this.isPreprintUri(item.uri)).map((item) => item.uri ?? '');
+    return rec.items.filter((item) => this.isEprintUri(item.uri)).map((item) => item.uri ?? '');
   }
 
   // Expose for testing: override visibility filtering
@@ -160,8 +160,8 @@ class TestBacklinkPlugin extends BacklinkTrackingPlugin {
   }
 
   // Make protected methods accessible for testing
-  public testIsPreprintUri(uri: string | undefined | null): boolean {
-    return this.isPreprintUri(uri);
+  public testIsEprintUri(uri: string | undefined | null): boolean {
+    return this.isEprintUri(uri);
   }
 
   public testExtractUrisFromText(text: string): string[] {
@@ -246,7 +246,7 @@ describe('BacklinkTrackingPlugin', () => {
         did: 'did:plc:test',
         rkey: 'rkey',
         record: {
-          items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+          items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
         },
         deleted: false,
         timestamp: new Date(),
@@ -284,7 +284,7 @@ describe('BacklinkTrackingPlugin', () => {
         did: 'did:plc:test',
         rkey: 'rkey',
         record: {
-          items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+          items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
         },
         deleted: false,
         timestamp: new Date(),
@@ -312,12 +312,12 @@ describe('BacklinkTrackingPlugin', () => {
       await plugin.initialize(context);
     });
 
-    it('should create backlinks for each preprint reference', async () => {
+    it('should create backlinks for each eprint reference', async () => {
       const record = {
         title: 'My Reading List',
         items: [
-          { uri: 'at://did:plc:author1/pub.chive.preprint.submission/paper1' },
-          { uri: 'at://did:plc:author2/pub.chive.preprint.submission/paper2' },
+          { uri: 'at://did:plc:author1/pub.chive.eprint.submission/paper1' },
+          { uri: 'at://did:plc:author2/pub.chive.eprint.submission/paper2' },
         ],
       };
 
@@ -327,7 +327,7 @@ describe('BacklinkTrackingPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:test/test.collection/rkey',
         sourceType: 'semble.collection',
-        targetUri: 'at://did:plc:author1/pub.chive.preprint.submission/paper1',
+        targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/paper1',
         context: 'My Reading List',
       });
     });
@@ -336,7 +336,7 @@ describe('BacklinkTrackingPlugin', () => {
       plugin.shouldProcessPublic = false;
 
       const record = {
-        items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+        items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
       };
 
       await plugin.testHandleRecord('at://did:plc:test/test.collection/rkey', record);
@@ -344,7 +344,7 @@ describe('BacklinkTrackingPlugin', () => {
       expect(backlinkService.createBacklink).not.toHaveBeenCalled();
     });
 
-    it('should skip records with no preprint references', async () => {
+    it('should skip records with no eprint references', async () => {
       const record = {
         items: [
           { uri: 'at://did:plc:someone/other.collection/xyz' },
@@ -359,7 +359,7 @@ describe('BacklinkTrackingPlugin', () => {
 
     it('should log debug message after processing', async () => {
       const record = {
-        items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+        items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
       };
 
       await plugin.testHandleRecord('at://did:plc:test/test.collection/rkey', record);
@@ -425,7 +425,7 @@ describe('BacklinkTrackingPlugin', () => {
     it('should create backlink and emit event', async () => {
       const record = {
         title: 'Test Collection',
-        items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+        items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
       };
 
       await plugin.testHandleRecord('at://did:plc:test/test.collection/rkey', record);
@@ -433,13 +433,13 @@ describe('BacklinkTrackingPlugin', () => {
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.created', {
         sourceUri: 'at://did:plc:test/test.collection/rkey',
         sourceType: 'semble.collection',
-        targetUri: 'at://did:plc:author/pub.chive.preprint.submission/xyz',
+        targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
       });
     });
 
     it('should record creation metric', async () => {
       const record = {
-        items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+        items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
       };
 
       await plugin.testHandleRecord('at://did:plc:test/test.collection/rkey', record);
@@ -458,7 +458,7 @@ describe('BacklinkTrackingPlugin', () => {
       await newPlugin.initialize(contextWithoutService);
 
       const record = {
-        items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+        items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
       };
 
       // Should not throw
@@ -470,53 +470,51 @@ describe('BacklinkTrackingPlugin', () => {
     });
   });
 
-  describe('isPreprintUri', () => {
-    it('should return true for valid preprint URIs', () => {
-      expect(plugin.testIsPreprintUri('at://did:plc:abc/pub.chive.preprint.submission/xyz')).toBe(
-        true
-      );
+  describe('isEprintUri', () => {
+    it('should return true for valid eprint URIs', () => {
+      expect(plugin.testIsEprintUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')).toBe(true);
     });
 
-    it('should return false for non-preprint URIs', () => {
-      expect(plugin.testIsPreprintUri('at://did:plc:abc/other.collection/xyz')).toBe(false);
-      expect(plugin.testIsPreprintUri('https://example.com/paper')).toBe(false);
+    it('should return false for non-eprint URIs', () => {
+      expect(plugin.testIsEprintUri('at://did:plc:abc/other.collection/xyz')).toBe(false);
+      expect(plugin.testIsEprintUri('https://example.com/paper')).toBe(false);
     });
 
     it('should return false for null/undefined', () => {
-      expect(plugin.testIsPreprintUri(null)).toBe(false);
-      expect(plugin.testIsPreprintUri(undefined)).toBe(false);
+      expect(plugin.testIsEprintUri(null)).toBe(false);
+      expect(plugin.testIsEprintUri(undefined)).toBe(false);
     });
 
     it('should return false for empty string', () => {
-      expect(plugin.testIsPreprintUri('')).toBe(false);
+      expect(plugin.testIsEprintUri('')).toBe(false);
     });
   });
 
   describe('extractUrisFromText', () => {
     it('should extract AT-URIs from markdown text', () => {
       const text = `
-        Check out this paper: at://did:plc:author/pub.chive.preprint.submission/abc123
-        And this one too: at://did:plc:other/pub.chive.preprint.submission/def456
+        Check out this paper: at://did:plc:author/pub.chive.eprint.submission/abc123
+        And this one too: at://did:plc:other/pub.chive.eprint.submission/def456
       `;
 
       const uris = plugin.testExtractUrisFromText(text);
 
       expect(uris).toEqual([
-        'at://did:plc:author/pub.chive.preprint.submission/abc123',
-        'at://did:plc:other/pub.chive.preprint.submission/def456',
+        'at://did:plc:author/pub.chive.eprint.submission/abc123',
+        'at://did:plc:other/pub.chive.eprint.submission/def456',
       ]);
     });
 
-    it('should filter out non-preprint AT-URIs', () => {
+    it('should filter out non-eprint AT-URIs', () => {
       const text = `
-        at://did:plc:author/pub.chive.preprint.submission/paper1
+        at://did:plc:author/pub.chive.eprint.submission/paper1
         at://did:plc:someone/app.bsky.feed.post/xyz
         at://did:plc:other/some.other.collection/abc
       `;
 
       const uris = plugin.testExtractUrisFromText(text);
 
-      expect(uris).toEqual(['at://did:plc:author/pub.chive.preprint.submission/paper1']);
+      expect(uris).toEqual(['at://did:plc:author/pub.chive.eprint.submission/paper1']);
     });
 
     it('should return empty array for text without AT-URIs', () => {
@@ -542,7 +540,7 @@ describe('BacklinkTrackingPlugin', () => {
         did: 'did:plc:test',
         rkey: 'rkey',
         record: {
-          items: [{ uri: 'at://did:plc:author/pub.chive.preprint.submission/xyz' }],
+          items: [{ uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }],
         },
         deleted: false,
         timestamp: new Date(),

@@ -379,7 +379,7 @@ describe('ProposalForm', () => {
       expect(within(listbox).getByText('Contribution Type')).toBeInTheDocument();
       expect(within(listbox).getByText('Facet Value')).toBeInTheDocument();
       expect(within(listbox).getByText('Author')).toBeInTheDocument();
-      expect(within(listbox).getByText('Preprint')).toBeInTheDocument();
+      expect(within(listbox).getByText('Eprint')).toBeInTheDocument();
     });
 
     it('shows source entity URI and label fields', () => {

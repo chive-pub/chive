@@ -2,7 +2,7 @@
  * Unit tests for ImportingPlugin base class.
  *
  * @remarks
- * Tests the abstract base class for plugins that import preprints from
+ * Tests the abstract base class for plugins that import eprints from
  * external sources like arXiv and LingBuzz.
  *
  * @packageDocumentation
@@ -15,10 +15,10 @@ import type { ICacheProvider } from '../../../../src/types/interfaces/cache.inte
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
 import type { IMetrics } from '../../../../src/types/interfaces/metrics.interface.js';
 import type {
-  ExternalPreprint,
+  ExternalEprint,
   FetchOptions,
   IImportService,
-  ImportedPreprint,
+  ImportedEprint,
   ImportSource,
   IPluginContext,
   IPluginEventBus,
@@ -67,15 +67,15 @@ const createMockEventBus = (): IPluginEventBus => ({
 });
 
 /**
- * Sample preprints for testing based on real linguistics research.
+ * Sample eprints for testing based on real linguistics research.
  *
  * Uses verified paper metadata from linguistics researchers including
  * Aaron Steven White, Kyle Rawlins, Simon Charlow, and others.
  */
 
-// Sample preprint: White & Rawlins (2020), MegaAttitude project
+// Sample eprint: White & Rawlins (2020), MegaAttitude project
 // DOI: 10.5334/gjgl.1001
-const SAMPLE_ARXIV_PREPRINT: ExternalPreprint = {
+const SAMPLE_ARXIV_EPRINT: ExternalEprint = {
   externalId: 'arxiv.2001.12345', // Hypothetical arXiv ID for testing
   url: 'https://arxiv.org/abs/2001.12345',
   title: 'Frequency, Acceptability, and Selection: A Case Study of Clause-Embedding',
@@ -87,9 +87,9 @@ const SAMPLE_ARXIV_PREPRINT: ExternalPreprint = {
   pdfUrl: 'https://arxiv.org/pdf/2001.12345.pdf',
 };
 
-// Sample preprint: Charlow (2014), Exceptional scope dissertation
+// Sample eprint: Charlow (2014), Exceptional scope dissertation
 // URL: https://semanticsarchive.net/Archive/2JmMWRjY/charlow-semantics-exceptional-scope-diss.pdf
-const SAMPLE_LINGBUZZ_PREPRINT: ExternalPreprint = {
+const SAMPLE_LINGBUZZ_EPRINT: ExternalEprint = {
   externalId: '006789', // Hypothetical LingBuzz ID for testing
   url: 'https://ling.auf.net/lingbuzz/006789',
   title: 'On the Semantics of Exceptional Scope',
@@ -121,7 +121,7 @@ const createMockImportService = (): IImportService => ({
       importedAt: new Date(),
       syncStatus: 'active',
       claimStatus: 'unclaimed',
-    } as ImportedPreprint)
+    } as ImportedEprint)
   ),
   update: vi.fn().mockImplementation((id, data) =>
     Promise.resolve({
@@ -129,9 +129,9 @@ const createMockImportService = (): IImportService => ({
       ...data,
       importedAt: new Date(),
       syncStatus: 'active',
-    } as unknown as ImportedPreprint)
+    } as unknown as ImportedEprint)
   ),
-  search: vi.fn().mockResolvedValue({ preprints: [], cursor: undefined }),
+  search: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
   markClaimed: vi.fn().mockResolvedValue(undefined),
 });
 
@@ -168,17 +168,17 @@ class TestImportingPlugin extends ImportingPlugin {
     entrypoint: 'test.js',
   };
 
-  // Control what fetchPreprints yields
-  public preprintsToYield: ExternalPreprint[] = [];
+  // Control what fetchEprints yields
+  public eprintsToYield: ExternalEprint[] = [];
 
-  async *fetchPreprints(_options?: FetchOptions): AsyncIterable<ExternalPreprint> {
-    for (const preprint of this.preprintsToYield) {
+  async *fetchEprints(_options?: FetchOptions): AsyncIterable<ExternalEprint> {
+    for (const eprint of this.eprintsToYield) {
       await this.rateLimit();
-      yield preprint;
+      yield eprint;
     }
   }
 
-  buildPreprintUrl(externalId: string): string {
+  buildEprintUrl(externalId: string): string {
     return `https://arxiv.org/abs/${externalId}`;
   }
 
@@ -252,14 +252,14 @@ describe('ImportingPlugin', () => {
       await plugin.initialize(context);
     });
 
-    it('should check import service for existing preprint', async () => {
+    it('should check import service for existing eprint', async () => {
       const result = await plugin.isImported('arxiv.2001.12345');
 
       expect(importService.exists).toHaveBeenCalledWith('arxiv', 'arxiv.2001.12345');
       expect(result).toBe(false);
     });
 
-    it('should return true if preprint already imported', async () => {
+    it('should return true if eprint already imported', async () => {
       vi.mocked(importService.exists).mockResolvedValueOnce(true);
 
       const result = await plugin.isImported('arxiv.2001.12345');
@@ -293,7 +293,7 @@ describe('ImportingPlugin', () => {
         source: 'arxiv' as ImportSource,
         externalId: 'arxiv.2001.12345',
         title: 'Frequency, Acceptability, and Selection: A Case Study of Clause-Embedding',
-      } as ImportedPreprint;
+      } as ImportedEprint;
       vi.mocked(importService.get).mockResolvedValueOnce(mockImport);
 
       const result = await plugin.getExistingImport('arxiv.2001.12345');
@@ -312,13 +312,13 @@ describe('ImportingPlugin', () => {
     });
   });
 
-  describe('importPreprint', () => {
+  describe('importEprint', () => {
     beforeEach(async () => {
       await plugin.initialize(context);
     });
 
-    it('should create new import for unseen preprint', async () => {
-      const result = await plugin.importPreprint(SAMPLE_ARXIV_PREPRINT);
+    it('should create new import for unseen eprint', async () => {
+      const result = await plugin.importEprint(SAMPLE_ARXIV_EPRINT);
 
       expect(importService.create).toHaveBeenCalledWith({
         source: 'arxiv',
@@ -343,21 +343,21 @@ describe('ImportingPlugin', () => {
         source: 'arxiv' as ImportSource,
         externalId: 'arxiv.2001.12345',
         title: 'Frequency, Acceptability, and Selection: A Case Study of Clause-Embedding',
-      } as ImportedPreprint;
+      } as ImportedEprint;
       vi.mocked(importService.get).mockResolvedValueOnce(existingImport);
 
-      const result = await plugin.importPreprint(SAMPLE_ARXIV_PREPRINT);
+      const result = await plugin.importEprint(SAMPLE_ARXIV_EPRINT);
 
       expect(importService.create).not.toHaveBeenCalled();
       expect(result).toBe(existingImport);
       expect(context.logger.debug).toHaveBeenCalledWith(
-        'Preprint already imported',
+        'Eprint already imported',
         expect.objectContaining({ externalId: 'arxiv.2001.12345' })
       );
     });
 
     it('should emit import.created event', async () => {
-      await plugin.importPreprint(SAMPLE_ARXIV_PREPRINT);
+      await plugin.importEprint(SAMPLE_ARXIV_EPRINT);
 
       expect(context.eventBus.emit).toHaveBeenCalledWith('import.created', {
         importId: 1,
@@ -368,7 +368,7 @@ describe('ImportingPlugin', () => {
     });
 
     it('should record imports_created metric', async () => {
-      await plugin.importPreprint(SAMPLE_ARXIV_PREPRINT);
+      await plugin.importEprint(SAMPLE_ARXIV_EPRINT);
 
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
         'imports_created',
@@ -383,7 +383,7 @@ describe('ImportingPlugin', () => {
       const contextWithoutService = createMockContext({});
       await newPlugin.initialize(contextWithoutService);
 
-      await expect(newPlugin.importPreprint(SAMPLE_ARXIV_PREPRINT)).rejects.toThrow(
+      await expect(newPlugin.importEprint(SAMPLE_ARXIV_EPRINT)).rejects.toThrow(
         'Import service not available'
       );
     });
@@ -437,8 +437,8 @@ describe('ImportingPlugin', () => {
       plugin.setRateLimitDelay(0); // Disable rate limiting for tests
     });
 
-    it('should import all fetched preprints', async () => {
-      plugin.preprintsToYield = [SAMPLE_ARXIV_PREPRINT, SAMPLE_LINGBUZZ_PREPRINT];
+    it('should import all fetched eprints', async () => {
+      plugin.eprintsToYield = [SAMPLE_ARXIV_EPRINT, SAMPLE_LINGBUZZ_EPRINT];
 
       const result = await plugin.runImportCycle();
 
@@ -448,16 +448,16 @@ describe('ImportingPlugin', () => {
       expect(result.errors).toBe(0);
     });
 
-    it('should update existing preprints instead of creating new ones', async () => {
-      plugin.preprintsToYield = [SAMPLE_ARXIV_PREPRINT];
+    it('should update existing eprints instead of creating new ones', async () => {
+      plugin.eprintsToYield = [SAMPLE_ARXIV_EPRINT];
 
-      // First preprint exists
+      // First eprint exists
       vi.mocked(importService.get).mockResolvedValueOnce({
         id: 1,
         source: 'arxiv' as ImportSource,
         externalId: 'arxiv.2001.12345',
         title: 'Old Title',
-      } as ImportedPreprint);
+      } as ImportedEprint);
 
       const result = await plugin.runImportCycle();
 
@@ -468,7 +468,7 @@ describe('ImportingPlugin', () => {
     });
 
     it('should count errors and continue processing', async () => {
-      plugin.preprintsToYield = [SAMPLE_ARXIV_PREPRINT, SAMPLE_LINGBUZZ_PREPRINT];
+      plugin.eprintsToYield = [SAMPLE_ARXIV_EPRINT, SAMPLE_LINGBUZZ_EPRINT];
 
       // First import fails
       vi.mocked(importService.get).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
@@ -477,7 +477,7 @@ describe('ImportingPlugin', () => {
         .mockResolvedValueOnce({
           id: 2,
           source: 'arxiv',
-        } as ImportedPreprint);
+        } as ImportedEprint);
 
       const result = await plugin.runImportCycle();
 
@@ -485,13 +485,13 @@ describe('ImportingPlugin', () => {
       expect(result.newImports).toBe(1);
       expect(result.errors).toBe(1);
       expect(context.logger.warn).toHaveBeenCalledWith(
-        'Failed to process preprint',
+        'Failed to process eprint',
         expect.objectContaining({ error: 'DB error' })
       );
     });
 
     it('should record import_cycle_duration metric', async () => {
-      plugin.preprintsToYield = [SAMPLE_ARXIV_PREPRINT];
+      plugin.eprintsToYield = [SAMPLE_ARXIV_EPRINT];
 
       await plugin.runImportCycle();
 
@@ -501,7 +501,7 @@ describe('ImportingPlugin', () => {
     });
 
     it('should log completion with statistics', async () => {
-      plugin.preprintsToYield = [SAMPLE_ARXIV_PREPRINT];
+      plugin.eprintsToYield = [SAMPLE_ARXIV_EPRINT];
 
       await plugin.runImportCycle();
 
@@ -516,7 +516,7 @@ describe('ImportingPlugin', () => {
     });
 
     it('should include timestamps in result', async () => {
-      plugin.preprintsToYield = [];
+      plugin.eprintsToYield = [];
 
       const result = await plugin.runImportCycle();
 
@@ -586,9 +586,9 @@ describe('ImportingPlugin', () => {
     });
   });
 
-  describe('buildPreprintUrl', () => {
+  describe('buildEprintUrl', () => {
     it('should construct correct arXiv URL', () => {
-      expect(plugin.buildPreprintUrl('2512.05959')).toBe('https://arxiv.org/abs/2512.05959');
+      expect(plugin.buildEprintUrl('2512.05959')).toBe('https://arxiv.org/abs/2512.05959');
     });
   });
 
@@ -603,21 +603,21 @@ describe('ImportingPlugin', () => {
       expect(plugin.source).toBe('arxiv');
     });
 
-    it('should require fetchPreprints implementation', async () => {
-      plugin.preprintsToYield = [SAMPLE_ARXIV_PREPRINT];
+    it('should require fetchEprints implementation', async () => {
+      plugin.eprintsToYield = [SAMPLE_ARXIV_EPRINT];
 
-      const preprints: ExternalPreprint[] = [];
-      for await (const p of plugin.fetchPreprints()) {
-        preprints.push(p);
+      const eprints: ExternalEprint[] = [];
+      for await (const p of plugin.fetchEprints()) {
+        eprints.push(p);
       }
 
-      expect(preprints).toHaveLength(1);
-      expect(preprints[0]?.externalId).toBe('arxiv.2001.12345');
+      expect(eprints).toHaveLength(1);
+      expect(eprints[0]?.externalId).toBe('arxiv.2001.12345');
     });
 
-    it('should require buildPreprintUrl implementation', () => {
-      expect(typeof plugin.buildPreprintUrl).toBe('function');
-      expect(plugin.buildPreprintUrl('test')).toBeTruthy();
+    it('should require buildEprintUrl implementation', () => {
+      expect(typeof plugin.buildEprintUrl).toBe('function');
+      expect(plugin.buildEprintUrl('test')).toBeTruthy();
     });
   });
 });

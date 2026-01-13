@@ -17,7 +17,7 @@
  * import { EndorsementPanel, EndorsementBadgeGroup } from '@/components/endorsements';
  *
  * // Full panel with list and filtering
- * <EndorsementPanel preprintUri={preprintUri} onEndorse={handleEndorse} />
+ * <EndorsementPanel eprintUri={eprintUri} onEndorse={handleEndorse} />
  *
  * // Compact badges showing counts by contribution type
  * <EndorsementBadgeGroup summary={endorsementSummary} maxBadges={5} />

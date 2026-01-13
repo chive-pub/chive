@@ -60,9 +60,9 @@ function createMockRecommendationsResponse(
   return {
     recommendations: [
       {
-        uri: 'at://did:plc:test/pub.chive.preprint/1',
-        title: 'Test Preprint 1',
-        abstract: 'Abstract for test preprint',
+        uri: 'at://did:plc:test/pub.chive.eprint/1',
+        title: 'Test Eprint 1',
+        abstract: 'Abstract for test eprint',
         score: 0.95,
         explanation: {
           type: 'semantic',
@@ -81,14 +81,14 @@ function createMockSimilarResponse(
   overrides: Partial<GetSimilarResponse> = {}
 ): GetSimilarResponse {
   return {
-    preprint: {
-      uri: 'at://did:plc:test/pub.chive.preprint/source',
-      title: 'Source Preprint',
+    eprint: {
+      uri: 'at://did:plc:test/pub.chive.eprint/source',
+      title: 'Source Eprint',
     },
     related: [
       {
-        uri: 'at://did:plc:test/pub.chive.preprint/related1',
-        title: 'Related Preprint 1',
+        uri: 'at://did:plc:test/pub.chive.eprint/related1',
+        title: 'Related Eprint 1',
         relationshipType: 'semantically-similar',
         score: 0.9,
         explanation: 'Similar topics',
@@ -102,9 +102,9 @@ function createMockCitationsResponse(
   overrides: Partial<GetCitationsResponse> = {}
 ): GetCitationsResponse {
   return {
-    preprint: {
-      uri: 'at://did:plc:test/pub.chive.preprint/source',
-      title: 'Source Preprint',
+    eprint: {
+      uri: 'at://did:plc:test/pub.chive.eprint/source',
+      title: 'Source Eprint',
     },
     counts: {
       citedByCount: 10,
@@ -113,8 +113,8 @@ function createMockCitationsResponse(
     },
     citations: [
       {
-        citingUri: 'at://did:plc:test/pub.chive.preprint/citing1',
-        citedUri: 'at://did:plc:test/pub.chive.preprint/source',
+        citingUri: 'at://did:plc:test/pub.chive.eprint/citing1',
+        citedUri: 'at://did:plc:test/pub.chive.eprint/source',
         isInfluential: true,
         source: 'semantic-scholar',
       },
@@ -129,7 +129,7 @@ function createMockEnrichmentResponse(
 ): GetEnrichmentResponse {
   return {
     enrichment: {
-      uri: 'at://did:plc:test/pub.chive.preprint/1',
+      uri: 'at://did:plc:test/pub.chive.eprint/1',
       semanticScholarId: 's2-123',
       openAlexId: 'W123456',
       citationCount: 42,
@@ -150,7 +150,7 @@ describe('discoveryKeys', () => {
   });
 
   it('generates similar key with uri and options', () => {
-    const uri = 'at://did:plc:test/pub.chive.preprint/1';
+    const uri = 'at://did:plc:test/pub.chive.eprint/1';
     expect(discoveryKeys.similar(uri, { limit: 5 })).toEqual([
       'discovery',
       'similar',
@@ -160,7 +160,7 @@ describe('discoveryKeys', () => {
   });
 
   it('generates citations key with uri and options', () => {
-    const uri = 'at://did:plc:test/pub.chive.preprint/1';
+    const uri = 'at://did:plc:test/pub.chive.eprint/1';
     expect(discoveryKeys.citations(uri, { direction: 'citing', limit: 10 })).toEqual([
       'discovery',
       'citations',
@@ -170,7 +170,7 @@ describe('discoveryKeys', () => {
   });
 
   it('generates enrichment key with uri', () => {
-    const uri = 'at://did:plc:test/pub.chive.preprint/1';
+    const uri = 'at://did:plc:test/pub.chive.eprint/1';
     expect(discoveryKeys.enrichment(uri)).toEqual(['discovery', 'enrichment', uri]);
   });
 
@@ -233,13 +233,13 @@ describe('useForYouFeed', () => {
 });
 
 describe('useSimilarPapers', () => {
-  const testUri = 'at://did:plc:test/pub.chive.preprint/1';
+  const testUri = 'at://did:plc:test/pub.chive.eprint/1';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches similar papers for a preprint', async () => {
+  it('fetches similar papers for a eprint', async () => {
     const mockResponse = createMockSimilarResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -288,13 +288,13 @@ describe('useSimilarPapers', () => {
 });
 
 describe('useCitations', () => {
-  const testUri = 'at://did:plc:test/pub.chive.preprint/1';
+  const testUri = 'at://did:plc:test/pub.chive.eprint/1';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches citations for a preprint', async () => {
+  it('fetches citations for a eprint', async () => {
     const mockResponse = createMockCitationsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -354,13 +354,13 @@ describe('useCitations', () => {
 });
 
 describe('useEnrichment', () => {
-  const testUri = 'at://did:plc:test/pub.chive.preprint/1';
+  const testUri = 'at://did:plc:test/pub.chive.eprint/1';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches enrichment data for a preprint', async () => {
+  it('fetches enrichment data for a eprint', async () => {
     const mockResponse = createMockEnrichmentResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,

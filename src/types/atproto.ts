@@ -22,7 +22,7 @@
  *
  * Format: `at://did/collection/rkey`
  * - `did`: Repository owner's DID
- * - `collection`: Record collection NSID (e.g., "pub.chive.preprint.submission")
+ * - `collection`: Record collection NSID (e.g., "pub.chive.eprint.submission")
  * - `rkey`: Record key (unique within collection)
  *
  * AT URIs are content-addressable when combined with CID, enabling
@@ -30,7 +30,7 @@
  *
  * @example
  * ```typescript
- * const uri = toAtUri('at://did:plc:abc123/pub.chive.preprint.submission/xyz789');
+ * const uri = toAtUri('at://did:plc:abc123/pub.chive.eprint.submission/xyz789');
  * if (uri) {
  *   console.log('Valid AT URI:', uri);
  * }
@@ -82,13 +82,13 @@ export type DID = string & { readonly __brand: 'DID' };
  * - `name` and `subname`: Schema identifiers
  *
  * NSIDs are used to identify:
- * - Record collections (e.g., "pub.chive.preprint.submission")
+ * - Record collections (e.g., "pub.chive.eprint.submission")
  * - RPC procedures (e.g., "pub.chive.search.query")
  * - Event types (e.g., "pub.chive.notification.created")
  *
  * @example
  * ```typescript
- * const nsid = toNSID('pub.chive.preprint.submission');
+ * const nsid = toNSID('pub.chive.eprint.submission');
  * if (nsid) {
  *   console.log('Valid NSID:', nsid);
  * }
@@ -170,7 +170,7 @@ export interface BlobRef {
    *
    * @remarks
    * Common MIME types in Chive:
-   * - `application/pdf` - Preprint PDFs
+   * - `application/pdf` - Eprint PDFs
    * - `image/png`, `image/jpeg` - Figures, author avatars
    * - `application/zip` - Supplementary materials
    */

@@ -19,7 +19,7 @@ vi.mock('@/lib/api/client', () => ({
 }));
 
 describe('EndorsementPanel', () => {
-  const preprintUri = 'at://did:plc:test/pub.chive.preprint.submission/abc123';
+  const eprintUri = 'at://did:plc:test/pub.chive.eprint.submission/abc123';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -29,7 +29,7 @@ describe('EndorsementPanel', () => {
     it('shows skeletons while loading', () => {
       mockGet.mockImplementation(() => new Promise(() => {})); // Never resolves
 
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       expect(screen.getAllByTestId('endorsement-badge-skeleton')).toHaveLength(3);
       expect(screen.getByTestId('endorsement-list-skeleton')).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe('EndorsementPanel', () => {
         error: { message: 'Failed to fetch' },
       });
 
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByText('Failed to load endorsements')).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe('EndorsementPanel', () => {
         if (url.includes('getSummary')) {
           return { data: mockSummary, error: null };
         }
-        if (url.includes('listForPreprint')) {
+        if (url.includes('listForEprint')) {
           return { data: mockEndorsements, error: null };
         }
         return { data: null, error: null };
@@ -77,7 +77,7 @@ describe('EndorsementPanel', () => {
     });
 
     it('renders panel with title', async () => {
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('endorsement-panel')).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe('EndorsementPanel', () => {
     });
 
     it('displays endorsement badges', async () => {
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         // Badges may appear multiple times (in badge group and filter dropdown)
@@ -102,7 +102,7 @@ describe('EndorsementPanel', () => {
     });
 
     it('displays endorser count', async () => {
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByText('8 endorsers')).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe('EndorsementPanel', () => {
     });
 
     it('displays endorsement list', async () => {
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('endorsement-list')).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe('EndorsementPanel', () => {
 
     it('shows endorse button when onEndorse provided', async () => {
       const onEndorse = vi.fn();
-      render(<EndorsementPanel preprintUri={preprintUri} onEndorse={onEndorse} />);
+      render(<EndorsementPanel eprintUri={eprintUri} onEndorse={onEndorse} />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: 'Endorse' })).toBeInTheDocument();
@@ -129,7 +129,7 @@ describe('EndorsementPanel', () => {
     it('calls onEndorse when button clicked', async () => {
       const user = userEvent.setup();
       const onEndorse = vi.fn();
-      render(<EndorsementPanel preprintUri={preprintUri} onEndorse={onEndorse} />);
+      render(<EndorsementPanel eprintUri={eprintUri} onEndorse={onEndorse} />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: 'Endorse' })).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe('EndorsementPanel', () => {
         if (url.includes('getSummary')) {
           return { data: mockSummary, error: null };
         }
-        if (url.includes('listForPreprint')) {
+        if (url.includes('listForEprint')) {
           return { data: mockEndorsements, error: null };
         }
         return { data: null, error: null };
@@ -165,7 +165,7 @@ describe('EndorsementPanel', () => {
     });
 
     it('renders filter dropdown', async () => {
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -173,7 +173,7 @@ describe('EndorsementPanel', () => {
     });
 
     it('shows all endorsements by default', async () => {
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByText('All endorsements')).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe('EndorsementPanel', () => {
 
     it('filters by contribution type when badge clicked', async () => {
       const user = userEvent.setup();
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         const methodologicalElements = screen.getAllByText('Methodological');
@@ -199,7 +199,7 @@ describe('EndorsementPanel', () => {
 
     it('shows clear button when filter is active', async () => {
       const user = userEvent.setup();
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -217,7 +217,7 @@ describe('EndorsementPanel', () => {
 
     it('clears filter when clear button clicked', async () => {
       const user = userEvent.setup();
-      render(<EndorsementPanel preprintUri={preprintUri} />);
+      render(<EndorsementPanel eprintUri={eprintUri} />);
 
       await waitFor(() => {
         expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -239,7 +239,7 @@ describe('EndorsementPanel', () => {
 });
 
 describe('EndorsementSummaryCompact', () => {
-  const preprintUri = 'at://did:plc:test/pub.chive.preprint.submission/abc123';
+  const eprintUri = 'at://did:plc:test/pub.chive.eprint.submission/abc123';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -248,7 +248,7 @@ describe('EndorsementSummaryCompact', () => {
   it('shows skeleton while loading', () => {
     mockGet.mockImplementation(() => new Promise(() => {}));
 
-    render(<EndorsementSummaryCompact preprintUri={preprintUri} />);
+    render(<EndorsementSummaryCompact eprintUri={eprintUri} />);
 
     expect(screen.getByTestId('endorsement-badge-skeleton')).toBeInTheDocument();
   });
@@ -262,7 +262,7 @@ describe('EndorsementSummaryCompact', () => {
 
     mockGet.mockResolvedValue({ data: mockSummary, error: null });
 
-    render(<EndorsementSummaryCompact preprintUri={preprintUri} />);
+    render(<EndorsementSummaryCompact eprintUri={eprintUri} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('endorsement-badge-group')).toBeInTheDocument();
@@ -278,7 +278,7 @@ describe('EndorsementSummaryCompact', () => {
 
     mockGet.mockResolvedValue({ data: mockSummary, error: null });
 
-    const { container } = render(<EndorsementSummaryCompact preprintUri={preprintUri} />);
+    const { container } = render(<EndorsementSummaryCompact eprintUri={eprintUri} />);
 
     await waitFor(() => {
       expect(container).toBeEmptyDOMElement();
@@ -287,7 +287,7 @@ describe('EndorsementSummaryCompact', () => {
 });
 
 describe('EndorsementIndicator', () => {
-  const preprintUri = 'at://did:plc:test/pub.chive.preprint.submission/abc123';
+  const eprintUri = 'at://did:plc:test/pub.chive.eprint.submission/abc123';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -296,7 +296,7 @@ describe('EndorsementIndicator', () => {
   it('shows skeleton while loading', () => {
     mockGet.mockImplementation(() => new Promise(() => {}));
 
-    render(<EndorsementIndicator preprintUri={preprintUri} />);
+    render(<EndorsementIndicator eprintUri={eprintUri} />);
 
     expect(screen.getByTestId('endorsement-badge-skeleton')).toBeInTheDocument();
   });
@@ -309,7 +309,7 @@ describe('EndorsementIndicator', () => {
 
     mockGet.mockResolvedValue({ data: mockSummary, error: null });
 
-    render(<EndorsementIndicator preprintUri={preprintUri} />);
+    render(<EndorsementIndicator eprintUri={eprintUri} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('endorsement-summary-badge')).toBeInTheDocument();
@@ -324,7 +324,7 @@ describe('EndorsementIndicator', () => {
 
     mockGet.mockResolvedValue({ data: mockSummary, error: null });
 
-    const { container } = render(<EndorsementIndicator preprintUri={preprintUri} />);
+    const { container } = render(<EndorsementIndicator eprintUri={eprintUri} />);
 
     await waitFor(() => {
       expect(container).toBeEmptyDOMElement();

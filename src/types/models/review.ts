@@ -12,7 +12,7 @@
 import type { AtUri, CID, DID, Timestamp } from '../atproto.js';
 
 /**
- * Review comment on a preprint.
+ * Review comment on a eprint.
  *
  * @remarks
  * Represents a peer review comment, which can be inline (attached to specific
@@ -32,9 +32,9 @@ export interface Review {
   readonly cid: CID;
 
   /**
-   * AT URI of the preprint being reviewed.
+   * AT URI of the eprint being reviewed.
    */
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
 
   /**
    * DID of the reviewer.
@@ -76,11 +76,11 @@ export interface Review {
 }
 
 /**
- * Endorsement of a preprint.
+ * Endorsement of a eprint.
  *
  * @remarks
  * Formal endorsement indicating that the endorser vouches for specific
- * aspects of the preprint (methods, results, or overall quality).
+ * aspects of the eprint (methods, results, or overall quality).
  *
  * @public
  */
@@ -96,9 +96,9 @@ export interface Endorsement {
   readonly cid: CID;
 
   /**
-   * AT URI of the endorsed preprint.
+   * AT URI of the endorsed eprint.
    */
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
 
   /**
    * DID of the endorser.

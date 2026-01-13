@@ -53,9 +53,9 @@ export const externalAuthorSchema = z.object({
 export type ExternalAuthor = z.infer<typeof externalAuthorSchema>;
 
 /**
- * Imported preprint schema.
+ * Imported eprint schema.
  */
-export const importedPreprintSchema = z.object({
+export const importedEprintSchema = z.object({
   id: z.number().int(),
   source: importSourceSchema,
   externalId: z.string(),
@@ -77,7 +77,7 @@ export const importedPreprintSchema = z.object({
   claimedAt: z.string().datetime().optional(),
 });
 
-export type ImportedPreprint = z.infer<typeof importedPreprintSchema>;
+export type ImportedEprint = z.infer<typeof importedEprintSchema>;
 
 // ============================================================================
 // Request/Response Schemas
@@ -102,7 +102,7 @@ export type SearchImportsParams = z.infer<typeof searchImportsParamsSchema>;
  * Response for searching imports.
  */
 export const searchImportsResponseSchema = z.object({
-  preprints: z.array(importedPreprintSchema),
+  eprints: z.array(importedEprintSchema),
   cursor: z.string().optional(),
   hasMore: z.boolean(),
 });

@@ -36,8 +36,8 @@ import type { AtUri, BlobRef, CID, DID, NSID, Timestamp } from './atproto.js';
  *
  * @example
  * ```typescript
- * const valid = toAtUri('at://did:plc:abc123/pub.chive.preprint.submission/xyz789');
- * console.log(valid); // 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789'
+ * const valid = toAtUri('at://did:plc:abc123/pub.chive.eprint.submission/xyz789');
+ * console.log(valid); // 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789'
  *
  * const invalid = toAtUri('https://example.com');
  * console.log(invalid); // null
@@ -110,7 +110,7 @@ export function toDID(did: string): DID | null {
  * - No leading or trailing periods
  *
  * Common Chive NSIDs:
- * - `pub.chive.preprint.submission`
+ * - `pub.chive.eprint.submission`
  * - `pub.chive.review.comment`
  * - `pub.chive.graph.fieldProposal`
  *
@@ -119,8 +119,8 @@ export function toDID(did: string): DID | null {
  *
  * @example
  * ```typescript
- * const valid = toNSID('pub.chive.preprint.submission');
- * console.log(valid); // 'pub.chive.preprint.submission'
+ * const valid = toNSID('pub.chive.eprint.submission');
+ * console.log(valid); // 'pub.chive.eprint.submission'
  *
  * const invalid = toNSID('InvalidNSID');
  * console.log(invalid); // null

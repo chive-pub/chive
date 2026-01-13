@@ -49,7 +49,7 @@ type ReconcilableEntityType =
   | 'field'
   | 'facet'
   | 'contribution-type'
-  | 'preprint';
+  | 'eprint';
 
 type ReconciliationMethod = 'automatic' | 'expert-validation' | 'community-vote';
 type ReconciliationProposalType = 'create' | 'update' | 'remove';
@@ -145,7 +145,7 @@ const RECONCILIATION_SYSTEMS: readonly {
   {
     id: 'arxiv',
     label: 'arXiv',
-    description: 'Preprint repository',
+    description: 'Eprint repository',
     urlTemplate: 'https://arxiv.org/abs/{id}',
   },
   {
@@ -222,7 +222,7 @@ const RECONCILABLE_ENTITY_TYPES: readonly { id: ReconcilableEntityType; label: s
   { id: 'field', label: 'Knowledge Graph Field' },
   { id: 'facet', label: 'Facet Value' },
   { id: 'contribution-type', label: 'Contribution Type' },
-  { id: 'preprint', label: 'Preprint' },
+  { id: 'eprint', label: 'Eprint' },
 ] as const;
 
 // =============================================================================
@@ -591,7 +591,7 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
       expect(entityTypeIds).toContain('field');
       expect(entityTypeIds).toContain('facet');
       expect(entityTypeIds).toContain('contribution-type');
-      expect(entityTypeIds).toContain('preprint');
+      expect(entityTypeIds).toContain('eprint');
     });
   });
 

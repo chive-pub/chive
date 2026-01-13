@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 
-import type { RecordMetadata } from '@/services/preprint/preprint-service.js';
+import type { RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { ReviewService } from '@/services/review/review-service.js';
 import type { ReviewComment, Endorsement } from '@/services/review/review-service.js';
 import type { AtUri, CID } from '@/types/atproto.js';
@@ -49,9 +49,9 @@ const createMockPool = (): MockPool => ({
 
 const createMockStorage = (): IStorageBackend =>
   ({
-    storePreprint: vi.fn(),
-    getPreprint: vi.fn(),
-    getPreprintsByAuthor: vi.fn(),
+    storeEprint: vi.fn(),
+    getEprint: vi.fn(),
+    getEprintsByAuthor: vi.fn(),
     trackPDSSource: vi.fn(),
     getRecordsNotSyncedSince: vi.fn(),
     isStale: vi.fn(),
@@ -60,7 +60,7 @@ const createMockStorage = (): IStorageBackend =>
 const createMockReviewComment = (overrides?: Partial<ReviewComment>): ReviewComment => ({
   $type: 'pub.chive.review.comment',
   subject: {
-    uri: 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri,
+    uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
     cid: 'bafyreicid123',
   },
   text: 'The treatment of clause-embedding predicates here is thorough, but consider how this analysis extends to control predicates like "try" and "persuade".',
@@ -71,7 +71,7 @@ const createMockReviewComment = (overrides?: Partial<ReviewComment>): ReviewComm
 const createMockEndorsement = (overrides?: Partial<Endorsement>): Endorsement => ({
   $type: 'pub.chive.review.endorsement',
   subject: {
-    uri: 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri,
+    uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
     cid: 'bafyreicid123',
   },
   endorsementType: 'methods',
@@ -230,18 +230,18 @@ describe('ReviewService', () => {
   });
 
   describe('getReviews', () => {
-    it('returns empty array for preprint without reviews', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+    it('returns empty array for eprint without reviews', async () => {
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockResolvedValueOnce({ rows: [] });
 
-      const threads = await service.getReviews(preprintUri);
+      const threads = await service.getReviews(eprintUri);
 
       expect(threads).toEqual([]);
     });
 
     it('builds threaded discussions from flat list', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockResolvedValueOnce({
         rows: [
@@ -269,7 +269,7 @@ describe('ReviewService', () => {
         ],
       });
 
-      const threads = await service.getReviews(preprintUri);
+      const threads = await service.getReviews(eprintUri);
 
       expect(threads).toHaveLength(1);
       expect(threads[0]?.root.text).toBe('Root comment');
@@ -278,7 +278,7 @@ describe('ReviewService', () => {
     });
 
     it('handles deeply nested threads', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockResolvedValueOnce({
         rows: [
@@ -306,7 +306,7 @@ describe('ReviewService', () => {
         ],
       });
 
-      const threads = await service.getReviews(preprintUri);
+      const threads = await service.getReviews(eprintUri);
 
       expect(threads).toHaveLength(1);
       expect(threads[0]?.replies).toHaveLength(1);
@@ -315,7 +315,7 @@ describe('ReviewService', () => {
     });
 
     it('handles multiple root comments', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockResolvedValueOnce({
         rows: [
@@ -336,17 +336,17 @@ describe('ReviewService', () => {
         ],
       });
 
-      const threads = await service.getReviews(preprintUri);
+      const threads = await service.getReviews(eprintUri);
 
       expect(threads).toHaveLength(2);
     });
 
     it('returns empty array on database error', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockRejectedValueOnce(new Error('Query failed'));
 
-      const threads = await service.getReviews(preprintUri);
+      const threads = await service.getReviews(eprintUri);
 
       expect(threads).toEqual([]);
       expect(logger.errorMock).toHaveBeenCalled();
@@ -354,25 +354,25 @@ describe('ReviewService', () => {
   });
 
   describe('getEndorsements', () => {
-    it('returns empty array for preprint without endorsements', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+    it('returns empty array for eprint without endorsements', async () => {
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockResolvedValueOnce({ rows: [] });
 
-      const endorsements = await service.getEndorsements(preprintUri);
+      const endorsements = await service.getEndorsements(eprintUri);
 
       expect(endorsements).toEqual([]);
     });
 
-    it('returns endorsement views for preprint', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+    it('returns endorsement views for eprint', async () => {
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockResolvedValueOnce({
         rows: [
           {
             uri: 'at://did:plc:e1/e/1',
             endorser_did: 'did:plc:e1',
-            preprint_uri: preprintUri,
+            eprint_uri: eprintUri,
             endorsement_type: 'methods',
             comment: 'Good methods',
             created_at: new Date('2024-01-01'),
@@ -380,7 +380,7 @@ describe('ReviewService', () => {
           {
             uri: 'at://did:plc:e2/e/2',
             endorser_did: 'did:plc:e2',
-            preprint_uri: preprintUri,
+            eprint_uri: eprintUri,
             endorsement_type: 'results',
             comment: null,
             created_at: new Date('2024-01-02'),
@@ -388,7 +388,7 @@ describe('ReviewService', () => {
         ],
       });
 
-      const endorsements = await service.getEndorsements(preprintUri);
+      const endorsements = await service.getEndorsements(eprintUri);
 
       expect(endorsements).toHaveLength(2);
       expect(endorsements[0]?.endorsementType).toBe('methods');
@@ -398,11 +398,11 @@ describe('ReviewService', () => {
     });
 
     it('returns empty array on database error', async () => {
-      const preprintUri = 'at://did:plc:author/pub.chive.preprint.submission/abc' as AtUri;
+      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri;
 
       pool.query.mockRejectedValueOnce(new Error('Query failed'));
 
-      const endorsements = await service.getEndorsements(preprintUri);
+      const endorsements = await service.getEndorsements(eprintUri);
 
       expect(endorsements).toEqual([]);
       expect(logger.errorMock).toHaveBeenCalled();

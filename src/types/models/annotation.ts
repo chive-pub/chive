@@ -202,7 +202,7 @@ export interface TextPositionSelector {
  * @public
  */
 export interface TextSpanTarget {
-  /** AT-URI of the preprint being annotated */
+  /** AT-URI of the eprint being annotated */
   readonly source: AtUri;
   /** Primary selector using text quote matching */
   readonly selector: TextQuoteSelector;
@@ -280,15 +280,15 @@ export interface FacetRefBodyItem {
 }
 
 /**
- * Reference to another preprint.
+ * Reference to another eprint.
  *
  * @public
  */
-export interface PreprintRefBodyItem {
-  readonly type: 'preprintRef';
-  /** AT-URI of the referenced preprint */
+export interface EprintRefBodyItem {
+  readonly type: 'eprintRef';
+  /** AT-URI of the referenced eprint */
   readonly uri: AtUri;
-  /** Preprint title */
+  /** Eprint title */
   readonly title: string;
 }
 
@@ -328,7 +328,7 @@ export interface AuthorRefBodyItem {
  * - `@authority:` for authority records
  * - `@field:` for knowledge graph fields
  * - `@facet:` for PMEST/FAST facets
- * - `@preprint:` for other preprints
+ * - `@eprint:` for other eprints
  * - `^` for other annotations
  *
  * @public
@@ -339,7 +339,7 @@ export type AnnotationBodyItem =
   | AuthorityRefBodyItem
   | FieldRefBodyItem
   | FacetRefBodyItem
-  | PreprintRefBodyItem
+  | EprintRefBodyItem
   | AnnotationRefBodyItem
   | AuthorRefBodyItem;
 
@@ -427,15 +427,15 @@ export interface AuthorEntityLink {
 }
 
 /**
- * Preprint entity link.
+ * Eprint entity link.
  *
  * @public
  */
-export interface PreprintEntityLink {
-  readonly type: 'preprint';
-  /** Preprint AT-URI */
+export interface EprintEntityLink {
+  readonly type: 'eprint';
+  /** Eprint AT-URI */
   readonly uri: AtUri;
-  /** Preprint title */
+  /** Eprint title */
   readonly title: string;
 }
 
@@ -454,7 +454,7 @@ export type EntityLinkType =
   | AuthorityEntityLink
   | FieldEntityLink
   | AuthorEntityLink
-  | PreprintEntityLink;
+  | EprintEntityLink;
 
 /**
  * A span-to-entity link associating selected text with a knowledge graph entity.
@@ -529,8 +529,8 @@ export interface Annotation {
   /** Content hash (CID) for verification */
   readonly cid: CID;
 
-  /** AT-URI of the annotated preprint */
-  readonly preprintUri: AtUri;
+  /** AT-URI of the annotated eprint */
+  readonly eprintUri: AtUri;
 
   /** Target text span (undefined for general reviews) */
   readonly target?: TextSpanTarget;

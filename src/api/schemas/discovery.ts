@@ -4,7 +4,7 @@
  * @remarks
  * Zod schemas for discovery-related XRPC endpoints.
  * Discovery provides personalized recommendations, related papers,
- * and citation network data for Chive preprints.
+ * and citation network data for Chive eprints.
  *
  * @packageDocumentation
  * @public
@@ -35,9 +35,9 @@ export const recommendationExplanationSchema = z.object({
 export type RecommendationExplanation = z.infer<typeof recommendationExplanationSchema>;
 
 /**
- * Recommended preprint schema.
+ * Recommended eprint schema.
  */
-export const recommendedPreprintSchema = z.object({
+export const recommendedEprintSchema = z.object({
   uri: z.string(),
   title: z.string(),
   abstract: z.string().optional(),
@@ -48,12 +48,12 @@ export const recommendedPreprintSchema = z.object({
   explanation: recommendationExplanationSchema,
 });
 
-export type RecommendedPreprint = z.infer<typeof recommendedPreprintSchema>;
+export type RecommendedEprint = z.infer<typeof recommendedEprintSchema>;
 
 /**
- * Related preprint schema with relationship type.
+ * Related eprint schema with relationship type.
  */
-export const relatedPreprintSchema = z.object({
+export const relatedEprintSchema = z.object({
   uri: z.string(),
   title: z.string(),
   abstract: z.string().optional(),
@@ -72,7 +72,7 @@ export const relatedPreprintSchema = z.object({
   explanation: z.string(),
 });
 
-export type RelatedPreprint = z.infer<typeof relatedPreprintSchema>;
+export type RelatedEprint = z.infer<typeof relatedEprintSchema>;
 
 /**
  * Citation relationship schema.
@@ -146,7 +146,7 @@ export type GetRecommendationsParams = z.infer<typeof getRecommendationsParamsSc
  * Response for getRecommendations.
  */
 export const getRecommendationsResponseSchema = z.object({
-  recommendations: z.array(recommendedPreprintSchema),
+  recommendations: z.array(recommendedEprintSchema),
   cursor: z.string().optional(),
   hasMore: z.boolean(),
 });
@@ -161,7 +161,7 @@ export type GetRecommendationsResponse = z.infer<typeof getRecommendationsRespon
  * Parameters for getSimilar.
  */
 export const getSimilarParamsSchema = z.object({
-  uri: z.string().describe('AT URI of the preprint'),
+  uri: z.string().describe('AT URI of the eprint'),
   limit: z.number().int().min(1).max(20).default(5).describe('Maximum number of similar papers'),
   includeTypes: z
     .array(z.enum(['semantic', 'citation', 'topic', 'author']))
@@ -175,11 +175,11 @@ export type GetSimilarParams = z.infer<typeof getSimilarParamsSchema>;
  * Response for getSimilar.
  */
 export const getSimilarResponseSchema = z.object({
-  preprint: z.object({
+  eprint: z.object({
     uri: z.string(),
     title: z.string(),
   }),
-  related: z.array(relatedPreprintSchema),
+  related: z.array(relatedEprintSchema),
 });
 
 export type GetSimilarResponse = z.infer<typeof getSimilarResponseSchema>;
@@ -192,7 +192,7 @@ export type GetSimilarResponse = z.infer<typeof getSimilarResponseSchema>;
  * Parameters for getCitations.
  */
 export const getCitationsParamsSchema = z.object({
-  uri: z.string().describe('AT URI of the preprint'),
+  uri: z.string().describe('AT URI of the eprint'),
   direction: z.enum(['citing', 'cited-by', 'both']).default('both').describe('Citation direction'),
   limit: z.number().int().min(1).max(100).default(20).describe('Maximum number of citations'),
   cursor: z.string().optional().describe('Pagination cursor'),
@@ -205,7 +205,7 @@ export type GetCitationsParams = z.infer<typeof getCitationsParamsSchema>;
  * Response for getCitations.
  */
 export const getCitationsResponseSchema = z.object({
-  preprint: z.object({
+  eprint: z.object({
     uri: z.string(),
     title: z.string(),
   }),
@@ -229,7 +229,7 @@ export type GetCitationsResponse = z.infer<typeof getCitationsResponseSchema>;
  * Parameters for getEnrichment.
  */
 export const getEnrichmentParamsSchema = z.object({
-  uri: z.string().describe('AT URI of the preprint'),
+  uri: z.string().describe('AT URI of the eprint'),
 });
 
 export type GetEnrichmentParams = z.infer<typeof getEnrichmentParamsSchema>;
@@ -252,7 +252,7 @@ export type GetEnrichmentResponse = z.infer<typeof getEnrichmentResponseSchema>;
  * Parameters for recordInteraction.
  */
 export const recordInteractionParamsSchema = z.object({
-  preprintUri: z.string().describe('AT URI of the preprint'),
+  eprintUri: z.string().describe('AT URI of the eprint'),
   type: z.enum(['view', 'click', 'endorse', 'dismiss', 'claim']).describe('Interaction type'),
   recommendationId: z.string().optional().describe('ID of recommendation that led here'),
 });

@@ -38,7 +38,7 @@ export type Role =
  * @public
  */
 export type ResourceType =
-  | 'preprint'
+  | 'eprint'
   | 'review'
   | 'endorsement'
   | 'field_node'
@@ -70,7 +70,7 @@ export type Action =
  * @remarks
  * Format: `{resource}:{action}` or `{resource}:*` for all actions.
  *
- * @example "preprint:read", "review:create", "authority:approve"
+ * @example "eprint:read", "review:create", "authority:approve"
  *
  * @public
  */
@@ -264,8 +264,8 @@ export interface RoleAssignment {
  *   subject: { did, roles: ['author'] },
  *   action: 'update',
  *   resource: {
- *     type: 'preprint',
- *     uri: preprintUri,
+ *     type: 'eprint',
+ *     uri: eprintUri,
  *     ownerDid: did,
  *   },
  * });

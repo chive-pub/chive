@@ -6,9 +6,9 @@ Chive uses a community-curated knowledge graph to classify and connect scholarly
 
 The knowledge graph serves three purposes:
 
-1. **Discovery**: Find related preprints through field classifications
+1. **Discovery**: Find related eprints through field classifications
 2. **Context**: Understand how a work fits into broader research areas
-3. **Navigation**: Browse preprints by field, subfield, or topic
+3. **Navigation**: Browse eprints by field, subfield, or topic
 
 ```
                     ┌──────────────────┐
@@ -73,10 +73,10 @@ Beyond hierarchical fields, Chive uses PMEST (Personality, Matter, Energy, Space
 | **Space**       | Geographic scope      | "Arctic regions"    |
 | **Time**        | Temporal scope        | "Holocene"          |
 
-A single preprint can be classified across multiple facets:
+A single eprint can be classified across multiple facets:
 
 ```
-Preprint: "Climate-Driven Carbon Nanotube Degradation in Arctic Soils"
+Eprint: "Climate-Driven Carbon Nanotube Degradation in Arctic Soils"
 
 Facets:
   Personality: Environmental Chemistry, Materials Science
@@ -132,14 +132,14 @@ Authority records link to external controlled vocabularies:
 
 ### Reconciliation
 
-When users tag preprints, Chive reconciles tags against authority records:
+When users tag eprints, Chive reconciles tags against authority records:
 
 ```
 User enters: "quantum computing"
          ↓
 Chive matches: Authority record "Quantum Computing" (Q339)
          ↓
-Preprint linked to canonical concept
+Eprint linked to canonical concept
 ```
 
 This prevents fragmentation ("quantum computing" vs "Quantum Computation" vs "QC" all map to the same concept).
@@ -169,7 +169,7 @@ Not all votes carry equal weight. Expertise in the relevant field increases vote
 | Tier               | Vote weight | Criteria                  |
 | ------------------ | ----------- | ------------------------- |
 | Community member   | 1.0x        | Any authenticated user    |
-| Active contributor | 1.5x        | 10+ preprints or reviews  |
+| Active contributor | 1.5x        | 10+ eprints or reviews    |
 | Domain expert      | 2.5x        | Publications in the field |
 | Trusted editor     | 3.5x        | Appointed by governance   |
 | Authority editor   | 4.5x        | Library science expertise |
@@ -200,9 +200,9 @@ Chive distinguishes between user-generated tags and authority-controlled terms:
 | No voting required    | Proposal + voting     |
 | May be reconciled     | Canonical concepts    |
 
-Users can tag preprints freely. Popular tags may be promoted to authority terms through a two-stage process:
+Users can tag eprints freely. Popular tags may be promoted to authority terms through a two-stage process:
 
-1. **Automatic nomination**: Tag used on 10+ preprints by 3+ users
+1. **Automatic nomination**: Tag used on 10+ eprints by 3+ users
 2. **Community vote**: Standard proposal process
 
 ## Graph algorithms
@@ -221,8 +221,8 @@ Find papers that:
 ### Semantic similarity
 
 ```
-Given a preprint about "quantum error correction":
-  - Find semantically similar preprints
+Given a eprint about "quantum error correction":
+  - Find semantically similar eprints
   - Suggest related fields to explore
   - Identify key authors in adjacent areas
 ```
@@ -293,10 +293,10 @@ SELECT ?item ?itemLabel WHERE {
 | `pub.chive.graph.searchAuthorities` | Search authority records     |
 | `pub.chive.graph.getAuthority`      | Get authority record details |
 | `pub.chive.graph.browseFaceted`     | Faceted search               |
-| `pub.chive.graph.getFieldPreprints` | Preprints in a field         |
+| `pub.chive.graph.getFieldEprints`   | Eprints in a field           |
 
 ## Next steps
 
 - [Data sovereignty](./data-sovereignty.md): How your data stays yours
-- [Peer review](/user-guide/peer-review): Review and endorse preprints
+- [Peer review](/user-guide/peer-review): Review and endorse eprints
 - [Governance](/governance/overview): How decisions are made

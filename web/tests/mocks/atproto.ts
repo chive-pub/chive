@@ -147,7 +147,7 @@ export function createMockCreateRecordResult(
   overrides: Partial<MockCreateRecordResult> = {}
 ): MockCreateRecordResult {
   return {
-    uri: 'at://did:plc:test123/pub.chive.preprint.submission/abc123',
+    uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafyreiabc123',
     ...overrides,
   };

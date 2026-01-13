@@ -10,10 +10,10 @@
 
 export { ForYouFeed, ForYouFeedSkeleton, type ForYouFeedProps } from './for-you-feed';
 export {
-  FeedPreprintCard,
-  FeedPreprintCardSkeleton,
-  type FeedPreprintCardProps,
-} from './feed-preprint-card';
+  FeedEprintCard,
+  FeedEprintCardSkeleton,
+  type FeedEprintCardProps,
+} from './feed-eprint-card';
 export { FeedEmptyState, type FeedEmptyStateProps } from './feed-empty-state';
 export {
   RecommendationBadge,

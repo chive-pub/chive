@@ -67,7 +67,7 @@ export interface IMetrics {
    *
    * @example
    * ```typescript
-   * metrics.incrementCounter('http_requests_total', { method: 'GET', endpoint: '/api/preprints' });
+   * metrics.incrementCounter('http_requests_total', { method: 'GET', endpoint: '/api/eprints' });
    * ```
    *
    * @public
@@ -83,7 +83,7 @@ export interface IMetrics {
    *
    * @example
    * ```typescript
-   * metrics.setGauge('indexing_queue_size', queueSize, { queue: 'preprints' });
+   * metrics.setGauge('indexing_queue_size', queueSize, { queue: 'eprints' });
    * ```
    *
    * @public
@@ -104,7 +104,7 @@ export interface IMetrics {
    * ```typescript
    * metrics.observeHistogram('http_request_duration_seconds', duration, {
    *   method: 'GET',
-   *   endpoint: '/api/preprints'
+   *   endpoint: '/api/eprints'
    * });
    * ```
    *
@@ -125,9 +125,9 @@ export interface IMetrics {
    *
    * @example
    * ```typescript
-   * const endTimer = metrics.startTimer('operation_duration_seconds', { operation: 'indexPreprint' });
+   * const endTimer = metrics.startTimer('operation_duration_seconds', { operation: 'indexEprint' });
    * try {
-   *   await indexPreprint(preprint);
+   *   await indexEprint(eprint);
    * } finally {
    *   endTimer(); // Records duration in histogram
    * }

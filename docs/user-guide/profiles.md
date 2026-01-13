@@ -24,7 +24,7 @@ Link external identifiers to verify your identity:
 
 ### Activity Summary
 
-- Preprints authored
+- Eprints authored
 - Reviews written
 - Endorsements given
 - Fields of expertise
@@ -58,7 +58,7 @@ Profiles are public by default. The following information is always visible:
 
 - Display name
 - Bio
-- Preprints authored
+- Eprints authored
 - Reviews and endorsements
 
 The following can be hidden in settings:
@@ -67,12 +67,12 @@ The following can be hidden in settings:
 - Location
 - Activity statistics
 
-## Claiming Preprints
+## Claiming Eprints
 
-If preprints were imported from external sources (e.g., arXiv) before you joined Chive, you can claim them:
+If eprints were imported from external sources (e.g., arXiv) before you joined Chive, you can claim them:
 
 1. Go to Dashboard > Claims
-2. Find your preprint
+2. Find your eprint
 3. Provide evidence of authorship
 4. Submit claim
 
@@ -82,7 +82,7 @@ Claims are reviewed manually and typically processed within 48 hours.
 
 Your dashboard shows:
 
-- Views on your preprints
+- Views on your eprints
 - Citation counts
 - Download statistics
 - Engagement metrics
@@ -97,4 +97,4 @@ You can delete your Chive profile at any time:
 2. Click "Delete Account"
 3. Confirm deletion
 
-Deletion removes your profile from Chive but does not affect data in your PDS. Your preprints remain accessible via their AT URIs.
+Deletion removes your profile from Chive but does not affect data in your PDS. Your eprints remain accessible via their AT URIs.

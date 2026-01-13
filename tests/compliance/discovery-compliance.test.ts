@@ -28,7 +28,7 @@ import type { IRankingService } from '@/types/interfaces/ranking.interface.js';
 import type { ISearchEngine } from '@/types/interfaces/search.interface.js';
 
 // Test constants
-const TEST_URI = 'at://did:plc:test123/pub.chive.preprint.submission/abc' as AtUri;
+const TEST_URI = 'at://did:plc:test123/pub.chive.eprint.submission/abc' as AtUri;
 const TEST_USER = 'did:plc:testuser456' as DID;
 
 /**
@@ -261,14 +261,14 @@ describe('Discovery ATProto Compliance', () => {
       expect(mockOpenAlexPlugin).not.toHaveProperty('putRecord');
     });
 
-    it('enrichPreprint only fetches data, never writes to external APIs', async () => {
+    it('enrichEprint only fetches data, never writes to external APIs', async () => {
       const input: EnrichmentInput = {
         uri: TEST_URI,
         doi: '10.1234/test',
         title: 'Test Paper',
       };
 
-      await discoveryService.enrichPreprint(input);
+      await discoveryService.enrichEprint(input);
 
       // Verify only GET methods were called
       expect(mockS2Plugin.getPaperByDoi).toHaveBeenCalled();
@@ -291,7 +291,7 @@ describe('Discovery ATProto Compliance', () => {
   describe('CRITICAL: Citation Graph is Rebuildable', () => {
     it('citation graph stores indexes, not source of truth data', async () => {
       // Citation graph is an index of relationships found in external APIs
-      // If deleted, it can be rebuilt by re-enriching preprints
+      // If deleted, it can be rebuilt by re-enriching eprints
 
       const input: EnrichmentInput = {
         uri: TEST_URI,
@@ -312,7 +312,7 @@ describe('Discovery ATProto Compliance', () => {
         next: undefined,
       });
 
-      await discoveryService.enrichPreprint(input);
+      await discoveryService.enrichEprint(input);
 
       // Citation graph upserts (not creates) - idempotent operation
       // If run twice, same data is produced
@@ -371,7 +371,7 @@ describe('Discovery ATProto Compliance', () => {
     });
 
     it('related papers are computed on-demand from citation graph', async () => {
-      // Mock database to return a preprint (required for findRelatedPreprints to proceed)
+      // Mock database to return a eprint (required for findRelatedEprints to proceed)
       vi.mocked(mockDb.query).mockResolvedValueOnce({
         rows: [
           {
@@ -388,7 +388,7 @@ describe('Discovery ATProto Compliance', () => {
         ],
       } as never);
 
-      await discoveryService.findRelatedPreprints(TEST_URI);
+      await discoveryService.findRelatedEprints(TEST_URI);
 
       // Related papers computed from:
       // 1. Co-citation analysis (Neo4j)
@@ -408,7 +408,7 @@ describe('Discovery ATProto Compliance', () => {
         title: 'Test Paper',
       };
 
-      await discoveryService.enrichPreprint(input);
+      await discoveryService.enrichEprint(input);
 
       // Enrichment data stored in Chive's database is:
       // 1. Derived from external APIs
@@ -431,7 +431,7 @@ describe('Discovery ATProto Compliance', () => {
     it('user interactions stored in AppView database, not PDS', async () => {
       await discoveryService.recordInteraction(TEST_USER, {
         type: 'view',
-        preprintUri: TEST_URI,
+        eprintUri: TEST_URI,
         timestamp: new Date(),
       });
 
@@ -468,7 +468,7 @@ describe('Discovery ATProto Compliance', () => {
     it('dismissed recommendations affect only Chive, not PDS', async () => {
       await discoveryService.recordInteraction(TEST_USER, {
         type: 'dismiss',
-        preprintUri: TEST_URI,
+        eprintUri: TEST_URI,
         timestamp: new Date(),
       });
 
@@ -512,7 +512,7 @@ describe('Discovery ATProto Compliance', () => {
     });
 
     it('citation graph upserts to Neo4j, not to any PDS', async () => {
-      await discoveryService.enrichPreprint({
+      await discoveryService.enrichEprint({
         uri: TEST_URI,
         doi: '10.1234/test',
         title: 'Test Paper',
@@ -545,7 +545,7 @@ describe('Discovery ATProto Compliance', () => {
       );
 
       // Should not throw
-      const result = await serviceWithoutPlugins.enrichPreprint({
+      const result = await serviceWithoutPlugins.enrichEprint({
         uri: TEST_URI,
         title: 'Test Paper',
       });
@@ -561,7 +561,7 @@ describe('Discovery ATProto Compliance', () => {
       mockOpenAlexPlugin.getWorkByDoi.mockRejectedValue(new Error('API error'));
 
       // Should not throw, just return success without external data
-      const result = await discoveryService.enrichPreprint({
+      const result = await discoveryService.enrichEprint({
         uri: TEST_URI,
         doi: '10.1234/test',
         title: 'Test Paper',

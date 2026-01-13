@@ -67,7 +67,7 @@ describe('ScopedPluginEventBus', () => {
   beforeEach(() => {
     mockLogger = createMockLogger();
     mainEventBus = new PluginEventBus(mockLogger);
-    manifest = createTestManifest(['preprint.indexed', 'preprint.updated', 'system.*']);
+    manifest = createTestManifest(['eprint.indexed', 'eprint.updated', 'system.*']);
     scopedEventBus = new ScopedPluginEventBus(mainEventBus, manifest);
   });
 
@@ -85,9 +85,9 @@ describe('ScopedPluginEventBus', () => {
   describe('on', () => {
     it('should allow subscribing to permitted hooks', () => {
       const handler = vi.fn();
-      scopedEventBus.on('preprint.indexed', handler);
+      scopedEventBus.on('eprint.indexed', handler);
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(1);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(1);
     });
 
     it('should throw PluginPermissionError for non-permitted hooks', () => {
@@ -107,13 +107,13 @@ describe('ScopedPluginEventBus', () => {
 
     it('should track subscriptions for cleanup', () => {
       const handler = vi.fn();
-      scopedEventBus.on('preprint.indexed', handler);
+      scopedEventBus.on('eprint.indexed', handler);
 
       expect(scopedEventBus.getHandlerCount()).toBe(1);
 
       scopedEventBus.cleanup();
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(0);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(0);
       expect(scopedEventBus.getHandlerCount()).toBe(0);
     });
   });
@@ -121,9 +121,9 @@ describe('ScopedPluginEventBus', () => {
   describe('emit', () => {
     it('should emit events through main event bus', async () => {
       const handler = vi.fn();
-      mainEventBus.on('preprint.indexed', handler);
+      mainEventBus.on('eprint.indexed', handler);
 
-      scopedEventBus.emit('preprint.indexed', { uri: 'test-uri' });
+      scopedEventBus.emit('eprint.indexed', { uri: 'test-uri' });
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -142,9 +142,9 @@ describe('ScopedPluginEventBus', () => {
 
     it('should allow emitting permitted events', async () => {
       const handler = vi.fn();
-      mainEventBus.on('preprint.indexed', handler);
+      mainEventBus.on('eprint.indexed', handler);
 
-      scopedEventBus.emit('preprint.indexed', { data: 'test' });
+      scopedEventBus.emit('eprint.indexed', { data: 'test' });
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -155,21 +155,21 @@ describe('ScopedPluginEventBus', () => {
   describe('off', () => {
     it('should unsubscribe handler from main event bus', () => {
       const handler = vi.fn();
-      scopedEventBus.on('preprint.indexed', handler);
+      scopedEventBus.on('eprint.indexed', handler);
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(1);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(1);
 
-      scopedEventBus.off('preprint.indexed', handler);
+      scopedEventBus.off('eprint.indexed', handler);
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(0);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(0);
     });
 
     it('should remove from tracked subscriptions', () => {
       const handler = vi.fn();
-      scopedEventBus.on('preprint.indexed', handler);
+      scopedEventBus.on('eprint.indexed', handler);
       expect(scopedEventBus.getHandlerCount()).toBe(1);
 
-      scopedEventBus.off('preprint.indexed', handler);
+      scopedEventBus.off('eprint.indexed', handler);
       expect(scopedEventBus.getHandlerCount()).toBe(0);
 
       // Cleanup should not attempt to remove already removed handler
@@ -179,24 +179,24 @@ describe('ScopedPluginEventBus', () => {
 
   describe('cleanup', () => {
     it('should remove all subscriptions for this plugin', () => {
-      scopedEventBus.on('preprint.indexed', vi.fn());
-      scopedEventBus.on('preprint.updated', vi.fn());
+      scopedEventBus.on('eprint.indexed', vi.fn());
+      scopedEventBus.on('eprint.updated', vi.fn());
       scopedEventBus.on('system.startup', vi.fn());
 
       scopedEventBus.cleanup();
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(0);
-      expect(mainEventBus.listenerCount('preprint.updated')).toBe(0);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(0);
+      expect(mainEventBus.listenerCount('eprint.updated')).toBe(0);
       expect(mainEventBus.listenerCount('system.startup')).toBe(0);
     });
 
     it('should be idempotent', () => {
-      scopedEventBus.on('preprint.indexed', vi.fn());
+      scopedEventBus.on('eprint.indexed', vi.fn());
 
       scopedEventBus.cleanup();
       scopedEventBus.cleanup();
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(0);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(0);
     });
   });
 
@@ -204,10 +204,10 @@ describe('ScopedPluginEventBus', () => {
     it('should return count of registered handlers', () => {
       expect(scopedEventBus.getHandlerCount()).toBe(0);
 
-      scopedEventBus.on('preprint.indexed', vi.fn());
+      scopedEventBus.on('eprint.indexed', vi.fn());
       expect(scopedEventBus.getHandlerCount()).toBe(1);
 
-      scopedEventBus.on('preprint.updated', vi.fn());
+      scopedEventBus.on('eprint.updated', vi.fn());
       expect(scopedEventBus.getHandlerCount()).toBe(2);
     });
   });
@@ -216,15 +216,15 @@ describe('ScopedPluginEventBus', () => {
     it('should return allowed hooks', () => {
       const hooks = scopedEventBus.getAllowedHooks();
 
-      expect(hooks).toContain('preprint.indexed');
-      expect(hooks).toContain('preprint.updated');
+      expect(hooks).toContain('eprint.indexed');
+      expect(hooks).toContain('eprint.updated');
       expect(hooks).toContain('system.*');
     });
   });
 
   describe('isHookAllowed', () => {
     it('should return true for exact matches', () => {
-      expect(scopedEventBus.isHookAllowed('preprint.indexed')).toBe(true);
+      expect(scopedEventBus.isHookAllowed('eprint.indexed')).toBe(true);
     });
 
     it('should return true for wildcard matches', () => {
@@ -242,7 +242,7 @@ describe('ScopedPluginEventBus', () => {
       const handler = vi.fn();
 
       expect(() => {
-        scopedEventBus.on('preprint.indexed', handler);
+        scopedEventBus.on('eprint.indexed', handler);
       }).not.toThrow();
     });
 
@@ -276,15 +276,15 @@ describe('ScopedPluginEventBus', () => {
       const handler1 = vi.fn();
       const handler2 = vi.fn();
 
-      scopedEventBus.on('preprint.indexed', handler1);
+      scopedEventBus.on('eprint.indexed', handler1);
       scopedBus2.on('review.created', handler2);
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(1);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(1);
       expect(mainEventBus.listenerCount('review.created')).toBe(1);
 
       scopedEventBus.cleanup();
 
-      expect(mainEventBus.listenerCount('preprint.indexed')).toBe(0);
+      expect(mainEventBus.listenerCount('eprint.indexed')).toBe(0);
       expect(mainEventBus.listenerCount('review.created')).toBe(1);
 
       scopedBus2.cleanup();

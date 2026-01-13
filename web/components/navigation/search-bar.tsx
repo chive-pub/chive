@@ -50,12 +50,12 @@ export function SearchBar({ className }: SearchBarProps) {
   return (
     <form
       role="search"
-      aria-label="Search preprints"
+      aria-label="Search eprints"
       onSubmit={handleSubmit}
       className={cn('relative w-full max-w-sm', className)}
     >
       <label htmlFor="header-search" className="sr-only">
-        Search for preprints
+        Search for eprints
       </label>
       <Search
         className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
@@ -64,7 +64,7 @@ export function SearchBar({ className }: SearchBarProps) {
       <Input
         id="header-search"
         type="search"
-        placeholder="Search preprints..."
+        placeholder="Search eprints..."
         className="pl-8 pr-10"
         value={query}
         onChange={(e) => setQuery(e.target.value)}

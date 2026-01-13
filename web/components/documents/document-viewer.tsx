@@ -23,9 +23,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { AnnotatedPDFViewerSkeleton } from '@/components/preprints';
+import { AnnotatedPDFViewerSkeleton } from '@/components/eprints';
 
-// Note: PDF viewer is handled separately via AnnotatedPDFViewer from @/components/preprints
+// Note: PDF viewer is handled separately via AnnotatedPDFViewer from @/components/eprints
 // This component focuses on text-based format rendering
 
 // =============================================================================

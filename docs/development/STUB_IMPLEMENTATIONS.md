@@ -267,7 +267,7 @@ These handlers return HTTP 501 because write operations require user authenticat
 
 **Required Implementation**: Same pattern as endorsement handlers.
 
-**Lexicon**: `pub.chive.preprint.userTag`
+**Lexicon**: `pub.chive.eprint.userTag`
 
 ---
 
@@ -331,7 +331,7 @@ searchPapers(query: string): Promise<readonly LingBuzzPaper[]> {
  */
 export interface StoredReview {
   uri: AtUri;
-  preprintUri: AtUri;
+  eprintUri: AtUri;
   reviewerDid: DID;
   content: string;
   pdsUrl: string;
@@ -351,7 +351,7 @@ export interface StoredReview {
   readonly cid: CID;
 
   // References
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
   readonly parentUri?: AtUri; // For threaded replies
   readonly rootUri?: AtUri; // Thread root
 

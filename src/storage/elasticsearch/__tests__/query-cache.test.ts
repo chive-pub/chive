@@ -53,7 +53,7 @@ describe('QueryCache', () => {
     it('should store and retrieve search results', () => {
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -75,12 +75,12 @@ describe('QueryCache', () => {
       const query1: SearchQuery = { q: 'test1' };
       const query2: SearchQuery = { q: 'test2' };
       const results1 = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
       const results2 = {
-        hits: [{ uri: 'at://did:plc:def/pub.chive.preprint/456' as AtUri, score: 0.9 }],
+        hits: [{ uri: 'at://did:plc:def/pub.chive.eprint/456' as AtUri, score: 0.9 }],
         total: 1,
         took: 12,
       };
@@ -99,12 +99,12 @@ describe('QueryCache', () => {
         filters: { author: 'did:plc:abc' as DID },
       };
       const results1 = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
       const results2 = {
-        hits: [{ uri: 'at://did:plc:def/pub.chive.preprint/456' as AtUri, score: 0.9 }],
+        hits: [{ uri: 'at://did:plc:def/pub.chive.eprint/456' as AtUri, score: 0.9 }],
         total: 1,
         took: 12,
       };
@@ -121,7 +121,7 @@ describe('QueryCache', () => {
     it('should store and retrieve faceted search results', () => {
       const query: FacetedSearchQuery = { q: 'test', facets: ['matter', 'author'] };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
         facets: {
@@ -140,12 +140,12 @@ describe('QueryCache', () => {
       const simpleQuery: SearchQuery = { q: 'test' };
       const facetedQuery: FacetedSearchQuery = { q: 'test', facets: ['matter'] };
       const simpleResults = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
       const facetedResults = {
-        hits: [{ uri: 'at://did:plc:def/pub.chive.preprint/456' as AtUri, score: 0.9 }],
+        hits: [{ uri: 'at://did:plc:def/pub.chive.eprint/456' as AtUri, score: 0.9 }],
         total: 1,
         took: 12,
         facets: { matter: [{ value: 'CS', count: 5 }] },
@@ -163,7 +163,7 @@ describe('QueryCache', () => {
     it('should expire entries after TTL', () => {
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -179,7 +179,7 @@ describe('QueryCache', () => {
     it('should not expire entries before TTL', () => {
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -194,7 +194,7 @@ describe('QueryCache', () => {
       const noTtlCache = new QueryCache({ ttlMs: 0, cleanupIntervalMs: 0 });
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -211,7 +211,7 @@ describe('QueryCache', () => {
     it('should evict least recently used entry when cache is full', () => {
       const queries: SearchQuery[] = [];
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -233,7 +233,7 @@ describe('QueryCache', () => {
     it('should update LRU on cache hit', () => {
       const queries: SearchQuery[] = [];
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -264,7 +264,7 @@ describe('QueryCache', () => {
     it('should remove entry from cache', () => {
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -288,7 +288,7 @@ describe('QueryCache', () => {
       const query1: SearchQuery = { q: 'test1' };
       const query2: SearchQuery = { q: 'test2' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -308,7 +308,7 @@ describe('QueryCache', () => {
     it('should reset statistics', () => {
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -329,7 +329,7 @@ describe('QueryCache', () => {
     it('should track cache hits', () => {
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -354,7 +354,7 @@ describe('QueryCache', () => {
     it('should calculate hit rate', () => {
       const query: SearchQuery = { q: 'test' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -371,7 +371,7 @@ describe('QueryCache', () => {
       const query1: SearchQuery = { q: 'test1' };
       const query2: SearchQuery = { q: 'test2' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -385,7 +385,7 @@ describe('QueryCache', () => {
 
     it('should track evictions', () => {
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -426,7 +426,7 @@ describe('QueryCache', () => {
       const query1: SearchQuery = { q: 'test' };
       const query2: SearchQuery = { q: 'test', filters: undefined };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };
@@ -440,12 +440,12 @@ describe('QueryCache', () => {
       const query1: SearchQuery = { q: 'test', limit: 10, offset: 0 };
       const query2: SearchQuery = { q: 'test', limit: 10, offset: 10 };
       const results1 = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 20,
         took: 10,
       };
       const results2 = {
-        hits: [{ uri: 'at://did:plc:def/pub.chive.preprint/456' as AtUri, score: 0.9 }],
+        hits: [{ uri: 'at://did:plc:def/pub.chive.eprint/456' as AtUri, score: 0.9 }],
         total: 20,
         took: 12,
       };
@@ -460,7 +460,7 @@ describe('QueryCache', () => {
     it('should handle empty query string', () => {
       const query: SearchQuery = { q: '' };
       const results = {
-        hits: [{ uri: 'at://did:plc:abc/pub.chive.preprint/123' as AtUri, score: 1.0 }],
+        hits: [{ uri: 'at://did:plc:abc/pub.chive.eprint/123' as AtUri, score: 1.0 }],
         total: 1,
         took: 10,
       };

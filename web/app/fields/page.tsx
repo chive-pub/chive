@@ -28,7 +28,7 @@ export default function FieldsPage() {
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Fields</h1>
         <p className="mt-2 text-muted-foreground">
-          Explore preprints by academic field and subject area
+          Explore eprints by academic field and subject area
         </p>
       </header>
 

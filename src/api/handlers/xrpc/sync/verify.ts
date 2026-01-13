@@ -34,12 +34,12 @@ export async function verifySyncHandler(
   params: VerifySyncParams
 ): Promise<VerifySyncResponse> {
   const logger = c.get('logger');
-  const { pdsSync, preprint } = c.get('services');
+  const { pdsSync, eprint } = c.get('services');
 
   logger.debug('Verifying sync state', { uri: params.uri });
 
-  // Get the indexed preprint
-  const indexed = await preprint.getPreprint(params.uri as AtUri);
+  // Get the indexed eprint
+  const indexed = await eprint.getEprint(params.uri as AtUri);
 
   if (!indexed) {
     return {

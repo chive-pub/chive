@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * File upload step for preprint submission.
+ * File upload step for eprint submission.
  *
  * @remarks
  * Step 1 of the submission wizard. Handles:
@@ -20,7 +20,7 @@ import { FileText, FileCheck } from 'lucide-react';
 import { FileDropzone, type SelectedFile } from '@/components/forms';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { PreprintFormValues, DocumentFormatValue } from './submission-wizard';
+import type { EprintFormValues, DocumentFormatValue } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -31,7 +31,7 @@ import type { PreprintFormValues, DocumentFormatValue } from './submission-wizar
  */
 export interface StepFilesProps {
   /** React Hook Form instance */
-  form: UseFormReturn<PreprintFormValues>;
+  form: UseFormReturn<EprintFormValues>;
   /** Additional CSS classes */
   className?: string;
 }
@@ -172,7 +172,7 @@ export function StepFiles({ form, className }: StepFilesProps) {
             Primary Document
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload your preprint manuscript. Supports PDF, Word, HTML, Markdown, LaTeX, Jupyter
+            Upload your eprint manuscript. Supports PDF, Word, HTML, Markdown, LaTeX, Jupyter
             notebooks, and more. Maximum file size is 50MB.
           </p>
         </div>

@@ -152,7 +152,7 @@ describe('startClaimFromExternalHandler', () => {
           mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
           { source: 'arxiv', externalId: '2401.12345' }
         )
-      ).rejects.toThrow('Authentication required to claim preprints');
+      ).rejects.toThrow('Authentication required to claim eprints');
     });
 
     it('proceeds when user is authenticated', async () => {
@@ -187,7 +187,7 @@ describe('startClaimFromExternalHandler', () => {
 
     it('accepts valid custom plugin sources (lowercase alphanumeric)', () => {
       const validCustomSources = [
-        'mypreprintserver',
+        'myeprintserver',
         'arxiv2',
         'customsource123',
         'ab', // minimum 2 chars
@@ -376,7 +376,7 @@ describe('startClaimFromExternalHandler', () => {
       { source: 'semanticscholar', externalId: 'abc123def', description: 'Semantic Scholar' },
       { source: 'openalex', externalId: 'W1234567890', description: 'OpenAlex work' },
       { source: 'crossref', externalId: '10.1000/xyz123', description: 'Crossref DOI' },
-      { source: 'biorxiv', externalId: '2024.01.15.123456', description: 'bioRxiv preprint' },
+      { source: 'biorxiv', externalId: '2024.01.15.123456', description: 'bioRxiv eprint' },
       { source: 'zenodo', externalId: '12345', description: 'Zenodo record' },
     ];
 

@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides TanStack Query hooks for fetching, creating, and managing endorsements.
- * Endorsements are formal signals of support for preprints, categorized by
+ * Endorsements are formal signals of support for eprints, categorized by
  * contribution type. Endorsers select one or more contribution types from
  * 15 fine-grained categories derived from the CRediT taxonomy:
  *
@@ -18,8 +18,8 @@
  * ```tsx
  * import { useEndorsements, endorsementKeys } from '@/lib/hooks/use-endorsement';
  *
- * function PreprintEndorsements({ preprintUri }: { preprintUri: string }) {
- *   const { data, isLoading } = useEndorsements(preprintUri);
+ * function EprintEndorsements({ eprintUri }: { eprintUri: string }) {
+ *   const { data, isLoading } = useEndorsements(eprintUri);
  *
  *   if (isLoading) return <EndorsementPanelSkeleton />;
  *   return (
@@ -68,31 +68,30 @@ import type {
  * // Invalidate all endorsement queries
  * queryClient.invalidateQueries({ queryKey: endorsementKeys.all });
  *
- * // Invalidate endorsements for a specific preprint
- * queryClient.invalidateQueries({ queryKey: endorsementKeys.forPreprint(preprintUri) });
+ * // Invalidate endorsements for a specific eprint
+ * queryClient.invalidateQueries({ queryKey: endorsementKeys.forEprint(eprintUri) });
  *
  * // Check if user has endorsed
- * queryClient.getQueryData(endorsementKeys.userEndorsement(preprintUri, userDid));
+ * queryClient.getQueryData(endorsementKeys.userEndorsement(eprintUri, userDid));
  * ```
  */
 export const endorsementKeys = {
   /** Base key for all endorsement queries */
   all: ['endorsements'] as const,
 
-  /** Key for endorsements by preprint */
-  forPreprint: (preprintUri: string) => [...endorsementKeys.all, 'preprint', preprintUri] as const,
+  /** Key for endorsements by eprint */
+  forEprint: (eprintUri: string) => [...endorsementKeys.all, 'eprint', eprintUri] as const,
 
   /** Key for endorsements list with filters */
-  list: (preprintUri: string, params?: EndorsementListParams) =>
-    [...endorsementKeys.forPreprint(preprintUri), 'list', params] as const,
+  list: (eprintUri: string, params?: EndorsementListParams) =>
+    [...endorsementKeys.forEprint(eprintUri), 'list', params] as const,
 
   /** Key for endorsement summary (counts by type) */
-  summary: (preprintUri: string) =>
-    [...endorsementKeys.forPreprint(preprintUri), 'summary'] as const,
+  summary: (eprintUri: string) => [...endorsementKeys.forEprint(eprintUri), 'summary'] as const,
 
-  /** Key for user's endorsement on a preprint */
-  userEndorsement: (preprintUri: string, userDid: string) =>
-    [...endorsementKeys.forPreprint(preprintUri), 'user', userDid] as const,
+  /** Key for user's endorsement on a eprint */
+  userEndorsement: (eprintUri: string, userDid: string) =>
+    [...endorsementKeys.forEprint(eprintUri), 'user', userDid] as const,
 
   /** Key for endorsements by a specific user */
   byUser: (did: string) => [...endorsementKeys.all, 'user', did] as const,
@@ -126,8 +125,8 @@ export interface UseEndorsementsOptions {
  * Input for creating a new endorsement.
  */
 export interface CreateEndorsementInput {
-  /** AT-URI of the preprint to endorse */
-  preprintUri: string;
+  /** AT-URI of the eprint to endorse */
+  eprintUri: string;
   /** Set of contribution types being endorsed (minimum 1, no duplicates) */
   contributions: ContributionType[];
   /** Optional comment explaining the endorsement */
@@ -140,8 +139,8 @@ export interface CreateEndorsementInput {
 export interface UpdateEndorsementInput {
   /** AT-URI of the endorsement to update */
   uri: string;
-  /** AT-URI of the preprint (for cache invalidation) */
-  preprintUri: string;
+  /** AT-URI of the eprint (for cache invalidation) */
+  eprintUri: string;
   /** New set of contribution types */
   contributions: ContributionType[];
   /** Optional updated comment */
@@ -153,7 +152,7 @@ export interface UpdateEndorsementInput {
 // =============================================================================
 
 /**
- * Fetches endorsements for a preprint.
+ * Fetches endorsements for a eprint.
  *
  * @remarks
  * Returns endorsements with aggregated counts by contribution type.
@@ -161,7 +160,7 @@ export interface UpdateEndorsementInput {
  *
  * @example
  * ```tsx
- * const { data, isLoading, error } = useEndorsements(preprintUri);
+ * const { data, isLoading, error } = useEndorsements(eprintUri);
  *
  * if (isLoading) return <EndorsementPanelSkeleton />;
  *
@@ -173,7 +172,7 @@ export interface UpdateEndorsementInput {
  * );
  * ```
  *
- * @param preprintUri - AT-URI of the preprint
+ * @param eprintUri - AT-URI of the eprint
  * @param params - Query parameters (limit, cursor, contributionType)
  * @param options - Hook options
  * @returns Query result with endorsements data
@@ -181,17 +180,17 @@ export interface UpdateEndorsementInput {
  * @throws {Error} When the endorsements API request fails
  */
 export function useEndorsements(
-  preprintUri: string,
+  eprintUri: string,
   params: EndorsementListParams = {},
   options: UseEndorsementsOptions = {}
 ) {
   return useQuery({
-    queryKey: endorsementKeys.list(preprintUri, params),
+    queryKey: endorsementKeys.list(eprintUri, params),
     queryFn: async (): Promise<EndorsementsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.listForPreprint', {
+      const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.listForEprint', {
         params: {
           query: {
-            preprintUri,
+            eprintUri,
             limit: params.limit ?? 20,
             cursor: params.cursor,
             contributionType: params.contributionType,
@@ -202,12 +201,12 @@ export function useEndorsements(
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch endorsements',
           undefined,
-          '/xrpc/pub.chive.endorsement.listForPreprint'
+          '/xrpc/pub.chive.endorsement.listForEprint'
         );
       }
       return data!;
     },
-    enabled: !!preprintUri && (options.enabled ?? true),
+    enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000, // 2 minutes
     placeholderData: (previousData) => previousData,
   });
@@ -218,11 +217,11 @@ export function useEndorsements(
  *
  * @remarks
  * Lightweight query that returns just the counts without full endorsement data.
- * Useful for displaying badges/counts in preprint cards.
+ * Useful for displaying badges/counts in eprint cards.
  *
  * @example
  * ```tsx
- * const { data: summary } = useEndorsementSummary(preprintUri);
+ * const { data: summary } = useEndorsementSummary(eprintUri);
  *
  * return (
  *   <EndorsementBadges
@@ -233,16 +232,16 @@ export function useEndorsements(
  * );
  * ```
  *
- * @param preprintUri - AT-URI of the preprint
+ * @param eprintUri - AT-URI of the eprint
  * @param options - Hook options
  * @returns Query result with endorsement summary
  */
-export function useEndorsementSummary(preprintUri: string, options: UseEndorsementsOptions = {}) {
+export function useEndorsementSummary(eprintUri: string, options: UseEndorsementsOptions = {}) {
   return useQuery({
-    queryKey: endorsementKeys.summary(preprintUri),
+    queryKey: endorsementKeys.summary(eprintUri),
     queryFn: async (): Promise<EndorsementSummary> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.getSummary', {
-        params: { query: { preprintUri } },
+        params: { query: { eprintUri } },
       });
       if (error) {
         throw new APIError(
@@ -253,13 +252,13 @@ export function useEndorsementSummary(preprintUri: string, options: UseEndorseme
       }
       return data!;
     },
-    enabled: !!preprintUri && (options.enabled ?? true),
+    enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000,
   });
 }
 
 /**
- * Checks if a user has endorsed a preprint.
+ * Checks if a user has endorsed a eprint.
  *
  * @remarks
  * Returns the user's endorsement if it exists, or null if not.
@@ -268,7 +267,7 @@ export function useEndorsementSummary(preprintUri: string, options: UseEndorseme
  * @example
  * ```tsx
  * const { data: userEndorsement, isLoading } = useUserEndorsement(
- *   preprintUri,
+ *   eprintUri,
  *   currentUser.did
  * );
  *
@@ -276,24 +275,24 @@ export function useEndorsementSummary(preprintUri: string, options: UseEndorseme
  *   return <YourEndorsement endorsement={userEndorsement} />;
  * }
  *
- * return <EndorsementForm preprintUri={preprintUri} />;
+ * return <EndorsementForm eprintUri={eprintUri} />;
  * ```
  *
- * @param preprintUri - AT-URI of the preprint
+ * @param eprintUri - AT-URI of the eprint
  * @param userDid - DID of the user to check
  * @param options - Hook options
  * @returns Query result with user's endorsement or null
  */
 export function useUserEndorsement(
-  preprintUri: string,
+  eprintUri: string,
   userDid: string,
   options: UseEndorsementsOptions = {}
 ) {
   return useQuery({
-    queryKey: endorsementKeys.userEndorsement(preprintUri, userDid),
+    queryKey: endorsementKeys.userEndorsement(eprintUri, userDid),
     queryFn: async (): Promise<Endorsement | null> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.getUserEndorsement', {
-        params: { query: { preprintUri, userDid } },
+        params: { query: { eprintUri, userDid } },
       });
       if (error) {
         const errorObj = error as { message?: string; status?: number };
@@ -309,7 +308,7 @@ export function useUserEndorsement(
       }
       return data!;
     },
-    enabled: !!preprintUri && !!userDid && (options.enabled ?? true),
+    enabled: !!eprintUri && !!userDid && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -319,7 +318,7 @@ export function useUserEndorsement(
  *
  * @remarks
  * Creates an endorsement in the user's PDS. Users can only have one
- * endorsement per preprint but can select multiple contribution types.
+ * endorsement per eprint but can select multiple contribution types.
  *
  * Automatically invalidates relevant queries on success.
  *
@@ -329,7 +328,7 @@ export function useUserEndorsement(
  *
  * const handleEndorse = async (contributions: ContributionType[]) => {
  *   await createEndorsement.mutateAsync({
- *     preprintUri,
+ *     eprintUri,
  *     contributions: ['methodological', 'empirical'],
  *     comment: 'Excellent methodology and strong empirical evidence!',
  *   });
@@ -354,7 +353,7 @@ export function useCreateEndorsement() {
       // Return an Endorsement-like object for cache management
       return {
         uri: result.uri,
-        preprintUri: input.preprintUri,
+        eprintUri: input.eprintUri,
         endorser: {
           did: '',
         },
@@ -364,9 +363,9 @@ export function useCreateEndorsement() {
       };
     },
     onSuccess: (data) => {
-      // Invalidate endorsements for the preprint
+      // Invalidate endorsements for the eprint
       queryClient.invalidateQueries({
-        queryKey: endorsementKeys.forPreprint(data.preprintUri),
+        queryKey: endorsementKeys.forEprint(data.eprintUri),
       });
     },
   });
@@ -386,7 +385,7 @@ export function useCreateEndorsement() {
  * const handleUpdate = async () => {
  *   await updateEndorsement.mutateAsync({
  *     uri: endorsement.uri,
- *     preprintUri: endorsement.preprintUri,
+ *     eprintUri: endorsement.eprintUri,
  *     contributions: ['methodological', 'analytical', 'data'],
  *     comment: 'Updated comment',
  *   });
@@ -415,7 +414,7 @@ export function useUpdateEndorsement() {
       // Return an Endorsement-like object for cache management
       return {
         uri: result.uri,
-        preprintUri: input.preprintUri,
+        eprintUri: input.eprintUri,
         endorser: {
           did: '',
         },
@@ -426,7 +425,7 @@ export function useUpdateEndorsement() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: endorsementKeys.forPreprint(variables.preprintUri),
+        queryKey: endorsementKeys.forEprint(variables.eprintUri),
       });
     },
   });
@@ -446,7 +445,7 @@ export function useUpdateEndorsement() {
  * const handleDelete = async () => {
  *   await deleteEndorsement.mutateAsync({
  *     uri: endorsement.uri,
- *     preprintUri: endorsement.preprintUri,
+ *     eprintUri: endorsement.eprintUri,
  *   });
  * };
  * ```
@@ -457,7 +456,7 @@ export function useDeleteEndorsement() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ uri }: { uri: string; preprintUri: string }): Promise<void> => {
+    mutationFn: async ({ uri }: { uri: string; eprintUri: string }): Promise<void> => {
       // Delete directly from PDS using the authenticated agent
       const agent = getCurrentAgent();
       if (!agent) {
@@ -468,7 +467,7 @@ export function useDeleteEndorsement() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: endorsementKeys.forPreprint(variables.preprintUri),
+        queryKey: endorsementKeys.forEprint(variables.eprintUri),
       });
     },
   });
@@ -486,23 +485,23 @@ export function useDeleteEndorsement() {
  * const prefetchEndorsements = usePrefetchEndorsements();
  *
  * return (
- *   <PreprintCard
- *     onMouseEnter={() => prefetchEndorsements(preprint.uri)}
+ *   <EprintCard
+ *     onMouseEnter={() => prefetchEndorsements(eprint.uri)}
  *   />
  * );
  * ```
  *
- * @returns Function to prefetch endorsements for a preprint
+ * @returns Function to prefetch endorsements for a eprint
  */
 export function usePrefetchEndorsements() {
   const queryClient = useQueryClient();
 
-  return (preprintUri: string) => {
+  return (eprintUri: string) => {
     queryClient.prefetchQuery({
-      queryKey: endorsementKeys.summary(preprintUri),
+      queryKey: endorsementKeys.summary(eprintUri),
       queryFn: async (): Promise<EndorsementSummary | undefined> => {
         const { data } = await api.GET('/xrpc/pub.chive.endorsement.getSummary', {
-          params: { query: { preprintUri } },
+          params: { query: { eprintUri } },
         });
         return data;
       },

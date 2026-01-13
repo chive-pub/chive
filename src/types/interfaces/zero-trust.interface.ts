@@ -348,7 +348,7 @@ export interface PolicyObligation {
  * const decision = await policy.evaluate({
  *   subject: { did: userDid, roles: ['author'] },
  *   action: 'read',
- *   resource: { type: 'preprint', id: preprintId },
+ *   resource: { type: 'eprint', id: eprintId },
  * });
  *
  * if (!decision.allow) {

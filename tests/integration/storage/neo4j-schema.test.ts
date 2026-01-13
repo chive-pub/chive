@@ -107,13 +107,13 @@ describe('Neo4j Schema', () => {
       }
     });
 
-    it('creates unique constraint on Preprint.uri', async () => {
+    it('creates unique constraint on Eprint.uri', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW CONSTRAINTS');
         const constraints = result.records.map((record): string => record.get('name') as string);
 
-        expect(constraints).toContain('preprint_uri_unique');
+        expect(constraints).toContain('eprint_uri_unique');
       } finally {
         await session.close();
       }

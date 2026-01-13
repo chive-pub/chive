@@ -35,7 +35,7 @@ export {
   mockApiSuccess,
   mockApiError,
   mockAuthorProfileResponse,
-  mockPreprintListResponse,
+  mockEprintListResponse,
   mockReviewListResponse,
   mockEndorsementListResponse,
   mockEndorsementSummaryResponse,

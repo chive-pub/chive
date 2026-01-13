@@ -1,10 +1,10 @@
 # DiscoveryService
 
-The DiscoveryService provides personalized preprint recommendations using Semantic Scholar and OpenAlex enrichment with graceful degradation when external APIs are unavailable.
+The DiscoveryService provides personalized eprint recommendations using Semantic Scholar and OpenAlex enrichment with graceful degradation when external APIs are unavailable.
 
 ## Features
 
-- Preprint enrichment with citation data, concepts, and topics
+- Eprint enrichment with citation data, concepts, and topics
 - Personalized recommendations based on user reading history
 - Similar paper discovery using SPECTER2 embeddings
 - Citation graph traversal (forward and backward citations)
@@ -23,14 +23,14 @@ const recommendations = await discovery.getRecommendationsForUser(userDid, {
   sources: ['semantic-scholar', 'openalex', 'local'],
 });
 
-// Find similar preprints
-const similar = await discovery.findRelatedPreprints(preprintUri, {
+// Find similar eprints
+const similar = await discovery.findRelatedEprints(eprintUri, {
   method: 'specter2',
   limit: 10,
 });
 
-// Enrich preprint with external metadata
-const enriched = await discovery.enrichPreprint(preprint);
+// Enrich eprint with external metadata
+const enriched = await discovery.enrichEprint(eprint);
 ```
 
 ## Recommendation algorithm
@@ -53,9 +53,9 @@ User preferences are built from:
 
 ```typescript
 interface UserProfile {
-  readHistory: AtUri[]; // Preprints viewed > 30 seconds
-  endorsedPreprints: AtUri[]; // Preprints user endorsed
-  taggedPreprints: AtUri[]; // Preprints user tagged
+  readHistory: AtUri[]; // Eprints viewed > 30 seconds
+  endorsedEprints: AtUri[]; // Eprints user endorsed
+  taggedEprints: AtUri[]; // Eprints user tagged
   followedFields: string[]; // Subscribed fields
   researchInterests: string[]; // Profile keywords
 }
@@ -65,7 +65,7 @@ interface UserProfile {
 
 ```typescript
 function scoreRecommendation(
-  preprint: Preprint,
+  eprint: Eprint,
   userProfile: UserProfile,
   signals: SignalScores
 ): number {
@@ -81,10 +81,10 @@ function scoreRecommendation(
 
 ## Enrichment
 
-The service enriches preprints with external metadata:
+The service enriches eprints with external metadata:
 
 ```typescript
-interface EnrichedPreprint extends Preprint {
+interface EnrichedEprint extends Eprint {
   enrichment: {
     citationCount: number;
     influentialCitationCount: number;
@@ -106,13 +106,13 @@ interface EnrichedPreprint extends Preprint {
 The service uses plugins for external APIs:
 
 ```typescript
-async enrichPreprint(preprint: Preprint): Promise<EnrichedPreprint> {
+async enrichEprint(eprint: Eprint): Promise<EnrichedEprint> {
   const enrichment: Enrichment = {};
 
   // Try Semantic Scholar first
   if (this.pluginManager?.hasPlugin('semantic-scholar')) {
     const s2Plugin = this.pluginManager.getPlugin('semantic-scholar');
-    const paper = await s2Plugin.getPaperByDoi(preprint.doi);
+    const paper = await s2Plugin.getPaperByDoi(eprint.doi);
     if (paper) {
       enrichment.citationCount = paper.citationCount;
       enrichment.influentialCitationCount = paper.influentialCitationCount;
@@ -122,7 +122,7 @@ async enrichPreprint(preprint: Preprint): Promise<EnrichedPreprint> {
   // Fallback to OpenAlex
   if (!enrichment.citationCount && this.pluginManager?.hasPlugin('openalex')) {
     const oaPlugin = this.pluginManager.getPlugin('openalex');
-    const work = await oaPlugin.getWorkByDoi(preprint.doi);
+    const work = await oaPlugin.getWorkByDoi(eprint.doi);
     if (work) {
       enrichment.citationCount = work.citedByCount;
       enrichment.concepts = work.concepts;
@@ -130,9 +130,9 @@ async enrichPreprint(preprint: Preprint): Promise<EnrichedPreprint> {
   }
 
   // Always available: local data
-  enrichment.localMetrics = await this.metricsService.getMetrics(preprint.uri);
+  enrichment.localMetrics = await this.metricsService.getMetrics(eprint.uri);
 
-  return { ...preprint, enrichment };
+  return { ...eprint, enrichment };
 }
 ```
 
@@ -142,18 +142,18 @@ The service provides citation graph traversal:
 
 ```typescript
 // Forward citations (papers citing this one)
-const citing = await discovery.getCitingPapers(preprintUri, {
+const citing = await discovery.getCitingPapers(eprintUri, {
   limit: 50,
   sort: 'influence',
 });
 
 // Backward citations (papers this one cites)
-const references = await discovery.getReferences(preprintUri, {
+const references = await discovery.getReferences(eprintUri, {
   limit: 100,
 });
 
 // Citation statistics
-const stats = await discovery.getCitationCounts(preprintUri);
+const stats = await discovery.getCitationCounts(eprintUri);
 // { total: 42, influential: 8, recent: 15 }
 ```
 
@@ -163,14 +163,14 @@ User interactions feed back into recommendations:
 
 ```typescript
 interface Interaction {
-  preprintUri: AtUri;
+  eprintUri: AtUri;
   action: 'view' | 'download' | 'endorse' | 'tag' | 'share';
   duration?: number; // For views, time spent in seconds
   context?: string; // Where the interaction occurred
 }
 
 await discovery.recordInteraction(userDid, {
-  preprintUri: 'at://did:plc:abc.../pub.chive.preprint.submission/3k5...',
+  eprintUri: 'at://did:plc:abc.../pub.chive.eprint.submission/3k5...',
   action: 'view',
   duration: 120,
   context: 'for-you-feed',
@@ -211,10 +211,10 @@ async getRecommendationsForUser(
 
 When external APIs are unavailable, local signals are used:
 
-- Field-based: Preprints in fields the user follows
-- Co-author network: Preprints by authors of papers the user has read
-- Tag similarity: Preprints with similar tags to user's tagged papers
-- Trending: Popular preprints in user's fields
+- Field-based: Eprints in fields the user follows
+- Co-author network: Eprints by authors of papers the user has read
+- Tag similarity: Eprints with similar tags to user's tagged papers
+- Trending: Popular eprints in user's fields
 
 ## Dependencies
 

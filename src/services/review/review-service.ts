@@ -16,7 +16,7 @@ import { DatabaseError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
-import type { RecordMetadata } from '../preprint/preprint-service.js';
+import type { RecordMetadata } from '../eprint/eprint-service.js';
 
 /**
  * Text span target for inline comments (W3C Web Annotation model).
@@ -69,7 +69,7 @@ export interface ReviewComment {
   readonly createdAt: string;
   /**
    * Line number for inline comments on specific lines of text.
-   * Used when commenting on a specific line in a preprint.
+   * Used when commenting on a specific line in a eprint.
    */
   readonly lineNumber?: number;
   /**
@@ -114,7 +114,7 @@ function extractDidFromUri(uri: AtUri): DID {
 export interface EndorsementView {
   readonly uri: AtUri;
   readonly endorser: DID;
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
   readonly endorsementType: 'methods' | 'results' | 'overall';
   readonly comment?: string;
   readonly createdAt: Date;
@@ -152,7 +152,7 @@ export interface ReviewThread {
  * @public
  */
 export interface EndorsementSummary {
-  readonly preprintUri: AtUri;
+  readonly eprintUri: AtUri;
   readonly total: number;
   readonly endorserCount: number;
   readonly byType: Readonly<Record<string, number>>;
@@ -207,7 +207,7 @@ export interface ReviewServiceOptions {
  * await service.indexReview(reviewRecord, metadata);
  *
  * // Get threaded reviews
- * const threads = await service.getReviews(preprintUri);
+ * const threads = await service.getReviews(eprintUri);
  * ```
  *
  * @public
@@ -237,7 +237,7 @@ export class ReviewService {
     try {
       await this.pool.query(
         `INSERT INTO reviews_index (
-          uri, cid, preprint_uri, reviewer_did, content, line_number, parent_review_uri,
+          uri, cid, eprint_uri, reviewer_did, content, line_number, parent_review_uri,
           created_at, pds_url, indexed_at, last_synced_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
@@ -260,7 +260,7 @@ export class ReviewService {
 
       this.logger.info('Indexed review', {
         uri: metadata.uri,
-        preprintUri: record.subject.uri,
+        eprintUri: record.subject.uri,
         hasParent: !!record.parent,
       });
 
@@ -291,7 +291,7 @@ export class ReviewService {
     try {
       await this.pool.query(
         `INSERT INTO endorsements_index (
-          uri, cid, preprint_uri, endorser_did, endorsement_type, comment,
+          uri, cid, eprint_uri, endorser_did, endorsement_type, comment,
           created_at, pds_url, indexed_at, last_synced_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
@@ -313,7 +313,7 @@ export class ReviewService {
 
       this.logger.info('Indexed endorsement', {
         uri: metadata.uri,
-        preprintUri: record.subject.uri,
+        eprintUri: record.subject.uri,
         type: record.endorsementType,
       });
 
@@ -329,16 +329,16 @@ export class ReviewService {
   }
 
   /**
-   * Gets threaded reviews for preprint.
+   * Gets threaded reviews for eprint.
    *
-   * @param preprintUri - Preprint URI
+   * @param eprintUri - Eprint URI
    * @returns Review threads
    *
    * @public
    */
-  async getReviews(preprintUri: AtUri): Promise<readonly ReviewThread[]> {
+  async getReviews(eprintUri: AtUri): Promise<readonly ReviewThread[]> {
     try {
-      // Fetch all reviews for this preprint
+      // Fetch all reviews for this eprint
       const result = await this.pool.query<{
         uri: string;
         reviewer_did: string;
@@ -348,9 +348,9 @@ export class ReviewService {
       }>(
         `SELECT uri, reviewer_did, content, parent_review_uri, created_at
          FROM reviews_index
-         WHERE preprint_uri = $1
+         WHERE eprint_uri = $1
          ORDER BY created_at ASC`,
-        [preprintUri]
+        [eprintUri]
       );
 
       // Build a map of reviews by URI
@@ -369,7 +369,7 @@ export class ReviewService {
         reviewMap.set(row.uri, {
           uri: row.uri as AtUri,
           author: row.reviewer_did,
-          subject: preprintUri,
+          subject: eprintUri,
           text: row.content,
           parent: (row.parent_review_uri as AtUri) ?? undefined,
           createdAt: new Date(row.created_at),
@@ -428,48 +428,48 @@ export class ReviewService {
       return threads;
     } catch (error) {
       this.logger.error('Failed to get reviews', error instanceof Error ? error : undefined, {
-        preprintUri,
+        eprintUri,
       });
       return [];
     }
   }
 
   /**
-   * Gets endorsements for preprint.
+   * Gets endorsements for eprint.
    *
-   * @param preprintUri - Preprint URI
+   * @param eprintUri - Eprint URI
    * @returns Endorsement views
    *
    * @public
    */
-  async getEndorsements(preprintUri: AtUri): Promise<readonly EndorsementView[]> {
+  async getEndorsements(eprintUri: AtUri): Promise<readonly EndorsementView[]> {
     try {
       const result = await this.pool.query<{
         uri: string;
         endorser_did: string;
-        preprint_uri: string;
+        eprint_uri: string;
         endorsement_type: 'methods' | 'results' | 'overall';
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, preprint_uri, endorsement_type, comment, created_at
+        `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
          FROM endorsements_index
-         WHERE preprint_uri = $1
+         WHERE eprint_uri = $1
          ORDER BY created_at DESC`,
-        [preprintUri]
+        [eprintUri]
       );
 
       return result.rows.map((row) => ({
         uri: row.uri as AtUri,
         endorser: row.endorser_did as DID,
-        preprintUri: row.preprint_uri as AtUri,
+        eprintUri: row.eprint_uri as AtUri,
         endorsementType: row.endorsement_type,
         comment: row.comment ?? undefined,
         createdAt: new Date(row.created_at),
       }));
     } catch (error) {
       this.logger.error('Failed to get endorsements', error instanceof Error ? error : undefined, {
-        preprintUri,
+        eprintUri,
       });
       return [];
     }
@@ -478,12 +478,12 @@ export class ReviewService {
   /**
    * Gets endorsement summary with aggregated counts by type.
    *
-   * @param preprintUri - Preprint URI
+   * @param eprintUri - Eprint URI
    * @returns Endorsement summary with counts and recent endorsers
    *
    * @public
    */
-  async getEndorsementSummary(preprintUri: AtUri): Promise<EndorsementSummary> {
+  async getEndorsementSummary(eprintUri: AtUri): Promise<EndorsementSummary> {
     try {
       // Get aggregated counts
       const countsResult = await this.pool.query<{
@@ -492,25 +492,25 @@ export class ReviewService {
       }>(
         `SELECT endorsement_type, COUNT(*) as count
          FROM endorsements_index
-         WHERE preprint_uri = $1
+         WHERE eprint_uri = $1
          GROUP BY endorsement_type`,
-        [preprintUri]
+        [eprintUri]
       );
 
       // Get unique endorser count
       const uniqueResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(DISTINCT endorser_did) as count
          FROM endorsements_index
-         WHERE preprint_uri = $1`,
-        [preprintUri]
+         WHERE eprint_uri = $1`,
+        [eprintUri]
       );
 
       // Get total count
       const totalResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(*) as count
          FROM endorsements_index
-         WHERE preprint_uri = $1`,
-        [preprintUri]
+         WHERE eprint_uri = $1`,
+        [eprintUri]
       );
 
       // Get recent endorsers (last 5)
@@ -521,10 +521,10 @@ export class ReviewService {
       }>(
         `SELECT DISTINCT ON (endorser_did) endorser_did, endorsement_type, created_at
          FROM endorsements_index
-         WHERE preprint_uri = $1
+         WHERE eprint_uri = $1
          ORDER BY endorser_did, created_at DESC
          LIMIT 5`,
-        [preprintUri]
+        [eprintUri]
       );
 
       // Build byType map
@@ -534,7 +534,7 @@ export class ReviewService {
       }
 
       return {
-        preprintUri,
+        eprintUri,
         total: parseInt(totalResult.rows[0]?.count ?? '0', 10),
         endorserCount: parseInt(uniqueResult.rows[0]?.count ?? '0', 10),
         byType,
@@ -548,10 +548,10 @@ export class ReviewService {
       this.logger.error(
         'Failed to get endorsement summary',
         error instanceof Error ? error : undefined,
-        { preprintUri }
+        { eprintUri }
       );
       return {
-        preprintUri,
+        eprintUri,
         total: 0,
         endorserCount: 0,
         byType: {},
@@ -561,29 +561,29 @@ export class ReviewService {
   }
 
   /**
-   * Gets a specific user's endorsement for a preprint.
+   * Gets a specific user's endorsement for a eprint.
    *
-   * @param preprintUri - Preprint URI
+   * @param eprintUri - Eprint URI
    * @param userDid - User's DID
    * @returns Endorsement view or null if not found
    *
    * @public
    */
-  async getEndorsementByUser(preprintUri: AtUri, userDid: DID): Promise<EndorsementView | null> {
+  async getEndorsementByUser(eprintUri: AtUri, userDid: DID): Promise<EndorsementView | null> {
     try {
       const result = await this.pool.query<{
         uri: string;
         endorser_did: string;
-        preprint_uri: string;
+        eprint_uri: string;
         endorsement_type: 'methods' | 'results' | 'overall';
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, preprint_uri, endorsement_type, comment, created_at
+        `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
          FROM endorsements_index
-         WHERE preprint_uri = $1 AND endorser_did = $2
+         WHERE eprint_uri = $1 AND endorser_did = $2
          LIMIT 1`,
-        [preprintUri, userDid]
+        [eprintUri, userDid]
       );
 
       const row = result.rows[0];
@@ -594,7 +594,7 @@ export class ReviewService {
       return {
         uri: row.uri as AtUri,
         endorser: row.endorser_did as DID,
-        preprintUri: row.preprint_uri as AtUri,
+        eprintUri: row.eprint_uri as AtUri,
         endorsementType: row.endorsement_type,
         comment: row.comment ?? undefined,
         createdAt: new Date(row.created_at),
@@ -603,23 +603,23 @@ export class ReviewService {
       this.logger.error(
         'Failed to get user endorsement',
         error instanceof Error ? error : undefined,
-        { preprintUri, userDid }
+        { eprintUri, userDid }
       );
       return null;
     }
   }
 
   /**
-   * Lists endorsements for a preprint with pagination.
+   * Lists endorsements for a eprint with pagination.
    *
-   * @param preprintUri - Preprint URI
+   * @param eprintUri - Eprint URI
    * @param options - Pagination options
    * @returns Paginated endorsement results
    *
    * @public
    */
-  async listEndorsementsForPreprint(
-    preprintUri: AtUri,
+  async listEndorsementsForEprint(
+    eprintUri: AtUri,
     options: PaginationOptions = {}
   ): Promise<PaginatedResult<EndorsementView>> {
     const limit = Math.min(options.limit ?? 50, 100);
@@ -629,16 +629,16 @@ export class ReviewService {
       const countResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(*) as count
          FROM endorsements_index
-         WHERE preprint_uri = $1`,
-        [preprintUri]
+         WHERE eprint_uri = $1`,
+        [eprintUri]
       );
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
-      let query = `SELECT uri, endorser_did, preprint_uri, endorsement_type, comment, created_at
+      let query = `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
          FROM endorsements_index
-         WHERE preprint_uri = $1`;
-      const params: unknown[] = [preprintUri];
+         WHERE eprint_uri = $1`;
+      const params: unknown[] = [eprintUri];
 
       if (options.cursor) {
         // Cursor is the created_at timestamp + uri for stable pagination
@@ -655,7 +655,7 @@ export class ReviewService {
       const result = await this.pool.query<{
         uri: string;
         endorser_did: string;
-        preprint_uri: string;
+        eprint_uri: string;
         endorsement_type: 'methods' | 'results' | 'overall';
         comment: string | null;
         created_at: Date;
@@ -675,7 +675,7 @@ export class ReviewService {
         items: items.map((row) => ({
           uri: row.uri as AtUri,
           endorser: row.endorser_did as DID,
-          preprintUri: row.preprint_uri as AtUri,
+          eprintUri: row.eprint_uri as AtUri,
           endorsementType: row.endorsement_type,
           comment: row.comment ?? undefined,
           createdAt: new Date(row.created_at),
@@ -686,7 +686,7 @@ export class ReviewService {
       };
     } catch (error) {
       this.logger.error('Failed to list endorsements', error instanceof Error ? error : undefined, {
-        preprintUri,
+        eprintUri,
       });
       return {
         items: [],
@@ -709,13 +709,13 @@ export class ReviewService {
       const result = await this.pool.query<{
         uri: string;
         reviewer_did: string;
-        preprint_uri: string;
+        eprint_uri: string;
         content: string;
         parent_review_uri: string | null;
         created_at: Date;
         reply_count: number;
       }>(
-        `SELECT uri, reviewer_did, preprint_uri, content, parent_review_uri, created_at,
+        `SELECT uri, reviewer_did, eprint_uri, content, parent_review_uri, created_at,
                 COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_review_uri = reviews_index.uri), 0)::int as reply_count
          FROM reviews_index
          WHERE uri = $1`,
@@ -730,7 +730,7 @@ export class ReviewService {
       return {
         uri: row.uri as AtUri,
         author: row.reviewer_did,
-        subject: row.preprint_uri as AtUri,
+        subject: row.eprint_uri as AtUri,
         text: row.content,
         parent: (row.parent_review_uri as AtUri) ?? undefined,
         createdAt: new Date(row.created_at),
@@ -759,25 +759,25 @@ export class ReviewService {
       const result = await this.pool.query<{
         uri: string;
         reviewer_did: string;
-        preprint_uri: string;
+        eprint_uri: string;
         content: string;
         parent_review_uri: string | null;
         created_at: Date;
         depth: number;
       }>(
         `WITH RECURSIVE thread AS (
-           SELECT uri, reviewer_did, preprint_uri, content, parent_review_uri, created_at, 0 AS depth
+           SELECT uri, reviewer_did, eprint_uri, content, parent_review_uri, created_at, 0 AS depth
            FROM reviews_index
            WHERE uri = $1
 
            UNION ALL
 
-           SELECT r.uri, r.reviewer_did, r.preprint_uri, r.content, r.parent_review_uri, r.created_at, t.depth + 1
+           SELECT r.uri, r.reviewer_did, r.eprint_uri, r.content, r.parent_review_uri, r.created_at, t.depth + 1
            FROM reviews_index r
            INNER JOIN thread t ON r.parent_review_uri = t.uri
            WHERE t.depth < $2
          )
-         SELECT uri, reviewer_did, preprint_uri, content, parent_review_uri, created_at, depth
+         SELECT uri, reviewer_did, eprint_uri, content, parent_review_uri, created_at, depth
          FROM thread
          ORDER BY depth ASC, created_at ASC`,
         [rootUri, maxDepth]
@@ -804,7 +804,7 @@ export class ReviewService {
       return result.rows.map((row) => ({
         uri: row.uri as AtUri,
         author: row.reviewer_did,
-        subject: row.preprint_uri as AtUri,
+        subject: row.eprint_uri as AtUri,
         text: row.content,
         parent: (row.parent_review_uri as AtUri) ?? undefined,
         createdAt: new Date(row.created_at),
@@ -846,13 +846,13 @@ export class ReviewService {
       const result = await this.pool.query<{
         uri: string;
         reviewer_did: string;
-        preprint_uri: string;
+        eprint_uri: string;
         content: string;
         parent_review_uri: string | null;
         created_at: Date;
         reply_count: number;
       }>(
-        `SELECT r.uri, r.reviewer_did, r.preprint_uri, r.content, r.parent_review_uri, r.created_at,
+        `SELECT r.uri, r.reviewer_did, r.eprint_uri, r.content, r.parent_review_uri, r.created_at,
                 COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_review_uri = r.uri), 0)::int as reply_count
          FROM reviews_index r
          WHERE r.reviewer_did = $1
@@ -864,7 +864,7 @@ export class ReviewService {
       const items: ReviewView[] = result.rows.map((row) => ({
         uri: row.uri as AtUri,
         author: row.reviewer_did,
-        subject: row.preprint_uri as AtUri,
+        subject: row.eprint_uri as AtUri,
         text: row.content,
         parent: (row.parent_review_uri as AtUri) ?? undefined,
         createdAt: new Date(row.created_at),

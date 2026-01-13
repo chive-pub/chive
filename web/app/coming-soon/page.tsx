@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const metadata: Metadata = {
-  title: 'Chive - Decentralized Preprints',
-  description: 'A next-generation preprint server built on AT Protocol.',
+  title: 'Chive - Decentralized Eprints',
+  description: 'A next-generation eprint server built on AT Protocol.',
 };
 
 const features = [
@@ -72,14 +72,14 @@ export default function ComingSoonPage() {
               Chive
             </h1>
             <p className="text-xl text-muted-foreground sm:text-2xl md:text-3xl">
-              Decentralized Preprints
+              Decentralized Eprints
             </p>
           </div>
 
           {/* Description */}
           <p className="max-w-2xl text-lg text-muted-foreground md:text-xl">
-            A next-generation preprint server built on AT Protocol. Share your research with full
-            data sovereignty, open federation, and community governance.
+            A next-generation eprint server built on AT Protocol. Share your research with full data
+            sovereignty, open federation, and community governance.
           </p>
 
           {/* Status Badge */}
@@ -161,7 +161,7 @@ export default function ComingSoonPage() {
               >
                 Authenticated Transfer Protocol
               </Link>
-              , the same decentralized foundation that powers Bluesky. Your preprints, reviews, and
+              , the same decentralized foundation that powers Bluesky. Your eprints, reviews, and
               endorsements live in your Personal Data Server—portable, permanent, and under your
               control.
             </p>
@@ -223,7 +223,7 @@ export default function ComingSoonPage() {
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <div className="flex items-center gap-2">
               <Image src="/chive-logo.svg" alt="Chive" width={24} height={24} />
-              <span className="text-sm text-muted-foreground">Chive — Decentralized Preprints</span>
+              <span className="text-sm text-muted-foreground">Chive — Decentralized Eprints</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link

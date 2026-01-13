@@ -116,7 +116,7 @@ export interface CrossRefJournal {
 }
 
 /**
- * Enrichment result for a preprint.
+ * Enrichment result for a eprint.
  *
  * @public
  */
@@ -316,10 +316,10 @@ export async function searchWorks(
 }
 
 /**
- * Attempts to find the published version of a preprint.
+ * Attempts to find the published version of a eprint.
  *
- * @param title - Preprint title
- * @param authors - Preprint authors
+ * @param title - Eprint title
+ * @param authors - Eprint authors
  * @returns DOI of published version or null
  *
  * @example
@@ -338,7 +338,7 @@ export async function findPublishedVersion(
 ): Promise<string | null> {
   const works = await searchWorks(title, authors);
 
-  // Filter out preprints and find journal articles
+  // Filter out eprints and find journal articles
   const journalArticles = works.filter((w) => w.type === 'journal-article' && w.journal);
 
   if (journalArticles.length === 0) return null;
@@ -438,15 +438,15 @@ export async function searchJournals(query: string): Promise<CrossRefJournal[]> 
 }
 
 /**
- * Enriches preprint metadata using CrossRef.
+ * Enriches eprint metadata using CrossRef.
  *
- * @param title - Preprint title
- * @param authors - Preprint authors
+ * @param title - Eprint title
+ * @param authors - Eprint authors
  * @returns Enrichment result
  *
  * @public
  */
-export async function enrichPreprint(
+export async function enrichEprint(
   title: string,
   authors: readonly string[]
 ): Promise<EnrichmentResult> {

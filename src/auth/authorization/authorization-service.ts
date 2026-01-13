@@ -110,7 +110,7 @@ const ROLE_HIERARCHY: Record<Role, readonly Role[]> = {
  */
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   admin: [
-    'preprint:*',
+    'eprint:*',
     'review:*',
     'endorsement:*',
     'field_node:*',
@@ -122,8 +122,8 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'oauth_client:*',
   ],
   moderator: [
-    'preprint:read',
-    'preprint:moderate',
+    'eprint:read',
+    'eprint:moderate',
     'review:read',
     'review:moderate',
     'endorsement:read',
@@ -147,8 +147,8 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'facet:update',
   ],
   author: [
-    'preprint:read',
-    'preprint:create',
+    'eprint:read',
+    'eprint:create',
     'review:read',
     'review:create',
     'endorsement:read',
@@ -160,7 +160,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'facet:read',
   ],
   reader: [
-    'preprint:read',
+    'eprint:read',
     'review:read',
     'endorsement:read',
     'tag:read',
@@ -170,9 +170,9 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'user:read',
   ],
   'alpha-tester': [
-    'preprint:read',
-    'preprint:create',
-    'preprint:update',
+    'eprint:read',
+    'eprint:create',
+    'eprint:update',
     'review:read',
     'review:create',
     'endorsement:read',
@@ -226,7 +226,7 @@ m = g(r.sub, p.sub) && (p.obj == r.obj || p.obj == "*") && (p.act == r.act || p.
  * const result = await authzService.authorize({
  *   subject: { did: 'did:plc:abc123', roles: ['author'] },
  *   action: 'create',
- *   resource: { type: 'preprint' },
+ *   resource: { type: 'eprint' },
  * });
  * ```
  *

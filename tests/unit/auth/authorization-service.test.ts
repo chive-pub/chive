@@ -187,17 +187,17 @@ describe('AuthorizationService', () => {
       const result = await service.authorize({
         subject: { did: adminDid, roles: ['admin'] as Role[] },
         action: 'admin' as Action,
-        resource: { type: 'preprint' as ResourceType },
+        resource: { type: 'eprint' as ResourceType },
       });
 
       expect(result.allowed).toBe(true);
     });
 
-    it('should allow author to create preprints', async () => {
+    it('should allow author to create eprints', async () => {
       const result = await service.authorize({
         subject: { did: authorDid, roles: ['author'] as Role[] },
         action: 'create' as Action,
-        resource: { type: 'preprint' as ResourceType },
+        resource: { type: 'eprint' as ResourceType },
       });
 
       expect(result.allowed).toBe(true);
@@ -208,7 +208,7 @@ describe('AuthorizationService', () => {
         subject: { did: authorDid, roles: ['author'] as Role[] },
         action: 'update' as Action,
         resource: {
-          type: 'preprint' as ResourceType,
+          type: 'eprint' as ResourceType,
           ownerDid: authorDid,
         },
       });
@@ -222,7 +222,7 @@ describe('AuthorizationService', () => {
         subject: { did: authorDid, roles: ['author'] as Role[] },
         action: 'update' as Action,
         resource: {
-          type: 'preprint' as ResourceType,
+          type: 'eprint' as ResourceType,
           ownerDid: 'did:plc:someone-else' as DID,
         },
       });
@@ -230,11 +230,11 @@ describe('AuthorizationService', () => {
       expect(result.allowed).toBe(false);
     });
 
-    it('should deny reader from creating preprints', async () => {
+    it('should deny reader from creating eprints', async () => {
       const result = await service.authorize({
         subject: { did: readerDid, roles: ['reader'] as Role[] },
         action: 'create' as Action,
-        resource: { type: 'preprint' as ResourceType },
+        resource: { type: 'eprint' as ResourceType },
       });
 
       expect(result.allowed).toBe(false);
@@ -247,7 +247,7 @@ describe('AuthorizationService', () => {
     });
 
     it('should return true for permitted actions', async () => {
-      const hasPermission = await service.hasPermission(authorDid, 'preprint:create');
+      const hasPermission = await service.hasPermission(authorDid, 'eprint:create');
       expect(hasPermission).toBe(true);
     });
 

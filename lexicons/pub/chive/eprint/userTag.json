@@ -1,0 +1,31 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.userTag",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "User-generated tag on eprint (TaxoFolk)",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["eprintUri", "tag", "createdAt"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Tagged eprint URI"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag label",
+            "maxLength": 100
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

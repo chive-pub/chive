@@ -87,7 +87,7 @@ export interface ILogger {
    *
    * @example
    * ```typescript
-   * logger.info('Indexed preprint', { uri: preprintUri, duration: 150 });
+   * logger.info('Indexed eprint', { uri: eprintUri, duration: 150 });
    * ```
    *
    * @public
@@ -102,7 +102,7 @@ export interface ILogger {
    *
    * @example
    * ```typescript
-   * logger.warn('Index is stale', { uri: preprintUri, staleness: 'high' });
+   * logger.warn('Index is stale', { uri: eprintUri, staleness: 'high' });
    * ```
    *
    * @public
@@ -118,7 +118,7 @@ export interface ILogger {
    *
    * @example
    * ```typescript
-   * logger.error('Failed to index preprint', error, { uri: preprintUri });
+   * logger.error('Failed to index eprint', error, { uri: eprintUri });
    * ```
    *
    * @public

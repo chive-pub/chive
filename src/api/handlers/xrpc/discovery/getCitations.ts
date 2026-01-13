@@ -2,7 +2,7 @@
  * Handler for pub.chive.discovery.getCitations.
  *
  * @remarks
- * Returns citation network data for a preprint, including papers that
+ * Returns citation network data for a eprint, including papers that
  * cite it and papers it references (within the Chive index).
  *
  * @packageDocumentation
@@ -30,7 +30,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  * @returns Citation network data with counts and relationships
  *
  * @remarks
- * Returns only citations between Chive-indexed preprints.
+ * Returns only citations between Chive-indexed eprints.
  * External citations are reflected in counts but not in the citations array.
  *
  * Citation data is enriched from Semantic Scholar and OpenAlex,
@@ -43,7 +43,7 @@ export async function getCitationsHandler(
   params: GetCitationsParams
 ): Promise<GetCitationsResponse> {
   const logger = c.get('logger');
-  const { discovery, preprint } = c.get('services');
+  const { discovery, eprint } = c.get('services');
 
   logger.debug('Getting citations', {
     uri: params.uri,
@@ -55,10 +55,10 @@ export async function getCitationsHandler(
     throw new ServiceUnavailableError('Discovery service not available');
   }
 
-  // Get the source preprint
-  const sourcePreprint = await preprint.getPreprint(params.uri as AtUri);
-  if (!sourcePreprint) {
-    throw new NotFoundError('Preprint not found', params.uri);
+  // Get the source eprint
+  const sourceEprint = await eprint.getEprint(params.uri as AtUri);
+  if (!sourceEprint) {
+    throw new NotFoundError('Eprint not found', params.uri);
   }
 
   // Get citation counts
@@ -116,9 +116,9 @@ export async function getCitationsHandler(
   });
 
   return {
-    preprint: {
+    eprint: {
       uri: params.uri,
-      title: sourcePreprint.title,
+      title: sourceEprint.title,
     },
     counts: {
       citedByCount: counts.citedByCount,
@@ -139,7 +139,7 @@ export async function getCitationsHandler(
 export const getCitationsEndpoint: XRPCEndpoint<GetCitationsParams, GetCitationsResponse> = {
   method: 'pub.chive.discovery.getCitations' as never,
   type: 'query',
-  description: 'Get citation network for a preprint',
+  description: 'Get citation network for a eprint',
   inputSchema: getCitationsParamsSchema,
   outputSchema: getCitationsResponseSchema,
   handler: getCitationsHandler,

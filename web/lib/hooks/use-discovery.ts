@@ -7,8 +7,8 @@ import type {
   GetSimilarResponse,
   GetCitationsResponse,
   GetEnrichmentResponse,
-  RecommendedPreprint,
-  RelatedPreprint,
+  RecommendedEprint,
+  RelatedEprint,
   DiscoverySettings,
   UpdateDiscoverySettingsInput,
 } from '@/lib/api/schema';
@@ -105,7 +105,7 @@ interface UseSimilarPapersOptions {
 }
 
 /**
- * Fetches papers similar to a given preprint.
+ * Fetches papers similar to a given eprint.
  *
  * @remarks
  * Uses multiple signals (citations, concepts, semantic similarity)
@@ -113,14 +113,14 @@ interface UseSimilarPapersOptions {
  *
  * @example
  * ```tsx
- * const { data, isLoading } = useSimilarPapers('at://did:plc:abc/pub.chive.preprint/123');
+ * const { data, isLoading } = useSimilarPapers('at://did:plc:abc/pub.chive.eprint/123');
  *
  * if (data) {
  *   console.log(data.related.map(r => r.title));
  * }
  * ```
  *
- * @param uri - AT-URI of the source preprint
+ * @param uri - AT-URI of the source eprint
  * @param options - Query options
  * @returns Query result with similar papers
  */
@@ -161,22 +161,22 @@ interface UseCitationsOptions {
 }
 
 /**
- * Fetches citation network data for a preprint.
+ * Fetches citation network data for a eprint.
  *
  * @remarks
  * Returns both citation counts and the actual citation relationships
- * between Chive-indexed preprints.
+ * between Chive-indexed eprints.
  *
  * @example
  * ```tsx
- * const { data } = useCitations('at://did:plc:abc/pub.chive.preprint/123');
+ * const { data } = useCitations('at://did:plc:abc/pub.chive.eprint/123');
  *
  * if (data) {
  *   console.log(`Cited by ${data.counts.citedByCount} papers`);
  * }
  * ```
  *
- * @param uri - AT-URI of the preprint
+ * @param uri - AT-URI of the eprint
  * @param options - Query options
  * @returns Query result with citations data
  */
@@ -211,7 +211,7 @@ interface UseEnrichmentOptions {
 }
 
 /**
- * Fetches enrichment data for a preprint.
+ * Fetches enrichment data for a eprint.
  *
  * @remarks
  * Returns external IDs, citation counts, and concept/topic data
@@ -219,14 +219,14 @@ interface UseEnrichmentOptions {
  *
  * @example
  * ```tsx
- * const { data } = useEnrichment('at://did:plc:abc/pub.chive.preprint/123');
+ * const { data } = useEnrichment('at://did:plc:abc/pub.chive.eprint/123');
  *
  * if (data?.available && data.enrichment) {
  *   console.log(`Citation count: ${data.enrichment.citationCount}`);
  * }
  * ```
  *
- * @param uri - AT-URI of the preprint
+ * @param uri - AT-URI of the eprint
  * @param options - Query options
  * @returns Query result with enrichment data
  */
@@ -256,7 +256,7 @@ export function useEnrichment(uri: string, options: UseEnrichmentOptions = {}) {
 }
 
 interface RecordInteractionInput {
-  preprintUri: string;
+  eprintUri: string;
   type: 'view' | 'click' | 'endorse' | 'dismiss' | 'claim';
   recommendationId?: string;
 }
@@ -274,7 +274,7 @@ interface RecordInteractionInput {
  *
  * // When user dismisses a recommendation
  * recordInteraction({
- *   preprintUri: 'at://did:plc:abc/pub.chive.preprint/123',
+ *   eprintUri: 'at://did:plc:abc/pub.chive.eprint/123',
  *   type: 'dismiss',
  *   recommendationId: 'rec-123',
  * });
@@ -316,7 +316,7 @@ export function useRecordInteraction() {
  * const prefetchSimilar = usePrefetchSimilarPapers();
  *
  * <Button
- *   onMouseEnter={() => prefetchSimilar(preprintUri)}
+ *   onMouseEnter={() => prefetchSimilar(eprintUri)}
  *   onClick={() => setShowSimilar(true)}
  * >
  *   Show Related Papers
@@ -622,9 +622,4 @@ export function useUserProfileState(options: { enabled?: boolean } = {}) {
 }
 
 // Re-export types for convenience
-export type {
-  RecommendedPreprint,
-  RelatedPreprint,
-  DiscoverySettings,
-  UpdateDiscoverySettingsInput,
-};
+export type { RecommendedEprint, RelatedEprint, DiscoverySettings, UpdateDiscoverySettingsInput };

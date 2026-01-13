@@ -5,7 +5,7 @@
  *
  * @remarks
  * Shows all reviews (both general and inline annotations) created by
- * a specific author, with links to the preprints they were written on.
+ * a specific author, with links to the eprints they were written on.
  *
  * @packageDocumentation
  */
@@ -43,12 +43,12 @@ export interface AuthorReviewsProps {
 // =============================================================================
 
 /**
- * Formats preprint URI for display and linking.
+ * Formats eprint URI for display and linking.
  */
-function formatPreprintLink(preprintUri: string): string {
+function formatEprintLink(eprintUri: string): string {
   // Convert AT-URI to URL-safe path
-  // at://did:plc:xxx/pub.chive.preprint.submission/rkey -> did:plc:xxx/pub.chive.preprint.submission/rkey
-  return preprintUri.replace('at://', '');
+  // at://did:plc:xxx/pub.chive.eprint.submission/rkey -> did:plc:xxx/pub.chive.eprint.submission/rkey
+  return eprintUri.replace('at://', '');
 }
 
 // =============================================================================
@@ -91,13 +91,13 @@ function AuthorReviewItem({ review }: { review: Review }) {
             </time>
           </div>
 
-          {/* Link to preprint */}
+          {/* Link to eprint */}
           <Link
-            href={`/preprints/${formatPreprintLink(review.preprintUri)}`}
+            href={`/eprints/${formatEprintLink(review.eprintUri)}`}
             className="flex items-center gap-1 hover:text-foreground hover:underline"
           >
             <FileText className="h-3 w-3" />
-            <span>View preprint</span>
+            <span>View eprint</span>
           </Link>
         </div>
       </CardContent>

@@ -101,17 +101,17 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
     logger.error('Redis health check failed', error instanceof Error ? error : undefined);
   }
 
-  // Check PostgreSQL connectivity via preprint service (which uses PostgreSQL adapter)
+  // Check PostgreSQL connectivity via eprint service (which uses PostgreSQL adapter)
   try {
     const services = c.get('services');
-    if (services?.preprint) {
+    if (services?.eprint) {
       const pgStart = performance.now();
       // A simple existence check: if the service is available and responds, PostgreSQL is up
       // In a full implementation, we'd call a health-specific method on the adapter
       await Promise.race([
         // Use a dummy query that will fail fast if DB is down
-        services.preprint
-          .getPreprintsByAuthor?.('did:plc:health-check' as never, { limit: 1 })
+        services.eprint
+          .getEprintsByAuthor?.('did:plc:health-check' as never, { limit: 1 })
           .catch(() => undefined), // Swallow expected not-found errors
         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
       ]);

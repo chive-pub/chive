@@ -2,15 +2,15 @@
  * REST API v1 integration endpoints.
  *
  * @remarks
- * Provides aggregated plugin integration data for preprints.
+ * Provides aggregated plugin integration data for eprints.
  * Returns cached data from external integrations (GitHub, GitLab, Zenodo, etc.).
  *
- * Integration data is populated by the plugin system when preprints are indexed.
- * The plugins detect external URLs in preprint supplementary materials and fetch
+ * Integration data is populated by the plugin system when eprints are indexed.
+ * The plugins detect external URLs in eprint supplementary materials and fetch
  * metadata from external APIs, caching the results in Redis.
  *
  * **Architecture Flow:**
- * 1. Preprint indexed → `preprint.indexed` event emitted
+ * 1. Eprint indexed → `eprint.indexed` event emitted
  * 2. Integration plugins (GitHub, GitLab, etc.) listen for this event
  * 3. Plugins detect URLs in `supplementaryLinks` field
  * 4. Plugins fetch metadata from external APIs
@@ -20,7 +20,7 @@
  * **ATProto Compliance:**
  * - All data is AppView cache (ephemeral, rebuildable)
  * - Never writes to user PDSes
- * - Metadata can be rebuilt by re-processing preprint events
+ * - Metadata can be rebuilt by re-processing eprint events
  *
  * @packageDocumentation
  * @public
@@ -124,7 +124,7 @@ interface DatasetIntegration {
  * Combined integration data response.
  */
 interface IntegrationsResponse {
-  preprintUri: string;
+  eprintUri: string;
   github?: GitHubIntegration[];
   gitlab?: GitLabIntegration[];
   zenodo?: ZenodoIntegration[];
@@ -245,10 +245,10 @@ function categorizeUrls(urls: readonly string[]): {
 }
 
 /**
- * Handler for GET /api/v1/preprints/:uri/integrations
+ * Handler for GET /api/v1/eprints/:uri/integrations
  *
  * @remarks
- * Aggregates integration data from plugin caches based on the preprint's
+ * Aggregates integration data from plugin caches based on the eprint's
  * supplementary links. Each plugin caches metadata with keys like:
  * - `plugin:pub.chive.plugin.github:github:{owner}:{repo}`
  * - `plugin:pub.chive.plugin.gitlab:gitlab:project:https://gitlab.com/api/v4:{path}`
@@ -256,7 +256,7 @@ function categorizeUrls(urls: readonly string[]): {
  * - `plugin:pub.chive.plugin.software-heritage:swh:origin:{url}`
  *
  * This endpoint:
- * 1. Fetches the preprint to get supplementary links
+ * 1. Fetches the eprint to get supplementary links
  * 2. Categorizes URLs by integration type
  * 3. Looks up cached metadata from each plugin's scoped cache
  * 4. Aggregates and returns the data
@@ -268,43 +268,43 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
   const services = c.get('services');
   const logger = c.get('logger');
 
-  // Get the preprint to access supplementary links
-  const preprint = await services.preprint.getPreprint(decodedUri as AtUri);
-  if (!preprint) {
-    return c.json({ error: 'Preprint not found' }, 404);
+  // Get the eprint to access supplementary links
+  const eprint = await services.eprint.getEprint(decodedUri as AtUri);
+  if (!eprint) {
+    return c.json({ error: 'Eprint not found' }, 404);
   }
 
-  // Get supplementary links from preprint repositories field
+  // Get supplementary links from eprint repositories field
   const supplementaryLinks: string[] = [];
 
   // Extract URLs from repositories field (new structured format)
-  if (preprint.repositories) {
+  if (eprint.repositories) {
     // Code repositories
-    if (preprint.repositories.code) {
-      for (const repo of preprint.repositories.code) {
+    if (eprint.repositories.code) {
+      for (const repo of eprint.repositories.code) {
         if (repo.url) supplementaryLinks.push(repo.url);
         if (repo.archiveUrl) supplementaryLinks.push(repo.archiveUrl);
       }
     }
     // Data repositories
-    if (preprint.repositories.data) {
-      for (const repo of preprint.repositories.data) {
+    if (eprint.repositories.data) {
+      for (const repo of eprint.repositories.data) {
         if (repo.url) supplementaryLinks.push(repo.url);
       }
     }
     // Pre-registration
-    if (preprint.repositories.preregistration?.url) {
-      supplementaryLinks.push(preprint.repositories.preregistration.url);
+    if (eprint.repositories.preregistration?.url) {
+      supplementaryLinks.push(eprint.repositories.preregistration.url);
     }
     // Protocols
-    if (preprint.repositories.protocols) {
-      for (const protocol of preprint.repositories.protocols) {
+    if (eprint.repositories.protocols) {
+      for (const protocol of eprint.repositories.protocols) {
         if (protocol.url) supplementaryLinks.push(protocol.url);
       }
     }
     // Materials
-    if (preprint.repositories.materials) {
-      for (const material of preprint.repositories.materials) {
+    if (eprint.repositories.materials) {
+      for (const material of eprint.repositories.materials) {
         if (material.url) supplementaryLinks.push(material.url);
       }
     }
@@ -313,7 +313,7 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
   // If no supplementary links, return empty response
   if (supplementaryLinks.length === 0) {
     return c.json({
-      preprintUri: decodedUri,
+      eprintUri: decodedUri,
       lastUpdated: new Date().toISOString(),
     } satisfies IntegrationsResponse);
   }
@@ -322,7 +322,7 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
   const categorized = categorizeUrls(supplementaryLinks);
 
   const response: IntegrationsResponse = {
-    preprintUri: decodedUri,
+    eprintUri: decodedUri,
     lastUpdated: new Date().toISOString(),
   };
 
@@ -364,7 +364,7 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
           });
         } else {
           // No cached data yet; return basic info
-          // The plugin will populate cache when it processes the preprint event
+          // The plugin will populate cache when it processes the eprint event
           githubIntegrations.push({
             type: 'github',
             owner,
@@ -606,14 +606,14 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
  *
  * @remarks
  * Routes:
- * - `GET /api/v1/preprints/:uri/integrations` - Get integrations for a preprint
+ * - `GET /api/v1/eprints/:uri/integrations` - Get integrations for a eprint
  *
  * @public
  */
 export function registerIntegrationRoutes(app: Hono<ChiveEnv>): void {
-  const basePath = `${REST_PATH_PREFIX}/preprints`;
+  const basePath = `${REST_PATH_PREFIX}/eprints`;
 
-  // GET /api/v1/preprints/:uri/integrations: Get integrations for a preprint
+  // GET /api/v1/eprints/:uri/integrations: Get integrations for a eprint
   app.get(
     `${basePath}/:uri/integrations`,
     validateParams(uriPathParamSchema),

@@ -44,7 +44,7 @@ const createMockDatabasePool = (): MockDatabasePool => ({
  * Uses verified formats based on ATProto specification.
  */
 const SAMPLE_SOURCE_URI = 'at://did:plc:test123/xyz.semble.collection/reading-list-1';
-const SAMPLE_TARGET_URI = 'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude';
+const SAMPLE_TARGET_URI = 'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude';
 const SAMPLE_DID = 'did:plc:test123';
 
 const SAMPLE_BACKLINK_ROW = {

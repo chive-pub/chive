@@ -11,7 +11,7 @@ import { TopicChips } from './topic-chips';
 import { ConceptChips } from './concept-chips';
 
 export interface EnrichmentPanelProps {
-  preprintUri: string;
+  eprintUri: string;
   className?: string;
 }
 
@@ -54,11 +54,11 @@ export function EnrichmentPanelSkeleton({ className }: { className?: string }) {
  *
  * @example
  * ```tsx
- * <EnrichmentPanel preprintUri="at://did:plc:abc/pub.chive.preprint/123" />
+ * <EnrichmentPanel eprintUri="at://did:plc:abc/pub.chive.eprint/123" />
  * ```
  */
-export function EnrichmentPanel({ preprintUri, className }: EnrichmentPanelProps) {
-  const { data, isLoading, isError } = useEnrichment(preprintUri);
+export function EnrichmentPanel({ eprintUri, className }: EnrichmentPanelProps) {
+  const { data, isLoading, isError } = useEnrichment(eprintUri);
 
   if (isLoading) {
     return <EnrichmentPanelSkeleton className={className} />;

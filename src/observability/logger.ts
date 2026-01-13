@@ -320,8 +320,8 @@ export class PinoLogger implements ILogger {
    *
    * @example
    * ```typescript
-   * logger.info('Indexed preprint', { uri: 'at://did:plc:abc/pub.chive.preprint/123', duration: 150 });
-   * // Output: {"level":"info","time":"...","msg":"Indexed preprint","uri":"at://...","duration":150}
+   * logger.info('Indexed eprint', { uri: 'at://did:plc:abc/pub.chive.eprint/123', duration: 150 });
+   * // Output: {"level":"info","time":"...","msg":"Indexed eprint","uri":"at://...","duration":150}
    * ```
    *
    * @public
@@ -374,11 +374,11 @@ export class PinoLogger implements ILogger {
    * @example
    * ```typescript
    * try {
-   *   await indexPreprint(preprint);
+   *   await indexEprint(eprint);
    * } catch (error) {
-   *   logger.error('Failed to index preprint', error as Error, { uri: preprintUri });
+   *   logger.error('Failed to index eprint', error as Error, { uri: eprintUri });
    * }
-   * // Output: {"level":"error","time":"...","msg":"Failed to index preprint","err":{"message":"...","stack":"..."},"uri":"..."}
+   * // Output: {"level":"error","time":"...","msg":"Failed to index eprint","err":{"message":"...","stack":"..."},"uri":"..."}
    * ```
    *
    * @public
@@ -423,7 +423,7 @@ export class PinoLogger implements ILogger {
    * // Output includes both requestId and userId in every log entry
    *
    * // Child loggers can be nested
-   * const opLogger = requestLogger.child({ operation: 'indexPreprint' });
+   * const opLogger = requestLogger.child({ operation: 'indexEprint' });
    * opLogger.debug('Starting operation');
    * // Output includes requestId, userId, and operation
    * ```

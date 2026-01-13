@@ -238,7 +238,7 @@ export function requireAdmin(): MiddlewareHandler<ChiveEnv> {
  *
  * @example
  * ```typescript
- * app.use('/xrpc/pub.chive.preprint.*', requireAuth(), requireAlphaTester());
+ * app.use('/xrpc/pub.chive.eprint.*', requireAuth(), requireAlphaTester());
  * ```
  *
  * @returns Hono middleware handler

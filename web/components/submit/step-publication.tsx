@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Publication metadata step for preprint submission.
+ * Publication metadata step for eprint submission.
  *
  * @remarks
  * Handles comprehensive publication metadata including:
@@ -46,7 +46,7 @@ import {
   type CrossRefWork,
   type CrossRefFunder,
 } from '@/components/forms';
-import type { PreprintFormValues } from './submission-wizard';
+import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -57,7 +57,7 @@ import type { PreprintFormValues } from './submission-wizard';
  */
 export interface StepPublicationProps {
   /** React Hook Form instance */
-  form: UseFormReturn<PreprintFormValues>;
+  form: UseFormReturn<EprintFormValues>;
   /** Additional CSS classes */
   className?: string;
 }
@@ -70,7 +70,7 @@ export interface StepPublicationProps {
  * Publication status options.
  */
 const PUBLICATION_STATUS_OPTIONS = [
-  { value: 'preprint', label: 'Preprint' },
+  { value: 'eprint', label: 'Eprint' },
   { value: 'under_review', label: 'Under Review' },
   { value: 'revision_requested', label: 'Revision Requested' },
   { value: 'accepted', label: 'Accepted' },
@@ -233,7 +233,7 @@ export function StepPublication({ form, className }: StepPublicationProps) {
           <div className="space-y-2">
             <Label htmlFor="publicationStatus">Status</Label>
             <Select
-              value={form.watch('publicationStatus') ?? 'preprint'}
+              value={form.watch('publicationStatus') ?? 'eprint'}
               onValueChange={(value) =>
                 form.setValue(
                   'publicationStatus',
@@ -265,7 +265,7 @@ export function StepPublication({ form, className }: StepPublicationProps) {
             <span className="text-sm font-normal text-muted-foreground">(if applicable)</span>
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Link to the published version (Version of Record) if this preprint has been published.
+            Link to the published version (Version of Record) if this eprint has been published.
           </p>
         </div>
 
@@ -323,7 +323,7 @@ export function StepPublication({ form, className }: StepPublicationProps) {
             <span className="text-sm font-normal text-muted-foreground">(optional)</span>
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Link to other preprint servers or databases where this work is indexed.
+            Link to other eprint servers or databases where this work is indexed.
           </p>
         </div>
 

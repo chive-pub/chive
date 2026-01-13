@@ -1,5 +1,5 @@
 /**
- * E2E tests for author management in preprint submission.
+ * E2E tests for author management in eprint submission.
  *
  * Tests the full author workflow including:
  * - Adding ATProto authors by DID

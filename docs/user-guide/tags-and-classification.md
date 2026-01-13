@@ -1,6 +1,6 @@
 # Tags and classification
 
-Chive uses a combination of hierarchical fields and user-contributed tags to organize preprints. This guide explains how to tag papers and navigate the classification system.
+Chive uses a combination of hierarchical fields and user-contributed tags to organize eprints. This guide explains how to tag papers and navigate the classification system.
 
 ## Fields vs tags
 
@@ -41,7 +41,7 @@ Tags help with discovery beyond the formal taxonomy.
 
 ### To your own papers
 
-1. Go to your preprint's page
+1. Go to your eprint's page
 2. Click **Add Tags**
 3. Type a tag name
 4. Select from suggestions or create a new tag

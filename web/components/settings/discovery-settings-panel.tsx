@@ -275,7 +275,7 @@ export function DiscoverySettingsPanel() {
         {/* Related Papers Signals */}
         <CollapsibleSection title="Related Papers" icon={FileText}>
           <p className="text-sm text-muted-foreground mb-3">
-            Configure what to show in the Related Papers panel on preprint pages.
+            Configure what to show in the Related Papers panel on eprint pages.
           </p>
 
           <div className="space-y-1">
@@ -304,7 +304,7 @@ export function DiscoverySettingsPanel() {
         {/* Citation Network Display */}
         <CollapsibleSection title="Citation Network Display" icon={Quote}>
           <p className="text-sm text-muted-foreground mb-3">
-            How to display the citation network on preprint pages.
+            How to display the citation network on eprint pages.
           </p>
 
           <RadioGroup

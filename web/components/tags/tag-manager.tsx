@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * Full tag management panel for preprints.
+ * Full tag management panel for eprints.
  *
  * @example
  * ```tsx
- * <TagManager preprintUri={preprintUri} editable={isOwner} />
+ * <TagManager eprintUri={eprintUri} editable={isOwner} />
  * ```
  *
  * @packageDocumentation
@@ -17,7 +17,7 @@ import { Tags, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { usePreprintTags, useCreateTag, useDeleteTag } from '@/lib/hooks/use-tags';
+import { useEprintTags, useCreateTag, useDeleteTag } from '@/lib/hooks/use-tags';
 import type { TagSummary } from '@/lib/api/schema';
 import { TagList, TagListSkeleton } from './tag-list';
 import { TagInput } from './tag-input';
@@ -30,8 +30,8 @@ import { TagInput } from './tag-input';
  * Props for TagManager.
  */
 export interface TagManagerProps {
-  /** AT-URI of the preprint */
-  preprintUri: string;
+  /** AT-URI of the eprint */
+  eprintUri: string;
 
   /** Whether tags can be edited */
   editable?: boolean;
@@ -48,20 +48,20 @@ export interface TagManagerProps {
 // =============================================================================
 
 /**
- * Displays and manages tags for a preprint.
+ * Displays and manages tags for a eprint.
  *
  * @param props - Component props
  * @returns Tag manager element
  */
 export function TagManager({
-  preprintUri,
+  eprintUri,
   editable = false,
   currentUserDid,
   className,
 }: TagManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
 
-  const { data, isLoading, error } = usePreprintTags(preprintUri);
+  const { data, isLoading, error } = useEprintTags(eprintUri);
   const createTag = useCreateTag();
   const deleteTag = useDeleteTag();
 
@@ -73,7 +73,7 @@ export function TagManager({
 
   const handleAddTag = async (displayForm: string) => {
     await createTag.mutateAsync({
-      preprintUri,
+      eprintUri,
       displayForm,
     });
     setIsAdding(false);
@@ -92,7 +92,7 @@ export function TagManager({
 
     await deleteTag.mutateAsync({
       uri: userTag.uri,
-      preprintUri,
+      eprintUri,
     });
   };
 

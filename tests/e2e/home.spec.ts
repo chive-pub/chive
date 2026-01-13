@@ -15,49 +15,49 @@ test.describe('Home page', () => {
     await homePage.goto();
 
     await expect(homePage.heroTitle).toBeVisible();
-    // Alpha landing page has "Chive" as title and "Decentralized Preprints" as tagline
+    // Alpha landing page has "Chive" as title and "Decentralized Eprints" as tagline
     await expect(homePage.heroTitle).toContainText(/chive/i);
   });
 
-  test('displays tagline with decentralized preprints', async ({ page }) => {
+  test('displays tagline with decentralized eprints', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
     // Check tagline is visible
     await expect(homePage.heroSubtitle).toBeVisible();
-    await expect(homePage.heroSubtitle).toContainText(/decentralized preprints/i);
+    await expect(homePage.heroSubtitle).toContainText(/decentralized eprints/i);
   });
 
   // Skip: Browse button not present during alpha - will be restored post-alpha
-  test.skip('displays browse preprints button', async ({ page }) => {
+  test.skip('displays browse eprints button', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
-    const browseButton = page.getByRole('link', { name: /browse preprints/i });
+    const browseButton = page.getByRole('link', { name: /browse eprints/i });
     await expect(browseButton).toBeVisible();
   });
 
   // Skip: Browse button not present during alpha - will be restored post-alpha
-  test.skip('browse button navigates to preprints page', async ({ page }) => {
+  test.skip('browse button navigates to eprints page', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
-    const browseButton = page.getByRole('link', { name: /browse preprints/i });
+    const browseButton = page.getByRole('link', { name: /browse eprints/i });
     await browseButton.click();
 
-    await expect(page).toHaveURL(/\/preprints/);
+    await expect(page).toHaveURL(/\/eprints/);
   });
 
   // Skip: Submit CTA not present during alpha - will be restored post-alpha
-  test.skip('displays submit preprint CTA', async ({ page }) => {
+  test.skip('displays submit eprint CTA', async ({ page }) => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
-    // The home page has "Submit a Preprint" link in the CTA section or Quick Access
+    // The home page has "Submit a Eprint" link in the CTA section or Quick Access
     const submitButton = page
-      .getByRole('link', { name: /submit.*preprint/i })
+      .getByRole('link', { name: /submit.*eprint/i })
       .first()
-      .or(page.getByRole('link', { name: /submit preprint/i }).first());
+      .or(page.getByRole('link', { name: /submit eprint/i }).first());
     await expect(submitButton).toBeVisible();
   });
 

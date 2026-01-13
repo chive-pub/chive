@@ -8,12 +8,12 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["preprintUri", "content", "createdAt"],
+        "required": ["eprintUri", "content", "createdAt"],
         "properties": {
-          "preprintUri": {
+          "eprintUri": {
             "type": "string",
             "format": "at-uri",
-            "description": "Reviewed preprint URI"
+            "description": "Reviewed eprint URI"
           },
           "content": {
             "type": "string",

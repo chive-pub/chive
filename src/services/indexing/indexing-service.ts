@@ -109,7 +109,7 @@ export interface IndexingServiceOptions {
    * @remarks
    * If omitted, all pub.chive.* collections are processed.
    *
-   * @example ["pub.chive.preprint.submission", "pub.chive.review.comment"]
+   * @example ["pub.chive.eprint.submission", "pub.chive.review.comment"]
    */
   readonly collections?: readonly NSID[];
 

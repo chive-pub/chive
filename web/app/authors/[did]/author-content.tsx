@@ -8,9 +8,9 @@ import {
   AuthorHeaderSkeleton,
   AuthorStats,
   AuthorStatsSkeleton,
-  AuthorPreprints,
-  AuthorPreprintsSkeleton,
-} from '@/components/preprints';
+  AuthorEprints,
+  AuthorEprintsSkeleton,
+} from '@/components/eprints';
 import { AuthorReviews } from '@/components/authors/author-reviews';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,7 +31,7 @@ export interface AuthorPageContentProps {
  * Client-side author page content.
  *
  * @remarks
- * Fetches and displays author profile, stats, and preprints.
+ * Fetches and displays author profile, stats, and eprints.
  * Handles loading, error, and not found states.
  *
  * @param props - Component props
@@ -91,7 +91,7 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
             <div className="h-10 w-24 animate-pulse rounded-md bg-muted" />
             <div className="h-10 w-20 animate-pulse rounded-md bg-muted" />
           </div>
-          <AuthorPreprintsSkeleton count={5} />
+          <AuthorEprintsSkeleton count={5} />
         </div>
       </div>
     );
@@ -144,14 +144,14 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
       <Separator />
 
       {/* Content tabs */}
-      <Tabs defaultValue="preprints" className="w-full">
+      <Tabs defaultValue="eprints" className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="preprints">Preprints</TabsTrigger>
+          <TabsTrigger value="eprints">Eprints</TabsTrigger>
           <TabsTrigger value="reviews">Reviews</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="preprints">
-          <AuthorPreprints did={did} layout="list" />
+        <TabsContent value="eprints">
+          <AuthorEprints did={did} layout="list" />
         </TabsContent>
 
         <TabsContent value="reviews">

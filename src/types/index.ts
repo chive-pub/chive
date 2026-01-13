@@ -5,7 +5,7 @@
  * This module exports all type definitions used throughout Chive:
  * - AT Protocol primitives (AtUri, DID, NSID, CID, BlobRef)
  * - Service interfaces (IRepository, ISearchEngine, IStorageBackend, etc.)
- * - Domain models (Preprint, Review, Author)
+ * - Domain models (Eprint, Review, Author)
  * - Plugin system interfaces (IChivePlugin, IPluginContext, etc.)
  * - Error types (ChiveError, ComplianceError, etc.)
  * - Result monad (Result, Ok, Err, etc.)

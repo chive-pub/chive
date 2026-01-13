@@ -77,7 +77,7 @@ class ComplianceTestPlugin extends BasePlugin {
     author: 'Test',
     license: 'MIT',
     permissions: {
-      hooks: ['preprint.indexed', 'preprint.updated'],
+      hooks: ['eprint.indexed', 'eprint.updated'],
       network: { allowedDomains: ['api.example.com'] },
       storage: { maxSize: 1024 * 1024 },
     },
@@ -187,7 +187,7 @@ describe('ATProto Plugin Compliance', () => {
       const context = contextFactory.createContext(new ComplianceTestPlugin().manifest, {});
 
       // Cache is for metadata/computed values, not blob storage
-      await context.cache.set('metadata:preprint:123', { title: 'Test' }, 3600);
+      await context.cache.set('metadata:eprint:123', { title: 'Test' }, 3600);
 
       // Verify cache call was prefixed (scoped to plugin)
       expect(mockCache.set).toHaveBeenCalledWith(
@@ -236,8 +236,8 @@ describe('ATProto Plugin Compliance', () => {
       const context = contextFactory.createContext(new ComplianceTestPlugin().manifest, {});
 
       // Cache operations are scoped to plugin
-      await context.cache.set('preprint:123', { indexed: true }, 3600);
-      await context.cache.delete('preprint:123');
+      await context.cache.set('eprint:123', { indexed: true }, 3600);
+      await context.cache.delete('eprint:123');
 
       // Verify delete was called with scoped key
       expect(mockCache.delete).toHaveBeenCalledWith(
@@ -368,7 +368,7 @@ describe('ATProto Plugin Compliance', () => {
 
       // Cache the result (ephemeral, rebuildable)
       await context.cache.set(
-        'doi:preprint:abc123',
+        'doi:eprint:abc123',
         doiResult,
         7 * 24 * 3600 // 7 days TTL
       );
@@ -426,13 +426,13 @@ describe('ATProto Plugin Compliance', () => {
 
       // Allowed hooks
       expect(() => {
-        context.eventBus.on('preprint.indexed', () => {
+        context.eventBus.on('eprint.indexed', () => {
           // Allowed hook handler
         });
       }).not.toThrow();
 
       expect(() => {
-        context.eventBus.on('preprint.updated', () => {
+        context.eventBus.on('eprint.updated', () => {
           // Allowed hook handler
         });
       }).not.toThrow();
@@ -486,7 +486,7 @@ describe('ATProto Plugin Compliance', () => {
       // Chive is just an indexer/view
 
       const userDataLocations = {
-        preprints: 'user_pds',
+        eprints: 'user_pds',
         reviews: 'user_pds',
         blobs: 'user_pds',
         profile: 'user_pds',

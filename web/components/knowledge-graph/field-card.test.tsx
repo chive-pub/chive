@@ -43,8 +43,8 @@ describe('FieldCard', () => {
     expect(screen.getByText(/The study of computation/)).toBeInTheDocument();
   });
 
-  it('shows preprint count', () => {
-    const field = createMockFieldSummary({ preprintCount: 250 });
+  it('shows eprint count', () => {
+    const field = createMockFieldSummary({ eprintCount: 250 });
     render(<FieldCard field={field} />);
     expect(screen.getByText('250')).toBeInTheDocument();
   });
@@ -97,8 +97,8 @@ describe('FieldCard', () => {
       const field = createMockFieldSummary();
       render(<FieldCard field={field} variant="compact" />);
       expect(screen.getByText('Computer Science')).toBeInTheDocument();
-      // Compact shows preprints in different format
-      expect(screen.getByText(/preprints/)).toBeInTheDocument();
+      // Compact shows eprints in different format
+      expect(screen.getByText(/eprints/)).toBeInTheDocument();
     });
   });
 
@@ -110,12 +110,12 @@ describe('FieldCard', () => {
       expect(link).toHaveClass('text-xl');
     });
 
-    it('shows separate preprint and subfield counts', () => {
-      const field = createMockFieldSummary({ preprintCount: 100, childCount: 5 });
+    it('shows separate eprint and subfield counts', () => {
+      const field = createMockFieldSummary({ eprintCount: 100, childCount: 5 });
       render(<FieldCard field={field} variant="featured" />);
       expect(screen.getByText('100')).toBeInTheDocument();
       expect(screen.getByText('5')).toBeInTheDocument();
-      expect(screen.getByText('Preprints')).toBeInTheDocument();
+      expect(screen.getByText('Eprints')).toBeInTheDocument();
       expect(screen.getByText('Subfields')).toBeInTheDocument();
     });
   });

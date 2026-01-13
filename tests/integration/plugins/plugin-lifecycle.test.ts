@@ -78,7 +78,7 @@ class LifecycleTrackingPlugin extends BasePlugin {
     author: 'Test',
     license: 'MIT' as const,
     permissions: {
-      hooks: ['system.*', 'preprint.*'],
+      hooks: ['system.*', 'eprint.*'],
       network: { allowedDomains: [] as string[] },
       storage: { maxSize: 1024 },
     },

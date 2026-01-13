@@ -168,7 +168,7 @@ export default function AuthoritiesPage() {
                     )}
 
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      <span>{authority.linkedPreprints ?? 0} preprints</span>
+                      <span>{authority.linkedEprints ?? 0} eprints</span>
                       <span>{(authority.externalIds ?? []).length} external sources</span>
                     </div>
                   </div>

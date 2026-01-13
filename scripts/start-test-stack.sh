@@ -161,6 +161,13 @@ DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive" \
   --migrations-dir src/storage/postgresql/migrations 2>/dev/null || true
 echo "✓ Migrations complete"
 
+# Seed test data
+echo ""
+echo "Seeding test data..."
+DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive" \
+NEO4J_PASSWORD="$NEO4J_PASSWORD" \
+  "$SCRIPT_DIR/seed-test-data.sh"
+
 echo ""
 echo "Test stack is ready!"
 echo ""

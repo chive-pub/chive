@@ -4,7 +4,7 @@
  * Author input component for managing co-authors.
  *
  * @remarks
- * Provides an interface for adding and removing co-authors from a preprint.
+ * Provides an interface for adding and removing co-authors from a eprint.
  * Supports DID-based author lookup and display.
  *
  * @example

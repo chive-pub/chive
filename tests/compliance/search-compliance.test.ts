@@ -20,20 +20,20 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ElasticsearchConnectionPool } from '../../src/storage/elasticsearch/connection.js';
 import {
   ElasticsearchAdapter,
-  mapPreprintToDocument,
+  mapEprintToDocument,
 } from '../../src/storage/elasticsearch/index.js';
 import { createElasticsearchClient } from '../../src/storage/elasticsearch/setup.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../src/types/atproto.js';
 import type { Facet } from '../../src/types/interfaces/graph.interface.js';
-import type { PreprintAuthor } from '../../src/types/models/author.js';
-import type { Preprint } from '../../src/types/models/preprint.js';
+import type { EprintAuthor } from '../../src/types/models/author.js';
+import type { Eprint } from '../../src/types/models/eprint.js';
 
 describe('ATProto Search Compliance', () => {
   let client: Client;
   let connectionPool: ElasticsearchConnectionPool;
   let adapter: ElasticsearchAdapter;
 
-  const testIndexName = 'test-compliance-preprints';
+  const testIndexName = 'test-compliance-eprints';
 
   beforeAll(async () => {
     client = createElasticsearchClient();
@@ -95,7 +95,7 @@ describe('ATProto Search Compliance', () => {
         size: 1024000,
       };
 
-      const testAuthor: PreprintAuthor = {
+      const testAuthor: EprintAuthor = {
         did: 'did:plc:author123' as DID,
         name: 'Test Author',
         order: 1,
@@ -105,16 +105,16 @@ describe('ATProto Search Compliance', () => {
         isHighlighted: false,
       };
 
-      const testPreprint: Preprint = {
-        uri: 'at://did:plc:test123/pub.chive.preprint/abc123' as AtUri,
+      const testEprint: Eprint = {
+        uri: 'at://did:plc:test123/pub.chive.eprint/abc123' as AtUri,
         cid: 'bafytest123' as CID,
         authors: [testAuthor],
         submittedBy: 'did:plc:author123' as DID,
-        title: 'Test Preprint for Compliance',
+        title: 'Test Eprint for Compliance',
         abstract: 'Testing ATProto compliance in search index',
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
-        publicationStatus: 'preprint',
+        publicationStatus: 'eprint',
         keywords: ['test'],
         facets: [{ dimension: 'matter', value: 'Computer Science' }] satisfies readonly Facet[],
         version: 1,
@@ -122,8 +122,8 @@ describe('ATProto Search Compliance', () => {
         createdAt: Date.now() as Timestamp,
       };
 
-      const document = mapPreprintToDocument(testPreprint, 'https://pds.example.com');
-      await adapter.indexPreprint(document);
+      const document = mapEprintToDocument(testEprint, 'https://pds.example.com');
+      await adapter.indexEprint(document);
       await client.indices.refresh({ index: testIndexName });
 
       const results = await adapter.search({ q: 'compliance' });
@@ -131,7 +131,7 @@ describe('ATProto Search Compliance', () => {
       expect(results.hits.length).toBeGreaterThan(0);
       const hit = results.hits[0];
       expect(hit?.uri).toMatch(/^at:\/\/did:/);
-      expect(hit?.uri).toBe(testPreprint.uri);
+      expect(hit?.uri).toBe(testEprint.uri);
     });
 
     it('indexed documents preserve DID format', async () => {
@@ -316,7 +316,7 @@ describe('ATProto Search Compliance', () => {
     });
 
     it('documents can be deleted without losing source records', async () => {
-      const testUri = 'at://did:plc:test123/pub.chive.preprint/abc123';
+      const testUri = 'at://did:plc:test123/pub.chive.eprint/abc123';
 
       const existsBefore = await client.exists({
         index: testIndexName,
@@ -494,7 +494,7 @@ describe('ATProto Search Compliance', () => {
   });
 
   describe('CRITICAL: Collection NSID Enforcement', () => {
-    it('all URIs use pub.chive.preprint collection', async () => {
+    it('all URIs use pub.chive.eprint collection', async () => {
       const response = await client.search({
         index: testIndexName,
         query: { match_all: {} },
@@ -506,7 +506,7 @@ describe('ATProto Search Compliance', () => {
         const source = doc._source as Record<string, unknown>;
         const uri = String(source.uri);
 
-        expect(uri).toContain('/pub.chive.preprint/');
+        expect(uri).toContain('/pub.chive.eprint/');
       }
     });
 

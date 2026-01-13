@@ -250,7 +250,7 @@ export function FieldSearch({
                           )}
                         </div>
                         <span className="ml-auto text-xs text-muted-foreground">
-                          {field.preprintCount} preprints
+                          {field.eprintCount} eprints
                         </span>
                       </CommandItem>
                     ))}

@@ -30,9 +30,9 @@ export type ActivityStatus = z.infer<typeof activityStatusSchema>;
  * Activity categories (semantic action types).
  */
 export const activityCategorySchema = z.enum([
-  'preprint_submit',
-  'preprint_update',
-  'preprint_delete',
+  'eprint_submit',
+  'eprint_update',
+  'eprint_delete',
   'review_create',
   'review_update',
   'review_delete',

@@ -12,7 +12,7 @@
 import type { AtUri, BlobRef, DID } from '../atproto.js';
 
 // =============================================================================
-// Preprint Author Models (for submission records)
+// Eprint Author Models (for submission records)
 // =============================================================================
 
 /**
@@ -32,11 +32,11 @@ export type ContributionDegree = 'lead' | 'equal' | 'supporting';
  * Author affiliation with optional ROR ID and department.
  *
  * @remarks
- * Used in preprint submission records to capture author affiliations.
+ * Used in eprint submission records to capture author affiliations.
  *
  * @public
  */
-export interface PreprintAuthorAffiliation {
+export interface EprintAuthorAffiliation {
   /**
    * Organization name.
    */
@@ -65,7 +65,7 @@ export interface PreprintAuthorAffiliation {
  * @see {@link https://credit.niso.org/ | CRediT}
  * @public
  */
-export interface PreprintAuthorContribution {
+export interface EprintAuthorContribution {
   /**
    * AT-URI to contribution type from knowledge graph.
    *
@@ -94,15 +94,15 @@ export interface PreprintAuthorContribution {
 }
 
 /**
- * Full author entry for preprint submissions.
+ * Full author entry for eprint submissions.
  *
  * @remarks
- * Represents an author in a preprint submission record. Supports both
+ * Represents an author in a eprint submission record. Supports both
  * ATProto users (with DID) and external collaborators (without DID).
  *
  * @public
  */
-export interface PreprintAuthor {
+export interface EprintAuthor {
   /**
    * Author DID if they have an ATProto account.
    *
@@ -154,12 +154,12 @@ export interface PreprintAuthor {
   /**
    * Author affiliations.
    */
-  readonly affiliations: readonly PreprintAuthorAffiliation[];
+  readonly affiliations: readonly EprintAuthorAffiliation[];
 
   /**
    * CRediT-based contributions.
    */
-  readonly contributions: readonly PreprintAuthorContribution[];
+  readonly contributions: readonly EprintAuthorContribution[];
 
   /**
    * Whether this is a corresponding author.
@@ -402,9 +402,9 @@ export interface AuthorMetrics {
   readonly did: DID;
 
   /**
-   * Total number of preprints authored or co-authored.
+   * Total number of eprints authored or co-authored.
    */
-  readonly preprintCount: number;
+  readonly eprintCount: number;
 
   /**
    * Total number of endorsements received.

@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.graph.browseFaceted.
  *
  * @remarks
- * Browse preprints using PMEST (Personality, Matter, Energy, Space, Time)
+ * Browse eprints using PMEST (Personality, Matter, Energy, Space, Time)
  * faceted classification. Supports dynamic refinement based on selected facets.
  *
  * @packageDocumentation
@@ -25,7 +25,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated faceted browse parameters
- * @returns Matching preprints with available facet refinements
+ * @returns Matching eprints with available facet refinements
  *
  * @remarks
  * PMEST Facets:
@@ -41,7 +41,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * Response:
  * {
- *   "preprints": [...],
+ *   "eprints": [...],
  *   "facets": {
  *     "matter": [{ "value": "graphene", "count": 15 }, ...],
  *     "space": [{ "value": "laboratory", "count": 42 }, ...]
@@ -82,7 +82,7 @@ export async function browseFacetedHandler(
   // Map service response to API response format
   // Uses `hits` to match frontend SearchResultsResponse interface
   const response: FacetedBrowseResponse = {
-    hits: results.preprints.map((p) => ({
+    hits: results.eprints.map((p) => ({
       uri: p.uri as string,
       cid: p.cid,
       title: p.title,
@@ -179,7 +179,7 @@ export async function browseFacetedHandler(
 export const browseFacetedEndpoint: XRPCEndpoint<BrowseFacetedParams, FacetedBrowseResponse> = {
   method: 'pub.chive.graph.browseFaceted' as never,
   type: 'query',
-  description: 'Browse preprints using PMEST faceted classification',
+  description: 'Browse eprints using PMEST faceted classification',
   inputSchema: browseFacetedParamsSchema,
   outputSchema: facetedBrowseResponseSchema,
   handler: browseFacetedHandler,

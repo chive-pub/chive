@@ -7,7 +7,7 @@
  * 250M+ works, including papers, authors, institutions, and concepts.
  *
  * This plugin is used to:
- * - Enrich preprints with citation and reference metadata
+ * - Enrich eprints with citation and reference metadata
  * - Verify author identity via ORCID-linked profiles
  * - Provide institution and concept data
  *
@@ -494,7 +494,7 @@ interface OpenAlexApiAuthor {
  *
  * @remarks
  * Provides scholarly metadata lookup from OpenAlex's 250M+ works database.
- * Used for preprint enrichment and author verification.
+ * Used for eprint enrichment and author verification.
  *
  * @example
  * ```typescript
@@ -999,7 +999,7 @@ export class OpenAlexPlugin extends BasePlugin {
    *
    * @remarks
    * Uses the OpenAlex `/text` endpoint to classify arbitrary text (title + abstract)
-   * into OpenAlex topics, keywords, and concepts. This is useful for preprints
+   * into OpenAlex topics, keywords, and concepts. This is useful for eprints
    * that don't yet have a DOI in OpenAlex's database.
    *
    * **Rate Limits:**

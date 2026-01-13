@@ -51,7 +51,7 @@ const createMockPlugin = (manifestOverrides: Partial<IPluginManifest> = {}): ICh
     author: 'Chive Team',
     license: 'MIT',
     permissions: {
-      hooks: ['preprint.indexed', 'preprint.updated'],
+      hooks: ['eprint.indexed', 'eprint.updated'],
       network: {
         allowedDomains: ['api.github.com', 'api.example.com'],
       },
@@ -105,8 +105,8 @@ describe('PermissionEnforcer', () => {
     it('should return true for permitted hook', () => {
       const plugin = createMockPlugin();
 
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.indexed')).toBe(true);
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.updated')).toBe(true);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.indexed')).toBe(true);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.updated')).toBe(true);
     });
 
     it('should return false for non-permitted hook', () => {
@@ -131,14 +131,14 @@ describe('PermissionEnforcer', () => {
     it('should handle hook wildcard permissions', () => {
       const plugin = createMockPlugin({
         permissions: {
-          hooks: ['preprint.*'],
+          hooks: ['eprint.*'],
           network: { allowedDomains: [] },
           storage: { maxSize: 1024 },
         },
       });
 
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.indexed')).toBe(true);
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.updated')).toBe(true);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.indexed')).toBe(true);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.updated')).toBe(true);
       expect(enforcer.checkPermission(plugin, 'hook:review.created')).toBe(false);
     });
   });
@@ -191,7 +191,7 @@ describe('PermissionEnforcer', () => {
       const plugin = createMockPlugin();
 
       expect(() => {
-        enforcer.enforceHookAccess(plugin, 'preprint.indexed');
+        enforcer.enforceHookAccess(plugin, 'eprint.indexed');
       }).not.toThrow();
     });
 
@@ -223,7 +223,7 @@ describe('PermissionEnforcer', () => {
 
     it('should not log for permitted hook access', () => {
       const plugin = createMockPlugin();
-      enforcer.enforceHookAccess(plugin, 'preprint.indexed');
+      enforcer.enforceHookAccess(plugin, 'eprint.indexed');
 
       // The implementation doesn't log on successful hook access
       expect(mockLogger.warn).not.toHaveBeenCalled();
@@ -483,27 +483,27 @@ describe('PermissionEnforcer', () => {
     it('should match exact hook name', () => {
       const plugin = createMockPlugin({
         permissions: {
-          hooks: ['preprint.indexed'],
+          hooks: ['eprint.indexed'],
           network: { allowedDomains: [] },
           storage: { maxSize: 1024 },
         },
       });
 
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.indexed')).toBe(true);
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.updated')).toBe(false);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.indexed')).toBe(true);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.updated')).toBe(false);
     });
 
     it('should match wildcard hook pattern', () => {
       const plugin = createMockPlugin({
         permissions: {
-          hooks: ['preprint.*', 'system.startup'],
+          hooks: ['eprint.*', 'system.startup'],
           network: { allowedDomains: [] },
           storage: { maxSize: 1024 },
         },
       });
 
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.indexed')).toBe(true);
-      expect(enforcer.checkPermission(plugin, 'hook:preprint.updated')).toBe(true);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.indexed')).toBe(true);
+      expect(enforcer.checkPermission(plugin, 'hook:eprint.updated')).toBe(true);
       expect(enforcer.checkPermission(plugin, 'hook:system.startup')).toBe(true);
       expect(enforcer.checkPermission(plugin, 'hook:system.shutdown')).toBe(false);
       expect(enforcer.checkPermission(plugin, 'hook:review.created')).toBe(false);

@@ -14,7 +14,7 @@ import { DatabaseError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type {
   ISearchEngine,
-  IndexablePreprintDocument,
+  IndexableEprintDocument,
   SearchQuery,
   SearchResults,
 } from '@/types/interfaces/search.interface.js';
@@ -42,24 +42,24 @@ const createMockLogger = (): MockLogger => {
 };
 
 interface MockSearchEngine extends ISearchEngine {
-  indexPreprintMock: ReturnType<typeof vi.fn>;
+  indexEprintMock: ReturnType<typeof vi.fn>;
   searchMock: ReturnType<typeof vi.fn>;
   deleteDocumentMock: ReturnType<typeof vi.fn>;
   autocompleteMock: ReturnType<typeof vi.fn>;
 }
 
 const createMockSearchEngine = (): MockSearchEngine => {
-  const indexPreprintMock = vi.fn().mockResolvedValue(undefined);
+  const indexEprintMock = vi.fn().mockResolvedValue(undefined);
   const searchMock = vi.fn().mockResolvedValue({ hits: [], total: 0, took: 0 });
   const deleteDocumentMock = vi.fn().mockResolvedValue(undefined);
   const autocompleteMock = vi.fn().mockResolvedValue([]);
   return {
-    indexPreprint: indexPreprintMock,
+    indexEprint: indexEprintMock,
     search: searchMock,
     facetedSearch: vi.fn().mockResolvedValue({ hits: [], total: 0, took: 0, facets: {} }),
     deleteDocument: deleteDocumentMock,
     autocomplete: autocompleteMock,
-    indexPreprintMock,
+    indexEprintMock,
     searchMock,
     deleteDocumentMock,
     autocompleteMock,
@@ -67,19 +67,19 @@ const createMockSearchEngine = (): MockSearchEngine => {
 };
 
 const createMockIndexableDocument = (
-  overrides?: Partial<IndexablePreprintDocument>
-): IndexablePreprintDocument => {
+  overrides?: Partial<IndexableEprintDocument>
+): IndexableEprintDocument => {
   const author = toDID('did:plc:author');
   if (!author) {
     throw new Error('Invalid DID');
   }
   return {
-    uri: 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri,
+    uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
     author,
     authorName: 'Alice Researcher',
-    title: 'Test Preprint',
+    title: 'Test Eprint',
     abstract: 'Test abstract content',
-    keywords: ['test', 'preprint'],
+    keywords: ['test', 'eprint'],
     subjects: ['Computer Science'],
     createdAt: new Date('2024-01-01T00:00:00Z'),
     indexedAt: new Date('2024-01-02T00:00:00Z'),
@@ -98,24 +98,24 @@ describe('SearchService', () => {
     service = new SearchService({ search: searchEngine, logger });
   });
 
-  describe('indexPreprintForSearch', () => {
-    it('indexes preprint successfully', async () => {
+  describe('indexEprintForSearch', () => {
+    it('indexes eprint successfully', async () => {
       const doc = createMockIndexableDocument();
 
-      const result = await service.indexPreprintForSearch(doc);
+      const result = await service.indexEprintForSearch(doc);
 
       expect(result.ok).toBe(true);
-      expect(searchEngine.indexPreprintMock).toHaveBeenCalledWith(doc);
-      expect(logger.debugMock).toHaveBeenCalledWith('Indexed preprint for search', {
+      expect(searchEngine.indexEprintMock).toHaveBeenCalledWith(doc);
+      expect(logger.debugMock).toHaveBeenCalledWith('Indexed eprint for search', {
         uri: doc.uri,
       });
     });
 
     it('returns DatabaseError when indexing fails', async () => {
-      searchEngine.indexPreprintMock.mockRejectedValue(new Error('Elasticsearch down'));
+      searchEngine.indexEprintMock.mockRejectedValue(new Error('Elasticsearch down'));
 
       const doc = createMockIndexableDocument();
-      const result = await service.indexPreprintForSearch(doc);
+      const result = await service.indexEprintForSearch(doc);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -126,10 +126,10 @@ describe('SearchService', () => {
     });
 
     it('handles non-Error exceptions', async () => {
-      searchEngine.indexPreprintMock.mockRejectedValue('String error');
+      searchEngine.indexEprintMock.mockRejectedValue('String error');
 
       const doc = createMockIndexableDocument();
-      const result = await service.indexPreprintForSearch(doc);
+      const result = await service.indexEprintForSearch(doc);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -149,7 +149,7 @@ describe('SearchService', () => {
       const mockResults: SearchResults = {
         hits: [
           {
-            uri: 'at://did:plc:author1/pub.chive.preprint.submission/abc1' as AtUri,
+            uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc1' as AtUri,
             score: 1.5,
           },
         ],
@@ -234,20 +234,20 @@ describe('SearchService', () => {
   });
 
   describe('removeFromSearch', () => {
-    it('removes preprint from search index', async () => {
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri;
+    it('removes eprint from search index', async () => {
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri;
 
       const result = await service.removeFromSearch(uri);
 
       expect(result.ok).toBe(true);
       expect(searchEngine.deleteDocumentMock).toHaveBeenCalledWith(uri);
-      expect(logger.debugMock).toHaveBeenCalledWith('Removed preprint from search', { uri });
+      expect(logger.debugMock).toHaveBeenCalledWith('Removed eprint from search', { uri });
     });
 
     it('returns DatabaseError when deletion fails', async () => {
       searchEngine.deleteDocumentMock.mockRejectedValue(new Error('Delete failed'));
 
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri;
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri;
       const result = await service.removeFromSearch(uri);
 
       expect(result.ok).toBe(false);
@@ -261,7 +261,7 @@ describe('SearchService', () => {
     it('handles non-Error exceptions', async () => {
       searchEngine.deleteDocumentMock.mockRejectedValue('String error');
 
-      const uri = 'at://did:plc:author/pub.chive.preprint.submission/abc123' as AtUri;
+      const uri = 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri;
       const result = await service.removeFromSearch(uri);
 
       expect(result.ok).toBe(false);

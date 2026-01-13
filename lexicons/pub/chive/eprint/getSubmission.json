@@ -1,0 +1,64 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.getSubmission",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Retrieve a eprint submission by URI",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Eprint URI"
+          },
+          "cid": {
+            "type": "string",
+            "format": "cid",
+            "description": "Specific version CID"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "cid", "value", "indexedAt", "pdsUrl"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri"
+            },
+            "cid": {
+              "type": "string",
+              "format": "cid"
+            },
+            "value": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission"
+            },
+            "indexedAt": {
+              "type": "string",
+              "format": "datetime"
+            },
+            "pdsUrl": {
+              "type": "string",
+              "description": "Source PDS URL (transparency)"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "NotFound"
+        },
+        {
+          "name": "Stale",
+          "description": "Indexed data is stale, refresh in progress"
+        }
+      ]
+    }
+  }
+}

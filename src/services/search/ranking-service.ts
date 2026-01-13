@@ -5,7 +5,7 @@
  * This module provides a generic ranking service that personalizes search
  * results based on the user's research fields and query relevance. It is
  * designed to be shared across all search types:
- * - Preprint search (browsing)
+ * - Eprint search (browsing)
  * - Claiming search (finding papers to claim)
  * - Autocomplete suggestions
  *
@@ -215,7 +215,7 @@ export interface DiscoverySignalSources {
  * Learning to Rank model training and integration.
  *
  * @example
- * Basic usage with preprint search:
+ * Basic usage with eprint search:
  * ```typescript
  * const rankingService = container.resolve(RankingService);
  *
@@ -355,7 +355,7 @@ export class RankingService implements IRankingService {
    *
    * @example
    * ```typescript
-   * const ranked = await rankingService.rank(preprints, {
+   * const ranked = await rankingService.rank(eprints, {
    *   userDid: 'did:plc:abc123',
    *   query: 'attention mechanism',
    * });
@@ -560,7 +560,7 @@ export class RankingService implements IRankingService {
    * const citationScores = new Map([['at://...', 0.7]]);
    *
    * const ranked = await rankingService.rankWithDiscoverySignals(
-   *   preprints,
+   *   eprints,
    *   { userDid, query: 'neural networks' },
    *   { s2Scores, citationScores }
    * );

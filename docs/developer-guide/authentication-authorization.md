@@ -114,9 +114,9 @@ const app = new Hono<ChiveEnv>();
 app.use('/api/*', authenticate());
 
 // Require specific permission
-app.post('/api/v1/preprints', requirePermission('preprint', 'create'), async (c) => {
+app.post('/api/v1/eprints', requirePermission('eprint', 'create'), async (c) => {
   const user = c.get('user');
-  // User is authenticated and has preprint:create permission
+  // User is authenticated and has eprint:create permission
 });
 ```
 
@@ -208,7 +208,7 @@ const jwtService = new JWTService({
 const { token, jti, expiresAt } = await jwtService.issueToken({
   subject: 'did:plc:abc123',
   sessionId: 'sess_xyz',
-  scopes: ['read:preprints', 'write:reviews'],
+  scopes: ['read:eprints', 'write:reviews'],
 });
 ```
 
@@ -219,7 +219,7 @@ try {
   const { claims } = await jwtService.verifyToken(token);
   console.log(claims.sub); // did:plc:abc123
   console.log(claims.sessionId); // sess_xyz
-  console.log(claims.scope); // 'read:preprints write:reviews'
+  console.log(claims.scope); // 'read:eprints write:reviews'
 } catch (error) {
   if (error instanceof TokenExpiredError) {
     // Token has expired
@@ -286,7 +286,7 @@ const session = await sessionManager.createSession('did:plc:abc123', {
   ipAddress: '192.168.1.1',
   userAgent: 'Mozilla/5.0...',
   deviceId: 'device_xyz',
-  scope: ['read:preprints', 'write:reviews'],
+  scope: ['read:eprints', 'write:reviews'],
 });
 ```
 
@@ -341,12 +341,12 @@ reader
 
 Permissions follow the format `{resource}:{action}`:
 
-| Resource   | Actions                                       |
-| ---------- | --------------------------------------------- |
-| `preprint` | `create`, `read`, `update`, `delete`, `admin` |
-| `review`   | `create`, `read`, `update`, `delete`          |
-| `graph`    | `propose`, `vote`, `approve`, `admin`         |
-| `user`     | `read`, `update`, `admin`                     |
+| Resource | Actions                                       |
+| -------- | --------------------------------------------- |
+| `eprint` | `create`, `read`, `update`, `delete`, `admin` |
+| `review` | `create`, `read`, `update`, `delete`          |
+| `graph`  | `propose`, `vote`, `approve`, `admin`         |
+| `user`   | `read`, `update`, `admin`                     |
 
 ### Usage
 
@@ -363,7 +363,7 @@ await authzService.assignRole('did:plc:abc123', 'author');
 const result = await authzService.authorize({
   subject: { did: 'did:plc:abc123', roles: ['author'] },
   action: 'create',
-  resource: { type: 'preprint' },
+  resource: { type: 'eprint' },
 });
 
 if (result.allowed) {
@@ -377,7 +377,7 @@ const ownerResult = await authzService.authorize({
   subject: { did: 'did:plc:abc123', roles: ['author'] },
   action: 'update',
   resource: {
-    type: 'preprint',
+    type: 'eprint',
     ownerDid: 'did:plc:abc123', // Same as subject
   },
 });
@@ -424,7 +424,7 @@ const oauthService = new OAuthService({ redis, logger });
 const { authorizationUrl, state, codeVerifier } = await oauthService.startAuthorization({
   clientId: 'client_abc123',
   redirectUri: 'https://app.example.com/callback',
-  scope: ['read:preprints'],
+  scope: ['read:eprints'],
   codeChallengeMethod: 'S256',
 });
 
@@ -446,7 +446,7 @@ const client = await oauthService.registerClient({
   name: 'My Research App',
   redirectUris: ['https://app.example.com/callback'],
   clientType: 'public',
-  scopes: ['read:preprints', 'write:reviews'],
+  scopes: ['read:eprints', 'write:reviews'],
   ownerDid: 'did:plc:abc123',
 });
 ```
@@ -566,7 +566,7 @@ const decision = await zeroTrustService.evaluate({
     roles: ['author'],
   },
   resource: {
-    type: 'preprint',
+    type: 'eprint',
     sensitivity: 'high',
   },
   context: {

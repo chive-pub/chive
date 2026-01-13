@@ -1,7 +1,7 @@
 /**
  * E2E tests for author filtering in search.
  *
- * Tests searching and filtering preprints by author:
+ * Tests searching and filtering eprints by author:
  * - Search by author name
  * - Filter by author DID
  * - Filter by ORCID
@@ -11,14 +11,14 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { SEEDED_AUTHORS, SEEDED_PREPRINTS } from '../fixtures/test-data.js';
+import { SEEDED_AUTHORS, SEEDED_EPRINTS } from '../fixtures/test-data.js';
 
 test.describe('Author Filter - Search by Name', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/search');
   });
 
-  test('can search for preprints by author name', async ({ page }) => {
+  test('can search for eprints by author name', async ({ page }) => {
     // Use the main search page input (not the header search)
     const searchInput = page.getByPlaceholder(/search by title, abstract/i);
 
@@ -31,9 +31,9 @@ test.describe('Author Filter - Search by Name', () => {
     // Should show results
     await expect(page).toHaveURL(/q=/);
 
-    // Results should include the author's preprint
+    // Results should include the author's eprint
     const result = page
-      .getByText(SEEDED_PREPRINTS.white.title)
+      .getByText(SEEDED_EPRINTS.white.title)
       .or(page.getByText(SEEDED_AUTHORS.white.displayName));
 
     if (await result.isVisible({ timeout: 10000 }).catch(() => false)) {
@@ -151,7 +151,7 @@ test.describe('Author Filter - Filter by ORCID', () => {
   });
 
   test('ORCID link on result filters by that ORCID', async ({ page }) => {
-    await page.goto(`/preprints/${encodeURIComponent(SEEDED_PREPRINTS.white.uri)}`);
+    await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Find ORCID link
@@ -166,18 +166,18 @@ test.describe('Author Filter - Filter by ORCID', () => {
 });
 
 test.describe('Author Filter - Results Verification', () => {
-  test('filtered results contain expected preprints', async ({ page }) => {
+  test('filtered results contain expected eprints', async ({ page }) => {
     // Go directly to author's page
     await page.goto(`/authors/${encodeURIComponent(SEEDED_AUTHORS.white.did)}`);
 
-    // Should show author's preprints
-    const preprintLink = page
-      .getByText(SEEDED_PREPRINTS.white.title)
-      .or(page.locator('a[href*="preprints"]'));
+    // Should show author's eprints
+    const eprintLink = page
+      .getByText(SEEDED_EPRINTS.white.title)
+      .or(page.locator('a[href*="eprints"]'));
 
-    // Author page should show their preprints
-    if (await preprintLink.isVisible({ timeout: 10000 }).catch(() => false)) {
-      await expect(preprintLink).toBeVisible();
+    // Author page should show their eprints
+    if (await eprintLink.isVisible({ timeout: 10000 }).catch(() => false)) {
+      await expect(eprintLink).toBeVisible();
     }
   });
 
@@ -190,7 +190,7 @@ test.describe('Author Filter - Results Verification', () => {
 
     // Should show empty state or no results
     const emptyState = page
-      .getByText(/no results|nothing found|no preprints/i)
+      .getByText(/no results|nothing found|no eprints/i)
       .or(page.locator('[data-testid="empty-results"]'));
 
     await expect(emptyState).toBeVisible({ timeout: 10000 });

@@ -71,7 +71,7 @@ export async function getFieldHandler(
     description: field.description,
     parentId: field.parentId,
     status: field.status,
-    preprintCount: field.preprintCount,
+    eprintCount: field.eprintCount,
     externalIds: field.externalIds?.map((ext) => ({
       source: ext.source as 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv',
       id: ext.id,
@@ -104,7 +104,7 @@ export async function getFieldHandler(
     response.children = children.map((child) => ({
       id: child.id,
       name: child.name,
-      preprintCount: child.preprintCount,
+      eprintCount: child.eprintCount,
     }));
   }
 

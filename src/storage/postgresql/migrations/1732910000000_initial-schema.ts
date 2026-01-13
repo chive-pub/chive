@@ -12,7 +12,7 @@
  * - All data can be rebuilt from AT Protocol firehose
  *
  * Tables created:
- * - `preprints_index` - Preprint metadata
+ * - `eprints_index` - Eprint metadata
  * - `authors_index` - Author profiles
  * - `reviews_index` - Review comments
  * - `endorsements_index` - Endorsements
@@ -34,12 +34,12 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
  * @param pgm - PostgreSQL migration builder
  */
 export function up(pgm: MigrationBuilder): void {
-  // Preprints index table
-  pgm.createTable('preprints_index', {
+  // Eprints index table
+  pgm.createTable('eprints_index', {
     uri: {
       type: 'text',
       primaryKey: true,
-      comment: 'AT URI (e.g., at://did:plc:abc/pub.chive.preprint.submission/xyz)',
+      comment: 'AT URI (e.g., at://did:plc:abc/pub.chive.eprint.submission/xyz)',
     },
     cid: {
       type: 'text',
@@ -49,7 +49,7 @@ export function up(pgm: MigrationBuilder): void {
     submitted_by: {
       type: 'text',
       notNull: true,
-      comment: 'DID of the human who submitted this preprint',
+      comment: 'DID of the human who submitted this eprint',
     },
     authors: {
       type: 'jsonb',
@@ -63,12 +63,12 @@ export function up(pgm: MigrationBuilder): void {
     title: {
       type: 'text',
       notNull: true,
-      comment: 'Preprint title',
+      comment: 'Eprint title',
     },
     abstract: {
       type: 'text',
       notNull: true,
-      comment: 'Preprint abstract',
+      comment: 'Eprint abstract',
     },
     document_blob_cid: {
       type: 'text',
@@ -94,7 +94,7 @@ export function up(pgm: MigrationBuilder): void {
     publication_status: {
       type: 'text',
       notNull: true,
-      default: 'preprint',
+      default: 'eprint',
       comment: 'Publication lifecycle status',
     },
     published_version: {
@@ -107,7 +107,7 @@ export function up(pgm: MigrationBuilder): void {
     },
     related_works: {
       type: 'jsonb',
-      comment: 'Related preprints, datasets, and software',
+      comment: 'Related eprints, datasets, and software',
     },
     repositories: {
       type: 'jsonb',
@@ -147,11 +147,11 @@ export function up(pgm: MigrationBuilder): void {
     created_at: {
       type: 'timestamptz',
       notNull: true,
-      comment: 'When preprint was created (from record)',
+      comment: 'When eprint was created (from record)',
     },
     updated_at: {
       type: 'timestamptz',
-      comment: 'When preprint was last updated (from record)',
+      comment: 'When eprint was last updated (from record)',
     },
     // PDS source tracking (CRITICAL for ATProto compliance)
     pds_url: {
@@ -174,40 +174,40 @@ export function up(pgm: MigrationBuilder): void {
   });
 
   // Foreign key for version history
-  pgm.addConstraint('preprints_index', 'fk_previous_version', {
+  pgm.addConstraint('eprints_index', 'fk_previous_version', {
     foreignKeys: {
       columns: 'previous_version_uri',
-      references: 'preprints_index(uri)',
+      references: 'eprints_index(uri)',
       onDelete: 'SET NULL',
     },
   });
 
   // Indexes for performance
-  pgm.createIndex('preprints_index', 'submitted_by');
-  pgm.createIndex('preprints_index', 'paper_did');
-  pgm.createIndex('preprints_index', 'created_at');
-  pgm.createIndex('preprints_index', 'pds_url');
-  pgm.createIndex('preprints_index', 'keywords', { method: 'gin' });
-  pgm.createIndex('preprints_index', 'authors', {
+  pgm.createIndex('eprints_index', 'submitted_by');
+  pgm.createIndex('eprints_index', 'paper_did');
+  pgm.createIndex('eprints_index', 'created_at');
+  pgm.createIndex('eprints_index', 'pds_url');
+  pgm.createIndex('eprints_index', 'keywords', { method: 'gin' });
+  pgm.createIndex('eprints_index', 'authors', {
     method: 'gin',
-    name: 'idx_preprints_authors_gin',
+    name: 'idx_eprints_authors_gin',
   });
-  pgm.createIndex('preprints_index', 'document_format');
-  pgm.createIndex('preprints_index', 'publication_status');
-  pgm.createIndex('preprints_index', "(published_version->>'doi')", {
-    name: 'idx_preprints_published_doi',
+  pgm.createIndex('eprints_index', 'document_format');
+  pgm.createIndex('eprints_index', 'publication_status');
+  pgm.createIndex('eprints_index', "(published_version->>'doi')", {
+    name: 'idx_eprints_published_doi',
     method: 'btree',
   });
-  pgm.createIndex('preprints_index', 'external_ids', {
-    name: 'idx_preprints_external_ids_gin',
+  pgm.createIndex('eprints_index', 'external_ids', {
+    name: 'idx_eprints_external_ids_gin',
     method: 'gin',
   });
-  pgm.createIndex('preprints_index', 'related_works', {
-    name: 'idx_preprints_related_works_gin',
+  pgm.createIndex('eprints_index', 'related_works', {
+    name: 'idx_eprints_related_works_gin',
     method: 'gin',
   });
-  pgm.createIndex('preprints_index', 'supplementary_materials', {
-    name: 'idx_preprints_supplementary_gin',
+  pgm.createIndex('eprints_index', 'supplementary_materials', {
+    name: 'idx_eprints_supplementary_gin',
     method: 'gin',
   });
 
@@ -283,10 +283,10 @@ export function up(pgm: MigrationBuilder): void {
       notNull: true,
       comment: 'Record CID',
     },
-    preprint_uri: {
+    eprint_uri: {
       type: 'text',
       notNull: true,
-      comment: 'FK to preprints_index(uri)',
+      comment: 'FK to eprints_index(uri)',
     },
     reviewer_did: {
       type: 'text',
@@ -335,10 +335,10 @@ export function up(pgm: MigrationBuilder): void {
     },
   });
 
-  pgm.addConstraint('reviews_index', 'fk_preprint', {
+  pgm.addConstraint('reviews_index', 'fk_eprint', {
     foreignKeys: {
-      columns: 'preprint_uri',
-      references: 'preprints_index(uri)',
+      columns: 'eprint_uri',
+      references: 'eprints_index(uri)',
       onDelete: 'CASCADE',
     },
   });
@@ -351,7 +351,7 @@ export function up(pgm: MigrationBuilder): void {
     },
   });
 
-  pgm.createIndex('reviews_index', 'preprint_uri');
+  pgm.createIndex('reviews_index', 'eprint_uri');
   pgm.createIndex('reviews_index', 'reviewer_did');
   pgm.createIndex('reviews_index', 'created_at');
 
@@ -367,10 +367,10 @@ export function up(pgm: MigrationBuilder): void {
       notNull: true,
       comment: 'Record CID',
     },
-    preprint_uri: {
+    eprint_uri: {
       type: 'text',
       notNull: true,
-      comment: 'FK to preprints_index(uri)',
+      comment: 'FK to eprints_index(uri)',
     },
     endorser_did: {
       type: 'text',
@@ -412,15 +412,15 @@ export function up(pgm: MigrationBuilder): void {
     },
   });
 
-  pgm.addConstraint('endorsements_index', 'fk_endorsed_preprint', {
+  pgm.addConstraint('endorsements_index', 'fk_endorsed_eprint', {
     foreignKeys: {
-      columns: 'preprint_uri',
-      references: 'preprints_index(uri)',
+      columns: 'eprint_uri',
+      references: 'eprints_index(uri)',
       onDelete: 'CASCADE',
     },
   });
 
-  pgm.createIndex('endorsements_index', 'preprint_uri');
+  pgm.createIndex('endorsements_index', 'eprint_uri');
   pgm.createIndex('endorsements_index', 'endorser_did');
 
   // User tags index (TaxoFolk)
@@ -435,10 +435,10 @@ export function up(pgm: MigrationBuilder): void {
       notNull: true,
       comment: 'Record CID',
     },
-    preprint_uri: {
+    eprint_uri: {
       type: 'text',
       notNull: true,
-      comment: 'FK to preprints_index(uri)',
+      comment: 'FK to eprints_index(uri)',
     },
     tagger_did: {
       type: 'text',
@@ -475,15 +475,15 @@ export function up(pgm: MigrationBuilder): void {
     },
   });
 
-  pgm.addConstraint('user_tags_index', 'fk_tagged_preprint', {
+  pgm.addConstraint('user_tags_index', 'fk_tagged_eprint', {
     foreignKeys: {
-      columns: 'preprint_uri',
-      references: 'preprints_index(uri)',
+      columns: 'eprint_uri',
+      references: 'eprints_index(uri)',
       onDelete: 'CASCADE',
     },
   });
 
-  pgm.createIndex('user_tags_index', 'preprint_uri');
+  pgm.createIndex('user_tags_index', 'eprint_uri');
   pgm.createIndex('user_tags_index', 'tag');
 
   // Firehose cursor persistence
@@ -765,5 +765,5 @@ export function down(pgm: MigrationBuilder): void {
   pgm.dropTable('endorsements_index', { ifExists: true, cascade: true });
   pgm.dropTable('reviews_index', { ifExists: true, cascade: true });
   pgm.dropTable('authors_index', { ifExists: true, cascade: true });
-  pgm.dropTable('preprints_index', { ifExists: true, cascade: true });
+  pgm.dropTable('eprints_index', { ifExists: true, cascade: true });
 }

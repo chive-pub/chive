@@ -14,7 +14,7 @@
  *
  * **ATProto Compliance**:
  * - Notifications are AppView-local (not ATProto records)
- * - Reference preprints via AT-URI (never local IDs)
+ * - Reference eprints via AT-URI (never local IDs)
  * - Notification data never written to user PDSes
  *
  * @packageDocumentation
@@ -79,7 +79,7 @@ export interface Notification {
   readonly message: string;
 
   /**
-   * AT URI of the related resource (preprint, review, proposal).
+   * AT URI of the related resource (eprint, review, proposal).
    */
   readonly resourceUri?: AtUri;
 
@@ -203,9 +203,9 @@ export type NotificationDeliveryHandler = (notification: Notification) => void |
  * const result = await service.createNotification({
  *   type: 'new-review',
  *   recipient: authorDid,
- *   subject: 'New review on your preprint',
- *   message: 'Your preprint received a new review',
- *   resourceUri: preprintUri,
+ *   subject: 'New review on your eprint',
+ *   message: 'Your eprint received a new review',
+ *   resourceUri: eprintUri,
  *   actorDid: reviewerDid,
  * });
  *

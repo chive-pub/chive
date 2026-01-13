@@ -22,15 +22,15 @@ Authorization: Bearer eyJhbGciOiJFUzI1NiIs...
 | ------------------ | ------------------ |
 | `application/json` | `application/json` |
 
-## Preprints
+## Eprints
 
-### Get preprint
+### Get eprint
 
 ```http
-GET /api/v1/preprints/:encodedUri
+GET /api/v1/eprints/:encodedUri
 ```
 
-Retrieve a preprint by its encoded AT URI.
+Retrieve a eprint by its encoded AT URI.
 
 **Path parameters**
 
@@ -41,14 +41,14 @@ Retrieve a preprint by its encoded AT URI.
 **Example**
 
 ```bash
-curl "https://api.chive.pub/api/v1/preprints/at%3A%2F%2Fdid%3Aplc%3Aabc123...%2Fpub.chive.preprint.submission%2F3k5..."
+curl "https://api.chive.pub/api/v1/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc123...%2Fpub.chive.eprint.submission%2F3k5..."
 ```
 
 **Response**
 
 ```json
 {
-  "uri": "at://did:plc:abc123.../pub.chive.preprint.submission/3k5...",
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "title": "Novel Approach to Quantum Computing",
   "authors": [
     {
@@ -72,13 +72,13 @@ curl "https://api.chive.pub/api/v1/preprints/at%3A%2F%2Fdid%3Aplc%3Aabc123...%2F
 }
 ```
 
-### Search preprints
+### Search eprints
 
 ```http
-GET /api/v1/preprints
+GET /api/v1/eprints
 ```
 
-Search and filter preprints.
+Search and filter eprints.
 
 **Query parameters**
 
@@ -96,7 +96,7 @@ Search and filter preprints.
 **Example**
 
 ```bash
-curl "https://api.chive.pub/api/v1/preprints?q=quantum+computing&field=cs.QC&limit=10"
+curl "https://api.chive.pub/api/v1/eprints?q=quantum+computing&field=cs.QC&limit=10"
 ```
 
 **Response**
@@ -111,37 +111,37 @@ curl "https://api.chive.pub/api/v1/preprints?q=quantum+computing&field=cs.QC&lim
 }
 ```
 
-### Get preprint PDF
+### Get eprint PDF
 
 ```http
-GET /api/v1/preprints/:encodedUri/pdf
+GET /api/v1/eprints/:encodedUri/pdf
 ```
 
-Redirect to the preprint PDF blob.
+Redirect to the eprint PDF blob.
 
 **Response**
 
 302 redirect to blob URL.
 
-### Get preprint metrics
+### Get eprint metrics
 
 ```http
-GET /api/v1/preprints/:encodedUri/metrics
+GET /api/v1/eprints/:encodedUri/metrics
 ```
 
-Get engagement metrics for a preprint.
+Get engagement metrics for a eprint.
 
 ---
 
 ## Reviews
 
-### Get reviews for preprint
+### Get reviews for eprint
 
 ```http
-GET /api/v1/preprints/:encodedUri/reviews
+GET /api/v1/eprints/:encodedUri/reviews
 ```
 
-List reviews for a preprint.
+List reviews for a eprint.
 
 **Query parameters**
 
@@ -163,18 +163,18 @@ Get a review and its replies.
 
 ## Endorsements
 
-### Get endorsements for preprint
+### Get endorsements for eprint
 
 ```http
-GET /api/v1/preprints/:encodedUri/endorsements
+GET /api/v1/eprints/:encodedUri/endorsements
 ```
 
-List endorsements for a preprint.
+List endorsements for a eprint.
 
 ### Get endorsement summary
 
 ```http
-GET /api/v1/preprints/:encodedUri/endorsements/summary
+GET /api/v1/eprints/:encodedUri/endorsements/summary
 ```
 
 Get aggregated endorsement data.
@@ -228,17 +228,17 @@ Get details for a specific field.
   "description": "Research on quantum computation",
   "parentFields": ["cs"],
   "childFields": ["cs.QC.algorithms"],
-  "preprintCount": 4523
+  "eprintCount": 4523
 }
 ```
 
-### Get field preprints
+### Get field eprints
 
 ```http
-GET /api/v1/fields/:id/preprints
+GET /api/v1/fields/:id/eprints
 ```
 
-Get preprints in a field.
+Get eprints in a field.
 
 ---
 
@@ -261,18 +261,18 @@ Get a public author profile.
   "displayName": "Alice Smith",
   "affiliation": "MIT",
   "orcid": "0000-0002-1825-0097",
-  "preprintCount": 12,
+  "eprintCount": 12,
   "citationCount": 456
 }
 ```
 
-### Get author preprints
+### Get author eprints
 
 ```http
-GET /api/v1/authors/:did/preprints
+GET /api/v1/authors/:did/eprints
 ```
 
-List preprints by an author.
+List eprints by an author.
 
 ---
 
@@ -319,13 +319,13 @@ Get personalized recommendations (requires auth).
 | ------- | ------- | ------------------------- |
 | `limit` | integer | Number of recommendations |
 
-### Get similar preprints
+### Get similar eprints
 
 ```http
-GET /api/v1/preprints/:encodedUri/similar
+GET /api/v1/eprints/:encodedUri/similar
 ```
 
-Get preprints similar to a given one.
+Get eprints similar to a given one.
 
 ### Get trending
 
@@ -333,7 +333,7 @@ Get preprints similar to a given one.
 GET /api/v1/trending
 ```
 
-Get trending preprints.
+Get trending eprints.
 
 **Query parameters**
 
@@ -404,10 +404,10 @@ Get the user's authorship claims.
 ### Get backlinks
 
 ```http
-GET /api/v1/preprints/:encodedUri/backlinks
+GET /api/v1/eprints/:encodedUri/backlinks
 ```
 
-Get backlinks (AT Protocol app references) for a preprint.
+Get backlinks (AT Protocol app references) for a eprint.
 
 **Response**
 
@@ -452,7 +452,7 @@ Search external sources (arXiv, Semantic Scholar).
 GET /api/v1/import/exists
 ```
 
-Check if an external preprint exists in Chive.
+Check if an external eprint exists in Chive.
 
 **Query parameters**
 
@@ -490,7 +490,7 @@ REST endpoints use page-based pagination:
 {
   "error": {
     "code": "NOT_FOUND",
-    "message": "Preprint not found",
+    "message": "Eprint not found",
     "details": {
       "uri": "at://did:plc:abc123..."
     }

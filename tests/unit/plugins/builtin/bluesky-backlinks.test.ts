@@ -87,7 +87,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
     id: 1,
     sourceUri: 'at://did:plc:test/app.bsky.feed.post/abc123',
     sourceType: 'bluesky.post',
-    targetUri: 'at://did:plc:author/pub.chive.preprint.submission/paper1',
+    targetUri: 'at://did:plc:author/pub.chive.eprint.submission/paper1',
     indexedAt: new Date(),
     deleted: false,
   } as Backlink),
@@ -196,7 +196,7 @@ describe('BlueskyBacklinksPlugin', () => {
     });
   });
 
-  describe('extractPreprintRefs - record embeds', () => {
+  describe('extractEprintRefs - record embeds', () => {
     it('should extract AT-URI from app.bsky.embed.record', () => {
       const post = {
         $type: 'app.bsky.feed.post',
@@ -205,18 +205,18 @@ describe('BlueskyBacklinksPlugin', () => {
         embed: {
           $type: 'app.bsky.embed.record',
           record: {
-            uri: 'at://did:plc:abc123/pub.chive.preprint.submission/rkey456',
+            uri: 'at://did:plc:abc123/pub.chive.eprint.submission/rkey456',
             cid: 'bafyreiabc123',
           },
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:abc123/pub.chive.preprint.submission/rkey456']);
+      expect(refs).toEqual(['at://did:plc:abc123/pub.chive.eprint.submission/rkey456']);
     });
 
-    it('should skip non-preprint record embeds', () => {
+    it('should skip non-eprint record embeds', () => {
       const post = {
         $type: 'app.bsky.feed.post',
         text: 'Quote posting something else',
@@ -230,13 +230,13 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
   });
 
-  describe('extractPreprintRefs - record with media embeds', () => {
+  describe('extractEprintRefs - record with media embeds', () => {
     it('should extract AT-URI from app.bsky.embed.recordWithMedia', () => {
       const post = {
         $type: 'app.bsky.feed.post',
@@ -246,7 +246,7 @@ describe('BlueskyBacklinksPlugin', () => {
           $type: 'app.bsky.embed.recordWithMedia',
           record: {
             record: {
-              uri: 'at://did:plc:def789/pub.chive.preprint.submission/paper2',
+              uri: 'at://did:plc:def789/pub.chive.eprint.submission/paper2',
               cid: 'bafyreiabc456',
             },
           },
@@ -262,12 +262,12 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:def789/pub.chive.preprint.submission/paper2']);
+      expect(refs).toEqual(['at://did:plc:def789/pub.chive.eprint.submission/paper2']);
     });
 
-    it('should skip non-preprint recordWithMedia embeds', () => {
+    it('should skip non-eprint recordWithMedia embeds', () => {
       const post = {
         $type: 'app.bsky.feed.post',
         text: 'Sharing with media',
@@ -290,13 +290,13 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
   });
 
-  describe('extractPreprintRefs - external embeds', () => {
+  describe('extractEprintRefs - external embeds', () => {
     it('should extract AT-URI from Chive URL in external embed', () => {
       const post = {
         $type: 'app.bsky.feed.post',
@@ -305,16 +305,16 @@ describe('BlueskyBacklinksPlugin', () => {
         embed: {
           $type: 'app.bsky.embed.external',
           external: {
-            uri: 'https://chive.pub/preprint/did:plc:xyz123/paperkey',
+            uri: 'https://chive.pub/eprint/did:plc:xyz123/paperkey',
             title: 'Paper Title',
             description: 'Paper description',
           },
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:xyz123/pub.chive.preprint.submission/paperkey']);
+      expect(refs).toEqual(['at://did:plc:xyz123/pub.chive.eprint.submission/paperkey']);
     });
 
     it('should handle /paper/ path prefix in Chive URLs', () => {
@@ -331,9 +331,9 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:abc789/pub.chive.preprint.submission/key123']);
+      expect(refs).toEqual(['at://did:plc:abc789/pub.chive.eprint.submission/key123']);
     });
 
     it('should skip non-Chive external URLs', () => {
@@ -350,7 +350,7 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
@@ -371,13 +371,13 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
   });
 
-  describe('extractPreprintRefs - rich text facets', () => {
+  describe('extractEprintRefs - rich text facets', () => {
     it('should extract AT-URI from facet links', () => {
       const post = {
         $type: 'app.bsky.feed.post',
@@ -389,16 +389,16 @@ describe('BlueskyBacklinksPlugin', () => {
             features: [
               {
                 $type: 'app.bsky.richtext.facet#link',
-                uri: 'at://did:plc:facet123/pub.chive.preprint.submission/paper3',
+                uri: 'at://did:plc:facet123/pub.chive.eprint.submission/paper3',
               },
             ],
           },
         ],
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:facet123/pub.chive.preprint.submission/paper3']);
+      expect(refs).toEqual(['at://did:plc:facet123/pub.chive.eprint.submission/paper3']);
     });
 
     it('should extract Chive URLs from facet links', () => {
@@ -412,16 +412,16 @@ describe('BlueskyBacklinksPlugin', () => {
             features: [
               {
                 $type: 'app.bsky.richtext.facet#link',
-                uri: 'https://chive.pub/preprint/did:plc:link456/paper4',
+                uri: 'https://chive.pub/eprint/did:plc:link456/paper4',
               },
             ],
           },
         ],
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:link456/pub.chive.preprint.submission/paper4']);
+      expect(refs).toEqual(['at://did:plc:link456/pub.chive.eprint.submission/paper4']);
     });
 
     it('should handle multiple facets', () => {
@@ -435,7 +435,7 @@ describe('BlueskyBacklinksPlugin', () => {
             features: [
               {
                 $type: 'app.bsky.richtext.facet#link',
-                uri: 'at://did:plc:multi1/pub.chive.preprint.submission/p1',
+                uri: 'at://did:plc:multi1/pub.chive.eprint.submission/p1',
               },
             ],
           },
@@ -444,18 +444,18 @@ describe('BlueskyBacklinksPlugin', () => {
             features: [
               {
                 $type: 'app.bsky.richtext.facet#link',
-                uri: 'https://chive.pub/preprint/did:plc:multi2/p2',
+                uri: 'https://chive.pub/eprint/did:plc:multi2/p2',
               },
             ],
           },
         ],
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toHaveLength(2);
-      expect(refs).toContain('at://did:plc:multi1/pub.chive.preprint.submission/p1');
-      expect(refs).toContain('at://did:plc:multi2/pub.chive.preprint.submission/p2');
+      expect(refs).toContain('at://did:plc:multi1/pub.chive.eprint.submission/p1');
+      expect(refs).toContain('at://did:plc:multi2/pub.chive.eprint.submission/p2');
     });
 
     it('should skip mention and tag facets', () => {
@@ -485,12 +485,12 @@ describe('BlueskyBacklinksPlugin', () => {
         ],
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
 
-    it('should skip non-preprint and non-Chive links in facets', () => {
+    it('should skip non-eprint and non-Chive links in facets', () => {
       const post = {
         $type: 'app.bsky.feed.post',
         text: 'External links',
@@ -517,55 +517,55 @@ describe('BlueskyBacklinksPlugin', () => {
         ],
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
   });
 
-  describe('extractPreprintRefs - plain text AT-URIs', () => {
+  describe('extractEprintRefs - plain text AT-URIs', () => {
     it('should extract AT-URIs from plain text', () => {
       const post = {
         $type: 'app.bsky.feed.post',
-        text: 'Check this: at://did:plc:text123/pub.chive.preprint.submission/paper5',
+        text: 'Check this: at://did:plc:text123/pub.chive.eprint.submission/paper5',
         createdAt: '2024-01-01T00:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:text123/pub.chive.preprint.submission/paper5']);
+      expect(refs).toEqual(['at://did:plc:text123/pub.chive.eprint.submission/paper5']);
     });
 
     it('should extract multiple AT-URIs from text', () => {
       const post = {
         $type: 'app.bsky.feed.post',
-        text: 'Papers: at://did:plc:a/pub.chive.preprint.submission/p1 and at://did:plc:b/pub.chive.preprint.submission/p2',
+        text: 'Papers: at://did:plc:a/pub.chive.eprint.submission/p1 and at://did:plc:b/pub.chive.eprint.submission/p2',
         createdAt: '2024-01-01T00:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toHaveLength(2);
-      expect(refs).toContain('at://did:plc:a/pub.chive.preprint.submission/p1');
-      expect(refs).toContain('at://did:plc:b/pub.chive.preprint.submission/p2');
+      expect(refs).toContain('at://did:plc:a/pub.chive.eprint.submission/p1');
+      expect(refs).toContain('at://did:plc:b/pub.chive.eprint.submission/p2');
     });
 
-    it('should filter out non-preprint AT-URIs from text', () => {
+    it('should filter out non-eprint AT-URIs from text', () => {
       const post = {
         $type: 'app.bsky.feed.post',
-        text: 'URIs: at://did:plc:x/pub.chive.preprint.submission/p1 at://did:plc:y/app.bsky.feed.post/z',
+        text: 'URIs: at://did:plc:x/pub.chive.eprint.submission/p1 at://did:plc:y/app.bsky.feed.post/z',
         createdAt: '2024-01-01T00:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:x/pub.chive.preprint.submission/p1']);
+      expect(refs).toEqual(['at://did:plc:x/pub.chive.eprint.submission/p1']);
     });
   });
 
-  describe('extractPreprintRefs - deduplication', () => {
+  describe('extractEprintRefs - deduplication', () => {
     it('should deduplicate references from multiple sources', () => {
-      const duplicateUri = 'at://did:plc:dup/pub.chive.preprint.submission/same';
+      const duplicateUri = 'at://did:plc:dup/pub.chive.eprint.submission/same';
       const post = {
         $type: 'app.bsky.feed.post',
         text: `Duplicate: ${duplicateUri}`,
@@ -590,14 +590,14 @@ describe('BlueskyBacklinksPlugin', () => {
         ],
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([duplicateUri]);
       expect(refs).toHaveLength(1);
     });
   });
 
-  describe('extractPreprintRefs - edge cases', () => {
+  describe('extractEprintRefs - edge cases', () => {
     it('should handle post with no embeds, facets, or URIs', () => {
       const post = {
         $type: 'app.bsky.feed.post',
@@ -605,7 +605,7 @@ describe('BlueskyBacklinksPlugin', () => {
         createdAt: '2024-01-01T00:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
@@ -617,7 +617,7 @@ describe('BlueskyBacklinksPlugin', () => {
         createdAt: '2024-01-01T00:00:00Z',
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
@@ -631,14 +631,14 @@ describe('BlueskyBacklinksPlugin', () => {
         facets: undefined,
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
   });
 
   describe('chiveUrlToAtUri - URL conversion', () => {
-    it('should convert valid /preprint/ URL', () => {
+    it('should convert valid /eprint/ URL', () => {
       const post = {
         $type: 'app.bsky.feed.post',
         text: 'Link',
@@ -646,14 +646,14 @@ describe('BlueskyBacklinksPlugin', () => {
         embed: {
           $type: 'app.bsky.embed.external',
           external: {
-            uri: 'https://chive.pub/preprint/did:plc:test123/rkey789',
+            uri: 'https://chive.pub/eprint/did:plc:test123/rkey789',
           },
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:test123/pub.chive.preprint.submission/rkey789']);
+      expect(refs).toEqual(['at://did:plc:test123/pub.chive.eprint.submission/rkey789']);
     });
 
     it('should convert valid /paper/ URL with simple DID', () => {
@@ -669,9 +669,9 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:abc789/pub.chive.preprint.submission/key456']);
+      expect(refs).toEqual(['at://did:plc:abc789/pub.chive.eprint.submission/key456']);
     });
 
     it('should handle DIDs with colons', () => {
@@ -682,14 +682,14 @@ describe('BlueskyBacklinksPlugin', () => {
         embed: {
           $type: 'app.bsky.embed.external',
           external: {
-            uri: 'https://chive.pub/preprint/did:plc:abcdef123456/rkey',
+            uri: 'https://chive.pub/eprint/did:plc:abcdef123456/rkey',
           },
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
-      expect(refs).toEqual(['at://did:plc:abcdef123456/pub.chive.preprint.submission/rkey']);
+      expect(refs).toEqual(['at://did:plc:abcdef123456/pub.chive.eprint.submission/rkey']);
     });
 
     it('should return empty array for non-Chive domains', () => {
@@ -700,12 +700,12 @@ describe('BlueskyBacklinksPlugin', () => {
         embed: {
           $type: 'app.bsky.embed.external',
           external: {
-            uri: 'https://example.com/preprint/did:plc:test/rkey',
+            uri: 'https://example.com/eprint/did:plc:test/rkey',
           },
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
@@ -723,7 +723,7 @@ describe('BlueskyBacklinksPlugin', () => {
         },
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
@@ -746,7 +746,7 @@ describe('BlueskyBacklinksPlugin', () => {
         ],
       };
 
-      const refs = plugin.extractPreprintRefs(post);
+      const refs = plugin.extractEprintRefs(post);
 
       expect(refs).toEqual([]);
     });
@@ -761,7 +761,7 @@ describe('BlueskyBacklinksPlugin', () => {
         embed: {
           $type: 'app.bsky.embed.record',
           record: {
-            uri: 'at://did:plc:test/pub.chive.preprint.submission/paper',
+            uri: 'at://did:plc:test/pub.chive.eprint.submission/paper',
             cid: 'bafyreiabc',
           },
         },
@@ -829,7 +829,7 @@ describe('BlueskyBacklinksPlugin', () => {
       await plugin.initialize(context);
     });
 
-    it('should create backlinks when post references preprint', async () => {
+    it('should create backlinks when post references eprint', async () => {
       const record: FirehoseRecord = {
         uri: 'at://did:plc:poster/app.bsky.feed.post/postkey',
         collection: 'app.bsky.feed.post',
@@ -837,7 +837,7 @@ describe('BlueskyBacklinksPlugin', () => {
         rkey: 'postkey',
         record: {
           $type: 'app.bsky.feed.post',
-          text: 'Check out: at://did:plc:author/pub.chive.preprint.submission/paper',
+          text: 'Check out: at://did:plc:author/pub.chive.eprint.submission/paper',
           createdAt: '2024-01-01T00:00:00Z',
         },
         deleted: false,
@@ -850,8 +850,8 @@ describe('BlueskyBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:poster/app.bsky.feed.post/postkey',
         sourceType: 'bluesky.post',
-        targetUri: 'at://did:plc:author/pub.chive.preprint.submission/paper',
-        context: 'Check out: at://did:plc:author/pub.chive.preprint.submission/paper',
+        targetUri: 'at://did:plc:author/pub.chive.eprint.submission/paper',
+        context: 'Check out: at://did:plc:author/pub.chive.eprint.submission/paper',
       });
     });
 
@@ -874,7 +874,7 @@ describe('BlueskyBacklinksPlugin', () => {
       );
     });
 
-    it('should skip posts without preprint references', async () => {
+    it('should skip posts without eprint references', async () => {
       const record: FirehoseRecord = {
         uri: 'at://did:plc:poster/app.bsky.feed.post/regular',
         collection: 'app.bsky.feed.post',
@@ -895,7 +895,7 @@ describe('BlueskyBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).not.toHaveBeenCalled();
     });
 
-    it('should handle posts with multiple preprint references', async () => {
+    it('should handle posts with multiple eprint references', async () => {
       const record: FirehoseRecord = {
         uri: 'at://did:plc:poster/app.bsky.feed.post/multi',
         collection: 'app.bsky.feed.post',
@@ -903,12 +903,12 @@ describe('BlueskyBacklinksPlugin', () => {
         rkey: 'multi',
         record: {
           $type: 'app.bsky.feed.post',
-          text: 'Papers: at://did:plc:a/pub.chive.preprint.submission/p1',
+          text: 'Papers: at://did:plc:a/pub.chive.eprint.submission/p1',
           createdAt: '2024-01-01T00:00:00Z',
           embed: {
             $type: 'app.bsky.embed.record',
             record: {
-              uri: 'at://did:plc:b/pub.chive.preprint.submission/p2',
+              uri: 'at://did:plc:b/pub.chive.eprint.submission/p2',
               cid: 'bafyreiabc',
             },
           },
@@ -931,7 +931,7 @@ describe('BlueskyBacklinksPlugin', () => {
         rkey: 'test',
         record: {
           $type: 'app.bsky.feed.post',
-          text: 'at://did:plc:author/pub.chive.preprint.submission/paper',
+          text: 'at://did:plc:author/pub.chive.eprint.submission/paper',
           createdAt: '2024-01-01T00:00:00Z',
         },
         deleted: false,
@@ -944,7 +944,7 @@ describe('BlueskyBacklinksPlugin', () => {
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.created', {
         sourceUri: 'at://did:plc:poster/app.bsky.feed.post/test',
         sourceType: 'bluesky.post',
-        targetUri: 'at://did:plc:author/pub.chive.preprint.submission/paper',
+        targetUri: 'at://did:plc:author/pub.chive.eprint.submission/paper',
       });
     });
 
@@ -956,7 +956,7 @@ describe('BlueskyBacklinksPlugin', () => {
         rkey: 'metrics',
         record: {
           $type: 'app.bsky.feed.post',
-          text: 'at://did:plc:author/pub.chive.preprint.submission/paper',
+          text: 'at://did:plc:author/pub.chive.eprint.submission/paper',
           createdAt: '2024-01-01T00:00:00Z',
         },
         deleted: false,

@@ -30,19 +30,19 @@ const relationshipConfig: Record<
 > = {
   cites: {
     label: 'Cites',
-    description: 'This paper cites the current preprint',
+    description: 'This paper cites the current eprint',
     icon: ArrowUpRight,
     color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   },
   'cited-by': {
     label: 'Cited by',
-    description: 'This paper is cited by the current preprint',
+    description: 'This paper is cited by the current eprint',
     icon: ArrowDownRight,
     color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   },
   'co-cited': {
     label: 'Co-cited',
-    description: 'Frequently cited together with this preprint',
+    description: 'Frequently cited together with this eprint',
     icon: Link2,
     color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   },

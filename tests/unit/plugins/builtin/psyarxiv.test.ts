@@ -67,19 +67,19 @@ const createMockContext = (overrides?: Partial<IPluginContext>): IPluginContext 
 });
 
 // ============================================================================
-// Sample Data (based on OSF Preprints API v2)
+// Sample Data (based on OSF Eprints API v2)
 // ============================================================================
 
 /**
- * Sample OSF Preprints API response.
+ * Sample OSF Eprints API response.
  *
  * Uses JSON:API format as specified in OSF API documentation.
  */
-const SAMPLE_PREPRINTS_RESPONSE = {
+const SAMPLE_EPRINTS_RESPONSE = {
   data: [
     {
       id: 'abc123',
-      type: 'preprints',
+      type: 'eprints',
       attributes: {
         title:
           'Implicit Causality and the Strength of Association Between Verb Types and Pronoun Resolution',
@@ -89,7 +89,7 @@ const SAMPLE_PREPRINTS_RESPONSE = {
         date_published: '2024-01-15T10:00:00Z',
         doi: '10.31234/osf.io/abc123',
         is_published: true,
-        is_preprint_orphan: false,
+        is_eprint_orphan: false,
         tags: ['psycholinguistics', 'pronoun resolution'],
         subjects: [
           { id: 'psych', text: 'Psychology' },
@@ -100,13 +100,13 @@ const SAMPLE_PREPRINTS_RESPONSE = {
         contributors: {
           links: {
             related: {
-              href: 'https://api.osf.io/v2/preprints/abc123/contributors/',
+              href: 'https://api.osf.io/v2/eprints/abc123/contributors/',
             },
           },
         },
       },
       links: {
-        self: 'https://api.osf.io/v2/preprints/abc123/',
+        self: 'https://api.osf.io/v2/eprints/abc123/',
         html: 'https://psyarxiv.com/abc123',
       },
     },
@@ -207,18 +207,18 @@ describe('PsyArxivPlugin', () => {
       expect(context.logger.info).toHaveBeenCalledWith(
         'PsyArXiv plugin initialized (search-based)',
         expect.objectContaining({
-          apiVersion: 'OSF Preprints API v2',
+          apiVersion: 'OSF Eprints API v2',
           rateLimit: '600ms between requests',
         })
       );
     });
   });
 
-  describe('buildPreprintUrl', () => {
+  describe('buildEprintUrl', () => {
     it('should build correct PsyArXiv URL', async () => {
       await plugin.initialize(context);
 
-      const url = plugin.buildPreprintUrl('abc123');
+      const url = plugin.buildEprintUrl('abc123');
 
       expect(url).toBe('https://psyarxiv.com/abc123');
     });
@@ -243,10 +243,10 @@ describe('PsyArxivPlugin', () => {
       expect(id).toBe('abc123');
     });
 
-    it('should parse osf.io preprints URL', async () => {
+    it('should parse osf.io eprints URL', async () => {
       await plugin.initialize(context);
 
-      const id = plugin.parseExternalId('https://osf.io/preprints/psyarxiv/abc123');
+      const id = plugin.parseExternalId('https://osf.io/eprints/psyarxiv/abc123');
 
       expect(id).toBe('abc123');
     });
@@ -260,13 +260,13 @@ describe('PsyArxivPlugin', () => {
     });
   });
 
-  describe('fetchPreprints', () => {
+  describe('fetchEprints', () => {
     it('should fetch papers from OSF API', async () => {
       await plugin.initialize(context);
       vi.mocked(global.fetch)
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(SAMPLE_PREPRINTS_RESPONSE),
+          json: () => Promise.resolve(SAMPLE_EPRINTS_RESPONSE),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
@@ -274,7 +274,7 @@ describe('PsyArxivPlugin', () => {
         } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -285,12 +285,12 @@ describe('PsyArxivPlugin', () => {
       });
     });
 
-    it('should fetch contributors for each preprint', async () => {
+    it('should fetch contributors for each eprint', async () => {
       await plugin.initialize(context);
       vi.mocked(global.fetch)
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(SAMPLE_PREPRINTS_RESPONSE),
+          json: () => Promise.resolve(SAMPLE_EPRINTS_RESPONSE),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
@@ -298,7 +298,7 @@ describe('PsyArxivPlugin', () => {
         } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -315,7 +315,7 @@ describe('PsyArxivPlugin', () => {
       vi.mocked(global.fetch)
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(SAMPLE_PREPRINTS_RESPONSE),
+          json: () => Promise.resolve(SAMPLE_EPRINTS_RESPONSE),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
@@ -323,7 +323,7 @@ describe('PsyArxivPlugin', () => {
         } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -337,17 +337,17 @@ describe('PsyArxivPlugin', () => {
       );
     });
 
-    it('should skip unpublished preprints', async () => {
+    it('should skip unpublished eprints', async () => {
       await plugin.initialize(context);
       const responseWithUnpublished = {
-        ...SAMPLE_PREPRINTS_RESPONSE,
+        ...SAMPLE_EPRINTS_RESPONSE,
         data: [
-          ...SAMPLE_PREPRINTS_RESPONSE.data,
+          ...SAMPLE_EPRINTS_RESPONSE.data,
           {
-            ...SAMPLE_PREPRINTS_RESPONSE.data[0],
+            ...SAMPLE_EPRINTS_RESPONSE.data[0],
             id: 'xyz789',
             attributes: {
-              ...SAMPLE_PREPRINTS_RESPONSE.data[0]?.attributes,
+              ...SAMPLE_EPRINTS_RESPONSE.data[0]?.attributes,
               is_published: false,
             },
           },
@@ -364,7 +364,7 @@ describe('PsyArxivPlugin', () => {
         } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 10 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 10 })) {
         papers.push(paper);
       }
 
@@ -372,16 +372,16 @@ describe('PsyArxivPlugin', () => {
       expect(papers[0]).toMatchObject({ externalId: 'abc123' });
     });
 
-    it('should skip orphaned preprints', async () => {
+    it('should skip orphaned eprints', async () => {
       await plugin.initialize(context);
       const responseWithOrphaned = {
-        ...SAMPLE_PREPRINTS_RESPONSE,
+        ...SAMPLE_EPRINTS_RESPONSE,
         data: [
           {
-            ...SAMPLE_PREPRINTS_RESPONSE.data[0],
+            ...SAMPLE_EPRINTS_RESPONSE.data[0],
             attributes: {
-              ...SAMPLE_PREPRINTS_RESPONSE.data[0]?.attributes,
-              is_preprint_orphan: true,
+              ...SAMPLE_EPRINTS_RESPONSE.data[0]?.attributes,
+              is_eprint_orphan: true,
             },
           },
         ],
@@ -392,7 +392,7 @@ describe('PsyArxivPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 10 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 10 })) {
         papers.push(paper);
       }
 
@@ -408,15 +408,15 @@ describe('PsyArxivPlugin', () => {
 
       await expect(async () => {
         const papers: unknown[] = [];
-        for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+        for await (const paper of plugin.fetchEprints({ limit: 1 })) {
           papers.push(paper);
         }
       }).rejects.toThrow('PsyArXiv API error: 503');
     });
   });
 
-  describe('fetchPreprintDetails', () => {
-    it('should return cached preprint if available', async () => {
+  describe('fetchEprintDetails', () => {
+    it('should return cached eprint if available', async () => {
       await plugin.initialize(context);
       const cachedPaper = {
         id: 'abc123',
@@ -428,7 +428,7 @@ describe('PsyArxivPlugin', () => {
       };
       vi.mocked(context.cache.get).mockResolvedValueOnce(cachedPaper);
 
-      const result = await plugin.fetchPreprintDetails('abc123');
+      const result = await plugin.fetchEprintDetails('abc123');
 
       expect(result).toEqual(cachedPaper);
       expect(global.fetch).not.toHaveBeenCalled();
@@ -440,14 +440,14 @@ describe('PsyArxivPlugin', () => {
       vi.mocked(global.fetch)
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ data: SAMPLE_PREPRINTS_RESPONSE.data[0] }),
+          json: () => Promise.resolve({ data: SAMPLE_EPRINTS_RESPONSE.data[0] }),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(SAMPLE_CONTRIBUTORS_RESPONSE),
         } as Response);
 
-      const result = await plugin.fetchPreprintDetails('abc123');
+      const result = await plugin.fetchEprintDetails('abc123');
 
       expect(result).toMatchObject({
         id: 'abc123',
@@ -464,30 +464,30 @@ describe('PsyArxivPlugin', () => {
         status: 404,
       } as Response);
 
-      const result = await plugin.fetchPreprintDetails('nonexistent');
+      const result = await plugin.fetchEprintDetails('nonexistent');
 
       expect(result).toBeNull();
       expect(context.logger.warn).toHaveBeenCalledWith(
-        'Failed to fetch preprint details',
+        'Failed to fetch eprint details',
         expect.any(Object)
       );
     });
   });
 
-  describe('searchPreprints', () => {
-    it('should search preprints by query', async () => {
+  describe('searchEprints', () => {
+    it('should search eprints by query', async () => {
       await plugin.initialize(context);
       vi.mocked(global.fetch)
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(SAMPLE_PREPRINTS_RESPONSE),
+          json: () => Promise.resolve(SAMPLE_EPRINTS_RESPONSE),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(SAMPLE_CONTRIBUTORS_RESPONSE),
         } as Response);
 
-      const results = await plugin.searchPreprints('causality');
+      const results = await plugin.searchEprints('causality');
 
       expect(results).toHaveLength(1);
       expect(global.fetch).toHaveBeenCalledWith(
@@ -501,14 +501,14 @@ describe('PsyArxivPlugin', () => {
       vi.mocked(global.fetch)
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(SAMPLE_PREPRINTS_RESPONSE),
+          json: () => Promise.resolve(SAMPLE_EPRINTS_RESPONSE),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(SAMPLE_CONTRIBUTORS_RESPONSE),
         } as Response);
 
-      await plugin.searchPreprints('test', { limit: 10 });
+      await plugin.searchEprints('test', { limit: 10 });
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('page[size]=10'),
@@ -523,7 +523,7 @@ describe('PsyArxivPlugin', () => {
         status: 500,
       } as Response);
 
-      const results = await plugin.searchPreprints('test');
+      const results = await plugin.searchEprints('test');
 
       expect(results).toEqual([]);
       expect(context.logger.warn).toHaveBeenCalledWith('Search request failed', expect.any(Object));

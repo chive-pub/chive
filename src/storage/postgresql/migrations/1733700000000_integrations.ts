@@ -2,11 +2,11 @@
  * Integrations system tables migration.
  *
  * @remarks
- * Creates tables for the preprint importing, claiming, backlinks, and
+ * Creates tables for the eprint importing, claiming, backlinks, and
  * reconciliation systems.
  *
  * Tables created:
- * - `imported_preprints` - External preprint cache (arXiv, LingBuzz, etc.)
+ * - `imported_eprints` - External eprint cache (arXiv, LingBuzz, etc.)
  * - `claim_requests` - Pending claim requests with evidence
  * - `backlinks` - Cross-app references from ATProto ecosystem
  * - `backlink_counts` - Aggregated counts cache
@@ -14,7 +14,7 @@
  *
  * ATProto Compliance Notes:
  * - All data is AppView-specific (ephemeral, rebuildable)
- * - imported_preprints can be rebuilt from external sources
+ * - imported_eprints can be rebuilt from external sources
  * - backlinks can be rebuilt from firehose replay
  * - reconciliations are also published to Governance PDS for portability
  *
@@ -68,13 +68,13 @@ const BACKLINK_SOURCE_TYPES = [
  */
 export function up(pgm: MigrationBuilder): void {
   // =============================================================
-  // IMPORTED PREPRINTS TABLE
+  // IMPORTED EPRINTS TABLE
   // =============================================================
-  // Caches preprints from external sources (arXiv, LingBuzz, etc.)
+  // Caches eprints from external sources (arXiv, LingBuzz, etc.)
   // This is AppView-specific and can be rebuilt from external sources.
   // =============================================================
 
-  pgm.createTable('imported_preprints', {
+  pgm.createTable('imported_eprints', {
     id: {
       type: 'bigserial',
       primaryKey: true,
@@ -93,16 +93,16 @@ export function up(pgm: MigrationBuilder): void {
     external_url: {
       type: 'text',
       notNull: true,
-      comment: 'URL to the preprint on the external source',
+      comment: 'URL to the eprint on the external source',
     },
     title: {
       type: 'text',
       notNull: true,
-      comment: 'Preprint title',
+      comment: 'Eprint title',
     },
     abstract: {
       type: 'text',
-      comment: 'Preprint abstract',
+      comment: 'Eprint abstract',
     },
     authors: {
       type: 'jsonb',
@@ -128,13 +128,13 @@ export function up(pgm: MigrationBuilder): void {
     imported_by_plugin: {
       type: 'text',
       notNull: true,
-      comment: 'Plugin ID that imported this preprint',
+      comment: 'Plugin ID that imported this eprint',
     },
     imported_at: {
       type: 'timestamptz',
       notNull: true,
       default: pgm.func('NOW()'),
-      comment: 'When preprint was imported',
+      comment: 'When eprint was imported',
     },
     last_synced_at: {
       type: 'timestamptz',
@@ -160,11 +160,11 @@ export function up(pgm: MigrationBuilder): void {
     },
     claimed_by_did: {
       type: 'text',
-      comment: 'DID of user who claimed this preprint',
+      comment: 'DID of user who claimed this eprint',
     },
     claimed_at: {
       type: 'timestamptz',
-      comment: 'When preprint was claimed',
+      comment: 'When eprint was claimed',
     },
     metadata: {
       type: 'jsonb',
@@ -173,36 +173,36 @@ export function up(pgm: MigrationBuilder): void {
   });
 
   // Unique constraint on source + external_id
-  pgm.addConstraint('imported_preprints', 'uq_imported_preprints_source_external_id', {
+  pgm.addConstraint('imported_eprints', 'uq_imported_eprints_source_external_id', {
     unique: ['source', 'external_id'],
   });
 
   // Indexes for common queries
-  pgm.createIndex('imported_preprints', 'source');
-  pgm.createIndex('imported_preprints', 'external_id');
-  pgm.createIndex('imported_preprints', 'claim_status');
-  pgm.createIndex('imported_preprints', 'canonical_uri', {
+  pgm.createIndex('imported_eprints', 'source');
+  pgm.createIndex('imported_eprints', 'external_id');
+  pgm.createIndex('imported_eprints', 'claim_status');
+  pgm.createIndex('imported_eprints', 'canonical_uri', {
     where: 'canonical_uri IS NOT NULL',
   });
-  pgm.createIndex('imported_preprints', 'claimed_by_did', {
+  pgm.createIndex('imported_eprints', 'claimed_by_did', {
     where: 'claimed_by_did IS NOT NULL',
   });
-  pgm.createIndex('imported_preprints', 'doi', {
+  pgm.createIndex('imported_eprints', 'doi', {
     where: 'doi IS NOT NULL',
   });
-  pgm.createIndex('imported_preprints', 'authors', { method: 'gin' });
-  pgm.createIndex('imported_preprints', 'imported_at');
+  pgm.createIndex('imported_eprints', 'authors', { method: 'gin' });
+  pgm.createIndex('imported_eprints', 'imported_at');
 
   // Full-text search index
   pgm.sql(`
-    ALTER TABLE imported_preprints
+    ALTER TABLE imported_eprints
     ADD COLUMN search_vector tsvector
     GENERATED ALWAYS AS (
       setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
       setweight(to_tsvector('english', coalesce(abstract, '')), 'B')
     ) STORED
   `);
-  pgm.createIndex('imported_preprints', 'search_vector', { method: 'gin' });
+  pgm.createIndex('imported_eprints', 'search_vector', { method: 'gin' });
 
   // =============================================================
   // CLAIM REQUESTS TABLE
@@ -218,9 +218,9 @@ export function up(pgm: MigrationBuilder): void {
     import_id: {
       type: 'bigint',
       notNull: true,
-      references: 'imported_preprints(id)',
+      references: 'imported_eprints(id)',
       onDelete: 'CASCADE',
-      comment: 'Reference to imported preprint',
+      comment: 'Reference to imported eprint',
     },
     claimant_did: {
       type: 'text',
@@ -295,7 +295,7 @@ export function up(pgm: MigrationBuilder): void {
   // =============================================================
   // BACKLINKS TABLE
   // =============================================================
-  // Tracks references to Chive preprints from ATProto ecosystem.
+  // Tracks references to Chive eprints from ATProto ecosystem.
   // Rebuildable from firehose replay.
   // =============================================================
 
@@ -323,7 +323,7 @@ export function up(pgm: MigrationBuilder): void {
     target_uri: {
       type: 'text',
       notNull: true,
-      comment: 'AT-URI of the target preprint',
+      comment: 'AT-URI of the target eprint',
     },
     context: {
       type: 'text',
@@ -375,7 +375,7 @@ export function up(pgm: MigrationBuilder): void {
     target_uri: {
       type: 'text',
       primaryKey: true,
-      comment: 'AT-URI of the target preprint',
+      comment: 'AT-URI of the target eprint',
     },
     semble_count: {
       type: 'integer',
@@ -430,7 +430,7 @@ export function up(pgm: MigrationBuilder): void {
   // =============================================================
   // RECONCILIATIONS TABLE
   // =============================================================
-  // Links imported preprints to canonical ATProto records.
+  // Links imported eprints to canonical ATProto records.
   // Also published to Governance PDS for portability.
   // =============================================================
 
@@ -443,7 +443,7 @@ export function up(pgm: MigrationBuilder): void {
       type: 'text',
       notNull: true,
       unique: true,
-      comment: 'Reference to imported preprint (internal or AT-URI)',
+      comment: 'Reference to imported eprint (internal or AT-URI)',
     },
     canonical_uri: {
       type: 'text',
@@ -566,5 +566,5 @@ export function down(pgm: MigrationBuilder): void {
   pgm.dropTable('backlink_counts', { ifExists: true });
   pgm.dropTable('backlinks', { ifExists: true });
   pgm.dropTable('claim_requests', { ifExists: true, cascade: true });
-  pgm.dropTable('imported_preprints', { ifExists: true, cascade: true });
+  pgm.dropTable('imported_eprints', { ifExists: true, cascade: true });
 }

@@ -91,11 +91,11 @@ export interface OrcidSearchResult {
 }
 
 /**
- * Preprint indexed event data.
+ * Eprint indexed event data.
  *
  * @internal
  */
-interface PreprintIndexedEvent {
+interface EprintIndexedEvent {
   uri: string;
   authorDid: string;
   orcid?: string;
@@ -138,7 +138,7 @@ interface OrcidApiResponse {
  * ORCID linking plugin.
  *
  * @remarks
- * Automatically verifies author ORCID identifiers when preprints
+ * Automatically verifies author ORCID identifiers when eprints
  * are indexed or when authors link their ORCID accounts.
  *
  * @example
@@ -169,7 +169,7 @@ export class OrcidLinkingPlugin extends BasePlugin {
       network: {
         allowedDomains: ['pub.orcid.org', 'orcid.org'],
       },
-      hooks: ['author.linked', 'preprint.indexed'],
+      hooks: ['author.linked', 'eprint.indexed'],
       storage: {
         maxSize: 5 * 1024 * 1024, // 5MB
       },
@@ -201,8 +201,8 @@ export class OrcidLinkingPlugin extends BasePlugin {
    * Initializes the plugin.
    */
   protected onInitialize(): Promise<void> {
-    this.context.eventBus.on('preprint.indexed', (...args: readonly unknown[]) => {
-      void this.handlePreprintIndexed(args[0] as PreprintIndexedEvent);
+    this.context.eventBus.on('eprint.indexed', (...args: readonly unknown[]) => {
+      void this.handleEprintIndexed(args[0] as EprintIndexedEvent);
     });
     this.context.eventBus.on('author.linked', (...args: readonly unknown[]) => {
       void this.handleAuthorLinked(args[0] as AuthorLinkedEvent);
@@ -214,9 +214,9 @@ export class OrcidLinkingPlugin extends BasePlugin {
   }
 
   /**
-   * Handles preprint indexed events.
+   * Handles eprint indexed events.
    */
-  private async handlePreprintIndexed(data: PreprintIndexedEvent): Promise<void> {
+  private async handleEprintIndexed(data: EprintIndexedEvent): Promise<void> {
     if (!data.orcid) {
       return;
     }
@@ -225,7 +225,7 @@ export class OrcidLinkingPlugin extends BasePlugin {
       const profile = await this.fetchOrcidProfile(data.orcid);
 
       this.logger.info('ORCID profile verified', {
-        preprintUri: data.uri,
+        eprintUri: data.uri,
         orcid: data.orcid,
         name: profile.name,
         verified: profile.verified,
@@ -235,7 +235,7 @@ export class OrcidLinkingPlugin extends BasePlugin {
 
       // Emit verification event
       this.context.eventBus.emit('orcid.verified', {
-        preprintUri: data.uri,
+        eprintUri: data.uri,
         authorDid: data.authorDid,
         profile,
       });

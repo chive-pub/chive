@@ -2,11 +2,11 @@
  * Dynamic Open Graph image generation for Bluesky social cards.
  *
  * @remarks
- * Generates 1200x630 PNG images for preprints, authors, reviews, and endorsements.
+ * Generates 1200x630 PNG images for eprints, authors, reviews, and endorsements.
  * Used both for og:image meta tags and for Bluesky external embed thumbnails.
  *
  * @example
- * GET /api/og?type=preprint&uri=at://did:plc:abc/pub.chive.preprint.submission/123
+ * GET /api/og?type=eprint&uri=at://did:plc:abc/pub.chive.eprint.submission/123
  * GET /api/og?type=author&did=did:plc:abc123
  * GET /api/og?type=review&uri=at://did:plc:abc/pub.chive.review.comment/456
  * GET /api/og?type=endorsement&uri=at://did:plc:abc/pub.chive.review.endorsement/789
@@ -37,7 +37,7 @@ const COLORS = {
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const type = searchParams.get('type') as 'preprint' | 'author' | 'review' | 'endorsement' | null;
+  const type = searchParams.get('type') as 'eprint' | 'author' | 'review' | 'endorsement' | null;
 
   if (!type) {
     return new Response('Missing type parameter', { status: 400 });
@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
 
   try {
     switch (type) {
-      case 'preprint':
-        return await generatePreprintImage(searchParams);
+      case 'eprint':
+        return await generateEprintImage(searchParams);
       case 'author':
         return await generateAuthorImage(searchParams);
       case 'review':
@@ -63,10 +63,10 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Generate OG image for a preprint.
+ * Generate OG image for a eprint.
  */
-async function generatePreprintImage(params: URLSearchParams): Promise<ImageResponse> {
-  const title = params.get('title') || 'Untitled Preprint';
+async function generateEprintImage(params: URLSearchParams): Promise<ImageResponse> {
+  const title = params.get('title') || 'Untitled Eprint';
   const author = params.get('author') || 'Unknown Author';
   const handle = params.get('handle') || '';
   const affiliation = params.get('affiliation') || '';
@@ -180,7 +180,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
   const affiliation = params.get('affiliation') || '';
   const bio = params.get('bio') || '';
   const avatar = params.get('avatar');
-  const preprintCount = params.get('preprints') || '0';
+  const eprintCount = params.get('eprints') || '0';
   const endorsementCount = params.get('endorsements') || '0';
   const reviewCount = params.get('reviews') || '0';
 
@@ -280,7 +280,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: '32px', marginTop: '24px' }}>
-        <Stat label="preprints" value={preprintCount} />
+        <Stat label="eprints" value={eprintCount} />
         <Stat label="endorsements" value={endorsementCount} />
         <Stat label="reviews" value={reviewCount} />
       </div>
@@ -302,7 +302,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
   const content = params.get('content') || '';
   const reviewer = params.get('reviewer') || 'Anonymous';
   const reviewerHandle = params.get('reviewerHandle') || '';
-  const preprintTitle = params.get('preprintTitle') || 'Preprint';
+  const eprintTitle = params.get('eprintTitle') || 'Eprint';
 
   return new ImageResponse(
     <div
@@ -383,7 +383,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
         </div>
       </div>
 
-      {/* Preprint reference */}
+      {/* Eprint reference */}
       <div
         style={{
           padding: '16px 24px',
@@ -395,7 +395,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
       >
         <div style={{ fontSize: '14px', color: COLORS.muted, marginBottom: '4px' }}>On:</div>
         <div style={{ fontSize: '18px', color: COLORS.primary, fontWeight: 600 }}>
-          {truncateText(preprintTitle, 80)}
+          {truncateText(eprintTitle, 80)}
         </div>
       </div>
     </div>,
@@ -417,7 +417,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
   const comment = params.get('comment') || '';
   const endorser = params.get('endorser') || 'Anonymous';
   const endorserHandle = params.get('endorserHandle') || '';
-  const preprintTitle = params.get('preprintTitle') || 'Preprint';
+  const eprintTitle = params.get('eprintTitle') || 'Eprint';
 
   return new ImageResponse(
     <div
@@ -525,7 +525,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
         </div>
       </div>
 
-      {/* Preprint reference */}
+      {/* Eprint reference */}
       <div
         style={{
           padding: '16px 24px',
@@ -536,7 +536,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
         }}
       >
         <div style={{ fontSize: '18px', color: COLORS.primary, fontWeight: 600 }}>
-          {truncateText(preprintTitle, 80)}
+          {truncateText(eprintTitle, 80)}
         </div>
       </div>
     </div>,

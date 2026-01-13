@@ -5,7 +5,7 @@
  * Creates table for persisting metrics from Redis to PostgreSQL.
  *
  * Tables created:
- * - `preprint_metrics` - Aggregated view/download metrics per preprint
+ * - `eprint_metrics` - Aggregated view/download metrics per eprint
  *
  * ATProto Compliance Notes:
  * - All data is AppView-specific (ephemeral, rebuildable)
@@ -25,17 +25,17 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
  */
 export function up(pgm: MigrationBuilder): void {
   // =============================================================
-  // PREPRINT METRICS TABLE
+  // EPRINT METRICS TABLE
   // =============================================================
   // Stores aggregated view/download metrics flushed from Redis.
   // This provides durability and historical query support.
   // =============================================================
 
-  pgm.createTable('preprint_metrics', {
+  pgm.createTable('eprint_metrics', {
     uri: {
       type: 'text',
       primaryKey: true,
-      comment: 'AT URI of the preprint',
+      comment: 'AT URI of the eprint',
     },
     total_views: {
       type: 'bigint',
@@ -76,16 +76,16 @@ export function up(pgm: MigrationBuilder): void {
   });
 
   // Indexes for common queries
-  pgm.createIndex('preprint_metrics', 'total_views');
-  pgm.createIndex('preprint_metrics', 'total_downloads');
-  pgm.createIndex('preprint_metrics', 'last_flushed_at');
+  pgm.createIndex('eprint_metrics', 'total_views');
+  pgm.createIndex('eprint_metrics', 'total_downloads');
+  pgm.createIndex('eprint_metrics', 'last_flushed_at');
 
   // =============================================================
   // HELPER FUNCTION: Batch upsert metrics
   // =============================================================
 
   pgm.sql(`
-    CREATE OR REPLACE FUNCTION upsert_preprint_metrics(
+    CREATE OR REPLACE FUNCTION upsert_eprint_metrics(
       p_uri text,
       p_views bigint,
       p_downloads bigint DEFAULT NULL,
@@ -94,7 +94,7 @@ export function up(pgm: MigrationBuilder): void {
     )
     RETURNS void AS $$
     BEGIN
-      INSERT INTO preprint_metrics (
+      INSERT INTO eprint_metrics (
         uri,
         total_views,
         total_downloads,
@@ -112,10 +112,10 @@ export function up(pgm: MigrationBuilder): void {
         NOW()
       )
       ON CONFLICT (uri) DO UPDATE SET
-        total_views = GREATEST(preprint_metrics.total_views, EXCLUDED.total_views),
-        total_downloads = GREATEST(preprint_metrics.total_downloads, EXCLUDED.total_downloads),
-        unique_views = GREATEST(preprint_metrics.unique_views, EXCLUDED.unique_views),
-        unique_downloads = GREATEST(preprint_metrics.unique_downloads, EXCLUDED.unique_downloads),
+        total_views = GREATEST(eprint_metrics.total_views, EXCLUDED.total_views),
+        total_downloads = GREATEST(eprint_metrics.total_downloads, EXCLUDED.total_downloads),
+        unique_views = GREATEST(eprint_metrics.unique_views, EXCLUDED.unique_views),
+        unique_downloads = GREATEST(eprint_metrics.unique_downloads, EXCLUDED.unique_downloads),
         last_flushed_at = NOW();
     END;
     $$ LANGUAGE plpgsql;
@@ -128,6 +128,6 @@ export function up(pgm: MigrationBuilder): void {
  * @param pgm - PostgreSQL migration builder
  */
 export function down(pgm: MigrationBuilder): void {
-  pgm.sql('DROP FUNCTION IF EXISTS upsert_preprint_metrics(text, bigint, bigint, bigint, bigint)');
-  pgm.dropTable('preprint_metrics', { ifExists: true });
+  pgm.sql('DROP FUNCTION IF EXISTS upsert_eprint_metrics(text, bigint, bigint, bigint, bigint)');
+  pgm.dropTable('eprint_metrics', { ifExists: true });
 }

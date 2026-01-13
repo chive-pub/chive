@@ -8,12 +8,12 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["preprintUri", "contributions", "createdAt"],
+        "required": ["eprintUri", "contributions", "createdAt"],
         "properties": {
-          "preprintUri": {
+          "eprintUri": {
             "type": "string",
             "format": "at-uri",
-            "description": "AT-URI of the preprint being endorsed"
+            "description": "AT-URI of the eprint being endorsed"
           },
           "contributions": {
             "type": "array",

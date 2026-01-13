@@ -70,14 +70,14 @@ describe('Redis Structures', () => {
     });
 
     it('generates cache keys with correct format', () => {
-      const uri = toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz');
+      const uri = toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz');
       const did = toDID('did:plc:abc');
       expect(uri).toBeDefined();
       expect(did).toBeDefined();
 
       if (uri && did) {
-        expect(RedisKeys.CACHE_PREPRINT(uri)).toBe(
-          'cache:preprint:at://did:plc:abc/pub.chive.preprint.submission/xyz'
+        expect(RedisKeys.CACHE_EPRINT(uri)).toBe(
+          'cache:eprint:at://did:plc:abc/pub.chive.eprint.submission/xyz'
         );
         expect(RedisKeys.CACHE_AUTHOR(did)).toBe('cache:author:did:plc:abc');
         expect(RedisKeys.CACHE_SEARCH('hash123')).toBe('cache:search:hash123');
@@ -110,7 +110,7 @@ describe('Redis Structures', () => {
     });
 
     it('cache TTLs are reasonable', () => {
-      expect(RedisTTL.CACHE_PREPRINT).toBe(300); // 5 minutes
+      expect(RedisTTL.CACHE_EPRINT).toBe(300); // 5 minutes
       expect(RedisTTL.CACHE_AUTHOR).toBe(600); // 10 minutes
       expect(RedisTTL.CACHE_SEARCH).toBe(180); // 3 minutes
     });

@@ -163,8 +163,8 @@ describe('GitHubIntegrationPlugin', () => {
       await plugin.initialize(context);
 
       expect(plugin.getState()).toBe(PluginState.READY);
-      expect(context.eventBus.on).toHaveBeenCalledWith('preprint.indexed', expect.any(Function));
-      expect(context.eventBus.on).toHaveBeenCalledWith('preprint.updated', expect.any(Function));
+      expect(context.eventBus.on).toHaveBeenCalledWith('eprint.indexed', expect.any(Function));
+      expect(context.eventBus.on).toHaveBeenCalledWith('eprint.updated', expect.any(Function));
     });
 
     it('should log initialization with authentication status', async () => {
@@ -191,13 +191,13 @@ describe('GitHubIntegrationPlugin', () => {
     });
   });
 
-  describe('preprint.indexed handler', () => {
+  describe('eprint.indexed handler', () => {
     it('should process GitHub links from supplementary materials', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://github.com/owner/repo'],
       });
 
@@ -216,9 +216,9 @@ describe('GitHubIntegrationPlugin', () => {
     it('should emit github.repo.linked event', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://github.com/owner/repo'],
       });
 
@@ -236,9 +236,9 @@ describe('GitHubIntegrationPlugin', () => {
     it('should skip non-GitHub links', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://gitlab.com/owner/repo', 'https://example.com'],
       });
 
@@ -247,12 +247,12 @@ describe('GitHubIntegrationPlugin', () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it('should handle preprints without supplementary links', async () => {
+    it('should handle eprints without supplementary links', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
       });
 
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -278,9 +278,9 @@ describe('GitHubIntegrationPlugin', () => {
       context.cache.get = vi.fn().mockResolvedValue(cachedData);
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://github.com/cached-owner/cached-repo'],
       });
 
@@ -300,9 +300,9 @@ describe('GitHubIntegrationPlugin', () => {
     it('should cache fetched repo info', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://github.com/owner/repo'],
       });
 
@@ -329,9 +329,9 @@ describe('GitHubIntegrationPlugin', () => {
 
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://github.com/owner/nonexistent'],
       });
 
@@ -352,9 +352,9 @@ describe('GitHubIntegrationPlugin', () => {
 
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://github.com/owner/repo'],
       });
 
@@ -375,9 +375,9 @@ describe('GitHubIntegrationPlugin', () => {
 
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
-        title: 'Test Preprint',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+        title: 'Test Eprint',
         supplementaryLinks: ['https://github.com/owner/repo'],
       });
 
@@ -395,8 +395,8 @@ describe('GitHubIntegrationPlugin', () => {
     it('should parse standard GitHub URLs', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
         title: 'Test',
         supplementaryLinks: ['https://github.com/microsoft/typescript'],
       });
@@ -412,8 +412,8 @@ describe('GitHubIntegrationPlugin', () => {
     it('should handle URLs with .git suffix', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
         title: 'Test',
         supplementaryLinks: ['https://github.com/owner/repo.git'],
       });
@@ -429,8 +429,8 @@ describe('GitHubIntegrationPlugin', () => {
     it('should handle URLs with query strings', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
         title: 'Test',
         supplementaryLinks: ['https://github.com/owner/repo?tab=readme'],
       });
@@ -446,8 +446,8 @@ describe('GitHubIntegrationPlugin', () => {
     it('should handle www.github.com URLs', async () => {
       await plugin.initialize(context);
 
-      await context.eventBus.trigger('preprint.indexed', {
-        uri: 'at://did:plc:test/pub.chive.preprint.submission/123',
+      await context.eventBus.trigger('eprint.indexed', {
+        uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
         title: 'Test',
         supplementaryLinks: ['https://www.github.com/owner/repo'],
       });

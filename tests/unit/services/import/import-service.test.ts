@@ -39,7 +39,7 @@ const createMockDatabasePool = (): MockDatabasePool => ({
 // ============================================================================
 
 /**
- * Sample imported preprint row based on real paper metadata.
+ * Sample imported eprint row based on real paper metadata.
  *
  * Uses data from White & Rawlins (2020), DOI: 10.5334/gjgl.1001
  */
@@ -71,7 +71,7 @@ const SAMPLE_IMPORT_ROW = {
 };
 
 /**
- * Sample preprint from LingBuzz based on Charlow (2014).
+ * Sample eprint from LingBuzz based on Charlow (2014).
  */
 const SAMPLE_LINGBUZZ_ROW = {
   ...SAMPLE_IMPORT_ROW,
@@ -139,7 +139,7 @@ describe('ImportService', () => {
   });
 
   describe('get', () => {
-    it('should return imported preprint by source and external ID', async () => {
+    it('should return imported eprint by source and external ID', async () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_IMPORT_ROW] });
 
       const result = await service.get('arxiv', 'arxiv.2001.12345');
@@ -173,7 +173,7 @@ describe('ImportService', () => {
   });
 
   describe('getById', () => {
-    it('should return imported preprint by ID', async () => {
+    it('should return imported eprint by ID', async () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_IMPORT_ROW] });
 
       const result = await service.getById(1);
@@ -218,7 +218,7 @@ describe('ImportService', () => {
       expect(result.id).toBe(1);
       expect(result.source).toBe('arxiv');
       expect(db.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO imported_preprints'),
+        expect.stringContaining('INSERT INTO imported_eprints'),
         expect.any(Array)
       );
     });
@@ -251,7 +251,7 @@ describe('ImportService', () => {
           authors: [],
           importedByPlugin: 'test',
         })
-      ).rejects.toThrow('Failed to create imported preprint');
+      ).rejects.toThrow('Failed to create imported eprint');
     });
 
     it('should log info on success', async () => {
@@ -283,7 +283,7 @@ describe('ImportService', () => {
 
       expect(result.title).toBe('Updated Title');
       expect(db.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE imported_preprints'),
+        expect.stringContaining('UPDATE imported_eprints'),
         expect.arrayContaining(['Updated Title', 'Updated abstract', 1])
       );
     });
@@ -325,12 +325,12 @@ describe('ImportService', () => {
   });
 
   describe('search', () => {
-    it('should return all preprints without filters', async () => {
+    it('should return all eprints without filters', async () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_IMPORT_ROW, SAMPLE_LINGBUZZ_ROW] });
 
       const result = await service.search({});
 
-      expect(result.preprints).toHaveLength(2);
+      expect(result.eprints).toHaveLength(2);
     });
 
     it('should filter by source', async () => {
@@ -372,7 +372,7 @@ describe('ImportService', () => {
 
       const result = await service.search({ limit: 2 });
 
-      expect(result.preprints).toHaveLength(2);
+      expect(result.eprints).toHaveLength(2);
       expect(result.cursor).toBe('2');
     });
 
@@ -400,11 +400,11 @@ describe('ImportService', () => {
   });
 
   describe('markClaimed', () => {
-    it('should mark preprint as claimed', async () => {
+    it('should mark eprint as claimed', async () => {
       const claimedRow = {
         ...SAMPLE_IMPORT_ROW,
         claim_status: 'claimed',
-        canonical_uri: 'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude',
+        canonical_uri: 'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude',
         claimed_by_did: 'did:plc:aswhite',
         claimed_at: new Date('2024-01-16T10:00:00Z'),
       };
@@ -412,12 +412,12 @@ describe('ImportService', () => {
 
       await service.markClaimed(
         1,
-        'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude',
+        'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude',
         'did:plc:aswhite'
       );
 
       expect(db.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE imported_preprints'),
+        expect.stringContaining('UPDATE imported_eprints'),
         expect.arrayContaining(['claimed', 'did:plc:aswhite'])
       );
     });
@@ -431,7 +431,7 @@ describe('ImportService', () => {
 
       await service.markClaimed(
         1,
-        'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude',
+        'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude',
         'did:plc:aswhite'
       );
 

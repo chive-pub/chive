@@ -38,9 +38,9 @@ describe('LexiconValidator', () => {
   });
 
   describe('Record Validation', () => {
-    it('validates valid preprint submission', () => {
-      const validPreprintJson = {
-        $type: 'pub.chive.preprint.submission',
+    it('validates valid eprint submission', () => {
+      const validEprintJson = {
+        $type: 'pub.chive.eprint.submission',
         title: 'Frequency, acceptability, and selection: A case study of clause-embedding',
         abstract:
           'We investigate the relationship between distributional frequency and acceptability for clause-embedding verbs using the MegaAcceptability dataset.',
@@ -69,20 +69,20 @@ describe('LexiconValidator', () => {
       };
 
       // Convert JSON format (with $link) to Lexicon format (with BlobRef instances)
-      const validPreprint = jsonToLex(validPreprintJson);
+      const validEprint = jsonToLex(validEprintJson);
 
-      const result = validator.validateRecord('pub.chive.preprint.submission', validPreprint);
+      const result = validator.validateRecord('pub.chive.eprint.submission', validEprint);
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
 
-    it('rejects preprint with missing required fields', () => {
-      const invalidPreprint = {
+    it('rejects eprint with missing required fields', () => {
+      const invalidEprint = {
         title: 'Missing Required Fields',
         // Missing abstract, pdf, license, createdAt
       };
 
-      const result = validator.validateRecord('pub.chive.preprint.submission', invalidPreprint);
+      const result = validator.validateRecord('pub.chive.eprint.submission', invalidEprint);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -90,7 +90,7 @@ describe('LexiconValidator', () => {
     it('validates review comment with all fields', () => {
       const validComment = {
         $type: 'pub.chive.review.comment',
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/abc123',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
         content:
           'The analysis of factive predicates is particularly compelling. Consider extending to non-factive belief verbs.',
         lineNumber: 42,
@@ -104,7 +104,7 @@ describe('LexiconValidator', () => {
     it('validates review comment without optional fields', () => {
       const validComment = {
         $type: 'pub.chive.review.comment',
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/abc123',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
         content: 'Well-motivated theoretical framework for semantic selection.',
         createdAt: new Date().toISOString(),
       };
@@ -159,20 +159,20 @@ describe('LexiconValidator', () => {
   describe('XRPC Parameter Validation', () => {
     it('validates getSubmission query parameters', () => {
       const validParams = {
-        uri: 'at://did:plc:abc123/pub.chive.preprint.submission/abc123',
+        uri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
         cid: 'bafkreihgv2crvahfy7lp2o7q7igdv3kd7eaeyyfuwepqwvr24bxq6vhgcy',
       };
 
-      const result = validator.validateParams('pub.chive.preprint.getSubmission', validParams);
+      const result = validator.validateParams('pub.chive.eprint.getSubmission', validParams);
       expect(result.valid).toBe(true);
     });
 
     it('validates getSubmission parameters without optional cid', () => {
       const validParams = {
-        uri: 'at://did:plc:abc123/pub.chive.preprint.submission/abc123',
+        uri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
       };
 
-      const result = validator.validateParams('pub.chive.preprint.getSubmission', validParams);
+      const result = validator.validateParams('pub.chive.eprint.getSubmission', validParams);
       expect(result.valid).toBe(true);
     });
 
@@ -181,7 +181,7 @@ describe('LexiconValidator', () => {
         cid: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
       };
 
-      const result = validator.validateParams('pub.chive.preprint.getSubmission', invalidParams);
+      const result = validator.validateParams('pub.chive.eprint.getSubmission', invalidParams);
       expect(result.valid).toBe(false);
     });
 
@@ -192,7 +192,7 @@ describe('LexiconValidator', () => {
         limit: 25,
       };
 
-      const result = validator.validateParams('pub.chive.preprint.searchSubmissions', validParams);
+      const result = validator.validateParams('pub.chive.eprint.searchSubmissions', validParams);
       expect(result.valid).toBe(true);
     });
 
@@ -202,10 +202,7 @@ describe('LexiconValidator', () => {
         limit: 25,
       };
 
-      const result = validator.validateParams(
-        'pub.chive.preprint.searchSubmissions',
-        invalidParams
-      );
+      const result = validator.validateParams('pub.chive.eprint.searchSubmissions', invalidParams);
       expect(result.valid).toBe(false);
     });
   });
@@ -217,7 +214,7 @@ describe('LexiconValidator', () => {
         // Missing all required fields
       };
 
-      const result = validator.validateRecord('pub.chive.preprint.submission', invalidData);
+      const result = validator.validateRecord('pub.chive.eprint.submission', invalidData);
       expect(result.valid).toBe(false);
       expect(result.errors).toBeDefined();
       expect(result.errors.length).toBeGreaterThan(0);

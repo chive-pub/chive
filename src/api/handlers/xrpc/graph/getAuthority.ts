@@ -3,7 +3,7 @@
  *
  * @remarks
  * Returns detailed information about an authority record including
- * linked preprints and reconciliation counts.
+ * linked eprints and reconciliation counts.
  *
  * @packageDocumentation
  * @public
@@ -79,7 +79,7 @@ export async function getAuthorityHandler(
           ? String(authority.updatedAt)
           : undefined,
     // Counts not available yet (would need service extension)
-    linkedPreprints: 0,
+    linkedEprints: 0,
     reconciliationCount: 0,
   };
 }

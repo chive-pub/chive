@@ -1,0 +1,39 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.version",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Eprint version metadata",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["eprintUri", "versionNumber", "changes", "createdAt"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "URI of eprint record"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "previousVersionUri": {
+            "type": "string",
+            "format": "at-uri"
+          },
+          "changes": {
+            "type": "string",
+            "description": "Changelog describing changes",
+            "maxLength": 2000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

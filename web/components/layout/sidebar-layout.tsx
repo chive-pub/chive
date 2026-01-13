@@ -141,7 +141,7 @@ export function SidebarLayout({
  * ```tsx
  * <SidebarSection title="Dashboard">
  *   <SidebarLink href="/dashboard">Overview</SidebarLink>
- *   <SidebarLink href="/dashboard/preprints">My Preprints</SidebarLink>
+ *   <SidebarLink href="/dashboard/eprints">My Eprints</SidebarLink>
  * </SidebarSection>
  * ```
  */

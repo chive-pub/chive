@@ -2,7 +2,7 @@
  * Handler for pub.chive.backlink.getCounts.
  *
  * @remarks
- * Gets aggregated backlink counts for a preprint.
+ * Gets aggregated backlink counts for a eprint.
  *
  * @packageDocumentation
  * @public
@@ -58,7 +58,7 @@ export async function getBacklinkCountsHandler(
 export const getBacklinkCountsEndpoint: XRPCEndpoint<GetBacklinkCountsParams, BacklinkCounts> = {
   method: 'pub.chive.backlink.getCounts' as never,
   type: 'query',
-  description: 'Get aggregated backlink counts for a preprint',
+  description: 'Get aggregated backlink counts for a eprint',
   inputSchema: getBacklinkCountsParamsSchema,
   outputSchema: backlinkCountsSchema,
   handler: getBacklinkCountsHandler,

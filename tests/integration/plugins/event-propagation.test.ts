@@ -75,7 +75,7 @@ class ProducerPlugin extends BasePlugin {
     author: 'Test',
     license: 'MIT' as const,
     permissions: {
-      hooks: ['preprint.*', 'custom.event'],
+      hooks: ['eprint.*', 'custom.event'],
       network: { allowedDomains: [] as string[] },
       storage: { maxSize: 1024 },
     },
@@ -87,8 +87,8 @@ class ProducerPlugin extends BasePlugin {
     return Promise.resolve();
   }
 
-  public emitPreprintIndexed(data: { uri: string; title: string }): void {
-    this.context?.eventBus.emit('preprint.indexed', data);
+  public emitEprintIndexed(data: { uri: string; title: string }): void {
+    this.context?.eventBus.emit('eprint.indexed', data);
   }
 
   public emitCustomEvent(data: unknown): void {
@@ -111,7 +111,7 @@ class ConsumerPlugin extends BasePlugin {
     author: 'Test',
     license: 'MIT' as const,
     permissions: {
-      hooks: ['preprint.*', 'custom.event'],
+      hooks: ['eprint.*', 'custom.event'],
       network: { allowedDomains: [] as string[] },
       storage: { maxSize: 1024 },
     },
@@ -119,8 +119,8 @@ class ConsumerPlugin extends BasePlugin {
   };
 
   protected onInitialize(): Promise<void> {
-    this.context.eventBus.on('preprint.indexed', (data) => {
-      ConsumerPlugin.receivedEvents.push({ event: 'preprint.indexed', data });
+    this.context.eventBus.on('eprint.indexed', (data) => {
+      ConsumerPlugin.receivedEvents.push({ event: 'eprint.indexed', data });
     });
 
     this.context.eventBus.on('custom.event', (data) => {
@@ -149,7 +149,7 @@ class WildcardConsumerPlugin extends BasePlugin {
     author: 'Test',
     license: 'MIT' as const,
     permissions: {
-      hooks: ['preprint.*'],
+      hooks: ['eprint.*'],
       network: { allowedDomains: [] as string[] },
       storage: { maxSize: 1024 },
     },
@@ -157,17 +157,17 @@ class WildcardConsumerPlugin extends BasePlugin {
   };
 
   protected onInitialize(): Promise<void> {
-    // Subscribe to all preprint events
-    this.context.eventBus.on('preprint.indexed', (data) => {
+    // Subscribe to all eprint events
+    this.context.eventBus.on('eprint.indexed', (data) => {
       WildcardConsumerPlugin.receivedEvents.push({
-        event: 'preprint.indexed',
+        event: 'eprint.indexed',
         data,
       });
     });
 
-    this.context.eventBus.on('preprint.updated', (data) => {
+    this.context.eventBus.on('eprint.updated', (data) => {
       WildcardConsumerPlugin.receivedEvents.push({
-        event: 'preprint.updated',
+        event: 'eprint.updated',
         data,
       });
     });
@@ -196,7 +196,7 @@ class AsyncHandlerPlugin extends BasePlugin {
     author: 'Test',
     license: 'MIT' as const,
     permissions: {
-      hooks: ['preprint.indexed'],
+      hooks: ['eprint.indexed'],
       network: { allowedDomains: [] as string[] },
       storage: { maxSize: 1024 },
     },
@@ -204,7 +204,7 @@ class AsyncHandlerPlugin extends BasePlugin {
   };
 
   protected onInitialize(): Promise<void> {
-    this.context.eventBus.on('preprint.indexed', () => {
+    this.context.eventBus.on('eprint.indexed', () => {
       void (async () => {
         AsyncHandlerPlugin.handlerStarted = true;
         await new Promise((resolve) => setTimeout(resolve, AsyncHandlerPlugin.handlerDelay));
@@ -277,15 +277,15 @@ describe('Plugin Event Propagation Integration', () => {
       await manager.loadBuiltinPlugin(consumer);
       await manager.loadBuiltinPlugin(producer);
 
-      const eventData = { uri: 'at://did:plc:123/pub.chive.preprint/1', title: 'Test' };
-      producer.emitPreprintIndexed(eventData);
+      const eventData = { uri: 'at://did:plc:123/pub.chive.eprint/1', title: 'Test' };
+      producer.emitEprintIndexed(eventData);
 
       // Wait for async event propagation
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(ConsumerPlugin.receivedEvents).toHaveLength(1);
       expect(ConsumerPlugin.receivedEvents[0]).toEqual({
-        event: 'preprint.indexed',
+        event: 'eprint.indexed',
         data: eventData,
       });
     });
@@ -299,8 +299,8 @@ describe('Plugin Event Propagation Integration', () => {
       await manager.loadBuiltinPlugin(consumer2);
       await manager.loadBuiltinPlugin(producer);
 
-      const eventData = { uri: 'at://did:plc:123/pub.chive.preprint/1', title: 'Test' };
-      producer.emitPreprintIndexed(eventData);
+      const eventData = { uri: 'at://did:plc:123/pub.chive.eprint/1', title: 'Test' };
+      producer.emitEprintIndexed(eventData);
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -316,8 +316,8 @@ describe('Plugin Event Propagation Integration', () => {
       await manager.loadBuiltinPlugin(producer);
 
       const complexData = {
-        uri: 'at://did:plc:123/pub.chive.preprint/1',
-        title: 'Test Preprint',
+        uri: 'at://did:plc:123/pub.chive.eprint/1',
+        title: 'Test Eprint',
         metadata: {
           authors: ['Author 1', 'Author 2'],
           tags: ['tag1', 'tag2'],
@@ -337,19 +337,15 @@ describe('Plugin Event Propagation Integration', () => {
 
       await manager.loadBuiltinPlugin(wildcardConsumer);
 
-      // Emit different preprint events directly through event bus
-      eventBus.emit('preprint.indexed', { uri: 'uri1' });
-      eventBus.emit('preprint.updated', { uri: 'uri2' });
+      // Emit different eprint events directly through event bus
+      eventBus.emit('eprint.indexed', { uri: 'uri1' });
+      eventBus.emit('eprint.updated', { uri: 'uri2' });
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(WildcardConsumerPlugin.receivedEvents).toHaveLength(2);
-      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain(
-        'preprint.indexed'
-      );
-      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain(
-        'preprint.updated'
-      );
+      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain('eprint.indexed');
+      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain('eprint.updated');
     });
   });
 
@@ -361,7 +357,7 @@ describe('Plugin Event Propagation Integration', () => {
       await manager.loadBuiltinPlugin(asyncHandler);
       await manager.loadBuiltinPlugin(producer);
 
-      producer.emitPreprintIndexed({ uri: 'test', title: 'Test' });
+      producer.emitEprintIndexed({ uri: 'test', title: 'Test' });
 
       // Handler should start immediately
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -382,7 +378,7 @@ describe('Plugin Event Propagation Integration', () => {
       await manager.loadBuiltinPlugin(producer);
 
       const startTime = Date.now();
-      producer.emitPreprintIndexed({ uri: 'test', title: 'Test' });
+      producer.emitEprintIndexed({ uri: 'test', title: 'Test' });
       const emitTime = Date.now() - startTime;
 
       // Emit should return quickly, not waiting for async handler
@@ -396,7 +392,7 @@ describe('Plugin Event Propagation Integration', () => {
       const consumer = new ConsumerPlugin();
 
       // Add an error-throwing handler directly
-      eventBus.on('preprint.indexed', () => {
+      eventBus.on('eprint.indexed', () => {
         throw new Error('Handler error');
       });
 
@@ -405,7 +401,7 @@ describe('Plugin Event Propagation Integration', () => {
 
       // Should not throw, error is isolated
       expect(() => {
-        producer.emitPreprintIndexed({ uri: 'test', title: 'Test' });
+        producer.emitEprintIndexed({ uri: 'test', title: 'Test' });
       }).not.toThrow();
 
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -417,13 +413,13 @@ describe('Plugin Event Propagation Integration', () => {
     it('should log handler errors', async () => {
       const producer = new ProducerPlugin();
 
-      eventBus.on('preprint.indexed', () => {
+      eventBus.on('eprint.indexed', () => {
         throw new Error('Handler error');
       });
 
       await manager.loadBuiltinPlugin(producer);
 
-      producer.emitPreprintIndexed({ uri: 'test', title: 'Test' });
+      producer.emitEprintIndexed({ uri: 'test', title: 'Test' });
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -439,7 +435,7 @@ describe('Plugin Event Propagation Integration', () => {
       await manager.loadBuiltinPlugin(consumer);
       await manager.loadBuiltinPlugin(producer);
 
-      producer.emitPreprintIndexed({ uri: 'uri1', title: 'Test 1' });
+      producer.emitEprintIndexed({ uri: 'uri1', title: 'Test 1' });
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(ConsumerPlugin.receivedEvents).toHaveLength(1);
 
@@ -448,7 +444,7 @@ describe('Plugin Event Propagation Integration', () => {
       ConsumerPlugin.reset();
 
       // Emit another event
-      producer.emitPreprintIndexed({ uri: 'uri2', title: 'Test 2' });
+      producer.emitEprintIndexed({ uri: 'uri2', title: 'Test 2' });
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Consumer should not receive the event

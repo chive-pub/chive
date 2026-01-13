@@ -7,26 +7,24 @@
 import { describe, it, expect } from 'vitest';
 
 import { actorProfileSchema } from '@/lexicons/validators/pub/chive/actor/profile.js';
+import {
+  eprintGetSubmissionParamsSchema,
+  eprintGetSubmissionOutputSchema,
+} from '@/lexicons/validators/pub/chive/eprint/getSubmission.js';
+import { eprintSearchSubmissionsParamsSchema } from '@/lexicons/validators/pub/chive/eprint/searchSubmissions.js';
+import { eprintSubmissionSchema } from '@/lexicons/validators/pub/chive/eprint/submission.js';
+import { eprintUserTagSchema } from '@/lexicons/validators/pub/chive/eprint/userTag.js';
+import { eprintVersionSchema } from '@/lexicons/validators/pub/chive/eprint/version.js';
 import { graphFieldProposalSchema } from '@/lexicons/validators/pub/chive/graph/fieldProposal.js';
 import { graphVoteSchema } from '@/lexicons/validators/pub/chive/graph/vote.js';
-import {
-  preprintGetSubmissionParamsSchema,
-  preprintGetSubmissionOutputSchema,
-} from '@/lexicons/validators/pub/chive/preprint/getSubmission.js';
-import { preprintSearchSubmissionsParamsSchema } from '@/lexicons/validators/pub/chive/preprint/searchSubmissions.js';
-import { preprintSubmissionSchema } from '@/lexicons/validators/pub/chive/preprint/submission.js';
-import { preprintUserTagSchema } from '@/lexicons/validators/pub/chive/preprint/userTag.js';
-import { preprintVersionSchema } from '@/lexicons/validators/pub/chive/preprint/version.js';
 import { reviewCommentSchema } from '@/lexicons/validators/pub/chive/review/comment.js';
 import { reviewEndorsementSchema } from '@/lexicons/validators/pub/chive/review/endorsement.js';
 
 describe('Generated Zod Validators', () => {
-  // Helper function to create valid preprint base data
-  function createValidPreprintBase(
-    overrides: Record<string, unknown> = {}
-  ): Record<string, unknown> {
+  // Helper function to create valid eprint base data
+  function createValidEprintBase(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     return {
-      title: 'Test Preprint',
+      title: 'Test Eprint',
       abstract: 'Test abstract',
       document: {
         $type: 'blob',
@@ -53,61 +51,61 @@ describe('Generated Zod Validators', () => {
     };
   }
 
-  describe('preprintSubmissionSchema', () => {
-    it('validates valid preprint', () => {
-      const valid = createValidPreprintBase({
+  describe('eprintSubmissionSchema', () => {
+    it('validates valid eprint', () => {
+      const valid = createValidEprintBase({
         title: 'Quantum Entanglement in Photonic Systems',
         abstract: 'We demonstrate quantum entanglement in photonic systems.',
         keywords: ['quantum', 'photonics'],
       });
 
-      expect(() => preprintSubmissionSchema.parse(valid)).not.toThrow();
+      expect(() => eprintSubmissionSchema.parse(valid)).not.toThrow();
     });
 
-    it('rejects preprint missing required fields', () => {
+    it('rejects eprint missing required fields', () => {
       const invalid = {
         title: 'Test',
         // Missing abstract, document, authors, submittedBy, license, createdAt
       };
 
-      expect(() => preprintSubmissionSchema.parse(invalid)).toThrow();
+      expect(() => eprintSubmissionSchema.parse(invalid)).toThrow();
     });
 
     it('enforces title max length (500)', () => {
-      const tooLong = createValidPreprintBase({
+      const tooLong = createValidEprintBase({
         title: 'a'.repeat(501),
       });
 
-      expect(() => preprintSubmissionSchema.parse(tooLong)).toThrow();
+      expect(() => eprintSubmissionSchema.parse(tooLong)).toThrow();
     });
 
     it('enforces abstract max length (5000)', () => {
-      const tooLong = createValidPreprintBase({
+      const tooLong = createValidEprintBase({
         abstract: 'a'.repeat(5001),
       });
 
-      expect(() => preprintSubmissionSchema.parse(tooLong)).toThrow();
+      expect(() => eprintSubmissionSchema.parse(tooLong)).toThrow();
     });
 
     it('validates license enum values', () => {
       const validLicenses = ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC0-1.0', 'MIT', 'Apache-2.0'];
 
       for (const license of validLicenses) {
-        const data = createValidPreprintBase({ license });
-        expect(() => preprintSubmissionSchema.parse(data)).not.toThrow();
+        const data = createValidEprintBase({ license });
+        expect(() => eprintSubmissionSchema.parse(data)).not.toThrow();
       }
     });
 
     it('rejects invalid license value', () => {
-      const invalid = createValidPreprintBase({
+      const invalid = createValidEprintBase({
         license: 'INVALID-LICENSE',
       });
 
-      expect(() => preprintSubmissionSchema.parse(invalid)).toThrow();
+      expect(() => eprintSubmissionSchema.parse(invalid)).toThrow();
     });
 
     it('validates multiple authors', () => {
-      const valid = createValidPreprintBase({
+      const valid = createValidEprintBase({
         authors: [
           {
             did: 'did:plc:abc123',
@@ -130,30 +128,30 @@ describe('Generated Zod Validators', () => {
         ],
       });
 
-      expect(() => preprintSubmissionSchema.parse(valid)).not.toThrow();
+      expect(() => eprintSubmissionSchema.parse(valid)).not.toThrow();
     });
 
     it('validates AT URI format for previousVersion', () => {
-      const valid = createValidPreprintBase({
-        previousVersion: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+      const valid = createValidEprintBase({
+        previousVersion: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
       });
 
-      expect(() => preprintSubmissionSchema.parse(valid)).not.toThrow();
+      expect(() => eprintSubmissionSchema.parse(valid)).not.toThrow();
     });
 
     it('enforces keywords array max length (20)', () => {
-      const tooMany = createValidPreprintBase({
+      const tooMany = createValidEprintBase({
         keywords: Array(21).fill('keyword'),
       });
 
-      expect(() => preprintSubmissionSchema.parse(tooMany)).toThrow();
+      expect(() => eprintSubmissionSchema.parse(tooMany)).toThrow();
     });
   });
 
   describe('reviewCommentSchema', () => {
     it('validates valid comment', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         content: 'Excellent methodology!',
         createdAt: new Date().toISOString(),
       };
@@ -163,7 +161,7 @@ describe('Generated Zod Validators', () => {
 
     it('validates comment with optional lineNumber', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         content: 'This line needs clarification.',
         lineNumber: 42,
         createdAt: new Date().toISOString(),
@@ -174,7 +172,7 @@ describe('Generated Zod Validators', () => {
 
     it('validates comment with parentComment', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         content: 'I agree with the above comment.',
         parentComment: 'at://did:plc:abc123/pub.chive.review.comment/parent123',
         createdAt: new Date().toISOString(),
@@ -185,7 +183,7 @@ describe('Generated Zod Validators', () => {
 
     it('enforces content max length (10000)', () => {
       const tooLong = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         content: 'a'.repeat(10001),
         createdAt: new Date().toISOString(),
       };
@@ -193,9 +191,9 @@ describe('Generated Zod Validators', () => {
       expect(() => reviewCommentSchema.parse(tooLong)).toThrow();
     });
 
-    it('validates AT URI format for preprintUri', () => {
+    it('validates AT URI format for eprintUri', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         content: 'Great work!',
         createdAt: new Date().toISOString(),
       };
@@ -207,7 +205,7 @@ describe('Generated Zod Validators', () => {
   describe('reviewEndorsementSchema', () => {
     it('validates valid endorsement', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         contributions: ['methodological'],
         createdAt: new Date().toISOString(),
       };
@@ -236,7 +234,7 @@ describe('Generated Zod Validators', () => {
 
       for (const contribution of contributionTypes) {
         const data = {
-          preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+          eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
           contributions: [contribution],
           createdAt: new Date().toISOString(),
         };
@@ -247,7 +245,7 @@ describe('Generated Zod Validators', () => {
 
     it('validates endorsement with multiple contributions', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         contributions: ['methodological', 'analytical', 'data'],
         createdAt: new Date().toISOString(),
       };
@@ -257,7 +255,7 @@ describe('Generated Zod Validators', () => {
 
     it('rejects empty contributions array', () => {
       const invalid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         contributions: [],
         createdAt: new Date().toISOString(),
       };
@@ -267,7 +265,7 @@ describe('Generated Zod Validators', () => {
 
     it('validates endorsement with optional comment', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         contributions: ['synthesis', 'interdisciplinary'],
         comment: 'Comprehensive and well-designed study.',
         createdAt: new Date().toISOString(),
@@ -354,49 +352,49 @@ describe('Generated Zod Validators', () => {
     });
   });
 
-  describe('preprintVersionSchema', () => {
+  describe('eprintVersionSchema', () => {
     it('validates valid version', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         versionNumber: 2,
         changes: 'Updated methodology section',
         createdAt: new Date().toISOString(),
       };
 
-      expect(() => preprintVersionSchema.parse(valid)).not.toThrow();
+      expect(() => eprintVersionSchema.parse(valid)).not.toThrow();
     });
 
     it('enforces versionNumber minimum (1)', () => {
       const invalid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         versionNumber: 0,
         changes: 'Changes',
         createdAt: new Date().toISOString(),
       };
 
-      expect(() => preprintVersionSchema.parse(invalid)).toThrow();
+      expect(() => eprintVersionSchema.parse(invalid)).toThrow();
     });
   });
 
-  describe('preprintUserTagSchema', () => {
+  describe('eprintUserTagSchema', () => {
     it('validates valid user tag', () => {
       const valid = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         tag: 'machine-learning',
         createdAt: new Date().toISOString(),
       };
 
-      expect(() => preprintUserTagSchema.parse(valid)).not.toThrow();
+      expect(() => eprintUserTagSchema.parse(valid)).not.toThrow();
     });
 
     it('enforces tag max length (100)', () => {
       const tooLong = {
-        preprintUri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         tag: 'a'.repeat(101),
         createdAt: new Date().toISOString(),
       };
 
-      expect(() => preprintUserTagSchema.parse(tooLong)).toThrow();
+      expect(() => eprintUserTagSchema.parse(tooLong)).toThrow();
     });
   });
 
@@ -431,19 +429,19 @@ describe('Generated Zod Validators', () => {
   describe('XRPC Query Schemas', () => {
     it('validates getSubmission parameters', () => {
       const valid = {
-        uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        uri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         cid: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
       };
 
-      expect(() => preprintGetSubmissionParamsSchema.parse(valid)).not.toThrow();
+      expect(() => eprintGetSubmissionParamsSchema.parse(valid)).not.toThrow();
     });
 
     it('validates getSubmission output', () => {
       const valid = {
-        uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        uri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         cid: 'bafyreibwkjvc2wlkqn3v6jxlp2w3z4',
         value: {
-          title: 'Test Preprint',
+          title: 'Test Eprint',
           abstract: 'This is a test abstract',
           document: {
             $type: 'blob',
@@ -471,7 +469,7 @@ describe('Generated Zod Validators', () => {
         pdsUrl: 'https://pds.example.com',
       };
 
-      expect(() => preprintGetSubmissionOutputSchema.parse(valid)).not.toThrow();
+      expect(() => eprintGetSubmissionOutputSchema.parse(valid)).not.toThrow();
     });
 
     it('validates searchSubmissions parameters', () => {
@@ -481,7 +479,7 @@ describe('Generated Zod Validators', () => {
         limit: 25,
       };
 
-      expect(() => preprintSearchSubmissionsParamsSchema.parse(valid)).not.toThrow();
+      expect(() => eprintSearchSubmissionsParamsSchema.parse(valid)).not.toThrow();
     });
 
     it('rejects searchSubmissions without required q', () => {
@@ -489,7 +487,7 @@ describe('Generated Zod Validators', () => {
         author: 'did:plc:abc123',
       };
 
-      expect(() => preprintSearchSubmissionsParamsSchema.parse(invalid)).toThrow();
+      expect(() => eprintSearchSubmissionsParamsSchema.parse(invalid)).toThrow();
     });
   });
 });

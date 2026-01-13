@@ -18,7 +18,7 @@ import { getPendingClaimsEndpoint } from './getPendingClaims.js';
 import { getSuggestionsEndpoint } from './getSuggestions.js';
 import { getUserClaimsEndpoint } from './getUserClaims.js';
 import { rejectClaimEndpoint } from './rejectClaim.js';
-import { searchPreprintsEndpoint } from './searchPreprints.js';
+import { searchEprintsEndpoint } from './searchEprints.js';
 import { startClaimEndpoint } from './startClaim.js';
 import { startClaimFromExternalEndpoint } from './startClaimFromExternal.js';
 
@@ -31,7 +31,7 @@ export { getClaimEndpoint, getClaimHandler } from './getClaim.js';
 export { getUserClaimsEndpoint, getUserClaimsHandler } from './getUserClaims.js';
 export { findClaimableEndpoint, findClaimableHandler } from './findClaimable.js';
 export { getPendingClaimsEndpoint, getPendingClaimsHandler } from './getPendingClaims.js';
-export { searchPreprintsEndpoint, searchPreprintsHandler } from './searchPreprints.js';
+export { searchEprintsEndpoint, searchEprintsHandler } from './searchEprints.js';
 export { autocompleteEndpoint, autocompleteHandler } from './autocomplete.js';
 export {
   getSuggestionsEndpoint as getClaimSuggestionsEndpoint,
@@ -57,7 +57,7 @@ export const claimingEndpoints = [
   getUserClaimsEndpoint,
   findClaimableEndpoint,
   getPendingClaimsEndpoint,
-  searchPreprintsEndpoint,
+  searchEprintsEndpoint,
   autocompleteEndpoint,
   getSuggestionsEndpoint,
   startClaimFromExternalEndpoint,

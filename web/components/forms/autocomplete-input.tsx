@@ -40,7 +40,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { useDebounce } from '@/lib/hooks/use-preprint-search';
+import { useDebounce } from '@/lib/hooks/use-eprint-search';
 
 // =============================================================================
 // TYPES

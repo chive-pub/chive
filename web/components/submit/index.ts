@@ -1,8 +1,8 @@
 /**
- * Preprint submission components for Chive.
+ * Eprint submission components for Chive.
  *
  * @remarks
- * Multi-step wizard for submitting preprints to the user's PDS.
+ * Multi-step wizard for submitting eprints to the user's PDS.
  * All data is written directly to the user's Personal Data Server,
  * following ATProto compliance principles.
  *
@@ -12,7 +12,7 @@
 export {
   SubmissionWizard,
   type SubmissionWizardProps,
-  type PreprintFormValues,
+  type EprintFormValues,
 } from './submission-wizard';
 
 export {

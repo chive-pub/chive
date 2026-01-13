@@ -23,7 +23,7 @@ PluginManager
 
 ### Importing plugins
 
-Import preprints from external archives:
+Import eprints from external archives:
 
 | Plugin            | Source               | Method         |
 | ----------------- | -------------------- | -------------- |
@@ -88,7 +88,7 @@ Every plugin declares its metadata and permissions:
     "storage": {
       "maxSize": "50MB"
     },
-    "hooks": ["preprint.indexed"]
+    "hooks": ["eprint.indexed"]
   }
 }
 ```
@@ -100,15 +100,15 @@ Plugins extend one of three base classes:
 ```typescript
 // General purpose plugin
 class MyPlugin extends BasePlugin {
-  async onPreprintIndexed(preprint: Preprint): Promise<void> {
-    // React to new preprints
+  async onEprintIndexed(eprint: Eprint): Promise<void> {
+    // React to new eprints
   }
 }
 
-// Import external preprints
+// Import external eprints
 class MyImporter extends ImportingPlugin {
-  async fetchPreprints(): AsyncIterable<ImportedPreprint> {
-    // Yield preprints from external source
+  async fetchEprints(): AsyncIterable<ImportedEprint> {
+    // Yield eprints from external source
   }
 }
 
@@ -149,8 +149,8 @@ async initialize(context: PluginContext): Promise<void> {
 Plugins subscribe to lifecycle events:
 
 ```typescript
-this.eventBus.on('preprint.indexed', async (event) => {
-  await this.enrichPreprint(event.preprint);
+this.eventBus.on('eprint.indexed', async (event) => {
+  await this.enrichEprint(event.eprint);
 });
 
 this.eventBus.on('system.shutdown', async () => {

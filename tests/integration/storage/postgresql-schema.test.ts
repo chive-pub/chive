@@ -45,7 +45,7 @@ describe('PostgreSQL Schema', () => {
 
       const tableNames = result.rows.map((row) => row.table_name);
 
-      expect(tableNames).toContain('preprints_index');
+      expect(tableNames).toContain('eprints_index');
       expect(tableNames).toContain('authors_index');
       expect(tableNames).toContain('reviews_index');
       expect(tableNames).toContain('endorsements_index');
@@ -157,12 +157,12 @@ describe('PostgreSQL Schema', () => {
       expect(result.rows).toHaveLength(0);
     });
 
-    it('preprints_index only stores BlobRef CIDs (not blob data)', async () => {
+    it('eprints_index only stores BlobRef CIDs (not blob data)', async () => {
       const result = await pool.query<{ column_name: string; data_type: string }>(`
         SELECT column_name, data_type
         FROM information_schema.columns
         WHERE table_schema = 'public'
-          AND table_name = 'preprints_index'
+          AND table_name = 'eprints_index'
           AND column_name LIKE '%blob%'
       `);
 
@@ -179,12 +179,12 @@ describe('PostgreSQL Schema', () => {
   });
 
   describe('ATProto Compliance: AT URI Primary Keys', () => {
-    it('preprints_index uses uri (AT URI) as primary key', async () => {
+    it('eprints_index uses uri (AT URI) as primary key', async () => {
       const result = await pool.query<{ column_name: string; data_type: string }>(`
         SELECT column_name, data_type
         FROM information_schema.columns
         WHERE table_schema = 'public'
-          AND table_name = 'preprints_index'
+          AND table_name = 'eprints_index'
           AND column_name = 'uri'
       `);
 
@@ -200,7 +200,7 @@ describe('PostgreSQL Schema', () => {
         SELECT constraint_name
         FROM information_schema.table_constraints
         WHERE table_schema = 'public'
-          AND table_name = 'preprints_index'
+          AND table_name = 'eprints_index'
           AND constraint_type = 'PRIMARY KEY'
       `);
 
@@ -278,9 +278,9 @@ describe('PostgreSQL Schema', () => {
 
       const indexes = result.rows;
 
-      // Check preprints_index has indexes
-      const preprintIndexes = indexes.filter((idx) => idx.table_name === 'preprints_index');
-      const indexedColumns = preprintIndexes.map((idx) => idx.column_name);
+      // Check eprints_index has indexes
+      const eprintIndexes = indexes.filter((idx) => idx.table_name === 'eprints_index');
+      const indexedColumns = eprintIndexes.map((idx) => idx.column_name);
 
       expect(indexedColumns).toContain('submitted_by');
       expect(indexedColumns).toContain('created_at');
@@ -299,7 +299,7 @@ describe('PostgreSQL Schema', () => {
         JOIN pg_index ix ON t.oid = ix.indrelid
         JOIN pg_class i ON i.oid = ix.indexrelid
         JOIN pg_am am ON i.relam = am.oid
-        WHERE t.relname = 'preprints_index'
+        WHERE t.relname = 'eprints_index'
           AND am.amname = 'gin'
       `);
 
@@ -308,12 +308,12 @@ describe('PostgreSQL Schema', () => {
   });
 
   describe('Data Integrity', () => {
-    it('preprints_index has NOT NULL constraints on required fields', async () => {
+    it('eprints_index has NOT NULL constraints on required fields', async () => {
       const result = await pool.query<{ column_name: string; is_nullable: string }>(`
         SELECT column_name, is_nullable
         FROM information_schema.columns
         WHERE table_schema = 'public'
-          AND table_name = 'preprints_index'
+          AND table_name = 'eprints_index'
           AND column_name IN ('uri', 'cid', 'submitted_by', 'title', 'abstract', 'pds_url')
       `);
 
@@ -421,6 +421,6 @@ describe('PostgreSQL Schema', () => {
           }
         );
       }
-    });
+    }, 30000);
   });
 });

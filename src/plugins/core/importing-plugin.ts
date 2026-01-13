@@ -1,9 +1,9 @@
 /**
- * Base class for plugins that import preprints from external sources.
+ * Base class for plugins that import eprints from external sources.
  *
  * @remarks
  * This module provides an abstract base class for plugins that fetch
- * preprints from external archives (arXiv, LingBuzz, OpenReview, etc.)
+ * eprints from external archives (arXiv, LingBuzz, OpenReview, etc.)
  * and import them into the Chive AppView cache.
  *
  * All imports follow ATProto compliance:
@@ -19,20 +19,20 @@
 import { PluginError } from '../../types/errors.js';
 import type {
   ExternalAuthor,
-  ExternalPreprint,
+  ExternalEprint,
   FetchOptions,
   IImportService,
-  ImportedPreprint,
+  ImportedEprint,
   ImportSource,
   IPluginContext,
 } from '../../types/interfaces/plugin.interface.js';
 import { BasePlugin } from '../builtin/base-plugin.js';
 
 /**
- * Base class for plugins that import preprints from external sources.
+ * Base class for plugins that import eprints from external sources.
  *
  * @remarks
- * Provides common functionality for importing preprints:
+ * Provides common functionality for importing eprints:
  * - Import service integration
  * - Deduplication checking
  * - Rate limiting helpers
@@ -40,11 +40,11 @@ import { BasePlugin } from '../builtin/base-plugin.js';
  *
  * Subclasses must implement:
  * - `source` - The external source identifier
- * - `fetchPreprints()` - Fetches preprints from the external source
+ * - `fetchEprints()` - Fetches eprints from the external source
  *
  * Subclasses may override:
  * - `parseExternalId()` - Extracts external ID from URL
- * - `normalizePreprint()` - Normalizes fetched data
+ * - `normalizeEprint()` - Normalizes fetched data
  *
  * @example
  * ```typescript
@@ -52,11 +52,11 @@ import { BasePlugin } from '../builtin/base-plugin.js';
  *   readonly id = 'pub.chive.plugin.arxiv';
  *   readonly source: ImportSource = 'arxiv';
  *
- *   async *fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint> {
+ *   async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
  *     // Fetch from arXiv OAI-PMH endpoint
  *     const records = await this.oaiPmhClient.listRecords(options);
  *     for (const record of records) {
- *       yield this.mapToExternalPreprint(record);
+ *       yield this.mapToExternalEprint(record);
  *     }
  *   }
  * }
@@ -116,10 +116,10 @@ export abstract class ImportingPlugin extends BasePlugin {
   }
 
   /**
-   * Fetches preprints from the external source.
+   * Fetches eprints from the external source.
    *
    * @param options - Fetch options (pagination, filters)
-   * @returns Async iterable of external preprints
+   * @returns Async iterable of external eprints
    *
    * @remarks
    * Implementations should:
@@ -129,23 +129,23 @@ export abstract class ImportingPlugin extends BasePlugin {
    *
    * @example
    * ```typescript
-   * async *fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint> {
+   * async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
    *   let cursor = options?.cursor;
    *   do {
    *     await this.rateLimit();
    *     const response = await this.fetchPage(cursor);
    *     for (const item of response.items) {
-   *       yield this.mapToPreprint(item);
+   *       yield this.mapToEprint(item);
    *     }
    *     cursor = response.nextCursor;
    *   } while (cursor && (!options?.limit || count < options.limit));
    * }
    * ```
    */
-  abstract fetchPreprints(options?: FetchOptions): AsyncIterable<ExternalPreprint>;
+  abstract fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint>;
 
   /**
-   * Checks if a preprint has already been imported.
+   * Checks if a eprint has already been imported.
    *
    * @param externalId - Source-specific identifier
    * @returns True if already imported
@@ -162,9 +162,9 @@ export abstract class ImportingPlugin extends BasePlugin {
    * Gets an existing import by external ID.
    *
    * @param externalId - Source-specific identifier
-   * @returns Imported preprint or null if not found
+   * @returns Imported eprint or null if not found
    */
-  async getExistingImport(externalId: string): Promise<ImportedPreprint | null> {
+  async getExistingImport(externalId: string): Promise<ImportedEprint | null> {
     if (!this.importService) {
       return null;
     }
@@ -172,27 +172,27 @@ export abstract class ImportingPlugin extends BasePlugin {
   }
 
   /**
-   * Imports a preprint into the AppView cache.
+   * Imports a eprint into the AppView cache.
    *
-   * @param preprint - External preprint data
-   * @returns Created or existing imported preprint
+   * @param eprint - External eprint data
+   * @returns Created or existing imported eprint
    *
    * @remarks
    * Performs deduplication and emits `import.created` event on success.
    *
    * @throws Error if import service unavailable
    */
-  async importPreprint(preprint: ExternalPreprint): Promise<ImportedPreprint> {
+  async importEprint(eprint: ExternalEprint): Promise<ImportedEprint> {
     if (!this.importService) {
       throw new PluginError(this.id, 'EXECUTE', 'Import service not available');
     }
 
     // Check for existing import
-    const existing = await this.importService.get(this.source, preprint.externalId);
+    const existing = await this.importService.get(this.source, eprint.externalId);
     if (existing) {
-      this.logger.debug('Preprint already imported', {
+      this.logger.debug('Eprint already imported', {
         source: this.source,
-        externalId: preprint.externalId,
+        externalId: eprint.externalId,
       });
       return existing;
     }
@@ -200,23 +200,23 @@ export abstract class ImportingPlugin extends BasePlugin {
     // Create new import
     const imported = await this.importService.create({
       source: this.source,
-      externalId: preprint.externalId,
-      externalUrl: preprint.url,
-      title: preprint.title,
-      abstract: preprint.abstract,
-      authors: preprint.authors,
-      publicationDate: preprint.publicationDate,
-      doi: preprint.doi,
-      pdfUrl: preprint.pdfUrl,
-      categories: preprint.categories,
+      externalId: eprint.externalId,
+      externalUrl: eprint.url,
+      title: eprint.title,
+      abstract: eprint.abstract,
+      authors: eprint.authors,
+      publicationDate: eprint.publicationDate,
+      doi: eprint.doi,
+      pdfUrl: eprint.pdfUrl,
+      categories: eprint.categories,
       importedByPlugin: this.id,
-      metadata: preprint.metadata,
+      metadata: eprint.metadata,
     });
 
-    this.logger.info('Preprint imported', {
+    this.logger.info('Eprint imported', {
       source: this.source,
-      externalId: preprint.externalId,
-      title: preprint.title,
+      externalId: eprint.externalId,
+      title: eprint.title,
     });
 
     // Record metrics
@@ -226,8 +226,8 @@ export abstract class ImportingPlugin extends BasePlugin {
     this.context.eventBus.emit('import.created', {
       importId: imported.id,
       source: this.source,
-      externalId: preprint.externalId,
-      title: preprint.title,
+      externalId: eprint.externalId,
+      title: eprint.title,
     });
 
     return imported;
@@ -237,20 +237,20 @@ export abstract class ImportingPlugin extends BasePlugin {
    * Updates an existing import with new data.
    *
    * @param id - Internal import ID
-   * @param preprint - Updated preprint data
-   * @returns Updated imported preprint
+   * @param eprint - Updated eprint data
+   * @returns Updated imported eprint
    */
-  async updateImport(id: number, preprint: Partial<ExternalPreprint>): Promise<ImportedPreprint> {
+  async updateImport(id: number, eprint: Partial<ExternalEprint>): Promise<ImportedEprint> {
     if (!this.importService) {
       throw new PluginError(this.id, 'EXECUTE', 'Import service not available');
     }
 
     const updated = await this.importService.update(id, {
-      title: preprint.title,
-      abstract: preprint.abstract,
-      authors: preprint.authors as ExternalAuthor[] | undefined,
-      doi: preprint.doi,
-      pdfUrl: preprint.pdfUrl,
+      title: eprint.title,
+      abstract: eprint.abstract,
+      authors: eprint.authors as ExternalAuthor[] | undefined,
+      doi: eprint.doi,
+      pdfUrl: eprint.pdfUrl,
       lastSyncedAt: new Date(),
       syncStatus: 'active',
     });
@@ -279,7 +279,7 @@ export abstract class ImportingPlugin extends BasePlugin {
    * @returns Import statistics
    *
    * @remarks
-   * Fetches preprints and imports new ones, updating existing ones.
+   * Fetches eprints and imports new ones, updating existing ones.
    * Respects rate limits and handles errors gracefully.
    */
   async runImportCycle(options?: FetchOptions): Promise<ImportCycleResult> {
@@ -295,25 +295,25 @@ export abstract class ImportingPlugin extends BasePlugin {
     const endTimer = this.startTimer('import_cycle_duration', { source: this.source });
 
     try {
-      for await (const preprint of this.fetchPreprints(options)) {
+      for await (const eprint of this.fetchEprints(options)) {
         result.totalFetched++;
 
         try {
-          const existing = await this.getExistingImport(preprint.externalId);
+          const existing = await this.getExistingImport(eprint.externalId);
 
           if (existing) {
             // Update existing import
-            await this.updateImport(existing.id, preprint);
+            await this.updateImport(existing.id, eprint);
             result.updated++;
           } else {
             // Create new import
-            await this.importPreprint(preprint);
+            await this.importEprint(eprint);
             result.newImports++;
           }
         } catch (err) {
-          this.logger.warn('Failed to process preprint', {
+          this.logger.warn('Failed to process eprint', {
             error: (err as Error).message,
-            externalId: preprint.externalId,
+            externalId: eprint.externalId,
           });
           result.errors++;
           this.recordCounter('import_errors', { source: this.source });
@@ -374,18 +374,18 @@ export abstract class ImportingPlugin extends BasePlugin {
   }
 
   /**
-   * Builds the canonical URL for a preprint.
+   * Builds the canonical URL for a eprint.
    *
    * @param externalId - Source-specific identifier
-   * @returns Full URL to the preprint
+   * @returns Full URL to the eprint
    *
    * @remarks
    * Override in subclass for source-specific URL building.
    */
-  abstract buildPreprintUrl(externalId: string): string;
+  abstract buildEprintUrl(externalId: string): string;
 
   /**
-   * Builds the PDF URL for a preprint (if available).
+   * Builds the PDF URL for a eprint (if available).
    *
    * @param externalId - Source-specific identifier
    * @returns PDF URL or null if not available
@@ -407,7 +407,7 @@ export abstract class ImportingPlugin extends BasePlugin {
  */
 export interface ImportCycleResult {
   /**
-   * Total preprints fetched from source.
+   * Total eprints fetched from source.
    */
   totalFetched: number;
 

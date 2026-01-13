@@ -57,13 +57,13 @@ Only events matching `pub.chive.*` collections are processed:
 
 ```typescript
 const CHIVE_COLLECTIONS = [
-  'pub.chive.preprint.submission',
-  'pub.chive.preprint.version',
+  'pub.chive.eprint.submission',
+  'pub.chive.eprint.version',
   'pub.chive.review.comment',
   'pub.chive.review.endorsement',
   'pub.chive.graph.fieldProposal',
   'pub.chive.graph.vote',
-  'pub.chive.preprint.userTag',
+  'pub.chive.eprint.userTag',
 ];
 ```
 
@@ -97,8 +97,8 @@ async processEvent(event: RepoEvent): Promise<void> {
     const collection = op.path.split('/')[0];
 
     switch (collection) {
-      case 'pub.chive.preprint.submission':
-        await this.preprintService.indexPreprint(op.record, {
+      case 'pub.chive.eprint.submission':
+        await this.eprintService.indexEprint(op.record, {
           uri: `at://${event.repo}/${op.path}`,
           cid: op.cid,
           pdsEndpoint: await this.resolvePds(event.repo)

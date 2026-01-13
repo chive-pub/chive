@@ -2,11 +2,11 @@
  * Leaflet backlinks tracking plugin.
  *
  * @remarks
- * Tracks references to Chive preprints from Leaflet reading lists.
+ * Tracks references to Chive eprints from Leaflet reading lists.
  * Leaflet (https://leaflet.app) is an ATProto-based reading list manager
  * that allows users to organize and share reading materials.
  *
- * When a Leaflet reading list includes a Chive preprint, this plugin
+ * When a Leaflet reading list includes a Chive eprint, this plugin
  * creates a backlink for aggregation and discovery.
  *
  * Reading list schema: xyz.leaflet.list
@@ -60,7 +60,7 @@ interface LeafletListItem {
  * Leaflet backlinks tracking plugin.
  *
  * @remarks
- * Tracks preprint references in Leaflet reading lists via firehose
+ * Tracks eprint references in Leaflet reading lists via firehose
  * and creates backlinks for discovery and aggregation.
  *
  * Only processes public reading lists to respect privacy.
@@ -96,7 +96,7 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
     id: 'pub.chive.plugin.leaflet-backlinks',
     name: 'Leaflet Backlinks',
     version: '0.1.0',
-    description: 'Tracks references to Chive preprints from Leaflet reading lists',
+    description: 'Tracks references to Chive eprints from Leaflet reading lists',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
@@ -109,19 +109,19 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
   };
 
   /**
-   * Extracts preprint AT-URIs from a Leaflet reading list.
+   * Extracts eprint AT-URIs from a Leaflet reading list.
    *
    * @param record - Leaflet list record
-   * @returns Array of preprint AT-URIs
+   * @returns Array of eprint AT-URIs
    */
-  extractPreprintRefs(record: unknown): string[] {
+  extractEprintRefs(record: unknown): string[] {
     const list = record as LeafletList;
 
     if (!list.items || !Array.isArray(list.items)) {
       return [];
     }
 
-    return list.items.filter((item) => this.isPreprintUri(item.uri)).map((item) => item.uri);
+    return list.items.filter((item) => this.isEprintUri(item.uri)).map((item) => item.uri);
   }
 
   /**

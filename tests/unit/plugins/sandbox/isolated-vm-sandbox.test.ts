@@ -48,7 +48,7 @@ const createTestManifest = (id = 'pub.chive.plugin.test'): IPluginManifest => ({
   author: 'Chive Team',
   license: 'MIT',
   permissions: {
-    hooks: ['preprint.indexed'],
+    hooks: ['eprint.indexed'],
     network: { allowedDomains: ['api.example.com'] },
     storage: { maxSize: 1024 * 1024 },
   },

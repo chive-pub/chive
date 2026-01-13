@@ -45,20 +45,20 @@ describe('reviewKeys', () => {
     expect(reviewKeys.all).toEqual(['reviews']);
   });
 
-  it('generates forPreprint key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-    expect(reviewKeys.forPreprint(uri)).toEqual(['reviews', 'preprint', uri]);
+  it('generates forEprint key', () => {
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    expect(reviewKeys.forEprint(uri)).toEqual(['reviews', 'eprint', uri]);
   });
 
   it('generates list key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-    expect(reviewKeys.list(uri)).toEqual(['reviews', 'preprint', uri, 'list', undefined]);
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    expect(reviewKeys.list(uri)).toEqual(['reviews', 'eprint', uri, 'list', undefined]);
   });
 
   it('generates list key with params', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
     const params = { limit: 10, cursor: 'abc' };
-    expect(reviewKeys.list(uri, params)).toEqual(['reviews', 'preprint', uri, 'list', params]);
+    expect(reviewKeys.list(uri, params)).toEqual(['reviews', 'eprint', uri, 'list', params]);
   });
 
   it('generates threads key', () => {
@@ -71,8 +71,8 @@ describe('reviewKeys', () => {
   });
 
   it('generates inline key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
-    expect(reviewKeys.inline(uri)).toEqual(['reviews', 'preprint', uri, 'inline']);
+    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    expect(reviewKeys.inline(uri)).toEqual(['reviews', 'eprint', uri, 'inline']);
   });
 
   it('generates byUser key', () => {
@@ -82,13 +82,13 @@ describe('reviewKeys', () => {
 });
 
 describe('useReviews', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches reviews for a preprint', async () => {
+  it('fetches reviews for a eprint', async () => {
     const mockResponse = createMockReviewsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -96,23 +96,23 @@ describe('useReviews', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useReviews(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useReviews(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForPreprint', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
       params: {
         query: expect.objectContaining({
-          preprintUri,
+          eprintUri,
         }),
       },
     });
   });
 
-  it('is disabled when preprintUri is empty', () => {
+  it('is disabled when eprintUri is empty', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useReviews(''), { wrapper: Wrapper });
 
@@ -128,7 +128,7 @@ describe('useReviews', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
       () =>
-        useReviews(preprintUri, {
+        useReviews(eprintUri, {
           limit: 20,
           cursor: 'next',
           motivation: 'commenting',
@@ -141,10 +141,10 @@ describe('useReviews', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForPreprint', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
       params: {
         query: {
-          preprintUri,
+          eprintUri,
           limit: 20,
           cursor: 'next',
           motivation: 'commenting',
@@ -161,7 +161,7 @@ describe('useReviews', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useReviews(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useReviews(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -178,7 +178,7 @@ describe('useReviews', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useReviews(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useReviews(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -190,7 +190,7 @@ describe('useReviews', () => {
 
   it('can be disabled via options', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useReviews(preprintUri, {}, { enabled: false }), {
+    const { result } = renderHook(() => useReviews(eprintUri, {}, { enabled: false }), {
       wrapper: Wrapper,
     });
 
@@ -200,7 +200,7 @@ describe('useReviews', () => {
 });
 
 describe('useInlineReviews', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -214,23 +214,23 @@ describe('useInlineReviews', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useInlineReviews(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useInlineReviews(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForPreprint', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
       params: {
         query: expect.objectContaining({
-          preprintUri,
+          eprintUri,
           inlineOnly: true,
         }),
       },
     });
   });
 
-  it('is disabled when preprintUri is empty', () => {
+  it('is disabled when eprintUri is empty', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useInlineReviews(''), { wrapper: Wrapper });
 
@@ -244,7 +244,7 @@ describe('useInlineReviews', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useInlineReviews(preprintUri), { wrapper: Wrapper });
+    const { result } = renderHook(() => useInlineReviews(eprintUri), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
@@ -306,7 +306,7 @@ describe('useReviewThread', () => {
 });
 
 describe('useCreateReview', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
   const mockAgent = { did: 'did:plc:user123' };
 
   beforeEach(() => {
@@ -324,13 +324,13 @@ describe('useCreateReview', () => {
     const { result } = renderHook(() => useCreateReview(), { wrapper: Wrapper });
 
     const review = await result.current.mutateAsync({
-      preprintUri,
+      eprintUri,
       content: 'Great paper!',
       motivation: 'commenting',
     });
 
     expect(mockCreateReviewRecord).toHaveBeenCalledWith(mockAgent, {
-      preprintUri,
+      eprintUri,
       content: 'Great paper!',
       parentReviewUri: undefined,
     });
@@ -349,7 +349,7 @@ describe('useCreateReview', () => {
     const { result } = renderHook(() => useCreateReview(), { wrapper: Wrapper });
 
     const target = {
-      source: preprintUri,
+      source: eprintUri,
       selector: {
         type: 'TextQuoteSelector' as const,
         exact: 'important finding',
@@ -359,14 +359,14 @@ describe('useCreateReview', () => {
     };
 
     const review = await result.current.mutateAsync({
-      preprintUri,
+      eprintUri,
       content: 'This finding is significant.',
       target,
       motivation: 'highlighting',
     });
 
     expect(mockCreateReviewRecord).toHaveBeenCalledWith(mockAgent, {
-      preprintUri,
+      eprintUri,
       content: 'This finding is significant.',
       parentReviewUri: undefined,
     });
@@ -386,14 +386,14 @@ describe('useCreateReview', () => {
     const { result } = renderHook(() => useCreateReview(), { wrapper: Wrapper });
 
     const review = await result.current.mutateAsync({
-      preprintUri,
+      eprintUri,
       content: 'I agree with your point.',
       parentReviewUri,
       motivation: 'replying',
     });
 
     expect(mockCreateReviewRecord).toHaveBeenCalledWith(mockAgent, {
-      preprintUri,
+      eprintUri,
       content: 'I agree with your point.',
       parentReviewUri,
     });
@@ -408,7 +408,7 @@ describe('useCreateReview', () => {
 
     await expect(
       result.current.mutateAsync({
-        preprintUri,
+        eprintUri,
         content: 'Test',
       })
     ).rejects.toThrow('Not authenticated');
@@ -423,7 +423,7 @@ describe('useCreateReview', () => {
 
     await expect(
       result.current.mutateAsync({
-        preprintUri,
+        eprintUri,
         content: 'Test',
       })
     ).rejects.toThrow('PDS write failed');
@@ -431,7 +431,7 @@ describe('useCreateReview', () => {
 });
 
 describe('useDeleteReview', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
   const reviewUri = 'at://did:plc:abc/pub.chive.review.comment/456';
   const mockAgent = { did: 'did:plc:user123' };
 
@@ -446,7 +446,7 @@ describe('useDeleteReview', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteReview(), { wrapper: Wrapper });
 
-    await result.current.mutateAsync({ uri: reviewUri, preprintUri });
+    await result.current.mutateAsync({ uri: reviewUri, eprintUri });
 
     expect(mockDeleteRecord).toHaveBeenCalledWith(mockAgent, reviewUri);
   });
@@ -457,7 +457,7 @@ describe('useDeleteReview', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteReview(), { wrapper: Wrapper });
 
-    await expect(result.current.mutateAsync({ uri: reviewUri, preprintUri })).rejects.toThrow(
+    await expect(result.current.mutateAsync({ uri: reviewUri, eprintUri })).rejects.toThrow(
       'Not authenticated'
     );
   });
@@ -469,20 +469,20 @@ describe('useDeleteReview', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useDeleteReview(), { wrapper: Wrapper });
 
-    await expect(result.current.mutateAsync({ uri: reviewUri, preprintUri })).rejects.toThrow(
+    await expect(result.current.mutateAsync({ uri: reviewUri, eprintUri })).rejects.toThrow(
       'PDS delete failed'
     );
   });
 });
 
 describe('usePrefetchReviews', () => {
-  const preprintUri = 'at://did:plc:abc/pub.chive.preprint.submission/123';
+  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('prefetches reviews for a preprint', async () => {
+  it('prefetches reviews for a eprint', async () => {
     const mockResponse = createMockReviewsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -492,16 +492,16 @@ describe('usePrefetchReviews', () => {
     const { Wrapper, queryClient } = createWrapper();
     const { result } = renderHook(() => usePrefetchReviews(), { wrapper: Wrapper });
 
-    result.current(preprintUri);
+    result.current(eprintUri);
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForPreprint', {
-        params: { query: expect.objectContaining({ preprintUri }) },
+      expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
+        params: { query: expect.objectContaining({ eprintUri }) },
       });
     });
 
     // Check that data is in cache
-    const cachedData = queryClient.getQueryData(reviewKeys.list(preprintUri, {}));
+    const cachedData = queryClient.getQueryData(reviewKeys.list(eprintUri, {}));
     expect(cachedData).toEqual(mockResponse);
   });
 });

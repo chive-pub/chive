@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Field selection step for preprint submission.
+ * Field selection step for eprint submission.
  *
  * @remarks
  * Step 4 of the submission wizard. Handles:
@@ -17,7 +17,7 @@ import { Network } from 'lucide-react';
 
 import { FieldSearch, type FieldSelection } from '@/components/forms';
 import { cn } from '@/lib/utils';
-import type { PreprintFormValues } from './submission-wizard';
+import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -28,7 +28,7 @@ import type { PreprintFormValues } from './submission-wizard';
  */
 export interface StepFieldsProps {
   /** React Hook Form instance */
-  form: UseFormReturn<PreprintFormValues>;
+  form: UseFormReturn<EprintFormValues>;
   /** Additional CSS classes */
   className?: string;
 }
@@ -116,7 +116,7 @@ export function StepFields({ form, className }: StepFieldsProps) {
       {fieldNodes.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/50">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            At least one field is required for submission. Fields help categorize your preprint and
+            At least one field is required for submission. Fields help categorize your eprint and
             make it discoverable.
           </p>
         </div>

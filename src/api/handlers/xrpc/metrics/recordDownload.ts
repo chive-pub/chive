@@ -2,7 +2,7 @@
  * Handler for pub.chive.metrics.recordDownload.
  *
  * @remarks
- * Records a download event for a preprint.
+ * Records a download event for a eprint.
  *
  * @packageDocumentation
  * @public
@@ -66,7 +66,7 @@ export async function recordDownloadHandler(
 export const recordDownloadEndpoint: XRPCEndpoint<RecordDownloadInput, RecordDownloadResponse> = {
   method: 'pub.chive.metrics.recordDownload' as never,
   type: 'procedure',
-  description: 'Record a download event for a preprint',
+  description: 'Record a download event for a eprint',
   inputSchema: recordDownloadInputSchema,
   outputSchema: recordDownloadResponseSchema,
   handler: recordDownloadHandler,

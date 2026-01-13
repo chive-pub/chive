@@ -14,7 +14,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { useDebounce } from './use-preprint-search';
+import { useDebounce } from './use-eprint-search';
 
 /**
  * Query key factory for profile autocomplete queries.

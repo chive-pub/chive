@@ -4,7 +4,7 @@
  * @remarks
  * Returns author profile information and aggregated metrics.
  * Profile data is resolved from the user's PDS via identity resolution.
- * Metrics are computed by the AppView from indexed preprints.
+ * Metrics are computed by the AppView from indexed eprints.
  *
  * @packageDocumentation
  * @public
@@ -12,8 +12,8 @@
 
 import type { Context } from 'hono';
 
+import type { EprintService } from '../../../../services/eprint/eprint-service.js';
 import type { MetricsService } from '../../../../services/metrics/metrics-service.js';
-import type { PreprintService } from '../../../../services/preprint/preprint-service.js';
 import type { DID } from '../../../../types/atproto.js';
 import { NotFoundError } from '../../../../types/errors.js';
 import type { ILogger } from '../../../../types/interfaces/logger.interface.js';
@@ -214,7 +214,7 @@ export async function getProfileHandler(
 ): Promise<AuthorProfileResponse> {
   const logger = c.get('logger');
   const redis = c.get('redis');
-  const { preprint, metrics } = c.get('services');
+  const { eprint, metrics } = c.get('services');
 
   const did = params.did as DID;
 
@@ -264,10 +264,10 @@ export async function getProfileHandler(
     }
   }
 
-  // Get author's preprints to verify they exist in our system
-  const authorPreprints = await preprint.getPreprintsByAuthor(did, { limit: 1 });
+  // Get author's eprints to verify they exist in our system
+  const authorEprints = await eprint.getEprintsByAuthor(did, { limit: 1 });
 
-  if (!pdsEndpoint && authorPreprints.preprints.length === 0) {
+  if (!pdsEndpoint && authorEprints.eprints.length === 0) {
     throw new NotFoundError('Author', did);
   }
 
@@ -279,10 +279,10 @@ export async function getProfileHandler(
 
   // Compute author metrics from indexed data
   const [totalViews, totalDownloads, endorsementCount] = await Promise.all([
-    // Aggregate views across all preprints
-    aggregateAuthorViews(did, preprint, metrics, logger),
+    // Aggregate views across all eprints
+    aggregateAuthorViews(did, eprint, metrics, logger),
     // Aggregate downloads
-    aggregateAuthorDownloads(did, preprint, metrics, logger),
+    aggregateAuthorDownloads(did, eprint, metrics, logger),
     // Count endorsements (from review service)
     countAuthorEndorsements(did, c),
   ]);
@@ -315,7 +315,7 @@ export async function getProfileHandler(
       scopusAuthorId: profileData?.scopusAuthorId,
     },
     metrics: {
-      totalPreprints: authorPreprints.total ?? 0,
+      totalEprints: authorEprints.total ?? 0,
       totalViews,
       totalDownloads,
       totalEndorsements: endorsementCount,
@@ -329,25 +329,25 @@ export async function getProfileHandler(
 }
 
 /**
- * Aggregates total views across all author's preprints.
+ * Aggregates total views across all author's eprints.
  */
 async function aggregateAuthorViews(
   did: DID,
-  preprintService: PreprintService,
+  eprintService: EprintService,
   metricsService: MetricsService,
   logger: ILogger
 ): Promise<number> {
   try {
-    // Get all author's preprints
-    const result = await preprintService.getPreprintsByAuthor(did, { limit: 100 });
+    // Get all author's eprints
+    const result = await eprintService.getEprintsByAuthor(did, { limit: 100 });
 
-    if (result.preprints.length === 0) {
+    if (result.eprints.length === 0) {
       return 0;
     }
 
-    // Sum up views for all preprints
+    // Sum up views for all eprints
     const viewCounts = await Promise.all(
-      result.preprints.map((p) => metricsService.getViewCount(p.uri))
+      result.eprints.map((p) => metricsService.getViewCount(p.uri))
     );
 
     return viewCounts.reduce((sum: number, count: number) => sum + count, 0);
@@ -361,23 +361,23 @@ async function aggregateAuthorViews(
 }
 
 /**
- * Aggregates total downloads across all author's preprints.
+ * Aggregates total downloads across all author's eprints.
  */
 async function aggregateAuthorDownloads(
   did: DID,
-  preprintService: PreprintService,
+  eprintService: EprintService,
   metricsService: MetricsService,
   logger: ILogger
 ): Promise<number> {
   try {
-    const result = await preprintService.getPreprintsByAuthor(did, { limit: 100 });
+    const result = await eprintService.getEprintsByAuthor(did, { limit: 100 });
 
-    if (result.preprints.length === 0) {
+    if (result.eprints.length === 0) {
       return 0;
     }
 
     const downloadCounts = await Promise.all(
-      result.preprints.map(async (p) => {
+      result.eprints.map(async (p) => {
         const m = await metricsService.getMetrics(p.uri);
         return m.totalDownloads;
       })
@@ -394,21 +394,21 @@ async function aggregateAuthorDownloads(
 }
 
 /**
- * Counts total endorsements received by author's preprints.
+ * Counts total endorsements received by author's eprints.
  */
 async function countAuthorEndorsements(did: DID, c: Context<ChiveEnv>): Promise<number> {
   try {
-    const { review, preprint } = c.get('services');
+    const { review, eprint } = c.get('services');
 
-    const result = await preprint.getPreprintsByAuthor(did, { limit: 100 });
+    const result = await eprint.getEprintsByAuthor(did, { limit: 100 });
 
-    if (result.preprints.length === 0) {
+    if (result.eprints.length === 0) {
       return 0;
     }
 
-    // Get endorsement summaries for each preprint
+    // Get endorsement summaries for each eprint
     const endorsementCounts = await Promise.all(
-      result.preprints.map(async (p) => {
+      result.eprints.map(async (p) => {
         try {
           const summary = await review.getEndorsementSummary(p.uri);
           return summary.total;

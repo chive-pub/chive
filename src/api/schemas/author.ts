@@ -188,25 +188,25 @@ export type AuthorProfile = z.infer<typeof authorProfileSchema>;
  * Author metrics schema.
  *
  * @remarks
- * Aggregated metrics for an author across all their preprints.
+ * Aggregated metrics for an author across all their eprints.
  *
  * @public
  */
 export const authorMetricsSchema = z.object({
   /**
-   * Total number of preprints authored.
+   * Total number of eprints authored.
    */
-  totalPreprints: z.number().int().describe('Total preprints authored'),
+  totalEprints: z.number().int().describe('Total eprints authored'),
 
   /**
-   * Total view count across all preprints.
+   * Total view count across all eprints.
    */
-  totalViews: z.number().int().describe('Total views across all preprints'),
+  totalViews: z.number().int().describe('Total views across all eprints'),
 
   /**
-   * Total download count across all preprints.
+   * Total download count across all eprints.
    */
-  totalDownloads: z.number().int().describe('Total downloads across all preprints'),
+  totalDownloads: z.number().int().describe('Total downloads across all eprints'),
 
   /**
    * Total endorsements received.
@@ -267,7 +267,7 @@ export const authorProfileResponseSchema = z.object({
   /**
    * Aggregated author metrics.
    */
-  metrics: authorMetricsSchema.describe('Author metrics across all preprints'),
+  metrics: authorMetricsSchema.describe('Author metrics across all eprints'),
 });
 
 /**
@@ -291,7 +291,7 @@ export const listAuthorsParamsSchema = paginationQuerySchema.extend({
   /**
    * Sort order.
    */
-  sort: z.enum(['preprints', 'views', 'recent']).default('preprints').describe('Sort order'),
+  sort: z.enum(['eprints', 'views', 'recent']).default('eprints').describe('Sort order'),
 });
 
 /**
@@ -328,9 +328,9 @@ export const authorSummarySchema = z.object({
   avatar: z.string().url().optional().describe('Avatar URL'),
 
   /**
-   * Preprint count.
+   * Eprint count.
    */
-  preprintCount: z.number().int().describe('Number of preprints'),
+  eprintCount: z.number().int().describe('Number of eprints'),
 
   /**
    * Total views.

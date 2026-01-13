@@ -113,12 +113,12 @@ function extractDomain(url: string): string {
  * ```tsx
  * <BlueskyPostPreview
  *   author={{ displayName: 'Alice', handle: 'alice.bsky.social' }}
- *   text="Check out this amazing preprint! @bob #science"
+ *   text="Check out this amazing eprint! @bob #science"
  *   linkCard={{
- *     url: 'https://chive.pub/preprints/...',
+ *     url: 'https://chive.pub/eprints/...',
  *     title: 'Novel Research',
  *     description: 'Abstract excerpt...',
- *     thumbUrl: '/api/og?type=preprint&...'
+ *     thumbUrl: '/api/og?type=eprint&...'
  *   }}
  * />
  * ```

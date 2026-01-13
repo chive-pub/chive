@@ -39,7 +39,7 @@ export interface AutocompleteServiceConfig {
   /**
    * Index name or alias.
    *
-   * @defaultValue 'preprints'
+   * @defaultValue 'eprints'
    */
   readonly indexName?: string;
 
@@ -104,7 +104,7 @@ export interface AutocompleteServiceConfig {
  * @public
  */
 export const DEFAULT_AUTOCOMPLETE_CONFIG: Required<AutocompleteServiceConfig> = {
-  indexName: 'preprints',
+  indexName: 'eprints',
   suggesterField: 'title.suggest',
   fuzziness: 1,
   prefixLength: 2,

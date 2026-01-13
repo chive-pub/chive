@@ -75,20 +75,20 @@ interface UseBacklinksOptions {
 }
 
 /**
- * Fetches backlinks to a preprint with pagination.
+ * Fetches backlinks to a eprint with pagination.
  *
  * @remarks
  * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
- * Backlinks track references to Chive preprints from external sources
+ * Backlinks track references to Chive eprints from external sources
  * like Semble collections, Bluesky posts, WhiteWind blogs, and Leaflet lists.
  *
  * @example
  * ```tsx
- * const { data, isLoading, hasNextPage, fetchNextPage } = useBacklinks(preprintUri);
+ * const { data, isLoading, hasNextPage, fetchNextPage } = useBacklinks(eprintUri);
  * const allBacklinks = data?.pages.flatMap(p => p.backlinks) ?? [];
  * ```
  *
- * @param targetUri - AT URI of the preprint to get backlinks for
+ * @param targetUri - AT URI of the eprint to get backlinks for
  * @param options - Query options
  * @returns Infinite query result with paginated backlinks
  */
@@ -147,7 +147,7 @@ interface UseBacklinkCountsOptions {
 }
 
 /**
- * Fetches aggregated backlink counts for a preprint.
+ * Fetches aggregated backlink counts for a eprint.
  *
  * @remarks
  * Returns counts by source type (Semble, Bluesky, WhiteWind, Leaflet, etc.)
@@ -155,11 +155,11 @@ interface UseBacklinkCountsOptions {
  *
  * @example
  * ```tsx
- * const { data: counts, isLoading } = useBacklinkCounts(preprintUri);
+ * const { data: counts, isLoading } = useBacklinkCounts(eprintUri);
  * console.log(counts?.total, 'total backlinks');
  * ```
  *
- * @param targetUri - AT URI of the preprint to get counts for
+ * @param targetUri - AT URI of the eprint to get counts for
  * @param options - Query options
  * @returns Query result with backlink counts
  */

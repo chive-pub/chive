@@ -25,8 +25,8 @@ import { getDatabaseConfig } from '@/storage/postgresql/config.js';
 import type { AtUri, CID, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IRepository, RepositoryRecord } from '@/types/interfaces/repository.interface.js';
-import type { StoredPreprint } from '@/types/interfaces/storage.interface.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
+import type { StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { EprintAuthor } from '@/types/models/author.js';
 
 // Test constants
 const TEST_AUTHOR = 'did:plc:synctestauthor' as DID;
@@ -35,7 +35,7 @@ const TEST_PDS_URL = 'https://pds.sync.test.example.com';
 // Generate unique test URIs to avoid conflicts
 function createTestUri(suffix: string): AtUri {
   const timestamp = Date.now();
-  return `at://${TEST_AUTHOR}/pub.chive.preprint.submission/sync${timestamp}${suffix}` as AtUri;
+  return `at://${TEST_AUTHOR}/pub.chive.eprint.submission/sync${timestamp}${suffix}` as AtUri;
 }
 
 function createTestCid(suffix: string): CID {
@@ -80,14 +80,14 @@ function createMockRepository(
 }
 
 /**
- * Creates test preprint for storage.
+ * Creates test eprint for storage.
  */
-function createTestStoredPreprint(
+function createTestStoredEprint(
   uri: AtUri,
   cid: CID,
-  overrides: Partial<StoredPreprint> = {}
-): StoredPreprint {
-  const testAuthor: PreprintAuthor = {
+  overrides: Partial<StoredEprint> = {}
+): StoredEprint {
+  const testAuthor: EprintAuthor = {
     did: TEST_AUTHOR,
     name: 'Test Sync Author',
     order: 1,
@@ -102,7 +102,7 @@ function createTestStoredPreprint(
     cid,
     authors: [testAuthor],
     submittedBy: TEST_AUTHOR,
-    title: 'Test Preprint for Sync',
+    title: 'Test Eprint for Sync',
     abstract: 'This is a test abstract for sync testing.',
     documentBlobRef: {
       $type: 'blob',
@@ -111,7 +111,7 @@ function createTestStoredPreprint(
       size: 1024000,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     license: 'CC-BY-4.0',
     pdsUrl: TEST_PDS_URL,
     indexedAt: new Date(),
@@ -138,7 +138,7 @@ describe('PDSSyncService Integration', () => {
     // Clean up test data: delete by submitted_by DID pattern
     const client = await pool.connect();
     try {
-      await client.query(`DELETE FROM preprints_index WHERE submitted_by = $1`, [TEST_AUTHOR]);
+      await client.query(`DELETE FROM eprints_index WHERE submitted_by = $1`, [TEST_AUTHOR]);
     } finally {
       client.release();
     }
@@ -149,9 +149,9 @@ describe('PDSSyncService Integration', () => {
       const uri = createTestUri('track1');
       const cid = createTestCid('track1');
 
-      // First store a preprint so tracking can work
-      const preprint = createTestStoredPreprint(uri, cid);
-      await storage.storePreprint(preprint);
+      // First store a eprint so tracking can work
+      const eprint = createTestStoredEprint(uri, cid);
+      await storage.storeEprint(eprint);
 
       const service = new PDSSyncService({
         pool,
@@ -192,9 +192,9 @@ describe('PDSSyncService Integration', () => {
       const uri = createTestUri('fresh1');
       const cid = createTestCid('fresh1');
 
-      // Store preprint
-      const preprint = createTestStoredPreprint(uri, cid);
-      await storage.storePreprint(preprint);
+      // Store eprint
+      const eprint = createTestStoredEprint(uri, cid);
+      await storage.storeEprint(eprint);
 
       // Mock repository to return same CID
       const { repository: mockRepository } = createMockRepository(() => ({
@@ -243,12 +243,12 @@ describe('PDSSyncService Integration', () => {
       const oldCid = createTestCid('old');
       const newCid = createTestCid('new');
 
-      // Store preprint with old CID
-      const preprint = createTestStoredPreprint(uri, oldCid, {
+      // Store eprint with old CID
+      const eprint = createTestStoredEprint(uri, oldCid, {
         // Set indexedAt to old date to trigger staleness
         indexedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000), // 8 days ago
       });
-      await storage.storePreprint(preprint);
+      await storage.storeEprint(eprint);
 
       // Mock repository to return new CID
       const { repository: mockRepository } = createMockRepository(() => ({
@@ -303,9 +303,9 @@ describe('PDSSyncService Integration', () => {
       const uri = createTestUri('refresh-unchanged');
       const cid = createTestCid('unchanged');
 
-      // Store preprint
-      const preprint = createTestStoredPreprint(uri, cid);
-      await storage.storePreprint(preprint);
+      // Store eprint
+      const eprint = createTestStoredEprint(uri, cid);
+      await storage.storeEprint(eprint);
 
       // Mock repository to return same CID
       const { repository: mockRepository } = createMockRepository(() => ({
@@ -340,9 +340,9 @@ describe('PDSSyncService Integration', () => {
       const oldCid = createTestCid('oldv');
       const newCid = createTestCid('newv');
 
-      // Store preprint with old CID
-      const preprint = createTestStoredPreprint(uri, oldCid);
-      await storage.storePreprint(preprint);
+      // Store eprint with old CID
+      const eprint = createTestStoredEprint(uri, oldCid);
+      await storage.storeEprint(eprint);
 
       // Mock repository to return new CID
       const { repository: mockRepository } = createMockRepository(() => ({
@@ -372,7 +372,7 @@ describe('PDSSyncService Integration', () => {
       }
 
       // Verify storage was updated
-      const updated = await storage.getPreprint(uri);
+      const updated = await storage.getEprint(uri);
       expect(updated?.cid).toBe(newCid);
     });
 
@@ -380,9 +380,9 @@ describe('PDSSyncService Integration', () => {
       const uri = createTestUri('refresh-fail');
       const cid = createTestCid('fail');
 
-      // Store preprint
-      const preprint = createTestStoredPreprint(uri, cid);
-      await storage.storePreprint(preprint);
+      // Store eprint
+      const eprint = createTestStoredEprint(uri, cid);
+      await storage.storeEprint(eprint);
 
       // Mock repository to return null (not found in PDS)
       const { repository: mockRepository } = createMockRepository(() => null);
@@ -443,9 +443,9 @@ describe('PDSSyncService Integration', () => {
       const uri = createTestUri('compliance1');
       const cid = createTestCid('compliance1');
 
-      // Store preprint
-      const preprint = createTestStoredPreprint(uri, cid);
-      await storage.storePreprint(preprint);
+      // Store eprint
+      const eprint = createTestStoredEprint(uri, cid);
+      await storage.storeEprint(eprint);
 
       // Create mock repository and spy on methods
       const { repository: mockRepo, getRecordMock } = createMockRepository(() => ({
@@ -475,9 +475,9 @@ describe('PDSSyncService Integration', () => {
       const uri = createTestUri('pdstrack');
       const cid = createTestCid('pdstrack');
 
-      // Store preprint
-      const preprint = createTestStoredPreprint(uri, cid);
-      await storage.storePreprint(preprint);
+      // Store eprint
+      const eprint = createTestStoredEprint(uri, cid);
+      await storage.storeEprint(eprint);
 
       const { repository: mockRepository } = createMockRepository(() => ({
         uri,
@@ -498,7 +498,7 @@ describe('PDSSyncService Integration', () => {
       await service.refreshRecord(uri);
 
       // Verify PDS URL is tracked
-      const stored = await storage.getPreprint(uri);
+      const stored = await storage.getEprint(uri);
       expect(stored?.pdsUrl).toBe(TEST_PDS_URL);
     });
   });

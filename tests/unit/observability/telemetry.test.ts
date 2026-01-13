@@ -301,7 +301,7 @@ describe('Tracer utilities', () => {
     });
 
     it('defines Chive-specific attributes', () => {
-      expect(SpanAttributes.PREPRINT_URI).toBe('chive.preprint.uri');
+      expect(SpanAttributes.EPRINT_URI).toBe('chive.eprint.uri');
       expect(SpanAttributes.USER_DID).toBe('chive.user.did');
       expect(SpanAttributes.REQUEST_ID).toBe('chive.request.id');
     });

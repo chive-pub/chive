@@ -58,10 +58,10 @@ export type AuthRequirement = 'none' | 'optional' | 'required';
  * ```typescript
  * const handler: XRPCHandler<GetSubmissionInput, GetSubmissionOutput> =
  *   async (c, input) => {
- *     const { preprint } = c.get('services');
- *     const result = await preprint.getPreprint(input.uri);
+ *     const { eprint } = c.get('services');
+ *     const result = await eprint.getEprint(input.uri);
  *     if (!result) {
- *       throw new NotFoundError('Preprint', input.uri);
+ *       throw new NotFoundError('Eprint', input.uri);
  *     }
  *     return { uri: result.uri, ... };
  *   };
@@ -90,9 +90,9 @@ export type XRPCHandler<TInput, TOutput> = (
  *   GetSubmissionInput,
  *   GetSubmissionOutput
  * > = {
- *   method: 'pub.chive.preprint.getSubmission' as NSID,
+ *   method: 'pub.chive.eprint.getSubmission' as NSID,
  *   type: 'query',
- *   description: 'Get preprint by AT URI',
+ *   description: 'Get eprint by AT URI',
  *   inputSchema: getSubmissionInputSchema,
  *   outputSchema: getSubmissionOutputSchema,
  *   handler: getSubmissionHandler,
@@ -105,7 +105,7 @@ export type XRPCHandler<TInput, TOutput> = (
  */
 export interface XRPCEndpoint<TInput, TOutput> {
   /**
-   * NSID of the XRPC method (e.g., "pub.chive.preprint.getSubmission").
+   * NSID of the XRPC method (e.g., "pub.chive.eprint.getSubmission").
    */
   readonly method: NSID;
 
@@ -179,7 +179,7 @@ export interface RESTEndpoint {
   readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
   /**
-   * URL path pattern (e.g., "/api/v1/preprints/:uri").
+   * URL path pattern (e.g., "/api/v1/eprints/:uri").
    */
   readonly path: string;
 

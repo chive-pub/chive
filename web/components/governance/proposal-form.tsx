@@ -406,7 +406,7 @@ const RECONCILIATION_SYSTEMS = [
   { value: 'orcid', label: 'ORCID', description: 'Researcher identifiers' },
   { value: 'openalex', label: 'OpenAlex', description: 'Open scholarly metadata' },
   { value: 'crossref', label: 'Crossref', description: 'DOI registration agency' },
-  { value: 'arxiv', label: 'arXiv', description: 'Preprint repository' },
+  { value: 'arxiv', label: 'arXiv', description: 'Eprint repository' },
   { value: 'semantic-scholar', label: 'Semantic Scholar', description: 'AI-powered research tool' },
   { value: 'pubmed', label: 'PubMed', description: 'Biomedical literature' },
   { value: 'credit', label: 'CRediT', description: 'Contributor role taxonomy' },
@@ -440,7 +440,7 @@ const RECONCILABLE_ENTITY_TYPES = [
   { value: 'facet', label: 'Facet Value' },
   { value: 'organization', label: 'Organization' },
   { value: 'author', label: 'Author' },
-  { value: 'preprint', label: 'Preprint' },
+  { value: 'eprint', label: 'Eprint' },
 ];
 
 // =============================================================================
@@ -516,7 +516,7 @@ const baseFormSchema = z.object({
   // Reconciliation-specific
   existingReconciliationId: z.string().optional(),
   sourceEntityType: z
-    .enum(['field', 'contribution-type', 'facet', 'organization', 'author', 'preprint'])
+    .enum(['field', 'contribution-type', 'facet', 'organization', 'author', 'eprint'])
     .optional(),
   sourceEntityUri: z.string().default(''),
   sourceEntityLabel: z.string().default(''),

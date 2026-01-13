@@ -1,11 +1,11 @@
 # ClaimingService
 
-The ClaimingService enables authors to claim ownership of imported preprints through multi-authority verification. It collects evidence from ORCID, Semantic Scholar, OpenReview, OpenAlex, and other sources to verify authorship.
+The ClaimingService enables authors to claim ownership of imported eprints through multi-authority verification. It collects evidence from ORCID, Semantic Scholar, OpenReview, OpenAlex, and other sources to verify authorship.
 
 ## Claim workflow
 
 ```
-1. User finds claimable preprint (imported from arXiv, etc.)
+1. User finds claimable eprint (imported from arXiv, etc.)
 2. User initiates claim with optional evidence
 3. System collects evidence from multiple authorities
 4. System computes confidence score
@@ -21,7 +21,7 @@ import { ClaimingService } from '@/services/claiming';
 
 const claiming = container.resolve(ClaimingService);
 
-// Find claimable preprints for user
+// Find claimable eprints for user
 const claimable = await claiming.findClaimable({
   claimantDid: userDid,
   sources: ['arxiv', 'semantic-scholar', 'openreview'],
@@ -72,8 +72,8 @@ async collectEvidence(claimId: string): Promise<Evidence[]> {
     if (orcidPlugin) {
       const profile = await orcidPlugin.fetchOrcidProfile(claim.orcid);
       const hasWork = profile.works.some(w =>
-        w.doi === claim.preprint.doi ||
-        w.arxivId === claim.preprint.arxivId
+        w.doi === claim.eprint.doi ||
+        w.arxivId === claim.eprint.arxivId
       );
       if (hasWork) {
         evidence.push({
@@ -91,7 +91,7 @@ async collectEvidence(claimId: string): Promise<Evidence[]> {
   if (s2Plugin) {
     const authors = await s2Plugin.searchAuthors(claim.claimantName);
     const match = authors.find(a =>
-      a.papers.some(p => p.doi === claim.preprint.doi)
+      a.papers.some(p => p.doi === claim.eprint.doi)
     );
     if (match) {
       evidence.push({

@@ -14,9 +14,9 @@ import type { z } from 'zod';
 
 import { REST_PATH_PREFIX } from '../../../config.js';
 import { validateQuery } from '../../../middleware/validation.js';
-import { searchPreprintsParamsSchema } from '../../../schemas/preprint.js';
+import { searchEprintsParamsSchema } from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
-import { searchSubmissionsHandler } from '../../xrpc/preprint/index.js';
+import { searchSubmissionsHandler } from '../../xrpc/eprint/index.js';
 
 /**
  * Registers REST v1 search routes.
@@ -25,7 +25,7 @@ import { searchSubmissionsHandler } from '../../xrpc/preprint/index.js';
  *
  * @remarks
  * Routes:
- * - `GET /api/v1/search` - Search preprints
+ * - `GET /api/v1/search` - Search eprints
  *
  * Query parameters:
  * - `q` (required): Search query string
@@ -47,9 +47,9 @@ import { searchSubmissionsHandler } from '../../xrpc/preprint/index.js';
 export function registerSearchRoutes(app: Hono<ChiveEnv>): void {
   const searchPath = `${REST_PATH_PREFIX}/search`;
 
-  // GET /api/v1/search: Search preprints
-  app.get(searchPath, validateQuery(searchPreprintsParamsSchema), async (c) => {
-    const params = c.get('validatedInput') as z.infer<typeof searchPreprintsParamsSchema>;
+  // GET /api/v1/search: Search eprints
+  app.get(searchPath, validateQuery(searchEprintsParamsSchema), async (c) => {
+    const params = c.get('validatedInput') as z.infer<typeof searchEprintsParamsSchema>;
     const result = await searchSubmissionsHandler(c, params);
     return c.json(result);
   });

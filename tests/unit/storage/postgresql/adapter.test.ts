@@ -6,11 +6,11 @@ import type { Pool, QueryResult } from 'pg';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
-import type { StoredPreprint } from '@/types/interfaces/storage.interface.js';
-import type { PreprintAuthor } from '@/types/models/author.js';
+import type { StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { EprintAuthor } from '@/types/models/author.js';
 import { isOk, isErr } from '@/types/result.js';
 
-const mockAuthor: PreprintAuthor = {
+const mockAuthor: EprintAuthor = {
   did: 'did:plc:abc123' as never,
   name: 'Test Author',
   order: 1,
@@ -20,10 +20,10 @@ const mockAuthor: PreprintAuthor = {
   isHighlighted: false,
 };
 
-// Mock preprint fixture
-function createMockPreprint(): StoredPreprint {
+// Mock eprint fixture
+function createMockEprint(): StoredEprint {
   return {
-    uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never,
+    uri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never,
     cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,
     authors: [mockAuthor],
     submittedBy: 'did:plc:abc123' as never,
@@ -36,7 +36,7 @@ function createMockPreprint(): StoredPreprint {
       size: 2048576,
     },
     documentFormat: 'pdf',
-    publicationStatus: 'preprint',
+    publicationStatus: 'eprint',
     license: 'CC-BY-4.0',
     pdsUrl: 'https://pds.example.com',
     indexedAt: new Date('2024-01-01T00:00:00Z'),
@@ -60,27 +60,27 @@ describe('PostgreSQLAdapter', () => {
     adapter = new PostgreSQLAdapter(mockPool);
   });
 
-  describe('storePreprint', () => {
-    it('should store preprint successfully', async () => {
-      const preprint = createMockPreprint();
+  describe('storeEprint', () => {
+    it('should store eprint successfully', async () => {
+      const eprint = createMockEprint();
       const queryMock = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      const result = await adapter.storePreprint(preprint);
+      const result = await adapter.storeEprint(eprint);
 
       expect(isOk(result)).toBe(true);
       expect(queryMock).toHaveBeenCalledOnce();
       const call = queryMock.mock.calls[0];
-      expect(call?.[0]).toContain('INSERT INTO preprints_index');
+      expect(call?.[0]).toContain('INSERT INTO eprints_index');
       expect(call?.[0]).toContain('ON CONFLICT');
     });
 
     it('should return error on database failure', async () => {
-      const preprint = createMockPreprint();
+      const eprint = createMockEprint();
       const queryMock = vi.fn().mockRejectedValue(new Error('Database error'));
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      const result = await adapter.storePreprint(preprint);
+      const result = await adapter.storeEprint(eprint);
 
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
@@ -89,10 +89,10 @@ describe('PostgreSQLAdapter', () => {
     });
   });
 
-  describe('getPreprint', () => {
-    it('should return preprint when found', async () => {
+  describe('getEprint', () => {
+    it('should return eprint when found', async () => {
       const mockRow = {
-        uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        uri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
         authors: JSON.stringify([mockAuthor]),
         submitted_by: 'did:plc:abc123',
@@ -111,22 +111,22 @@ describe('PostgreSQLAdapter', () => {
       const queryMock = vi.fn().mockResolvedValue({ rows: [mockRow] } as QueryResult);
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      const result = await adapter.getPreprint(
-        'at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never
+      const result = await adapter.getEprint(
+        'at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never
       );
 
       expect(result).not.toBeNull();
-      expect(result?.uri).toBe('at://did:plc:abc123/pub.chive.preprint.submission/xyz789');
+      expect(result?.uri).toBe('at://did:plc:abc123/pub.chive.eprint.submission/xyz789');
       expect(result?.title).toBe('Neural Networks in Biology');
       expect(result?.documentBlobRef.$type).toBe('blob');
     });
 
-    it('should return null when preprint not found', async () => {
+    it('should return null when eprint not found', async () => {
       const queryMock = vi.fn().mockResolvedValue({ rows: [] } as unknown as QueryResult);
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      const result = await adapter.getPreprint(
-        'at://did:plc:abc123/pub.chive.preprint.submission/notfound' as never
+      const result = await adapter.getEprint(
+        'at://did:plc:abc123/pub.chive.eprint.submission/notfound' as never
       );
 
       expect(result).toBeNull();
@@ -137,15 +137,15 @@ describe('PostgreSQLAdapter', () => {
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
       await expect(
-        adapter.getPreprint('at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never)
+        adapter.getEprint('at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never)
       ).rejects.toThrow('Database error');
     });
   });
 
-  describe('getPreprintsByAuthor', () => {
-    it('should return preprints by author with default options', async () => {
+  describe('getEprintsByAuthor', () => {
+    it('should return eprints by author with default options', async () => {
       const mockRow = {
-        uri: 'at://did:plc:abc123/pub.chive.preprint.submission/xyz789',
+        uri: 'at://did:plc:abc123/pub.chive.eprint.submission/xyz789',
         cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
         authors: JSON.stringify([mockAuthor]),
         submitted_by: 'did:plc:abc123',
@@ -164,7 +164,7 @@ describe('PostgreSQLAdapter', () => {
       const queryMock = vi.fn().mockResolvedValue({ rows: [mockRow] } as QueryResult);
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      const results = await adapter.getPreprintsByAuthor('did:plc:abc123' as never);
+      const results = await adapter.getEprintsByAuthor('did:plc:abc123' as never);
 
       expect(results).toHaveLength(1);
       expect(results[0]?.submittedBy).toBe('did:plc:abc123');
@@ -180,7 +180,7 @@ describe('PostgreSQLAdapter', () => {
       const queryMock = vi.fn().mockResolvedValue({ rows: [] } as unknown as QueryResult);
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      await adapter.getPreprintsByAuthor('did:plc:abc123' as never, {
+      await adapter.getEprintsByAuthor('did:plc:abc123' as never, {
         limit: 10,
         offset: 5,
         sortBy: 'title',
@@ -197,7 +197,7 @@ describe('PostgreSQLAdapter', () => {
       const queryMock = vi.fn().mockResolvedValue({ rows: [] } as unknown as QueryResult);
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      await adapter.getPreprintsByAuthor('did:plc:abc123' as never, {
+      await adapter.getEprintsByAuthor('did:plc:abc123' as never, {
         limit: 200,
       });
 
@@ -209,7 +209,7 @@ describe('PostgreSQLAdapter', () => {
       const queryMock = vi.fn().mockRejectedValue(new Error('Database error'));
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
-      await expect(adapter.getPreprintsByAuthor('did:plc:abc123' as never)).rejects.toThrow(
+      await expect(adapter.getEprintsByAuthor('did:plc:abc123' as never)).rejects.toThrow(
         'Database error'
       );
     });
@@ -221,7 +221,7 @@ describe('PostgreSQLAdapter', () => {
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
       const result = await adapter.trackPDSSource(
-        'at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never,
+        'at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never,
         'https://pds.example.com',
         new Date('2024-01-01T00:00:00Z')
       );
@@ -229,7 +229,7 @@ describe('PostgreSQLAdapter', () => {
       expect(isOk(result)).toBe(true);
       expect(queryMock).toHaveBeenCalledOnce();
       const call = queryMock.mock.calls[0];
-      expect(call?.[0]).toContain('UPDATE preprints_index');
+      expect(call?.[0]).toContain('UPDATE eprints_index');
       expect(call?.[0]).toContain('WHERE');
     });
 
@@ -238,7 +238,7 @@ describe('PostgreSQLAdapter', () => {
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
       const result = await adapter.trackPDSSource(
-        'at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never,
+        'at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never,
         'https://pds.example.com',
         new Date('2024-01-01T00:00:00Z')
       );
@@ -259,7 +259,7 @@ describe('PostgreSQLAdapter', () => {
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
       const result = await adapter.isStale(
-        'at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never
+        'at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never
       );
 
       expect(result).toBe(false);
@@ -282,7 +282,7 @@ describe('PostgreSQLAdapter', () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('PDS unreachable'));
 
       const result = await adapter.isStale(
-        'at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never
+        'at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never
       );
 
       expect(result).toBe(true);
@@ -296,7 +296,7 @@ describe('PostgreSQLAdapter', () => {
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
       const result = await adapter.isStale(
-        'at://did:plc:abc123/pub.chive.preprint.submission/notfound' as never
+        'at://did:plc:abc123/pub.chive.eprint.submission/notfound' as never
       );
 
       expect(result).toBe(false);
@@ -307,7 +307,7 @@ describe('PostgreSQLAdapter', () => {
       (mockPool.query as ReturnType<typeof vi.fn>).mockImplementation(queryMock);
 
       await expect(
-        adapter.isStale('at://did:plc:abc123/pub.chive.preprint.submission/xyz789' as never)
+        adapter.isStale('at://did:plc:abc123/pub.chive.eprint.submission/xyz789' as never)
       ).rejects.toThrow('Database error');
     });
   });

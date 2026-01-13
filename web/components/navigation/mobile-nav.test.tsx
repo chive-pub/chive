@@ -56,7 +56,7 @@ describe('MobileNav', () => {
     await user.click(screen.getByRole('button', { name: 'Toggle menu' }));
 
     // Discover section is expanded by default, so its links should be visible
-    expect(screen.getByText('Preprints')).toBeInTheDocument();
+    expect(screen.getByText('Eprints')).toBeInTheDocument();
     expect(screen.getByText('Browse')).toBeInTheDocument();
     expect(screen.getByText('Fields')).toBeInTheDocument();
   });
@@ -70,7 +70,7 @@ describe('MobileNav', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     // Click on a link in the Discover section (expanded by default)
-    await user.click(screen.getByText('Preprints'));
+    await user.click(screen.getByText('Eprints'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
@@ -87,19 +87,19 @@ describe('MobileNav', () => {
   });
 
   it('highlights active link based on pathname', async () => {
-    mockUsePathname.mockReturnValue('/preprints');
+    mockUsePathname.mockReturnValue('/eprints');
     const user = userEvent.setup();
 
     render(<MobileNav />);
 
     await user.click(screen.getByRole('button', { name: 'Toggle menu' }));
 
-    // Find the Preprints link within the Discover section (expanded by default)
+    // Find the Eprints link within the Discover section (expanded by default)
     // The link contains both the label and description, so use partial text match
-    const preprintsLink = screen.getByText('Preprints').closest('a');
+    const eprintsLink = screen.getByText('Eprints').closest('a');
     const browseLink = screen.getByText('Browse').closest('a');
 
-    expect(preprintsLink).toHaveClass('text-foreground');
+    expect(eprintsLink).toHaveClass('text-foreground');
     expect(browseLink).toHaveClass('text-muted-foreground');
   });
 

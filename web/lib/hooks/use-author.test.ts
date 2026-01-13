@@ -2,14 +2,14 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createWrapper } from '@/tests/test-utils';
-import { createMockAuthorProfileResponse, createMockPreprintSummary } from '@/tests/mock-data';
+import { createMockAuthorProfileResponse, createMockEprintSummary } from '@/tests/mock-data';
 
 import {
   authorKeys,
   useAuthor,
   useAuthorProfile,
   useAuthorMetrics,
-  useAuthorPreprints,
+  useAuthorEprints,
   hasOrcid,
   formatOrcidUrl,
 } from './use-author';
@@ -42,10 +42,10 @@ describe('authorKeys', () => {
     expect(authorKeys.metrics('did:plc:abc')).toEqual(['authors', 'metrics', 'did:plc:abc']);
   });
 
-  it('generates preprints key', () => {
-    expect(authorKeys.preprints('did:plc:abc', { limit: 10 })).toEqual([
+  it('generates eprints key', () => {
+    expect(authorKeys.eprints('did:plc:abc', { limit: 10 })).toEqual([
       'authors',
-      'preprints',
+      'eprints',
       'did:plc:abc',
       { limit: 10 },
     ]);
@@ -156,16 +156,16 @@ describe('useAuthorMetrics', () => {
   });
 });
 
-describe('useAuthorPreprints', () => {
+describe('useAuthorEprints', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches author preprints with pagination', async () => {
+  it('fetches author eprints with pagination', async () => {
     const mockResponse = {
-      preprints: [
-        createMockPreprintSummary({ uri: 'at://did:plc:test1/pub.chive.preprint.submission/1' }),
-        createMockPreprintSummary({ uri: 'at://did:plc:test2/pub.chive.preprint.submission/2' }),
+      eprints: [
+        createMockEprintSummary({ uri: 'at://did:plc:test1/pub.chive.eprint.submission/1' }),
+        createMockEprintSummary({ uri: 'at://did:plc:test2/pub.chive.eprint.submission/2' }),
       ],
       cursor: 'next-cursor',
       hasMore: true,
@@ -176,7 +176,7 @@ describe('useAuthorPreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useAuthorPreprints('did:plc:abc'), { wrapper: Wrapper });
+    const { result } = renderHook(() => useAuthorEprints('did:plc:abc'), { wrapper: Wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -184,7 +184,7 @@ describe('useAuthorPreprints', () => {
 
     expect(result.current.data?.pages[0]).toEqual(mockResponse);
     expect(result.current.hasNextPage).toBe(true);
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.preprint.listByAuthor', {
+    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.listByAuthor', {
       params: {
         query: expect.objectContaining({
           did: 'did:plc:abc',
@@ -196,7 +196,7 @@ describe('useAuthorPreprints', () => {
 
   it('handles custom limit', async () => {
     const mockResponse = {
-      preprints: [],
+      eprints: [],
       hasMore: false,
     };
     mockGet.mockResolvedValueOnce({
@@ -205,7 +205,7 @@ describe('useAuthorPreprints', () => {
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useAuthorPreprints('did:plc:abc', { limit: 5 }), {
+    const { result } = renderHook(() => useAuthorEprints('did:plc:abc', { limit: 5 }), {
       wrapper: Wrapper,
     });
 
@@ -213,7 +213,7 @@ describe('useAuthorPreprints', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.preprint.listByAuthor', {
+    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.listByAuthor', {
       params: {
         query: expect.objectContaining({
           did: 'did:plc:abc',

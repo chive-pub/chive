@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Review step for preprint submission.
+ * Review step for eprint submission.
  *
  * @remarks
  * Step 5 (final) of the submission wizard. Shows:
@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import type { PreprintFormValues } from './submission-wizard';
+import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -30,7 +30,7 @@ import type { PreprintFormValues } from './submission-wizard';
  */
 export interface StepReviewProps {
   /** React Hook Form instance */
-  form: UseFormReturn<PreprintFormValues>;
+  form: UseFormReturn<EprintFormValues>;
   /** Whether submission is in progress */
   isSubmitting?: boolean;
   /** Submission error message */
@@ -123,7 +123,7 @@ export function StepReview({
       <div>
         <h3 className="text-lg font-semibold">Review Your Submission</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Please review all information before submitting. Your preprint will be stored in your
+          Please review all information before submitting. Your eprint will be stored in your
           Personal Data Server (PDS) and indexed by Chive.
         </p>
       </div>
@@ -277,10 +277,10 @@ export function StepReview({
         <h4 className="font-medium mb-2">What Happens Next</h4>
         <ul className="text-sm text-muted-foreground space-y-1 list-inside list-disc">
           <li>Your document will be uploaded to your Personal Data Server (PDS)</li>
-          <li>A preprint record will be created in your PDS repository</li>
+          <li>A eprint record will be created in your PDS repository</li>
           <li>Chive will extract and index the text for full-text search</li>
-          <li>Your preprint will appear in search and browse results</li>
-          <li>You can update or version your preprint at any time</li>
+          <li>Your eprint will appear in search and browse results</li>
+          <li>You can update or version your eprint at any time</li>
         </ul>
       </section>
     </div>

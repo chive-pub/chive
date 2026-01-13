@@ -68,7 +68,7 @@ interface FieldNodeData {
   label: string;
   type: 'root' | 'field' | 'subfield' | 'topic';
   status: string;
-  preprintCount?: number;
+  eprintCount?: number;
   isCurrent?: boolean;
 }
 
@@ -109,8 +109,8 @@ function FieldNode({ data }: { data: FieldNodeData }) {
         <Badge variant="outline" className="text-xs capitalize">
           {data.type}
         </Badge>
-        {data.preprintCount !== undefined && (
-          <span className="text-xs opacity-75">{data.preprintCount} papers</span>
+        {data.eprintCount !== undefined && (
+          <span className="text-xs opacity-75">{data.eprintCount} papers</span>
         )}
       </div>
     </div>
@@ -133,9 +133,9 @@ function layoutNodes(centerField: {
   name: string;
   type: string;
   status: string;
-  preprintCount?: number;
+  eprintCount?: number;
   parent?: { id: string; name: string };
-  children?: Array<{ id: string; name: string; type: string; preprintCount?: number }>;
+  children?: Array<{ id: string; name: string; type: string; eprintCount?: number }>;
   relationships?: Array<{
     targetId: string;
     targetName: string;
@@ -158,7 +158,7 @@ function layoutNodes(centerField: {
       label: centerField.name,
       type: centerField.type as FieldNodeData['type'],
       status: centerField.status,
-      preprintCount: centerField.preprintCount,
+      eprintCount: centerField.eprintCount,
       isCurrent: true,
     },
     sourcePosition: Position.Right,
@@ -207,7 +207,7 @@ function layoutNodes(centerField: {
           label: child.name,
           type: (child.type as FieldNodeData['type']) || 'subfield',
           status: 'approved',
-          preprintCount: child.preprintCount,
+          eprintCount: child.eprintCount,
         },
         sourcePosition: Position.Top,
         targetPosition: Position.Bottom,
@@ -298,7 +298,7 @@ export function FieldVisualization({
       name: field.name,
       type: fieldType,
       status: field.status,
-      preprintCount: field.preprintCount,
+      eprintCount: field.eprintCount,
       parent: field.ancestors?.[0]
         ? { id: field.ancestors[0].id, name: field.ancestors[0].name }
         : undefined,
@@ -306,7 +306,7 @@ export function FieldVisualization({
         id: child.id,
         name: child.name,
         type: 'subfield' as const,
-        preprintCount: child.preprintCount,
+        eprintCount: child.eprintCount,
       })),
       relationships: field.relationships
         ?.filter(

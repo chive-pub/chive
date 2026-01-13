@@ -7,8 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import type { RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { KnowledgeGraphService } from '@/services/knowledge-graph/graph-service.js';
-import type { RecordMetadata } from '@/services/preprint/preprint-service.js';
 import type { AtUri, CID } from '@/types/atproto.js';
 import type { IGraphDatabase } from '@/types/interfaces/graph.interface.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
@@ -42,9 +42,9 @@ const createMockGraph = (): IGraphDatabase =>
 
 const createMockStorage = (): IStorageBackend =>
   ({
-    storePreprint: vi.fn(),
-    getPreprint: vi.fn(),
-    getPreprintsByAuthor: vi.fn(),
+    storeEprint: vi.fn(),
+    getEprint: vi.fn(),
+    getEprintsByAuthor: vi.fn(),
     trackPDSSource: vi.fn(),
     getRecordsNotSyncedSince: vi.fn(),
     isStale: vi.fn(),

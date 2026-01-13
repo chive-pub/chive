@@ -19,10 +19,10 @@ const windowLabels: Record<TimeWindow, string> = {
 };
 
 /**
- * Trending preprints page.
+ * Trending eprints page.
  *
  * @remarks
- * Shows popular preprints based on views within configurable time windows.
+ * Shows popular eprints based on views within configurable time windows.
  * Designed for discovery and exploring active topics.
  */
 export default function TrendingPage() {
@@ -43,7 +43,7 @@ export default function TrendingPage() {
             Trending
           </h1>
           <p className="text-muted-foreground">
-            Most popular preprints based on community engagement
+            Most popular eprints based on community engagement
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ export default function TrendingPage() {
       {/* Results */}
       {error ? (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-8 text-center">
-          <p className="text-destructive">Failed to load trending preprints</p>
+          <p className="text-destructive">Failed to load trending eprints</p>
         </div>
       ) : isLoading ? (
         <div className="space-y-4">
@@ -79,42 +79,42 @@ export default function TrendingPage() {
         </div>
       ) : data?.trending && data.trending.length > 0 ? (
         <div className="space-y-4">
-          {data.trending.map((preprint, index) => (
+          {data.trending.map((eprint, index) => (
             <Link
-              key={preprint.uri}
-              href={`/preprints/${encodeURIComponent(preprint.uri)}`}
+              key={eprint.uri}
+              href={`/eprints/${encodeURIComponent(eprint.uri)}`}
               className="block rounded-lg border p-4 hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-start gap-4">
                 {/* Rank Badge */}
                 <div className="flex flex-col items-center justify-center w-12 shrink-0">
                   <span className="text-2xl font-bold text-muted-foreground">
-                    #{preprint.rank ?? index + 1}
+                    #{eprint.rank ?? index + 1}
                   </span>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {preprint.fields?.slice(0, 2).map((field) => (
+                    {eprint.fields?.slice(0, 2).map((field) => (
                       <Badge key={field.uri} variant="outline" className="text-xs">
                         {field.name}
                       </Badge>
                     ))}
                   </div>
 
-                  <h3 className="font-semibold mt-1 line-clamp-2">{preprint.title}</h3>
+                  <h3 className="font-semibold mt-1 line-clamp-2">{eprint.title}</h3>
 
                   <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                    {preprint.abstract}
+                    {eprint.abstract}
                   </p>
 
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      {preprint.authors.map((a) => a.name).join(', ') || 'Unknown Author'}
+                      {eprint.authors.map((a) => a.name).join(', ') || 'Unknown Author'}
                     </span>
-                    <span>{new Date(preprint.createdAt).toLocaleDateString()}</span>
+                    <span>{new Date(eprint.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
 
@@ -122,7 +122,7 @@ export default function TrendingPage() {
                 <div className="shrink-0 text-right">
                   <div className="flex items-center gap-1 text-sm font-medium text-primary">
                     <Eye className="h-4 w-4" />
-                    {preprint.viewsInWindow.toLocaleString()}
+                    {eprint.viewsInWindow.toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     views {windowLabels[window].toLowerCase()}
@@ -141,7 +141,7 @@ export default function TrendingPage() {
       ) : (
         <div className="rounded-lg border-2 border-dashed p-12 text-center">
           <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No trending preprints</h3>
+          <h3 className="mt-4 text-lg font-semibold">No trending eprints</h3>
           <p className="mt-2 text-sm text-muted-foreground">Check back later for popular content</p>
         </div>
       )}

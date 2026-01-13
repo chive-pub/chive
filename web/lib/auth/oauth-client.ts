@@ -490,7 +490,7 @@ let e2eRecordCounter = 0;
  */
 export function setE2EMockAgent(userDid: string, userHandle: string): void {
   // Create a mock agent that implements the required Agent interface
-  // for preprint submission (uploadBlob, com.atproto.repo.createRecord)
+  // for eprint submission (uploadBlob, com.atproto.repo.createRecord)
   // The Agent class in @atproto/api exposes `did` as a top-level getter
   const mockAgent = {
     // Top-level did property matching Agent class interface

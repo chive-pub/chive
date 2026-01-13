@@ -26,7 +26,7 @@ This document details the comprehensive strategy for rolling out Chive through a
 
 ### Purpose
 
-Pre-release testing validates that Chive meets quality standards, identifies defects before general availability, and gathers user feedback to improve the product. Given Chive's role as a decentralized preprint server on AT Protocol, testing must validate both technical correctness and scholarly workflow usability.
+Pre-release testing validates that Chive meets quality standards, identifies defects before general availability, and gathers user feedback to improve the product. Given Chive's role as a decentralized eprint service on AT Protocol, testing must validate both technical correctness and scholarly workflow usability.
 
 ### Testing Philosophy
 
@@ -194,7 +194,7 @@ chive.pub           → mail provider (for support@chive.pub, etc.)
 
 ### Objectives
 
-1. Validate core preprint submission and indexing workflows
+1. Validate core eprint submission and indexing workflows
 2. Verify ATProto compliance (firehose consumption, PDS interactions, data sovereignty)
 3. Test knowledge graph functionality and moderation workflows
 4. Identify critical bugs and architectural issues
@@ -233,13 +233,13 @@ Before entering alpha:
 #### Week 1-2: Foundation Testing
 
 - Account creation and ATProto authentication
-- Basic preprint submission flow
+- Basic eprint submission flow
 - File upload and blob handling (BlobRef validation)
 - Search functionality (basic queries)
 
 #### Week 3-4: Core Features
 
-- Version management for preprints
+- Version management for eprints
 - Review and endorsement workflows
 - Tagging and knowledge graph interactions
 - Notification system
@@ -292,7 +292,7 @@ The alpha signup page at `alpha.chive.pub` (or `chive.pub/alpha`) provides a str
 │  │                                                                      │   │
 │  │                    [Chive Logo]                                      │   │
 │  │                                                                      │   │
-│  │           Decentralized Preprint Server                              │   │
+│  │           Decentralized Eprint Server                              │   │
 │  │           Built on AT Protocol                                       │   │
 │  │                                                                      │   │
 │  │    Own your research. Share it freely. Keep it forever.             │   │
@@ -308,7 +308,7 @@ The alpha signup page at `alpha.chive.pub` (or `chive.pub/alpha`) provides a str
 │  │  │  Your Data  │  │  Credible   │  │  Rich       │  │  Open       │ │   │
 │  │  │  Your PDS   │  │  Exit       │  │  Knowledge  │  │  Reviews    │ │   │
 │  │  │             │  │             │  │  Graph      │  │             │ │   │
-│  │  │ Preprints   │  │ If Chive    │  │ 10-dim     │  │ Transparent │ │   │
+│  │  │ Eprints   │  │ If Chive    │  │ 10-dim     │  │ Transparent │ │   │
 │  │  │ live in     │  │ shuts down, │  │ PMEST      │  │ peer review │ │   │
 │  │  │ your PDS    │  │ you keep    │  │ faceted    │  │ with ORCID  │ │   │
 │  │  │             │  │ everything  │  │ search     │  │ identity    │ │   │
@@ -362,7 +362,7 @@ The alpha signup page at `alpha.chive.pub` (or `chive.pub/alpha`) provides a str
 │  │                        WHAT TO EXPECT                                │   │
 │  │                                                                      │   │
 │  │  Alpha Testing Involves:                                            │   │
-│  │  • Testing core preprint submission and discovery workflows         │   │
+│  │  • Testing core eprint submission and discovery workflows         │   │
 │  │  • Reporting bugs through our Zulip community or GitHub             │   │
 │  │  • Providing feedback on UX and feature priorities                  │   │
 │  │  • 2-5 hours/week engagement for 6-8 weeks                          │   │
@@ -559,7 +559,7 @@ sudo pdsadmin invite create
 
 2. **Profile setup** (via Bluesky app or API):
    - Display name: "Chive"
-   - Bio: "Decentralized preprint server built on AT Protocol. Own your research."
+   - Bio: "Decentralized eprint service built on AT Protocol. Own your research."
    - Avatar: Chive logo
    - Banner: Professional header image
 
@@ -626,11 +626,11 @@ The following thread introduces Chive to the Bluesky community. Post as a single
 **Post 1/12 (Hook)**
 
 ```
-Preprints changed science. But they're still controlled by centralized platforms.
+Eprints changed science. But they're still controlled by centralized platforms.
 
-What if your preprints lived in YOUR data store, portable and permanent?
+What if your eprints lived in YOUR data store, portable and permanent?
 
-Introducing Chive—a decentralized preprint server built on AT Protocol.
+Introducing Chive—a decentralized eprint service built on AT Protocol.
 
 🧵 Here's how it works...
 ```
@@ -638,11 +638,11 @@ Introducing Chive—a decentralized preprint server built on AT Protocol.
 **Post 2/12 (The Problem)**
 
 ```
-Traditional preprint servers (arXiv, bioRxiv, etc.) are valuable but:
+Traditional eprint services (arXiv, bioRxiv, etc.) are valuable but:
 
 • Your data lives on their servers
 • If they shut down, your work could vanish
-• You can't take your preprints elsewhere
+• You can't take your eprints elsewhere
 • No interoperability between platforms
 
 Chive solves this with ATProto.
@@ -653,7 +653,7 @@ Chive solves this with ATProto.
 ```
 Chive is an "AppView" on AT Protocol—the same tech powering Bluesky.
 
-Your preprints are stored in YOUR Personal Data Server (PDS), just like your Bluesky posts.
+Your eprints are stored in YOUR Personal Data Server (PDS), just like your Bluesky posts.
 
 Chive indexes and displays them, but never owns them.
 
@@ -665,17 +665,17 @@ Your research. Your PDS. Your control.
 ```
 If Chive disappeared tomorrow, you'd lose nothing.
 
-Your preprints remain in your PDS. Another AppView could display them. You could self-host.
+Your eprints remain in your PDS. Another AppView could display them. You could self-host.
 
 This is "credible exit"—the freedom to leave without losing your data.
 
-No other preprint server offers this.
+No other eprint service offers this.
 ```
 
 **Post 5/12 (Screenshot - Submission Flow)**
 
 ```
-Submitting a preprint takes minutes:
+Submitting a eprint takes minutes:
 
 1. Upload your PDF
 2. Add metadata, authors, license
@@ -703,10 +703,10 @@ Chive organizes research with a rich knowledge graph:
 ```
 Find research with advanced search:
 
-• Full-text search across all preprints
+• Full-text search across all eprints
 • Filter by field, author, date, license
 • Faceted browse for exploration
-• Trending preprints by time window
+• Trending eprints by time window
 
 [SCREENSHOT: Search results page with faceted filters]
 ```
@@ -716,14 +716,14 @@ Find research with advanced search:
 ```
 Chive supports transparent peer review:
 
-• Inline comments on preprints
+• Inline comments on eprints
 • Threaded discussions
 • ORCID-linked author identity
 • CRediT-based endorsements
 
 All reviews are public, attributed, and stored in reviewers' PDSes.
 
-[SCREENSHOT: Review thread on a preprint]
+[SCREENSHOT: Review thread on a eprint]
 ```
 
 **Post 9/12 (Integrations)**
@@ -736,7 +736,7 @@ Chive integrates with tools researchers already use:
 • Zenodo for DOI archival
 • Figshare, Dryad, OSF for datasets
 
-All linked from your preprint page.
+All linked from your eprint page.
 
 [SCREENSHOT: Integration panel showing linked resources]
 ```
@@ -787,7 +787,7 @@ Join us.
 alpha.chive.pub
 @chive.pub
 
-#OpenScience #Preprints #ATProto #Decentralization
+#OpenScience #Eprints #ATProto #Decentralization
 ```
 
 ---
@@ -808,10 +808,10 @@ Each screenshot should be:
 | Submission Wizard      | Step 2 (Metadata) with sample data | Show title, abstract, license selector   |
 | Knowledge Graph Browse | Field hierarchy expanded           | Show PMEST facets, field relationships   |
 | Search Results         | Results for sample query           | Show filters, result cards, highlighting |
-| Review Thread          | Comment thread on preprint         | Show threaded replies, author badges     |
-| Integration Panel      | Preprint with linked GitHub, ORCID | Show badges and linked resources         |
+| Review Thread          | Comment thread on eprint           | Show threaded replies, author badges     |
+| Integration Panel      | Eprint with linked GitHub, ORCID   | Show badges and linked resources         |
 | Dashboard              | User dashboard with stats          | Show personalized experience             |
-| Preprint Detail        | Full preprint page                 | Hero section with metadata               |
+| Eprint Detail          | Full eprint page                   | Hero section with metadata               |
 
 #### Screenshot Generation Process
 
@@ -875,7 +875,7 @@ const screenshots = [
 **Primary hashtags** (use consistently):
 
 - `#OpenScience`
-- `#Preprints`
+- `#Eprints`
 - `#ATProto`
 
 **Secondary hashtags** (use contextually):
@@ -893,7 +893,7 @@ const screenshots = [
 | Category               | Examples                          |
 | ---------------------- | --------------------------------- |
 | Open science advocates | ASAPbio, SPARC, FORCE11           |
-| Preprint advocates     | PREreview, preLights              |
+| Eprint advocates       | PREreview, preLights              |
 | ATProto developers     | Bluesky team, PDS operators       |
 | Academic influencers   | Researchers with large followings |
 | Research librarians    | Digital scholarship librarians    |
@@ -933,12 +933,12 @@ const screenshots = [
 
 | Category                                 | Count  | Selection Criteria                            |
 | ---------------------------------------- | ------ | --------------------------------------------- |
-| Researchers (STEM)                       | 50-100 | Active preprint authors, varied career stages |
-| Researchers (Humanities/Social Sciences) | 30-60  | Underrepresented in preprint culture          |
+| Researchers (STEM)                       | 50-100 | Active eprint authors, varied career stages   |
+| Researchers (Humanities/Social Sciences) | 30-60  | Underrepresented in eprint culture            |
 | Graduate students                        | 40-80  | High engagement potential, diverse needs      |
 | Librarians                               | 20-40  | Institutional perspective, metadata expertise |
 | Journal editors                          | 10-20  | Publishing workflow integration               |
-| Preprint advocates                       | 10-20  | ASAPbio, PREreview community members          |
+| Eprint advocates                         | 10-20  | ASAPbio, PREreview community members          |
 | Accessibility testers                    | 10-20  | Expanded from alpha cohort                    |
 | International users                      | 30-60  | Non-English speakers, varied connectivity     |
 | ATProto enthusiasts                      | 20-40  | Decentralization advocates, technical users   |
@@ -963,7 +963,7 @@ const screenshots = [
 - Load testing at projected GA levels
 - Final UX refinements
 - Documentation freeze and review
-- Migration testing from other preprint servers
+- Migration testing from other eprint services
 
 ### Open Beta
 
@@ -1007,13 +1007,13 @@ Given Chive's ATProto foundation, Bluesky is the primary recruitment channel.
 
 #### Academic Networks
 
-| Channel                           | Approach                            | Expected Yield     |
-| --------------------------------- | ----------------------------------- | ------------------ |
-| Preprint servers (arXiv, bioRxiv) | Author outreach via Bluesky         | 50-100 applicants  |
-| Academic Bluesky/Twitter          | Announcement posts, RT campaigns    | 100-200 applicants |
-| Research librarian associations   | ALA, ACRL mailing lists             | 30-50 applicants   |
-| Open science communities          | ASAPbio, FORCE11, OpenCon           | 50-100 applicants  |
-| University partnerships           | Direct outreach to research offices | 20-40 applicants   |
+| Channel                         | Approach                            | Expected Yield     |
+| ------------------------------- | ----------------------------------- | ------------------ |
+| Eprint servers (arXiv, bioRxiv) | Author outreach via Bluesky         | 50-100 applicants  |
+| Academic Bluesky/Twitter        | Announcement posts, RT campaigns    | 100-200 applicants |
+| Research librarian associations | ALA, ACRL mailing lists             | 30-50 applicants   |
+| Open science communities        | ASAPbio, FORCE11, OpenCon           | 50-100 applicants  |
+| University partnerships         | Direct outreach to research offices | 20-40 applicants   |
 
 #### Technical Networks
 
@@ -1080,13 +1080,13 @@ Alpha applications are collected via the landing page at `alpha.chive.pub`. The 
 
 #### Scoring Matrix (0-5 each)
 
-| Criterion                  | Weight | Description                                           |
-| -------------------------- | ------ | ----------------------------------------------------- |
-| Diversity                  | 25%    | Underrepresented field, geography, career stage       |
-| Engagement likelihood      | 25%    | Motivation quality, availability, preprint experience |
-| Technical diversity        | 20%    | OS, browser, network conditions, ATProto familiarity  |
-| Feedback quality potential | 20%    | Communication skills, domain expertise                |
-| Strategic value            | 10%    | Influencer potential, institutional partnership       |
+| Criterion                  | Weight | Description                                          |
+| -------------------------- | ------ | ---------------------------------------------------- |
+| Diversity                  | 25%    | Underrepresented field, geography, career stage      |
+| Engagement likelihood      | 25%    | Motivation quality, availability, eprint experience  |
+| Technical diversity        | 20%    | OS, browser, network conditions, ATProto familiarity |
+| Feedback quality potential | 20%    | Communication skills, domain expertise               |
+| Strategic value            | 10%    | Influencer potential, institutional partnership      |
 
 #### Cohort Balancing
 
@@ -1237,7 +1237,7 @@ Schedule:
 
 Interview protocol:
 
-1. Warm-up (2 min): Current preprint workflow
+1. Warm-up (2 min): Current eprint workflow
 2. Task observation (15 min): Complete assigned tasks while thinking aloud
 3. Pain points (5 min): What frustrated you?
 4. Feature feedback (5 min): What's missing? What surprised you?
@@ -1945,15 +1945,15 @@ When testers leave the program:
 
 Before launch, capture the following screenshots:
 
-| Screenshot        | Page/Route               | Content                  | Status |
-| ----------------- | ------------------------ | ------------------------ | ------ |
-| Submission Wizard | `/submit?step=metadata`  | Filled metadata form     | [ ]    |
-| Knowledge Graph   | `/browse`                | Expanded field hierarchy | [ ]    |
-| Search Results    | `/search?q=...`          | Results with filters     | [ ]    |
-| Review Thread     | `/preprint/[id]#reviews` | Threaded comments        | [ ]    |
-| Integration Panel | `/preprint/[id]`         | GitHub, ORCID badges     | [ ]    |
-| Dashboard         | `/dashboard`             | User stats, actions      | [ ]    |
-| Preprint Detail   | `/preprint/[id]`         | Full preprint page       | [ ]    |
+| Screenshot        | Page/Route              | Content                  | Status |
+| ----------------- | ----------------------- | ------------------------ | ------ |
+| Submission Wizard | `/submit?step=metadata` | Filled metadata form     | [ ]    |
+| Knowledge Graph   | `/browse`               | Expanded field hierarchy | [ ]    |
+| Search Results    | `/search?q=...`         | Results with filters     | [ ]    |
+| Review Thread     | `/eprint/[id]#reviews`  | Threaded comments        | [ ]    |
+| Integration Panel | `/eprint/[id]`          | GitHub, ORCID badges     | [ ]    |
+| Dashboard         | `/dashboard`            | User stats, actions      | [ ]    |
+| Eprint Detail     | `/eprint/[id]`          | Full eprint page         | [ ]    |
 
 ### Appendix F: Bluesky Thread Posting Checklist
 

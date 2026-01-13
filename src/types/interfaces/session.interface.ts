@@ -153,7 +153,7 @@ export interface SessionUpdate {
  * const session = await sessionManager.createSession(did, {
  *   ipAddress: '192.168.1.1',
  *   userAgent: 'Mozilla/5.0...',
- *   scope: ['read:preprints', 'write:reviews'],
+ *   scope: ['read:eprints', 'write:reviews'],
  * });
  *
  * // Get session for validation

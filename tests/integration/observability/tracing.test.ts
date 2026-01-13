@@ -96,7 +96,7 @@ describe('Distributed Tracing Integration', () => {
     it('adds custom Chive attributes', async () => {
       await withSpan('chive-operation', () => {
         addSpanAttributes({
-          [SpanAttributes.PREPRINT_URI]: 'at://did:plc:test/pub.chive.preprint/123',
+          [SpanAttributes.EPRINT_URI]: 'at://did:plc:test/pub.chive.eprint/123',
           [SpanAttributes.USER_DID]: 'did:plc:test',
           [SpanAttributes.REQUEST_ID]: 'req_abc123',
         });

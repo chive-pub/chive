@@ -88,7 +88,7 @@ describe('ATRepository', () => {
 
   const testDid = 'did:plc:test123abc' as DID;
   const testCid = 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as CID;
-  const testCollection = 'pub.chive.preprint.submission' as NSID;
+  const testCollection = 'pub.chive.eprint.submission' as NSID;
   const testRkey = 'xyz789';
   const testUri = `at://${testDid}/${testCollection}/${testRkey}` as AtUri;
 
@@ -130,7 +130,7 @@ describe('ATRepository', () => {
       const mockRecord = {
         uri: testUri,
         cid: testCid,
-        value: { title: 'Test Preprint', abstract: 'Test abstract' },
+        value: { title: 'Test Eprint', abstract: 'Test abstract' },
       };
 
       mockGetRecord.mockResolvedValue({

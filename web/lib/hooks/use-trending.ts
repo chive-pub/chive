@@ -40,7 +40,7 @@ interface UseTrendingParams {
 }
 
 /**
- * Fetches trending preprints based on view metrics.
+ * Fetches trending eprints based on view metrics.
  *
  * @remarks
  * Uses TanStack Query with a 1-minute stale time for near-real-time updates.
@@ -55,15 +55,15 @@ interface UseTrendingParams {
  *
  * return (
  *   <TrendingList>
- *     {data.trending.map((preprint) => (
- *       <TrendingCard key={preprint.uri} preprint={preprint} />
+ *     {data.trending.map((eprint) => (
+ *       <TrendingCard key={eprint.uri} eprint={eprint} />
  *     ))}
  *   </TrendingList>
  * );
  * ```
  *
  * @param params - Query parameters (window, limit, cursor)
- * @returns Query result with trending preprints, loading state, and error
+ * @returns Query result with trending eprints, loading state, and error
  *
  * @throws {Error} When the trending API request fails
  */
@@ -78,7 +78,7 @@ export function useTrending(params: UseTrendingParams = {}) {
       });
       if (error) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch trending preprints',
+          (error as { message?: string }).message ?? 'Failed to fetch trending eprints',
           undefined,
           '/xrpc/pub.chive.metrics.getTrending'
         );

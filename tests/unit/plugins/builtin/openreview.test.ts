@@ -175,11 +175,11 @@ describe('OpenReviewPlugin', () => {
     });
   });
 
-  describe('buildPreprintUrl', () => {
+  describe('buildEprintUrl', () => {
     it('should build correct OpenReview forum URL', async () => {
       await plugin.initialize(context);
 
-      const url = plugin.buildPreprintUrl('abc123xyz');
+      const url = plugin.buildEprintUrl('abc123xyz');
 
       expect(url).toBe('https://openreview.net/forum?id=abc123xyz');
     });
@@ -221,7 +221,7 @@ describe('OpenReviewPlugin', () => {
     });
   });
 
-  describe('fetchPreprints', () => {
+  describe('fetchEprints', () => {
     it('should fetch submissions from OpenReview API', async () => {
       await plugin.initialize(context);
       vi.mocked(global.fetch).mockResolvedValue({
@@ -230,7 +230,7 @@ describe('OpenReviewPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -241,7 +241,7 @@ describe('OpenReviewPlugin', () => {
       });
     });
 
-    it('should include author IDs in preprint data', async () => {
+    it('should include author IDs in eprint data', async () => {
       await plugin.initialize(context);
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -249,7 +249,7 @@ describe('OpenReviewPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -271,7 +271,7 @@ describe('OpenReviewPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 
@@ -300,7 +300,7 @@ describe('OpenReviewPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 10 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 10 })) {
         papers.push(paper);
       }
 
@@ -315,7 +315,7 @@ describe('OpenReviewPlugin', () => {
       } as Response);
 
       const papers: unknown[] = [];
-      for await (const paper of plugin.fetchPreprints({ limit: 1 })) {
+      for await (const paper of plugin.fetchEprints({ limit: 1 })) {
         papers.push(paper);
       }
 

@@ -18,8 +18,8 @@ import { test, expect, type Page } from '@playwright/test';
 const MOCK_RECOMMENDATIONS = {
   recommendations: [
     {
-      uri: 'at://did:plc:test/pub.chive.preprint/1',
-      title: 'Test Preprint: Machine Learning Applications',
+      uri: 'at://did:plc:test/pub.chive.eprint/1',
+      title: 'Test Eprint: Machine Learning Applications',
       abstract: 'This paper explores novel ML techniques.',
       score: 0.95,
       explanation: {
@@ -31,7 +31,7 @@ const MOCK_RECOMMENDATIONS = {
       publicationDate: '2024-01-15',
     },
     {
-      uri: 'at://did:plc:test/pub.chive.preprint/2',
+      uri: 'at://did:plc:test/pub.chive.eprint/2',
       title: 'Natural Language Processing Advances',
       abstract: 'Recent advances in NLP methodologies.',
       score: 0.88,
@@ -274,15 +274,15 @@ test.describe('For You Feed - With Recommendations', () => {
     await expect(dismissButton).toBeVisible({ timeout: 3000 });
   });
 
-  test('card title links to preprint page', async ({ page }) => {
+  test('card title links to eprint page', async ({ page }) => {
     // Wait for For You section and cards
     await waitForForYouSection(page);
     const cardLink = page.getByRole('link', { name: /machine learning applications/i });
     await expect(cardLink).toBeVisible({ timeout: 5000 });
 
-    // Verify link has correct href pointing to preprints page
+    // Verify link has correct href pointing to eprints page
     const href = await cardLink.getAttribute('href');
-    expect(href).toMatch(/\/preprints\//);
+    expect(href).toMatch(/\/eprints\//);
     expect(href).toContain('at%3A%2F%2F'); // Encoded AT URI
   });
 });
@@ -338,7 +338,7 @@ test.describe('For You Feed - Loading State', () => {
     await expect(page.getByRole('heading', { name: 'For You' })).toBeVisible({ timeout: 5000 });
 
     // Skeleton elements should be visible during loading
-    // The FeedPreprintCardSkeleton uses Skeleton components with animate-pulse
+    // The FeedEprintCardSkeleton uses Skeleton components with animate-pulse
     const skeletons = page.locator('[class*="animate-pulse"]');
 
     // Should see at least one skeleton while loading

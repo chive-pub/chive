@@ -122,28 +122,28 @@ The SDK automatically instruments HTTP requests, PostgreSQL queries, and Redis o
 Create a logger instance for your service:
 
 ```typescript
-// src/services/preprint-indexer.ts
+// src/services/eprint-indexer.ts
 import { createLogger } from '@/observability/index.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
-export class PreprintIndexer {
+export class EprintIndexer {
   private readonly logger: ILogger;
 
   constructor() {
     this.logger = createLogger({
       level: process.env.LOG_LEVEL || 'info',
-      service: 'preprint-indexer',
+      service: 'eprint-indexer',
     });
   }
 
-  async indexPreprint(uri: string): Promise<void> {
-    this.logger.info('Indexing preprint', { uri });
+  async indexEprint(uri: string): Promise<void> {
+    this.logger.info('Indexing eprint', { uri });
 
     try {
       // ... indexing logic
-      this.logger.info('Preprint indexed', { uri, duration: elapsed });
+      this.logger.info('Eprint indexed', { uri, duration: elapsed });
     } catch (error) {
-      this.logger.error('Failed to index preprint', error as Error, { uri });
+      this.logger.error('Failed to index eprint', error as Error, { uri });
       throw error;
     }
   }
@@ -157,30 +157,30 @@ Logs include trace context automatically. When you view logs in Grafana, you can
 Track request counts and latencies:
 
 ```typescript
-// src/services/preprint-indexer.ts
+// src/services/eprint-indexer.ts
 import { createMetrics } from '@/observability/index.js';
 import type { IMetrics } from '@/types/interfaces/metrics.interface.js';
 
-export class PreprintIndexer {
+export class EprintIndexer {
   private readonly metrics: IMetrics;
 
   constructor() {
     this.metrics = createMetrics({ prefix: 'chive_' });
   }
 
-  async indexPreprint(uri: string): Promise<void> {
-    const endTimer = this.metrics.startTimer('preprint_indexing_duration_seconds', {
+  async indexEprint(uri: string): Promise<void> {
+    const endTimer = this.metrics.startTimer('eprint_indexing_duration_seconds', {
       operation: 'index',
     });
 
     try {
       // ... indexing logic
 
-      this.metrics.incrementCounter('preprints_indexed_total', {
+      this.metrics.incrementCounter('eprints_indexed_total', {
         status: 'success',
       });
     } catch (error) {
-      this.metrics.incrementCounter('preprints_indexed_total', {
+      this.metrics.incrementCounter('eprints_indexed_total', {
         status: 'error',
       });
       throw error;
@@ -198,12 +198,12 @@ View your metrics at `http://localhost:3000/metrics`.
 Wrap important operations in spans:
 
 ```typescript
-// src/services/preprint-indexer.ts
+// src/services/eprint-indexer.ts
 import { withSpan, addSpanAttributes, SpanAttributes } from '@/observability/index.js';
 
-export class PreprintIndexer {
-  async indexPreprint(uri: string): Promise<void> {
-    return withSpan('indexPreprint', async () => {
+export class EprintIndexer {
+  async indexEprint(uri: string): Promise<void> {
+    return withSpan('indexEprint', async () => {
       addSpanAttributes({
         [SpanAttributes.PREPRINT_URI]: uri,
       });
@@ -236,7 +236,7 @@ Start your service and make a request:
 npm run dev
 
 # Terminal 2: Make a request
-curl http://localhost:3000/api/v1/preprints
+curl http://localhost:3000/api/v1/eprints
 
 # Terminal 3: Check logs (JSON format)
 # You should see structured logs with trace_id and span_id
@@ -250,7 +250,7 @@ Expected output:
 ```
 # HELP chive_http_requests_total Total HTTP requests
 # TYPE chive_http_requests_total counter
-chive_http_requests_total{method="GET",route="/api/v1/preprints",status="200"} 1
+chive_http_requests_total{method="GET",route="/api/v1/eprints",status="200"} 1
 ```
 
 ---
@@ -529,12 +529,12 @@ The following metrics are registered automatically:
 | `chive_http_requests_total`           | Counter   | method, route, status |
 | `chive_http_request_duration_seconds` | Histogram | method, route         |
 
-#### Preprint metrics
+#### Eprint metrics
 
-| Metric                                     | Type      | Labels        |
-| ------------------------------------------ | --------- | ------------- |
-| `chive_preprints_indexed_total`            | Counter   | field, status |
-| `chive_preprint_indexing_duration_seconds` | Histogram | operation     |
+| Metric                                   | Type      | Labels        |
+| ---------------------------------------- | --------- | ------------- |
+| `chive_eprints_indexed_total`            | Counter   | field, status |
+| `chive_eprint_indexing_duration_seconds` | Histogram | operation     |
 
 #### Firehose metrics
 
@@ -586,7 +586,7 @@ SpanAttributes.DB_NAME; // 'db.name'
 SpanAttributes.DB_OPERATION; // 'db.operation'
 
 // Chive-specific attributes
-SpanAttributes.PREPRINT_URI; // 'chive.preprint.uri'
+SpanAttributes.PREPRINT_URI; // 'chive.eprint.uri'
 SpanAttributes.USER_DID; // 'chive.user.did'
 SpanAttributes.REQUEST_ID; // 'chive.request.id'
 ```

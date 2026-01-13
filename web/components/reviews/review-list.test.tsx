@@ -167,7 +167,7 @@ describe('ReviewList', () => {
     it('shows target spans by default', () => {
       const reviewWithTarget = createMockReview({
         target: {
-          source: 'at://test/preprint/1',
+          source: 'at://test/eprint/1',
           selector: { type: 'TextQuoteSelector', exact: 'quoted text' },
         },
       });
@@ -180,7 +180,7 @@ describe('ReviewList', () => {
     it('hides target spans when showTargets is false', () => {
       const reviewWithTarget = createMockReview({
         target: {
-          source: 'at://test/preprint/1',
+          source: 'at://test/eprint/1',
           selector: { type: 'TextQuoteSelector', exact: 'quoted text' },
         },
       });

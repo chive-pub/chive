@@ -21,7 +21,7 @@ web/
 │   ├── layout.tsx            # Root layout with providers
 │   ├── page.tsx              # Home page
 │   ├── authors/              # Author profile pages
-│   ├── preprints/            # Preprint detail pages
+│   ├── eprints/            # Eprint detail pages
 │   ├── search/               # Search results page
 │   ├── fields/               # Field taxonomy pages
 │   └── governance/           # Governance and proposals
@@ -32,7 +32,7 @@ web/
 │   ├── enrichment/           # Citation enrichment display
 │   ├── knowledge-graph/      # Field cards and relationships
 │   ├── navigation/           # Header, nav, theme toggle
-│   ├── preprints/            # Preprint cards, lists, PDF viewer
+│   ├── eprints/            # Eprint cards, lists, PDF viewer
 │   ├── providers/            # React context providers
 │   ├── reviews/              # Review forms and threads
 │   ├── search/               # Search input, facets, results
@@ -73,13 +73,13 @@ Open http://localhost:3000.
 Use TanStack Query hooks for all API calls:
 
 ```typescript
-import { usePreprint, usePreprints } from '@/lib/hooks';
+import { useEprint, useEprints } from '@/lib/hooks';
 
-// Fetch a single preprint
-const { data, isLoading, error } = usePreprint(uri);
+// Fetch a single eprint
+const { data, isLoading, error } = useEprint(uri);
 
 // Fetch paginated list
-const { data, isLoading } = usePreprints({ limit: 10 });
+const { data, isLoading } = useEprints({ limit: 10 });
 ```
 
 ### Query configuration
@@ -96,13 +96,13 @@ The query client uses these defaults:
 Query keys follow a flat array pattern:
 
 ```typescript
-// All preprints
-['preprints'][
-  // Preprint list with filters
-  ('preprints', 'list', { limit: 10, field: 'cs.AI' })
+// All eprints
+['eprints'][
+  // Eprint list with filters
+  ('eprints', 'list', { limit: 10, field: 'cs.AI' })
 ][
-  // Single preprint detail
-  ('preprints', 'detail', 'at://did:plc:example/pub.chive.preprint.submission/123')
+  // Single eprint detail
+  ('eprints', 'detail', 'at://did:plc:example/pub.chive.eprint.submission/123')
 ][
   // Search results
   ('search', { q: 'neural networks', limit: 20 })
@@ -156,22 +156,22 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 </Card>;
 ```
 
-### Preprint components
+### Eprint components
 
-Located in `components/preprints/`:
+Located in `components/eprints/`:
 
 | Component                 | Description                                                                                        |
 | ------------------------- | -------------------------------------------------------------------------------------------------- |
-| `PreprintCard`            | Summary card with title, authors, abstract. Supports `default`, `compact`, and `featured` variants |
-| `PreprintList`            | Paginated list of preprint cards                                                                   |
-| `PreprintMetadata`        | Full metadata display (DOI, dates, versions)                                                       |
-| `PreprintMetrics`         | View counts, downloads, engagement stats                                                           |
-| `PreprintVersions`        | Version history timeline                                                                           |
-| `PreprintSource`          | Source repository badge (arXiv, bioRxiv, etc.)                                                     |
+| `EprintCard`              | Summary card with title, authors, abstract. Supports `default`, `compact`, and `featured` variants |
+| `EprintList`              | Paginated list of eprint cards                                                                     |
+| `EprintMetadata`          | Full metadata display (DOI, dates, versions)                                                       |
+| `EprintMetrics`           | View counts, downloads, engagement stats                                                           |
+| `EprintVersions`          | Version history timeline                                                                           |
+| `EprintSource`            | Source repository badge (arXiv, bioRxiv, etc.)                                                     |
 | `AuthorChip`              | Clickable author name with avatar                                                                  |
 | `AuthorHeader`            | Full author profile header                                                                         |
-| `AuthorPreprints`         | Paginated preprints by author                                                                      |
-| `AuthorStats`             | Author metrics (h-index, citations, preprints)                                                     |
+| `AuthorEprints`           | Paginated eprints by author                                                                        |
+| `AuthorStats`             | Author metrics (h-index, citations, eprints)                                                       |
 | `FieldBadge`              | Field taxonomy badge                                                                               |
 | `OrcidBadge`              | ORCID identifier with verification                                                                 |
 | `PDFViewer`               | Embedded PDF display                                                                               |
@@ -182,18 +182,18 @@ Located in `components/preprints/`:
 Example:
 
 ```tsx
-import { PreprintCard, PreprintCardSkeleton } from '@/components/preprints/preprint-card';
-import { usePrefetchPreprint } from '@/lib/hooks';
+import { EprintCard, EprintCardSkeleton } from '@/components/eprints/eprint-card';
+import { usePrefetchEprint } from '@/lib/hooks';
 
-function PreprintList({ preprints, isLoading }) {
-  const prefetch = usePrefetchPreprint();
+function EprintList({ eprints, isLoading }) {
+  const prefetch = usePrefetchEprint();
 
   if (isLoading) {
-    return <PreprintCardSkeleton />;
+    return <EprintCardSkeleton />;
   }
 
-  return preprints.map((preprint) => (
-    <PreprintCard key={preprint.uri} preprint={preprint} onPrefetch={prefetch} />
+  return eprints.map((eprint) => (
+    <EprintCard key={eprint.uri} eprint={eprint} onPrefetch={prefetch} />
   ));
 }
 ```
@@ -221,7 +221,7 @@ import { SearchInputWithParams } from '@/components/search/search-input';
 <SearchInputWithParams
   paramKey="q"
   searchRoute="/search"
-  placeholder="Search preprints..."
+  placeholder="Search eprints..."
   size="lg"
 />;
 ```
@@ -234,7 +234,7 @@ Located in `components/knowledge-graph/`:
 | -------------------- | ------------------------------ |
 | `FieldCard`          | Field node display with stats  |
 | `FieldExternalIds`   | Links to Wikidata, LCSH, etc.  |
-| `FieldPreprints`     | Preprints in a field           |
+| `FieldEprints`       | Eprints in a field             |
 | `FieldRelationships` | Broader/narrower/related terms |
 
 ### Endorsement components
@@ -257,7 +257,7 @@ Example:
 import { EndorsementPanel } from '@/components/endorsements/endorsement-panel';
 
 <EndorsementPanel
-  preprintUri={preprint.uri}
+  eprintUri={eprint.uri}
   onEndorse={() => setShowEndorseDialog(true)}
   currentUserDid={user?.did}
 />;
@@ -284,7 +284,7 @@ Example:
 import { ReviewForm } from '@/components/reviews/review-form';
 
 <ReviewForm
-  preprintUri={preprint.uri}
+  eprintUri={eprint.uri}
   onSubmit={async (data) => {
     await createReview.mutateAsync(data);
   }}
@@ -361,24 +361,22 @@ CSS variables in `styles/globals.css` define colors:
 
 All TanStack Query hooks are organized by domain and exported from `lib/hooks/index.ts`.
 
-### Preprint hooks
+### Eprint hooks
 
-| Hook                        | Description                           |
-| --------------------------- | ------------------------------------- |
-| `usePreprint(uri)`          | Fetch single preprint by AT-URI       |
-| `usePreprints(params)`      | Paginated preprint list               |
-| `usePreprintsByAuthor(did)` | Preprints by author DID               |
-| `usePrefetchPreprint()`     | Returns function to prefetch on hover |
+| Hook                      | Description                           |
+| ------------------------- | ------------------------------------- |
+| `useEprint(uri)`          | Fetch single eprint by AT-URI         |
+| `useEprints(params)`      | Paginated eprint list                 |
+| `useEprintsByAuthor(did)` | Eprints by author DID                 |
+| `usePrefetchEprint()`     | Returns function to prefetch on hover |
 
 ```tsx
-import { usePreprint, preprintKeys } from '@/lib/hooks';
+import { useEprint, eprintKeys } from '@/lib/hooks';
 
-const { data, isLoading, error } = usePreprint(
-  'at://did:plc:abc/pub.chive.preprint.submission/123'
-);
+const { data, isLoading, error } = useEprint('at://did:plc:abc/pub.chive.eprint.submission/123');
 
 // Cache invalidation
-queryClient.invalidateQueries({ queryKey: preprintKeys.all });
+queryClient.invalidateQueries({ queryKey: eprintKeys.all });
 ```
 
 ### Search hooks
@@ -430,7 +428,7 @@ const allRecommendations = data?.pages.flatMap((p) => p.recommendations) ?? [];
 
 const { mutate: recordInteraction } = useRecordInteraction();
 recordInteraction({
-  preprintUri,
+  eprintUri,
   type: 'dismiss',
   recommendationId: 'rec-123',
 });
@@ -457,49 +455,49 @@ if (hasOrcid(author)) {
 
 ### Field hooks
 
-| Hook                    | Description                       |
-| ----------------------- | --------------------------------- |
-| `useField(id)`          | Single field by ID                |
-| `useFields()`           | All fields (for taxonomy display) |
-| `useFieldChildren(id)`  | Narrower terms                    |
-| `useFieldPreprints(id)` | Preprints in field                |
-| `usePrefetchField()`    | Prefetch field on hover           |
+| Hook                   | Description                       |
+| ---------------------- | --------------------------------- |
+| `useField(id)`         | Single field by ID                |
+| `useFields()`          | All fields (for taxonomy display) |
+| `useFieldChildren(id)` | Narrower terms                    |
+| `useFieldEprints(id)`  | Eprints in field                  |
+| `usePrefetchField()`   | Prefetch field on hover           |
 
 ### Review hooks
 
-| Hook                            | Description               |
-| ------------------------------- | ------------------------- |
-| `useReviews(preprintUri)`       | Reviews for a preprint    |
-| `useInlineReviews(preprintUri)` | Inline annotations only   |
-| `useReviewThread(reviewUri)`    | Threaded replies          |
-| `useCreateReview()`             | Create review mutation    |
-| `useDeleteReview()`             | Delete review mutation    |
-| `usePrefetchReviews()`          | Prefetch reviews on hover |
+| Hook                          | Description               |
+| ----------------------------- | ------------------------- |
+| `useReviews(eprintUri)`       | Reviews for a eprint      |
+| `useInlineReviews(eprintUri)` | Inline annotations only   |
+| `useReviewThread(reviewUri)`  | Threaded replies          |
+| `useCreateReview()`           | Create review mutation    |
+| `useDeleteReview()`           | Delete review mutation    |
+| `usePrefetchReviews()`        | Prefetch reviews on hover |
 
 ```tsx
 import { useReviews, useCreateReview } from '@/lib/hooks';
 
-const { data: reviews, isLoading } = useReviews(preprintUri);
+const { data: reviews, isLoading } = useReviews(eprintUri);
 const createReview = useCreateReview();
 
 await createReview.mutateAsync({
   content: 'Great methodology!',
-  preprintUri,
+  eprintUri,
   motivation: 'commenting',
 });
 ```
 
 ### Endorsement hooks
 
-| Hook                                   | Description                    |
-| -------------------------------------- | ------------------------------ |
-| `useEndorsements(preprintUri)`         | All endorsements for preprint  |
-| `useEndorsementSummary(preprintUri)`   | Counts by contribution type    |
-| `useUserEndorsement(preprintUri, did)` | Check if user has endorsed     |
-| `useCreateEndorsement()`               | Create endorsement mutation    |
-| `useUpdateEndorsement()`               | Update endorsement mutation    |
-| `useDeleteEndorsement()`               | Delete endorsement mutation    |
-| `usePrefetchEndorsements()`            | Prefetch endorsements on hover |
+| Hook                                 | Description                    |
+| ------------------------------------ | ------------------------------ |
+| `useEndorsements(eprintUri)`         | All endorsements for eprint    |
+| `useEndorsementSummary(eprintUri)`   | Counts by contribution type    |
+| `useUserEndorsement(eprintUri, did)` | Check if user has endorsed     |
+| `useCreateEndorsement()`             | Create endorsement mutation    |
+| `useUpdateEndorsement()`             | Update endorsement mutation    |
+| `useDeleteEndorsement()`             | Delete endorsement mutation    |
+| `usePrefetchEndorsements()`          | Prefetch endorsements on hover |
 
 Constants:
 
@@ -517,16 +515,16 @@ import {
 
 ### Tag hooks
 
-| Hook                           | Description              |
-| ------------------------------ | ------------------------ |
-| `usePreprintTags(preprintUri)` | Tags on a preprint       |
-| `useTagSuggestions(query)`     | Autocomplete suggestions |
-| `useTrendingTags()`            | Popular tags             |
-| `useTagSearch(query)`          | Search all tags          |
-| `useTagDetail(tagId)`          | Single tag with stats    |
-| `useCreateTag()`               | Add tag mutation         |
-| `useDeleteTag()`               | Remove tag mutation      |
-| `usePrefetchTags()`            | Prefetch tags on hover   |
+| Hook                       | Description              |
+| -------------------------- | ------------------------ |
+| `useEprintTags(eprintUri)` | Tags on a eprint         |
+| `useTagSuggestions(query)` | Autocomplete suggestions |
+| `useTrendingTags()`        | Popular tags             |
+| `useTagSearch(query)`      | Search all tags          |
+| `useTagDetail(tagId)`      | Single tag with stats    |
+| `useCreateTag()`           | Add tag mutation         |
+| `useDeleteTag()`           | Remove tag mutation      |
+| `usePrefetchTags()`        | Prefetch tags on hover   |
 
 ### Claiming hooks
 
@@ -534,7 +532,7 @@ import {
 | -------------------------------------- | ------------------------------- |
 | `useUserClaims()`                      | Current user's claims           |
 | `useClaim(claimId)`                    | Single claim details            |
-| `useClaimablePreprints(did)`           | Preprints available to claim    |
+| `useClaimableEprints(did)`             | Eprints available to claim      |
 | `usePendingClaims()`                   | Claims awaiting approval        |
 | `useStartClaim()`                      | Start claim mutation            |
 | `useCollectEvidence()`                 | Gather verification evidence    |
@@ -559,7 +557,7 @@ const { mutate: logActivity } = useLogActivity();
 logActivity({
   category: 'read',
   action: 'view',
-  targetUri: preprintUri,
+  targetUri: eprintUri,
   collection: COLLECTIONS.PREPRINT,
 });
 ```
@@ -575,15 +573,15 @@ logActivity({
 
 ### Other hooks
 
-| Hook                             | Description                        |
-| -------------------------------- | ---------------------------------- |
-| `useTrending()`                  | Trending preprints                 |
-| `useBacklinks(preprintUri)`      | Bluesky posts referencing preprint |
-| `useBacklinkCounts(preprintUri)` | Backlink counts by source          |
-| `useShareToBluesky()`            | Share mutation for Bluesky         |
-| `useMentionAutocomplete(query)`  | @mention suggestions               |
-| `useGovernance*`                 | Governance proposal hooks          |
-| `useIntegrations()`              | External service integrations      |
+| Hook                            | Description                      |
+| ------------------------------- | -------------------------------- |
+| `useTrending()`                 | Trending eprints                 |
+| `useBacklinks(eprintUri)`       | Bluesky posts referencing eprint |
+| `useBacklinkCounts(eprintUri)`  | Backlink counts by source        |
+| `useShareToBluesky()`           | Share mutation for Bluesky       |
+| `useMentionAutocomplete(query)` | @mention suggestions             |
+| `useGovernance*`                | Governance proposal hooks        |
+| `useIntegrations()`             | External service integrations    |
 
 ## Authentication
 
@@ -651,7 +649,7 @@ const agent = getCurrentAgent();
 if (!agent) throw new Error('Not authenticated');
 
 await createEndorsementRecord(agent, {
-  preprintUri: 'at://did:plc:abc/pub.chive.preprint.submission/123',
+  eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/123',
   contributions: ['methodological', 'empirical'],
   comment: 'Excellent methodology!',
 });
@@ -659,18 +657,18 @@ await createEndorsementRecord(agent, {
 
 ## Page routes
 
-| Route                      | Description                                   |
-| -------------------------- | --------------------------------------------- |
-| `/`                        | Home page with trending and recent preprints  |
-| `/search`                  | Search results with faceted filtering         |
-| `/preprints/[uri]`         | Preprint detail with reviews and endorsements |
-| `/authors/[did]`           | Author profile with their preprints           |
-| `/fields`                  | Field taxonomy browser                        |
-| `/fields/[id]`             | Field detail with preprints                   |
-| `/governance`              | Governance proposals list                     |
-| `/governance/[proposalId]` | Proposal detail with voting                   |
-| `/claims`                  | User's authorship claims                      |
-| `/settings`                | User settings and preferences                 |
+| Route                      | Description                                 |
+| -------------------------- | ------------------------------------------- |
+| `/`                        | Home page with trending and recent eprints  |
+| `/search`                  | Search results with faceted filtering       |
+| `/eprints/[uri]`           | Eprint detail with reviews and endorsements |
+| `/authors/[did]`           | Author profile with their eprints           |
+| `/fields`                  | Field taxonomy browser                      |
+| `/fields/[id]`             | Field detail with eprints                   |
+| `/governance`              | Governance proposals list                   |
+| `/governance/[proposalId]` | Proposal detail with voting                 |
+| `/claims`                  | User's authorship claims                    |
+| `/settings`                | User settings and preferences               |
 
 ## Testing
 
@@ -726,7 +724,7 @@ The API client uses openapi-fetch with generated types:
 import { api } from '@/lib/api/client';
 
 // Type-safe API call
-const { data, error } = await api.GET('/xrpc/pub.chive.preprint.getSubmission', {
+const { data, error } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
   params: { query: { uri } },
 });
 ```

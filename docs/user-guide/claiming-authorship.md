@@ -1,10 +1,10 @@
 # Claiming authorship
 
-When you sign up for Chive, your existing preprints from arXiv, bioRxiv, and other sources aren't automatically linked to your account. The claiming process lets you verify and take ownership of your prior work.
+When you sign up for Chive, your existing eprints from arXiv, bioRxiv, and other sources aren't automatically linked to your account. The claiming process lets you verify and take ownership of your prior work.
 
 ## Why claim authorship?
 
-Claiming links imported preprints to your Chive identity:
+Claiming links imported eprints to your Chive identity:
 
 - Your claimed papers appear on your profile
 - You receive notifications for reviews and endorsements
@@ -61,12 +61,12 @@ Chive verifies claims using multiple evidence sources. Each source contributes t
 Once your claim is verified:
 
 1. Chive creates a canonical record in your Personal Data Server (PDS)
-2. The imported preprint is linked to your AT Protocol identity
+2. The imported eprint is linked to your AT Protocol identity
 3. The paper appears on your profile as "verified"
 
 ### What gets created
 
-The claim creates a `pub.chive.preprint.submission` record in your PDS containing:
+The claim creates a `pub.chive.eprint.submission` record in your PDS containing:
 
 - Paper metadata (title, abstract, authors)
 - Link to the original source (arXiv, bioRxiv, etc.)
@@ -120,5 +120,5 @@ Disputed claims are reviewed by trusted editors.
 ## Related topics
 
 - [Profiles](./profiles.md): Setting up your profile
-- [Submitting Preprints](./submitting-preprints.md): Adding new papers
+- [Submitting Eprints](./submitting-eprints.md): Adding new papers
 - [Endorsements](./endorsements.md): Endorsing claimed papers

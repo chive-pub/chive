@@ -13,7 +13,7 @@ import type { ILogger } from '../../../../src/types/interfaces/logger.interface.
 import type {
   ClaimEvidence,
   IImportService,
-  ImportedPreprint,
+  ImportedEprint,
 } from '../../../../src/types/interfaces/plugin.interface.js';
 
 // ============================================================================
@@ -52,7 +52,7 @@ const createMockImportService = (): IImportService => ({
   getById: vi.fn().mockResolvedValue(null),
   create: vi.fn(),
   update: vi.fn().mockResolvedValue({}),
-  search: vi.fn().mockResolvedValue({ preprints: [] }),
+  search: vi.fn().mockResolvedValue({ eprints: [] }),
   markClaimed: vi.fn(),
 });
 
@@ -71,11 +71,11 @@ const createMockIdentityResolver = (): IIdentityResolver => ({
 // ============================================================================
 
 /**
- * Sample imported preprint for claiming tests.
+ * Sample imported eprint for claiming tests.
  *
  * Uses data from White & Rawlins (2020), DOI: 10.5334/gjgl.1001
  */
-const SAMPLE_IMPORTED_PREPRINT: ImportedPreprint = {
+const SAMPLE_IMPORTED_EPRINT: ImportedEprint = {
   id: 1,
   source: 'arxiv',
   externalId: 'arxiv.2001.12345',
@@ -145,7 +145,7 @@ describe('ClaimingService', () => {
 
   describe('startClaim', () => {
     it('should create a new claim request', async () => {
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_PREPRINT);
+      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
       db.query
         .mockResolvedValueOnce({ rows: [] }) // No existing claim
         .mockResolvedValueOnce({ rows: [SAMPLE_CLAIM_ROW] }); // Insert claim
@@ -173,7 +173,7 @@ describe('ClaimingService', () => {
 
     it('should throw ValidationError if import already claimed', async () => {
       vi.mocked(importService.getById).mockResolvedValueOnce({
-        ...SAMPLE_IMPORTED_PREPRINT,
+        ...SAMPLE_IMPORTED_EPRINT,
         claimStatus: 'claimed',
       });
 
@@ -183,7 +183,7 @@ describe('ClaimingService', () => {
     });
 
     it('should throw ValidationError if claim already pending', async () => {
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_PREPRINT);
+      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
       db.query.mockResolvedValueOnce({
         rows: [{ ...SAMPLE_CLAIM_ROW, status: 'pending' }],
       });
@@ -192,7 +192,7 @@ describe('ClaimingService', () => {
     });
 
     it('should compute initial score with provided evidence', async () => {
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_PREPRINT);
+      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
       const claimRowWithScore = {
         ...SAMPLE_CLAIM_ROW,
         evidence: JSON.stringify(SAMPLE_EVIDENCE),
@@ -208,7 +208,7 @@ describe('ClaimingService', () => {
     });
 
     it('should update import status to pending', async () => {
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_PREPRINT);
+      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
       db.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [SAMPLE_CLAIM_ROW] });
@@ -219,7 +219,7 @@ describe('ClaimingService', () => {
     });
 
     it('should log info on success', async () => {
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_PREPRINT);
+      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
       db.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [SAMPLE_CLAIM_ROW] });
@@ -235,7 +235,7 @@ describe('ClaimingService', () => {
       db.query
         .mockResolvedValueOnce({ rows: [SAMPLE_CLAIM_ROW] }) // getClaim
         .mockResolvedValueOnce({ rows: [{ ...SAMPLE_CLAIM_ROW, evidence: '[]' }] }); // updateClaimEvidence
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_PREPRINT);
+      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
 
       const result = await service.collectEvidence(1);
 
@@ -355,7 +355,7 @@ describe('ClaimingService', () => {
 
       await service.completeClaim(
         1,
-        'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude'
+        'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude'
       );
 
       expect(db.query).toHaveBeenCalledWith(
@@ -372,7 +372,7 @@ describe('ClaimingService', () => {
 
       await service.completeClaim(
         1,
-        'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude'
+        'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude'
       );
 
       expect(importService.markClaimed).toHaveBeenCalled();
@@ -382,7 +382,7 @@ describe('ClaimingService', () => {
       db.query.mockResolvedValueOnce({ rows: [] });
 
       await expect(
-        service.completeClaim(999, 'at://did:plc:aswhite/pub.chive.preprint.submission/test')
+        service.completeClaim(999, 'at://did:plc:aswhite/pub.chive.eprint.submission/test')
       ).rejects.toThrow('not found');
     });
 
@@ -392,7 +392,7 @@ describe('ClaimingService', () => {
       });
 
       await expect(
-        service.completeClaim(1, 'at://did:plc:aswhite/pub.chive.preprint.submission/test')
+        service.completeClaim(1, 'at://did:plc:aswhite/pub.chive.eprint.submission/test')
       ).rejects.toThrow('Cannot complete claim');
     });
 
@@ -401,7 +401,7 @@ describe('ClaimingService', () => {
 
       await service.completeClaim(
         1,
-        'at://did:plc:aswhite/pub.chive.preprint.submission/megaattitude'
+        'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude'
       );
 
       expect(logger.info).toHaveBeenCalledWith('Claim completed', expect.any(Object));
@@ -504,7 +504,7 @@ describe('ClaimingService', () => {
   describe('findClaimable', () => {
     it('should delegate to import service search', async () => {
       vi.mocked(importService.search).mockResolvedValueOnce({
-        preprints: [SAMPLE_IMPORTED_PREPRINT],
+        eprints: [SAMPLE_IMPORTED_EPRINT],
         cursor: undefined,
       });
 
@@ -513,7 +513,7 @@ describe('ClaimingService', () => {
         source: 'arxiv',
       });
 
-      expect(result.preprints).toHaveLength(1);
+      expect(result.eprints).toHaveLength(1);
       expect(importService.search).toHaveBeenCalledWith({
         claimStatus: 'unclaimed',
         query: 'Aaron Steven White',

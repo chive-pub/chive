@@ -17,22 +17,22 @@ import { test, expect, type Page } from '@playwright/test';
 // Use default parallel mode (each test should be independent)
 
 /**
- * Navigate to the first available preprint and return the page.
+ * Navigate to the first available eprint and return the page.
  * Uses retry logic for more reliable navigation.
  */
-async function navigateToFirstPreprint(page: Page): Promise<void> {
+async function navigateToFirstEprint(page: Page): Promise<void> {
   await page.goto('/browse', { waitUntil: 'domcontentloaded' });
 
-  // Wait for content to load (preprints or loading indicator to clear)
+  // Wait for content to load (eprints or loading indicator to clear)
   await page.waitForLoadState('networkidle', { timeout: 20000 });
 
-  const preprintLink = page.locator('a[href*="/preprints/"]').first();
-  await expect(preprintLink).toBeVisible({ timeout: 20000 });
+  const eprintLink = page.locator('a[href*="/eprints/"]').first();
+  await expect(eprintLink).toBeVisible({ timeout: 20000 });
 
-  await preprintLink.click();
-  await page.waitForURL(/\/preprints\//, { timeout: 15000 });
+  await eprintLink.click();
+  await page.waitForURL(/\/eprints\//, { timeout: 15000 });
 
-  // Wait for preprint page to fully load and Share button to appear
+  // Wait for eprint page to fully load and Share button to appear
   await page.waitForLoadState('networkidle', { timeout: 10000 });
   await expect(page.locator('button:has-text("Share")').first()).toBeVisible({ timeout: 10000 });
 }
@@ -43,7 +43,7 @@ async function navigateToFirstPreprint(page: Page): Promise<void> {
 
 test.describe('Share Menu Dropdown', () => {
   test('Share button opens dropdown with options', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     // The share button has text "Share" with an icon
     const shareButton = page.locator('button:has-text("Share")').first();
@@ -60,7 +60,7 @@ test.describe('Share Menu Dropdown', () => {
     test.skip(browserName !== 'chromium', 'Clipboard API not supported in Firefox/WebKit headless');
 
     await context.grantPermissions(['clipboard-write', 'clipboard-read']);
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();
@@ -69,7 +69,7 @@ test.describe('Share Menu Dropdown', () => {
 
     // Verify clipboard contains the URL
     const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
-    expect(clipboardText).toContain('/preprints/');
+    expect(clipboardText).toContain('/eprints/');
   });
 
   test('Copy link shows success toast', async ({ page, context, browserName }) => {
@@ -77,7 +77,7 @@ test.describe('Share Menu Dropdown', () => {
 
     await context.grantPermissions(['clipboard-write', 'clipboard-read']);
 
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();
@@ -95,7 +95,7 @@ test.describe('Share Menu Dropdown', () => {
 
 test.describe('Share to Bluesky Dialog', () => {
   test('Share to Bluesky opens dialog', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -107,7 +107,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Dialog displays user information', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -119,7 +119,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Dialog shows composer editor', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -131,7 +131,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Dialog shows grapheme counter', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -142,7 +142,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Dialog shows post preview', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -153,7 +153,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Cancel button closes dialog', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -167,7 +167,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Close button (X) closes dialog', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -181,7 +181,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Escape key closes dialog', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -195,7 +195,7 @@ test.describe('Share to Bluesky Dialog', () => {
   });
 
   test('Clicking backdrop closes dialog', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -223,7 +223,7 @@ test.describe('Share to Bluesky Dialog', () => {
 
 test.describe('Post Composer', () => {
   test('Typing updates grapheme counter', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -242,7 +242,7 @@ test.describe('Post Composer', () => {
   });
 
   test('Post button is disabled when text is empty', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -254,7 +254,7 @@ test.describe('Post Composer', () => {
   });
 
   test('Post button is enabled when text is entered', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -266,7 +266,7 @@ test.describe('Post Composer', () => {
     // TipTap uses contenteditable; fill() works with contenteditable elements
     const editor = page.getByLabel('Post composer');
     await editor.click();
-    await editor.fill('Check out this preprint!');
+    await editor.fill('Check out this eprint!');
 
     // Post button should be enabled
     const postButton = page.getByRole('button', { name: /^post$/i });
@@ -274,7 +274,7 @@ test.describe('Post Composer', () => {
   });
 
   test('Counter turns red when over 300 graphemes', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();
@@ -295,7 +295,7 @@ test.describe('Post Composer', () => {
   });
 
   test('Post button is disabled when over character limit', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -312,7 +312,7 @@ test.describe('Post Composer', () => {
   });
 
   test('Preview updates as user types', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();
@@ -351,7 +351,7 @@ test.describe('@Mention Autocomplete', () => {
       });
     });
 
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();
@@ -388,7 +388,7 @@ test.describe('@Mention Autocomplete', () => {
       });
     });
 
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();
@@ -423,11 +423,11 @@ test.describe('@Mention Autocomplete', () => {
 // =============================================================================
 
 test.describe('Post Preview Card', () => {
-  test('Preview shows preprint title', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+  test('Preview shows eprint title', async ({ page }) => {
+    await navigateToFirstEprint(page);
 
-    // Get the preprint title before opening share dialog
-    const preprintTitle = await page.getByRole('heading', { level: 1 }).textContent();
+    // Get the eprint title before opening share dialog
+    const eprintTitle = await page.getByRole('heading', { level: 1 }).textContent();
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -437,12 +437,12 @@ test.describe('Post Preview Card', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByText('Preview')).toBeVisible();
 
-    // Preview should contain the preprint title
-    await expect(page.getByRole('dialog')).toContainText(preprintTitle!.slice(0, 30));
+    // Preview should contain the eprint title
+    await expect(page.getByRole('dialog')).toContainText(eprintTitle!.slice(0, 30));
   });
 
   test('Preview shows domain', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();
@@ -467,11 +467,11 @@ test.describe('Share from Author Page', () => {
     await page.goto('/browse');
     await page.waitForLoadState('networkidle');
 
-    // Navigate to a preprint first
-    const preprintLink = page.locator('a[href*="/preprints/"]').first();
-    await expect(preprintLink).toBeVisible({ timeout: 10000 });
-    await preprintLink.click();
-    await page.waitForURL(/\/preprints\//);
+    // Navigate to a eprint first
+    const eprintLink = page.locator('a[href*="/eprints/"]').first();
+    await expect(eprintLink).toBeVisible({ timeout: 10000 });
+    await eprintLink.click();
+    await page.waitForURL(/\/eprints\//);
 
     // Click on an author link
     const authorLink = page.locator('a[href*="/authors/"]').first();
@@ -497,7 +497,7 @@ test.describe('Share from Author Page', () => {
 
 test.describe('Error Handling', () => {
   test('Dialog handles network errors gracefully', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     // Mock the Bluesky API to fail
     await page.route('**/api.bsky.app/**', (route) => {
@@ -521,7 +521,7 @@ test.describe('Error Handling', () => {
 
 test.describe('Accessibility', () => {
   test('Dialog has correct ARIA attributes', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -533,7 +533,7 @@ test.describe('Accessibility', () => {
   });
 
   test('Close button has accessible label', async ({ page }) => {
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.getByRole('button', { name: /share/i });
     await shareButton.click();
@@ -548,7 +548,7 @@ test.describe('Accessibility', () => {
     // See: https://bugs.webkit.org/show_bug.cgi?id=22261
     test.skip(browserName === 'webkit', 'Webkit has different keyboard focus behavior');
 
-    await navigateToFirstPreprint(page);
+    await navigateToFirstEprint(page);
 
     const shareButton = page.locator('button:has-text("Share")').first();
     await shareButton.click();

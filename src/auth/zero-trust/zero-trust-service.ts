@@ -165,7 +165,7 @@ interface DevicePosture {
  * const decision = await ztService.evaluate({
  *   subject: { did: userDid, roles: ['author'] },
  *   action: 'write',
- *   resource: { type: 'preprint', id: preprintId },
+ *   resource: { type: 'eprint', id: eprintId },
  * });
  *
  * if (!decision.allow) {

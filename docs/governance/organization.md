@@ -7,13 +7,13 @@ Chive is operated by a 501(c)(3) non-profit organization dedicated to open schol
 **Chive Foundation**
 
 - Type: 501(c)(3) public charity (US)
-- Mission: Advancing open access to scholarly preprints through decentralized infrastructure
+- Mission: Advancing open access to scholarly eprints through decentralized infrastructure
 - Incorporation: Delaware, USA
 - EIN: [Pending]
 
 ### Charitable purposes
 
-1. Operate the Chive preprint platform
+1. Operate the Chive eprint platform
 2. Develop open-source scholarly infrastructure
 3. Support researcher data sovereignty
 4. Promote open peer review

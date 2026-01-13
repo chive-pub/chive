@@ -6,7 +6,7 @@ Chive supports open peer review with inline comments and formal endorsements.
 
 ### Inline Comments
 
-Readers can leave comments on specific sections of a preprint:
+Readers can leave comments on specific sections of a eprint:
 
 1. Select text in the PDF viewer
 2. Click "Add Comment"
@@ -28,7 +28,7 @@ Formal reviews provide structured feedback:
 
 ### Access the Review Form
 
-1. Open a preprint
+1. Open a eprint
 2. Click "Write Review" in the sidebar
 3. Complete the structured form
 
@@ -36,7 +36,7 @@ Formal reviews provide structured feedback:
 
 | Section           | Description                      |
 | ----------------- | -------------------------------- |
-| Summary           | Brief summary of the preprint    |
+| Summary           | Brief summary of the eprint      |
 | Strengths         | Main contributions and strengths |
 | Weaknesses        | Areas for improvement            |
 | Detailed Comments | Section-by-section feedback      |
