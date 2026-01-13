@@ -1,6 +1,6 @@
 # Monitoring
 
-Chive uses OpenTelemetry for observability with Prometheus metrics, Grafana dashboards, and distributed tracing.
+Chive uses OpenTelemetry for observability with Prometheus metrics and Grafana dashboards.
 
 ## Architecture
 
@@ -8,13 +8,13 @@ Chive uses OpenTelemetry for observability with Prometheus metrics, Grafana dash
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   Chive     │────▶│  OTel       │────▶│  Prometheus │
 │   Services  │     │  Collector  │     │             │
-└─────────────┘     └──────┬──────┘     └──────┬──────┘
-                           │                   │
-                           ▼                   ▼
-                    ┌─────────────┐     ┌─────────────┐
-                    │   Jaeger    │     │   Grafana   │
-                    │   (Traces)  │     │  (Dashboards)│
-                    └─────────────┘     └─────────────┘
+└─────────────┘     └─────────────┘     └──────┬──────┘
+                                               │
+                                               ▼
+                                        ┌─────────────┐
+                                        │   Grafana   │
+                                        │ (Dashboards)│
+                                        └─────────────┘
 ```
 
 ## Metrics
@@ -102,17 +102,9 @@ metrics.setGauge('queue_depth', queueLength);
 | Firehose Status | 3   | Event processing, lag          |
 | Database Health | 4   | Connections, query performance |
 
-### Dashboard JSON
+### Dashboard configuration
 
-Import dashboards from:
-
-```
-charts/chive/dashboards/
-├── overview.json
-├── api-performance.json
-├── firehose-status.json
-└── database-health.json
-```
+Grafana dashboards are configured via Kubernetes ConfigMaps in `k8s/monitoring/grafana-dashboards.yaml`.
 
 ### Key panels
 
@@ -194,37 +186,11 @@ receivers:
 
 ## Distributed tracing
 
-### Jaeger setup
+OpenTelemetry traces are exported via the OTLP protocol. Trace context propagates automatically through:
 
-```yaml
-# jaeger.yml
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: chive-jaeger
-spec:
-  strategy: production
-  storage:
-    type: elasticsearch
-    options:
-      es:
-        server-urls: http://elasticsearch:9200
-```
-
-### Trace context
-
-Traces propagate automatically through:
-
-- HTTP requests (via headers)
+- HTTP requests (via W3C Trace Context headers)
 - Queue jobs (via metadata)
 - Database queries (via spans)
-
-### Viewing traces
-
-1. Open Jaeger UI at `https://jaeger.chive.pub`
-2. Select service: `chive-api`
-3. Search by trace ID or operation name
-4. View waterfall diagram
 
 ### Key operations
 
