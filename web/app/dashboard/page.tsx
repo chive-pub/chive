@@ -21,7 +21,7 @@ import { ForYouFeed } from '@/components/discovery/for-you-feed';
 export default function DashboardPage() {
   const user = useCurrentUser();
   const { data: eprints, isLoading } = useEprintsByAuthor({ did: user?.did ?? '' });
-  const { data: claims } = useUserClaims({ did: user?.did ?? '' });
+  const { data: claims } = useUserClaims();
 
   const eprintCount = eprints?.eprints?.length ?? 0;
 
