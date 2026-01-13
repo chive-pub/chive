@@ -109,15 +109,11 @@ services:
 
 ### Helm chart
 
-Chive provides a Helm chart for Kubernetes deployment:
+Chive provides Helm templates in the `k8s/helm/chive/` directory:
 
 ```bash
-# Add Chive Helm repo
-helm repo add chive https://charts.chive.pub
-helm repo update
-
-# Install
-helm install chive chive/chive \
+# Install from local chart
+helm install chive ./k8s/helm/chive \
   --namespace chive \
   --create-namespace \
   --values values.yaml
@@ -343,7 +339,7 @@ spec:
 
 ```bash
 # Update image tag
-helm upgrade chive chive/chive \
+helm upgrade chive ./k8s/helm/chive \
   --namespace chive \
   --set api.image.tag=v1.2.3
 

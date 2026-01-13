@@ -78,17 +78,6 @@ If eprints were imported from external sources (e.g., arXiv) before you joined C
 
 Claims are reviewed manually and typically processed within 48 hours.
 
-## Profile Analytics
-
-Your dashboard shows:
-
-- Views on your eprints
-- Citation counts
-- Download statistics
-- Engagement metrics
-
-Analytics are private to you unless you choose to display them on your profile.
-
 ## Deleting Your Profile
 
 You can delete your Chive profile at any time:

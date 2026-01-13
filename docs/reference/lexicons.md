@@ -24,28 +24,21 @@ Core eprint record.
   "$type": "pub.chive.eprint.submission",
   "title": string,              // Required, max 500 chars
   "abstract": string,           // Required, max 5000 chars
-  "authors": Author[],          // Required, 1-50 authors
-  "keywords": string[],         // Optional, max 20 keywords
-  "fields": string[],           // Required, 1-5 field IDs
+  "document": BlobRef,          // Required, manuscript (PDF, DOCX, LaTeX, etc.)
+  "documentFormat": string,     // Detected format (pdf, docx, latex, etc.)
+  "authors": AuthorContribution[], // Required, 1-100 authors
+  "submittedBy": string,        // Required, DID of submitter
   "license": string,            // Required, SPDX identifier
-  "pdfBlob": BlobRef,           // Required, PDF document
-  "supplementaryBlobs": BlobRef[], // Optional, max 10
-  "externalIds": {              // Optional
-    "doi": string,
-    "arxiv": string,
-    "pmid": string
-  },
+  "keywords": string[],         // Optional, max 20 keywords
+  "facets": Facet[],            // Optional, faceted classification
+  "supplementaryMaterials": SupplementaryItem[], // Optional, max 50
+  "version": number,            // Version number
+  "previousVersion": string,    // AT URI to previous version
   "createdAt": string           // Required, ISO 8601
 }
-
-interface Author {
-  did?: string;                 // AT Protocol DID (if on network)
-  name: string;                 // Display name
-  orcid?: string;               // ORCID iD
-  affiliation?: string;         // Institution
-  corresponding?: boolean;      // Is corresponding author
-}
 ```
+
+See `lexicons/pub/chive/eprint/submission.json` for the complete schema.
 
 ### pub.chive.eprint.version
 
@@ -84,29 +77,11 @@ Review comment or reply.
 ```typescript
 {
   "$type": "pub.chive.review.comment",
-  "subject": StrongRef,         // Reference to eprint
-  "parent": StrongRef,          // Optional, for replies
-  "text": string,               // Comment text, max 10000 chars
-  "reviewType": ReviewType,     // Type of review
-  "highlight": Highlight,       // Optional, for inline comments
-  "createdAt": string
-}
-
-type ReviewType =
-  | "general"
-  | "methodology"
-  | "results"
-  | "reproducibility"
-  | "writing"
-  | "question";
-
-interface Highlight {
-  page: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  text?: string;
+  "eprintUri": string,          // Required, AT URI of reviewed eprint
+  "content": string,            // Required, comment text, max 10000 chars
+  "lineNumber": number,         // Optional, for inline comments
+  "parentComment": string,      // Optional, AT URI of parent comment
+  "createdAt": string           // Required, ISO 8601
 }
 ```
 

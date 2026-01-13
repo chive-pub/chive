@@ -168,26 +168,14 @@ Proposal approved → Write to Governance PDS
 
 ### Access control
 
-| Operation               | Who can perform                          |
-| ----------------------- | ---------------------------------------- |
-| Read records            | Anyone                                   |
-| Create authority record | Authority editors + governance committee |
-| Update authority record | Authority editors (via proposal)         |
-| Create facet            | Governance committee                     |
-| Update facet            | Via approved proposal                    |
-| Sign records            | Governance committee key                 |
-
-### Key management
-
-The Governance PDS uses a multi-signature scheme:
-
-```
-Committee member 1 key ─┐
-Committee member 2 key ─┼──► 2-of-3 multisig ──► Record signature
-Committee member 3 key ─┘
-```
-
-Threshold: 2 of 3 committee members must sign to commit changes.
+| Operation               | Who can perform                  |
+| ----------------------- | -------------------------------- |
+| Read records            | Anyone                           |
+| Create authority record | Authority editors                |
+| Update authority record | Authority editors (via proposal) |
+| Create facet            | Administrators                   |
+| Update facet            | Via approved proposal            |
+| Sign records            | Authorized administrators        |
 
 ### Audit trail
 
@@ -200,10 +188,7 @@ All changes include provenance:
   "provenance": {
     "proposal": "at://did:plc:.../pub.chive.graph.proposal/abc",
     "approvedAt": "2025-01-15T10:30:00Z",
-    "signers": [
-      "did:plc:committee1...",
-      "did:plc:committee2..."
-    ]
+    "approvedBy": "did:plc:admin..."
   }
 }
 ```

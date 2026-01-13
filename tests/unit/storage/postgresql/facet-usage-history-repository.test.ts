@@ -172,10 +172,11 @@ describe('FacetUsageHistoryRepository', () => {
     it('queries with correct date range', async () => {
       await repository.getUsageHistory('tag:ml', 14);
 
-      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('CURRENT_DATE - $2'), [
-        'tag:ml',
-        14,
-      ]);
+      // Should use INTERVAL arithmetic for PostgreSQL date subtraction
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining("CURRENT_DATE - ($2 * INTERVAL '1 day')"),
+        ['tag:ml', 14]
+      );
     });
   });
 

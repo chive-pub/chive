@@ -209,7 +209,7 @@ export class FacetUsageHistoryRepository {
         `SELECT facet_uri, date, usage_count, unique_records
          FROM facet_usage_history
          WHERE facet_uri = $1
-           AND date > CURRENT_DATE - $2
+           AND date > CURRENT_DATE - ($2 * INTERVAL '1 day')
          ORDER BY date DESC`,
         [facetUri, days]
       );
@@ -326,7 +326,7 @@ export class FacetUsageHistoryRepository {
       const facetsResult = await this.pool.query<{ facet_uri: string }>(
         `SELECT DISTINCT facet_uri
          FROM facet_usage_history
-         WHERE date > CURRENT_DATE - $1
+         WHERE date > CURRENT_DATE - ($1 * INTERVAL '1 day')
          GROUP BY facet_uri
          HAVING SUM(usage_count) >= $2`,
         [windowDays, minUsage]
@@ -364,7 +364,7 @@ export class FacetUsageHistoryRepository {
     try {
       const result = await this.pool.query(
         `DELETE FROM facet_usage_history
-         WHERE date < CURRENT_DATE - $1`,
+         WHERE date < CURRENT_DATE - ($1 * INTERVAL '1 day')`,
         [retentionDays]
       );
 

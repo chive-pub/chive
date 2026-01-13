@@ -134,7 +134,7 @@ export class SemanticsArchivePlugin extends ImportingPlugin {
       network: {
         allowedDomains: ['semanticsarchive.net'],
       },
-      hooks: ['system.startup', 'import.updated'],
+      hooks: ['system.startup', 'import.created', 'import.updated'],
       storage: {
         maxSize: 20 * 1024 * 1024, // 20MB for caching
       },

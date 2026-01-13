@@ -4,41 +4,29 @@ Chive uses a weighted voting system where expertise in the relevant domain incre
 
 ## Voter tiers
 
-| Tier               | Weight | Criteria                                      |
-| ------------------ | ------ | --------------------------------------------- |
-| Community member   | 1.0x   | Any authenticated user                        |
-| Active contributor | 1.5x   | 10+ eprints or 20+ reviews                    |
-| Domain expert      | 2.5x   | Publications in the proposal's field          |
-| Trusted editor     | 3.5x   | Appointed by governance committee             |
-| Authority editor   | 4.5x   | Library science credentials (MLIS/equivalent) |
+| Tier             | Weight | Description                                        |
+| ---------------- | ------ | -------------------------------------------------- |
+| Community member | 1.0x   | Any authenticated user                             |
+| Trusted editor   | 2.0x   | Elevated role for consistent quality contributions |
+| Domain expert    | 2.5x   | Recognized expertise in the proposal's field       |
+| Authority editor | 3.0x   | Specialized role for authority record management   |
+| Administrator    | 5.0x   | Platform administrators with veto power            |
 
-### How weight is calculated
+### How weight is determined
+
+Voting weight is based on the user's assigned role. The highest applicable role weight is used:
 
 ```typescript
-function calculateVoteWeight(voter: Voter, proposal: Proposal): number {
-  let weight = 1.0; // Base weight
-
-  if (voter.eprintCount >= 10 || voter.reviewCount >= 20) {
-    weight = 1.5; // Active contributor
-  }
-
-  if (hasPublicationsInField(voter, proposal.field)) {
-    weight = 2.5; // Domain expert
-  }
-
-  if (voter.isTrustedEditor) {
-    weight = 3.5; // Trusted editor
-  }
-
-  if (voter.isAuthorityEditor) {
-    weight = 4.5; // Authority editor
-  }
-
-  return weight;
-}
+const defaultWeights: Record<UserRole, number> = {
+  'community-member': 1.0,
+  'trusted-editor': 2.0,
+  'domain-expert': 2.5,
+  'authority-editor': 3.0,
+  administrator: 5.0,
+};
 ```
 
-Note: Weights do not stack. The highest applicable tier is used.
+Note: Weights do not stack. The user's role determines their voting weight.
 
 ## Approval thresholds
 
@@ -66,11 +54,11 @@ Example:
 Votes:
 - 3 community members approve (3 × 1.0 = 3.0)
 - 2 domain experts approve (2 × 2.5 = 5.0)
-- 1 trusted editor rejects (1 × 3.5 = 3.5)
+- 1 trusted editor rejects (1 × 2.0 = 2.0)
 
 Weighted approve: 3.0 + 5.0 = 8.0
-Weighted total: 3.0 + 5.0 + 3.5 = 11.5
-Approval: 8.0 / 11.5 = 69.6%
+Weighted total: 3.0 + 5.0 + 2.0 = 10.0
+Approval: 8.0 / 10.0 = 80%
 
 For a "Create field" proposal (67% threshold): APPROVED
 ```
@@ -173,14 +161,14 @@ Proposals flagged as controversial (10+ comments with opposing views) receive:
 
 - Extended discussion period (14 days instead of 7)
 - Higher threshold (+10% to base threshold)
-- Mandatory governance committee review
+- Administrator review required
 
 ### Emergency proposals
 
 For urgent security or legal issues:
 
 - 24-hour expedited voting
-- Governance committee approval required
+- Administrator approval required
 - Must still meet thresholds
 - Documented justification required
 
@@ -190,7 +178,7 @@ Meta-governance changes (changing thresholds, adding tiers) require:
 
 - 80% approval threshold
 - 10+ minimum votes
-- Governance committee endorsement
+- Administrator endorsement
 - 30-day implementation delay
 
 ## Transparency

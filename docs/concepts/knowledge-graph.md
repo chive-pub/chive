@@ -166,13 +166,13 @@ The knowledge graph uses Wikipedia-style moderation. Users can:
 
 Not all votes carry equal weight. Expertise in the relevant field increases vote weight:
 
-| Tier               | Vote weight | Criteria                  |
-| ------------------ | ----------- | ------------------------- |
-| Community member   | 1.0x        | Any authenticated user    |
-| Active contributor | 1.5x        | 10+ eprints or reviews    |
-| Domain expert      | 2.5x        | Publications in the field |
-| Trusted editor     | 3.5x        | Appointed by governance   |
-| Authority editor   | 4.5x        | Library science expertise |
+| Tier             | Vote weight | Criteria                             |
+| ---------------- | ----------- | ------------------------------------ |
+| Community member | 1.0x        | Any authenticated user               |
+| Trusted editor   | 2.0x        | Consistent quality contributions     |
+| Domain expert    | 2.5x        | Publications in the field            |
+| Authority editor | 3.0x        | Authority record management role     |
+| Administrator    | 5.0x        | Platform administrators (veto power) |
 
 ### Proposal workflow
 

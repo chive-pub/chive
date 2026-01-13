@@ -46,10 +46,6 @@ Results can be sorted by:
 - **Date (oldest)**: Earliest submissions first
 - **Citations**: Most cited eprints first
 
-## Saved Searches
-
-Sign in to save frequently used searches. Saved searches appear in your dashboard and can trigger email notifications when new eprints match.
-
 ## Search Tips
 
 1. Start broad, then narrow with facets

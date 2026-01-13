@@ -65,22 +65,6 @@ On any eprint page:
 3. View **References** (outgoing citations)
 4. Click any paper to explore further
 
-### Citation graph visualization
-
-Click **View Graph** to see an interactive citation network:
-
-- Nodes represent papers
-- Edges represent citations
-- Node size indicates citation count
-- Color indicates research field
-
-Navigate by:
-
-- Clicking nodes to center
-- Scrolling to zoom
-- Dragging to pan
-- Double-clicking to open paper details
-
 ## Field browsing
 
 ### Exploring by field
@@ -120,26 +104,6 @@ Papers with active review threads and endorsements:
 - Sorted by recent activity
 - Shows discussion summary
 - Highlights key debates
-
-## Saved searches and alerts
-
-### Saving a search
-
-1. Perform any search
-2. Click **Save Search**
-3. Name your saved search
-4. Choose notification frequency:
-   - Real-time
-   - Daily digest
-   - Weekly digest
-
-### Managing alerts
-
-Go to **Settings** → **Alerts** to:
-
-- View saved searches
-- Edit notification preferences
-- Pause or delete alerts
 
 ## Following
 

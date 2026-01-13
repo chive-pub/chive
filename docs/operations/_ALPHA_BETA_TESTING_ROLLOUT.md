@@ -1,24 +1,24 @@
 # Alpha and Beta Testing Rollout Plan
 
+> **Note**: This is a planning document. Some sections describe planned infrastructure that has not yet been implemented. The current deployment uses a single-server Docker Compose setup (`docker/docker-compose.prod.yml`).
+
 This document details the comprehensive strategy for rolling out Chive through alpha and beta testing phases, following industry-standard practices for software quality assurance.
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Infrastructure Architecture](#infrastructure-architecture)
+2. [Infrastructure](#infrastructure)
 3. [Testing Phase Definitions](#testing-phase-definitions)
 4. [Alpha Testing](#alpha-testing)
 5. [Alpha Signup Landing Page](#alpha-signup-landing-page)
-6. [PDS Setup for @chive.pub](#pds-setup-for-chivepub)
+6. [Governance PDS](#governance-pds)
 7. [Bluesky Advertisement Strategy](#bluesky-advertisement-strategy)
 8. [Beta Testing](#beta-testing)
 9. [Tester Recruitment](#tester-recruitment)
-10. [Feedback Infrastructure](#feedback-infrastructure)
-11. [Bug Reporting System](#bug-reporting-system)
-12. [Communication Channels](#communication-channels)
-13. [Metrics and Success Criteria](#metrics-and-success-criteria)
-14. [Timeline and Milestones](#timeline-and-milestones)
-15. [Legal and Compliance](#legal-and-compliance)
+10. [Bug Reporting System](#bug-reporting-system)
+11. [Metrics and Success Criteria](#metrics-and-success-criteria)
+12. [Timeline and Milestones](#timeline-and-milestones)
+13. [Legal and Compliance](#legal-and-compliance)
 
 ---
 
@@ -38,143 +38,34 @@ Pre-release testing validates that Chive meets quality standards, identifies def
 
 ---
 
-## Infrastructure Architecture
+## Infrastructure
 
-### Server Separation Strategy
+The current deployment uses a single-server Docker Compose setup. See `docker/docker-compose.prod.yml` for the production configuration.
 
-Chive's alpha testing infrastructure requires multiple services with different resource profiles and isolation requirements. Based on research into Zulip and PDS hosting requirements, we recommend a **three-server architecture** for reliability, security, and maintainability.
+### Services
 
-#### Server Topology
+All services run on a single server via Docker Compose:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                        CHIVE INFRASTRUCTURE TOPOLOGY                             │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│   SERVER 1: Application Server          SERVER 2: Community Server              │
-│   ┌─────────────────────────────┐       ┌─────────────────────────────┐         │
-│   │      app.chive.pub          │       │   community.chive.pub       │         │
-│   │                             │       │                             │         │
-│   │  ┌─────────────────────┐    │       │  ┌─────────────────────┐    │         │
-│   │  │   Next.js Frontend  │    │       │  │    Zulip Server     │    │         │
-│   │  └─────────────────────┘    │       │  │  (dedicated host)   │    │         │
-│   │  ┌─────────────────────┐    │       │  └─────────────────────┘    │         │
-│   │  │    Hono API Server  │    │       │                             │         │
-│   │  └─────────────────────┘    │       │  Zulip installs its own:    │         │
-│   │  ┌─────────────────────┐    │       │  - nginx                    │         │
-│   │  │ PostgreSQL, ES, Neo4j│   │       │  - PostgreSQL               │         │
-│   │  │ Redis               │    │       │  - Redis, RabbitMQ          │         │
-│   │  └─────────────────────┘    │       │  - memcached                │         │
-│   └─────────────────────────────┘       └─────────────────────────────┘         │
-│                                                                                  │
-│   SERVER 3: Identity & Landing          (Could colocate on Server 1 if needed)  │
-│   ┌─────────────────────────────┐                                               │
-│   │       chive.pub (root)      │       DNS Configuration:                      │
-│   │       pds.chive.pub         │       - chive.pub → Server 3                  │
-│   │                             │       - *.chive.pub → Server 3 (PDS wildcard) │
-│   │  ┌─────────────────────┐    │       - app.chive.pub → Server 1              │
-│   │  │  Landing Page +     │    │       - community.chive.pub → Server 2        │
-│   │  │  Alpha Signup       │    │       - alpha.chive.pub → Server 3            │
-│   │  └─────────────────────┘    │                                               │
-│   │  ┌─────────────────────┐    │                                               │
-│   │  │  Chive PDS          │    │                                               │
-│   │  │  (@chive.pub handle)│    │                                               │
-│   │  └─────────────────────┘    │                                               │
-│   └─────────────────────────────┘                                               │
-│                                                                                  │
-└─────────────────────────────────────────────────────────────────────────────────┘
+- **chive-api**: Hono API server (XRPC + REST)
+- **chive-web**: Next.js frontend
+- **chive-indexer**: Firehose consumer
+- **governance-pds**: ATProto PDS for governance records
+- **postgres**: PostgreSQL for metadata
+- **elasticsearch**: Full-text search
+- **neo4j**: Knowledge graph
+- **redis**: Caching and rate limiting
+
+### Deployment
+
+```bash
+# Start all services
+docker compose -f docker/docker-compose.prod.yml up -d
+
+# View logs
+docker compose -f docker/docker-compose.prod.yml logs -f
 ```
 
-#### Server 1: Application Server (`app.chive.pub`)
-
-**Purpose**: Hosts the main Chive application—frontend, API, and databases.
-
-| Component | Specification          |
-| --------- | ---------------------- |
-| Provider  | DigitalOcean/Vultr/AWS |
-| CPU       | 4+ cores               |
-| RAM       | 16+ GB                 |
-| Storage   | 200+ GB SSD            |
-| OS        | Ubuntu 24.04 LTS       |
-
-**Services**:
-
-- Next.js 15 frontend
-- Hono API server (XRPC + REST)
-- PostgreSQL 16+ (metadata indexes)
-- Elasticsearch 8+ (full-text search)
-- Neo4j 5+ (knowledge graph)
-- Redis 7+ (caching, rate limiting)
-
-**Rationale**: Resource-intensive application requiring dedicated compute.
-
-#### Server 2: Community Server (`community.chive.pub`)
-
-**Purpose**: Dedicated Zulip instance for tester communication.
-
-| Component | Specification                            |
-| --------- | ---------------------------------------- |
-| Provider  | DigitalOcean/Vultr/AWS                   |
-| CPU       | 2 cores                                  |
-| RAM       | 4 GB (expandable to 8 GB for 100+ users) |
-| Storage   | 50+ GB SSD                               |
-| OS        | Ubuntu 22.04 LTS or Debian 12            |
-
-**Why Separate Server**:
-Per [Zulip's official documentation](https://zulip.readthedocs.io/en/stable/production/requirements.html), the installer "expects Zulip to be the only thing running on the system" because it installs and configures system packages (nginx, PostgreSQL, Redis, RabbitMQ, memcached) for its own use.
-
-**Zulip Resource Guidelines**:
-
-- \<100 users: 1 CPU, 2 GB RAM minimum
-- 100+ daily actives: 4 GB RAM
-- 300+ daily actives: 8-16 GB RAM
-
-For alpha testing (20-50 testers), a 2 CPU / 4 GB RAM server provides comfortable headroom.
-
-#### Server 3: Identity & Landing (`chive.pub`, `pds.chive.pub`, `alpha.chive.pub`)
-
-**Purpose**: Hosts the PDS for `@chive.pub` Bluesky identity and the alpha signup landing page.
-
-| Component | Specification      |
-| --------- | ------------------ |
-| Provider  | DigitalOcean/Vultr |
-| CPU       | 1-2 cores          |
-| RAM       | 1-2 GB             |
-| Storage   | 20+ GB SSD         |
-| OS        | Ubuntu 22.04 LTS   |
-
-**Why Separate Server**:
-
-- PDS requires wildcard DNS (`*.chive.pub`) which conflicts with other subdomains
-- Clean isolation for identity infrastructure
-- Lightweight requirements—[AT Protocol PDS needs only 1 CPU, 1 GB RAM](https://atproto.com/guides/self-hosting)
-- Security isolation for Bluesky identity credentials
-
-**Alternative**: If cost is a concern, the PDS and landing page could colocate on Server 1 with careful nginx configuration, but separation is recommended for security.
-
-### DNS Configuration
-
-```
-# A Records pointing to respective servers
-chive.pub           → Server 3 IP (landing page)
-*.chive.pub         → Server 3 IP (PDS wildcard for user handles)
-app.chive.pub       → Server 1 IP (main application)
-api.chive.pub       → Server 1 IP (API endpoint, optional CNAME to app)
-community.chive.pub → Server 2 IP (Zulip)
-alpha.chive.pub     → Server 3 IP (alpha signup, CNAME to chive.pub)
-
-# MX Records for email
-chive.pub           → mail provider (for support@chive.pub, etc.)
-```
-
-### Cost Estimate (Monthly)
-
-| Server                        | Provider Example   | Estimated Cost |
-| ----------------------------- | ------------------ | -------------- |
-| Application (4 CPU, 16 GB)    | DO Premium Droplet | $96/mo         |
-| Community/Zulip (2 CPU, 4 GB) | DO Regular Droplet | $24/mo         |
-| Identity/PDS (1 CPU, 2 GB)    | DO Basic Droplet   | $12/mo         |
-| **Total**                     |                    | **~$132/mo**   |
+See [Deployment](./deployment.md) for detailed instructions.
 
 ---
 
@@ -211,7 +102,7 @@ Before entering alpha:
 - [ ] Staging environment stable for 72+ hours under load
 - [ ] Monitoring and alerting infrastructure operational
 - [ ] Rollback procedures documented and tested
-- [ ] **Zulip server configured and tested** (see [Communication Channels](#communication-channels))
+- [ ] **Communication channels configured** (see [Communication Channels](#communication-channels))
 - [ ] **PDS for @chive.pub operational** (see [PDS Setup](#pds-setup-for-chivepub))
 - [ ] **Alpha signup landing page deployed** (see [Alpha Signup Landing Page](#alpha-signup-landing-page))
 - [ ] **Bluesky announcement thread drafted and reviewed**
@@ -464,7 +355,7 @@ Form submission enabled
    - Approval/waitlist notification via email
 
 3. **Onboarding (Approved)**:
-   - Welcome email with Zulip invite
+   - Welcome email with access instructions
    - Alpha access enabled on app.chive.pub (DID-based allowlist)
    - Personalized testing assignments based on role/expertise
 
@@ -497,96 +388,35 @@ CREATE INDEX idx_alpha_applications_did ON alpha_applications(did);
 
 ---
 
-## PDS Setup for @chive.pub
+## Governance PDS
 
 ### Purpose
 
-The PDS at `pds.chive.pub` hosts the official `@chive.pub` Bluesky identity, enabling:
+The Governance PDS (`governance-pds` service in docker-compose) stores community-approved authority records:
 
-- Official announcements and engagement on Bluesky
-- Brand identity (`@chive.pub` handle)
-- Future potential for hosting community governance records
+- Field taxonomy definitions
+- Authority records (authors, institutions)
+- Approved governance decisions
 
-### Server Requirements
+This makes governance data ATProto-native and portable.
 
-Per [AT Protocol self-hosting documentation](https://atproto.com/guides/self-hosting):
+### Configuration
 
-| Component | Specification             |
-| --------- | ------------------------- |
-| OS        | Ubuntu 22.04              |
-| RAM       | 1 GB                      |
-| CPU       | 1 core                    |
-| Storage   | 20 GB SSD                 |
-| Ports     | 80/tcp, 443/tcp (inbound) |
+The governance PDS runs as a Docker service in `docker/docker-compose.prod.yml`:
 
-### DNS Requirements
-
-```
-# A Records (both required for PDS)
-chive.pub       → Server 3 IP
-*.chive.pub     → Server 3 IP (wildcard for user handles)
+```yaml
+governance-pds:
+  image: ghcr.io/bluesky-social/pds:latest
+  environment:
+    - PDS_HOSTNAME=governance.${DOMAIN}
+    - PDS_DATA_DIRECTORY=/pds
+  volumes:
+    - governance-pds-data:/pds
 ```
 
-The wildcard record is essential for AT Protocol handle resolution. Users on the PDS would have handles like `@username.chive.pub`.
+### Accessing
 
-### Installation Steps
-
-```bash
-# 1. SSH to Server 3
-ssh root@server3-ip
-
-# 2. Download and run the PDS installer
-curl -fsSL https://github.com/bluesky-social/pds/raw/main/installer.sh | sudo bash
-
-# 3. Follow prompts:
-#    - Domain: chive.pub
-#    - Admin email: admin@chive.pub
-
-# 4. Verify installation
-curl https://chive.pub/xrpc/_health
-# Should return: {"version":"..."}
-
-# 5. Create the @chive.pub account
-sudo pdsadmin account create chive.pub chive@chive.pub
-
-# 6. Or generate invite code for manual creation
-sudo pdsadmin invite create
-```
-
-### Post-Setup Configuration
-
-1. **Create @chive.pub account**: Use `pdsadmin` to create the official account
-
-2. **Profile setup** (via Bluesky app or API):
-   - Display name: "Chive"
-   - Bio: "Decentralized eprint service built on AT Protocol. Own your research."
-   - Avatar: Chive logo
-   - Banner: Professional header image
-
-3. **Backup configuration**:
-   - Back up `/pds/pds.env` (contains secrets)
-   - Back up `/pds/data/` (contains SQLite databases)
-
-4. **Monitoring**:
-   - Set up health check monitoring for `https://chive.pub/xrpc/_health`
-   - Alert on PDS unavailability
-
-### Rate Limits (Network Limits)
-
-Per AT Protocol network rules, each new PDS is initially limited to:
-
-- 10 accounts
-- 1,500 events/hour
-- 10,000 events/day
-
-For Chive's purposes (single official account), these limits are sufficient. If needed, limits can be increased by request after establishing reputation.
-
-### Security Considerations
-
-- **Secrets**: PDS secrets stored in `/pds/pds.env` must be protected
-- **Updates**: Keep PDS updated via `pdsadmin update`
-- **Backups**: Daily automated backups of PDS data
-- **Access**: Limit SSH access, use key-based auth only
+The governance PDS is available at `governance.${DOMAIN}` (e.g., `governance.chive.pub`).
 
 ---
 
@@ -1489,102 +1319,23 @@ New Bug → Auto-label by category → Triage Queue
 
 ## Communication Channels
 
-### Zulip Server Setup
+> **Note**: Community chat infrastructure is not yet deployed. The following describes planned communication channels.
 
-#### Hosting Configuration
+### Planned Channels
 
-**URL**: `community.chive.pub`
-**Server**: Dedicated Server 2 (see [Infrastructure Architecture](#infrastructure-architecture))
-
-#### Installation Steps
-
-```bash
-# 1. SSH to Server 2 (fresh Ubuntu 22.04 or Debian 12)
-ssh root@server2-ip
-
-# 2. Download and run Zulip installer
-wget https://download.zulip.com/server/zulip-server-latest.tar.gz
-tar -xf zulip-server-latest.tar.gz
-cd zulip-server-*/
-./scripts/setup/install --certbot --email=admin@chive.pub --hostname=community.chive.pub
-
-# 3. Create initial admin account
-su zulip -c '/home/zulip/deployments/current/manage.py generate_realm_creation_link'
-# Follow the link to create the Chive realm
-
-# 4. Configure settings
-sudo nano /etc/zulip/settings.py
-# Set:
-# ZULIP_ADMINISTRATOR = 'admin@chive.pub'
-# EMAIL_GATEWAY_PATTERN = '%s@community.chive.pub'
-
-# 5. Restart Zulip
-supervisorctl restart all
-```
-
-#### Stream Organization
-
-```
-#announcements
-  └── Official announcements only (admin-post-only)
-  └── Weekly digests, release notes, important updates
-
-#general
-  └── General discussion, introductions
-  └── Topics: introductions, off-topic, meta
-
-#alpha-testers (invite-only during alpha)
-  └── Alpha-specific discussions
-  └── Topics: testing-assignments, private-bugs, alpha-feedback
-
-#beta-testers
-  └── Beta-specific discussions (opened during beta phase)
-
-#bugs
-  └── Bug discussions, triage coordination
-  └── Topics: by-severity, by-feature, needs-discussion
-
-#features
-  └── Feature requests, roadmap discussion
-  └── Topics: submissions, reviews, search, knowledge-graph, integrations
-
-#support
-  └── Getting help, how-to questions
-  └── Topics: onboarding, auth, submissions, technical
-
-#development
-  └── Technical discussions for interested testers
-  └── Topics: api, atproto, architecture, contributing
-
-#random
-  └── Off-topic, community building
-```
-
-#### Zulip Bots
-
-1. **Bug Bot**: Posts new GitHub issues, updates on status changes
-2. **Release Bot**: Announces new deployments with changelog
-3. **Survey Bot**: Reminds about pending surveys
-4. **Welcome Bot**: Onboards new testers with getting-started guide
-
-#### Moderation Guidelines
-
-- **Response time**: Team member responds within 4 hours (business hours)
-- **Escalation**: Unresolved issues escalated to on-call after 24 hours
-- **Code of conduct**: Standard open source CoC, academic professionalism expected
-- **Off-topic**: Redirect to #random, but maintain welcoming atmosphere
+- **GitHub Issues**: Bug reports and feature requests
+- **Bluesky**: Official announcements via @chive.pub
+- **Email**: Direct tester communications
 
 ### Communication Cadence
 
-| Communication   | Frequency      | Channel                     | Audience         |
-| --------------- | -------------- | --------------------------- | ---------------- |
-| Release notes   | Per deployment | Zulip #announcements, Email | All testers      |
-| Weekly digest   | Weekly         | Email                       | All testers      |
-| Bug updates     | Real-time      | GitHub, Zulip #bugs         | Reporters        |
-| Feature updates | Bi-weekly      | Zulip #features             | All testers      |
-| Roadmap review  | Monthly        | Video call + recording      | All testers      |
-| 1:1 check-ins   | As needed      | Video call                  | Selected testers |
-| Bluesky updates | 2-3x/week      | @chive.pub                  | Public           |
+| Communication   | Frequency      | Channel        | Audience    |
+| --------------- | -------------- | -------------- | ----------- |
+| Release notes   | Per deployment | Email, Bluesky | All testers |
+| Weekly digest   | Weekly         | Email          | All testers |
+| Bug updates     | Real-time      | GitHub         | Reporters   |
+| Roadmap review  | Monthly        | Video call     | All testers |
+| Bluesky updates | 2-3x/week      | @chive.pub     | Public      |
 
 ### Email Templates
 
@@ -1599,29 +1350,25 @@ Thank you for joining the Chive alpha testing program! You're among the first
 [X] people to help shape the future of decentralized scholarly publishing.
 
 **Getting Started**
-1. Join our Zulip community: https://community.chive.pub
-   (Use this invite link: [unique invite])
-2. Log in to Chive with your Bluesky account: https://app.chive.pub
-3. Review the testing guide: [link]
+1. Log in to Chive with your Bluesky account: https://chive.pub
+2. Review the testing guide: [link]
 
 **This Week's Focus**
 [Current testing priorities]
 
 **How to Report Bugs**
-- In-app: Click the feedback button (bottom-right)
-- Zulip: Post in #bugs with [BUG] prefix
-- GitHub: [link to issues]
+- GitHub Issues: [link to issues]
+- Email: alpha@chive.pub
 
 **Your Testing Assignment**
 Based on your profile as a [Role], we'd especially love your feedback on:
 - [Personalized area based on expertise]
 
 **Connect with Us**
-- Zulip: community.chive.pub
 - Bluesky: @chive.pub
 - Email: alpha@chive.pub
 
-Questions? Reply to this email or ping @[team-member] on Zulip.
+Questions? Reply to this email.
 
 Thank you for helping build Chive!
 
@@ -1935,8 +1682,8 @@ When testers leave the program:
 
 | Issue Type     | First Contact      | Escalation        | Final Escalation |
 | -------------- | ------------------ | ----------------- | ---------------- |
-| Bug            | GitHub/Zulip       | On-call engineer  | Engineering lead |
-| UX feedback    | Zulip #features    | Product manager   | Product lead     |
+| Bug            | GitHub Issues      | On-call engineer  | Engineering lead |
+| UX feedback    | GitHub/Email       | Product manager   | Product lead     |
 | Account issues | support@chive.pub  | Community manager | Operations lead  |
 | Security       | security@chive.pub | Security team     | CTO              |
 | Harassment/CoC | conduct@chive.pub  | Community manager | Executive team   |
