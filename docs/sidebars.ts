@@ -20,7 +20,7 @@ const sidebars: SidebarsConfig = {
       label: 'User Guide',
       items: [
         'user-guide/searching',
-        'user-guide/submitting-preprints',
+        'user-guide/submitting-eprints',
         'user-guide/peer-review',
         'user-guide/endorsements',
         'user-guide/profiles',

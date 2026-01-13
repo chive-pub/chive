@@ -25,7 +25,7 @@ Click "Submit Eprint" to open the submission form. The form has four sections.
 
 | Field    | Required | Description                                  |
 | -------- | -------- | -------------------------------------------- |
-| Title    | Yes      | Full title of your eprint                  |
+| Title    | Yes      | Full title of your eprint                    |
 | Abstract | Yes      | Plain text summary (recommended: 300 words)  |
 | Keywords | Yes      | At least one author-provided keyword         |
 | License  | Yes      | Creative Commons license (CC-BY recommended) |
