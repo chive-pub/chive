@@ -6,7 +6,7 @@ Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. This refere
 
 | Namespace                | Purpose                                    |
 | ------------------------ | ------------------------------------------ |
-| `pub.chive.eprint.*`   | Eprint submissions and versions          |
+| `pub.chive.eprint.*`     | Eprint submissions and versions            |
 | `pub.chive.review.*`     | Reviews and endorsements                   |
 | `pub.chive.graph.*`      | Knowledge graph (fields, proposals, votes) |
 | `pub.chive.actor.*`      | User profiles and settings                 |
@@ -304,12 +304,12 @@ Lexicons follow semantic versioning:
 
 Current versions:
 
-| Lexicon                | Version |
-| ---------------------- | ------- |
+| Lexicon              | Version |
+| -------------------- | ------- |
 | `pub.chive.eprint.*` | 1.0.0   |
-| `pub.chive.review.*`   | 1.0.0   |
-| `pub.chive.graph.*`    | 1.0.0   |
-| `pub.chive.actor.*`    | 1.0.0   |
+| `pub.chive.review.*` | 1.0.0   |
+| `pub.chive.graph.*`  | 1.0.0   |
+| `pub.chive.actor.*`  | 1.0.0   |
 
 ## Related documentation
 

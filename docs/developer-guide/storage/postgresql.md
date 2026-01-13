@@ -8,13 +8,13 @@ PostgreSQL serves as Chive's primary index storage for eprints, reviews, and met
 
 All user data tables use `_index` suffix to emphasize they are indexes, not authoritative storage:
 
-| Table                | Purpose                                       |
-| -------------------- | --------------------------------------------- |
-| `eprints_index`    | Eprint metadata (title, abstract, keywords) |
-| `authors_index`      | Author profiles (name, bio, affiliations)     |
-| `reviews_index`      | Review comments (threaded discussions)        |
-| `endorsements_index` | Endorsements (methods, results, overall)      |
-| `user_tags_index`    | User-contributed tags (folksonomy)            |
+| Table                | Purpose                                     |
+| -------------------- | ------------------------------------------- |
+| `eprints_index`      | Eprint metadata (title, abstract, keywords) |
+| `authors_index`      | Author profiles (name, bio, affiliations)   |
+| `reviews_index`      | Review comments (threaded discussions)      |
+| `endorsements_index` | Endorsements (methods, results, overall)    |
+| `user_tags_index`    | User-contributed tags (folksonomy)          |
 
 ### PDS source tracking
 

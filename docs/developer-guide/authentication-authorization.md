@@ -341,12 +341,12 @@ reader
 
 Permissions follow the format `{resource}:{action}`:
 
-| Resource   | Actions                                       |
-| ---------- | --------------------------------------------- |
+| Resource | Actions                                       |
+| -------- | --------------------------------------------- |
 | `eprint` | `create`, `read`, `update`, `delete`, `admin` |
-| `review`   | `create`, `read`, `update`, `delete`          |
-| `graph`    | `propose`, `vote`, `approve`, `admin`         |
-| `user`     | `read`, `update`, `admin`                     |
+| `review` | `create`, `read`, `update`, `delete`          |
+| `graph`  | `propose`, `vote`, `approve`, `admin`         |
+| `user`   | `read`, `update`, `admin`                     |
 
 ### Usage
 

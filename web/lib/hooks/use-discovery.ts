@@ -622,9 +622,4 @@ export function useUserProfileState(options: { enabled?: boolean } = {}) {
 }
 
 // Re-export types for convenience
-export type {
-  RecommendedEprint,
-  RelatedEprint,
-  DiscoverySettings,
-  UpdateDiscoverySettingsInput,
-};
+export type { RecommendedEprint, RelatedEprint, DiscoverySettings, UpdateDiscoverySettingsInput };

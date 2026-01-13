@@ -293,14 +293,13 @@ function computeRecencyScore(dateStr: string): number {
  *
  * @public
  */
-export const searchSubmissionsEndpoint: XRPCEndpoint<SearchEprintsParams, SearchResultsResponse> =
-  {
-    method: 'pub.chive.eprint.searchSubmissions' as never,
-    type: 'query',
-    description: 'Search eprint submissions with full-text and faceted filtering',
-    inputSchema: searchEprintsParamsSchema,
-    outputSchema: searchResultsResponseSchema,
-    handler: searchSubmissionsHandler,
-    auth: 'optional',
-    rateLimit: 'authenticated',
-  };
+export const searchSubmissionsEndpoint: XRPCEndpoint<SearchEprintsParams, SearchResultsResponse> = {
+  method: 'pub.chive.eprint.searchSubmissions' as never,
+  type: 'query',
+  description: 'Search eprint submissions with full-text and faceted filtering',
+  inputSchema: searchEprintsParamsSchema,
+  outputSchema: searchResultsResponseSchema,
+  handler: searchSubmissionsHandler,
+  auth: 'optional',
+  rateLimit: 'authenticated',
+};

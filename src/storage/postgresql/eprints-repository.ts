@@ -52,10 +52,7 @@
 import type { Pool } from 'pg';
 
 import type { AtUri, CID, DID } from '../../types/atproto.js';
-import type {
-  EprintQueryOptions,
-  StoredEprint,
-} from '../../types/interfaces/storage.interface.js';
+import type { EprintQueryOptions, StoredEprint } from '../../types/interfaces/storage.interface.js';
 import type { EprintAuthor } from '../../types/models/author.js';
 import type {
   ConferencePresentation,
@@ -578,9 +575,7 @@ export class EprintsRepository {
       const row = result.rows[0];
       return row ? parseInt(row.count, 10) : 0;
     } catch (error) {
-      throw error instanceof Error
-        ? error
-        : new Error(`Failed to count eprints: ${String(error)}`);
+      throw error instanceof Error ? error : new Error(`Failed to count eprints: ${String(error)}`);
     }
   }
 

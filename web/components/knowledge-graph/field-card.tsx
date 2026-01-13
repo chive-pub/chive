@@ -144,9 +144,7 @@ function FeaturedFieldCard({
         )}
         <div className="flex items-center gap-6">
           <div className="text-center">
-            <div className="text-2xl font-bold">
-              {formatCompactNumber(field.eprintCount ?? 0)}
-            </div>
+            <div className="text-2xl font-bold">{formatCompactNumber(field.eprintCount ?? 0)}</div>
             <div className="text-sm text-muted-foreground">Eprints</div>
           </div>
           {'childCount' in field && (

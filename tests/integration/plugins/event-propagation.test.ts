@@ -344,12 +344,8 @@ describe('Plugin Event Propagation Integration', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(WildcardConsumerPlugin.receivedEvents).toHaveLength(2);
-      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain(
-        'eprint.indexed'
-      );
-      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain(
-        'eprint.updated'
-      );
+      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain('eprint.indexed');
+      expect(WildcardConsumerPlugin.receivedEvents.map((e) => e.event)).toContain('eprint.updated');
     });
   });
 

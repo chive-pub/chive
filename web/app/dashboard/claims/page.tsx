@@ -126,8 +126,7 @@ export default function ClaimsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Claim Eprints</h1>
           <p className="text-muted-foreground">
-            Claim ownership of your eprints from external repositories like arXiv, bioRxiv, and
-            more
+            Claim ownership of your eprints from external repositories like arXiv, bioRxiv, and more
           </p>
         </div>
 
@@ -669,10 +668,7 @@ function ClaimableSearch() {
 
               {/* Results */}
               {searchResults.map((eprint) => (
-                <ExternalEprintCard
-                  key={`${eprint.source}:${eprint.externalId}`}
-                  eprint={eprint}
-                />
+                <ExternalEprintCard key={`${eprint.source}:${eprint.externalId}`} eprint={eprint} />
               ))}
             </>
           )}

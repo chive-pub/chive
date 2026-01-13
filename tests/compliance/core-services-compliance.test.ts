@@ -24,10 +24,7 @@
 import type { Pool } from 'pg';
 import { describe, it, expect, vi } from 'vitest';
 
-import {
-  EprintService,
-  type RecordMetadata,
-} from '../../src/services/eprint/eprint-service.js';
+import { EprintService, type RecordMetadata } from '../../src/services/eprint/eprint-service.js';
 import {
   ReviewService,
   type ReviewComment,

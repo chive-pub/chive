@@ -90,10 +90,7 @@ export async function listForEprintHandler(
  *
  * @public
  */
-export const listForEprintEndpoint: XRPCEndpoint<
-  ListTagsForEprintParams,
-  EprintTagsResponse
-> = {
+export const listForEprintEndpoint: XRPCEndpoint<ListTagsForEprintParams, EprintTagsResponse> = {
   method: 'pub.chive.tag.listForEprint' as never,
   type: 'query',
   description: 'List tags for a eprint',

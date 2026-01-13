@@ -27,14 +27,10 @@ import type { SuccessResponseJSON } from 'openapi-typescript-helpers';
 // -----------------------------------------------------------------------------
 
 /** Response from pub.chive.eprint.getSubmission */
-export type GetEprintResponse = SuccessResponseJSON<
-  operations['pub_chive_eprint_getSubmission']
->;
+export type GetEprintResponse = SuccessResponseJSON<operations['pub_chive_eprint_getSubmission']>;
 
 /** Response from pub.chive.eprint.listByAuthor */
-export type ListEprintsResponse = SuccessResponseJSON<
-  operations['pub_chive_eprint_listByAuthor']
->;
+export type ListEprintsResponse = SuccessResponseJSON<operations['pub_chive_eprint_listByAuthor']>;
 
 /** Response from pub.chive.eprint.searchSubmissions */
 export type SearchEprintsResponse = SuccessResponseJSON<

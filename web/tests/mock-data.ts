@@ -130,9 +130,7 @@ export function createMockEprintSource(overrides: Partial<EprintSource> = {}): E
 /**
  * Creates a mock EprintMetrics.
  */
-export function createMockEprintMetrics(
-  overrides: Partial<EprintMetrics> = {}
-): EprintMetrics {
+export function createMockEprintMetrics(overrides: Partial<EprintMetrics> = {}): EprintMetrics {
   return {
     views: 150,
     downloads: 42,
@@ -185,9 +183,7 @@ export function createMockEprint(overrides: Partial<Eprint> = {}): Eprint {
 /**
  * Creates a mock EprintSummary.
  */
-export function createMockEprintSummary(
-  overrides: Partial<EprintSummary> = {}
-): EprintSummary {
+export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}): EprintSummary {
   return {
     uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
@@ -206,9 +202,7 @@ export function createMockEprintSummary(
 /**
  * Creates a mock TrendingEprint.
  */
-export function createMockTrendingEprint(
-  overrides: Partial<TrendingEprint> = {}
-): TrendingEprint {
+export function createMockTrendingEprint(overrides: Partial<TrendingEprint> = {}): TrendingEprint {
   return {
     ...createMockEprintSummary(),
     viewsInWindow: 500,
@@ -920,9 +914,7 @@ export function createMockAuthorContribution(
  * @remarks
  * Use this for authors who have an ATProto account.
  */
-export function createMockEprintAuthorWithDid(
-  overrides: Partial<EprintAuthor> = {}
-): EprintAuthor {
+export function createMockEprintAuthorWithDid(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
   return {
     did: 'did:plc:test123',
     name: 'Dr. Jane Smith',

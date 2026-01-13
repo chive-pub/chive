@@ -17,8 +17,8 @@ Retrieve a single eprint by its AT URI.
 
 **Parameters**
 
-| Name  | Type   | Required | Description            |
-| ----- | ------ | -------- | ---------------------- |
+| Name  | Type   | Required | Description          |
+| ----- | ------ | -------- | -------------------- |
 | `uri` | string | Yes      | AT URI of the eprint |
 
 **Response**
@@ -128,10 +128,10 @@ Get a review thread for a eprint.
 
 **Parameters**
 
-| Name    | Type    | Required | Description                        |
-| ------- | ------- | -------- | ---------------------------------- |
+| Name    | Type    | Required | Description                      |
+| ------- | ------- | -------- | -------------------------------- |
 | `uri`   | string  | Yes      | URI of the eprint or root review |
-| `depth` | integer | No       | Thread depth (default: 6)          |
+| `depth` | integer | No       | Thread depth (default: 6)        |
 
 **Response**
 
@@ -166,7 +166,7 @@ List all reviews for a eprint.
 
 | Name     | Type    | Required | Description               |
 | -------- | ------- | -------- | ------------------------- |
-| `uri`    | string  | Yes      | Eprint URI              |
+| `uri`    | string  | Yes      | Eprint URI                |
 | `sortBy` | string  | No       | Sort: `recent`, `helpful` |
 | `limit`  | integer | No       | Results per page          |
 | `cursor` | string  | No       | Pagination cursor         |
@@ -188,9 +188,9 @@ Get endorsement summary for a eprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Eprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 **Response**
 
@@ -227,7 +227,7 @@ List all endorsements for a eprint.
 
 | Name     | Type    | Required | Description       |
 | -------- | ------- | -------- | ----------------- |
-| `uri`    | string  | Yes      | Eprint URI      |
+| `uri`    | string  | Yes      | Eprint URI        |
 | `limit`  | integer | No       | Results per page  |
 | `cursor` | string  | No       | Pagination cursor |
 
@@ -244,7 +244,7 @@ Get a specific user's endorsement for a eprint.
 
 | Name  | Type   | Required | Description                               |
 | ----- | ------ | -------- | ----------------------------------------- |
-| `uri` | string | Yes      | Eprint URI                              |
+| `uri` | string | Yes      | Eprint URI                                |
 | `did` | string | No       | User DID (defaults to authenticated user) |
 
 ---
@@ -425,9 +425,9 @@ List tags on a eprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Eprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ### pub.chive.tag.getTrending
 
@@ -458,7 +458,7 @@ Get tag suggestions based on content.
 
 | Name   | Type   | Required | Description     |
 | ------ | ------ | -------- | --------------- |
-| `uri`  | string | No       | Eprint URI    |
+| `uri`  | string | No       | Eprint URI      |
 | `text` | string | No       | Text to analyze |
 
 ### pub.chive.tag.getDetail
@@ -602,9 +602,9 @@ Get metrics for a eprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Eprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 **Response**
 
@@ -637,9 +637,9 @@ Get view count for a eprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Eprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ### pub.chive.metrics.getTrending
 
@@ -782,7 +782,7 @@ Get eprints similar to a given eprint.
 
 | Name    | Type    | Required | Description       |
 | ------- | ------- | -------- | ----------------- |
-| `uri`   | string  | Yes      | Eprint URI      |
+| `uri`   | string  | Yes      | Eprint URI        |
 | `limit` | integer | No       | Number of results |
 
 ### pub.chive.discovery.getCitations
@@ -798,7 +798,7 @@ Get citation graph for a eprint.
 
 | Name        | Type    | Required | Description               |
 | ----------- | ------- | -------- | ------------------------- |
-| `uri`       | string  | Yes      | Eprint URI              |
+| `uri`       | string  | Yes      | Eprint URI                |
 | `direction` | string  | No       | `citing`, `cited`, `both` |
 | `limit`     | integer | No       | Number of results         |
 
@@ -813,9 +813,9 @@ Get enriched metadata for a eprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Eprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ### pub.chive.discovery.recordInteraction
 
@@ -994,7 +994,7 @@ List backlinks for a eprint.
 
 | Name     | Type   | Required | Description          |
 | -------- | ------ | -------- | -------------------- |
-| `uri`    | string | Yes      | Eprint URI         |
+| `uri`    | string | Yes      | Eprint URI           |
 | `source` | string | No       | Filter by source app |
 
 ### pub.chive.backlink.create
@@ -1026,9 +1026,9 @@ Get backlink counts for a eprint.
 
 **Parameters**
 
-| Name  | Type   | Required | Description  |
-| ----- | ------ | -------- | ------------ |
-| `uri` | string | Yes      | Eprint URI |
+| Name  | Type   | Required | Description |
+| ----- | ------ | -------- | ----------- |
+| `uri` | string | Yes      | Eprint URI  |
 
 ---
 

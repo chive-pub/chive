@@ -86,10 +86,7 @@ export async function getFieldEprintsHandler(
  *
  * @public
  */
-export const getFieldEprintsEndpoint: XRPCEndpoint<
-  GetFieldEprintsParams,
-  FieldEprintsResponse
-> = {
+export const getFieldEprintsEndpoint: XRPCEndpoint<GetFieldEprintsParams, FieldEprintsResponse> = {
   method: 'pub.chive.graph.getFieldEprints' as never,
   type: 'query',
   description: 'Get eprints in a knowledge graph field',

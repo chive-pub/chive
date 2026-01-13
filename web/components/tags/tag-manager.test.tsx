@@ -323,9 +323,7 @@ describe('TagManager', () => {
         error: null,
       });
 
-      render(
-        <TagManager eprintUri={eprintUri} currentUserDid={currentUserDid} editable={false} />
-      );
+      render(<TagManager eprintUri={eprintUri} currentUserDid={currentUserDid} editable={false} />);
 
       expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
     });

@@ -194,10 +194,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
    *
    * @public
    */
-  async getEprintsByAuthor(
-    author: DID,
-    options: EprintQueryOptions = {}
-  ): Promise<StoredEprint[]> {
+  async getEprintsByAuthor(author: DID, options: EprintQueryOptions = {}): Promise<StoredEprint[]> {
     return this.eprintsRepo.findByAuthor(author, options);
   }
 

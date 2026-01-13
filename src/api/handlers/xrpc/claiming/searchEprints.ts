@@ -109,14 +109,13 @@ export async function searchEprintsHandler(
  *
  * @public
  */
-export const searchEprintsEndpoint: XRPCEndpoint<SearchEprintsParams, SearchEprintsResponse> =
-  {
-    method: 'pub.chive.claiming.searchEprints' as never,
-    type: 'query',
-    description: 'Search external eprint sources for papers to claim',
-    inputSchema: searchEprintsParamsSchema,
-    outputSchema: searchEprintsResponseSchema,
-    handler: searchEprintsHandler,
-    auth: 'optional',
-    rateLimit: 'anonymous',
-  };
+export const searchEprintsEndpoint: XRPCEndpoint<SearchEprintsParams, SearchEprintsResponse> = {
+  method: 'pub.chive.claiming.searchEprints' as never,
+  type: 'query',
+  description: 'Search external eprint sources for papers to claim',
+  inputSchema: searchEprintsParamsSchema,
+  outputSchema: searchEprintsResponseSchema,
+  handler: searchEprintsHandler,
+  auth: 'optional',
+  rateLimit: 'anonymous',
+};

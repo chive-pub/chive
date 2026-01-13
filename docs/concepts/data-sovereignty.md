@@ -228,7 +228,7 @@ If Chive shuts down:
 
 | What happens               | What doesn't happen           |
 | -------------------------- | ----------------------------- |
-| Chive's indexes go offline | Your eprints are deleted    |
+| Chive's indexes go offline | Your eprints are deleted      |
 | Search becomes unavailable | Your PDFs become inaccessible |
 | Discovery features stop    | Your DOIs break               |
 |                            | Your citations vanish         |
@@ -238,14 +238,14 @@ Your work remains in your PDS. Another AppView could index it. Your DOIs (regist
 ## Comparison with traditional platforms
 
 | Feature               | Traditional eprint service | Chive                 |
-| --------------------- | --------------------------- | --------------------- |
-| Data location         | Platform servers            | Your PDS              |
-| Ownership             | Platform owns copy          | You own original      |
-| Portability           | Export/import required      | Automatic via DID     |
-| Backup responsibility | Platform                    | You (or PDS provider) |
-| Platform shutdown     | Data at risk                | Data unaffected       |
-| Terms of service      | Can restrict access         | You set terms         |
-| API access            | Platform controls           | Open AT Protocol      |
+| --------------------- | -------------------------- | --------------------- |
+| Data location         | Platform servers           | Your PDS              |
+| Ownership             | Platform owns copy         | You own original      |
+| Portability           | Export/import required     | Automatic via DID     |
+| Backup responsibility | Platform                   | You (or PDS provider) |
+| Platform shutdown     | Data at risk               | Data unaffected       |
+| Terms of service      | Can restrict access        | You set terms         |
+| API access            | Platform controls          | Open AT Protocol      |
 
 ## Your responsibilities
 

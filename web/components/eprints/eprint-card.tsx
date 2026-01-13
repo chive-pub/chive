@@ -63,9 +63,7 @@ export function EprintCard({
   }
 
   if (variant === 'featured') {
-    return (
-      <FeaturedEprintCard eprint={eprint} onPrefetch={onPrefetch} className={className} />
-    );
+    return <FeaturedEprintCard eprint={eprint} onPrefetch={onPrefetch} className={className} />;
   }
 
   return (
@@ -227,10 +225,7 @@ export interface EprintCardSkeletonProps {
  * {isLoading ? <EprintCardSkeleton /> : <EprintCard eprint={data} />}
  * ```
  */
-export function EprintCardSkeleton({
-  variant = 'default',
-  className,
-}: EprintCardSkeletonProps) {
+export function EprintCardSkeleton({ variant = 'default', className }: EprintCardSkeletonProps) {
   if (variant === 'compact') {
     return (
       <div className={cn('flex items-start gap-4 rounded-lg border p-4', className)}>

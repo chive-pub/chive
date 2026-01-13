@@ -69,10 +69,7 @@ export async function getUserEndorsementHandler(
   );
 
   if (!endorsement) {
-    throw new NotFoundError(
-      'Endorsement',
-      `user=${params.userDid}, eprint=${params.eprintUri}`
-    );
+    throw new NotFoundError('Endorsement', `user=${params.userDid}, eprint=${params.eprintUri}`);
   }
 
   // Map to API format

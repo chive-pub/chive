@@ -9,8 +9,7 @@ import { PageContainer } from '@/components/layout';
  */
 export const metadata: Metadata = {
   title: 'Submit a Eprint | Chive',
-  description:
-    'Submit your research to Chive, a decentralized eprint server built on AT Protocol.',
+  description: 'Submit your research to Chive, a decentralized eprint server built on AT Protocol.',
 };
 
 /**

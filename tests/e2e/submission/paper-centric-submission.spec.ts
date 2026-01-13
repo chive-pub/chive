@@ -104,9 +104,7 @@ test.describe('Paper-Centric Submission - Record URI', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for AT-URI display
-    const atUri = page
-      .getByText(/at:\/\/did:plc:/i)
-      .or(page.locator('[data-testid="eprint-uri"]'));
+    const atUri = page.getByText(/at:\/\/did:plc:/i).or(page.locator('[data-testid="eprint-uri"]'));
 
     if (await atUri.isVisible({ timeout: 3000 }).catch(() => false)) {
       // URI should contain a DID - either paper's or submitter's

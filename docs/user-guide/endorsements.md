@@ -18,10 +18,10 @@ An organization (e.g., research group, journal) endorses a eprint. Organizationa
 
 ## Endorsement Levels
 
-| Level       | Meaning                                        |
-| ----------- | ---------------------------------------------- |
+| Level       | Meaning                                      |
+| ----------- | -------------------------------------------- |
 | Read        | Endorser has read the eprint                 |
-| Verified    | Endorser has verified key claims or methods    |
+| Verified    | Endorser has verified key claims or methods  |
 | Recommended | Endorser recommends the eprint to colleagues |
 
 ## Giving an Endorsement

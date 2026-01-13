@@ -22,9 +22,7 @@ import { reviewEndorsementSchema } from '@/lexicons/validators/pub/chive/review/
 
 describe('Generated Zod Validators', () => {
   // Helper function to create valid eprint base data
-  function createValidEprintBase(
-    overrides: Record<string, unknown> = {}
-  ): Record<string, unknown> {
+  function createValidEprintBase(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     return {
       title: 'Test Eprint',
       abstract: 'Test abstract',

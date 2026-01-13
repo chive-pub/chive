@@ -147,9 +147,7 @@ export function FeedEprintCard({
               </span>
             ))}
             {eprint.categories.length > 3 && (
-              <span className="text-xs text-muted-foreground">
-                +{eprint.categories.length - 3}
-              </span>
+              <span className="text-xs text-muted-foreground">+{eprint.categories.length - 3}</span>
             )}
           </div>
         )}

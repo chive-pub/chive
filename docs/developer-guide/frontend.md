@@ -162,16 +162,16 @@ Located in `components/eprints/`:
 
 | Component                 | Description                                                                                        |
 | ------------------------- | -------------------------------------------------------------------------------------------------- |
-| `EprintCard`            | Summary card with title, authors, abstract. Supports `default`, `compact`, and `featured` variants |
-| `EprintList`            | Paginated list of eprint cards                                                                   |
-| `EprintMetadata`        | Full metadata display (DOI, dates, versions)                                                       |
-| `EprintMetrics`         | View counts, downloads, engagement stats                                                           |
-| `EprintVersions`        | Version history timeline                                                                           |
-| `EprintSource`          | Source repository badge (arXiv, bioRxiv, etc.)                                                     |
+| `EprintCard`              | Summary card with title, authors, abstract. Supports `default`, `compact`, and `featured` variants |
+| `EprintList`              | Paginated list of eprint cards                                                                     |
+| `EprintMetadata`          | Full metadata display (DOI, dates, versions)                                                       |
+| `EprintMetrics`           | View counts, downloads, engagement stats                                                           |
+| `EprintVersions`          | Version history timeline                                                                           |
+| `EprintSource`            | Source repository badge (arXiv, bioRxiv, etc.)                                                     |
 | `AuthorChip`              | Clickable author name with avatar                                                                  |
 | `AuthorHeader`            | Full author profile header                                                                         |
-| `AuthorEprints`         | Paginated eprints by author                                                                      |
-| `AuthorStats`             | Author metrics (h-index, citations, eprints)                                                     |
+| `AuthorEprints`           | Paginated eprints by author                                                                        |
+| `AuthorStats`             | Author metrics (h-index, citations, eprints)                                                       |
 | `FieldBadge`              | Field taxonomy badge                                                                               |
 | `OrcidBadge`              | ORCID identifier with verification                                                                 |
 | `PDFViewer`               | Embedded PDF display                                                                               |
@@ -234,7 +234,7 @@ Located in `components/knowledge-graph/`:
 | -------------------- | ------------------------------ |
 | `FieldCard`          | Field node display with stats  |
 | `FieldExternalIds`   | Links to Wikidata, LCSH, etc.  |
-| `FieldEprints`     | Eprints in a field           |
+| `FieldEprints`       | Eprints in a field             |
 | `FieldRelationships` | Broader/narrower/related terms |
 
 ### Endorsement components
@@ -363,19 +363,17 @@ All TanStack Query hooks are organized by domain and exported from `lib/hooks/in
 
 ### Eprint hooks
 
-| Hook                        | Description                           |
-| --------------------------- | ------------------------------------- |
-| `useEprint(uri)`          | Fetch single eprint by AT-URI       |
-| `useEprints(params)`      | Paginated eprint list               |
-| `useEprintsByAuthor(did)` | Eprints by author DID               |
+| Hook                      | Description                           |
+| ------------------------- | ------------------------------------- |
+| `useEprint(uri)`          | Fetch single eprint by AT-URI         |
+| `useEprints(params)`      | Paginated eprint list                 |
+| `useEprintsByAuthor(did)` | Eprints by author DID                 |
 | `usePrefetchEprint()`     | Returns function to prefetch on hover |
 
 ```tsx
 import { useEprint, eprintKeys } from '@/lib/hooks';
 
-const { data, isLoading, error } = useEprint(
-  'at://did:plc:abc/pub.chive.eprint.submission/123'
-);
+const { data, isLoading, error } = useEprint('at://did:plc:abc/pub.chive.eprint.submission/123');
 
 // Cache invalidation
 queryClient.invalidateQueries({ queryKey: eprintKeys.all });
@@ -457,24 +455,24 @@ if (hasOrcid(author)) {
 
 ### Field hooks
 
-| Hook                    | Description                       |
-| ----------------------- | --------------------------------- |
-| `useField(id)`          | Single field by ID                |
-| `useFields()`           | All fields (for taxonomy display) |
-| `useFieldChildren(id)`  | Narrower terms                    |
-| `useFieldEprints(id)` | Eprints in field                |
-| `usePrefetchField()`    | Prefetch field on hover           |
+| Hook                   | Description                       |
+| ---------------------- | --------------------------------- |
+| `useField(id)`         | Single field by ID                |
+| `useFields()`          | All fields (for taxonomy display) |
+| `useFieldChildren(id)` | Narrower terms                    |
+| `useFieldEprints(id)`  | Eprints in field                  |
+| `usePrefetchField()`   | Prefetch field on hover           |
 
 ### Review hooks
 
-| Hook                            | Description               |
-| ------------------------------- | ------------------------- |
-| `useReviews(eprintUri)`       | Reviews for a eprint    |
+| Hook                          | Description               |
+| ----------------------------- | ------------------------- |
+| `useReviews(eprintUri)`       | Reviews for a eprint      |
 | `useInlineReviews(eprintUri)` | Inline annotations only   |
-| `useReviewThread(reviewUri)`    | Threaded replies          |
-| `useCreateReview()`             | Create review mutation    |
-| `useDeleteReview()`             | Delete review mutation    |
-| `usePrefetchReviews()`          | Prefetch reviews on hover |
+| `useReviewThread(reviewUri)`  | Threaded replies          |
+| `useCreateReview()`           | Create review mutation    |
+| `useDeleteReview()`           | Delete review mutation    |
+| `usePrefetchReviews()`        | Prefetch reviews on hover |
 
 ```tsx
 import { useReviews, useCreateReview } from '@/lib/hooks';
@@ -491,15 +489,15 @@ await createReview.mutateAsync({
 
 ### Endorsement hooks
 
-| Hook                                   | Description                    |
-| -------------------------------------- | ------------------------------ |
-| `useEndorsements(eprintUri)`         | All endorsements for eprint  |
+| Hook                                 | Description                    |
+| ------------------------------------ | ------------------------------ |
+| `useEndorsements(eprintUri)`         | All endorsements for eprint    |
 | `useEndorsementSummary(eprintUri)`   | Counts by contribution type    |
 | `useUserEndorsement(eprintUri, did)` | Check if user has endorsed     |
-| `useCreateEndorsement()`               | Create endorsement mutation    |
-| `useUpdateEndorsement()`               | Update endorsement mutation    |
-| `useDeleteEndorsement()`               | Delete endorsement mutation    |
-| `usePrefetchEndorsements()`            | Prefetch endorsements on hover |
+| `useCreateEndorsement()`             | Create endorsement mutation    |
+| `useUpdateEndorsement()`             | Update endorsement mutation    |
+| `useDeleteEndorsement()`             | Delete endorsement mutation    |
+| `usePrefetchEndorsements()`          | Prefetch endorsements on hover |
 
 Constants:
 
@@ -517,16 +515,16 @@ import {
 
 ### Tag hooks
 
-| Hook                           | Description              |
-| ------------------------------ | ------------------------ |
-| `useEprintTags(eprintUri)` | Tags on a eprint       |
-| `useTagSuggestions(query)`     | Autocomplete suggestions |
-| `useTrendingTags()`            | Popular tags             |
-| `useTagSearch(query)`          | Search all tags          |
-| `useTagDetail(tagId)`          | Single tag with stats    |
-| `useCreateTag()`               | Add tag mutation         |
-| `useDeleteTag()`               | Remove tag mutation      |
-| `usePrefetchTags()`            | Prefetch tags on hover   |
+| Hook                       | Description              |
+| -------------------------- | ------------------------ |
+| `useEprintTags(eprintUri)` | Tags on a eprint         |
+| `useTagSuggestions(query)` | Autocomplete suggestions |
+| `useTrendingTags()`        | Popular tags             |
+| `useTagSearch(query)`      | Search all tags          |
+| `useTagDetail(tagId)`      | Single tag with stats    |
+| `useCreateTag()`           | Add tag mutation         |
+| `useDeleteTag()`           | Remove tag mutation      |
+| `usePrefetchTags()`        | Prefetch tags on hover   |
 
 ### Claiming hooks
 
@@ -534,7 +532,7 @@ import {
 | -------------------------------------- | ------------------------------- |
 | `useUserClaims()`                      | Current user's claims           |
 | `useClaim(claimId)`                    | Single claim details            |
-| `useClaimableEprints(did)`           | Eprints available to claim    |
+| `useClaimableEprints(did)`             | Eprints available to claim      |
 | `usePendingClaims()`                   | Claims awaiting approval        |
 | `useStartClaim()`                      | Start claim mutation            |
 | `useCollectEvidence()`                 | Gather verification evidence    |
@@ -575,15 +573,15 @@ logActivity({
 
 ### Other hooks
 
-| Hook                             | Description                        |
-| -------------------------------- | ---------------------------------- |
-| `useTrending()`                  | Trending eprints                 |
-| `useBacklinks(eprintUri)`      | Bluesky posts referencing eprint |
-| `useBacklinkCounts(eprintUri)` | Backlink counts by source          |
-| `useShareToBluesky()`            | Share mutation for Bluesky         |
-| `useMentionAutocomplete(query)`  | @mention suggestions               |
-| `useGovernance*`                 | Governance proposal hooks          |
-| `useIntegrations()`              | External service integrations      |
+| Hook                            | Description                      |
+| ------------------------------- | -------------------------------- |
+| `useTrending()`                 | Trending eprints                 |
+| `useBacklinks(eprintUri)`       | Bluesky posts referencing eprint |
+| `useBacklinkCounts(eprintUri)`  | Backlink counts by source        |
+| `useShareToBluesky()`           | Share mutation for Bluesky       |
+| `useMentionAutocomplete(query)` | @mention suggestions             |
+| `useGovernance*`                | Governance proposal hooks        |
+| `useIntegrations()`             | External service integrations    |
 
 ## Authentication
 
@@ -659,18 +657,18 @@ await createEndorsementRecord(agent, {
 
 ## Page routes
 
-| Route                      | Description                                   |
-| -------------------------- | --------------------------------------------- |
+| Route                      | Description                                 |
+| -------------------------- | ------------------------------------------- |
 | `/`                        | Home page with trending and recent eprints  |
-| `/search`                  | Search results with faceted filtering         |
-| `/eprints/[uri]`         | Eprint detail with reviews and endorsements |
+| `/search`                  | Search results with faceted filtering       |
+| `/eprints/[uri]`           | Eprint detail with reviews and endorsements |
 | `/authors/[did]`           | Author profile with their eprints           |
-| `/fields`                  | Field taxonomy browser                        |
+| `/fields`                  | Field taxonomy browser                      |
 | `/fields/[id]`             | Field detail with eprints                   |
-| `/governance`              | Governance proposals list                     |
-| `/governance/[proposalId]` | Proposal detail with voting                   |
-| `/claims`                  | User's authorship claims                      |
-| `/settings`                | User settings and preferences                 |
+| `/governance`              | Governance proposals list                   |
+| `/governance/[proposalId]` | Proposal detail with voting                 |
+| `/claims`                  | User's authorship claims                    |
+| `/settings`                | User settings and preferences               |
 
 ## Testing
 

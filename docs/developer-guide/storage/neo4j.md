@@ -6,14 +6,14 @@ Neo4j stores Chive's knowledge graph: field taxonomy, authority records, citatio
 
 ### Node types
 
-| Label             | Description                      | Key Properties                  |
-| ----------------- | -------------------------------- | ------------------------------- |
-| `Field`           | Hierarchical field taxonomy      | `id`, `label`, `description`    |
-| `AuthorityRecord` | Controlled vocabulary terms      | `id`, `name`, `type`, `aliases` |
-| `WikidataEntity`  | Wikidata Q-IDs for linking       | `qid`, `label`, `description`   |
-| `Eprint`        | Eprint nodes for graph queries | `uri`, `title`                  |
-| `Author`          | Author nodes for collaboration   | `did`, `name`                   |
-| `FacetDimension`  | PMEST dimension templates        | `id`, `type`, `name`            |
+| Label             | Description                    | Key Properties                  |
+| ----------------- | ------------------------------ | ------------------------------- |
+| `Field`           | Hierarchical field taxonomy    | `id`, `label`, `description`    |
+| `AuthorityRecord` | Controlled vocabulary terms    | `id`, `name`, `type`, `aliases` |
+| `WikidataEntity`  | Wikidata Q-IDs for linking     | `qid`, `label`, `description`   |
+| `Eprint`          | Eprint nodes for graph queries | `uri`, `title`                  |
+| `Author`          | Author nodes for collaboration | `did`, `name`                   |
+| `FacetDimension`  | PMEST dimension templates      | `id`, `type`, `name`            |
 
 ### Relationship types
 
@@ -22,9 +22,9 @@ Neo4j stores Chive's knowledge graph: field taxonomy, authority records, citatio
 | `PARENT_OF`         | Field           | Field          | Hierarchy            |
 | `RELATED_TO`        | Field           | Field          | Semantic similarity  |
 | `MAPPED_TO`         | AuthorityRecord | WikidataEntity | External linking     |
-| `TAGGED_WITH`       | Eprint        | Field          | Field classification |
-| `AUTHORED`          | Author          | Eprint       | Authorship           |
-| `CITES`             | Eprint        | Eprint       | Citations            |
+| `TAGGED_WITH`       | Eprint          | Field          | Field classification |
+| `AUTHORED`          | Author          | Eprint         | Authorship           |
+| `CITES`             | Eprint          | Eprint         | Citations            |
 | `COLLABORATES_WITH` | Author          | Author         | Co-authorship        |
 
 ## Constraints and indexes

@@ -51,11 +51,7 @@ import {
   createMockAlphaService,
   createMockContributionTypeManager,
 } from '../helpers/mock-services.js';
-import type {
-  EprintResponse,
-  EprintListResponse,
-  ErrorResponse,
-} from '../types/api-responses.js';
+import type { EprintResponse, EprintListResponse, ErrorResponse } from '../types/api-responses.js';
 
 // Test constants for compliance validation
 const TEST_AUTHOR = 'did:plc:compliance123' as DID;
@@ -568,10 +564,7 @@ describe('API Layer ATProto Compliance', () => {
       const uri = createTestUri('pds1');
       const cid = createTestCid('pds1');
       const eprint = createTestEprint(uri);
-      const indexResult = await eprintService.indexEprint(
-        eprint,
-        createTestMetadata(uri, cid)
-      );
+      const indexResult = await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
 
       if (!indexResult.ok) {
         throw new Error(`Failed to index eprint: ${indexResult.error.message}`);

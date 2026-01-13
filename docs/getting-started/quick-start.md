@@ -22,7 +22,7 @@ Enter the required metadata:
 
 | Field    | Description                                              |
 | -------- | -------------------------------------------------------- |
-| Title    | Full title of your eprint                              |
+| Title    | Full title of your eprint                                |
 | Abstract | Summary of your work (plain text, 300 words recommended) |
 | Keywords | Author-provided keywords for discovery                   |
 

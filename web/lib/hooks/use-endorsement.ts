@@ -87,8 +87,7 @@ export const endorsementKeys = {
     [...endorsementKeys.forEprint(eprintUri), 'list', params] as const,
 
   /** Key for endorsement summary (counts by type) */
-  summary: (eprintUri: string) =>
-    [...endorsementKeys.forEprint(eprintUri), 'summary'] as const,
+  summary: (eprintUri: string) => [...endorsementKeys.forEprint(eprintUri), 'summary'] as const,
 
   /** Key for user's endorsement on a eprint */
   userEndorsement: (eprintUri: string, userDid: string) =>

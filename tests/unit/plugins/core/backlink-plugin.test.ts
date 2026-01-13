@@ -472,9 +472,7 @@ describe('BacklinkTrackingPlugin', () => {
 
   describe('isEprintUri', () => {
     it('should return true for valid eprint URIs', () => {
-      expect(plugin.testIsEprintUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')).toBe(
-        true
-      );
+      expect(plugin.testIsEprintUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')).toBe(true);
     });
 
     it('should return false for non-eprint URIs', () => {

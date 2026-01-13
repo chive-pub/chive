@@ -94,9 +94,7 @@ describe('EprintSource', () => {
 
   it('applies custom className', () => {
     const source = createMockEprintSource();
-    const { container } = render(
-      <EprintSource source={source} className="custom-source-class" />
-    );
+    const { container } = render(<EprintSource source={source} className="custom-source-class" />);
     expect(container.firstChild).toHaveClass('custom-source-class');
   });
 });

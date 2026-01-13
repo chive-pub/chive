@@ -416,7 +416,7 @@ k6 run tests/performance/k6/scenarios/metrics-recording.js
 
 | Operation               | Target p95 |
 | ----------------------- | ---------- |
-| Eprint indexing       | < 200ms    |
+| Eprint indexing         | < 200ms    |
 | Blob cache hit (L1)     | < 50ms     |
 | Blob cache miss (L2/L3) | < 200ms    |
 | Search query            | < 300ms    |
@@ -693,8 +693,8 @@ Tracks references to Chive eprints from Bluesky posts.
 
 ### Backlink sources
 
-| Source          | Description                          |
-| --------------- | ------------------------------------ |
+| Source          | Description                        |
+| --------------- | ---------------------------------- |
 | `bluesky_post`  | Bluesky post mentioning the eprint |
 | `bluesky_reply` | Reply discussing the eprint        |
 | `bluesky_quote` | Quote post of the eprint           |
@@ -758,13 +758,13 @@ Server-sent events (SSE) for real-time notifications.
 
 ### Notification types
 
-| Type              | Description                        |
-| ----------------- | ---------------------------------- |
+| Type              | Description                      |
+| ----------------- | -------------------------------- |
 | `new_review`      | New review on user's eprint      |
-| `review_reply`    | Reply to user's review             |
+| `review_reply`    | Reply to user's review           |
 | `endorsement`     | New endorsement on user's eprint |
-| `claim_update`    | Claim status change                |
-| `proposal_update` | Governance proposal update         |
+| `claim_update`    | Claim status change              |
+| `proposal_update` | Governance proposal update       |
 
 ```typescript
 import { NotificationService } from '@/services/notification/notification-service.js';
@@ -915,7 +915,7 @@ npm run test:compliance
 
 | Operation                 | Target p95 |
 | ------------------------- | ---------- |
-| Eprint indexing         | < 200ms    |
+| Eprint indexing           | < 200ms    |
 | Search query              | < 300ms    |
 | Discovery recommendations | < 500ms    |
 | Claim evidence collection | < 2000ms   |

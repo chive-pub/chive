@@ -63,8 +63,8 @@ export default function SubmitPage() {
         <Alert>
           <AlertTitle>Authentication Required</AlertTitle>
           <AlertDescription>
-            You need to sign in with your AT Protocol account to submit a eprint. Your eprint
-            will be stored in your Personal Data Server (PDS), giving you full control over your
+            You need to sign in with your AT Protocol account to submit a eprint. Your eprint will
+            be stored in your Personal Data Server (PDS), giving you full control over your
             research.
           </AlertDescription>
         </Alert>

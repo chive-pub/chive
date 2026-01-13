@@ -155,9 +155,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
    *
    * @public
    */
-  async indexEprint(
-    eprint: SimpleIndexableDocument | IndexableEprintDocument
-  ): Promise<void> {
+  async indexEprint(eprint: SimpleIndexableDocument | IndexableEprintDocument): Promise<void> {
     try {
       const document = this.normalizeDocument(eprint);
 

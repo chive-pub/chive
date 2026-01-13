@@ -11,7 +11,7 @@ All Redis keys follow a namespace pattern:
 | `session:`        | User sessions              | 7 days          |
 | `user_sessions:`  | User's active session list | 7 days          |
 | `ratelimit:`      | Rate limit counters        | 1 minute        |
-| `cache:eprint:` | Eprint cache             | 5 minutes       |
+| `cache:eprint:`   | Eprint cache               | 5 minutes       |
 | `cache:search:`   | Search result cache        | 5 minutes       |
 | `cache:user:`     | User profile cache         | 10 minutes      |
 | `blob:`           | Blob cache (L1)            | 1 hour          |

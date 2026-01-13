@@ -64,12 +64,12 @@ Elected body that:
 
 ### What is not governed
 
-| Area                  | Rationale                                     |
-| --------------------- | --------------------------------------------- |
-| **User content**      | Lives in user PDSes; users control their data |
+| Area                | Rationale                                     |
+| ------------------- | --------------------------------------------- |
+| **User content**    | Lives in user PDSes; users control their data |
 | **Eprint metadata** | Entered by authors; Chive only indexes        |
-| **Personal tags**     | User-generated; no approval needed            |
-| **User identity**     | Managed by AT Protocol DIDs                   |
+| **Personal tags**   | User-generated; no approval needed            |
+| **User identity**   | Managed by AT Protocol DIDs                   |
 
 ## The Governance PDS
 
@@ -113,13 +113,13 @@ See [Proposals](./proposals.md) for details.
 
 Not all votes are equal. Vote weight depends on:
 
-| Factor                                     | Weight multiplier |
-| ------------------------------------------ | ----------------- |
-| Base (any authenticated user)              | 1.0x              |
+| Factor                                   | Weight multiplier |
+| ---------------------------------------- | ----------------- |
+| Base (any authenticated user)            | 1.0x              |
 | Active contributor (10+ eprints/reviews) | 1.5x              |
-| Domain expert (publications in field)      | 2.5x              |
-| Trusted editor                             | 3.5x              |
-| Authority editor                           | 4.5x              |
+| Domain expert (publications in field)    | 2.5x              |
+| Trusted editor                           | 3.5x              |
+| Authority editor                         | 4.5x              |
 
 See [Voting system](./voting-system.md) for thresholds and quorum requirements.
 

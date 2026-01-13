@@ -110,12 +110,12 @@ The indexer must remain a single instance to preserve event ordering. Scale by:
 
 #### PostgreSQL
 
-| Metric    | Small | Medium | Large |
-| --------- | ----- | ------ | ----- |
+| Metric  | Small | Medium | Large |
+| ------- | ----- | ------ | ----- |
 | Eprints | 100K  | 1M     | 10M   |
-| Storage   | 50 GB | 200 GB | 1 TB  |
-| RAM       | 4 GB  | 16 GB  | 64 GB |
-| CPUs      | 2     | 8      | 32    |
+| Storage | 50 GB | 200 GB | 1 TB  |
+| RAM     | 4 GB  | 16 GB  | 64 GB |
+| CPUs    | 2     | 8      | 32    |
 
 #### Elasticsearch
 
@@ -333,7 +333,7 @@ thread_pool.write.queue_size: 1000
 
 | Metric     | Growth rate |
 | ---------- | ----------- |
-| Eprints  | ~1000/day   |
+| Eprints    | ~1000/day   |
 | Reviews    | ~500/day    |
 | Blob cache | ~10 GB/day  |
 | Logs       | ~5 GB/day   |

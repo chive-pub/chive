@@ -202,10 +202,7 @@ describe('LexiconValidator', () => {
         limit: 25,
       };
 
-      const result = validator.validateParams(
-        'pub.chive.eprint.searchSubmissions',
-        invalidParams
-      );
+      const result = validator.validateParams('pub.chive.eprint.searchSubmissions', invalidParams);
       expect(result.valid).toBe(false);
     });
   });

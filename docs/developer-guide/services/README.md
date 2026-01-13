@@ -28,16 +28,16 @@ All services return `Result<T, Error>` types for explicit error handling.
 | Service                          | Purpose                     | Key operations                     |
 | -------------------------------- | --------------------------- | ---------------------------------- |
 | [IndexingService](./indexing.md) | Firehose consumption        | `start()`, `stop()`, `getStatus()` |
-| EprintService                  | Eprint indexing           | `indexEprint()`, `getEprint()` |
+| EprintService                    | Eprint indexing             | `indexEprint()`, `getEprint()`     |
 | ReviewService                    | Review/endorsement indexing | `indexReview()`, `getReviews()`    |
 
 ### Search and discovery
 
-| Service                            | Purpose          | Key operations                                    |
-| ---------------------------------- | ---------------- | ------------------------------------------------- |
-| SearchService                      | Full-text search | `search()`, `autocomplete()`                      |
+| Service                            | Purpose          | Key operations                                  |
+| ---------------------------------- | ---------------- | ----------------------------------------------- |
+| SearchService                      | Full-text search | `search()`, `autocomplete()`                    |
 | [DiscoveryService](./discovery.md) | Recommendations  | `getRecommendationsForUser()`, `enrichEprint()` |
-| KnowledgeGraphService              | Field taxonomy   | `getField()`, `browseFaceted()`                   |
+| KnowledgeGraphService              | Field taxonomy   | `getField()`, `browseFaceted()`                 |
 
 ### User engagement
 

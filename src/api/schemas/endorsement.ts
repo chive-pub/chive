@@ -107,9 +107,7 @@ export const listEndorsementsForEprintParamsSchema = paginationQuerySchema.exten
  *
  * @public
  */
-export type ListEndorsementsForEprintParams = z.infer<
-  typeof listEndorsementsForEprintParamsSchema
->;
+export type ListEndorsementsForEprintParams = z.infer<typeof listEndorsementsForEprintParamsSchema>;
 
 /**
  * Get endorsement summary params schema.

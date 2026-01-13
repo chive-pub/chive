@@ -93,9 +93,7 @@ describe('EprintCard', () => {
 
   it('applies custom className', () => {
     const eprint = createMockEprintSummary();
-    const { container } = render(
-      <EprintCard eprint={eprint} className="custom-card-class" />
-    );
+    const { container } = render(<EprintCard eprint={eprint} className="custom-card-class" />);
     expect(container.firstChild).toHaveClass('custom-card-class');
   });
 

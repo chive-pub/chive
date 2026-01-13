@@ -29,12 +29,7 @@ export type { FieldBadgeProps, FieldBadgeListProps } from './field-badge';
 export { EprintCard, EprintCardSkeleton } from './eprint-card';
 export type { EprintCardProps, EprintCardSkeletonProps } from './eprint-card';
 
-export {
-  EprintList,
-  EprintListSkeleton,
-  EprintListEmpty,
-  InfiniteEprintList,
-} from './eprint-list';
+export { EprintList, EprintListSkeleton, EprintListEmpty, InfiniteEprintList } from './eprint-list';
 export type {
   EprintListProps,
   EprintListSkeletonProps,
@@ -68,11 +63,7 @@ export { EprintSource } from './eprint-source';
 export type { EprintSourceProps } from './eprint-source';
 
 // Version components
-export {
-  EprintVersionSelector,
-  EprintVersionTimeline,
-  VersionBadge,
-} from './eprint-versions';
+export { EprintVersionSelector, EprintVersionTimeline, VersionBadge } from './eprint-versions';
 export type {
   EprintVersionSelectorProps,
   EprintVersionTimelineProps,

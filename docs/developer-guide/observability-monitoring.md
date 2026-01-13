@@ -531,8 +531,8 @@ The following metrics are registered automatically:
 
 #### Eprint metrics
 
-| Metric                                     | Type      | Labels        |
-| ------------------------------------------ | --------- | ------------- |
+| Metric                                   | Type      | Labels        |
+| ---------------------------------------- | --------- | ------------- |
 | `chive_eprints_indexed_total`            | Counter   | field, status |
 | `chive_eprint_indexing_duration_seconds` | Histogram | operation     |
 

@@ -178,19 +178,19 @@ interface IPluginContext {
 
 ### Available hooks
 
-| Hook                  | Payload                            | Description             |
-| --------------------- | ---------------------------------- | ----------------------- |
-| `eprint.indexed`    | `{ uri, title, author, ... }`      | New eprint indexed    |
-| `eprint.updated`    | `{ uri, previousCid, currentCid }` | Eprint record updated |
-| `eprint.deleted`    | `{ uri }`                          | Eprint record deleted |
-| `review.created`      | `{ uri, subject, author }`         | New review comment      |
-| `review.deleted`      | `{ uri }`                          | Review deleted          |
-| `endorsement.created` | `{ uri, subject, author, type }`   | New endorsement         |
-| `author.linked`       | `{ did, orcid }`                   | ORCID linked to author  |
-| `system.startup`      | `{}`                               | System starting         |
-| `system.shutdown`     | `{}`                               | System shutting down    |
-| `plugin.loaded`       | `{ pluginId }`                     | Plugin loaded           |
-| `plugin.unloaded`     | `{ pluginId }`                     | Plugin unloaded         |
+| Hook                  | Payload                            | Description            |
+| --------------------- | ---------------------------------- | ---------------------- |
+| `eprint.indexed`      | `{ uri, title, author, ... }`      | New eprint indexed     |
+| `eprint.updated`      | `{ uri, previousCid, currentCid }` | Eprint record updated  |
+| `eprint.deleted`      | `{ uri }`                          | Eprint record deleted  |
+| `review.created`      | `{ uri, subject, author }`         | New review comment     |
+| `review.deleted`      | `{ uri }`                          | Review deleted         |
+| `endorsement.created` | `{ uri, subject, author, type }`   | New endorsement        |
+| `author.linked`       | `{ did, orcid }`                   | ORCID linked to author |
+| `system.startup`      | `{}`                               | System starting        |
+| `system.shutdown`     | `{}`                               | System shutting down   |
+| `plugin.loaded`       | `{ pluginId }`                     | Plugin loaded          |
+| `plugin.unloaded`     | `{ pluginId }`                     | Plugin unloaded        |
 
 ### Subscribing to events
 

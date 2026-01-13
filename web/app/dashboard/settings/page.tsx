@@ -124,8 +124,8 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Chive is built on the AT Protocol. Your eprints, reviews, and endorsements are stored
-            in your Personal Data Server (PDS), not on Chive&apos;s servers. This means you maintain
+            Chive is built on the AT Protocol. Your eprints, reviews, and endorsements are stored in
+            your Personal Data Server (PDS), not on Chive&apos;s servers. This means you maintain
             full ownership and portability of your scholarly work.
           </p>
           <div className="mt-4 flex gap-4">

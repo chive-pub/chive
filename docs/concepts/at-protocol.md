@@ -97,8 +97,8 @@ Chive uses the `pub.chive.*` namespace for all its record types:
 
 | Lexicon                         | Purpose                    |
 | ------------------------------- | -------------------------- |
-| `pub.chive.eprint.submission` | Core eprint metadata     |
-| `pub.chive.eprint.version`    | Version tracking           |
+| `pub.chive.eprint.submission`   | Core eprint metadata       |
+| `pub.chive.eprint.version`      | Version tracking           |
 | `pub.chive.review.comment`      | Peer review comments       |
 | `pub.chive.review.endorsement`  | Formal endorsements        |
 | `pub.chive.graph.fieldProposal` | Knowledge graph proposals  |
@@ -243,7 +243,7 @@ Every record you create is signed with your private key. This means:
 | **DID**         | Decentralized Identifier, your permanent identity         |
 | **PDS**         | Personal Data Server, where your data lives               |
 | **Repository**  | Your collection of signed records in a PDS                |
-| **Record**      | A single data object (eprint, review, etc.)             |
+| **Record**      | A single data object (eprint, review, etc.)               |
 | **Lexicon**     | Schema definition for record types                        |
 | **Blob**        | Binary large object (PDFs, images)                        |
 | **BlobRef**     | A pointer to a blob, containing its CID                   |

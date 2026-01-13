@@ -808,10 +808,10 @@ Each screenshot should be:
 | Submission Wizard      | Step 2 (Metadata) with sample data | Show title, abstract, license selector   |
 | Knowledge Graph Browse | Field hierarchy expanded           | Show PMEST facets, field relationships   |
 | Search Results         | Results for sample query           | Show filters, result cards, highlighting |
-| Review Thread          | Comment thread on eprint         | Show threaded replies, author badges     |
-| Integration Panel      | Eprint with linked GitHub, ORCID | Show badges and linked resources         |
+| Review Thread          | Comment thread on eprint           | Show threaded replies, author badges     |
+| Integration Panel      | Eprint with linked GitHub, ORCID   | Show badges and linked resources         |
 | Dashboard              | User dashboard with stats          | Show personalized experience             |
-| Eprint Detail        | Full eprint page                 | Hero section with metadata               |
+| Eprint Detail          | Full eprint page                   | Hero section with metadata               |
 
 #### Screenshot Generation Process
 
@@ -893,7 +893,7 @@ const screenshots = [
 | Category               | Examples                          |
 | ---------------------- | --------------------------------- |
 | Open science advocates | ASAPbio, SPARC, FORCE11           |
-| Eprint advocates     | PREreview, preLights              |
+| Eprint advocates       | PREreview, preLights              |
 | ATProto developers     | Bluesky team, PDS operators       |
 | Academic influencers   | Researchers with large followings |
 | Research librarians    | Digital scholarship librarians    |
@@ -933,12 +933,12 @@ const screenshots = [
 
 | Category                                 | Count  | Selection Criteria                            |
 | ---------------------------------------- | ------ | --------------------------------------------- |
-| Researchers (STEM)                       | 50-100 | Active eprint authors, varied career stages |
-| Researchers (Humanities/Social Sciences) | 30-60  | Underrepresented in eprint culture          |
+| Researchers (STEM)                       | 50-100 | Active eprint authors, varied career stages   |
+| Researchers (Humanities/Social Sciences) | 30-60  | Underrepresented in eprint culture            |
 | Graduate students                        | 40-80  | High engagement potential, diverse needs      |
 | Librarians                               | 20-40  | Institutional perspective, metadata expertise |
 | Journal editors                          | 10-20  | Publishing workflow integration               |
-| Eprint advocates                       | 10-20  | ASAPbio, PREreview community members          |
+| Eprint advocates                         | 10-20  | ASAPbio, PREreview community members          |
 | Accessibility testers                    | 10-20  | Expanded from alpha cohort                    |
 | International users                      | 30-60  | Non-English speakers, varied connectivity     |
 | ATProto enthusiasts                      | 20-40  | Decentralization advocates, technical users   |
@@ -1007,13 +1007,13 @@ Given Chive's ATProto foundation, Bluesky is the primary recruitment channel.
 
 #### Academic Networks
 
-| Channel                           | Approach                            | Expected Yield     |
-| --------------------------------- | ----------------------------------- | ------------------ |
+| Channel                         | Approach                            | Expected Yield     |
+| ------------------------------- | ----------------------------------- | ------------------ |
 | Eprint servers (arXiv, bioRxiv) | Author outreach via Bluesky         | 50-100 applicants  |
-| Academic Bluesky/Twitter          | Announcement posts, RT campaigns    | 100-200 applicants |
-| Research librarian associations   | ALA, ACRL mailing lists             | 30-50 applicants   |
-| Open science communities          | ASAPbio, FORCE11, OpenCon           | 50-100 applicants  |
-| University partnerships           | Direct outreach to research offices | 20-40 applicants   |
+| Academic Bluesky/Twitter        | Announcement posts, RT campaigns    | 100-200 applicants |
+| Research librarian associations | ALA, ACRL mailing lists             | 30-50 applicants   |
+| Open science communities        | ASAPbio, FORCE11, OpenCon           | 50-100 applicants  |
+| University partnerships         | Direct outreach to research offices | 20-40 applicants   |
 
 #### Technical Networks
 
@@ -1080,13 +1080,13 @@ Alpha applications are collected via the landing page at `alpha.chive.pub`. The 
 
 #### Scoring Matrix (0-5 each)
 
-| Criterion                  | Weight | Description                                           |
-| -------------------------- | ------ | ----------------------------------------------------- |
-| Diversity                  | 25%    | Underrepresented field, geography, career stage       |
-| Engagement likelihood      | 25%    | Motivation quality, availability, eprint experience |
-| Technical diversity        | 20%    | OS, browser, network conditions, ATProto familiarity  |
-| Feedback quality potential | 20%    | Communication skills, domain expertise                |
-| Strategic value            | 10%    | Influencer potential, institutional partnership       |
+| Criterion                  | Weight | Description                                          |
+| -------------------------- | ------ | ---------------------------------------------------- |
+| Diversity                  | 25%    | Underrepresented field, geography, career stage      |
+| Engagement likelihood      | 25%    | Motivation quality, availability, eprint experience  |
+| Technical diversity        | 20%    | OS, browser, network conditions, ATProto familiarity |
+| Feedback quality potential | 20%    | Communication skills, domain expertise               |
+| Strategic value            | 10%    | Influencer potential, institutional partnership      |
 
 #### Cohort Balancing
 
@@ -1945,15 +1945,15 @@ When testers leave the program:
 
 Before launch, capture the following screenshots:
 
-| Screenshot        | Page/Route               | Content                  | Status |
-| ----------------- | ------------------------ | ------------------------ | ------ |
-| Submission Wizard | `/submit?step=metadata`  | Filled metadata form     | [ ]    |
-| Knowledge Graph   | `/browse`                | Expanded field hierarchy | [ ]    |
-| Search Results    | `/search?q=...`          | Results with filters     | [ ]    |
-| Review Thread     | `/eprint/[id]#reviews` | Threaded comments        | [ ]    |
-| Integration Panel | `/eprint/[id]`         | GitHub, ORCID badges     | [ ]    |
-| Dashboard         | `/dashboard`             | User stats, actions      | [ ]    |
-| Eprint Detail   | `/eprint/[id]`         | Full eprint page       | [ ]    |
+| Screenshot        | Page/Route              | Content                  | Status |
+| ----------------- | ----------------------- | ------------------------ | ------ |
+| Submission Wizard | `/submit?step=metadata` | Filled metadata form     | [ ]    |
+| Knowledge Graph   | `/browse`               | Expanded field hierarchy | [ ]    |
+| Search Results    | `/search?q=...`         | Results with filters     | [ ]    |
+| Review Thread     | `/eprint/[id]#reviews`  | Threaded comments        | [ ]    |
+| Integration Panel | `/eprint/[id]`          | GitHub, ORCID badges     | [ ]    |
+| Dashboard         | `/dashboard`            | User stats, actions      | [ ]    |
+| Eprint Detail     | `/eprint/[id]`          | Full eprint page         | [ ]    |
 
 ### Appendix F: Bluesky Thread Posting Checklist
 

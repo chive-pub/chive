@@ -113,16 +113,16 @@ Chive supports push notifications via WebSocket and Server-Sent Events (SSE).
 
 ### Notification types
 
-| Type                | Description                | Example                             |
-| ------------------- | -------------------------- | ----------------------------------- |
-| `new-review`        | Eprint received a review | "Alice reviewed your eprint"      |
-| `new-endorsement`   | Eprint endorsed          | "Bob endorsed your methodology"     |
-| `proposal-approved` | Field proposal approved    | "Your field proposal was approved"  |
-| `proposal-rejected` | Field proposal rejected    | "Your field proposal was rejected"  |
-| `new-version`       | Eprint updated           | "New version of eprint available" |
-| `mention`           | Mentioned in a comment     | "Carol mentioned you in a comment"  |
-| `citation`          | Eprint cited             | "Your eprint was cited"           |
-| `system`            | System notification        | "Maintenance scheduled"             |
+| Type                | Description              | Example                            |
+| ------------------- | ------------------------ | ---------------------------------- |
+| `new-review`        | Eprint received a review | "Alice reviewed your eprint"       |
+| `new-endorsement`   | Eprint endorsed          | "Bob endorsed your methodology"    |
+| `proposal-approved` | Field proposal approved  | "Your field proposal was approved" |
+| `proposal-rejected` | Field proposal rejected  | "Your field proposal was rejected" |
+| `new-version`       | Eprint updated           | "New version of eprint available"  |
+| `mention`           | Mentioned in a comment   | "Carol mentioned you in a comment" |
+| `citation`          | Eprint cited             | "Your eprint was cited"            |
+| `system`            | System notification      | "Maintenance scheduled"            |
 
 ### Creating notifications
 

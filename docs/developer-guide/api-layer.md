@@ -246,15 +246,15 @@ GET /xrpc/pub.chive.metrics.getTrending?window={24h|7d|30d}&limit={n}
 
 ### Eprints
 
-| Method | Path                     | Description         |
-| ------ | ------------------------ | ------------------- |
+| Method | Path                   | Description       |
+| ------ | ---------------------- | ----------------- |
 | GET    | `/api/v1/eprints`      | List eprints      |
 | GET    | `/api/v1/eprints/:uri` | Get eprint by URI |
 
 ### Search
 
-| Method | Path                       | Description      |
-| ------ | -------------------------- | ---------------- |
+| Method | Path                       | Description    |
+| ------ | -------------------------- | -------------- |
 | GET    | `/api/v1/search?q={query}` | Search eprints |
 
 ### Health

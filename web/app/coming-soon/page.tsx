@@ -78,8 +78,8 @@ export default function ComingSoonPage() {
 
           {/* Description */}
           <p className="max-w-2xl text-lg text-muted-foreground md:text-xl">
-            A next-generation eprint server built on AT Protocol. Share your research with full
-            data sovereignty, open federation, and community governance.
+            A next-generation eprint server built on AT Protocol. Share your research with full data
+            sovereignty, open federation, and community governance.
           </p>
 
           {/* Status Badge */}

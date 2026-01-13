@@ -134,8 +134,7 @@ export interface EventProcessorOptions {
 export function createEventProcessor(
   options: EventProcessorOptions
 ): (event: ProcessedEvent) => Promise<void> {
-  const { pool, activity, eprintService, reviewService, graphService, identity, logger } =
-    options;
+  const { pool, activity, eprintService, reviewService, graphService, identity, logger } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
     const { repo, collection, rkey, action, cid, seq, record } = event;
@@ -471,8 +470,7 @@ async function correlateActivity(
 export function createBatchEventProcessor(
   options: EventProcessorOptions
 ): (events: readonly ProcessedEvent[]) => Promise<void> {
-  const { pool, activity, eprintService, reviewService, graphService, identity, logger } =
-    options;
+  const { pool, activity, eprintService, reviewService, graphService, identity, logger } = options;
 
   return async (events: readonly ProcessedEvent[]): Promise<void> => {
     // Process records

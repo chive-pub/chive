@@ -128,14 +128,13 @@ export async function listForEprintHandler(
  *
  * @public
  */
-export const listForEprintEndpoint: XRPCEndpoint<ListReviewsForEprintParams, ReviewsResponse> =
-  {
-    method: 'pub.chive.review.listForEprint' as never,
-    type: 'query',
-    description: 'List reviews for a eprint',
-    inputSchema: listReviewsForEprintParamsSchema,
-    outputSchema: reviewsResponseSchema,
-    handler: listForEprintHandler,
-    auth: 'none',
-    rateLimit: 'anonymous',
-  };
+export const listForEprintEndpoint: XRPCEndpoint<ListReviewsForEprintParams, ReviewsResponse> = {
+  method: 'pub.chive.review.listForEprint' as never,
+  type: 'query',
+  description: 'List reviews for a eprint',
+  inputSchema: listReviewsForEprintParamsSchema,
+  outputSchema: reviewsResponseSchema,
+  handler: listForEprintHandler,
+  auth: 'none',
+  rateLimit: 'anonymous',
+};

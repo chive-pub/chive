@@ -110,10 +110,9 @@ export default function AboutPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Technology</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Chive is built as an <strong>AppView</strong> on AT Protocol. We index eprints from the
-          AT Protocol firehose but never store your data as the source of truth. If our entire
-          database were deleted, all eprints would still exist in their owners&apos; Personal Data
-          Servers.
+          Chive is built as an <strong>AppView</strong> on AT Protocol. We index eprints from the AT
+          Protocol firehose but never store your data as the source of truth. If our entire database
+          were deleted, all eprints would still exist in their owners&apos; Personal Data Servers.
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
           <span className="rounded-full bg-muted px-3 py-1 text-sm">AT Protocol</span>

@@ -548,9 +548,7 @@ export class TagSpamDetector {
     const diversityRatio = stats.uniqueEprints / stats.usageCount;
 
     if (diversityRatio < 0.2) {
-      reasons.push(
-        `Low diversity: ${stats.uniqueEprints} eprints for ${stats.usageCount} uses`
-      );
+      reasons.push(`Low diversity: ${stats.uniqueEprints} eprints for ${stats.usageCount} uses`);
       return 1 - diversityRatio;
     }
 

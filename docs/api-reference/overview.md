@@ -183,7 +183,7 @@ XRPC endpoints are organized by namespace:
 
 | Namespace                 | Purpose               | Endpoints |
 | ------------------------- | --------------------- | --------- |
-| `pub.chive.eprint.*`    | Eprint operations   | 4         |
+| `pub.chive.eprint.*`      | Eprint operations     | 4         |
 | `pub.chive.review.*`      | Reviews and comments  | 2         |
 | `pub.chive.endorsement.*` | Endorsements          | 3         |
 | `pub.chive.graph.*`       | Knowledge graph       | 8         |

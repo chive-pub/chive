@@ -169,7 +169,7 @@ Not all votes carry equal weight. Expertise in the relevant field increases vote
 | Tier               | Vote weight | Criteria                  |
 | ------------------ | ----------- | ------------------------- |
 | Community member   | 1.0x        | Any authenticated user    |
-| Active contributor | 1.5x        | 10+ eprints or reviews  |
+| Active contributor | 1.5x        | 10+ eprints or reviews    |
 | Domain expert      | 2.5x        | Publications in the field |
 | Trusted editor     | 3.5x        | Appointed by governance   |
 | Authority editor   | 4.5x        | Library science expertise |
@@ -293,7 +293,7 @@ SELECT ?item ?itemLabel WHERE {
 | `pub.chive.graph.searchAuthorities` | Search authority records     |
 | `pub.chive.graph.getAuthority`      | Get authority record details |
 | `pub.chive.graph.browseFaceted`     | Faceted search               |
-| `pub.chive.graph.getFieldEprints` | Eprints in a field         |
+| `pub.chive.graph.getFieldEprints`   | Eprints in a field           |
 
 ## Next steps
 

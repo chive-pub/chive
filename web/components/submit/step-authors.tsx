@@ -62,10 +62,7 @@ export interface StepAuthorsProps {
 export function StepAuthors({ form, className }: StepAuthorsProps) {
   const { user } = useAuth();
   const watchedAuthors = form.watch('authors');
-  const authors = useMemo(
-    () => (watchedAuthors as EprintAuthorFormData[]) ?? [],
-    [watchedAuthors]
-  );
+  const authors = useMemo(() => (watchedAuthors as EprintAuthorFormData[]) ?? [], [watchedAuthors]);
 
   // Contribution types would be fetched from API in production
   const [contributionTypes, setContributionTypes] = useState<ContributionType[] | undefined>();

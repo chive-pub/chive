@@ -164,7 +164,7 @@ Go to **Profile** → **Following** to see and manage all your follows.
 | Setting                       | Options                        | Default |
 | ----------------------------- | ------------------------------ | ------- |
 | Recommendation diversity      | Low / Medium / High            | Medium  |
-| Include eprints from        | All sources / Selected sources | All     |
+| Include eprints from          | All sources / Selected sources | All     |
 | Show papers in languages      | Select languages               | English |
 | Minimum endorsement threshold | 0 / 1 / 3 / 5                  | 0       |
 

@@ -89,7 +89,7 @@ Business logic is encapsulated in services:
 
 | Service               | Responsibility                    |
 | --------------------- | --------------------------------- |
-| EprintService       | Eprint CRUD, version management |
+| EprintService         | Eprint CRUD, version management   |
 | SearchService         | Full-text search, faceted queries |
 | DiscoveryService      | Recommendations, similar papers   |
 | KnowledgeGraphService | Field taxonomy, authority control |

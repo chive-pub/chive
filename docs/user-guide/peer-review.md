@@ -36,7 +36,7 @@ Formal reviews provide structured feedback:
 
 | Section           | Description                      |
 | ----------------- | -------------------------------- |
-| Summary           | Brief summary of the eprint    |
+| Summary           | Brief summary of the eprint      |
 | Strengths         | Main contributions and strengths |
 | Weaknesses        | Areas for improvement            |
 | Detailed Comments | Section-by-section feedback      |
