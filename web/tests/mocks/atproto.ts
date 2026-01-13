@@ -45,6 +45,23 @@ export interface MockCreateRecordResult {
 }
 
 /**
+ * Mock put record result.
+ */
+export interface MockPutRecordResult {
+  uri: string;
+  cid: string;
+}
+
+/**
+ * Mock get record result.
+ */
+export interface MockGetRecordResult {
+  uri: string;
+  cid: string;
+  value: unknown;
+}
+
+/**
  * Mock Agent session.
  */
 export interface MockAgentSession {
@@ -80,6 +97,21 @@ export interface MockAgent {
             collection: string;
             rkey: string;
           }) => Promise<{ success: boolean }>
+        >;
+        putRecord: MockedFunction<
+          (params: {
+            repo: string;
+            collection: string;
+            rkey: string;
+            record: unknown;
+          }) => Promise<{ data: MockPutRecordResult }>
+        >;
+        getRecord: MockedFunction<
+          (params: {
+            repo: string;
+            collection: string;
+            rkey: string;
+          }) => Promise<{ data: MockGetRecordResult }>
         >;
       };
     };
@@ -223,6 +255,25 @@ export function createMockAgent(options: { authenticated?: boolean } = {}): Mock
           }),
 
           deleteRecord: vi.fn().mockResolvedValue({ success: true }),
+
+          putRecord: vi.fn().mockImplementation(async (params) => {
+            return {
+              data: {
+                uri: `at://${params.repo}/${params.collection}/${params.rkey}`,
+                cid: `bafyrei${params.rkey}`,
+              },
+            };
+          }),
+
+          getRecord: vi.fn().mockImplementation(async (params) => {
+            return {
+              data: {
+                uri: `at://${params.repo}/${params.collection}/${params.rkey}`,
+                cid: `bafyrei${params.rkey}`,
+                value: {},
+              },
+            };
+          }),
         },
       },
     },
@@ -329,6 +380,91 @@ export function expectCreateRecordCalled(agent: MockAgent, collection: string): 
 
   const calls = agent.com.atproto.repo.createRecord.mock.calls;
   const matchingCall = calls.find((call) => call[0].collection === collection);
+
+  expect(matchingCall).toBeDefined();
+}
+
+/**
+ * Helper to simulate put record failure.
+ *
+ * @param agent - Mock agent to configure
+ * @param error - Error message
+ */
+export function simulatePutRecordFailure(
+  agent: MockAgent,
+  error: string = 'Put record failed'
+): void {
+  agent.com.atproto.repo.putRecord.mockRejectedValueOnce(new Error(error));
+}
+
+/**
+ * Helper to simulate get record failure.
+ *
+ * @param agent - Mock agent to configure
+ * @param error - Error message
+ */
+export function simulateGetRecordFailure(
+  agent: MockAgent,
+  error: string = 'Get record failed'
+): void {
+  agent.com.atproto.repo.getRecord.mockRejectedValueOnce(new Error(error));
+}
+
+/**
+ * Helper to configure get record response with specific value.
+ *
+ * @param agent - Mock agent to configure
+ * @param value - Record value to return
+ * @param options - Optional URI and CID overrides
+ */
+export function configureGetRecordResponse(
+  agent: MockAgent,
+  value: unknown,
+  options: { uri?: string; cid?: string } = {}
+): void {
+  agent.com.atproto.repo.getRecord.mockResolvedValueOnce({
+    data: {
+      uri: options.uri ?? 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
+      cid: options.cid ?? 'bafyreiabc123',
+      value,
+    },
+  });
+}
+
+/**
+ * Helper to verify putRecord was called with expected collection.
+ *
+ * @param agent - Mock agent to check
+ * @param collection - Expected collection NSID
+ */
+export function expectPutRecordCalled(agent: MockAgent, collection: string): void {
+  expect(agent.com.atproto.repo.putRecord).toHaveBeenCalled();
+
+  const calls = agent.com.atproto.repo.putRecord.mock.calls;
+  const matchingCall = calls.find((call) => call[0].collection === collection);
+
+  expect(matchingCall).toBeDefined();
+}
+
+/**
+ * Helper to verify getRecord was called with expected parameters.
+ *
+ * @param agent - Mock agent to check
+ * @param expected - Expected call parameters
+ */
+export function expectGetRecordCalled(
+  agent: MockAgent,
+  expected: { collection?: string; rkey?: string }
+): void {
+  expect(agent.com.atproto.repo.getRecord).toHaveBeenCalled();
+
+  const calls = agent.com.atproto.repo.getRecord.mock.calls;
+  const matchingCall = calls.find((call) => {
+    const params = call[0];
+    if (expected.collection && params.collection !== expected.collection) return false;
+    if (expected.rkey && params.rkey !== expected.rkey) return false;
+    return true;
+  });
 
   expect(matchingCall).toBeDefined();
 }

@@ -147,7 +147,7 @@ export class LingBuzzPlugin extends ImportingPlugin {
       network: {
         allowedDomains: ['ling.auf.net', 'lingbuzz.net', 'feeds.feedburner.com'],
       },
-      hooks: ['system.startup', 'import.updated'],
+      hooks: ['system.startup', 'import.created', 'import.updated'],
       storage: {
         maxSize: 20 * 1024 * 1024, // 20MB for caching
       },

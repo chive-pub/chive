@@ -13,6 +13,8 @@ import {
   createFieldProposalRecord,
   createVoteRecord,
   deleteRecord,
+  updateEndorsementRecord,
+  updateChiveProfileRecord,
   isAgentAuthenticated,
   getAuthenticatedDid,
   buildAtUri,
@@ -48,6 +50,28 @@ function createMockAgent(options: { authenticated?: boolean; did?: string } = {}
             },
           })),
           deleteRecord: vi.fn().mockResolvedValue({ success: true }),
+          putRecord: vi
+            .fn()
+            .mockImplementation(async (params: { collection: string; rkey: string }) => ({
+              data: {
+                uri: `at://${did}/${params.collection}/${params.rkey}`,
+                cid: 'bafyupdated123',
+              },
+            })),
+          getRecord: vi
+            .fn()
+            .mockImplementation(async (params: { collection: string; rkey: string }) => ({
+              data: {
+                uri: `at://${did}/${params.collection}/${params.rkey}`,
+                cid: 'bafyexisting123',
+                value: {
+                  $type: params.collection,
+                  eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/paper123',
+                  contributions: ['writing'],
+                  createdAt: '2024-01-15T00:00:00.000Z',
+                },
+              },
+            })),
         },
       },
     },
@@ -376,5 +400,193 @@ describe('parseAtUri', () => {
   it('returns null for invalid URI', () => {
     expect(parseAtUri('invalid-uri')).toBeNull();
     expect(parseAtUri('https://example.com')).toBeNull();
+  });
+});
+
+describe('updateEndorsementRecord', () => {
+  it('fetches existing record before updating', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const uri = `at://${did}/pub.chive.review.endorsement/endorsement123`;
+
+    await updateEndorsementRecord(agent, {
+      uri,
+      contributions: ['conceptualization', 'writing'],
+    });
+
+    expect(agent.com.atproto.repo.getRecord).toHaveBeenCalledWith({
+      repo: did,
+      collection: 'pub.chive.review.endorsement',
+      rkey: 'endorsement123',
+    });
+  });
+
+  it('uses putRecord to update the record', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const uri = `at://${did}/pub.chive.review.endorsement/endorsement123`;
+
+    const result = await updateEndorsementRecord(agent, {
+      uri,
+      contributions: ['methodology'],
+    });
+
+    expect(agent.com.atproto.repo.putRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: did,
+        collection: 'pub.chive.review.endorsement',
+        rkey: 'endorsement123',
+      })
+    );
+    expect(result.uri).toContain('pub.chive.review.endorsement');
+    expect(result.cid).toBeDefined();
+  });
+
+  it('preserves original eprintUri and createdAt', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const uri = `at://${did}/pub.chive.review.endorsement/endorsement123`;
+
+    await updateEndorsementRecord(agent, {
+      uri,
+      contributions: ['validation'],
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+
+    // Should preserve the eprintUri and createdAt from the existing record
+    expect(putRecordCall.record.eprintUri).toBe(
+      'at://did:plc:author/pub.chive.eprint.submission/paper123'
+    );
+    expect(putRecordCall.record.createdAt).toBe('2024-01-15T00:00:00.000Z');
+  });
+
+  it('throws when updating another user record', async () => {
+    const agent = createMockAgent({ did: 'did:plc:user1' });
+    const uri = 'at://did:plc:user2/pub.chive.review.endorsement/abc123';
+
+    await expect(
+      updateEndorsementRecord(agent, {
+        uri,
+        contributions: ['writing'],
+      })
+    ).rejects.toThrow('Cannot update records belonging to other users');
+  });
+
+  it('throws when not authenticated', async () => {
+    const agent = createMockAgent({ authenticated: false });
+    const uri = 'at://did:plc:test123/pub.chive.review.endorsement/abc123';
+
+    await expect(
+      updateEndorsementRecord(agent, {
+        uri,
+        contributions: ['writing'],
+      })
+    ).rejects.toThrow('Agent is not authenticated');
+  });
+
+  it('includes optional comment when provided', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const uri = `at://${did}/pub.chive.review.endorsement/endorsement123`;
+
+    await updateEndorsementRecord(agent, {
+      uri,
+      contributions: ['writing'],
+      comment: 'Updated comment',
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(putRecordCall.record.comment).toBe('Updated comment');
+  });
+});
+
+describe('updateChiveProfileRecord', () => {
+  it('uses putRecord with self rkey', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await updateChiveProfileRecord(agent, {
+      displayName: 'Test User',
+    });
+
+    expect(agent.com.atproto.repo.putRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: did,
+        collection: 'pub.chive.actor.profile',
+        rkey: 'self',
+      })
+    );
+  });
+
+  it('only includes non-null fields in record', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await updateChiveProfileRecord(agent, {
+      displayName: 'Test User',
+      bio: 'My bio',
+      // Not providing orcid, affiliations, etc.
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+
+    expect(putRecordCall.record.$type).toBe('pub.chive.actor.profile');
+    expect(putRecordCall.record.displayName).toBe('Test User');
+    expect(putRecordCall.record.bio).toBe('My bio');
+    expect(putRecordCall.record.orcid).toBeUndefined();
+    expect(putRecordCall.record.affiliations).toBeUndefined();
+  });
+
+  it('includes orcid when provided', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await updateChiveProfileRecord(agent, {
+      orcid: '0000-0001-2345-6789',
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(putRecordCall.record.orcid).toBe('0000-0001-2345-6789');
+  });
+
+  it('includes affiliations array when provided', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await updateChiveProfileRecord(agent, {
+      affiliations: [{ name: 'MIT', rorId: 'https://ror.org/042nb2s44' }, { name: 'Stanford' }],
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(putRecordCall.record.affiliations).toHaveLength(2);
+    expect(putRecordCall.record.affiliations[0].name).toBe('MIT');
+  });
+
+  it('throws when not authenticated', async () => {
+    const agent = createMockAgent({ authenticated: false });
+
+    await expect(
+      updateChiveProfileRecord(agent, {
+        displayName: 'Test',
+      })
+    ).rejects.toThrow('Agent is not authenticated');
+  });
+
+  it('returns correct uri and cid', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    const result = await updateChiveProfileRecord(agent, {
+      displayName: 'Test User',
+    });
+
+    expect(result.uri).toBe(`at://${did}/pub.chive.actor.profile/self`);
+    expect(result.cid).toBe('bafyupdated123');
   });
 });

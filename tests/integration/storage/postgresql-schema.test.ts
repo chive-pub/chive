@@ -345,14 +345,31 @@ describe('PostgreSQL Schema', () => {
         // This migration adds bluesky_post_count, bluesky_embed_count, other_count columns
         // and removes the combined bluesky_count column
 
-        // First, roll back alpha-applications (the latest migration) to get to separate-bluesky-counts
-        execSync(
-          `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
-          {
-            env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
-            stdio: 'pipe',
-          }
+        // Roll back to the state where separate-bluesky-counts is the latest applied migration
+        // We need to roll back migrations in reverse order (newest first)
+        // Current migrations after separate-bluesky-counts:
+        //   - 1736200000000_fix-facet-trending-function
+        //   - 1736100000000_alpha-applications
+        // Using --no-check-order on re-apply is fragile, so we roll back properly
+
+        // Roll back all migrations after separate-bluesky-counts
+        // The number of migrations to roll back may change as new migrations are added,
+        // so we query the pgmigrations table to find how many to roll back
+        const migrationsAfter = await pool.query<{ name: string }>(
+          `SELECT name FROM pgmigrations
+           WHERE name > '1734700000000_separate-bluesky-counts'
+           ORDER BY name DESC`
         );
+
+        for (const _migration of migrationsAfter.rows) {
+          execSync(
+            `pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate down --count 1 --migrations-dir ${migrationConfig.dir}`,
+            {
+              env: { ...process.env, DATABASE_URL: migrationConfig.databaseUrl },
+              stdio: 'pipe',
+            }
+          );
+        }
 
         // Verify new columns exist before rolling back separate-bluesky-counts
         const beforeResult = await pool.query<{ column_name: string }>(
