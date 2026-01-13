@@ -45,8 +45,7 @@ export interface PluginScheduleConfig {
    * - 1 hour (3600000ms) for high-frequency sources
    *
    * Consider the source's rate limits and update frequency.
-   *
-   * @minimum 60000 (1 minute)
+   * Minimum value: 60000ms (1 minute).
    */
   readonly intervalMs: number;
 

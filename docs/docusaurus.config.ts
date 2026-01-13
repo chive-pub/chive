@@ -44,6 +44,9 @@ const config: Config = {
         out: 'code-reference/backend',
         readme: 'none',
         sanitizeComments: true,
+        sidebar: {
+          autoConfiguration: false,
+        },
       },
     ],
     // Frontend API documentation
@@ -57,6 +60,9 @@ const config: Config = {
         out: 'code-reference/frontend',
         readme: 'none',
         sanitizeComments: true,
+        sidebar: {
+          autoConfiguration: false,
+        },
       },
     ],
     // OpenAPI plugin for REST/XRPC API documentation
