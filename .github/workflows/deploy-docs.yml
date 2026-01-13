@@ -39,7 +39,7 @@ jobs:
           target: "/tmp/docs-deploy"
           strip_components: 2
 
-      - name: Restart docs container
+      - name: Deploy and restart docs container
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DOCS_HOST }}
@@ -51,13 +51,12 @@ jobs:
             # Replace old docs with new build
             sudo rm -rf /opt/chive/docs/build
             sudo mv /tmp/docs-deploy /opt/chive/docs/build
-            sudo chown -R www-data:www-data /opt/chive/docs/build
+            sudo chown -R root:root /opt/chive/docs/build
+            sudo chmod -R 755 /opt/chive/docs/build
 
-            # Restart docs container if using Docker
+            # Restart docs container using docs-specific compose file
             cd /opt/chive/docker
-            if docker compose -f docker-compose.prod.yml ps chive-docs | grep -q "Up"; then
-              docker compose -f docker-compose.prod.yml restart chive-docs
-            fi
+            docker compose -f docker-compose.docs.yml up -d --force-recreate chive-docs
 
             echo "Documentation deployed successfully!"
 

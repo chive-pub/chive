@@ -28,14 +28,19 @@ services:
       - chive-network
 
   chive-docs:
-    build:
-      context: ..
-      dockerfile: docs/Dockerfile
-    image: chive-docs:latest
+    image: nginx:alpine
     container_name: chive-docs
     restart: unless-stopped
+    volumes:
+      - /opt/chive/docs/build:/usr/share/nginx/html:ro
+      - /opt/chive/docker/nginx-docs.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - chive-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.docs.rule=Host(`docs.chive.pub`)"
