@@ -15,8 +15,8 @@ g2, author, reader
 p, admin, *, *
 
 # Moderator permissions
-p, moderator, preprint, read
-p, moderator, preprint, moderate
+p, moderator, eprint, read
+p, moderator, eprint, moderate
 p, moderator, review, read
 p, moderator, review, moderate
 p, moderator, endorsement, read
@@ -40,8 +40,8 @@ p, authority-editor, facet, create
 p, authority-editor, facet, update
 
 # Author permissions
-p, author, preprint, read
-p, author, preprint, create
+p, author, eprint, read
+p, author, eprint, create
 p, author, review, read
 p, author, review, create
 p, author, endorsement, read
@@ -53,7 +53,7 @@ p, author, authority, read
 p, author, facet, read
 
 # Reader permissions (default for authenticated users)
-p, reader, preprint, read
+p, reader, eprint, read
 p, reader, review, read
 p, reader, endorsement, read
 p, reader, tag, read

@@ -36,8 +36,8 @@ Lexicon schemas follow semantic versioning adapted for schema design:
 Lexicon schemas use NSID fragments for versioning:
 
 ```
-pub.chive.preprint.submission      # v1 (implicit)
-pub.chive.preprint.submission#v2   # v2 (explicit)
+pub.chive.eprint.submission      # v1 (implicit)
+pub.chive.eprint.submission#v2   # v2 (explicit)
 ```
 
 Version 1 has no fragment. Subsequent versions use `#v{number}`.
@@ -50,7 +50,7 @@ Add deprecation notice to schema description:
 
 ```json
 {
-  "description": "DEPRECATED: Use pub.chive.preprint.submission#v2. This version will be removed after 2026-06-01.",
+  "description": "DEPRECATED: Use pub.chive.eprint.submission#v2. This version will be removed after 2026-06-01.",
   ...
 }
 ```
@@ -88,7 +88,7 @@ After deprecation period:
 
 ### Adding Optional Field (Non-Breaking)
 
-**v1** (pub.chive.preprint.submission):
+**v1** (pub.chive.eprint.submission):
 
 ```json
 {
@@ -130,7 +130,7 @@ After deprecation period:
 }
 ```
 
-**v2** (pub.chive.preprint.submission#v2): Rename to `additionalAuthors`
+**v2** (pub.chive.eprint.submission#v2): Rename to `additionalAuthors`
 
 ```json
 {
@@ -170,7 +170,7 @@ Validates:
 
 Track all schema changes in this file:
 
-### pub.chive.preprint.submission
+### pub.chive.eprint.submission
 
 - **2025-11-29**: v1 initial release
 - **TBD**: v2 planned - consolidate `coAuthors` into `contributors` array with roles

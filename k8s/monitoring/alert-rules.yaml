@@ -210,7 +210,7 @@ spec:
             description: "{{ $value }} restarts in the last hour"
             runbook_url: "https://docs.chive.pub/runbooks/pod-restarts"
 
-    # Preprint Indexing Alerts
+    # Eprint Indexing Alerts
     - name: chive-indexing
       interval: 30s
       rules:
@@ -218,16 +218,16 @@ spec:
         - alert: HighIndexingFailureRate
           expr: |
             (
-              sum(rate(chive_preprints_indexed_total{status="error"}[5m]))
+              sum(rate(chive_eprints_indexed_total{status="error"}[5m]))
               /
-              sum(rate(chive_preprints_indexed_total[5m]))
+              sum(rate(chive_eprints_indexed_total[5m]))
             ) > 0.05
           for: 10m
           labels:
             severity: warning
             team: backend
           annotations:
-            summary: "High preprint indexing failure rate"
+            summary: "High eprint indexing failure rate"
             description: "Indexing failure rate is {{ $value | humanizePercentage }}"
             runbook_url: "https://docs.chive.pub/runbooks/indexing-failures"
             dashboard_url: "https://grafana.chive.pub/d/chive-firehose"
@@ -236,14 +236,14 @@ spec:
         - alert: SlowIndexing
           expr: |
             histogram_quantile(0.95,
-              sum(rate(chive_preprint_indexing_duration_seconds_bucket[5m])) by (le)
+              sum(rate(chive_eprint_indexing_duration_seconds_bucket[5m])) by (le)
             ) > 5
           for: 10m
           labels:
             severity: warning
             team: backend
           annotations:
-            summary: "Preprint indexing is slow"
+            summary: "Eprint indexing is slow"
             description: "p95 indexing duration is {{ $value | humanizeDuration }}"
             runbook_url: "https://docs.chive.pub/runbooks/slow-indexing"
 

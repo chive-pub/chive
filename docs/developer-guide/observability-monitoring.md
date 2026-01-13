@@ -205,7 +205,7 @@ export class EprintIndexer {
   async indexEprint(uri: string): Promise<void> {
     return withSpan('indexEprint', async () => {
       addSpanAttributes({
-        [SpanAttributes.PREPRINT_URI]: uri,
+        [SpanAttributes.EPRINT_URI]: uri,
       });
 
       // Nested spans for sub-operations
@@ -586,7 +586,7 @@ SpanAttributes.DB_NAME; // 'db.name'
 SpanAttributes.DB_OPERATION; // 'db.operation'
 
 // Chive-specific attributes
-SpanAttributes.PREPRINT_URI; // 'chive.eprint.uri'
+SpanAttributes.EPRINT_URI; // 'chive.eprint.uri'
 SpanAttributes.USER_DID; // 'chive.user.did'
 SpanAttributes.REQUEST_ID; // 'chive.request.id'
 ```

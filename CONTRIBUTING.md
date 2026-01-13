@@ -77,7 +77,7 @@ web/lib/api/
 ### Key points
 
 - **Never edit `schema.generated.ts`**: it is overwritten on regeneration
-- **Domain types** (Preprint, Author, Review, etc.) are in `schema.d.ts`
+- **Domain types** (Eprint, Author, Review, etc.) are in `schema.d.ts`
 - **API paths** are auto-generated from OpenAPI spec
 - Run `pnpm openapi:generate` after any backend API changes
 - The OpenAPI spec is available at `http://localhost:3001/openapi.json` when the dev server is running

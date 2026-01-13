@@ -4,24 +4,24 @@ This directory contains all Lexicon schema definitions for the `pub.chive.*` nam
 
 ## Schema Index
 
-### Preprint Records
+### Eprint Records
 
-**`pub.chive.preprint.submission`**
-Main preprint record containing title, abstract, PDF blob reference, keywords, and faceted classification.
+**`pub.chive.eprint.submission`**
+Main eprint record containing title, abstract, PDF blob reference, keywords, and faceted classification.
 
-**`pub.chive.preprint.version`**
-Version metadata tracking preprint revisions and changelogs.
+**`pub.chive.eprint.version`**
+Version metadata tracking eprint revisions and changelogs.
 
-**`pub.chive.preprint.userTag`**
+**`pub.chive.eprint.userTag`**
 User-generated tags for folksonomy-style classification (TaxoFolk system).
 
 ### Review Records
 
 **`pub.chive.review.comment`**
-Review comments on preprints, supporting inline comments and threaded discussions.
+Review comments on eprints, supporting inline comments and threaded discussions.
 
 **`pub.chive.review.endorsement`**
-Formal endorsements of preprints (methods, results, or overall).
+Formal endorsements of eprints (methods, results, or overall).
 
 ### Knowledge Graph Records
 
@@ -41,11 +41,11 @@ Chive-specific author profile with ORCID, affiliations, and research fields.
 
 ### XRPC Queries
 
-**`pub.chive.preprint.getSubmission`**
-Retrieve a single preprint by AT URI with PDS source tracking.
+**`pub.chive.eprint.getSubmission`**
+Retrieve a single eprint by AT URI with PDS source tracking.
 
-**`pub.chive.preprint.searchSubmissions`**
-Search preprints with full-text queries and faceted filters.
+**`pub.chive.eprint.searchSubmissions`**
+Search eprints with full-text queries and faceted filters.
 
 ## NSID Naming Conventions
 
@@ -56,14 +56,14 @@ pub.chive.{category}.{type}
 ```
 
 - `pub.chive` - Authority (Chive namespace)
-- `{category}` - Record category (preprint, review, graph, actor)
+- `{category}` - Record category (eprint, review, graph, actor)
 - `{type}` - Specific record type
 
 ## Blob Size Limits
 
 | Blob Type     | Max Size | Rationale               |
 | ------------- | -------- | ----------------------- |
-| PDF           | 50 MB    | Preprint submissions    |
+| PDF           | 50 MB    | Eprint submissions      |
 | Supplementary | 100 MB   | Datasets, code archives |
 | Avatar        | 1 MB     | Author profile images   |
 
@@ -115,7 +115,7 @@ import { LexiconValidator } from './src/lexicons/validator.js';
 const validator = new LexiconValidator();
 await validator.loadSchemas();
 
-const preprintData = {
+const eprintData = {
   title: 'Quantum Entanglement in Photonic Systems',
   abstract: 'We demonstrate quantum entanglement...',
   pdf: {
@@ -128,10 +128,10 @@ const preprintData = {
   createdAt: new Date().toISOString(),
 };
 
-const result = validator.validateRecord('pub.chive.preprint.submission', preprintData);
+const result = validator.validateRecord('pub.chive.eprint.submission', eprintData);
 
 if (result.valid) {
-  console.log('Preprint is valid');
+  console.log('Eprint is valid');
 } else {
   console.error('Validation errors:', result.errors);
 }
@@ -140,11 +140,11 @@ if (result.valid) {
 ### Using Generated Zod Validators
 
 ```typescript
-import { preprintSubmissionSchema } from './src/lexicons/validators/pub/chive/preprint/submission.js';
+import { eprintSubmissionSchema } from './src/lexicons/validators/pub/chive/eprint/submission.js';
 
 try {
-  const validPreprint = preprintSubmissionSchema.parse(preprintData);
-  console.log('Valid preprint:', validPreprint);
+  const validEprint = eprintSubmissionSchema.parse(eprintData);
+  console.log('Valid eprint:', validEprint);
 } catch (error) {
   console.error('Zod validation failed:', error.errors);
 }
@@ -163,7 +163,7 @@ const invalidData = {
   // Missing required fields: abstract, pdf, license, createdAt
 };
 
-const result = validator.validateRecord('pub.chive.preprint.submission', invalidData);
+const result = validator.validateRecord('pub.chive.eprint.submission', invalidData);
 
 if (!result.valid) {
   result.errors.forEach((error) => {
@@ -182,7 +182,7 @@ const searchParams = {
   limit: 25,
 };
 
-const paramResult = validator.validateParams('pub.chive.preprint.searchSubmissions', searchParams);
+const paramResult = validator.validateParams('pub.chive.eprint.searchSubmissions', searchParams);
 
 if (paramResult.valid) {
   // Execute search
