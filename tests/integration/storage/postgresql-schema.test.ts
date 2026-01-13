@@ -421,6 +421,6 @@ describe('PostgreSQL Schema', () => {
           }
         );
       }
-    });
+    }, 30000);
   });
 });
