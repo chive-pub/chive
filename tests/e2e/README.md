@@ -9,13 +9,13 @@ End-to-end tests for Chive using Playwright.
 | `navigation.spec.ts`    | Header, footer, and navigation links      |
 | `home.spec.ts`          | Home page, hero section, CTAs             |
 | `search.spec.ts`        | Search functionality, filters, pagination |
-| `browse.spec.ts`        | Preprint browsing and sorting             |
-| `preprints.spec.ts`     | Preprint detail pages                     |
+| `browse.spec.ts`        | Eprint browsing and sorting               |
+| `eprints.spec.ts`       | Eprint detail pages                       |
 | `authors.spec.ts`       | Author profile pages                      |
 | `fields.spec.ts`        | Field hierarchy navigation                |
 | `tags.spec.ts`          | Tag browsing and trending                 |
 | `auth.spec.ts`          | OAuth login and logout                    |
-| `submit.spec.ts`        | Preprint submission wizard                |
+| `submit.spec.ts`        | Eprint submission wizard                  |
 | `dashboard.spec.ts`     | User dashboard                            |
 | `governance.spec.ts`    | Governance proposals and voting           |
 | `accessibility.spec.ts` | WCAG compliance tests                     |
@@ -60,7 +60,7 @@ Located in `fixtures/page-objects.ts`:
 - `HeaderComponent` - Navigation header
 - `HomePage` - Home page elements
 - `SearchPage` - Search functionality
-- `PreprintPage` - Preprint details
+- `EprintPage` - Eprint details
 - `AuthorPage` - Author profiles
 - `SignInPage` - Authentication
 - `DashboardPage` - User dashboard
@@ -70,7 +70,7 @@ Located in `fixtures/page-objects.ts`:
 Located in `fixtures/test-data.ts`:
 
 - `TEST_USER` - Mock user credentials
-- `TEST_PREPRINTS` - Sample preprint data
+- `TEST_EPRINTS` - Sample eprint data
 - `SEARCH_QUERIES` - Test search queries
 - `ROUTES` - Application routes
 

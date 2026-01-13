@@ -24,7 +24,9 @@
     "typecheck": "tsc",
     "gen-api-docs": "docusaurus gen-api-docs all",
     "clean-api-docs": "docusaurus clean-api-docs all",
-    "export-openapi": "./scripts/export-openapi.sh"
+    "export-openapi": "./scripts/export-openapi.sh",
+    "rebuild": "./scripts/rebuild-docs.sh",
+    "clean:all": "rm -rf code-reference/backend/* code-reference/frontend/* api-docs/* .docusaurus build"
   },
   "dependencies": {
     "@docusaurus/core": "^3.7.0",

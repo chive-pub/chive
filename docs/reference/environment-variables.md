@@ -106,13 +106,13 @@ These must be set for Chive to start:
 
 ## Caching
 
-| Variable             | Default | Description                |
-| -------------------- | ------- | -------------------------- |
-| `CACHE_PREPRINT_TTL` | `300`   | Eprint cache TTL (seconds) |
-| `CACHE_SEARCH_TTL`   | `300`   | Search result cache TTL    |
-| `CACHE_USER_TTL`     | `600`   | User profile cache TTL     |
-| `CACHE_BLOB_TTL`     | `3600`  | Blob cache TTL             |
-| `CACHE_FIELD_TTL`    | `3600`  | Field taxonomy cache TTL   |
+| Variable           | Default | Description                |
+| ------------------ | ------- | -------------------------- |
+| `CACHE_EPRINT_TTL` | `300`   | Eprint cache TTL (seconds) |
+| `CACHE_SEARCH_TTL` | `300`   | Search result cache TTL    |
+| `CACHE_USER_TTL`   | `600`   | User profile cache TTL     |
+| `CACHE_BLOB_TTL`   | `3600`  | Blob cache TTL             |
+| `CACHE_FIELD_TTL`  | `3600`  | Field taxonomy cache TTL   |
 
 ## Logging
 

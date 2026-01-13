@@ -66,7 +66,7 @@ const facetUri = await facetManager.createFacet({
   parentUri: biologyFacetUri,
 });
 
-await facetManager.assignFacets(preprintUri, [
+await facetManager.assignFacets(eprintUri, [
   { facetUri: proteinFacetUri, confidence: 0.95 },
   { facetUri: metaAnalysisFacetUri, confidence: 0.88 },
 ]);
@@ -199,7 +199,7 @@ npm run test:compliance
 
 ## ATProto Compliance
 
-Source data lives in user PDSes (preprints, reviews, votes, tags) and the Governance PDS (authority records, approved fields). Neo4j indexes this data for discovery but does not own it. If Neo4j is deleted, rebuild from the ATProto firehose. No user data is lost because the source remains in PDSes.
+Source data lives in user PDSes (eprints, reviews, votes, tags) and the Governance PDS (authority records, approved fields). Neo4j indexes this data for discovery but does not own it. If Neo4j is deleted, rebuild from the ATProto firehose. No user data is lost because the source remains in PDSes.
 
 ## References
 

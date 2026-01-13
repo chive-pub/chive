@@ -558,7 +558,7 @@ logActivity({
   category: 'read',
   action: 'view',
   targetUri: eprintUri,
-  collection: COLLECTIONS.PREPRINT,
+  collection: COLLECTIONS.EPRINT,
 });
 ```
 

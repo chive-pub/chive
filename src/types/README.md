@@ -24,7 +24,7 @@ types/
 │   └── storage.interface.ts      # Index storage (PostgreSQL)
 └── models/                       # Domain models
     ├── author.ts                 # Author profiles and metrics
-    ├── preprint.ts               # Preprint, versions, tags
+    ├── eprint.ts                 # Eprint, versions, tags
     └── review.ts                 # Reviews and endorsements
 ```
 
@@ -38,9 +38,9 @@ All AT Protocol primitives use branded types for compile-time safety:
 import { toAtUri, toDID, toNSID, toCID } from './types';
 
 // ✅ Correct: Use validators
-const uri = toAtUri('at://did:plc:abc123/pub.chive.preprint.submission/xyz789');
+const uri = toAtUri('at://did:plc:abc123/pub.chive.eprint.submission/xyz789');
 const did = toDID('did:plc:abc123');
-const nsid = toNSID('pub.chive.preprint.submission');
+const nsid = toNSID('pub.chive.eprint.submission');
 const cid = toCID('bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q');
 
 // ❌ Wrong: Don't use type assertions
@@ -55,7 +55,7 @@ BlobRefs are metadata pointers, **never blob data**:
 import type { BlobRef } from './types';
 
 // ✅ Correct: Store BlobRef
-const preprint = {
+const eprint = {
   documentBlobRef: {
     $type: 'blob',
     ref: toCID('bafyreib...')!,
@@ -66,7 +66,7 @@ const preprint = {
 };
 
 // ❌ Wrong: Don't store blob data
-const preprint = {
+const eprint = {
   documentData: new Uint8Array([...]); // ATProto violation!
 };
 ```
@@ -107,12 +107,12 @@ Use specific error types for better error handling:
 import { NotFoundError, ValidationError, ComplianceError } from './types';
 
 // Not found
-if (!preprint) {
-  throw new NotFoundError('Preprint', uri);
+if (!eprint) {
+  throw new NotFoundError('Eprint', uri);
 }
 
 // Validation
-if (!preprint.title) {
+if (!eprint.title) {
   throw new ValidationError('Title is required', 'title', 'required');
 }
 
@@ -129,22 +129,22 @@ All services use dependency injection via interfaces:
 ```typescript
 import type { IRepository, IStorageBackend, ISearchEngine } from './types';
 
-class PreprintService {
+class EprintService {
   constructor(
     private readonly repository: IRepository,
     private readonly storage: IStorageBackend,
     private readonly search: ISearchEngine
   ) {}
 
-  async indexPreprint(uri: AtUri): Promise<void> {
+  async indexEprint(uri: AtUri): Promise<void> {
     // Fetch from user's PDS (read-only)
-    const record = await this.repository.getRecord<PreprintRecord>(uri);
+    const record = await this.repository.getRecord<EprintRecord>(uri);
     if (!record) {
-      throw new NotFoundError('Preprint', uri);
+      throw new NotFoundError('Eprint', uri);
     }
 
     // Store index (metadata only)
-    await this.storage.storePreprint({
+    await this.storage.storeEprint({
       uri,
       cid: record.cid,
       author: record.author,
@@ -157,7 +157,7 @@ class PreprintService {
     });
 
     // Index for search
-    await this.search.indexPreprint({
+    await this.search.indexEprint({
       uri,
       author: record.author,
       authorName: 'Dr. Jane Smith', // Denormalized
@@ -177,10 +177,10 @@ class PreprintService {
 All models are immutable:
 
 ```typescript
-import type { Preprint, Review, Author } from './types';
+import type { Eprint, Review, Author } from './types';
 
 // ✅ Correct: All properties readonly
-const preprint: Preprint = {
+const eprint: Eprint = {
   uri: toAtUri('at://...')!,
   cid: toCID('bafyreib...')!,
   author: toDID('did:plc:abc')!,
@@ -201,7 +201,7 @@ const preprint: Preprint = {
 };
 
 // ❌ Wrong: Can't mutate
-preprint.title = 'New Title'; // Compile error!
+eprint.title = 'New Title'; // Compile error!
 ```
 
 ## Plugin System
@@ -217,7 +217,7 @@ export class GitHubPlugin implements IChivePlugin {
     id: 'com.example.github-integration',
     name: 'GitHub Integration',
     version: '0.1.0',
-    description: 'Links preprints to GitHub repositories',
+    description: 'Links eprints to GitHub repositories',
     author: 'Example Org',
     license: 'MIT',
     permissions: {
@@ -235,7 +235,7 @@ export class GitHubPlugin implements IChivePlugin {
     this.state = PluginState.INITIALIZING;
     this.logger = context.logger;
 
-    context.eventBus.on('preprint.indexed', this.handleIndexed.bind(this));
+    context.eventBus.on('eprint.indexed', this.handleIndexed.bind(this));
 
     this.state = PluginState.READY;
     this.logger.info('GitHub plugin initialized');
@@ -251,8 +251,8 @@ export class GitHubPlugin implements IChivePlugin {
     return this.state;
   }
 
-  private async handleIndexed(preprint: Preprint): Promise<void> {
-    this.logger.info('Processing preprint', { uri: preprint.uri });
+  private async handleIndexed(eprint: Eprint): Promise<void> {
+    this.logger.info('Processing eprint', { uri: eprint.uri });
     // Plugin logic here
   }
 }
@@ -277,7 +277,7 @@ import { toAtUri, toDID, Ok, Err, unwrap } from '@/types';
 
 describe('AtUri validation', () => {
   it('validates correct AT URIs', () => {
-    const uri = toAtUri('at://did:plc:abc/pub.chive.preprint.submission/xyz');
+    const uri = toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz');
     expect(uri).toBeTruthy();
   });
 

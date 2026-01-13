@@ -6,7 +6,7 @@ Database schema and configuration for Chive's local indexes.
 
 Chive uses four databases for different purposes:
 
-- **PostgreSQL** - Primary index storage for preprints, reviews, and metadata
+- **PostgreSQL** - Primary index storage for eprints, reviews, and metadata
 - **Elasticsearch** - Full-text search and faceted filtering
 - **Neo4j** - Knowledge graph for fields, facets, and authority records
 - **Redis** - Caching, rate limiting, and job queues
@@ -19,7 +19,7 @@ Chive uses four databases for different purposes:
 
 All user data tables use `_index` suffix to emphasize they are indexes, not authoritative storage:
 
-- `preprints_index`
+- `eprints_index`
 - `authors_index`
 - `reviews_index`
 - `endorsements_index`
@@ -61,7 +61,7 @@ The `firehose_cursor` table tracks current position. The `firehose_dlq` table st
 
 **Index Tables:**
 
-- `preprints_index` - Preprint metadata (title, abstract, keywords)
+- `eprints_index` - Eprint metadata (title, abstract, keywords)
 - `authors_index` - Author profiles (name, bio, affiliations)
 - `reviews_index` - Review comments (threaded discussions)
 - `endorsements_index` - Endorsements (methods, results, overall)
@@ -78,8 +78,8 @@ The `firehose_cursor` table tracks current position. The `firehose_dlq` table st
 All index tables use AT URIs as primary keys (not auto-incrementing IDs):
 
 ```sql
-CREATE TABLE preprints_index (
-  uri TEXT PRIMARY KEY,  -- e.g., at://did:plc:abc/pub.chive.preprint.submission/xyz
+CREATE TABLE eprints_index (
+  uri TEXT PRIMARY KEY,  -- e.g., at://did:plc:abc/pub.chive.eprint.submission/xyz
   ...
 );
 ```
@@ -89,9 +89,9 @@ CREATE TABLE preprints_index (
 Foreign keys reference AT URIs:
 
 ```sql
-CONSTRAINT fk_preprint
-  FOREIGN KEY (preprint_uri)
-  REFERENCES preprints_index(uri)
+CONSTRAINT fk_eprint
+  FOREIGN KEY (eprint_uri)
+  REFERENCES eprints_index(uri)
   ON DELETE CASCADE
 ```
 
@@ -99,16 +99,16 @@ CONSTRAINT fk_preprint
 
 Performance indexes on frequently queried columns:
 
-- `preprints_index(author_did)` - Find preprints by author
-- `preprints_index(created_at DESC)` - Recent preprints
-- `preprints_index(pds_url)` - Find records by PDS
-- `preprints_index(keywords) USING GIN` - Keyword search
+- `eprints_index(author_did)` - Find eprints by author
+- `eprints_index(created_at DESC)` - Recent eprints
+- `eprints_index(pds_url)` - Find records by PDS
+- `eprints_index(keywords) USING GIN` - Keyword search
 
 ## Elasticsearch Configuration
 
 ### Index Template
 
-Template `preprints` applies to `preprints-*` indexes:
+Template `eprints` applies to `eprints-*` indexes:
 
 - Custom analyzers (porter stemming, asciifolding)
 - Nested facet mappings
@@ -124,7 +124,7 @@ Index lifecycle management with hot/warm/cold tiers:
 
 ### Aliases
 
-Write alias `preprints` points to current index (`preprints-000001`).
+Write alias `eprints` points to current index (`eprints-000001`).
 
 ## Neo4j Schema
 
@@ -133,7 +133,7 @@ Write alias `preprints` points to current index (`preprints-000001`).
 - `Field` - Knowledge graph nodes (hierarchical)
 - `AuthorityRecord` - Controlled vocabulary terms
 - `WikidataEntity` - Wikidata Q-IDs for external linking
-- `Preprint` - Graph associations for preprints
+- `Eprint` - Graph associations for eprints
 - `Author` - Author nodes for collaboration graphs
 - `FacetDimension` - PMEST + FAST dimension templates
 
@@ -171,7 +171,7 @@ Namespaced keys for different purposes:
 - `session:{id}` - Session data
 - `user_sessions:{did}` - User's active sessions
 - `ratelimit:auth:{did}` - Rate limit counters
-- `cache:preprint:{uri}` - L2 cache for preprints
+- `cache:eprint:{uri}` - L2 cache for eprints
 - `firehose:cursor` - Firehose cursor backup
 - `queue:indexing` - BullMQ job queue
 

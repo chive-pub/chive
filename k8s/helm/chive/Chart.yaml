@@ -1,12 +1,12 @@
 apiVersion: v2
 name: chive
-description: Chive - Decentralized Preprint Server on AT Protocol
+description: Chive - Decentralized Eprint Server on AT Protocol
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
 keywords:
   - atproto
-  - preprint
+  - eprint
   - science
   - decentralized
 home: https://github.com/chive-pub/chive

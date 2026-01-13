@@ -107,12 +107,12 @@ Configuration is loaded in order (later sources override earlier):
 
 ## Caching
 
-| Option            | Env var              | Default | Description          |
-| ----------------- | -------------------- | ------- | -------------------- |
-| `cache.eprintTtl` | `CACHE_PREPRINT_TTL` | `300`   | Eprint cache TTL (s) |
-| `cache.searchTtl` | `CACHE_SEARCH_TTL`   | `300`   | Search cache TTL (s) |
-| `cache.userTtl`   | `CACHE_USER_TTL`     | `600`   | User cache TTL (s)   |
-| `cache.blobTtl`   | `CACHE_BLOB_TTL`     | `3600`  | Blob cache TTL (s)   |
+| Option            | Env var            | Default | Description          |
+| ----------------- | ------------------ | ------- | -------------------- |
+| `cache.eprintTtl` | `CACHE_EPRINT_TTL` | `300`   | Eprint cache TTL (s) |
+| `cache.searchTtl` | `CACHE_SEARCH_TTL` | `300`   | Search cache TTL (s) |
+| `cache.userTtl`   | `CACHE_USER_TTL`   | `600`   | User cache TTL (s)   |
+| `cache.blobTtl`   | `CACHE_BLOB_TTL`   | `3600`  | Blob cache TTL (s)   |
 
 ## Observability
 

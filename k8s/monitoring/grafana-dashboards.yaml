@@ -395,7 +395,7 @@ data:
           "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9},
           "id": 5,
           "panels": [],
-          "title": "Preprint Indexing",
+          "title": "Eprint Indexing",
           "type": "row"
         },
         {
@@ -416,12 +416,12 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "prometheus"},
-              "expr": "sum(rate(chive_preprints_indexed_total[5m])) by (status)",
+              "expr": "sum(rate(chive_eprints_indexed_total[5m])) by (status)",
               "legendFormat": "{{status}}",
               "refId": "A"
             }
           ],
-          "title": "Preprints Indexed per Second",
+          "title": "Eprints Indexed per Second",
           "type": "timeseries"
         },
         {
@@ -442,13 +442,13 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "prometheus"},
-              "expr": "histogram_quantile(0.50, sum(rate(chive_preprint_indexing_duration_seconds_bucket[5m])) by (le))",
+              "expr": "histogram_quantile(0.50, sum(rate(chive_eprint_indexing_duration_seconds_bucket[5m])) by (le))",
               "legendFormat": "p50",
               "refId": "A"
             },
             {
               "datasource": {"type": "prometheus", "uid": "prometheus"},
-              "expr": "histogram_quantile(0.95, sum(rate(chive_preprint_indexing_duration_seconds_bucket[5m])) by (le))",
+              "expr": "histogram_quantile(0.95, sum(rate(chive_eprint_indexing_duration_seconds_bucket[5m])) by (le))",
               "legendFormat": "p95",
               "refId": "B"
             }
