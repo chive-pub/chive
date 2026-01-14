@@ -241,6 +241,49 @@ The service exposes Prometheus metrics:
 | `chive_indexing_queue_size`    | Gauge   | Current queue depth       |
 | `chive_indexing_cursor`        | Gauge   | Current cursor position   |
 
+## Running the Indexer
+
+The indexer runs as a separate process from the API server. In production, it's deployed as the `chive-indexer` container.
+
+### Entry Point
+
+The indexer entry point is `src/indexer.ts`, which:
+
+1. Initializes all database connections (PostgreSQL, Redis, Elasticsearch, Neo4j)
+2. Creates the services needed for event processing (EprintService, ReviewService, KnowledgeGraphService, ActivityService)
+3. Creates the event processor using `createEventProcessor()`
+4. Starts the IndexingService to consume the firehose
+5. Handles graceful shutdown on SIGTERM/SIGINT
+
+### Development
+
+```bash
+# Run the indexer locally
+pnpm exec tsx src/indexer.ts
+```
+
+### Production (Docker)
+
+In production, the indexer runs as the `chive-indexer` service:
+
+```yaml
+chive-indexer:
+  image: chive:latest
+  command: ['node', '--enable-source-maps', 'dist/src/indexer.js']
+  environment:
+    - ATPROTO_RELAY_URL=wss://bsky.network
+    - INDEXER_CONCURRENCY=10
+```
+
+### Why a Separate Process?
+
+The indexer runs separately from the API for several reasons:
+
+1. **Resource isolation**: Firehose consumption is CPU/memory intensive
+2. **Independent scaling**: Can scale indexer independently from API
+3. **Failure isolation**: Indexer failures don't affect API availability
+4. **Different lifecycle**: Indexer runs continuously, API handles request/response
+
 ## Configuration
 
 ```typescript

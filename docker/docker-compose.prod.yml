@@ -246,7 +246,7 @@ services:
     image: chive:${CHIVE_VERSION:-latest}
     container_name: chive-indexer
     restart: unless-stopped
-    command: ["node", "--enable-source-maps", "dist/indexer.js"]
+    command: ["node", "--enable-source-maps", "dist/src/indexer.js"]
     env_file:
       - .env.production
     environment:
