@@ -36,11 +36,20 @@ export const metadata: Metadata = {
     siteName: 'Chive',
     title: 'Chive - Decentralized Eprint Server',
     description: 'Open access eprint server built on AT Protocol with full data sovereignty.',
+    images: [
+      {
+        url: 'https://chive.pub/api/og',
+        width: 1200,
+        height: 630,
+        alt: 'Chive - Decentralized Eprint Server',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Chive - Decentralized Eprint Server',
     description: 'Open access eprint server built on AT Protocol.',
+    images: ['https://chive.pub/api/og'],
   },
   robots: {
     index: true,

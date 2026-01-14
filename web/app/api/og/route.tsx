@@ -37,14 +37,21 @@ const COLORS = {
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const type = searchParams.get('type') as 'eprint' | 'author' | 'review' | 'endorsement' | null;
+  const type = searchParams.get('type') as
+    | 'default'
+    | 'eprint'
+    | 'author'
+    | 'review'
+    | 'endorsement'
+    | null;
 
-  if (!type) {
-    return new Response('Missing type parameter', { status: 400 });
-  }
+  // Default to 'default' type for homepage/site-wide OG image
+  const imageType = type || 'default';
 
   try {
-    switch (type) {
+    switch (imageType) {
+      case 'default':
+        return await generateDefaultImage();
       case 'eprint':
         return await generateEprintImage(searchParams);
       case 'author':
@@ -54,12 +61,99 @@ export async function GET(request: NextRequest) {
       case 'endorsement':
         return await generateEndorsementImage(searchParams);
       default:
-        return new Response(`Unknown type: ${type}`, { status: 400 });
+        return new Response(`Unknown type: ${imageType}`, { status: 400 });
     }
   } catch (error) {
     console.error('OG image generation error:', error);
     return new Response('Failed to generate image', { status: 500 });
   }
+}
+
+/**
+ * Generate default OG image for the site homepage.
+ */
+async function generateDefaultImage(): Promise<ImageResponse> {
+  return new ImageResponse(
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.backgroundGradient} 100%)`,
+        padding: '48px',
+      }}
+    >
+      {/* Logo and name */}
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
+        <span style={{ fontSize: '72px', marginRight: '24px' }}>🌿</span>
+        <span
+          style={{
+            fontSize: '96px',
+            fontWeight: 700,
+            color: COLORS.accent,
+            letterSpacing: '0.1em',
+          }}
+        >
+          CHIVE
+        </span>
+      </div>
+
+      {/* Tagline */}
+      <div
+        style={{
+          fontSize: '36px',
+          color: COLORS.primary,
+          fontWeight: 600,
+          marginBottom: '16px',
+          textAlign: 'center',
+        }}
+      >
+        Decentralized Eprint Server
+      </div>
+
+      {/* Description */}
+      <div
+        style={{
+          fontSize: '24px',
+          color: COLORS.secondary,
+          textAlign: 'center',
+          maxWidth: '800px',
+          lineHeight: 1.4,
+        }}
+      >
+        Open access scholarly communication built on AT Protocol with full data sovereignty
+      </div>
+
+      {/* Features */}
+      <div style={{ display: 'flex', gap: '24px', marginTop: '48px' }}>
+        {['Open Access', 'Decentralized', 'You Own Your Data'].map((feature, i) => (
+          <div
+            key={i}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '24px',
+              background: COLORS.accent + '20',
+              color: COLORS.accent,
+              fontSize: '18px',
+              fontWeight: 600,
+            }}
+          >
+            {feature}
+          </div>
+        ))}
+      </div>
+    </div>,
+    {
+      width: WIDTH,
+      height: HEIGHT,
+      headers: {
+        'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+      },
+    }
+  );
 }
 
 /**
