@@ -271,8 +271,10 @@ services:
         reservations:
           cpus: '0.25'
           memory: 512M
-    # No health check - long-running process
-    # Monitor via logs and metrics instead
+    # Disable inherited health check - indexer doesn't run HTTP server
+    healthcheck:
+      test: ["CMD-SHELL", "true"]
+      interval: 60s
 
   # ---------------------------------------------------------------------------
   # PostgreSQL 16 - Primary metadata store
