@@ -71,7 +71,7 @@ export default function AlphaPendingPage() {
       <div className="max-w-md text-center">
         {/* Logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-16 w-16 rounded-xl" />
+        <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-16 w-16" />
 
         {/* Title */}
         <h1 className="mb-2 text-2xl font-bold tracking-tight">Application Under Review</h1>

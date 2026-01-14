@@ -67,7 +67,7 @@ export default function AlphaApplyPage() {
       <div className="w-full max-w-lg">
         {/* Logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-16 w-16 rounded-xl" />
+        <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-16 w-16" />
 
         {/* Form */}
         <AlphaSignupForm

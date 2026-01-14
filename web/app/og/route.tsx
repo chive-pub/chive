@@ -97,7 +97,7 @@ async function generateDefaultImage(): Promise<ImageResponse> {
         style={{
           width: '400px',
           height: '100%',
-          background: '#f5f5f5',
+          background: '#d4d4d4',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -105,7 +105,6 @@ async function generateDefaultImage(): Promise<ImageResponse> {
           padding: '48px',
         }}
       >
-        {/* Logo - displayed directly without styling */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={LOGO_URL} alt="Chive" width={200} height={200} />
       </div>

@@ -17,7 +17,7 @@ export function SiteHeader() {
       <div className="container flex h-14 items-center">
         {/* Logo */}
         <Link href="/" className="mr-6 flex items-center space-x-2">
-          <Image src="/chive-logo.svg" alt="Chive" width={28} height={28} className="rounded" />
+          <Image src="/chive-logo.svg" alt="Chive" width={28} height={28} />
           <span className="text-xl font-bold">Chive</span>
         </Link>
 

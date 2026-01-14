@@ -115,11 +115,7 @@ export default function AlphaLandingPage() {
       <main className="flex min-h-screen items-center justify-center px-6 py-16">
         <div className="max-w-[600px] text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/chive-logo.svg"
-            alt="Chive"
-            className="mx-auto mb-8 h-[100px] w-[100px] rounded-[20px]"
-          />
+          <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-[100px] w-[100px]" />
           <h1 className="mb-2 text-3xl font-bold tracking-tight">Connection Error</h1>
           <p className="mb-6 text-lg text-muted-foreground">
             We couldn&apos;t verify your alpha status. Please try again.
@@ -141,11 +137,7 @@ export default function AlphaLandingPage() {
       <div className="max-w-[600px] text-center">
         {/* Logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/chive-logo.svg"
-          alt="Chive"
-          className="mx-auto mb-8 h-[100px] w-[100px] rounded-[20px]"
-        />
+        <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-[100px] w-[100px]" />
 
         {/* Title */}
         <h1 className="mb-2 text-5xl font-bold tracking-tight">Chive</h1>

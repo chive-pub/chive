@@ -60,7 +60,7 @@ export default function ComingSoonPage() {
                 alt="Chive"
                 width={120}
                 height={120}
-                className="relative rounded-2xl"
+                className="relative"
                 priority
               />
             </div>
