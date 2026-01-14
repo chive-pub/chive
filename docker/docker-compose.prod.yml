@@ -20,7 +20,7 @@ services:
   # Reverse Proxy - Traefik (auto-SSL with Let's Encrypt)
   # ---------------------------------------------------------------------------
   traefik:
-    image: traefik:v3.2
+    image: traefik:latest
     container_name: chive-traefik
     restart: unless-stopped
     command:
