@@ -24,6 +24,8 @@ export interface Neo4jConfig {
   connectionAcquisitionTimeout?: number;
   connectionTimeout?: number;
   maxTransactionRetryTime?: number;
+  /** Encryption mode: 'ENCRYPTION_ON', 'ENCRYPTION_OFF', or undefined for auto-detect */
+  encrypted?: 'ENCRYPTION_ON' | 'ENCRYPTION_OFF';
 }
 
 /**
@@ -92,6 +94,8 @@ export class Neo4jConnection {
       connectionTimeout: config.connectionTimeout ?? 30000,
       maxTransactionRetryTime: config.maxTransactionRetryTime ?? 30000,
       disableLosslessIntegers: true,
+      // Use configured encryption mode, or auto-detect if not specified
+      ...(config.encrypted && { encrypted: config.encrypted }),
     });
 
     // Verify connectivity

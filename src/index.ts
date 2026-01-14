@@ -91,6 +91,7 @@ interface EnvConfig {
   readonly neo4jUri: string;
   readonly neo4jUser: string;
   readonly neo4jPassword: string;
+  readonly neo4jEncrypted?: 'ENCRYPTION_ON' | 'ENCRYPTION_OFF';
 
   // Security
   readonly jwtSecret: string;
@@ -145,6 +146,7 @@ function loadConfig(): EnvConfig {
     neo4jUri: process.env.NEO4J_URI ?? 'bolt://localhost:7687',
     neo4jUser: process.env.NEO4J_USER ?? 'neo4j',
     neo4jPassword: process.env.NEO4J_PASSWORD ?? 'chive_test_password',
+    neo4jEncrypted: process.env.NEO4J_ENCRYPTED as 'ENCRYPTION_ON' | 'ENCRYPTION_OFF' | undefined,
 
     // Security
     jwtSecret: process.env.JWT_SECRET ?? 'dev-jwt-secret-not-for-production',
@@ -230,6 +232,7 @@ async function initializeDatabases(
     uri: config.neo4jUri,
     username: config.neo4jUser,
     password: config.neo4jPassword,
+    encrypted: config.neo4jEncrypted,
   });
   logger.info('Neo4j connected');
 
