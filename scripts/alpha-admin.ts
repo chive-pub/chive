@@ -10,7 +10,7 @@
  *
  * Setup for local use (requires SSH tunnel):
  *   # Terminal 1: Start SSH tunnel (replace <SERVER_IP> and <SSH_KEY> with actual values)
- *   ssh -L 5432:localhost:5432 -L 6379:localhost:6379 -i ~/.ssh/<SSH_KEY> ubuntu@<SERVER_IP>
+ *   ssh -N -L 5432:localhost:5432 -L 6379:localhost:6379 -i ~/.ssh/<SSH_KEY> ubuntu@<SERVER_IP>
  *
  *   # Terminal 2: Run script
  *   DATABASE_URL="postgresql://chive:PASSWORD@localhost:5432/chive" \
@@ -567,7 +567,7 @@ ${colors.dim('Environment Variables:')}
 
 ${colors.dim('Local Setup (requires SSH tunnel):')}
   # Terminal 1: Start tunnel (replace <SERVER_IP> and <SSH_KEY>)
-  ssh -L 5432:localhost:5432 -L 6379:localhost:6379 \\
+  ssh -N -L 5432:localhost:5432 -L 6379:localhost:6379 \\
       -i ~/.ssh/<SSH_KEY> ubuntu@<SERVER_IP>
 
   # Terminal 2: Run commands
