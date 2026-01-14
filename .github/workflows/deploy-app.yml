@@ -17,21 +17,76 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate required secrets and variables
+        run: |
+          echo "Checking required configuration..."
+          missing=""
+
+          # Check required secrets (we can only check if they're set, not their values)
+          if [ -z "${{ secrets.APP_HOST }}" ]; then missing="$missing APP_HOST"; fi
+          if [ -z "${{ secrets.SSH_USER }}" ]; then missing="$missing SSH_USER"; fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then missing="$missing SSH_PRIVATE_KEY"; fi
+          if [ -z "${{ secrets.POSTGRES_PASSWORD }}" ]; then missing="$missing POSTGRES_PASSWORD"; fi
+          if [ -z "${{ secrets.NEO4J_PASSWORD }}" ]; then missing="$missing NEO4J_PASSWORD"; fi
+          if [ -z "${{ secrets.JWT_SECRET }}" ]; then missing="$missing JWT_SECRET"; fi
+
+          # Check required variables
+          if [ -z "${{ vars.DOMAIN }}" ]; then missing="$missing DOMAIN(var)"; fi
+          if [ -z "${{ vars.ACME_EMAIL }}" ]; then missing="$missing ACME_EMAIL(var)"; fi
+
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required configuration:$missing"
+            echo "Please configure these in GitHub repository settings (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+
+          echo "✓ All required configuration present"
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 30m
           script: |
             set -e
 
-            cd /opt/chive
-            git fetch origin main
-            git reset --hard origin/main
+            DEPLOY_DIR="/opt/chive"
+            REPO_URL="https://github.com/chive-pub/chive.git"
+
+            echo "=== Starting deployment ==="
+            echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+            # Ensure /opt exists and is writable
+            sudo mkdir -p /opt
+            sudo chown $USER:$USER /opt 2>/dev/null || true
+
+            # Clone or update repository
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              echo "Cloning repository for initial setup..."
+              git clone "$REPO_URL" "$DEPLOY_DIR"
+            elif [ ! -d "$DEPLOY_DIR/.git" ]; then
+              echo "Directory exists but is not a git repo. Removing and cloning..."
+              rm -rf "$DEPLOY_DIR"
+              git clone "$REPO_URL" "$DEPLOY_DIR"
+            else
+              echo "Updating existing repository..."
+              cd "$DEPLOY_DIR"
+              git fetch origin main
+              git reset --hard origin/main
+            fi
+
+            cd "$DEPLOY_DIR"
+            echo "Current commit: $(git rev-parse --short HEAD) - $(git log -1 --format=%s)"
+
+            # Ensure docker directory exists
+            mkdir -p docker
 
             # Create .env.production from secrets
+            echo "Writing environment configuration..."
             cat > docker/.env.production << 'ENVEOF'
+            # Domain configuration
             DOMAIN=${{ vars.DOMAIN }}
             ACME_EMAIL=${{ vars.ACME_EMAIL }}
             CHIVE_VERSION=latest
@@ -72,23 +127,106 @@ jobs:
             EMAIL_FROM=${{ vars.EMAIL_FROM }}
 
             # Zulip
+            ZULIP_SERVER_URL=${{ vars.ZULIP_SERVER_URL }}
+            ZULIP_BOT_EMAIL=${{ secrets.ZULIP_BOT_EMAIL }}
+            ZULIP_BOT_API_KEY=${{ secrets.ZULIP_BOT_API_KEY }}
             ZULIP_INVITE_URL=${{ secrets.ZULIP_INVITE_URL }}
+
+            # Traefik (generate with: echo $(htpasswd -nb admin password) | sed -e s/\\$/\\$\\$/g)
+            TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}
             ENVEOF
 
             # Build and deploy
+            echo "=== Building and deploying containers ==="
             cd docker
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml build --no-cache chive-web
+
+            # Pull latest base images
+            echo "Pulling latest base images..."
+            docker compose -f docker-compose.prod.yml pull postgres redis elasticsearch neo4j traefik || true
+
+            # Build the main chive image (API + Indexer)
+            echo "Building main chive image..."
+            docker build -t chive:latest -f ../docker/Dockerfile .. || {
+              echo "::error::Failed to build main chive image"
+              exit 1
+            }
+
+            # Build web container
+            echo "Building chive-web container..."
+            docker compose -f docker-compose.prod.yml build chive-web || {
+              echo "::error::Failed to build chive-web image"
+              exit 1
+            }
+
+            # Build docs container
+            echo "Building chive-docs container..."
+            docker compose -f docker-compose.prod.yml build chive-docs || {
+              echo "::warning::Failed to build chive-docs image (non-fatal)"
+            }
+
+            # Start all services
+            echo "Starting services..."
             docker compose -f docker-compose.prod.yml up -d
 
+            # Wait for services to initialize
+            echo "Waiting for services to initialize..."
+            sleep 30
+
+            # Show running containers
+            echo "=== Container status ==="
+            docker compose -f docker-compose.prod.yml ps
+
+            # Check for any failed containers
+            failed=$(docker compose -f docker-compose.prod.yml ps --status exited --format json 2>/dev/null | grep -c '"State":"exited"' || echo "0")
+            if [ "$failed" != "0" ]; then
+              echo "::warning::Some containers may have exited"
+              docker compose -f docker-compose.prod.yml logs --tail=50 2>&1 | head -100
+            fi
+
             # Cleanup old images
+            echo "Cleaning up old images..."
             docker system prune -f
 
-            echo "Deployment complete!"
+            echo "=== Deployment complete ==="
+            echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       - name: Verify deployment
+        if: ${{ vars.DOMAIN != '' }}
         run: |
-          sleep 30
-          curl -sf https://${{ vars.DOMAIN }}/api/health || echo "API health check failed"
-          curl -sf https://${{ vars.DOMAIN }}/ || echo "Web health check failed"
-          echo "Health checks complete"
+          echo "Waiting for services to fully start..."
+          sleep 60
+
+          domain="${{ vars.DOMAIN }}"
+          success=true
+
+          echo "Checking API health at https://$domain/api/health..."
+          if curl -sf --max-time 30 "https://$domain/api/health"; then
+            echo "✓ API health check passed"
+          else
+            echo "✗ API health check failed"
+            success=false
+          fi
+
+          echo ""
+          echo "Checking web frontend at https://$domain/..."
+          if curl -sf --max-time 30 "https://$domain/" > /dev/null; then
+            echo "✓ Web health check passed"
+          else
+            echo "✗ Web health check failed"
+            success=false
+          fi
+
+          echo ""
+          echo "Checking docs at https://docs.$domain/..."
+          if curl -sf --max-time 30 "https://docs.$domain/" > /dev/null; then
+            echo "✓ Docs health check passed"
+          else
+            echo "⚠ Docs health check failed (non-critical)"
+          fi
+
+          echo ""
+          if [ "$success" = "false" ]; then
+            echo "::warning::Some health checks failed. Check container logs on the server."
+          else
+            echo "All critical health checks passed!"
+          fi
