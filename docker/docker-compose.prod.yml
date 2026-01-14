@@ -176,7 +176,7 @@ services:
   chive-migrate:
     image: chive:${CHIVE_VERSION:-latest}
     container_name: chive-migrate
-    command: ["sh", "-c", "pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir src/storage/postgresql/migrations"]
+    command: ["sh", "-c", "node node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir dist/src/storage/postgresql/migrations"]
     env_file:
       - .env.production
     environment:
