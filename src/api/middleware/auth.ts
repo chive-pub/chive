@@ -116,13 +116,11 @@ export function authenticateServiceAuth(
     const logger = c.get('logger');
 
     try {
-      // Get the lexicon method from the request path for lxm verification
-      // XRPC paths are like /xrpc/pub.chive.claiming.findClaimable
-      const path = c.req.path;
-      const lxm = path.startsWith('/xrpc/') ? path.slice(6) : undefined;
-
       // Verify the service auth JWT
-      const result = await verifier.verify(token, lxm);
+      // Note: We don't enforce lxm (lexicon method) matching because not all
+      // PDS implementations include lxm in service auth tokens. The token is
+      // still validated against the user's DID document signing key.
+      const result = await verifier.verify(token);
 
       if (!result) {
         // Invalid token; log and continue as anonymous
