@@ -47,15 +47,45 @@
 
 import WebSocket from 'ws';
 
+import type { CID, DID } from '../../types/atproto.js';
 import { ValidationError } from '../../types/errors.js';
 import type {
   IEventStreamConsumer,
   RepoEvent,
+  RepoOp,
   SubscriptionOptions,
 } from '../../types/interfaces/event-stream.interface.js';
 
 import type { CursorManager } from './cursor-manager.js';
 import { ReconnectionManager } from './reconnection-manager.js';
+
+/**
+ * Jetstream event from the JSON firehose.
+ *
+ * @internal
+ */
+interface JetstreamEvent {
+  readonly did: string;
+  readonly time_us: number;
+  readonly kind: 'commit' | 'identity' | 'account';
+  readonly commit?: {
+    readonly rev: string;
+    readonly operation: string;
+    readonly collection: string;
+    readonly rkey: string;
+    readonly record?: unknown;
+    readonly cid?: string;
+  };
+}
+
+/**
+ * RepoOp extended with record data from Jetstream.
+ *
+ * @internal
+ */
+interface RepoOpWithRecord extends RepoOp {
+  record?: unknown;
+}
 
 /**
  * Firehose consumer configuration.
@@ -380,12 +410,31 @@ export class FirehoseConsumer implements IEventStreamConsumer {
 
     const options = this.subscriptionOptions;
 
-    // Build WebSocket URL
+    // Build Jetstream WebSocket URL (JSON-based firehose)
+    // Jetstream provides decoded JSON instead of raw CBOR
     const url = new URL(options.relay);
-    url.pathname = '/xrpc/com.atproto.sync.subscribeRepos';
 
+    // Check if this is a Jetstream URL or convert to Jetstream
+    if (!url.hostname.includes('jetstream')) {
+      // Default to Jetstream for JSON-based consumption
+      url.hostname = 'jetstream2.us-east.bsky.network';
+      url.protocol = 'wss:';
+    }
+    url.pathname = '/subscribe';
+
+    // Add cursor if provided (Jetstream uses cursor query param)
     if (options.cursor !== undefined && options.cursor !== null) {
       url.searchParams.set('cursor', options.cursor.toString());
+    }
+
+    // Add collection filters for pub.chive.* records
+    if (options.filter?.collections) {
+      for (const collection of options.filter.collections) {
+        url.searchParams.append('wantedCollections', collection);
+      }
+    } else {
+      // Default to all pub.chive.* collections
+      url.searchParams.append('wantedCollections', 'pub.chive.*');
     }
 
     // Create WebSocket
@@ -440,19 +489,70 @@ export class FirehoseConsumer implements IEventStreamConsumer {
   }
 
   /**
-   * Handles WebSocket message event.
+   * Handles WebSocket message event from Jetstream.
+   *
+   * @remarks
+   * Jetstream sends JSON events in this format:
+   * ```json
+   * {
+   *   "did": "did:plc:...",
+   *   "time_us": 1725911162329308,
+   *   "kind": "commit",
+   *   "commit": {
+   *     "rev": "...",
+   *     "operation": "create",
+   *     "collection": "pub.chive.eprint.submission",
+   *     "rkey": "...",
+   *     "record": {...},
+   *     "cid": "..."
+   *   }
+   * }
+   * ```
+   *
+   * This is transformed to the RepoEvent format expected by the rest of the code.
    *
    * @internal
    */
   private onMessage(data: Buffer): void {
     try {
-      // Parse JSON event
-      const event = JSON.parse(data.toString('utf-8')) as RepoEvent;
+      // Parse Jetstream JSON event
+      const jetstreamEvent = JSON.parse(data.toString('utf-8')) as JetstreamEvent;
+
+      // Only process commit events
+      if (jetstreamEvent.kind !== 'commit' || !jetstreamEvent.commit) {
+        return;
+      }
+
+      const commit = jetstreamEvent.commit;
+
+      // Transform to RepoEvent format
+      const event: RepoEvent = {
+        $type: 'com.atproto.sync.subscribeRepos#commit',
+        repo: jetstreamEvent.did as DID,
+        commit: (commit.cid ?? '') as CID,
+        ops: [
+          {
+            action: commit.operation as 'create' | 'update' | 'delete',
+            path: `${commit.collection}/${commit.rkey}`,
+            cid: commit.cid as CID | undefined,
+          },
+        ],
+        // Jetstream uses microseconds, convert to sequence number
+        seq: jetstreamEvent.time_us,
+        // Convert microseconds to ISO timestamp
+        time: new Date(jetstreamEvent.time_us / 1000).toISOString(),
+      };
+
+      // Store record in ops for downstream processing
+      if (commit.record) {
+        // Attach record to the operation for processing
+        (event.ops[0] as RepoOpWithRecord).record = commit.record;
+      }
 
       // Add to buffer
       this.bufferEvent(event);
     } catch (error) {
-      console.error('Failed to parse event:', error);
+      console.error('Failed to parse Jetstream event:', error);
     }
   }
 
