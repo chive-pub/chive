@@ -38,6 +38,9 @@ const COLORS = {
 // Chive logo URL
 const LOGO_URL = 'https://chive.pub/chive-logo.svg';
 
+// System font stack (matches app fonts)
+const FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
 /**
  * GET handler for OG image generation.
  */
@@ -86,14 +89,15 @@ async function generateDefaultImage(): Promise<ImageResponse> {
         height: '100%',
         display: 'flex',
         background: COLORS.white,
+        fontFamily: FONT_FAMILY,
       }}
     >
-      {/* Left side - Green branded section */}
+      {/* Left side - Grey section with logo */}
       <div
         style={{
           width: '400px',
           height: '100%',
-          background: COLORS.brand,
+          background: '#f5f5f5',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -101,17 +105,9 @@ async function generateDefaultImage(): Promise<ImageResponse> {
           padding: '48px',
         }}
       >
-        {/* Logo */}
+        {/* Logo - displayed directly without styling */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={LOGO_URL}
-          alt="Chive"
-          width={180}
-          height={180}
-          style={{
-            borderRadius: '24px',
-          }}
-        />
+        <img src={LOGO_URL} alt="Chive" width={200} height={200} />
       </div>
 
       {/* Right side - Content */}
@@ -218,11 +214,13 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
+        fontFamily: FONT_FAMILY,
       }}
     >
       {/* Header with logo */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
-        <span style={{ fontSize: '28px', marginRight: '12px' }}>🌿</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={LOGO_URL} alt="Chive" width={40} height={40} style={{ marginRight: '12px' }} />
         <span
           style={{
             fontSize: '24px',
@@ -330,11 +328,13 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
+        fontFamily: FONT_FAMILY,
       }}
     >
       {/* Header with logo */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
-        <span style={{ fontSize: '28px', marginRight: '12px' }}>🌿</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={LOGO_URL} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
         <span
           style={{
             fontSize: '24px',
@@ -450,6 +450,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
+        fontFamily: FONT_FAMILY,
       }}
     >
       {/* Header */}
@@ -462,7 +463,8 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontSize: '28px', marginRight: '12px' }}>🌿</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_URL} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
           <span
             style={{
               fontSize: '24px',
@@ -565,6 +567,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
+        fontFamily: FONT_FAMILY,
       }}
     >
       {/* Header */}
@@ -577,7 +580,8 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontSize: '28px', marginRight: '12px' }}>🌿</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_URL} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
           <span
             style={{
               fontSize: '24px',
