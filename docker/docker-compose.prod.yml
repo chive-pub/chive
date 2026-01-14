@@ -230,10 +230,18 @@ services:
       start_period: 30s
     labels:
       - "traefik.enable=true"
+      # API subdomain route
       - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
       - "traefik.http.services.api.loadbalancer.server.port=3000"
+      # Path-based route for /api on main domain (used by Next.js frontend)
+      - "traefik.http.routers.api-path.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.api-path.entrypoints=websecure"
+      - "traefik.http.routers.api-path.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.api-path.service=api"
+      - "traefik.http.middlewares.api-strip.stripprefix.prefixes=/api"
+      - "traefik.http.routers.api-path.middlewares=api-strip,api-ratelimit"
       # Rate limiting middleware
       - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
       - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"
