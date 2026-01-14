@@ -21,16 +21,22 @@ export const runtime = 'edge';
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-// Colors matching Chive design system
+// Colors matching Chive brand (from landing.html)
 const COLORS = {
-  background: '#f8fafc', // slate-50
-  backgroundGradient: '#f1f5f9', // slate-100
-  primary: '#0f172a', // slate-900
-  secondary: '#475569', // slate-600
-  muted: '#94a3b8', // slate-400
-  accent: '#10b981', // emerald-500
-  border: '#e2e8f0', // slate-200
+  // Brand colors
+  brand: '#157200', // Primary Chive green
+  brandLight: '#4ade80', // Secondary/accent green
+  // Neutral colors
+  background: '#fafafa', // Light background
+  primary: '#171717', // Dark text
+  secondary: '#737373', // Muted text
+  muted: '#a3a3a3', // Light muted
+  border: '#e5e5e5', // Borders
+  white: '#ffffff',
 };
+
+// Chive logo URL
+const LOGO_URL = 'https://chive.pub/chive-logo.svg';
 
 /**
  * GET handler for OG image generation.
@@ -79,71 +85,108 @@ async function generateDefaultImage(): Promise<ImageResponse> {
         width: '100%',
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.backgroundGradient} 100%)`,
-        padding: '48px',
+        background: COLORS.white,
       }}
     >
-      {/* Logo and name */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
-        <span style={{ fontSize: '72px', marginRight: '24px' }}>🌿</span>
-        <span
+      {/* Left side - Green branded section */}
+      <div
+        style={{
+          width: '400px',
+          height: '100%',
+          background: COLORS.brand,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '48px',
+        }}
+      >
+        {/* Logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LOGO_URL}
+          alt="Chive"
+          width={180}
+          height={180}
           style={{
-            fontSize: '96px',
+            borderRadius: '24px',
+          }}
+        />
+      </div>
+
+      {/* Right side - Content */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: '64px',
+          background: COLORS.white,
+        }}
+      >
+        {/* Title */}
+        <div
+          style={{
+            fontSize: '72px',
             fontWeight: 700,
-            color: COLORS.accent,
-            letterSpacing: '0.1em',
+            color: COLORS.primary,
+            marginBottom: '8px',
+            letterSpacing: '-0.02em',
           }}
         >
-          CHIVE
-        </span>
-      </div>
+          Chive
+        </div>
 
-      {/* Tagline */}
-      <div
-        style={{
-          fontSize: '36px',
-          color: COLORS.primary,
-          fontWeight: 600,
-          marginBottom: '16px',
-          textAlign: 'center',
-        }}
-      >
-        Decentralized Eprint Service
-      </div>
+        {/* Tagline */}
+        <div
+          style={{
+            fontSize: '32px',
+            color: COLORS.secondary,
+            marginBottom: '32px',
+          }}
+        >
+          Decentralized Eprints
+        </div>
 
-      {/* Description */}
-      <div
-        style={{
-          fontSize: '24px',
-          color: COLORS.secondary,
-          textAlign: 'center',
-          maxWidth: '800px',
-          lineHeight: 1.4,
-        }}
-      >
-        Decentralized eprints on ATProto
-      </div>
+        {/* Description */}
+        <div
+          style={{
+            fontSize: '24px',
+            color: COLORS.secondary,
+            lineHeight: 1.5,
+            marginBottom: '40px',
+          }}
+        >
+          Decentralized eprints on ATProto. Share your research with full data sovereignty.
+        </div>
 
-      {/* Features */}
-      <div style={{ display: 'flex', gap: '24px', marginTop: '48px' }}>
-        {['Open Access', 'Decentralized', 'You Own Your Data'].map((feature, i) => (
+        {/* URL badge */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
           <div
-            key={i}
             style={{
-              padding: '12px 24px',
-              borderRadius: '24px',
-              background: COLORS.accent + '20',
-              color: COLORS.accent,
-              fontSize: '18px',
+              width: '12px',
+              height: '12px',
+              borderRadius: '6px',
+              background: COLORS.brand,
+            }}
+          />
+          <span
+            style={{
+              fontSize: '20px',
+              color: COLORS.brand,
               fontWeight: 600,
             }}
           >
-            {feature}
-          </div>
-        ))}
+            chive.pub
+          </span>
+        </div>
       </div>
     </div>,
     {
@@ -174,7 +217,7 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
         display: 'flex',
         flexDirection: 'column',
         padding: '48px',
-        background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.backgroundGradient} 100%)`,
+        background: COLORS.background,
       }}
     >
       {/* Header with logo */}
@@ -184,7 +227,7 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
           style={{
             fontSize: '24px',
             fontWeight: 700,
-            color: COLORS.accent,
+            color: COLORS.brand,
             letterSpacing: '0.1em',
           }}
         >
@@ -243,8 +286,8 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
               style={{
                 padding: '8px 16px',
                 borderRadius: '20px',
-                background: COLORS.accent + '20',
-                color: COLORS.accent,
+                background: COLORS.brand + '20',
+                color: COLORS.brand,
                 fontSize: '16px',
                 fontWeight: 600,
               }}
@@ -286,7 +329,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
         display: 'flex',
         flexDirection: 'column',
         padding: '48px',
-        background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.backgroundGradient} 100%)`,
+        background: COLORS.background,
       }}
     >
       {/* Header with logo */}
@@ -296,7 +339,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
           style={{
             fontSize: '24px',
             fontWeight: 700,
-            color: COLORS.accent,
+            color: COLORS.brand,
             letterSpacing: '0.1em',
           }}
         >
@@ -406,7 +449,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
         display: 'flex',
         flexDirection: 'column',
         padding: '48px',
-        background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.backgroundGradient} 100%)`,
+        background: COLORS.background,
       }}
     >
       {/* Header */}
@@ -424,7 +467,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
             style={{
               fontSize: '24px',
               fontWeight: 700,
-              color: COLORS.accent,
+              color: COLORS.brand,
               letterSpacing: '0.1em',
             }}
           >
@@ -521,7 +564,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
         display: 'flex',
         flexDirection: 'column',
         padding: '48px',
-        background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.backgroundGradient} 100%)`,
+        background: COLORS.background,
       }}
     >
       {/* Header */}
@@ -539,7 +582,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
             style={{
               fontSize: '24px',
               fontWeight: 700,
-              color: COLORS.accent,
+              color: COLORS.brand,
               letterSpacing: '0.1em',
             }}
           >
@@ -550,8 +593,8 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
           style={{
             padding: '8px 16px',
             borderRadius: '8px',
-            background: COLORS.accent + '20',
-            color: COLORS.accent,
+            background: COLORS.brand + '20',
+            color: COLORS.brand,
             fontSize: '18px',
             fontWeight: 600,
           }}
@@ -581,8 +624,8 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
               style={{
                 padding: '10px 20px',
                 borderRadius: '24px',
-                background: COLORS.accent + '20',
-                color: COLORS.accent,
+                background: COLORS.brand + '20',
+                color: COLORS.brand,
                 fontSize: '18px',
                 fontWeight: 600,
                 textTransform: 'capitalize',
