@@ -10,7 +10,7 @@
  * @example
  * ```tsx
  * <PageHeader
- *   title="Submit a Eprint"
+ *   title="Submit an Eprint"
  *   description="Share your research with the world"
  *   actions={
  *     <Button variant="outline">Save Draft</Button>

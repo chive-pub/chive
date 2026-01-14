@@ -84,21 +84,7 @@ export function FeedEmptyState({
             Connect your ORCID or Semantic Scholar ID to get personalized recommendations
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-              Discover papers related to your published work
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-              Find papers from your collaborators
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-              Get notified when papers cite your work
-            </li>
-          </ul>
+        <CardContent>
           <div className="flex justify-center">
             <Button asChild>
               <Link href="/dashboard/settings">

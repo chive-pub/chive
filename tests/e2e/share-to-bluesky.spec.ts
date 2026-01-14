@@ -467,7 +467,7 @@ test.describe('Share from Author Page', () => {
     await page.goto('/browse');
     await page.waitForLoadState('networkidle');
 
-    // Navigate to a eprint first
+    // Navigate to an eprint first
     const eprintLink = page.locator('a[href*="/eprints/"]').first();
     await expect(eprintLink).toBeVisible({ timeout: 10000 });
     await eprintLink.click();

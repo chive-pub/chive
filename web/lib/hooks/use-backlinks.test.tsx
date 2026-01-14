@@ -69,7 +69,7 @@ describe('useBacklinks', () => {
     mockGet.mockReset();
   });
 
-  it('should fetch backlinks for a eprint', async () => {
+  it('should fetch backlinks for an eprint', async () => {
     mockGet.mockResolvedValueOnce({
       data: { backlinks: mockBacklinks, hasMore: false },
       error: undefined,

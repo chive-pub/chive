@@ -27,7 +27,7 @@ export interface EprintCardProps {
 }
 
 /**
- * Displays a eprint card with title, authors, and metadata.
+ * Displays an eprint card with title, authors, and metadata.
  *
  * @remarks
  * Client component that handles hover prefetch for improved navigation.

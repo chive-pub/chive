@@ -27,16 +27,21 @@ interface AlphaGateProps {
  * Alpha gate component that restricts access to approved alpha testers.
  *
  * @remarks
- * This component should wrap protected routes that require alpha access.
+ * This component should wrap ALL routes that require alpha access.
+ * During the alpha period, ALL pages are gated except for:
+ * - Landing page (`/`)
+ * - Apply page (`/apply`)
+ * - Pending page (`/pending`)
+ * - Login page (`/login`)
+ * - OAuth callback (`/oauth/callback`)
+ *
  * Users who are not approved alpha testers are redirected to the homepage
  * where they can see the signup form or their application status.
  *
- * Public routes (eprints, search, authors) should NOT use this gate.
- *
  * @example
  * ```tsx
- * // In a protected layout like app/dashboard/layout.tsx
- * export default function DashboardLayout({ children }) {
+ * // In a layout file like app/eprints/layout.tsx
+ * export default function EprintsLayout({ children }) {
  *   return <AlphaGate>{children}</AlphaGate>;
  * }
  * ```

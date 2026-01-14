@@ -745,6 +745,90 @@
         }
       }
     },
+    "/xrpc/pub.chive.actor.autocompleteOpenReview": {
+      "get": {
+        "operationId": "pub_chive_actor_autocompleteOpenReview",
+        "summary": "Search for OpenReview profiles by author name",
+        "tags": ["actor"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Search query for author name",
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Max results (default 10)",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "description": "OpenReview profile ID (e.g., ~John_Smith1)",
+                            "type": "string"
+                          },
+                          "displayName": { "description": "Display name", "type": "string" },
+                          "institution": {
+                            "description": "Current institution",
+                            "anyOf": [{ "type": "string" }, { "type": "null" }]
+                          }
+                        },
+                        "required": ["id", "displayName", "institution"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["suggestions"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/xrpc/pub.chive.actor.autocompleteOrcid": {
       "get": {
         "operationId": "pub_chive_actor_autocompleteOrcid",
@@ -1931,39 +2015,6 @@
                           "maximum": 9007199254740991
                         },
                         "claimantDid": { "type": "string" },
-                        "evidence": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "orcid-match",
-                                  "semantic-scholar-match",
-                                  "openreview-match",
-                                  "openalex-match",
-                                  "arxiv-ownership",
-                                  "institutional-email",
-                                  "ror-affiliation",
-                                  "name-match",
-                                  "coauthor-overlap",
-                                  "author-claim"
-                                ]
-                              },
-                              "score": { "type": "number", "minimum": 0, "maximum": 1 },
-                              "details": { "type": "string" },
-                              "data": {
-                                "type": "object",
-                                "propertyNames": { "type": "string" },
-                                "additionalProperties": {}
-                              }
-                            },
-                            "required": ["type", "score", "details"],
-                            "additionalProperties": false
-                          }
-                        },
-                        "verificationScore": { "type": "number", "minimum": 0, "maximum": 1 },
                         "status": {
                           "type": "string",
                           "enum": ["pending", "approved", "rejected", "expired"]
@@ -1987,165 +2038,11 @@
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                         }
                       },
-                      "required": [
-                        "id",
-                        "importId",
-                        "claimantDid",
-                        "evidence",
-                        "verificationScore",
-                        "status",
-                        "createdAt"
-                      ],
+                      "required": ["id", "importId", "claimantDid", "status", "createdAt"],
                       "additionalProperties": false
                     }
                   },
                   "required": ["claim"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request - Validation error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests - Rate limit exceeded",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
-        }
-      }
-    },
-    "/xrpc/pub.chive.claiming.collectEvidence": {
-      "post": {
-        "operationId": "pub_chive_claiming_collectEvidence",
-        "summary": "Collect evidence from multiple authorities for a claim",
-        "tags": ["claiming"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "claimId": {
-                    "description": "ID of the claim request",
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  }
-                },
-                "required": ["claimId"],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "claim": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "importId": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "claimantDid": { "type": "string" },
-                        "evidence": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "orcid-match",
-                                  "semantic-scholar-match",
-                                  "openreview-match",
-                                  "openalex-match",
-                                  "arxiv-ownership",
-                                  "institutional-email",
-                                  "ror-affiliation",
-                                  "name-match",
-                                  "coauthor-overlap",
-                                  "author-claim"
-                                ]
-                              },
-                              "score": { "type": "number", "minimum": 0, "maximum": 1 },
-                              "details": { "type": "string" },
-                              "data": {
-                                "type": "object",
-                                "propertyNames": { "type": "string" },
-                                "additionalProperties": {}
-                              }
-                            },
-                            "required": ["type", "score", "details"],
-                            "additionalProperties": false
-                          }
-                        },
-                        "verificationScore": { "type": "number", "minimum": 0, "maximum": 1 },
-                        "status": {
-                          "type": "string",
-                          "enum": ["pending", "approved", "rejected", "expired"]
-                        },
-                        "canonicalUri": { "type": "string" },
-                        "rejectionReason": { "type": "string" },
-                        "reviewedBy": { "type": "string" },
-                        "reviewedAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-                        },
-                        "expiresAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "importId",
-                        "claimantDid",
-                        "evidence",
-                        "verificationScore",
-                        "status",
-                        "createdAt"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "decision": {
-                      "type": "string",
-                      "enum": ["auto-approve", "expedited", "manual", "insufficient"]
-                    }
-                  },
-                  "required": ["claim", "decision"],
                   "additionalProperties": false
                 }
               }
@@ -2404,39 +2301,6 @@
                               "maximum": 9007199254740991
                             },
                             "claimantDid": { "type": "string" },
-                            "evidence": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "type": {
-                                    "type": "string",
-                                    "enum": [
-                                      "orcid-match",
-                                      "semantic-scholar-match",
-                                      "openreview-match",
-                                      "openalex-match",
-                                      "arxiv-ownership",
-                                      "institutional-email",
-                                      "ror-affiliation",
-                                      "name-match",
-                                      "coauthor-overlap",
-                                      "author-claim"
-                                    ]
-                                  },
-                                  "score": { "type": "number", "minimum": 0, "maximum": 1 },
-                                  "details": { "type": "string" },
-                                  "data": {
-                                    "type": "object",
-                                    "propertyNames": { "type": "string" },
-                                    "additionalProperties": {}
-                                  }
-                                },
-                                "required": ["type", "score", "details"],
-                                "additionalProperties": false
-                              }
-                            },
-                            "verificationScore": { "type": "number", "minimum": 0, "maximum": 1 },
                             "status": {
                               "type": "string",
                               "enum": ["pending", "approved", "rejected", "expired"]
@@ -2460,15 +2324,7 @@
                               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                             }
                           },
-                          "required": [
-                            "id",
-                            "importId",
-                            "claimantDid",
-                            "evidence",
-                            "verificationScore",
-                            "status",
-                            "createdAt"
-                          ],
+                          "required": ["id", "importId", "claimantDid", "status", "createdAt"],
                           "additionalProperties": false
                         },
                         { "type": "null" }
@@ -2546,39 +2402,6 @@
                             "maximum": 9007199254740991
                           },
                           "claimantDid": { "type": "string" },
-                          "evidence": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "type": {
-                                  "type": "string",
-                                  "enum": [
-                                    "orcid-match",
-                                    "semantic-scholar-match",
-                                    "openreview-match",
-                                    "openalex-match",
-                                    "arxiv-ownership",
-                                    "institutional-email",
-                                    "ror-affiliation",
-                                    "name-match",
-                                    "coauthor-overlap",
-                                    "author-claim"
-                                  ]
-                                },
-                                "score": { "type": "number", "minimum": 0, "maximum": 1 },
-                                "details": { "type": "string" },
-                                "data": {
-                                  "type": "object",
-                                  "propertyNames": { "type": "string" },
-                                  "additionalProperties": {}
-                                }
-                              },
-                              "required": ["type", "score", "details"],
-                              "additionalProperties": false
-                            }
-                          },
-                          "verificationScore": { "type": "number", "minimum": 0, "maximum": 1 },
                           "status": {
                             "type": "string",
                             "enum": ["pending", "approved", "rejected", "expired"]
@@ -2633,8 +2456,6 @@
                           "id",
                           "importId",
                           "claimantDid",
-                          "evidence",
-                          "verificationScore",
                           "status",
                           "createdAt",
                           "paper"
@@ -2827,39 +2648,6 @@
                             "maximum": 9007199254740991
                           },
                           "claimantDid": { "type": "string" },
-                          "evidence": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "type": {
-                                  "type": "string",
-                                  "enum": [
-                                    "orcid-match",
-                                    "semantic-scholar-match",
-                                    "openreview-match",
-                                    "openalex-match",
-                                    "arxiv-ownership",
-                                    "institutional-email",
-                                    "ror-affiliation",
-                                    "name-match",
-                                    "coauthor-overlap",
-                                    "author-claim"
-                                  ]
-                                },
-                                "score": { "type": "number", "minimum": 0, "maximum": 1 },
-                                "details": { "type": "string" },
-                                "data": {
-                                  "type": "object",
-                                  "propertyNames": { "type": "string" },
-                                  "additionalProperties": {}
-                                }
-                              },
-                              "required": ["type", "score", "details"],
-                              "additionalProperties": false
-                            }
-                          },
-                          "verificationScore": { "type": "number", "minimum": 0, "maximum": 1 },
                           "status": {
                             "type": "string",
                             "enum": ["pending", "approved", "rejected", "expired"]
@@ -2883,15 +2671,7 @@
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                           }
                         },
-                        "required": [
-                          "id",
-                          "importId",
-                          "claimantDid",
-                          "evidence",
-                          "verificationScore",
-                          "status",
-                          "createdAt"
-                        ],
+                        "required": ["id", "importId", "claimantDid", "status", "createdAt"],
                         "additionalProperties": false
                       }
                     },
@@ -3030,6 +2810,37 @@
                             "minLength": 2,
                             "maxLength": 50,
                             "pattern": "^[a-z0-9]+$"
+                          },
+                          "existingChivePaper": {
+                            "type": "object",
+                            "properties": {
+                              "uri": {
+                                "description": "AT-URI of the existing paper",
+                                "type": "string"
+                              },
+                              "title": { "description": "Paper title", "type": "string" },
+                              "authors": {
+                                "description": "Author list",
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "did": { "type": "string" },
+                                    "name": { "type": "string" }
+                                  },
+                                  "required": ["name"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "createdAt": {
+                                "description": "When the paper was indexed",
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              }
+                            },
+                            "required": ["uri", "title", "authors", "createdAt"],
+                            "additionalProperties": false
                           }
                         },
                         "required": ["externalId", "url", "title", "authors", "source"],
@@ -3376,39 +3187,6 @@
                           "maximum": 9007199254740991
                         },
                         "claimantDid": { "type": "string" },
-                        "evidence": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "orcid-match",
-                                  "semantic-scholar-match",
-                                  "openreview-match",
-                                  "openalex-match",
-                                  "arxiv-ownership",
-                                  "institutional-email",
-                                  "ror-affiliation",
-                                  "name-match",
-                                  "coauthor-overlap",
-                                  "author-claim"
-                                ]
-                              },
-                              "score": { "type": "number", "minimum": 0, "maximum": 1 },
-                              "details": { "type": "string" },
-                              "data": {
-                                "type": "object",
-                                "propertyNames": { "type": "string" },
-                                "additionalProperties": {}
-                              }
-                            },
-                            "required": ["type", "score", "details"],
-                            "additionalProperties": false
-                          }
-                        },
-                        "verificationScore": { "type": "number", "minimum": 0, "maximum": 1 },
                         "status": {
                           "type": "string",
                           "enum": ["pending", "approved", "rejected", "expired"]
@@ -3432,19 +3210,668 @@
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                         }
                       },
+                      "required": ["id", "importId", "claimantDid", "status", "createdAt"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["claim"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.getSubmissionData": {
+      "get": {
+        "operationId": "pub_chive_claiming_getSubmissionData",
+        "summary": "Get prefilled submission data for claiming a paper from an external source",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "External source (e.g., arxiv, semanticscholar)",
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 50,
+              "pattern": "^[a-z0-9]+$"
+            }
+          },
+          {
+            "name": "externalId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Source-specific identifier",
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": { "type": "string" },
+                    "abstract": { "type": "string" },
+                    "authors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "order": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+                          "name": { "type": "string" },
+                          "orcid": { "type": "string" },
+                          "email": {
+                            "type": "string",
+                            "format": "email",
+                            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                          },
+                          "affiliation": { "type": "string" }
+                        },
+                        "required": ["order", "name"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "keywords": { "type": "array", "items": { "type": "string" } },
+                    "doi": { "type": "string" },
+                    "pdfUrl": { "type": "string", "format": "uri" },
+                    "source": {
+                      "description": "External source identifier (e.g., arxiv, semanticscholar)",
+                      "type": "string",
+                      "minLength": 2,
+                      "maxLength": 50,
+                      "pattern": "^[a-z0-9]+$"
+                    },
+                    "externalId": { "type": "string" },
+                    "externalUrl": { "type": "string", "format": "uri" },
+                    "publicationDate": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    },
+                    "externalIds": {
+                      "type": "object",
+                      "properties": {
+                        "arxivId": { "type": "string" },
+                        "doi": { "type": "string" }
+                      },
+                      "additionalProperties": false
+                    },
+                    "existingChivePaper": {
+                      "type": "object",
+                      "properties": {
+                        "uri": { "description": "AT-URI of the existing paper", "type": "string" },
+                        "title": { "description": "Paper title", "type": "string" },
+                        "authors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "did": { "type": "string" },
+                              "name": { "type": "string" }
+                            },
+                            "required": ["name"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdAt": {
+                          "description": "When the paper was indexed",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        }
+                      },
+                      "required": ["uri", "title", "authors", "createdAt"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "abstract",
+                    "authors",
+                    "keywords",
+                    "source",
+                    "externalId",
+                    "externalUrl"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.requestCoauthorship": {
+      "post": {
+        "operationId": "pub_chive_claiming_requestCoauthorship",
+        "summary": "Request co-authorship on an eprint in another user's PDS",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "eprintUri": { "description": "AT-URI of the eprint record", "type": "string" },
+                  "eprintOwnerDid": { "description": "DID of the PDS owner", "type": "string" },
+                  "claimantName": {
+                    "description": "Display name for the request",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "authorIndex": {
+                    "description": "Index of the author entry being claimed (0-based)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "authorName": {
+                    "description": "Name of the author entry being claimed",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "message": {
+                    "description": "Optional message to PDS owner",
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "eprintUri",
+                  "eprintOwnerDid",
+                  "claimantName",
+                  "authorIndex",
+                  "authorName"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "eprintUri": {
+                          "description": "AT-URI of the eprint record",
+                          "type": "string"
+                        },
+                        "eprintOwnerDid": {
+                          "description": "DID of the PDS owner",
+                          "type": "string"
+                        },
+                        "claimantDid": { "description": "DID of the claimant", "type": "string" },
+                        "claimantName": {
+                          "description": "Display name at time of request",
+                          "type": "string"
+                        },
+                        "authorIndex": {
+                          "description": "Index of the author entry being claimed (0-based)",
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "authorName": {
+                          "description": "Name of the author entry being claimed",
+                          "type": "string"
+                        },
+                        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+                        "message": { "description": "Message from claimant", "type": "string" },
+                        "rejectionReason": { "description": "Rejection reason", "type": "string" },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        "reviewedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        }
+                      },
                       "required": [
                         "id",
-                        "importId",
+                        "eprintUri",
+                        "eprintOwnerDid",
                         "claimantDid",
-                        "evidence",
-                        "verificationScore",
+                        "claimantName",
+                        "authorIndex",
+                        "authorName",
                         "status",
                         "createdAt"
                       ],
                       "additionalProperties": false
                     }
                   },
-                  "required": ["claim"],
+                  "required": ["request"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.getCoauthorRequests": {
+      "get": {
+        "operationId": "pub_chive_claiming_getCoauthorRequests",
+        "summary": "Get pending co-author requests on your eprints",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          },
+          { "name": "cursor", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "eprintUri": {
+                            "description": "AT-URI of the eprint record",
+                            "type": "string"
+                          },
+                          "eprintOwnerDid": {
+                            "description": "DID of the PDS owner",
+                            "type": "string"
+                          },
+                          "claimantDid": { "description": "DID of the claimant", "type": "string" },
+                          "claimantName": {
+                            "description": "Display name at time of request",
+                            "type": "string"
+                          },
+                          "authorIndex": {
+                            "description": "Index of the author entry being claimed (0-based)",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "authorName": {
+                            "description": "Name of the author entry being claimed",
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["pending", "approved", "rejected"]
+                          },
+                          "message": { "description": "Message from claimant", "type": "string" },
+                          "rejectionReason": {
+                            "description": "Rejection reason",
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          },
+                          "reviewedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "eprintUri",
+                          "eprintOwnerDid",
+                          "claimantDid",
+                          "claimantName",
+                          "authorIndex",
+                          "authorName",
+                          "status",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "cursor": { "type": "string" }
+                  },
+                  "required": ["requests"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.getMyCoauthorRequests": {
+      "get": {
+        "operationId": "pub_chive_claiming_getMyCoauthorRequests",
+        "summary": "Get your co-author requests (as claimant)",
+        "tags": ["claiming"],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          },
+          { "name": "cursor", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "eprintUri": {
+                            "description": "AT-URI of the eprint record",
+                            "type": "string"
+                          },
+                          "eprintOwnerDid": {
+                            "description": "DID of the PDS owner",
+                            "type": "string"
+                          },
+                          "claimantDid": { "description": "DID of the claimant", "type": "string" },
+                          "claimantName": {
+                            "description": "Display name at time of request",
+                            "type": "string"
+                          },
+                          "authorIndex": {
+                            "description": "Index of the author entry being claimed (0-based)",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "authorName": {
+                            "description": "Name of the author entry being claimed",
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["pending", "approved", "rejected"]
+                          },
+                          "message": { "description": "Message from claimant", "type": "string" },
+                          "rejectionReason": {
+                            "description": "Rejection reason",
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          },
+                          "reviewedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "eprintUri",
+                          "eprintOwnerDid",
+                          "claimantDid",
+                          "claimantName",
+                          "authorIndex",
+                          "authorName",
+                          "status",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "cursor": { "type": "string" }
+                  },
+                  "required": ["requests"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.approveCoauthor": {
+      "post": {
+        "operationId": "pub_chive_claiming_approveCoauthor",
+        "summary": "Approve a co-author request on your eprint",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "description": "ID of the co-author request",
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["requestId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "success": { "type": "boolean" } },
+                  "required": ["success"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.claiming.rejectCoauthor": {
+      "post": {
+        "operationId": "pub_chive_claiming_rejectCoauthor",
+        "summary": "Reject a co-author request on your eprint",
+        "tags": ["claiming"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "description": "ID of the co-author request",
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "description": "Rejection reason",
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": ["requestId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "success": { "type": "boolean" } },
+                  "required": ["success"],
                   "additionalProperties": false
                 }
               }

@@ -310,7 +310,7 @@ export function useActivityFeed(
  * ```typescript
  * const { withActivityLogging, generateRkey } = useActivityLogging();
  *
- * // Create a eprint with activity tracking
+ * // Create an eprint with activity tracking
  * await withActivityLogging({
  *   category: 'eprint_submit',
  *   action: 'create',

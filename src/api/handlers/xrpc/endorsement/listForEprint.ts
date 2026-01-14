@@ -123,7 +123,7 @@ export const listForEprintEndpoint: XRPCEndpoint<
 > = {
   method: 'pub.chive.endorsement.listForEprint' as never,
   type: 'query',
-  description: 'List endorsements for a eprint',
+  description: 'List endorsements for an eprint',
   inputSchema: listEndorsementsForEprintParamsSchema,
   outputSchema: endorsementsResponseSchema,
   handler: listForEprintHandler,

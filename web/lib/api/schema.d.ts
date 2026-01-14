@@ -170,9 +170,13 @@ export interface CodeRepository {
     | 'github'
     | 'gitlab'
     | 'bitbucket'
+    | 'huggingface'
+    | 'paperswithcode'
     | 'codeberg'
     | 'sourcehut'
     | 'software_heritage'
+    | 'colab'
+    | 'kaggle'
     | 'other';
   label?: string;
   archiveUrl?: string;
@@ -180,12 +184,22 @@ export interface CodeRepository {
 }
 
 /**
- * Data repository reference.
+ * Data/model repository reference.
  */
 export interface DataRepository {
   url?: string;
   doi?: string;
-  platform?: 'zenodo' | 'figshare' | 'dryad' | 'osf' | 'dataverse' | 'mendeley_data' | 'other';
+  platform?:
+    | 'huggingface'
+    | 'zenodo'
+    | 'figshare'
+    | 'kaggle'
+    | 'dryad'
+    | 'osf'
+    | 'dataverse'
+    | 'mendeley_data'
+    | 'wandb'
+    | 'other';
   label?: string;
   accessStatement?: string;
 }
@@ -424,7 +438,7 @@ export type TagSearchResponse = SuccessResponseJSON<operations['pub_chive_tag_se
 /** Response from pub.chive.tag.getDetail */
 export type TagDetailResponse = SuccessResponseJSON<operations['pub_chive_tag_getDetail']>;
 
-/** User tag on a eprint */
+/** User tag on an eprint */
 export type UserTag = EprintTagsResponse['tags'][number];
 
 /** Tag suggestion from TaxoFolk */
@@ -680,9 +694,6 @@ export type Claim = NonNullable<ClaimNullable>;
 /** Claim status */
 export type ClaimStatus = Claim['status'];
 
-/** Claim evidence type */
-export type ClaimEvidenceType = Claim['evidence'][number]['type'];
-
 /** Claim request (alias for Claim) */
 export type ClaimRequest = Claim;
 
@@ -728,6 +739,44 @@ export type SuggestedPaperAuthor = NonNullable<SuggestedPaper['authors']>[number
 
 /** Profile metadata from suggestions */
 export type SuggestionsProfileMetadata = ClaimSuggestionsResponse['profileMetadata'];
+
+// -----------------------------------------------------------------------------
+// Co-Author Claim Types
+// -----------------------------------------------------------------------------
+
+/** Co-author claim request status */
+export type CoauthorClaimStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * Co-author claim request.
+ *
+ * @remarks
+ * Represents a request to be added as co-author to a paper in another user's PDS.
+ */
+export interface CoauthorClaimRequest {
+  id: number;
+  eprintUri: string;
+  eprintOwnerDid: string;
+  claimantDid: string;
+  claimantName: string;
+  authorIndex: number;
+  authorName: string;
+  status: CoauthorClaimStatus;
+  message?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+/**
+ * Co-author claim request with eprint details for display.
+ */
+export interface CoauthorClaimRequestWithEprint extends CoauthorClaimRequest {
+  eprint?: {
+    title: string;
+    authors: Array<{ name: string; orcid?: string }>;
+  };
+}
 
 // -----------------------------------------------------------------------------
 // Governance Types
@@ -1323,6 +1372,15 @@ export interface AlphaAffiliation {
 }
 
 /**
+ * Research keyword for alpha applications.
+ */
+export interface AlphaResearchKeyword {
+  label: string;
+  fastId?: string;
+  wikidataId?: string;
+}
+
+/**
  * Alpha status check response.
  */
 export interface AlphaStatusResponse {
@@ -1340,8 +1398,8 @@ export interface AlphaApplyInput {
   sectorOther?: string;
   careerStage: AlphaCareerStage;
   careerStageOther?: string;
-  affiliation?: AlphaAffiliation;
-  researchField: string;
+  affiliations?: AlphaAffiliation[];
+  researchKeywords: AlphaResearchKeyword[];
   motivation?: string;
 }
 
@@ -1351,6 +1409,60 @@ export interface AlphaApplyInput {
 export interface AlphaApplyResponse {
   id: string;
   status: 'pending';
+}
+
+// -----------------------------------------------------------------------------
+// Notification Types
+// -----------------------------------------------------------------------------
+
+/**
+ * Review notification on user's papers.
+ */
+export interface ReviewNotification {
+  uri: string;
+  reviewerDid: string;
+  reviewerHandle?: string;
+  reviewerDisplayName?: string;
+  eprintUri: string;
+  eprintTitle: string;
+  text: string;
+  isReply: boolean;
+  createdAt: string;
+}
+
+/**
+ * Endorsement notification on user's papers.
+ */
+export interface EndorsementNotification {
+  uri: string;
+  endorserDid: string;
+  endorserHandle?: string;
+  endorserDisplayName?: string;
+  eprintUri: string;
+  eprintTitle: string;
+  endorsementType: 'methods' | 'results' | 'overall';
+  comment?: string;
+  createdAt: string;
+}
+
+/**
+ * Review notifications response.
+ */
+export interface ReviewNotificationsResponse {
+  notifications: ReviewNotification[];
+  cursor?: string;
+  hasMore: boolean;
+  total?: number;
+}
+
+/**
+ * Endorsement notifications response.
+ */
+export interface EndorsementNotificationsResponse {
+  notifications: EndorsementNotification[];
+  cursor?: string;
+  hasMore: boolean;
+  total?: number;
 }
 
 // -----------------------------------------------------------------------------

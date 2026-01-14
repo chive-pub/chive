@@ -146,6 +146,91 @@ function getAgentDid(agent: Agent): string | undefined {
   return (agent as unknown as { did?: string }).did;
 }
 
+// =============================================================================
+// PROFILE INITIALIZATION
+// =============================================================================
+
+/**
+ * Ensures the user has a pub.chive.actor.profile record in their PDS.
+ *
+ * @remarks
+ * Called after successful OAuth login to ensure every Chive user has a profile.
+ * If the record already exists, this is a no-op. If not, creates a minimal
+ * profile record that can be enhanced later.
+ *
+ * This enables author profile pages to work even for users with no eprints,
+ * since we can always fetch profile data from their PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @returns Created/existing record result, or null if check failed
+ *
+ * @example
+ * ```typescript
+ * // After OAuth callback succeeds
+ * const agent = getCurrentAgent();
+ * if (agent) {
+ *   await ensureChiveProfile(agent);
+ * }
+ * ```
+ */
+export async function ensureChiveProfile(agent: Agent): Promise<CreateRecordResult | null> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    return null;
+  }
+
+  try {
+    // Check if profile already exists
+    const existing = await agent.com.atproto.repo.getRecord({
+      repo: did,
+      collection: 'pub.chive.actor.profile',
+      rkey: 'self',
+    });
+
+    // Profile exists, return its info
+    return {
+      uri: existing.data.uri,
+      cid: existing.data.cid ?? '',
+    };
+  } catch (error) {
+    // Record not found (404) means we need to create it
+    const isNotFound =
+      error instanceof Error &&
+      (error.message.includes('RecordNotFound') ||
+        error.message.includes('Could not find') ||
+        error.message.includes('404'));
+
+    if (!isNotFound) {
+      // Unexpected error
+      console.error('Error checking for existing profile:', error);
+      return null;
+    }
+  }
+
+  // Create minimal profile
+  try {
+    const record: ChiveProfileRecord = {
+      $type: 'pub.chive.actor.profile',
+      // No fields required; this just establishes the record exists
+    };
+
+    const response = await agent.com.atproto.repo.putRecord({
+      repo: did,
+      collection: 'pub.chive.actor.profile',
+      rkey: 'self',
+      record,
+    });
+
+    return {
+      uri: response.data.uri,
+      cid: response.data.cid,
+    };
+  } catch (error) {
+    console.error('Error creating profile:', error);
+    return null;
+  }
+}
+
 /**
  * Upload a file blob to the user's PDS.
  *
@@ -211,7 +296,7 @@ export async function uploadDocument(agent: Agent, file: File): Promise<UploadBl
 // =============================================================================
 
 /**
- * Create a eprint submission record in the user's PDS.
+ * Create an eprint submission record in the user's PDS.
  *
  * @remarks
  * This is the primary function for submitting eprints. It:
@@ -899,6 +984,98 @@ export async function updateChiveProfileRecord(
     repo: did,
     collection: 'pub.chive.actor.profile',
     rkey: 'self',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// EPRINT RECORD UPDATES
+// =============================================================================
+
+/**
+ * Input for adding a co-author to an eprint.
+ */
+export interface AddCoauthorInput {
+  /** AT-URI of the eprint record */
+  eprintUri: string;
+  /** Index in the authors array where the co-author entry is */
+  authorIndex: number;
+  /** DID of the co-author to add */
+  coauthorDid: string;
+}
+
+/**
+ * Add a co-author DID to an existing eprint record.
+ *
+ * @remarks
+ * This updates the specified author entry in the eprint record to include
+ * the co-author's DID. This is called after approving a co-authorship request.
+ *
+ * The eprint must belong to the authenticated user (the agent's DID).
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Co-author addition data
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ * @throws Error if author index is invalid
+ */
+export async function addCoauthorToEprint(
+  agent: Agent,
+  input: AddCoauthorInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(input.eprintUri);
+  if (!parsed) {
+    throw new Error('Invalid eprint URI');
+  }
+
+  if (parsed.did !== did) {
+    throw new Error('Cannot update eprints belonging to other users');
+  }
+
+  // Get the existing record
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: parsed.collection,
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as EprintRecord;
+
+  // Validate author index
+  if (input.authorIndex < 0 || input.authorIndex >= existing.authors.length) {
+    throw new Error(`Invalid author index: ${input.authorIndex}`);
+  }
+
+  // Update the author entry to include the co-author's DID
+  const updatedAuthors = [...existing.authors];
+  updatedAuthors[input.authorIndex] = {
+    ...updatedAuthors[input.authorIndex],
+    did: input.coauthorDid,
+  };
+
+  // Build the updated record
+  const record: EprintRecord = {
+    ...existing,
+    authors: updatedAuthors,
+  };
+
+  // Update the record
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: parsed.collection,
+    rkey: parsed.rkey,
     record,
   });
 

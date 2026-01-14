@@ -11,7 +11,6 @@ import { ClaimingService } from '../../../../src/services/claiming/claiming-serv
 import type { IIdentityResolver } from '../../../../src/types/interfaces/identity.interface.js';
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
 import type {
-  ClaimEvidence,
   IImportService,
   ImportedEprint,
 } from '../../../../src/types/interfaces/plugin.interface.js';
@@ -110,16 +109,6 @@ const SAMPLE_CLAIM_ROW = {
   expires_at: null,
 };
 
-const SAMPLE_EVIDENCE: ClaimEvidence[] = [
-  { type: 'orcid-match', score: 1.0, details: 'ORCID profile linked', data: { verified: true } },
-  {
-    type: 'semantic-scholar-match',
-    score: 0.9,
-    details: 'Semantic Scholar profile matched',
-    data: { verified: true },
-  },
-];
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -191,22 +180,6 @@ describe('ClaimingService', () => {
       await expect(service.startClaim(1, 'did:plc:aswhite')).rejects.toThrow('already pending');
     });
 
-    it('should compute initial score with provided evidence', async () => {
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
-      const claimRowWithScore = {
-        ...SAMPLE_CLAIM_ROW,
-        evidence: JSON.stringify(SAMPLE_EVIDENCE),
-        verification_score: 0.485, // 0.35 * 1.0 + 0.15 * 0.9
-      };
-      db.query
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [claimRowWithScore] });
-
-      const result = await service.startClaim(1, 'did:plc:aswhite', SAMPLE_EVIDENCE);
-
-      expect(result.verificationScore).toBeGreaterThan(0);
-    });
-
     it('should update import status to pending', async () => {
       vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
       db.query
@@ -227,125 +200,6 @@ describe('ClaimingService', () => {
       await service.startClaim(1, 'did:plc:aswhite');
 
       expect(logger.info).toHaveBeenCalledWith('Claim started', expect.any(Object));
-    });
-  });
-
-  describe('collectEvidence', () => {
-    it('should collect evidence and update claim', async () => {
-      db.query
-        .mockResolvedValueOnce({ rows: [SAMPLE_CLAIM_ROW] }) // getClaim
-        .mockResolvedValueOnce({ rows: [{ ...SAMPLE_CLAIM_ROW, evidence: '[]' }] }); // updateClaimEvidence
-      vi.mocked(importService.getById).mockResolvedValueOnce(SAMPLE_IMPORTED_EPRINT);
-
-      const result = await service.collectEvidence(1);
-
-      expect(result).toBeDefined();
-      expect(logger.info).toHaveBeenCalledWith('Evidence collected', expect.any(Object));
-    });
-
-    it('should throw NotFoundError if claim does not exist', async () => {
-      db.query.mockResolvedValueOnce({ rows: [] });
-
-      await expect(service.collectEvidence(999)).rejects.toThrow('not found');
-    });
-
-    it('should throw NotFoundError if import does not exist', async () => {
-      db.query.mockResolvedValueOnce({ rows: [SAMPLE_CLAIM_ROW] });
-      vi.mocked(importService.getById).mockResolvedValueOnce(null);
-
-      await expect(service.collectEvidence(1)).rejects.toThrow('not found');
-    });
-  });
-
-  describe('computeScore', () => {
-    it('should compute score with single evidence type', () => {
-      const evidence: ClaimEvidence[] = [
-        { type: 'orcid-match', score: 1.0, details: 'ORCID match' },
-      ];
-
-      const { score, decision } = service.computeScore(evidence);
-
-      expect(score).toBeCloseTo(0.35); // 0.35 * 1.0
-      expect(decision).toBe('insufficient'); // Below 0.50 threshold
-    });
-
-    it('should compute score with multiple evidence types', () => {
-      const evidence: ClaimEvidence[] = [
-        { type: 'orcid-match', score: 1.0, details: 'ORCID match' },
-        { type: 'semantic-scholar-match', score: 1.0, details: 'S2 match' },
-        { type: 'openreview-match', score: 1.0, details: 'OpenReview match' },
-        { type: 'openalex-match', score: 1.0, details: 'OpenAlex match' },
-        { type: 'arxiv-ownership', score: 1.0, details: 'arXiv ownership' },
-      ];
-
-      const { score, decision } = service.computeScore(evidence);
-
-      expect(score).toBeCloseTo(0.85); // 0.35 + 0.15 + 0.15 + 0.10 + 0.10
-      expect(decision).toBe('expedited'); // Between 0.70 and 0.90
-    });
-
-    it('should return auto-approve for high scores', () => {
-      const evidence: ClaimEvidence[] = [
-        { type: 'orcid-match', score: 1.0, details: 'ORCID match' },
-        { type: 'semantic-scholar-match', score: 1.0, details: 'S2 match' },
-        { type: 'openreview-match', score: 1.0, details: 'OpenReview match' },
-        { type: 'openalex-match', score: 1.0, details: 'OpenAlex match' },
-        { type: 'arxiv-ownership', score: 1.0, details: 'arXiv ownership' },
-        { type: 'institutional-email', score: 1.0, details: 'Email verified' },
-      ];
-
-      const { score, decision } = service.computeScore(evidence);
-
-      expect(score).toBeGreaterThanOrEqual(0.9);
-      expect(decision).toBe('auto-approve');
-    });
-
-    it('should return manual for moderate scores', () => {
-      const evidence: ClaimEvidence[] = [
-        { type: 'orcid-match', score: 1.0, details: 'ORCID match' },
-        { type: 'semantic-scholar-match', score: 1.0, details: 'S2 match' },
-      ];
-
-      const { score, decision } = service.computeScore(evidence);
-
-      expect(score).toBeCloseTo(0.5); // 0.35 + 0.15
-      expect(decision).toBe('manual');
-    });
-
-    it('should cap score at 1.0', () => {
-      const evidence: ClaimEvidence[] = [
-        { type: 'orcid-match', score: 1.0, details: 'ORCID match' },
-        { type: 'semantic-scholar-match', score: 1.0, details: 'S2 match' },
-        { type: 'openreview-match', score: 1.0, details: 'OpenReview match' },
-        { type: 'openalex-match', score: 1.0, details: 'OpenAlex match' },
-        { type: 'arxiv-ownership', score: 1.0, details: 'arXiv ownership' },
-        { type: 'institutional-email', score: 1.0, details: 'Email verified' },
-        { type: 'ror-affiliation', score: 1.0, details: 'ROR affiliation' },
-        { type: 'author-claim', score: 1.0, details: 'Author claim' },
-        { type: 'coauthor-overlap', score: 1.0, details: 'Coauthor overlap' },
-        { type: 'name-match', score: 1.0, details: 'Name match' },
-      ];
-
-      const { score } = service.computeScore(evidence);
-
-      expect(score).toBe(1.0);
-    });
-
-    it('should return zero for empty evidence', () => {
-      const { score, decision } = service.computeScore([]);
-
-      expect(score).toBe(0);
-      expect(decision).toBe('insufficient');
-    });
-
-    it('should weight evidence by individual scores', () => {
-      const evidence: ClaimEvidence[] = [
-        { type: 'orcid-match', score: 0.5, details: 'ORCID match' }, // 0.35 * 0.5 = 0.175
-      ];
-
-      const { score } = service.computeScore(evidence);
-
-      expect(score).toBeCloseTo(0.175);
     });
   });
 

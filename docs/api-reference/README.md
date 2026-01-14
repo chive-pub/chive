@@ -15,7 +15,7 @@ Both provide access to the same functionality. Choose based on your client requi
 
 ## Quick start
 
-### Fetch a eprint (XRPC)
+### Fetch an eprint (XRPC)
 
 ```bash
 curl "https://api.chive.pub/xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.eprint.submission/3k5..."

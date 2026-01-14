@@ -361,13 +361,6 @@ export interface ClaimRequest {
   readonly id: number;
   readonly importId: number;
   readonly claimantDid: string;
-  readonly evidence: readonly {
-    readonly type: string;
-    readonly score: number;
-    readonly details: string;
-    readonly data?: Record<string, unknown>;
-  }[];
-  readonly verificationScore: number;
   readonly status: 'pending' | 'approved' | 'rejected' | 'expired';
   readonly canonicalUri?: string;
   readonly rejectionReason?: string;

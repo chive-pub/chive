@@ -97,7 +97,7 @@ export interface EprintAuthorContribution {
  * Full author entry for eprint submissions.
  *
  * @remarks
- * Represents an author in a eprint submission record. Supports both
+ * Represents an author in an eprint submission record. Supports both
  * ATProto users (with DID) and external collaborators (without DID).
  *
  * @public

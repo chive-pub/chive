@@ -208,10 +208,10 @@ export function useSearchTracking(impressionId: string | undefined) {
 }
 
 /**
- * Marks the start of viewing a eprint page (called on eprint page mount).
+ * Marks the start of viewing an eprint page (called on eprint page mount).
  *
  * @remarks
- * This should be called when a eprint page loads to mark the start time
+ * This should be called when an eprint page loads to mark the start time
  * for dwell time calculation.
  */
 export function markEprintViewStart(): void {

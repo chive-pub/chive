@@ -86,10 +86,10 @@ export default { port: 3000, fetch: app.fetch };
 ### Making Requests
 
 ```bash
-# XRPC: Get a eprint
+# XRPC: Get an eprint
 curl "https://api.chive.pub/xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc/pub.chive.eprint.submission/xyz"
 
-# REST: Get a eprint
+# REST: Get an eprint
 curl "https://api.chive.pub/api/v1/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.eprint.submission%2Fxyz"
 
 # Search eprints

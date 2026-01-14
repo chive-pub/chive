@@ -88,7 +88,7 @@ describe('useReviews', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches reviews for a eprint', async () => {
+  it('fetches reviews for an eprint', async () => {
     const mockResponse = createMockReviewsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -482,7 +482,7 @@ describe('usePrefetchReviews', () => {
     vi.clearAllMocks();
   });
 
-  it('prefetches reviews for a eprint', async () => {
+  it('prefetches reviews for an eprint', async () => {
     const mockResponse = createMockReviewsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,

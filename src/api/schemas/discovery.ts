@@ -132,7 +132,13 @@ export type EnrichmentData = z.infer<typeof enrichmentDataSchema>;
  * Parameters for getRecommendations.
  */
 export const getRecommendationsParamsSchema = z.object({
-  limit: z.number().int().min(1).max(50).default(20).describe('Maximum number of recommendations'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(20)
+    .describe('Maximum number of recommendations'),
   cursor: z.string().optional().describe('Pagination cursor'),
   signals: z
     .array(z.enum(['fields', 'citations', 'collaborators', 'trending']))
@@ -162,7 +168,13 @@ export type GetRecommendationsResponse = z.infer<typeof getRecommendationsRespon
  */
 export const getSimilarParamsSchema = z.object({
   uri: z.string().describe('AT URI of the eprint'),
-  limit: z.number().int().min(1).max(20).default(5).describe('Maximum number of similar papers'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .default(5)
+    .describe('Maximum number of similar papers'),
   includeTypes: z
     .array(z.enum(['semantic', 'citation', 'topic', 'author']))
     .optional()
@@ -194,9 +206,15 @@ export type GetSimilarResponse = z.infer<typeof getSimilarResponseSchema>;
 export const getCitationsParamsSchema = z.object({
   uri: z.string().describe('AT URI of the eprint'),
   direction: z.enum(['citing', 'cited-by', 'both']).default('both').describe('Citation direction'),
-  limit: z.number().int().min(1).max(100).default(20).describe('Maximum number of citations'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(20)
+    .describe('Maximum number of citations'),
   cursor: z.string().optional().describe('Pagination cursor'),
-  onlyInfluential: z.boolean().default(false).describe('Only return influential citations'),
+  onlyInfluential: z.coerce.boolean().default(false).describe('Only return influential citations'),
 });
 
 export type GetCitationsParams = z.infer<typeof getCitationsParamsSchema>;

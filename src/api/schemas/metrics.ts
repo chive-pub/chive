@@ -90,7 +90,7 @@ export type ViewCountResponse = z.infer<typeof viewCountResponseSchema>;
  */
 export const getTrendingParamsSchema = z.object({
   window: z.enum(['24h', '7d', '30d']).optional(),
-  limit: z.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 export type GetTrendingParams = z.infer<typeof getTrendingParamsSchema>;

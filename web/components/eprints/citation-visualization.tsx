@@ -4,7 +4,7 @@
  * Interactive citation network visualization using React Flow.
  *
  * @remarks
- * Renders citation relationships for a eprint as an interactive node graph.
+ * Renders citation relationships for an eprint as an interactive node graph.
  * Shows papers that cite this eprint and papers this eprint references.
  *
  * @example

@@ -545,16 +545,17 @@ export async function seedPostgres(): Promise<void> {
 
       await client.query(
         `INSERT INTO alpha_applications (
-          did, handle, email, sector, career_stage, research_field, status,
+          did, handle, email, sector, career_stage, affiliations, research_keywords, status,
           created_at, updated_at, reviewed_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, 'approved', NOW(), NOW(), NOW())`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'approved', NOW(), NOW(), NOW())`,
         [
           E2E_TEST_USER.did,
           E2E_TEST_USER.handle,
           E2E_TEST_USER.email,
           E2E_TEST_USER.sector,
           E2E_TEST_USER.careerStage,
-          E2E_TEST_USER.researchField,
+          JSON.stringify([{ name: 'E2E Test Institution' }]),
+          JSON.stringify([{ label: E2E_TEST_USER.researchField }]),
         ]
       );
       console.log('  PostgreSQL: Seeded E2E test user as approved alpha tester');

@@ -10,7 +10,7 @@ import { EprintsPageSkeleton } from './loading';
  * Eprints page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Eprints | Chive',
+  title: 'Eprints',
   description:
     'Browse and discover the latest eprints on Chive, a decentralized eprint server built on AT Protocol.',
 };

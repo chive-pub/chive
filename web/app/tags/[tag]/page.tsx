@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: TagPageProps): Promise<Metada
   const decodedTag = decodeURIComponent(tag);
 
   return {
-    title: `${decodedTag} | Tags | Chive`,
+    title: `${decodedTag} | Tags`,
     description: `Browse eprints tagged with "${decodedTag}" on Chive.`,
   };
 }

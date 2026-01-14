@@ -414,6 +414,53 @@ export class AlphaSignupPage {
 }
 
 /**
+ * Notifications page (authenticated).
+ *
+ * @remarks
+ * The notifications page shows three card sections:
+ * - Co-Author Requests
+ * - Reviews on Your Papers
+ * - Endorsements on Your Papers
+ */
+export class NotificationsPage {
+  readonly page: Page;
+  readonly header: HeaderComponent;
+  readonly pageTitle: Locator;
+  readonly pageDescription: Locator;
+  readonly coauthorRequestsCard: Locator;
+  readonly reviewsCard: Locator;
+  readonly endorsementsCard: Locator;
+  readonly emptyNotificationsState: Locator;
+  readonly noReviewsState: Locator;
+  readonly noEndorsementsState: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.header = new HeaderComponent(page);
+    this.pageTitle = page.getByRole('heading', { level: 1, name: /notifications/i });
+    this.pageDescription = page.getByText(/activity and requests related to your papers/i);
+    // Card sections identified by their titles
+    this.coauthorRequestsCard = page.locator('div').filter({
+      has: page.getByRole('heading', { name: /co-author requests|notifications/i }),
+    });
+    this.reviewsCard = page.locator('div').filter({
+      has: page.getByRole('heading', { name: /reviews on your papers/i }),
+    });
+    this.endorsementsCard = page.locator('div').filter({
+      has: page.getByRole('heading', { name: /endorsements on your papers/i }),
+    });
+    // Empty states
+    this.emptyNotificationsState = page.getByText(/no pending notifications/i);
+    this.noReviewsState = page.getByText(/no recent reviews/i);
+    this.noEndorsementsState = page.getByText(/no recent endorsements/i);
+  }
+
+  async goto(): Promise<void> {
+    await this.page.goto('/dashboard/notifications');
+  }
+}
+
+/**
  * Alpha pending status page.
  *
  * @remarks

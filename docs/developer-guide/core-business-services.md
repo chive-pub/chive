@@ -50,7 +50,7 @@ All services follow ATProto compliance rules: they index data from the firehose 
 
 ### Data flow
 
-1. User creates a eprint record in their PDS
+1. User creates an eprint record in their PDS
 2. PDS publishes event to the ATProto relay
 3. Chive's firehose consumer receives the event
 4. EprintService indexes the record to PostgreSQL and Elasticsearch
@@ -75,7 +75,7 @@ const service = new EprintService({
   logger,
 });
 
-// Index a eprint from firehose event
+// Index an eprint from firehose event
 await service.indexEprint(eprint, {
   uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' as AtUri,
   cid: 'bafyrei...' as CID,
@@ -205,7 +205,7 @@ await service.batchIncrement([
 ### Querying metrics
 
 ```typescript
-// Get all metrics for a eprint
+// Get all metrics for an eprint
 const metrics = await service.getMetrics(eprintUri);
 console.log(`Total views: ${metrics.totalViews}`);
 console.log(`Unique viewers: ${metrics.uniqueViews}`);
@@ -459,7 +459,7 @@ const service = new DiscoveryService(logger, db, searchEngine, rankingService, c
 // Optional: Enable external API enrichment
 service.setPluginManager(pluginManager);
 
-// Enrich a eprint with external metadata
+// Enrich an eprint with external metadata
 const enrichment = await service.enrichEprint({
   uri: eprintUri,
   doi: '10.1234/example',
@@ -585,16 +585,12 @@ Manages authorship claims for imported eprints using multi-authority verificatio
 | `coauthor-overlap`       | 5%     | Network analysis                       |
 | `name-match`             | 2%     | Fuzzy name matching                    |
 
-### Decision thresholds
-
-| Decision     | Score  | Workflow                        |
-| ------------ | ------ | ------------------------------- |
-| Auto-approve | ≥0.90  | Claim approved immediately      |
-| Expedited    | ≥0.70  | Fast-track review               |
-| Manual       | ≥0.50  | Standard review queue           |
-| Insufficient | \<0.50 | Rejected or needs more evidence |
-
 ### Claim workflow
+
+The ClaimingService supports two claim types with no verification gatekeeping:
+
+1. **External claims** - Import papers from arXiv, Semantic Scholar, etc. with prefilled data
+2. **Co-author claims** - Request to be added as co-author on existing PDS records
 
 ```typescript
 import { ClaimingService } from '@/services/claiming/claiming-service.js';
@@ -603,34 +599,31 @@ const service = new ClaimingService(logger, db, importService, identity);
 service.setPluginManager(pluginManager); // Enable external search
 
 // Search external sources for eprints
-const papers = await service.searchAllSources({
+const results = await service.searchEprints({
   query: 'attention mechanisms',
-  author: 'Vaswani',
+  sources: ['arxiv', 'semanticscholar'],
   limit: 20,
 });
 
-// Start claim from external search result
-const claim = await service.startClaimFromExternal('arxiv', '2309.12345', userDid);
+// Get prefilled submission data for external claim
+const prefilled = await service.getSubmissionData('arxiv', '2309.12345');
+// Returns form data for the submission wizard
 
-// Collect evidence from multiple authorities
-const withEvidence = await service.collectEvidence(claim.id);
-console.log(`Score: ${withEvidence.verificationScore}`);
+// User completes submission wizard and creates record in their PDS
+// Then mark the claim as complete
+await service.completeClaim(claim.id, canonicalUri);
 
-// Check decision
-const { score, decision } = service.computeScore(withEvidence.evidence);
-if (decision === 'auto-approve') {
-  // User creates canonical record in their PDS
-  // Then complete the claim
-  await service.completeClaim(claim.id, canonicalUri);
-}
+// Co-author claim workflow
+const request = await service.requestCoauthorship(
+  eprintUri, // AT-URI of existing paper
+  userDid, // Claimant
+  'Jane Smith', // Display name
+  1, // Author index being claimed
+  'J. Smith' // Author name on paper
+);
 
-// Get suggested papers for user based on profile
-const suggestions = await service.getSuggestedPapers(userDid, {
-  limit: 20,
-});
-for (const paper of suggestions.papers) {
-  console.log(`${paper.title} - Match: ${paper.matchScore}%`);
-}
+// PDS owner approves/rejects
+await service.approveCoauthorRequest(requestId, ownerDid);
 ```
 
 ### ATProto compliance
@@ -638,11 +631,10 @@ for (const paper of suggestions.papers) {
 The ClaimingService never writes to user PDSes. The claim flow is:
 
 1. User searches external sources via Chive
-2. User starts claim (stored in AppView database)
-3. Chive collects evidence from external authorities
-4. If approved, user creates canonical record in THEIR PDS
-5. Chive indexes the canonical record from firehose
-6. Claim marked complete with link to canonical URI
+2. User gets prefilled submission data
+3. User creates canonical record in THEIR PDS
+4. Chive indexes the record from firehose
+5. For co-author claims, PDS owner updates their record (Chive never writes)
 
 ## SearchService
 
@@ -704,7 +696,7 @@ import { BacklinkService } from '@/services/backlink/backlink-service.js';
 
 const service = new BacklinkService(db, firehoseClient, logger);
 
-// Get backlinks for a eprint
+// Get backlinks for an eprint
 const backlinks = await service.getBacklinks(eprintUri, {
   limit: 20,
   sourceTypes: ['bluesky_post', 'bluesky_quote'],

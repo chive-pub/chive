@@ -13,41 +13,11 @@
 import { z } from 'zod';
 
 /**
- * Claim evidence types.
- */
-export const claimEvidenceTypeSchema = z.enum([
-  'orcid-match',
-  'semantic-scholar-match',
-  'openreview-match',
-  'openalex-match',
-  'arxiv-ownership',
-  'institutional-email',
-  'ror-affiliation',
-  'name-match',
-  'coauthor-overlap',
-  'author-claim',
-]);
-
-export type ClaimEvidenceType = z.infer<typeof claimEvidenceTypeSchema>;
-
-/**
  * Claim status schema.
  */
 export const claimRequestStatusSchema = z.enum(['pending', 'approved', 'rejected', 'expired']);
 
 export type ClaimRequestStatus = z.infer<typeof claimRequestStatusSchema>;
-
-/**
- * Claim evidence schema.
- */
-export const claimEvidenceSchema = z.object({
-  type: claimEvidenceTypeSchema,
-  score: z.number().min(0).max(1),
-  details: z.string(),
-  data: z.record(z.string(), z.unknown()).optional(),
-});
-
-export type ClaimEvidence = z.infer<typeof claimEvidenceSchema>;
 
 /**
  * Claim request schema.
@@ -56,8 +26,6 @@ export const claimRequestSchema = z.object({
   id: z.number().int(),
   importId: z.number().int(),
   claimantDid: z.string(),
-  evidence: z.array(claimEvidenceSchema),
-  verificationScore: z.number().min(0).max(1),
   status: claimRequestStatusSchema,
   canonicalUri: z.string().optional(),
   rejectionReason: z.string().optional(),
@@ -77,7 +45,7 @@ export type ClaimRequest = z.infer<typeof claimRequestSchema>;
  * Parameters for starting a claim.
  */
 export const startClaimParamsSchema = z.object({
-  importId: z.number().int().describe('ID of the imported eprint to claim'),
+  importId: z.coerce.number().int().describe('ID of the imported eprint to claim'),
 });
 
 export type StartClaimParams = z.infer<typeof startClaimParamsSchema>;
@@ -92,29 +60,10 @@ export const startClaimResponseSchema = z.object({
 export type StartClaimResponse = z.infer<typeof startClaimResponseSchema>;
 
 /**
- * Parameters for collecting evidence.
- */
-export const collectEvidenceParamsSchema = z.object({
-  claimId: z.number().int().describe('ID of the claim request'),
-});
-
-export type CollectEvidenceParams = z.infer<typeof collectEvidenceParamsSchema>;
-
-/**
- * Response for collecting evidence.
- */
-export const collectEvidenceResponseSchema = z.object({
-  claim: claimRequestSchema,
-  decision: z.enum(['auto-approve', 'expedited', 'manual', 'insufficient']),
-});
-
-export type CollectEvidenceResponse = z.infer<typeof collectEvidenceResponseSchema>;
-
-/**
  * Parameters for completing a claim.
  */
 export const completeClaimParamsSchema = z.object({
-  claimId: z.number().int().describe('ID of the claim request'),
+  claimId: z.coerce.number().int().describe('ID of the claim request'),
   canonicalUri: z.string().describe('AT-URI of the canonical record in user PDS'),
 });
 
@@ -133,7 +82,7 @@ export type CompleteClaimResponse = z.infer<typeof completeClaimResponseSchema>;
  * Parameters for approving a claim (admin only).
  */
 export const approveClaimParamsSchema = z.object({
-  claimId: z.number().int().describe('ID of the claim request'),
+  claimId: z.coerce.number().int().describe('ID of the claim request'),
 });
 
 export type ApproveClaimParams = z.infer<typeof approveClaimParamsSchema>;
@@ -151,7 +100,7 @@ export type ApproveClaimResponse = z.infer<typeof approveClaimResponseSchema>;
  * Parameters for rejecting a claim (admin only).
  */
 export const rejectClaimParamsSchema = z.object({
-  claimId: z.number().int().describe('ID of the claim request'),
+  claimId: z.coerce.number().int().describe('ID of the claim request'),
   reason: z.string().min(1).max(500).describe('Rejection reason'),
 });
 
@@ -411,6 +360,25 @@ export const claimRequestWithPaperSchema = claimRequestSchema.extend({
 export type ClaimRequestWithPaper = z.infer<typeof claimRequestWithPaperSchema>;
 
 /**
+ * Existing Chive paper reference for duplicate detection.
+ */
+export const existingChivePaperSchema = z.object({
+  uri: z.string().describe('AT-URI of the existing paper'),
+  title: z.string().describe('Paper title'),
+  authors: z
+    .array(
+      z.object({
+        did: z.string().optional(),
+        name: z.string(),
+      })
+    )
+    .describe('Author list'),
+  createdAt: z.string().datetime().describe('When the paper was indexed'),
+});
+
+export type ExistingChivePaper = z.infer<typeof existingChivePaperSchema>;
+
+/**
  * External eprint schema.
  */
 export const externalEprintSchema = z.object({
@@ -424,6 +392,8 @@ export const externalEprintSchema = z.object({
   pdfUrl: z.string().url().optional().describe('URL to PDF'),
   categories: z.array(z.string()).optional().describe('Subject categories'),
   source: importSourceSchema.describe('Source system'),
+  /** Existing Chive paper if this is a duplicate */
+  existingChivePaper: existingChivePaperSchema.optional(),
 });
 
 export type ExternalEprintResponse = z.infer<typeof externalEprintSchema>;
@@ -560,3 +530,139 @@ export const getSuggestionsResponseSchema = z.object({
 });
 
 export type GetSuggestionsResponse = z.infer<typeof getSuggestionsResponseSchema>;
+
+// ============================================================================
+// Co-Author Claim Schemas
+// ============================================================================
+
+/**
+ * Co-author claim status.
+ */
+export const coauthorClaimStatusSchema = z.enum(['pending', 'approved', 'rejected']);
+
+export type CoauthorClaimStatus = z.infer<typeof coauthorClaimStatusSchema>;
+
+/**
+ * Co-author claim request.
+ */
+export const coauthorClaimRequestSchema = z.object({
+  id: z.number().int(),
+  eprintUri: z.string().describe('AT-URI of the eprint record'),
+  eprintOwnerDid: z.string().describe('DID of the PDS owner'),
+  claimantDid: z.string().describe('DID of the claimant'),
+  claimantName: z.string().describe('Display name at time of request'),
+  authorIndex: z.number().int().describe('Index of the author entry being claimed (0-based)'),
+  authorName: z.string().describe('Name of the author entry being claimed'),
+  status: coauthorClaimStatusSchema,
+  message: z.string().optional().describe('Message from claimant'),
+  rejectionReason: z.string().optional().describe('Rejection reason'),
+  createdAt: z.string().datetime(),
+  reviewedAt: z.string().datetime().optional(),
+});
+
+export type CoauthorClaimRequestResponse = z.infer<typeof coauthorClaimRequestSchema>;
+
+/**
+ * Parameters for requesting co-authorship.
+ */
+export const requestCoauthorshipParamsSchema = z.object({
+  eprintUri: z.string().describe('AT-URI of the eprint record'),
+  eprintOwnerDid: z.string().describe('DID of the PDS owner'),
+  claimantName: z.string().min(1).max(200).describe('Display name for the request'),
+  authorIndex: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .describe('Index of the author entry being claimed (0-based)'),
+  authorName: z.string().min(1).max(200).describe('Name of the author entry being claimed'),
+  message: z.string().max(1000).optional().describe('Optional message to PDS owner'),
+});
+
+export type RequestCoauthorshipParams = z.infer<typeof requestCoauthorshipParamsSchema>;
+
+/**
+ * Response for requesting co-authorship.
+ */
+export const requestCoauthorshipResponseSchema = z.object({
+  request: coauthorClaimRequestSchema,
+});
+
+export type RequestCoauthorshipResponse = z.infer<typeof requestCoauthorshipResponseSchema>;
+
+/**
+ * Parameters for getting co-author requests (for owner).
+ */
+export const getCoauthorRequestsParamsSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+});
+
+export type GetCoauthorRequestsParams = z.infer<typeof getCoauthorRequestsParamsSchema>;
+
+/**
+ * Response for getting co-author requests.
+ */
+export const getCoauthorRequestsResponseSchema = z.object({
+  requests: z.array(coauthorClaimRequestSchema),
+  cursor: z.string().optional(),
+});
+
+export type GetCoauthorRequestsResponse = z.infer<typeof getCoauthorRequestsResponseSchema>;
+
+/**
+ * Parameters for approving a co-author request.
+ */
+export const approveCoauthorParamsSchema = z.object({
+  requestId: z.coerce.number().int().describe('ID of the co-author request'),
+});
+
+export type ApproveCoauthorParams = z.infer<typeof approveCoauthorParamsSchema>;
+
+/**
+ * Response for approving a co-author request.
+ */
+export const approveCoauthorResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type ApproveCoauthorResponse = z.infer<typeof approveCoauthorResponseSchema>;
+
+/**
+ * Parameters for rejecting a co-author request.
+ */
+export const rejectCoauthorParamsSchema = z.object({
+  requestId: z.coerce.number().int().describe('ID of the co-author request'),
+  reason: z.string().max(500).optional().describe('Rejection reason'),
+});
+
+export type RejectCoauthorParams = z.infer<typeof rejectCoauthorParamsSchema>;
+
+/**
+ * Response for rejecting a co-author request.
+ */
+export const rejectCoauthorResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type RejectCoauthorResponse = z.infer<typeof rejectCoauthorResponseSchema>;
+
+/**
+ * Parameters for getting my co-author requests (as claimant).
+ */
+export const getMyCoauthorRequestsParamsSchema = z.object({
+  status: coauthorClaimStatusSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  cursor: z.string().optional(),
+});
+
+export type GetMyCoauthorRequestsParams = z.infer<typeof getMyCoauthorRequestsParamsSchema>;
+
+/**
+ * Response for getting my co-author requests.
+ */
+export const getMyCoauthorRequestsResponseSchema = z.object({
+  requests: z.array(coauthorClaimRequestSchema),
+  cursor: z.string().optional(),
+});
+
+export type GetMyCoauthorRequestsResponse = z.infer<typeof getMyCoauthorRequestsResponseSchema>;

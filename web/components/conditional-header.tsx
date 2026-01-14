@@ -6,7 +6,7 @@ import { SiteHeader } from '@/components/navigation';
 /**
  * Paths where the header should be hidden.
  */
-const HEADERLESS_PATHS = ['/', '/apply', '/pending'];
+const HEADERLESS_PATHS = ['/', '/apply', '/pending', '/login'];
 
 /**
  * Conditionally renders the site header.

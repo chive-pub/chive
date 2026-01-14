@@ -124,7 +124,7 @@ function BacklinkSection({
 }
 
 /**
- * Displays backlinks to a eprint from external sources.
+ * Displays backlinks to an eprint from external sources.
  *
  * @remarks
  * Shows references to this eprint from Semble collections, Bluesky posts,

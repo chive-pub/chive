@@ -4,7 +4,7 @@
  * Author input component for managing co-authors.
  *
  * @remarks
- * Provides an interface for adding and removing co-authors from a eprint.
+ * Provides an interface for adding and removing co-authors from an eprint.
  * Supports DID-based author lookup and display.
  *
  * @example
@@ -27,6 +27,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { DidAutocompleteInput, type SelectedAtprotoUser } from './did-autocomplete-input';
+import { OrcidAutocomplete, type OrcidPerson } from './orcid-autocomplete';
 
 // =============================================================================
 // TYPES
@@ -215,8 +217,42 @@ interface AddAuthorFormProps {
 function AddAuthorForm({ onAdd, existingDids, disabled }: AddAuthorFormProps) {
   const [did, setDid] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [handle, setHandle] = useState<string | undefined>();
+  const [avatar, setAvatar] = useState<string | undefined>();
   const [orcid, setOrcid] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const handleUserSelect = useCallback((user: SelectedAtprotoUser) => {
+    setDid(user.did);
+    setDisplayName(user.displayName ?? '');
+    setHandle(user.handle);
+    setAvatar(user.avatar);
+    // Auto-fill ORCID from Chive profile if available
+    if (user.orcid) {
+      setOrcid(user.orcid);
+    }
+    setError(null);
+  }, []);
+
+  const handleDidChange = useCallback((newDid: string) => {
+    setDid(newDid);
+    // Clear profile data if manually entering DID
+    if (newDid.startsWith('did:')) {
+      setHandle(undefined);
+      setAvatar(undefined);
+    }
+  }, []);
+
+  const handleOrcidSelect = useCallback(
+    (person: OrcidPerson) => {
+      setOrcid(person.orcid);
+      // Optionally update display name if not already set
+      if (!displayName) {
+        setDisplayName(person.name);
+      }
+    },
+    [displayName]
+  );
 
   const handleAddAuthor = useCallback(() => {
     setError(null);
@@ -248,13 +284,17 @@ function AddAuthorForm({ onAdd, existingDids, disabled }: AddAuthorFormProps) {
     onAdd({
       did: trimmedDid,
       displayName: trimmedName || undefined,
+      handle,
+      avatar,
       orcid: trimmedOrcid || undefined,
     });
 
     setDid('');
     setDisplayName('');
+    setHandle(undefined);
+    setAvatar(undefined);
     setOrcid('');
-  }, [did, displayName, orcid, existingDids, onAdd]);
+  }, [did, displayName, handle, avatar, orcid, existingDids, onAdd]);
 
   // Handle Enter key press in inputs
   const handleKeyDown = useCallback(
@@ -274,39 +314,37 @@ function AddAuthorForm({ onAdd, existingDids, disabled }: AddAuthorFormProps) {
         Add Co-Author
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">DID *</label>
-          <Input
-            value={did}
-            onChange={(e) => setDid(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="did:plc:..."
-            disabled={disabled}
-            className="font-mono text-sm"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs text-muted-foreground">Display Name</label>
-          <Input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Jane Doe"
-            disabled={disabled}
-          />
-        </div>
+      <div className="space-y-1.5">
+        <label className="text-xs text-muted-foreground">ATProto User *</label>
+        <DidAutocompleteInput
+          value={did}
+          onSelect={handleUserSelect}
+          onChange={handleDidChange}
+          disabled={disabled}
+          error={!!error && !did}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs text-muted-foreground">Display Name</label>
+        <Input
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Jane Doe"
+          disabled={disabled}
+        />
       </div>
 
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground">ORCID (optional)</label>
-        <Input
+        <OrcidAutocomplete
           value={orcid}
-          onChange={(e) => setOrcid(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="0000-0002-1825-0097"
+          onSelect={handleOrcidSelect}
+          onChange={setOrcid}
+          onClear={() => setOrcid('')}
+          placeholder="Search by name or enter ORCID..."
           disabled={disabled}
-          className="font-mono text-sm"
         />
       </div>
 

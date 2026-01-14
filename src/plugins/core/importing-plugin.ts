@@ -145,7 +145,7 @@ export abstract class ImportingPlugin extends BasePlugin {
   abstract fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint>;
 
   /**
-   * Checks if a eprint has already been imported.
+   * Checks if an eprint has already been imported.
    *
    * @param externalId - Source-specific identifier
    * @returns True if already imported
@@ -172,7 +172,7 @@ export abstract class ImportingPlugin extends BasePlugin {
   }
 
   /**
-   * Imports a eprint into the AppView cache.
+   * Imports an eprint into the AppView cache.
    *
    * @param eprint - External eprint data
    * @returns Created or existing imported eprint
@@ -374,7 +374,7 @@ export abstract class ImportingPlugin extends BasePlugin {
   }
 
   /**
-   * Builds the canonical URL for a eprint.
+   * Builds the canonical URL for an eprint.
    *
    * @param externalId - Source-specific identifier
    * @returns Full URL to the eprint
@@ -385,7 +385,7 @@ export abstract class ImportingPlugin extends BasePlugin {
   abstract buildEprintUrl(externalId: string): string;
 
   /**
-   * Builds the PDF URL for a eprint (if available).
+   * Builds the PDF URL for an eprint (if available).
    *
    * @param externalId - Source-specific identifier
    * @returns PDF URL or null if not available

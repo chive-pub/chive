@@ -179,7 +179,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           email: 'researcher-test@university.edu',
           sector: 'academia',
           careerStage: 'postdoc',
-          researchField: 'Computational Linguistics',
+          researchKeywords: [{ label: 'Computational Linguistics' }],
           motivation: 'I want to test the platform',
         }),
       });
@@ -203,7 +203,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           email: 'test@example.com',
           sector: 'academia',
           careerStage: 'postdoc',
-          researchField: 'Test Field',
+          researchKeywords: [{ label: 'Test Field' }],
         }),
       });
 
@@ -222,7 +222,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           email: 'duplicate-test@university.edu',
           sector: 'academia',
           careerStage: 'graduate-phd',
-          researchField: 'Syntax',
+          researchKeywords: [{ label: 'Syntax' }],
         }),
       });
 
@@ -237,7 +237,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           email: 'duplicate-test2@university.edu',
           sector: 'academia',
           careerStage: 'postdoc',
-          researchField: 'Semantics',
+          researchKeywords: [{ label: 'Semantics' }],
         }),
       });
 
@@ -273,7 +273,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           email: 'not-an-email',
           sector: 'academia',
           careerStage: 'postdoc',
-          researchField: 'Test Field',
+          researchKeywords: [{ label: 'Test Field' }],
         }),
       });
 
@@ -293,7 +293,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           sectorOther: 'Science journalism',
           careerStage: 'other',
           careerStageOther: 'Freelance consultant',
-          researchField: 'Science Communication',
+          researchKeywords: [{ label: 'Science Communication' }],
         }),
       });
 
@@ -311,11 +311,13 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           email: 'affiliation-test@mit.edu',
           sector: 'academia',
           careerStage: 'junior-faculty',
-          affiliation: {
-            name: 'Massachusetts Institute of Technology',
-            rorId: 'https://ror.org/042nb2s44',
-          },
-          researchField: 'Computer Science',
+          affiliations: [
+            {
+              name: 'Massachusetts Institute of Technology',
+              rorId: 'https://ror.org/042nb2s44',
+            },
+          ],
+          researchKeywords: [{ label: 'Computer Science' }],
         }),
       });
 
@@ -349,7 +351,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
           email: 'status-test@university.edu',
           sector: 'academia',
           careerStage: 'graduate-phd',
-          researchField: 'Phonology',
+          researchKeywords: [{ label: 'Phonology' }],
         }),
       });
 

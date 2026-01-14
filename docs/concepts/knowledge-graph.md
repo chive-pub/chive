@@ -221,7 +221,7 @@ Find papers that:
 ### Semantic similarity
 
 ```
-Given a eprint about "quantum error correction":
+Given an eprint about "quantum error correction":
   - Find semantically similar eprints
   - Suggest related fields to explore
   - Identify key authors in adjacent areas

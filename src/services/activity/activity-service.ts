@@ -99,7 +99,7 @@ export interface LogActivityInput {
   readonly category: ActivityCategory;
 
   /**
-   * Target record URI (for reviews, endorsements targeting a eprint).
+   * Target record URI (for reviews, endorsements targeting an eprint).
    */
   readonly targetUri?: AtUri;
 

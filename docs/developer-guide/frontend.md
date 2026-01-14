@@ -467,7 +467,7 @@ if (hasOrcid(author)) {
 
 | Hook                          | Description               |
 | ----------------------------- | ------------------------- |
-| `useReviews(eprintUri)`       | Reviews for a eprint      |
+| `useReviews(eprintUri)`       | Reviews for an eprint     |
 | `useInlineReviews(eprintUri)` | Inline annotations only   |
 | `useReviewThread(reviewUri)`  | Threaded replies          |
 | `useCreateReview()`           | Create review mutation    |
@@ -517,7 +517,7 @@ import {
 
 | Hook                       | Description              |
 | -------------------------- | ------------------------ |
-| `useEprintTags(eprintUri)` | Tags on a eprint         |
+| `useEprintTags(eprintUri)` | Tags on an eprint        |
 | `useTagSuggestions(query)` | Autocomplete suggestions |
 | `useTrendingTags()`        | Popular tags             |
 | `useTagSearch(query)`      | Search all tags          |

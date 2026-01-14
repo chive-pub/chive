@@ -406,7 +406,7 @@ export class CitationGraph implements ICitationGraph {
   }
 
   /**
-   * Gets citation counts for a eprint.
+   * Gets citation counts for an eprint.
    *
    * @param paperUri - AT-URI of the eprint
    * @returns Citation statistics
@@ -466,20 +466,20 @@ export class CitationGraph implements ICitationGraph {
   }
 
   /**
-   * Deletes all citations for a eprint.
+   * Deletes all citations for an eprint.
    *
    * @param paperUri - AT-URI of the eprint
    *
    * @remarks
    * Removes all CITES edges where the paper is either citing or cited.
-   * Used when a eprint is removed from Chive's index.
+   * Used when an eprint is removed from Chive's index.
    *
    * **Note**: This only deletes the edges, not the Eprint node itself.
    * Node deletion is handled by the indexing pipeline.
    *
    * @example
    * ```typescript
-   * // When a eprint is removed from the index
+   * // When an eprint is removed from the index
    * await citationGraph.deleteCitationsForPaper(eprintUri);
    * ```
    */

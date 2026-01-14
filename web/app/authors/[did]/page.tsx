@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: AuthorPageProps): Promise<Met
     });
 
     if (!data) {
-      return { title: 'Author Not Found | Chive' };
+      return { title: 'Author Not Found' };
     }
 
     const name = data.profile.displayName ?? data.profile.handle ?? decodedDid;
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: AuthorPageProps): Promise<Met
     const ogImageUrl = `/api/og?${ogImageParams.toString()}`;
 
     return {
-      title: `${name} | Chive`,
+      title: name,
       description: bio || `Eprints by ${name} on Chive`,
       openGraph: {
         title: name,
@@ -72,7 +72,7 @@ export async function generateMetadata({ params }: AuthorPageProps): Promise<Met
       },
     };
   } catch {
-    return { title: 'Author | Chive' };
+    return { title: 'Author' };
   }
 }
 

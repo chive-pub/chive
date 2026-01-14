@@ -374,7 +374,7 @@ describe('XRPC Eprint Endpoints Integration', () => {
     });
 
     it('returns eprint with ATProto-compliant source field', async () => {
-      // Index a eprint first
+      // Index an eprint first
       const uri = createTestUri('get1');
       const cid = createTestCid('get1');
       const eprint = createTestEprint(uri, { title: 'The Semantics of Exceptional Scope' });

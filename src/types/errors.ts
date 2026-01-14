@@ -671,3 +671,86 @@ export class ServiceUnavailableError extends ChiveError {
     this.service = service;
   }
 }
+
+/**
+ * Email delivery error.
+ *
+ * @remarks
+ * Thrown when email delivery fails via SMTP or other email services.
+ *
+ * @example
+ * ```typescript
+ * throw new EmailError(
+ *   'Failed to send approval email',
+ *   'user@example.com'
+ * );
+ * ```
+ *
+ * @public
+ */
+export class EmailError extends ChiveError {
+  readonly code = 'EMAIL_ERROR';
+
+  /**
+   * Email recipient address (if applicable).
+   */
+  readonly recipient?: string;
+
+  /**
+   * Creates a new EmailError.
+   *
+   * @param message - Description of the email failure
+   * @param recipient - Email recipient address
+   * @param cause - Original error (if chained)
+   */
+  constructor(message: string, recipient?: string, cause?: Error) {
+    super(message, cause);
+    this.recipient = recipient;
+  }
+}
+
+/**
+ * Zulip API error.
+ *
+ * @remarks
+ * Thrown when Zulip API operations fail, such as user creation
+ * or authentication failures.
+ *
+ * @example
+ * ```typescript
+ * throw new ZulipError(
+ *   'Failed to create Zulip user',
+ *   400,
+ *   'user@example.com'
+ * );
+ * ```
+ *
+ * @public
+ */
+export class ZulipError extends ChiveError {
+  readonly code = 'ZULIP_ERROR';
+
+  /**
+   * HTTP status code from the Zulip API (if applicable).
+   */
+  readonly statusCode?: number;
+
+  /**
+   * Email of the user involved in the operation (if applicable).
+   */
+  readonly email?: string;
+
+  /**
+   * Creates a new ZulipError.
+   *
+   * @param message - Description of the Zulip failure
+   * @param statusCode - HTTP status code from Zulip API
+   * @param email - Email address involved in the operation
+   * @param cause - Original error (if chained)
+   */
+  constructor(message: string, statusCode?: number, email?: string, cause?: Error) {
+    super(message, cause);
+    this.statusCode = statusCode;
+    this.email = email;
+  }
+}

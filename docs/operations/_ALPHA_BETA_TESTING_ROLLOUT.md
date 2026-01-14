@@ -505,7 +505,7 @@ No other eprint service offers this.
 **Post 5/12 (Screenshot - Submission Flow)**
 
 ```
-Submitting a eprint takes minutes:
+Submitting an eprint takes minutes:
 
 1. Upload your PDF
 2. Add metadata, authors, license
@@ -553,7 +553,7 @@ Chive supports transparent peer review:
 
 All reviews are public, attributed, and stored in reviewers' PDSes.
 
-[SCREENSHOT: Review thread on a eprint]
+[SCREENSHOT: Review thread on an eprint]
 ```
 
 **Post 9/12 (Integrations)**

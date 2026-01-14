@@ -2,7 +2,7 @@
  * Handler for pub.chive.discovery.getEnrichment.
  *
  * @remarks
- * Returns enrichment data for a eprint, including external IDs,
+ * Returns enrichment data for an eprint, including external IDs,
  * citation counts, concepts, and topics from Semantic Scholar and OpenAlex.
  *
  * @packageDocumentation
@@ -114,7 +114,7 @@ export async function getEnrichmentHandler(
 export const getEnrichmentEndpoint: XRPCEndpoint<GetEnrichmentParams, GetEnrichmentResponse> = {
   method: 'pub.chive.discovery.getEnrichment' as never,
   type: 'query',
-  description: 'Get enrichment data for a eprint',
+  description: 'Get enrichment data for an eprint',
   inputSchema: getEnrichmentParamsSchema,
   outputSchema: getEnrichmentResponseSchema,
   handler: getEnrichmentHandler,

@@ -404,7 +404,7 @@ export async function getSummaryHandler(
 **Required Implementation**:
 
 1. Inject `EndorsementRepository`
-2. Query for specific user's endorsement of a eprint
+2. Query for specific user's endorsement of an eprint
 3. Return full endorsement details if exists
 4. Return 404 only if user hasn't endorsed
 

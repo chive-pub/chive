@@ -1,23 +1,16 @@
 name: Deploy App
 
-# Disabled until production infrastructure is ready
-# on:
-#   workflow_run:
-#     workflows: ["CI"]
-#     branches: [main]
-#     types: [completed]
-#   workflow_dispatch:
 on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: 'Type "deploy" to confirm deployment'
-        required: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'deploy' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     environment: production
 
     steps:
@@ -64,13 +57,22 @@ jobs:
 
             # Database URLs
             DATABASE_URL=postgresql://chive:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/chive
-            REDIS_URL=redis://redis:6379
             ELASTICSEARCH_URL=http://elasticsearch:9200
             NEO4J_URL=bolt://neo4j:7687
 
             # ATProto
             ATPROTO_SERVICE_DID=${{ vars.ATPROTO_SERVICE_DID }}
             ATPROTO_RELAY_URL=wss://bsky.network
+
+            # Email (Amazon WorkMail)
+            SMTP_HOST=${{ secrets.SMTP_HOST }}
+            SMTP_PORT=${{ secrets.SMTP_PORT }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            EMAIL_FROM=${{ vars.EMAIL_FROM }}
+
+            # Zulip
+            ZULIP_INVITE_URL=${{ secrets.ZULIP_INVITE_URL }}
             ENVEOF
 
             # Build and deploy
@@ -85,19 +87,8 @@ jobs:
             echo "Deployment complete!"
 
       - name: Verify deployment
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.APP_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # Wait for services to be healthy
-            sleep 30
-
-            # Check API health
-            curl -sf https://${{ vars.DOMAIN }}/api/health || echo "API health check failed"
-
-            # Check web health
-            curl -sf https://${{ vars.DOMAIN }}/ || echo "Web health check failed"
-
-            echo "Health checks complete"
+        run: |
+          sleep 30
+          curl -sf https://${{ vars.DOMAIN }}/api/health || echo "API health check failed"
+          curl -sf https://${{ vars.DOMAIN }}/ || echo "Web health check failed"
+          echo "Health checks complete"

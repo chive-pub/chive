@@ -17,6 +17,7 @@ import {
   PublicationBadge,
   SupplementaryPanel,
   FundingPanel,
+  RepositoriesPanel,
 } from '@/components/eprints';
 
 // Dynamic import to prevent SSR issues with pdfjs-dist browser globals
@@ -839,6 +840,14 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   };
                 })}
               />
+              <Separator />
+            </>
+          )}
+
+          {/* Code, data, and model repositories */}
+          {eprint.repositories && (
+            <>
+              <RepositoriesPanel repositories={eprint.repositories} />
               <Separator />
             </>
           )}

@@ -22,7 +22,7 @@ test.describe('Paper-Centric Submission - Display', () => {
   // These tests verify the display logic when paperDid is set
 
   test('displays paper identity when paperDid is set', async ({ page }) => {
-    // Navigate to a eprint page
+    // Navigate to an eprint page
     await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.white.uri)}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 

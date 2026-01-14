@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Panel displaying all endorsements for a eprint.
+ * Panel displaying all endorsements for an eprint.
  *
  * @remarks
  * Displays endorsements grouped by contribution type with filtering support.
@@ -70,7 +70,7 @@ export interface EndorsementPanelProps {
 // =============================================================================
 
 /**
- * Displays endorsement summary and list for a eprint.
+ * Displays endorsement summary and list for an eprint.
  *
  * @param props - Component props
  * @returns Panel element

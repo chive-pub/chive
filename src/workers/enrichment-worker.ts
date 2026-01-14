@@ -345,7 +345,7 @@ export class EnrichmentWorker {
   }
 
   /**
-   * Enqueues a eprint for enrichment.
+   * Enqueues an eprint for enrichment.
    *
    * @param job - Enrichment job data
    * @returns Job ID

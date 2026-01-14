@@ -33,10 +33,9 @@ import type { IDatabasePool } from '../../types/interfaces/database.interface.js
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type {
-  ClaimEvidence,
-  ClaimEvidenceType,
   ClaimRequest,
   ClaimStatus,
+  CoauthorClaimRequest,
   ExternalAuthor,
   ExternalEprint,
   ExternalSearchQuery,
@@ -97,6 +96,25 @@ interface ClaimRequestWithPaperRow extends ClaimRequestRow {
 }
 
 /**
+ * Database row type for co-author claim requests.
+ */
+interface CoauthorClaimRequestRow {
+  id: number;
+  eprint_uri: string;
+  eprint_owner_did: string;
+  claimant_did: string;
+  claimant_name: string;
+  author_index: number;
+  author_name: string;
+  status: string;
+  message: string | null;
+  rejection_reason: string | null;
+  created_at: Date;
+  reviewed_at: Date | null;
+  updated_at: Date;
+}
+
+/**
  * Claim request with paper details for display.
  */
 export interface ClaimRequestWithPaper extends ClaimRequest {
@@ -111,34 +129,6 @@ export interface ClaimRequestWithPaper extends ClaimRequest {
     doi?: string;
   };
 }
-
-/**
- * Evidence weights for confidence scoring.
- *
- * @remarks
- * Based on industry standards and ATProto bidirectional verification principles.
- */
-const EVIDENCE_WEIGHTS: Record<ClaimEvidenceType, number> = {
-  'orcid-match': 0.35, // Highest (cryptographically verified)
-  'semantic-scholar-match': 0.15, // High (claimed profile)
-  'openreview-match': 0.15, // High (authenticated profile)
-  'openalex-match': 0.1, // Medium-High (ORCID-linked)
-  'arxiv-ownership': 0.1, // Medium-High (author ownership system)
-  'institutional-email': 0.08, // Medium (domain verification)
-  'ror-affiliation': 0.05, // Lower (organization match)
-  'name-match': 0.02, // Lowest (fuzzy matching only)
-  'coauthor-overlap': 0.05, // Supplementary (network analysis)
-  'author-claim': 0.2, // Self-attestation with evidence
-};
-
-/**
- * Decision thresholds for claim approval.
- */
-const DECISION_THRESHOLDS = {
-  AUTO_APPROVE: 0.9,
-  EXPEDITED: 0.7,
-  MANUAL: 0.5,
-} as const;
 
 /**
  * Claiming service implementation.
@@ -232,17 +222,12 @@ export class ClaimingService implements IClaimingService {
    *
    * @param importId - ID of the imported eprint to claim
    * @param claimantDid - DID of the user making the claim
-   * @param evidence - Optional initial evidence
    * @returns Created claim request
    *
    * @throws NotFoundError if import not found
    * @throws ValidationError if import already claimed or claim already pending
    */
-  async startClaim(
-    importId: number,
-    claimantDid: string,
-    evidence?: readonly ClaimEvidence[]
-  ): Promise<ClaimRequest> {
+  async startClaim(importId: number, claimantDid: string): Promise<ClaimRequest> {
     // Verify import exists and is claimable
     const imported = await this.importService.getById(importId);
     if (!imported) {
@@ -267,10 +252,6 @@ export class ClaimingService implements IClaimingService {
       );
     }
 
-    // Compute initial score if evidence provided
-    const initialEvidence = evidence ?? [];
-    const { score } = this.computeScore(initialEvidence);
-
     // Create claim request
     const result = await this.db.query<ClaimRequestRow>(
       `INSERT INTO claim_requests (
@@ -279,7 +260,7 @@ export class ClaimingService implements IClaimingService {
         $1, $2, $3, $4, 'pending', NOW(), NOW()
       )
       RETURNING *`,
-      [importId, claimantDid, JSON.stringify(initialEvidence), score]
+      [importId, claimantDid, '[]', 0]
     );
 
     const row = result.rows[0];
@@ -302,114 +283,6 @@ export class ClaimingService implements IClaimingService {
     });
 
     return claim;
-  }
-
-  /**
-   * Collects evidence from multiple authorities.
-   *
-   * @param claimId - ID of the claim request
-   * @returns Updated claim request with collected evidence
-   *
-   * @remarks
-   * This method orchestrates evidence collection from:
-   * - ORCID (if user has verified ORCID)
-   * - Semantic Scholar (author page lookup)
-   * - OpenReview (profile lookup)
-   * - OpenAlex (author ID lookup)
-   * - Institutional verification (email domain)
-   * - Name matching against import authors
-   */
-  async collectEvidence(claimId: number): Promise<ClaimRequest> {
-    const claim = await this.getClaim(claimId);
-    if (!claim) {
-      throw new NotFoundError('ClaimRequest', claimId.toString());
-    }
-
-    const imported = await this.importService.getById(claim.importId);
-    if (!imported) {
-      throw new NotFoundError('ImportedEprint', claim.importId.toString());
-    }
-
-    // Collect evidence from various sources in parallel
-    const collectedEvidence: ClaimEvidence[] = [...claim.evidence];
-
-    // Run all evidence collectors in parallel for performance
-    const evidencePromises = [
-      // 1. Check for ORCID match against import authors
-      this.collectOrcidEvidence(claim.claimantDid, imported.authors),
-      // 2. Check Semantic Scholar
-      this.collectSemanticScholarEvidence(claim.claimantDid, imported),
-      // 3. Check OpenReview
-      this.collectOpenReviewEvidence(claim.claimantDid, imported),
-      // 4. Check OpenAlex
-      this.collectOpenAlexEvidence(claim.claimantDid, imported),
-      // 5. Check institutional email verification
-      this.collectInstitutionalEvidence(claim.claimantDid, imported.authors),
-      // 6. Name matching
-      this.collectNameMatchEvidence(claim.claimantDid, imported.authors),
-    ];
-
-    const results = await Promise.allSettled(evidencePromises);
-
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value !== null) {
-        collectedEvidence.push(result.value);
-      } else if (result.status === 'rejected') {
-        this.logger.warn('Evidence collection failed', { error: result.reason });
-      }
-    }
-
-    // Deduplicate evidence by type
-    const uniqueEvidence = this.deduplicateEvidence(collectedEvidence);
-
-    // Compute score
-    const { score } = this.computeScore(uniqueEvidence);
-
-    // Update claim with evidence and score
-    const updatedClaim = await this.updateClaimEvidence(claimId, uniqueEvidence, score);
-
-    this.logger.info('Evidence collected', {
-      claimId,
-      evidenceCount: uniqueEvidence.length,
-      score,
-    });
-
-    return updatedClaim;
-  }
-
-  /**
-   * Computes confidence score from evidence.
-   *
-   * @param evidence - Array of claim evidence
-   * @returns Score (0-1) and decision
-   */
-  computeScore(evidence: readonly ClaimEvidence[]): {
-    score: number;
-    decision: 'auto-approve' | 'expedited' | 'manual' | 'insufficient';
-  } {
-    let totalScore = 0;
-
-    for (const item of evidence) {
-      const weight = EVIDENCE_WEIGHTS[item.type] ?? 0;
-      totalScore += weight * item.score;
-    }
-
-    // Cap score at 1.0
-    const score = Math.min(totalScore, 1.0);
-
-    // Determine decision based on thresholds
-    let decision: 'auto-approve' | 'expedited' | 'manual' | 'insufficient';
-    if (score >= DECISION_THRESHOLDS.AUTO_APPROVE) {
-      decision = 'auto-approve';
-    } else if (score >= DECISION_THRESHOLDS.EXPEDITED) {
-      decision = 'expedited';
-    } else if (score >= DECISION_THRESHOLDS.MANUAL) {
-      decision = 'manual';
-    } else {
-      decision = 'insufficient';
-    }
-
-    return { score, decision };
   }
 
   /**
@@ -691,6 +564,215 @@ export class ClaimingService implements IClaimingService {
     return {
       claims,
       cursor: hasMore && lastRow ? lastRow.id.toString() : undefined,
+    };
+  }
+
+  // ============================================================
+  // Co-Author Claim Methods
+  // ============================================================
+
+  /**
+   * Requests co-authorship on an existing eprint.
+   *
+   * @param eprintUri - AT-URI of the eprint record
+   * @param eprintOwnerDid - DID of the PDS owner
+   * @param claimantDid - DID of the person requesting co-authorship
+   * @param claimantName - Display name for the request
+   * @param message - Optional message to the PDS owner
+   * @returns Created co-author claim request
+   *
+   * @throws ValidationError if already a pending request
+   */
+  async requestCoauthorship(
+    eprintUri: string,
+    eprintOwnerDid: string,
+    claimantDid: string,
+    claimantName: string,
+    authorIndex: number,
+    authorName: string,
+    message?: string
+  ): Promise<CoauthorClaimRequest> {
+    // Cannot request co-authorship on your own paper
+    if (eprintOwnerDid === claimantDid) {
+      throw new ValidationError(
+        'Cannot request co-authorship on your own paper',
+        'claimantDid',
+        'self_request'
+      );
+    }
+
+    const result = await this.db.query<CoauthorClaimRequestRow>(
+      `INSERT INTO coauthor_claim_requests (
+        eprint_uri, eprint_owner_did, claimant_did, claimant_name, author_index, author_name, message, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      ON CONFLICT (eprint_uri, claimant_did) DO UPDATE
+      SET message = EXCLUDED.message, author_index = EXCLUDED.author_index, author_name = EXCLUDED.author_name, updated_at = NOW()
+      WHERE coauthor_claim_requests.status = 'rejected'
+      RETURNING *`,
+      [
+        eprintUri,
+        eprintOwnerDid,
+        claimantDid,
+        claimantName,
+        authorIndex,
+        authorName,
+        message ?? null,
+      ]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      throw new ValidationError(
+        'Co-author request already pending for this paper',
+        'eprintUri',
+        'request_pending'
+      );
+    }
+
+    this.logger.info('Co-author request created', {
+      requestId: row.id,
+      eprintUri,
+      claimantDid,
+      authorIndex,
+    });
+
+    return this.rowToCoauthorClaimRequest(row);
+  }
+
+  /**
+   * Gets pending co-author requests for a PDS owner.
+   *
+   * @param ownerDid - DID of the PDS owner
+   * @returns Pending requests on the owner's papers
+   */
+  async getCoauthorRequestsForOwner(ownerDid: string): Promise<readonly CoauthorClaimRequest[]> {
+    const result = await this.db.query<CoauthorClaimRequestRow>(
+      `SELECT * FROM coauthor_claim_requests
+       WHERE eprint_owner_did = $1 AND status = 'pending'
+       ORDER BY created_at DESC`,
+      [ownerDid]
+    );
+
+    return result.rows.map((row) => this.rowToCoauthorClaimRequest(row));
+  }
+
+  /**
+   * Gets co-author requests made by a claimant.
+   *
+   * @param claimantDid - DID of the claimant
+   * @returns All requests made by the claimant
+   */
+  async getCoauthorRequestsByClaimant(
+    claimantDid: string
+  ): Promise<readonly CoauthorClaimRequest[]> {
+    const result = await this.db.query<CoauthorClaimRequestRow>(
+      `SELECT * FROM coauthor_claim_requests
+       WHERE claimant_did = $1
+       ORDER BY created_at DESC`,
+      [claimantDid]
+    );
+
+    return result.rows.map((row) => this.rowToCoauthorClaimRequest(row));
+  }
+
+  /**
+   * Approves a co-author request.
+   *
+   * @param requestId - ID of the request
+   * @param ownerDid - DID of the owner (must match eprint_owner_did)
+   *
+   * @remarks
+   * After approval, the owner's client should update their PDS record
+   * to add the claimant as co-author. Chive never writes to user PDSes.
+   */
+  async approveCoauthorRequest(requestId: number, ownerDid: string): Promise<void> {
+    const result = await this.db.query<CoauthorClaimRequestRow>(
+      `UPDATE coauthor_claim_requests
+       SET status = 'approved', reviewed_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND eprint_owner_did = $2 AND status = 'pending'
+       RETURNING *`,
+      [requestId, ownerDid]
+    );
+
+    if (result.rows.length === 0) {
+      throw new ValidationError(
+        'Request not found or not authorized',
+        'requestId',
+        'not_found_or_unauthorized'
+      );
+    }
+
+    this.logger.info('Co-author request approved', {
+      requestId,
+      ownerDid,
+    });
+  }
+
+  /**
+   * Rejects a co-author request.
+   *
+   * @param requestId - ID of the request
+   * @param ownerDid - DID of the owner (must match eprint_owner_did)
+   * @param reason - Optional rejection reason
+   */
+  async rejectCoauthorRequest(requestId: number, ownerDid: string, reason?: string): Promise<void> {
+    const result = await this.db.query<CoauthorClaimRequestRow>(
+      `UPDATE coauthor_claim_requests
+       SET status = 'rejected', rejection_reason = $3, reviewed_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND eprint_owner_did = $2 AND status = 'pending'
+       RETURNING *`,
+      [requestId, ownerDid, reason ?? null]
+    );
+
+    if (result.rows.length === 0) {
+      throw new ValidationError(
+        'Request not found or not authorized',
+        'requestId',
+        'not_found_or_unauthorized'
+      );
+    }
+
+    this.logger.info('Co-author request rejected', {
+      requestId,
+      ownerDid,
+      reason,
+    });
+  }
+
+  /**
+   * Gets a co-author request by ID.
+   */
+  async getCoauthorRequest(requestId: number): Promise<CoauthorClaimRequest | null> {
+    const result = await this.db.query<CoauthorClaimRequestRow>(
+      `SELECT * FROM coauthor_claim_requests WHERE id = $1`,
+      [requestId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+    return row ? this.rowToCoauthorClaimRequest(row) : null;
+  }
+
+  /**
+   * Converts database row to CoauthorClaimRequest.
+   */
+  private rowToCoauthorClaimRequest(row: CoauthorClaimRequestRow): CoauthorClaimRequest {
+    return {
+      id: row.id,
+      eprintUri: row.eprint_uri,
+      eprintOwnerDid: row.eprint_owner_did,
+      claimantDid: row.claimant_did,
+      claimantName: row.claimant_name,
+      authorIndex: row.author_index,
+      authorName: row.author_name,
+      status: row.status as 'pending' | 'approved' | 'rejected',
+      message: row.message ?? undefined,
+      rejectionReason: row.rejection_reason ?? undefined,
+      createdAt: row.created_at,
+      reviewedAt: row.reviewed_at ?? undefined,
     };
   }
 
@@ -1218,6 +1300,95 @@ export class ClaimingService implements IClaimingService {
   }
 
   /**
+   * Gets or imports an eprint from an external source.
+   *
+   * @param source - External source
+   * @param externalId - Source-specific identifier
+   * @returns Imported eprint
+   *
+   * @remarks
+   * Implements "import on demand" - only imports the eprint when
+   * a user actually wants to claim it. This reduces storage and API load.
+   *
+   * Flow:
+   * 1. Check if already imported -> return existing import
+   * 2. If not imported -> fetch from source and import
+   *
+   * @throws NotFoundError if eprint cannot be found in source
+   * @throws ValidationError if source does not support search
+   */
+  async getOrImportFromExternal(source: ImportSource, externalId: string): Promise<ImportedEprint> {
+    // Check if already imported
+    const existing = await this.importService.get(source, externalId);
+    if (existing) {
+      return existing;
+    }
+
+    // Need to fetch and import on demand
+    if (!this.pluginManager) {
+      throw new ValidationError(
+        'Plugin manager not configured, cannot import from external source',
+        'source',
+        'plugin_unavailable'
+      );
+    }
+
+    // Find the searchable plugin for this source
+    const pluginId = this.getPluginIdForSource(source);
+    if (!pluginId) {
+      throw new ValidationError(
+        `No plugin configured for source: ${source}`,
+        'source',
+        'plugin_not_found'
+      );
+    }
+
+    const plugin = this.pluginManager.getPlugin(pluginId);
+    if (!plugin || !isSearchablePlugin(plugin)) {
+      throw new ValidationError(
+        `Source ${source} does not support on-demand import`,
+        'source',
+        'source_not_searchable'
+      );
+    }
+
+    // Fetch the eprint by external ID
+    const results = await plugin.search({ externalId, limit: 1 });
+    if (results.length === 0) {
+      throw new NotFoundError('ExternalEprint', `${source}:${externalId}`);
+    }
+
+    const eprint = results[0];
+    if (!eprint) {
+      throw new NotFoundError('ExternalEprint', `${source}:${externalId}`);
+    }
+
+    // Import the eprint
+    const imported = await this.importService.create({
+      source,
+      externalId: eprint.externalId,
+      externalUrl: eprint.url,
+      title: eprint.title,
+      abstract: eprint.abstract,
+      authors: eprint.authors,
+      publicationDate: eprint.publicationDate,
+      doi: eprint.doi,
+      pdfUrl: eprint.pdfUrl,
+      categories: eprint.categories,
+      importedByPlugin: pluginId,
+      metadata: eprint.metadata,
+    });
+
+    this.logger.info('Imported eprint on demand', {
+      source,
+      externalId,
+      importId: imported.id,
+    });
+
+    return imported;
+  }
+
+  /**
    * Gets the plugin ID for a given import source.
    *
    * @param source - Import source
@@ -1333,60 +1504,13 @@ export class ClaimingService implements IClaimingService {
   }
 
   /**
-   * Updates claim with collected evidence.
-   */
-  private async updateClaimEvidence(
-    claimId: number,
-    evidence: ClaimEvidence[],
-    score: number
-  ): Promise<ClaimRequest> {
-    const result = await this.db.query<ClaimRequestRow>(
-      `UPDATE claim_requests
-       SET evidence = $1, verification_score = $2, updated_at = NOW()
-       WHERE id = $3
-       RETURNING *`,
-      [JSON.stringify(evidence), score, claimId]
-    );
-
-    const row = result.rows[0];
-    if (!row) {
-      throw new NotFoundError('ClaimRequest', claimId.toString());
-    }
-
-    return this.rowToClaimRequest(row);
-  }
-
-  /**
-   * Deduplicates evidence by type, keeping highest score.
-   */
-  private deduplicateEvidence(evidence: ClaimEvidence[]): ClaimEvidence[] {
-    const byType = new Map<ClaimEvidenceType, ClaimEvidence>();
-
-    for (const item of evidence) {
-      const existing = byType.get(item.type);
-      if (!existing || item.score > existing.score) {
-        byType.set(item.type, item);
-      }
-    }
-
-    return Array.from(byType.values());
-  }
-
-  /**
    * Converts database row to ClaimRequest.
    */
   private rowToClaimRequest(row: ClaimRequestRow): ClaimRequest {
-    // PostgreSQL JSONB columns are auto-parsed by pg driver; handle both cases.
-    const evidence = (
-      typeof row.evidence === 'string' ? JSON.parse(row.evidence) : row.evidence
-    ) as ClaimEvidence[];
-
     return {
       id: row.id,
       importId: row.import_id,
       claimantDid: row.claimant_did,
-      evidence,
-      verificationScore: row.verification_score ?? 0,
       status: row.status as ClaimStatus,
       canonicalUri: row.canonical_uri ?? undefined,
       rejectionReason: row.rejection_reason ?? undefined,
@@ -1516,524 +1640,6 @@ export class ClaimingService implements IClaimingService {
   }
 
   /**
-   * Collects ORCID-based evidence.
-   *
-   * @remarks
-   * ORCID matching provides the highest confidence evidence because:
-   * 1. ORCID iDs are persistent, unique identifiers for researchers
-   * 2. Authors often include ORCID in eprint metadata
-   * 3. OAuth verification confirms the user controls the ORCID
-   *
-   * @private
-   */
-  private async collectOrcidEvidence(
-    claimantDid: string,
-    authors: readonly ExternalAuthor[]
-  ): Promise<ClaimEvidence | null> {
-    // Get user's verified ORCID from profile
-    const profile = await this.getUserProfile(claimantDid);
-    if (!profile?.orcid) {
-      return null;
-    }
-
-    // Check if any author has matching ORCID
-    const matchingAuthor = authors.find((a) => a.orcid === profile.orcid);
-    if (!matchingAuthor) {
-      return null;
-    }
-
-    // Query ORCID API to verify the ORCID is valid and active
-    try {
-      const orcidUrl = `https://pub.orcid.org/v3.0/${profile.orcid}/person`;
-      const response = await fetch(orcidUrl, {
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        this.logger.warn('ORCID API request failed', {
-          orcid: profile.orcid,
-          status: response.status,
-        });
-        return null;
-      }
-
-      const orcidData = (await response.json()) as {
-        name?: { 'given-names'?: { value?: string } };
-      };
-
-      // Verify name roughly matches
-      const orcidName = orcidData.name?.['given-names']?.value ?? '';
-
-      return {
-        type: 'orcid-match',
-        score: 1.0, // Full confidence for verified ORCID match
-        details: `ORCID ${profile.orcid} matches author "${matchingAuthor.name}"`,
-        data: {
-          orcid: profile.orcid,
-          authorName: matchingAuthor.name,
-          orcidName,
-          matchType: 'exact',
-          source: 'orcid-api',
-          verifiedAt: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      this.logger.warn('ORCID verification failed', {
-        orcid: profile.orcid,
-        error,
-      });
-      return null;
-    }
-  }
-
-  /**
-   * Collects Semantic Scholar evidence.
-   *
-   * @remarks
-   * Checks if the eprint appears in the user's claimed Semantic Scholar
-   * author page. S2 allows researchers to claim their publications.
-   *
-   * @private
-   */
-  private async collectSemanticScholarEvidence(
-    claimantDid: string,
-    imported: ImportedEprint
-  ): Promise<ClaimEvidence | null> {
-    const profile = await this.getUserProfile(claimantDid);
-
-    // Try to find S2 author by ORCID if available
-    let authorId = profile?.semanticScholarId;
-
-    if (!authorId && profile?.orcid) {
-      // Look up author by ORCID
-      try {
-        const searchUrl = `https://api.semanticscholar.org/graph/v1/author/search?query=${encodeURIComponent(profile.orcid)}&fields=authorId,externalIds`;
-        const response = await fetch(searchUrl);
-
-        if (response.ok) {
-          const searchData = (await response.json()) as {
-            data?: { authorId?: string; externalIds?: { ORCID?: string } }[];
-          };
-          const matchingAuthor = searchData.data?.find(
-            (a) => a.externalIds?.ORCID === profile.orcid
-          );
-          authorId = matchingAuthor?.authorId;
-        }
-      } catch {
-        // Continue without S2 ID
-      }
-    }
-
-    if (!authorId) {
-      return null;
-    }
-
-    // Check if imported eprint appears in author's papers
-    try {
-      const papersUrl = `https://api.semanticscholar.org/graph/v1/author/${authorId}/papers?fields=externalIds,title&limit=500`;
-      const response = await fetch(papersUrl);
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const papersData = (await response.json()) as {
-        data?: {
-          externalIds?: { DOI?: string; ArXiv?: string };
-          title: string;
-        }[];
-      };
-      const papers = papersData.data ?? [];
-
-      // Match by DOI or arXiv ID
-      const matchingPaper = papers.find((p) => {
-        if (imported.doi && p.externalIds?.DOI?.toLowerCase() === imported.doi.toLowerCase()) {
-          return true;
-        }
-        if (
-          imported.source === 'arxiv' &&
-          p.externalIds?.ArXiv === imported.externalId.replace('arXiv:', '')
-        ) {
-          return true;
-        }
-        return false;
-      });
-
-      if (!matchingPaper) {
-        return null;
-      }
-
-      return {
-        type: 'semantic-scholar-match',
-        score: 0.9, // High confidence (paper is in claimed author profile)
-        details: `Paper "${matchingPaper.title}" found in Semantic Scholar author profile`,
-        data: {
-          authorId,
-          paperTitle: matchingPaper.title,
-          matchType: imported.doi ? 'doi' : 'arxiv-id',
-          source: 'semantic-scholar-api',
-          verifiedAt: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      this.logger.warn('Semantic Scholar lookup failed', { authorId, error });
-      return null;
-    }
-  }
-
-  /**
-   * Collects OpenReview evidence.
-   *
-   * @remarks
-   * OpenReview provides authenticated author profiles with verified
-   * email addresses and ORCID links.
-   *
-   * @private
-   */
-  private async collectOpenReviewEvidence(
-    claimantDid: string,
-    imported: ImportedEprint
-  ): Promise<ClaimEvidence | null> {
-    const profile = await this.getUserProfile(claimantDid);
-    if (!profile?.orcid) {
-      // OpenReview lookup requires ORCID or email
-      return null;
-    }
-
-    try {
-      // OpenReview API v2: search for profile by ORCID
-      const profileUrl = `https://api2.openreview.net/profiles?orcid=${profile.orcid}`;
-      const profileResponse = await fetch(profileUrl);
-
-      if (!profileResponse.ok) {
-        return null;
-      }
-
-      const profilesData = (await profileResponse.json()) as {
-        profiles?: { id: string }[];
-      };
-      const orProfile = profilesData.profiles?.[0];
-
-      if (!orProfile) {
-        return null;
-      }
-
-      // Get author's submissions
-      const authorId = orProfile.id;
-      const submissionsUrl = `https://api2.openreview.net/notes?content.authorids=${encodeURIComponent(authorId)}&limit=500`;
-      const submissionsResponse = await fetch(submissionsUrl);
-
-      if (!submissionsResponse.ok) {
-        return null;
-      }
-
-      const submissionsData = (await submissionsResponse.json()) as {
-        notes?: {
-          content?: { title?: { value: string }; _bibtex?: { value: string } };
-        }[];
-      };
-      const notes = submissionsData.notes ?? [];
-
-      // Match by title similarity (OpenReview doesn't always have DOI)
-      const importTitle = imported.title.toLowerCase();
-      const matchingNote = notes.find((n) => {
-        const noteTitle = n.content?.title?.value?.toLowerCase() ?? '';
-        return this.calculateTitleSimilarity(importTitle, noteTitle) > 0.85;
-      });
-
-      if (!matchingNote) {
-        return null;
-      }
-
-      const matchedTitle = matchingNote.content?.title?.value ?? '';
-
-      return {
-        type: 'openreview-match',
-        score: 0.85, // Good confidence (verified OR profile with paper)
-        details: `Paper "${matchedTitle}" found in OpenReview profile`,
-        data: {
-          profileId: authorId,
-          matchedTitle,
-          matchType: 'title-similarity',
-          source: 'openreview-api',
-          verifiedAt: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      this.logger.warn('OpenReview lookup failed', { orcid: profile.orcid, error });
-      return null;
-    }
-  }
-
-  /**
-   * Collects OpenAlex evidence.
-   *
-   * @remarks
-   * OpenAlex aggregates scholarly metadata and links authors via ORCID.
-   * It provides a comprehensive view of an author's works.
-   *
-   * @private
-   */
-  private async collectOpenAlexEvidence(
-    claimantDid: string,
-    imported: ImportedEprint
-  ): Promise<ClaimEvidence | null> {
-    const profile = await this.getUserProfile(claimantDid);
-    if (!profile?.orcid) {
-      return null;
-    }
-
-    try {
-      // Look up author by ORCID in OpenAlex
-      const authorUrl = `https://api.openalex.org/authors?filter=orcid:${profile.orcid}`;
-      const authorResponse = await fetch(authorUrl, {
-        headers: {
-          'User-Agent': 'Chive/1.0 (https://chive.pub; mailto:admin@chive.pub)',
-        },
-      });
-
-      if (!authorResponse.ok) {
-        return null;
-      }
-
-      const authorData = (await authorResponse.json()) as {
-        results?: {
-          id: string;
-          display_name: string;
-          works_count: number;
-        }[];
-      };
-      const author = authorData.results?.[0];
-
-      if (!author) {
-        return null;
-      }
-
-      // Check if imported work appears in author's works
-      let matchFound = false;
-      let matchedWorkTitle = '';
-
-      if (imported.doi) {
-        // Direct DOI lookup
-        const workUrl = `https://api.openalex.org/works/doi:${imported.doi}`;
-        const workResponse = await fetch(workUrl, {
-          headers: {
-            'User-Agent': 'Chive/1.0 (https://chive.pub; mailto:admin@chive.pub)',
-          },
-        });
-
-        if (workResponse.ok) {
-          const work = (await workResponse.json()) as {
-            title?: string;
-            authorships?: { author?: { orcid?: string } }[];
-          };
-          // Check if author is in the work's authorships
-          const authorMatch = work.authorships?.find(
-            (a) => a.author?.orcid === `https://orcid.org/${profile.orcid}`
-          );
-          if (authorMatch) {
-            matchFound = true;
-            matchedWorkTitle = work.title ?? '';
-          }
-        }
-      }
-
-      if (!matchFound) {
-        return null;
-      }
-
-      return {
-        type: 'openalex-match',
-        score: 0.9, // High confidence (ORCID-linked author in work metadata)
-        details: `Work "${matchedWorkTitle}" linked to author ${author.display_name} in OpenAlex`,
-        data: {
-          openAlexAuthorId: author.id,
-          displayName: author.display_name,
-          matchedWorkTitle,
-          worksCount: author.works_count,
-          source: 'openalex-api',
-          verifiedAt: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      this.logger.warn('OpenAlex lookup failed', { orcid: profile.orcid, error });
-      return null;
-    }
-  }
-
-  /**
-   * Collects institutional email evidence.
-   *
-   * @remarks
-   * Uses ATProto-style domain verification:
-   * 1. User's handle is checked against author affiliations
-   * 2. If handle domain matches an institutional domain in author affiliations,
-   *    this provides evidence of institutional affiliation
-   *
-   * @private
-   */
-  private async collectInstitutionalEvidence(
-    claimantDid: string,
-    authors: readonly ExternalAuthor[]
-  ): Promise<ClaimEvidence | null> {
-    const profile = await this.getUserProfile(claimantDid);
-    if (!profile?.handle) {
-      return null;
-    }
-
-    // Extract domain from handle (e.g., "alice.mit.edu" -> "mit.edu")
-    const handleParts = profile.handle.split('.');
-    if (handleParts.length < 2) {
-      return null;
-    }
-
-    // Get institutional domain (last two parts typically)
-    const handleDomain = handleParts.slice(-2).join('.');
-
-    // Common institutional domain patterns
-    const institutionalPatterns = ['.edu', '.ac.uk', '.edu.au', '.ac.jp', '.edu.cn'];
-    const isInstitutional = institutionalPatterns.some((p) => profile.handle.endsWith(p));
-
-    if (!isInstitutional) {
-      return null;
-    }
-
-    // Check if any author has matching institutional affiliation
-    const matchingAuthor = authors.find((a) => {
-      if (!a.affiliation) return false;
-
-      // Extract domain-like patterns from affiliation
-      const affiliationLower = a.affiliation.toLowerCase();
-
-      // Check for domain match
-      if (affiliationLower.includes(handleDomain.toLowerCase())) {
-        return true;
-      }
-
-      // Check for institution name match (e.g., "MIT" in "Massachusetts Institute of Technology")
-      const institutionName = handleParts.slice(-2, -1)[0]?.toLowerCase();
-      if (
-        institutionName &&
-        institutionName.length > 2 &&
-        affiliationLower.includes(institutionName)
-      ) {
-        return true;
-      }
-
-      return false;
-    });
-
-    if (!matchingAuthor) {
-      return null;
-    }
-
-    return {
-      type: 'institutional-email',
-      score: 0.8, // Good confidence (domain verification)
-      details: `Handle domain ${handleDomain} matches author affiliation "${matchingAuthor.affiliation}"`,
-      data: {
-        handle: profile.handle,
-        handleDomain,
-        authorAffiliation: matchingAuthor.affiliation,
-        authorName: matchingAuthor.name,
-        source: 'handle-verification',
-        verifiedAt: new Date().toISOString(),
-      },
-    };
-  }
-
-  /**
-   * Collects name match evidence.
-   *
-   * @remarks
-   * Performs fuzzy name matching between claimant profile and import authors.
-   * This is the weakest form of evidence due to:
-   * - Name ambiguity (common names)
-   * - Transliteration differences
-   * - Maiden/married name changes
-   *
-   * Uses Dice coefficient for similarity scoring.
-   *
-   * @private
-   */
-  private async collectNameMatchEvidence(
-    claimantDid: string,
-    authors: readonly ExternalAuthor[]
-  ): Promise<ClaimEvidence | null> {
-    const profile = await this.getUserProfile(claimantDid);
-    if (!profile?.displayName && (!profile?.nameVariants || profile.nameVariants.length === 0)) {
-      return null;
-    }
-
-    // Collect all name forms to match against (displayName + nameVariants)
-    const namesToMatch: string[] = [];
-    if (profile?.displayName) {
-      namesToMatch.push(profile.displayName.toLowerCase().trim());
-    }
-    if (profile?.nameVariants) {
-      for (const variant of profile.nameVariants) {
-        const normalized = variant.toLowerCase().trim();
-        if (!namesToMatch.includes(normalized)) {
-          namesToMatch.push(normalized);
-        }
-      }
-    }
-
-    if (namesToMatch.length === 0) {
-      return null;
-    }
-
-    // Find best matching author across all name variants
-    let bestMatch: {
-      author: ExternalAuthor;
-      score: number;
-      matchedName: string;
-    } | null = null;
-
-    for (const author of authors) {
-      const authorName = author.name.toLowerCase().trim();
-
-      for (const nameToMatch of namesToMatch) {
-        // Calculate similarity using Dice coefficient
-        const similarity = this.calculateNameSimilarity(nameToMatch, authorName);
-
-        if (similarity > 0.7 && (!bestMatch || similarity > bestMatch.score)) {
-          bestMatch = { author, score: similarity, matchedName: nameToMatch };
-        }
-      }
-    }
-
-    if (!bestMatch) {
-      return null;
-    }
-
-    // Slightly higher confidence if matched via explicit name variant
-    const isVariantMatch =
-      profile?.nameVariants?.some((v) => v.toLowerCase().trim() === bestMatch.matchedName) ?? false;
-    const baseScore = bestMatch.score * (isVariantMatch ? 0.6 : 0.5);
-    const confidenceScore = Math.min(baseScore, 0.5);
-    const matchType = bestMatch.score > 0.95 ? 'exact' : 'fuzzy';
-
-    return {
-      type: 'name-match',
-      score: confidenceScore,
-      details: `Name "${bestMatch.matchedName}" ${matchType} matches author "${bestMatch.author.name}"${isVariantMatch ? ' (via name variant)' : ''}`,
-      data: {
-        displayName: profile?.displayName,
-        matchedName: bestMatch.matchedName,
-        authorName: bestMatch.author.name,
-        similarityScore: bestMatch.score,
-        matchType,
-        isVariantMatch,
-        source: 'fuzzy-matching',
-        verifiedAt: new Date().toISOString(),
-      },
-    };
-  }
-
-  /**
    * Calculates name similarity using Dice coefficient.
    *
    * @param name1 - First name
@@ -2073,45 +1679,5 @@ export class ClaimingService implements IClaimingService {
 
     // Dice coefficient
     return (2 * intersection) / (bigrams1.size + bigrams2.size);
-  }
-
-  /**
-   * Calculates title similarity for paper matching.
-   *
-   * @param title1 - First title
-   * @param title2 - Second title
-   * @returns Similarity score (0-1)
-   *
-   * @private
-   */
-  private calculateTitleSimilarity(title1: string, title2: string): number {
-    // Normalize titles
-    const normalize = (t: string): string =>
-      t
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    const t1 = normalize(title1);
-    const t2 = normalize(title2);
-
-    if (t1 === t2) return 1.0;
-
-    // Word-based Jaccard similarity
-    const words1 = new Set(t1.split(' ').filter((w) => w.length > 2));
-    const words2 = new Set(t2.split(' ').filter((w) => w.length > 2));
-
-    if (words1.size === 0 || words2.size === 0) return 0;
-
-    let intersection = 0;
-    for (const word of words1) {
-      if (words2.has(word)) {
-        intersection++;
-      }
-    }
-
-    const union = words1.size + words2.size - intersection;
-    return intersection / union;
   }
 }

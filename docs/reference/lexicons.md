@@ -57,7 +57,7 @@ Version metadata for eprint revisions.
 
 ### pub.chive.eprint.userTag
 
-User-contributed tag on a eprint.
+User-contributed tag on an eprint.
 
 ```typescript
 {
@@ -87,7 +87,7 @@ Review comment or reply.
 
 ### pub.chive.review.endorsement
 
-Formal endorsement of a eprint.
+Formal endorsement of an eprint.
 
 ```typescript
 {

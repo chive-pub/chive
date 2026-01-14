@@ -21,7 +21,7 @@ export interface EprintAbstractProps {
 }
 
 /**
- * Displays a eprint abstract with expand/collapse functionality.
+ * Displays an eprint abstract with expand/collapse functionality.
  *
  * @remarks
  * Client component that handles interactive expand/collapse.

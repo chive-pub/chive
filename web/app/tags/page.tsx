@@ -8,7 +8,7 @@ import { TagsPageSkeleton } from './loading';
  * Tags browse page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Browse Tags | Chive',
+  title: 'Browse Tags',
   description: 'Explore user-contributed tags and discover eprints by topic.',
 };
 

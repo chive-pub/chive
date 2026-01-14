@@ -100,7 +100,7 @@ describe('XRPC Review Handlers', () => {
   });
 
   describe('listForEprintHandler', () => {
-    it('returns reviews for a eprint', async () => {
+    it('returns reviews for an eprint', async () => {
       const rootView = createMockReviewView();
       const replyView = createMockReviewView({
         uri: 'at://did:plc:reviewer2/pub.chive.review.comment/def456' as AtUri,

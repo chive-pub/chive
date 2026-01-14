@@ -88,7 +88,7 @@ interface BacklinkCountsRow {
  * ```typescript
  * const backlinkService = container.resolve<IBacklinkService>('IBacklinkService');
  *
- * // Create a backlink from a Bluesky post mentioning a eprint
+ * // Create a backlink from a Bluesky post mentioning an eprint
  * const backlink = await backlinkService.createBacklink({
  *   sourceUri: 'at://did:plc:aswhite123abc/app.bsky.feed.post/3jt7k9xyzab',
  *   sourceType: 'bluesky.post',
@@ -96,7 +96,7 @@ interface BacklinkCountsRow {
  *   context: 'Check out this eprint on clause-embedding verbs!',
  * });
  *
- * // Get backlink counts for a eprint
+ * // Get backlink counts for an eprint
  * const counts = await backlinkService.getCounts(
  *   'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab'
  * );

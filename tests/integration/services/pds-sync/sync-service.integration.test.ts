@@ -149,7 +149,7 @@ describe('PDSSyncService Integration', () => {
       const uri = createTestUri('track1');
       const cid = createTestCid('track1');
 
-      // First store a eprint so tracking can work
+      // First store an eprint so tracking can work
       const eprint = createTestStoredEprint(uri, cid);
       await storage.storeEprint(eprint);
 

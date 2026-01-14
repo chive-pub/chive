@@ -47,7 +47,7 @@ export function IntegrationPanelSkeleton({ className }: { className?: string }) 
 }
 
 /**
- * Displays aggregated plugin integration data for a eprint.
+ * Displays aggregated plugin integration data for an eprint.
  *
  * @remarks
  * Shows linked repositories (GitHub, GitLab), archived data (Zenodo, Software Heritage),

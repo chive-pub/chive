@@ -366,7 +366,7 @@ describe('REST v1/eprints Endpoints Integration', () => {
     });
 
     it('returns eprint with ATProto-compliant source field', async () => {
-      // Index a eprint first
+      // Index an eprint first
       const uri = createTestUri('restget1');
       const cid = createTestCid('restget1');
       const eprint = createTestEprint(uri, {

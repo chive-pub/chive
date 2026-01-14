@@ -143,7 +143,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
   }
 
   /**
-   * Indexes a eprint document.
+   * Indexes an eprint document.
    *
    * @param eprint - Eprint to index
    *

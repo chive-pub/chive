@@ -12,6 +12,7 @@
 
 import type { Context } from 'hono';
 
+import { DIDResolver } from '../../../../auth/did/did-resolver.js';
 import type { EprintService } from '../../../../services/eprint/eprint-service.js';
 import type { MetricsService } from '../../../../services/metrics/metrics-service.js';
 import type { DID } from '../../../../types/atproto.js';
@@ -233,41 +234,28 @@ export async function getProfileHandler(
   }
 
   // Resolve DID to get PDS endpoint and handle
-  // Use the DID resolver from auth context (injected by middleware)
-  const didResolver = (
-    c.get as unknown as (key: 'didResolver') => {
-      resolveDID: (did: DID) => Promise<{
-        alsoKnownAs?: readonly string[];
-        service?: readonly { id: string; type: string; serviceEndpoint: string }[];
-      } | null>;
-      getPDSEndpoint: (did: DID) => Promise<string | null>;
-    }
-  )('didResolver');
+  const didResolver = new DIDResolver({ redis, logger });
 
-  let pdsEndpoint: string | undefined;
+  const [pdsEndpoint, didDoc] = await Promise.all([
+    didResolver.getPDSEndpoint(did),
+    didResolver.resolveDID(did),
+  ]);
+
+  // Extract handle from alsoKnownAs
   let handle: string | undefined;
-
-  if (didResolver) {
-    const [pds, didDoc] = await Promise.all([
-      didResolver.getPDSEndpoint(did),
-      didResolver.resolveDID(did),
-    ]);
-
-    pdsEndpoint = pds ?? undefined;
-
-    // Extract handle from alsoKnownAs
-    if (didDoc?.alsoKnownAs) {
-      const handleEntry = didDoc.alsoKnownAs.find((aka) => aka.startsWith('at://'));
-      if (handleEntry) {
-        handle = handleEntry.replace('at://', '');
-      }
+  if (didDoc?.alsoKnownAs) {
+    const handleEntry = didDoc.alsoKnownAs.find((aka) => aka.startsWith('at://'));
+    if (handleEntry) {
+      handle = handleEntry.replace('at://', '');
     }
   }
 
-  // Get author's eprints to verify they exist in our system
+  // Get author's eprints (for metrics)
   const authorEprints = await eprint.getEprintsByAuthor(did, { limit: 1 });
 
-  if (!pdsEndpoint && authorEprints.eprints.length === 0) {
+  // Only throw 404 if we can't resolve the DID at all
+  // Users with valid DIDs should always have profiles, even with no eprints
+  if (!pdsEndpoint) {
     throw new NotFoundError('Author', did);
   }
 

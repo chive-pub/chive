@@ -154,7 +154,7 @@ export async function getSimilarHandler(
 export const getSimilarEndpoint: XRPCEndpoint<GetSimilarParams, GetSimilarResponse> = {
   method: 'pub.chive.discovery.getSimilar' as never,
   type: 'query',
-  description: 'Get related papers for a eprint',
+  description: 'Get related papers for an eprint',
   inputSchema: getSimilarParamsSchema,
   outputSchema: getSimilarResponseSchema,
   handler: getSimilarHandler,

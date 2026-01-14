@@ -4,7 +4,7 @@
  * Sidebar for displaying and navigating inline annotations.
  *
  * @remarks
- * Shows a list of inline reviews (span annotations) for a eprint.
+ * Shows a list of inline reviews (span annotations) for an eprint.
  * Clicking an annotation scrolls to its location in the PDF.
  *
  * @example

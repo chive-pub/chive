@@ -2,7 +2,7 @@
  * Handler for pub.chive.import.exists.
  *
  * @remarks
- * Checks if a eprint has been imported.
+ * Checks if an eprint has been imported.
  *
  * @packageDocumentation
  * @public
@@ -50,7 +50,7 @@ export async function importExistsHandler(
 export const importExistsEndpoint: XRPCEndpoint<ImportExistsParams, ImportExistsResponse> = {
   method: 'pub.chive.import.exists' as never,
   type: 'query',
-  description: 'Check if a eprint has been imported',
+  description: 'Check if an eprint has been imported',
   inputSchema: importExistsParamsSchema,
   outputSchema: importExistsResponseSchema,
   handler: importExistsHandler,

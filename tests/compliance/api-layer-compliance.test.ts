@@ -328,17 +328,6 @@ function createMockClaimingService(): ServerConfig['claimingService'] {
       id: 1,
       importId: 1,
       claimantDid: '',
-      evidence: [],
-      verificationScore: 0,
-      status: 'pending',
-      createdAt: new Date(),
-    }),
-    collectEvidence: vi.fn().mockResolvedValue({
-      id: 1,
-      importId: 1,
-      claimantDid: '',
-      evidence: [],
-      verificationScore: 0,
       status: 'pending',
       createdAt: new Date(),
     }),
@@ -349,7 +338,35 @@ function createMockClaimingService(): ServerConfig['claimingService'] {
     getUserClaims: vi.fn().mockResolvedValue([]),
     findClaimable: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
     getPendingClaims: vi.fn().mockResolvedValue({ claims: [], cursor: undefined }),
-    computeScore: vi.fn().mockReturnValue({ score: 0, decision: 'insufficient' }),
+    startClaimFromExternal: vi.fn().mockResolvedValue({
+      id: 1,
+      importId: 1,
+      claimantDid: '',
+      status: 'pending',
+      createdAt: new Date(),
+    }),
+    getSubmissionData: vi.fn().mockResolvedValue({
+      title: 'Test',
+      abstract: '',
+      authors: [],
+      keywords: [],
+    }),
+    searchEprints: vi.fn().mockResolvedValue({ eprints: [], cursor: undefined }),
+    requestCoauthorship: vi.fn().mockResolvedValue({
+      id: 1,
+      eprintUri: '',
+      eprintOwnerDid: '',
+      claimantDid: '',
+      claimantName: '',
+      authorIndex: 0,
+      authorName: '',
+      status: 'pending',
+      createdAt: new Date(),
+    }),
+    getCoauthorRequestsForOwner: vi.fn().mockResolvedValue([]),
+    getCoauthorRequestsByClaimant: vi.fn().mockResolvedValue([]),
+    approveCoauthorRequest: vi.fn().mockResolvedValue(undefined),
+    rejectCoauthorRequest: vi.fn().mockResolvedValue(undefined),
   } as unknown as ServerConfig['claimingService'];
 }
 
@@ -673,7 +690,7 @@ describe('API Layer ATProto Compliance', () => {
 
   describe('CRITICAL: No write operations exposed to user PDSes', () => {
     it('API does not expose POST endpoints for creating eprints', async () => {
-      // Attempt to create a eprint via API should fail
+      // Attempt to create an eprint via API should fail
       const res = await makeRequest('/xrpc/pub.chive.eprint.create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

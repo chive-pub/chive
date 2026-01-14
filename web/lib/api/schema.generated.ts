@@ -106,6 +106,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/xrpc/pub.chive.actor.autocompleteOpenReview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search for OpenReview profiles by author name */
+    get: operations['pub_chive_actor_autocompleteOpenReview'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/xrpc/pub.chive.actor.autocompleteOrcid': {
     parameters: {
       query?: never;
@@ -310,23 +327,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.claiming.collectEvidence': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Collect evidence from multiple authorities for a claim */
-    post: operations['pub_chive_claiming_collectEvidence'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/xrpc/pub.chive.claiming.completeClaim': {
     parameters: {
       query?: never;
@@ -508,6 +508,108 @@ export interface paths {
     put?: never;
     /** Start a claim from an external search result (imports on demand) */
     post: operations['pub_chive_claiming_startClaimFromExternal'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.claiming.getSubmissionData': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get prefilled submission data for claiming a paper from an external source */
+    get: operations['pub_chive_claiming_getSubmissionData'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.claiming.requestCoauthorship': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Request co-authorship on an eprint in another user's PDS */
+    post: operations['pub_chive_claiming_requestCoauthorship'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.claiming.getCoauthorRequests': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get pending co-author requests on your eprints */
+    get: operations['pub_chive_claiming_getCoauthorRequests'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.claiming.getMyCoauthorRequests': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get your co-author requests (as claimant) */
+    get: operations['pub_chive_claiming_getMyCoauthorRequests'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.claiming.approveCoauthor': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Approve a co-author request on your eprint */
+    post: operations['pub_chive_claiming_approveCoauthor'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.claiming.rejectCoauthor': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reject a co-author request on your eprint */
+    post: operations['pub_chive_claiming_rejectCoauthor'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1103,6 +1205,40 @@ export interface paths {
     put?: never;
     /** Record a download from a search result (strong relevance signal) */
     post: operations['pub_chive_metrics_recordSearchDownload'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.notification.listReviewsOnMyPapers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List reviews on papers where authenticated user is an author */
+    get: operations['pub_chive_notification_listReviewsOnMyPapers'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.notification.listEndorsementsOnMyPapers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List endorsements on papers where authenticated user is an author */
+    get: operations['pub_chive_notification_listEndorsementsOnMyPapers'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1951,6 +2087,65 @@ export interface operations {
       };
     };
   };
+  pub_chive_actor_autocompleteOpenReview: {
+    parameters: {
+      query: {
+        query: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            suggestions: {
+              /** @description OpenReview profile ID (e.g., ~John_Smith1) */
+              id: string;
+              /** @description Display name */
+              displayName: string;
+              /** @description Current institution */
+              institution: string | null;
+            }[];
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
   pub_chive_actor_autocompleteOrcid: {
     parameters: {
       query: {
@@ -2271,8 +2466,8 @@ export interface operations {
             | 'other';
           /** @description Custom career stage if "other" selected */
           careerStageOther?: string;
-          /** @description Institutional affiliation (optional) */
-          affiliation?: {
+          /** @description Institutional affiliations (optional) */
+          affiliations?: {
             /** @description Institution name */
             name: string;
             /**
@@ -2280,9 +2475,16 @@ export interface operations {
              * @description ROR ID URL
              */
             rorId?: string;
-          };
-          /** @description Primary research field or discipline */
-          researchField: string;
+          }[];
+          /** @description Research keywords */
+          researchKeywords: {
+            /** @description Keyword label */
+            label: string;
+            /** @description FAST authority ID */
+            fastId?: string;
+            /** @description Wikidata ID */
+            wikidataId?: string;
+          }[];
           /** @description Optional motivation statement */
           motivation?: string;
         };
@@ -2820,26 +3022,6 @@ export interface operations {
               id: number;
               importId: number;
               claimantDid: string;
-              evidence: {
-                /** @enum {string} */
-                type:
-                  | 'orcid-match'
-                  | 'semantic-scholar-match'
-                  | 'openreview-match'
-                  | 'openalex-match'
-                  | 'arxiv-ownership'
-                  | 'institutional-email'
-                  | 'ror-affiliation'
-                  | 'name-match'
-                  | 'coauthor-overlap'
-                  | 'author-claim';
-                score: number;
-                details: string;
-                data?: {
-                  [key: string]: unknown;
-                };
-              }[];
-              verificationScore: number;
               /** @enum {string} */
               status: 'pending' | 'approved' | 'rejected' | 'expired';
               canonicalUri?: string;
@@ -2852,99 +3034,6 @@ export interface operations {
               /** Format: date-time */
               expiresAt?: string;
             };
-          };
-        };
-      };
-      /** @description Bad Request - Validation error */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Too Many Requests - Rate limit exceeded */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
-  pub_chive_claiming_collectEvidence: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': {
-          /** @description ID of the claim request */
-          claimId: number;
-        };
-      };
-    };
-    responses: {
-      /** @description Successful response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            claim: {
-              id: number;
-              importId: number;
-              claimantDid: string;
-              evidence: {
-                /** @enum {string} */
-                type:
-                  | 'orcid-match'
-                  | 'semantic-scholar-match'
-                  | 'openreview-match'
-                  | 'openalex-match'
-                  | 'arxiv-ownership'
-                  | 'institutional-email'
-                  | 'ror-affiliation'
-                  | 'name-match'
-                  | 'coauthor-overlap'
-                  | 'author-claim';
-                score: number;
-                details: string;
-                data?: {
-                  [key: string]: unknown;
-                };
-              }[];
-              verificationScore: number;
-              /** @enum {string} */
-              status: 'pending' | 'approved' | 'rejected' | 'expired';
-              canonicalUri?: string;
-              rejectionReason?: string;
-              reviewedBy?: string;
-              /** Format: date-time */
-              reviewedAt?: string;
-              /** Format: date-time */
-              createdAt: string;
-              /** Format: date-time */
-              expiresAt?: string;
-            };
-            /** @enum {string} */
-            decision: 'auto-approve' | 'expedited' | 'manual' | 'insufficient';
           };
         };
       };
@@ -3171,26 +3260,6 @@ export interface operations {
               id: number;
               importId: number;
               claimantDid: string;
-              evidence: {
-                /** @enum {string} */
-                type:
-                  | 'orcid-match'
-                  | 'semantic-scholar-match'
-                  | 'openreview-match'
-                  | 'openalex-match'
-                  | 'arxiv-ownership'
-                  | 'institutional-email'
-                  | 'ror-affiliation'
-                  | 'name-match'
-                  | 'coauthor-overlap'
-                  | 'author-claim';
-                score: number;
-                details: string;
-                data?: {
-                  [key: string]: unknown;
-                };
-              }[];
-              verificationScore: number;
               /** @enum {string} */
               status: 'pending' | 'approved' | 'rejected' | 'expired';
               canonicalUri?: string;
@@ -3259,26 +3328,6 @@ export interface operations {
               id: number;
               importId: number;
               claimantDid: string;
-              evidence: {
-                /** @enum {string} */
-                type:
-                  | 'orcid-match'
-                  | 'semantic-scholar-match'
-                  | 'openreview-match'
-                  | 'openalex-match'
-                  | 'arxiv-ownership'
-                  | 'institutional-email'
-                  | 'ror-affiliation'
-                  | 'name-match'
-                  | 'coauthor-overlap'
-                  | 'author-claim';
-                score: number;
-                details: string;
-                data?: {
-                  [key: string]: unknown;
-                };
-              }[];
-              verificationScore: number;
               /** @enum {string} */
               status: 'pending' | 'approved' | 'rejected' | 'expired';
               canonicalUri?: string;
@@ -3435,26 +3484,6 @@ export interface operations {
               id: number;
               importId: number;
               claimantDid: string;
-              evidence: {
-                /** @enum {string} */
-                type:
-                  | 'orcid-match'
-                  | 'semantic-scholar-match'
-                  | 'openreview-match'
-                  | 'openalex-match'
-                  | 'arxiv-ownership'
-                  | 'institutional-email'
-                  | 'ror-affiliation'
-                  | 'name-match'
-                  | 'coauthor-overlap'
-                  | 'author-claim';
-                score: number;
-                details: string;
-                data?: {
-                  [key: string]: unknown;
-                };
-              }[];
-              verificationScore: number;
               /** @enum {string} */
               status: 'pending' | 'approved' | 'rejected' | 'expired';
               canonicalUri?: string;
@@ -3558,6 +3587,22 @@ export interface operations {
               categories?: string[];
               /** @description Source system */
               source: string;
+              existingChivePaper?: {
+                /** @description AT-URI of the existing paper */
+                uri: string;
+                /** @description Paper title */
+                title: string;
+                /** @description Author list */
+                authors: {
+                  did?: string;
+                  name: string;
+                }[];
+                /**
+                 * Format: date-time
+                 * @description When the paper was indexed
+                 */
+                createdAt: string;
+              };
             }[];
             facets?: {
               /** @description Result counts by source */
@@ -3794,26 +3839,6 @@ export interface operations {
               id: number;
               importId: number;
               claimantDid: string;
-              evidence: {
-                /** @enum {string} */
-                type:
-                  | 'orcid-match'
-                  | 'semantic-scholar-match'
-                  | 'openreview-match'
-                  | 'openalex-match'
-                  | 'arxiv-ownership'
-                  | 'institutional-email'
-                  | 'ror-affiliation'
-                  | 'name-match'
-                  | 'coauthor-overlap'
-                  | 'author-claim';
-                score: number;
-                details: string;
-                data?: {
-                  [key: string]: unknown;
-                };
-              }[];
-              verificationScore: number;
               /** @enum {string} */
               status: 'pending' | 'approved' | 'rejected' | 'expired';
               canonicalUri?: string;
@@ -3826,6 +3851,456 @@ export interface operations {
               /** Format: date-time */
               expiresAt?: string;
             };
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_claiming_getSubmissionData: {
+    parameters: {
+      query: {
+        source: string;
+        externalId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            title: string;
+            abstract: string;
+            authors: {
+              order: number;
+              name: string;
+              orcid?: string;
+              /** Format: email */
+              email?: string;
+              affiliation?: string;
+            }[];
+            keywords: string[];
+            doi?: string;
+            /** Format: uri */
+            pdfUrl?: string;
+            /** @description External source identifier (e.g., arxiv, semanticscholar) */
+            source: string;
+            externalId: string;
+            /** Format: uri */
+            externalUrl: string;
+            /** Format: date-time */
+            publicationDate?: string;
+            externalIds?: {
+              arxivId?: string;
+              doi?: string;
+            };
+            existingChivePaper?: {
+              /** @description AT-URI of the existing paper */
+              uri: string;
+              /** @description Paper title */
+              title: string;
+              authors: {
+                did?: string;
+                name: string;
+              }[];
+              /**
+               * Format: date-time
+               * @description When the paper was indexed
+               */
+              createdAt: string;
+            };
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_claiming_requestCoauthorship: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description AT-URI of the eprint record */
+          eprintUri: string;
+          /** @description DID of the PDS owner */
+          eprintOwnerDid: string;
+          /** @description Display name for the request */
+          claimantName: string;
+          /** @description Index of the author entry being claimed (0-based) */
+          authorIndex: number;
+          /** @description Name of the author entry being claimed */
+          authorName: string;
+          /** @description Optional message to PDS owner */
+          message?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            request: {
+              id: number;
+              /** @description AT-URI of the eprint record */
+              eprintUri: string;
+              /** @description DID of the PDS owner */
+              eprintOwnerDid: string;
+              /** @description DID of the claimant */
+              claimantDid: string;
+              /** @description Display name at time of request */
+              claimantName: string;
+              /** @description Index of the author entry being claimed (0-based) */
+              authorIndex: number;
+              /** @description Name of the author entry being claimed */
+              authorName: string;
+              /** @enum {string} */
+              status: 'pending' | 'approved' | 'rejected';
+              /** @description Message from claimant */
+              message?: string;
+              /** @description Rejection reason */
+              rejectionReason?: string;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              reviewedAt?: string;
+            };
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_claiming_getCoauthorRequests: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            requests: {
+              id: number;
+              /** @description AT-URI of the eprint record */
+              eprintUri: string;
+              /** @description DID of the PDS owner */
+              eprintOwnerDid: string;
+              /** @description DID of the claimant */
+              claimantDid: string;
+              /** @description Display name at time of request */
+              claimantName: string;
+              /** @description Index of the author entry being claimed (0-based) */
+              authorIndex: number;
+              /** @description Name of the author entry being claimed */
+              authorName: string;
+              /** @enum {string} */
+              status: 'pending' | 'approved' | 'rejected';
+              /** @description Message from claimant */
+              message?: string;
+              /** @description Rejection reason */
+              rejectionReason?: string;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              reviewedAt?: string;
+            }[];
+            cursor?: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_claiming_getMyCoauthorRequests: {
+    parameters: {
+      query?: {
+        status?: 'pending' | 'approved' | 'rejected';
+        limit?: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            requests: {
+              id: number;
+              /** @description AT-URI of the eprint record */
+              eprintUri: string;
+              /** @description DID of the PDS owner */
+              eprintOwnerDid: string;
+              /** @description DID of the claimant */
+              claimantDid: string;
+              /** @description Display name at time of request */
+              claimantName: string;
+              /** @description Index of the author entry being claimed (0-based) */
+              authorIndex: number;
+              /** @description Name of the author entry being claimed */
+              authorName: string;
+              /** @enum {string} */
+              status: 'pending' | 'approved' | 'rejected';
+              /** @description Message from claimant */
+              message?: string;
+              /** @description Rejection reason */
+              rejectionReason?: string;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              reviewedAt?: string;
+            }[];
+            cursor?: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_claiming_approveCoauthor: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description ID of the co-author request */
+          requestId: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_claiming_rejectCoauthor: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description ID of the co-author request */
+          requestId: number;
+          /** @description Rejection reason */
+          reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
           };
         };
       };
@@ -6846,6 +7321,171 @@ export interface operations {
         content: {
           'application/json': {
             success: boolean;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_notification_listReviewsOnMyPapers: {
+    parameters: {
+      query: {
+        limit: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description List of review notifications */
+            notifications: {
+              /** @description Review AT-URI */
+              uri: string;
+              /** @description Reviewer DID */
+              reviewerDid: string;
+              /** @description Reviewer handle */
+              reviewerHandle?: string;
+              /** @description Reviewer display name */
+              reviewerDisplayName?: string;
+              /** @description Eprint AT-URI */
+              eprintUri: string;
+              /** @description Eprint title */
+              eprintTitle: string;
+              /** @description Review text content */
+              text: string;
+              /** @description Whether this is a reply */
+              isReply: boolean;
+              /**
+               * Format: date-time
+               * @description Creation timestamp
+               */
+              createdAt: string;
+            }[];
+            /** @description Cursor for next page */
+            cursor?: string;
+            /** @description Whether more results exist */
+            hasMore: boolean;
+            /** @description Total count */
+            total?: number;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_notification_listEndorsementsOnMyPapers: {
+    parameters: {
+      query: {
+        limit: number;
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description List of endorsement notifications */
+            notifications: {
+              /** @description Endorsement AT-URI */
+              uri: string;
+              /** @description Endorser DID */
+              endorserDid: string;
+              /** @description Endorser handle */
+              endorserHandle?: string;
+              /** @description Endorser display name */
+              endorserDisplayName?: string;
+              /** @description Eprint AT-URI */
+              eprintUri: string;
+              /** @description Eprint title */
+              eprintTitle: string;
+              /**
+               * @description Endorsement type
+               * @enum {string}
+               */
+              endorsementType: 'methods' | 'results' | 'overall';
+              /** @description Optional comment */
+              comment?: string;
+              /**
+               * Format: date-time
+               * @description Creation timestamp
+               */
+              createdAt: string;
+            }[];
+            /** @description Cursor for next page */
+            cursor?: string;
+            /** @description Whether more results exist */
+            hasMore: boolean;
+            /** @description Total count */
+            total?: number;
           };
         };
       };

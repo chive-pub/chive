@@ -86,22 +86,29 @@ const CODE_PLATFORM_OPTIONS = [
   { value: 'github', label: 'GitHub' },
   { value: 'gitlab', label: 'GitLab' },
   { value: 'bitbucket', label: 'Bitbucket' },
+  { value: 'huggingface', label: 'Hugging Face' },
+  { value: 'paperswithcode', label: 'Papers With Code' },
   { value: 'codeberg', label: 'Codeberg' },
   { value: 'sourcehut', label: 'Sourcehut' },
   { value: 'software_heritage', label: 'Software Heritage' },
+  { value: 'colab', label: 'Google Colab' },
+  { value: 'kaggle', label: 'Kaggle' },
   { value: 'other', label: 'Other' },
 ] as const;
 
 /**
- * Data platform options.
+ * Data/model platform options.
  */
 const DATA_PLATFORM_OPTIONS = [
+  { value: 'huggingface', label: 'Hugging Face' },
   { value: 'zenodo', label: 'Zenodo' },
   { value: 'figshare', label: 'Figshare' },
+  { value: 'kaggle', label: 'Kaggle' },
   { value: 'dryad', label: 'Dryad' },
   { value: 'osf', label: 'OSF' },
   { value: 'dataverse', label: 'Dataverse' },
   { value: 'mendeley_data', label: 'Mendeley Data' },
+  { value: 'wandb', label: 'Weights & Biases' },
   { value: 'other', label: 'Other' },
 ] as const;
 

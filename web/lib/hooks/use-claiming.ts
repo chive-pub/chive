@@ -1,18 +1,31 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 
-import { authApi } from '@/lib/api/client';
+import { authApi, getApiBaseUrl } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
+import { getServiceAuthToken } from '@/lib/auth/service-auth';
+import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import type { paths } from '@/lib/api/schema.generated';
 import type {
   ClaimRequest,
   ClaimRequestWithPaper,
   ClaimPaperDetails,
   ClaimableEprint,
   ClaimStatus,
-  ClaimEvidenceType,
   SuggestedPaper,
   SuggestedPaperAuthor,
   SuggestionsProfileMetadata,
+  CoauthorClaimRequest,
+  CoauthorClaimStatus,
 } from '@/lib/api/schema';
+
+/**
+ * Submission data for claiming a paper (prefilled form data).
+ *
+ * @remarks
+ * Type extracted from generated OpenAPI schema for type safety.
+ */
+export type SubmissionData =
+  paths['/xrpc/pub.chive.claiming.getSubmissionData']['get']['responses']['200']['content']['application/json'];
 
 // Re-export the new types for consumer convenience
 export type { ClaimRequestWithPaper, ClaimPaperDetails };
@@ -43,6 +56,14 @@ export const claimingKeys = {
   /** Key for paper suggestions */
   suggestions: (params?: { limit?: number }) =>
     [...claimingKeys.all, 'suggestions', params] as const,
+  /** Key for submission data (claim prefill) */
+  submissionData: (source: string, externalId: string) =>
+    [...claimingKeys.all, 'submissionData', source, externalId] as const,
+  /** Key for co-author requests made by user */
+  myCoauthorRequests: (params?: { status?: CoauthorClaimStatus }) =>
+    [...claimingKeys.all, 'myCoauthorRequests', params] as const,
+  /** Key for co-author requests on user's eprints (as owner) */
+  coauthorRequests: () => [...claimingKeys.all, 'coauthorRequests'] as const,
 };
 
 // =============================================================================
@@ -69,35 +90,17 @@ export function useUserClaims(options: UseUserClaimsOptions = {}) {
 
   return useInfiniteQuery({
     queryKey: claimingKeys.userClaims({ status }),
-    queryFn: async ({
-      pageParam,
-    }): Promise<{
-      claims: ClaimRequestWithPaper[];
-      cursor?: string;
-      hasMore: boolean;
-    }> => {
-      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.getUserClaims', {
+    queryFn: async ({ pageParam }) => {
+      const { data } = await authApi.GET('/xrpc/pub.chive.claiming.getUserClaims', {
         params: {
           query: {
             status,
             limit,
-            cursor: pageParam as string | undefined,
+            cursor: pageParam,
           },
         },
       });
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch claims',
-          undefined,
-          '/xrpc/pub.chive.claiming.getUserClaims'
-        );
-      }
-      // Cast to ClaimRequestWithPaper since the API now returns paper details
-      return data as unknown as {
-        claims: ClaimRequestWithPaper[];
-        cursor?: string;
-        hasMore: boolean;
-      };
+      return data!;
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
@@ -245,6 +248,29 @@ export function usePendingClaims(options: UsePendingClaimsOptions = {}) {
   });
 }
 
+/**
+ * Fetches prefilled submission data for claiming a paper from an external source.
+ *
+ * @param source - External source (e.g., 'arxiv', 'semanticscholar')
+ * @param externalId - Source-specific identifier
+ * @returns Query result with prefilled submission data
+ */
+export function useSubmissionData(source: string, externalId: string) {
+  return useQuery({
+    queryKey: claimingKeys.submissionData(source, externalId),
+    queryFn: async () => {
+      const { data } = await authApi.GET('/xrpc/pub.chive.claiming.getSubmissionData', {
+        params: {
+          query: { source, externalId },
+        },
+      });
+      return data!;
+    },
+    enabled: !!source && !!externalId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - external data doesn't change often
+  });
+}
+
 // =============================================================================
 // MUTATION HOOKS
 // =============================================================================
@@ -276,43 +302,6 @@ export function useStartClaim() {
       queryClient.invalidateQueries({ queryKey: claimingKeys.userClaims() });
       // Set the new claim in cache
       queryClient.setQueryData(claimingKeys.claim(claim.id), claim);
-    },
-  });
-}
-
-/**
- * Mutation hook to collect evidence from external authorities.
- *
- * @returns Mutation for collecting evidence
- */
-export function useCollectEvidence() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      claimId,
-      authorities,
-    }: {
-      claimId: number;
-      authorities: ClaimEvidenceType[];
-    }): Promise<ClaimRequest> => {
-      const { data, error } = await authApi.POST('/xrpc/pub.chive.claiming.collectEvidence', {
-        body: { claimId, authorities },
-      });
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to collect evidence',
-          undefined,
-          '/xrpc/pub.chive.claiming.collectEvidence'
-        );
-      }
-      return data!.claim;
-    },
-    onSuccess: (claim) => {
-      // Update the specific claim in cache
-      queryClient.setQueryData(claimingKeys.claim(claim.id), claim);
-      // Invalidate user claims to reflect updated evidence
-      queryClient.invalidateQueries({ queryKey: claimingKeys.userClaims() });
     },
   });
 }
@@ -454,5 +443,270 @@ export function usePaperSuggestions(options: UsePaperSuggestionsOptions = {}) {
     },
     enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// =============================================================================
+// CO-AUTHOR CLAIM HOOKS
+// =============================================================================
+
+interface UseMyCoauthorRequestsOptions {
+  /** Filter by status */
+  status?: CoauthorClaimStatus;
+  /** Number of results per page */
+  limit?: number;
+  /** Whether the query is enabled */
+  enabled?: boolean;
+}
+
+/**
+ * Fetches co-author requests made by the authenticated user (as claimant).
+ *
+ * @remarks
+ * Shows pending requests to be added as co-author to papers in other users' PDSes.
+ *
+ * @param options - Query options
+ * @returns Query result with co-author requests
+ */
+export function useMyCoauthorRequests(options: UseMyCoauthorRequestsOptions = {}) {
+  const { status, limit = 50, enabled = true } = options;
+
+  return useQuery({
+    queryKey: claimingKeys.myCoauthorRequests({ status }),
+    queryFn: async () => {
+      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.getMyCoauthorRequests', {
+        params: { query: { status, limit } },
+      });
+      if (error) {
+        throw new APIError(
+          (error as { message?: string }).message ?? 'Failed to fetch co-author requests',
+          undefined,
+          '/xrpc/pub.chive.claiming.getMyCoauthorRequests'
+        );
+      }
+      return data!;
+    },
+    enabled,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+interface UseCoauthorRequestsOptions {
+  /** Number of results per page */
+  limit?: number;
+  /** Whether the query is enabled */
+  enabled?: boolean;
+}
+
+/**
+ * Fetches co-author requests on the authenticated user's eprints (as owner).
+ *
+ * @remarks
+ * Shows pending requests from other users who want to be added as co-authors
+ * to eprints in your PDS.
+ *
+ * @param options - Query options
+ * @returns Query result with co-author requests
+ */
+export function useCoauthorRequests(options: UseCoauthorRequestsOptions = {}) {
+  const { limit = 50, enabled = true } = options;
+
+  return useQuery({
+    queryKey: claimingKeys.coauthorRequests(),
+    queryFn: async () => {
+      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.getCoauthorRequests', {
+        params: { query: { limit } },
+      });
+      if (error) {
+        throw new APIError(
+          (error as { message?: string }).message ?? 'Failed to fetch co-author requests',
+          undefined,
+          '/xrpc/pub.chive.claiming.getCoauthorRequests'
+        );
+      }
+      return data!;
+    },
+    enabled,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+/**
+ * Mutation hook to request co-authorship on another user's paper.
+ *
+ * @returns Mutation for requesting co-authorship
+ */
+export function useRequestCoauthorship() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      eprintUri,
+      eprintOwnerDid,
+      claimantName,
+      authorIndex,
+      authorName,
+      message,
+    }: {
+      eprintUri: string;
+      eprintOwnerDid: string;
+      claimantName: string;
+      authorIndex: number;
+      authorName: string;
+      message?: string;
+    }): Promise<CoauthorClaimRequest> => {
+      const { data, error } = await authApi.POST('/xrpc/pub.chive.claiming.requestCoauthorship', {
+        body: { eprintUri, eprintOwnerDid, claimantName, authorIndex, authorName, message },
+      });
+      if (error) {
+        throw new APIError(
+          (error as { message?: string }).message ?? 'Failed to request co-authorship',
+          undefined,
+          '/xrpc/pub.chive.claiming.requestCoauthorship'
+        );
+      }
+      return data!.request as CoauthorClaimRequest;
+    },
+    onSuccess: () => {
+      // Invalidate my co-author requests cache
+      queryClient.invalidateQueries({ queryKey: claimingKeys.myCoauthorRequests() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to approve a co-author request (for eprint owners).
+ *
+ * @returns Mutation for approving co-authorship
+ */
+export function useApproveCoauthor() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId }: { requestId: number }): Promise<void> => {
+      const { error } = await authApi.POST('/xrpc/pub.chive.claiming.approveCoauthor', {
+        body: { requestId },
+      });
+      if (error) {
+        throw new APIError(
+          (error as { message?: string }).message ?? 'Failed to approve co-author',
+          undefined,
+          '/xrpc/pub.chive.claiming.approveCoauthor'
+        );
+      }
+    },
+    onSuccess: () => {
+      // Invalidate co-author requests cache
+      queryClient.invalidateQueries({ queryKey: claimingKeys.coauthorRequests() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to reject a co-author request (for eprint owners).
+ *
+ * @returns Mutation for rejecting co-authorship
+ */
+export function useRejectCoauthor() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      reason,
+    }: {
+      requestId: number;
+      reason?: string;
+    }): Promise<void> => {
+      const { error } = await authApi.POST('/xrpc/pub.chive.claiming.rejectCoauthor', {
+        body: { requestId, reason },
+      });
+      if (error) {
+        throw new APIError(
+          (error as { message?: string }).message ?? 'Failed to reject co-author',
+          undefined,
+          '/xrpc/pub.chive.claiming.rejectCoauthor'
+        );
+      }
+    },
+    onSuccess: () => {
+      // Invalidate co-author requests cache
+      queryClient.invalidateQueries({ queryKey: claimingKeys.coauthorRequests() });
+    },
+  });
+}
+
+// =============================================================================
+// EXTERNAL PDF FETCH
+// =============================================================================
+
+/**
+ * Fetches external PDF through proxy endpoint.
+ *
+ * @remarks
+ * Uses the backend proxy to fetch PDFs from external sources to avoid CORS issues.
+ * Returns the PDF as a File object that can be used in the submission form.
+ *
+ * @param source - External source (e.g., 'arxiv', 'semanticscholar')
+ * @param externalId - Source-specific identifier
+ * @returns File object containing the PDF
+ */
+export async function fetchExternalPdf(source: string, externalId: string): Promise<File> {
+  const agent = getCurrentAgent();
+  const headers: HeadersInit = {};
+
+  // Add service auth if authenticated
+  if (agent) {
+    try {
+      const token = await getServiceAuthToken(agent, 'pub.chive.claiming.fetchExternalPdf');
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error('Failed to get service auth token for PDF fetch:', error);
+      // Continue without auth - backend will return 401
+    }
+  }
+
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/xrpc/pub.chive.claiming.fetchExternalPdf?source=${encodeURIComponent(source)}&externalId=${encodeURIComponent(externalId)}`;
+
+  const response = await fetch(url, { headers });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new APIError(
+      errorText || 'Failed to fetch PDF',
+      response.status,
+      '/xrpc/pub.chive.claiming.fetchExternalPdf'
+    );
+  }
+
+  const blob = await response.blob();
+  const filename = `${source}-${externalId}.pdf`;
+
+  return new File([blob], filename, { type: 'application/pdf' });
+}
+
+/**
+ * Hook to fetch external PDF for claiming.
+ *
+ * @param source - External source (e.g., 'arxiv', 'semanticscholar')
+ * @param externalId - Source-specific identifier
+ * @param options - Query options
+ * @returns Query result with PDF File
+ */
+export function useExternalPdf(
+  source: string | undefined,
+  externalId: string | undefined,
+  options: { enabled?: boolean } = {}
+) {
+  const { enabled = true } = options;
+
+  return useQuery({
+    queryKey: [...claimingKeys.all, 'pdf', source, externalId],
+    queryFn: () => fetchExternalPdf(source!, externalId!),
+    enabled: enabled && !!source && !!externalId,
+    staleTime: 30 * 60 * 1000, // 30 minutes - PDF won't change
+    gcTime: 60 * 60 * 1000, // 1 hour
+    retry: 2, // Limited retries for large file fetches
   });
 }

@@ -35,13 +35,6 @@ interface MockClaimRequest {
   id: number;
   importId: number;
   claimantDid: DID;
-  evidence: {
-    type: string;
-    score: number;
-    details: string;
-    data?: Record<string, unknown>;
-  }[];
-  verificationScore: number;
   status: 'pending' | 'approved' | 'rejected' | 'expired';
   canonicalUri?: string;
   rejectionReason?: string;
@@ -104,14 +97,6 @@ const createTestClaimRequest = (overrides: Partial<MockClaimRequest> = {}): Mock
   id: 1,
   importId: 100,
   claimantDid: 'did:plc:testuser123' as DID,
-  evidence: [
-    {
-      type: 'name-match',
-      score: 0.85,
-      details: 'Name matches author on paper',
-    },
-  ],
-  verificationScore: 0.85,
   status: 'pending',
   createdAt: new Date('2024-01-15T10:00:00Z'),
   expiresAt: new Date('2024-01-22T10:00:00Z'),
@@ -244,11 +229,6 @@ describe('startClaimFromExternalHandler', () => {
         id: 42,
         importId: 100,
         claimantDid: 'did:plc:testuser123' as DID,
-        evidence: [
-          { type: 'orcid-match', score: 0.95, details: 'ORCID matches' },
-          { type: 'name-match', score: 0.8, details: 'Name fuzzy match' },
-        ],
-        verificationScore: 0.9,
         status: 'pending',
         createdAt: new Date('2024-01-15T10:00:00Z'),
         expiresAt: new Date('2024-01-22T10:00:00Z'),
@@ -270,14 +250,7 @@ describe('startClaimFromExternalHandler', () => {
         id: 42,
         importId: 100,
         claimantDid: 'did:plc:testuser123',
-        verificationScore: 0.9,
         status: 'pending',
-      });
-
-      expect(result.claim.evidence).toHaveLength(2);
-      expect(result.claim.evidence[0]).toMatchObject({
-        type: 'orcid-match',
-        score: 0.95,
       });
 
       // Dates should be ISO strings

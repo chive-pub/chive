@@ -74,6 +74,7 @@ function createMockStorage(): IStorageBackend {
     listEprintUris: vi.fn().mockResolvedValue([]),
     trackPDSSource: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     isStale: vi.fn().mockResolvedValue(false),
+    findByExternalIds: vi.fn().mockResolvedValue(null),
   };
 }
 

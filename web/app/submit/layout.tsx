@@ -8,7 +8,7 @@ import { PageContainer } from '@/components/layout';
  * Submit page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Submit a Eprint | Chive',
+  title: 'Submit an Eprint',
   description: 'Submit your research to Chive, a decentralized eprint server built on AT Protocol.',
 };
 

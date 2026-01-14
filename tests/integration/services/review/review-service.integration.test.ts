@@ -16,7 +16,7 @@
  */
 
 import { Pool } from 'pg';
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 import type { RecordMetadata } from '@/services/eprint/eprint-service.js';
 import {
@@ -28,8 +28,9 @@ import {
 import { ThreadingHandler } from '@/services/review/threading-handler.js';
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
 import { getDatabaseConfig } from '@/storage/postgresql/config.js';
-import type { AtUri, CID } from '@/types/atproto.js';
-import type { ILogger } from '@/types/interfaces/logger.interface.js';
+import type { AtUri, CID, DID } from '@/types/atproto.js';
+import { createMockAuthor } from '@tests/fixtures/mock-authors.js';
+import { createMockLogger } from '@tests/helpers/mock-services.js';
 
 // Test constants
 const TEST_EPRINT_URI = 'at://did:plc:author/pub.chive.eprint.submission/test123' as AtUri;
@@ -43,19 +44,6 @@ function createReviewUri(suffix: string): AtUri {
 
 function createTestCid(suffix: string): CID {
   return `bafyreireview${suffix}${Date.now().toString(36)}` as CID;
-}
-
-/**
- * Creates mock logger for tests.
- */
-function createMockLogger(): ILogger {
-  return {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    child: () => createMockLogger(),
-  };
 }
 
 /**
@@ -286,6 +274,243 @@ describe('ReviewService Integration', () => {
 
       expect(Array.isArray(endorsements)).toBe(true);
       expect(endorsements.length).toBe(0);
+    });
+  });
+});
+
+describe('ReviewService Notification Integration', () => {
+  let pool: Pool;
+  let storage: PostgreSQLAdapter;
+  let service: ReviewService;
+
+  // Test data for notifications - use fixture-based author
+  const NOTIFICATION_TEST_AUTHOR_DID = 'did:plc:notifauthor' as DID;
+  const NOTIFICATION_TEST_REVIEWER_DID = 'did:plc:notifreviewer';
+  const NOTIFICATION_TEST_EPRINT_URI =
+    `at://${NOTIFICATION_TEST_AUTHOR_DID}/pub.chive.eprint.submission/notiftest` as AtUri;
+  const NOTIFICATION_TEST_PDS_URL = 'https://pds.notification.test.example.com';
+
+  // Use fixture to create test author with consistent structure
+  const testAuthor = createMockAuthor({
+    did: NOTIFICATION_TEST_AUTHOR_DID,
+    name: 'Notification Test Author',
+    order: 1,
+    isCorrespondingAuthor: true,
+    isHighlighted: false,
+  });
+
+  beforeAll(async () => {
+    const dbConfig = getDatabaseConfig();
+    pool = new Pool(dbConfig);
+    storage = new PostgreSQLAdapter(pool);
+    service = new ReviewService({
+      pool,
+      storage,
+      logger: createMockLogger(),
+    });
+
+    // Insert test eprint with author DID in the authors array (using fixture)
+    await pool.query(
+      `INSERT INTO eprints_index (
+        uri, cid, submitted_by, authors, title, abstract, document_blob_cid, document_blob_mime_type,
+        document_blob_size, license, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, NOW(), NOW())
+      ON CONFLICT (uri) DO NOTHING`,
+      [
+        NOTIFICATION_TEST_EPRINT_URI,
+        'bafynotifsubject',
+        NOTIFICATION_TEST_AUTHOR_DID,
+        JSON.stringify([testAuthor]),
+        'Test Paper for Notification Tests',
+        'This eprint is used to test notification queries.',
+        'bafyreipdfblob456',
+        'application/pdf',
+        2048000,
+        'CC-BY-4.0',
+        NOTIFICATION_TEST_PDS_URL,
+      ]
+    );
+
+    // Insert a test review from another user on this eprint
+    const reviewUri =
+      `at://${NOTIFICATION_TEST_REVIEWER_DID}/pub.chive.review.comment/testreview1` as AtUri;
+    await pool.query(
+      `INSERT INTO reviews_index (
+        uri, cid, eprint_uri, reviewer_did, content, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '1 hour', $6, NOW(), NOW())
+      ON CONFLICT (uri) DO NOTHING`,
+      [
+        reviewUri,
+        'bafyreviewnew1',
+        NOTIFICATION_TEST_EPRINT_URI,
+        NOTIFICATION_TEST_REVIEWER_DID,
+        'This is a test review for notification tests.',
+        NOTIFICATION_TEST_PDS_URL,
+      ]
+    );
+
+    // Insert a self-review (should be excluded)
+    const selfReviewUri =
+      `at://${NOTIFICATION_TEST_AUTHOR_DID}/pub.chive.review.comment/selfReview` as AtUri;
+    await pool.query(
+      `INSERT INTO reviews_index (
+        uri, cid, eprint_uri, reviewer_did, content, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '30 minutes', $6, NOW(), NOW())
+      ON CONFLICT (uri) DO NOTHING`,
+      [
+        selfReviewUri,
+        'bafyreviewself1',
+        NOTIFICATION_TEST_EPRINT_URI,
+        NOTIFICATION_TEST_AUTHOR_DID,
+        'This is a self-review that should be excluded.',
+        NOTIFICATION_TEST_PDS_URL,
+      ]
+    );
+
+    // Insert a test endorsement from another user
+    const endorsementUri =
+      `at://${NOTIFICATION_TEST_REVIEWER_DID}/pub.chive.review.endorsement/testendo1` as AtUri;
+    await pool.query(
+      `INSERT INTO endorsements_index (
+        uri, cid, eprint_uri, endorser_did, endorsement_type, comment, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW() - INTERVAL '2 hours', $7, NOW(), NOW())
+      ON CONFLICT (uri) DO NOTHING`,
+      [
+        endorsementUri,
+        'bafyendonew1',
+        NOTIFICATION_TEST_EPRINT_URI,
+        NOTIFICATION_TEST_REVIEWER_DID,
+        'methods',
+        'Great methodology!',
+        NOTIFICATION_TEST_PDS_URL,
+      ]
+    );
+
+    // Insert a self-endorsement (should be excluded)
+    const selfEndorsementUri =
+      `at://${NOTIFICATION_TEST_AUTHOR_DID}/pub.chive.review.endorsement/selfEndo` as AtUri;
+    await pool.query(
+      `INSERT INTO endorsements_index (
+        uri, cid, eprint_uri, endorser_did, endorsement_type, comment, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW() - INTERVAL '1 hour', $7, NOW(), NOW())
+      ON CONFLICT (uri) DO NOTHING`,
+      [
+        selfEndorsementUri,
+        'bafyendoself1',
+        NOTIFICATION_TEST_EPRINT_URI,
+        NOTIFICATION_TEST_AUTHOR_DID,
+        'overall',
+        'Self endorsement should be excluded.',
+        NOTIFICATION_TEST_PDS_URL,
+      ]
+    );
+  });
+
+  afterAll(async () => {
+    // Clean up test data
+    await pool.query('DELETE FROM reviews_index WHERE eprint_uri = $1', [
+      NOTIFICATION_TEST_EPRINT_URI,
+    ]);
+    await pool.query('DELETE FROM endorsements_index WHERE eprint_uri = $1', [
+      NOTIFICATION_TEST_EPRINT_URI,
+    ]);
+    await pool.query('DELETE FROM eprints_index WHERE uri = $1', [NOTIFICATION_TEST_EPRINT_URI]);
+    await pool.end();
+  });
+
+  describe('listReviewsOnAuthorPapers', () => {
+    it('returns reviews on papers where user is author', async () => {
+      const result = await service.listReviewsOnAuthorPapers(NOTIFICATION_TEST_AUTHOR_DID);
+
+      expect(result.items.length).toBe(1);
+      expect(result.total).toBe(1);
+      expect(result.hasMore).toBe(false);
+
+      const review = result.items[0]!;
+      expect(review.reviewerDid).toBe(NOTIFICATION_TEST_REVIEWER_DID);
+      expect(review.eprintUri).toBe(NOTIFICATION_TEST_EPRINT_URI);
+      expect(review.eprintTitle).toBe('Test Paper for Notification Tests');
+      expect(review.text).toBe('This is a test review for notification tests.');
+      expect(review.isReply).toBe(false);
+    });
+
+    it('excludes self-reviews from results', async () => {
+      const result = await service.listReviewsOnAuthorPapers(NOTIFICATION_TEST_AUTHOR_DID);
+
+      // Should only have 1 review (from the other user), not 2
+      expect(result.items.length).toBe(1);
+      expect(result.total).toBe(1);
+
+      // Verify the self-review is not included
+      const selfReviews = result.items.filter(
+        (item) => item.reviewerDid === NOTIFICATION_TEST_AUTHOR_DID
+      );
+      expect(selfReviews.length).toBe(0);
+    });
+
+    it('returns empty result for user with no papers', async () => {
+      const nonAuthorDid = 'did:plc:nonexistentauthor' as DID;
+      const result = await service.listReviewsOnAuthorPapers(nonAuthorDid);
+
+      expect(result.items.length).toBe(0);
+      expect(result.total).toBe(0);
+      expect(result.hasMore).toBe(false);
+    });
+
+    it('respects limit parameter', async () => {
+      const result = await service.listReviewsOnAuthorPapers(NOTIFICATION_TEST_AUTHOR_DID, {
+        limit: 10,
+      });
+
+      expect(result.items.length).toBeLessThanOrEqual(10);
+    });
+  });
+
+  describe('listEndorsementsOnAuthorPapers', () => {
+    it('returns endorsements on papers where user is author', async () => {
+      const result = await service.listEndorsementsOnAuthorPapers(NOTIFICATION_TEST_AUTHOR_DID);
+
+      expect(result.items.length).toBe(1);
+      expect(result.total).toBe(1);
+      expect(result.hasMore).toBe(false);
+
+      const endorsement = result.items[0]!;
+      expect(endorsement.endorserDid).toBe(NOTIFICATION_TEST_REVIEWER_DID);
+      expect(endorsement.eprintUri).toBe(NOTIFICATION_TEST_EPRINT_URI);
+      expect(endorsement.eprintTitle).toBe('Test Paper for Notification Tests');
+      expect(endorsement.endorsementType).toBe('methods');
+      expect(endorsement.comment).toBe('Great methodology!');
+    });
+
+    it('excludes self-endorsements from results', async () => {
+      const result = await service.listEndorsementsOnAuthorPapers(NOTIFICATION_TEST_AUTHOR_DID);
+
+      // Should only have 1 endorsement (from the other user), not 2
+      expect(result.items.length).toBe(1);
+      expect(result.total).toBe(1);
+
+      // Verify the self-endorsement is not included
+      const selfEndorsements = result.items.filter(
+        (item) => item.endorserDid === NOTIFICATION_TEST_AUTHOR_DID
+      );
+      expect(selfEndorsements.length).toBe(0);
+    });
+
+    it('returns empty result for user with no papers', async () => {
+      const nonAuthorDid = 'did:plc:nonexistentauthor' as DID;
+      const result = await service.listEndorsementsOnAuthorPapers(nonAuthorDid);
+
+      expect(result.items.length).toBe(0);
+      expect(result.total).toBe(0);
+      expect(result.hasMore).toBe(false);
+    });
+
+    it('respects limit parameter', async () => {
+      const result = await service.listEndorsementsOnAuthorPapers(NOTIFICATION_TEST_AUTHOR_DID, {
+        limit: 10,
+      });
+
+      expect(result.items.length).toBeLessThanOrEqual(10);
     });
   });
 });

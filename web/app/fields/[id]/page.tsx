@@ -34,15 +34,15 @@ export async function generateMetadata({ params }: FieldPageProps): Promise<Meta
     });
 
     if (!data) {
-      return { title: 'Field Not Found | Chive' };
+      return { title: 'Field Not Found' };
     }
 
     return {
-      title: `${data.name} | Chive`,
+      title: data.name,
       description: data.description ?? `Eprints in ${data.name} on Chive`,
     };
   } catch {
-    return { title: 'Field | Chive' };
+    return { title: 'Field' };
   }
 }
 

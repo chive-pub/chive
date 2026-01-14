@@ -201,7 +201,7 @@ export class GitHubIntegrationPlugin extends BasePlugin {
   }
 
   /**
-   * Processes GitHub links from a eprint.
+   * Processes GitHub links from an eprint.
    */
   private async processGitHubLinks(eprintUri: string, links?: readonly string[]): Promise<void> {
     if (!links || links.length === 0) {

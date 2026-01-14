@@ -136,7 +136,7 @@ const graph = new CitationGraph(driver, logger);
 // Add citation
 await graph.addCitation(citingUri, citedUri);
 
-// Get citations for a eprint
+// Get citations for an eprint
 const citations = await graph.getCitations(eprintUri, {
   direction: 'outgoing', // or 'incoming'
   limit: 50,

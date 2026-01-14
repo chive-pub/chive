@@ -169,8 +169,8 @@ if [ "$MODE" = "tunnel" ]; then
   pkill -f "ngrok http 3000" 2>/dev/null || true
   sleep 1
 
-  # Start ngrok
-  ngrok http 3000 > /dev/null 2>&1 &
+  # Start ngrok with custom domain
+  ngrok http 3000 --domain=chive.ngrok.app > /dev/null 2>&1 &
   TUNNEL_PID=$!
   echo $TUNNEL_PID >> "$PIDFILE"
 

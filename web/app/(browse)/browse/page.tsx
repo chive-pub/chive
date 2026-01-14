@@ -8,7 +8,7 @@ import { BrowsePageSkeleton } from './loading';
  * Browse page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Browse Eprints | Chive',
+  title: 'Browse Eprints',
   description:
     'Browse eprints using our 10-dimensional faceted classification system based on PMEST and FAST.',
 };

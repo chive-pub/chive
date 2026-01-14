@@ -486,9 +486,13 @@
             "github",
             "gitlab",
             "bitbucket",
+            "huggingface",
+            "paperswithcode",
             "codeberg",
             "sourcehut",
             "software_heritage",
+            "colab",
+            "kaggle",
             "other"
           ]
         },
@@ -524,12 +528,15 @@
           "type": "string",
           "description": "Hosting platform",
           "knownValues": [
+            "huggingface",
             "zenodo",
             "figshare",
             "dryad",
             "osf",
             "dataverse",
             "mendeley_data",
+            "kaggle",
+            "wandb",
             "other"
           ]
         },

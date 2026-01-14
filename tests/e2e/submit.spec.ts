@@ -62,7 +62,7 @@ test.describe('Eprint submission', () => {
     await page.goto('/submit');
 
     // Should show the wizard heading
-    await expect(page.getByRole('heading', { name: 'Submit a Eprint' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Submit an Eprint' })).toBeVisible();
 
     // Should show step indicators in the progress navigation
     const progressNav = page.getByRole('navigation', { name: 'Progress' });

@@ -27,7 +27,7 @@ export interface RelatedPapersPanelProps {
 }
 
 /**
- * Panel displaying related papers for a eprint.
+ * Panel displaying related papers for an eprint.
  *
  * @remarks
  * Shows papers related by citations, topics, authors, and semantic similarity.

@@ -239,7 +239,7 @@ describe('useSimilarPapers', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches similar papers for a eprint', async () => {
+  it('fetches similar papers for an eprint', async () => {
     const mockResponse = createMockSimilarResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -294,7 +294,7 @@ describe('useCitations', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches citations for a eprint', async () => {
+  it('fetches citations for an eprint', async () => {
     const mockResponse = createMockCitationsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -360,7 +360,7 @@ describe('useEnrichment', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches enrichment data for a eprint', async () => {
+  it('fetches enrichment data for an eprint', async () => {
     const mockResponse = createMockEnrichmentResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,

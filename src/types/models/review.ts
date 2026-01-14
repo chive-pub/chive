@@ -12,7 +12,7 @@
 import type { AtUri, CID, DID, Timestamp } from '../atproto.js';
 
 /**
- * Review comment on a eprint.
+ * Review comment on an eprint.
  *
  * @remarks
  * Represents a peer review comment, which can be inline (attached to specific
@@ -76,7 +76,7 @@ export interface Review {
 }
 
 /**
- * Endorsement of a eprint.
+ * Endorsement of an eprint.
  *
  * @remarks
  * Formal endorsement indicating that the endorser vouches for specific

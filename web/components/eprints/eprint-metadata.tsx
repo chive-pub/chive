@@ -28,7 +28,7 @@ export interface EprintMetadataProps {
  * Displays eprint metadata including fields, keywords, license, and DOI.
  *
  * @remarks
- * Server component that renders structured metadata for a eprint.
+ * Server component that renders structured metadata for an eprint.
  *
  * @example
  * ```tsx

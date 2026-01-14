@@ -57,7 +57,7 @@ describe('useEprint', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches a eprint by URI', async () => {
+  it('fetches an eprint by URI', async () => {
     const mockEprint = createMockEprint();
     mockApiGet.mockResolvedValueOnce({
       data: mockEprint,

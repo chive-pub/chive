@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { User, Info } from 'lucide-react';
+import { User } from 'lucide-react';
 
 import {
   EprintAuthorEditor,
@@ -25,14 +25,9 @@ import {
 } from '@/components/forms/eprint-author-editor';
 import type { ContributionType } from '@/components/forms/contribution-type-selector';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useAuthor } from '@/lib/hooks/use-author';
 import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
@@ -45,6 +40,8 @@ import type { EprintFormValues } from './submission-wizard';
 export interface StepAuthorsProps {
   /** React Hook Form instance */
   form: UseFormReturn<EprintFormValues>;
+  /** Whether this is an import flow (shows "This is me" on existing authors) */
+  isImportMode?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -59,33 +56,68 @@ export interface StepAuthorsProps {
  * @param props - Component props
  * @returns Authors step element
  */
-export function StepAuthors({ form, className }: StepAuthorsProps) {
+export function StepAuthors({ form, isImportMode = false, className }: StepAuthorsProps) {
   const { user } = useAuth();
   const watchedAuthors = form.watch('authors');
   const authors = useMemo(() => (watchedAuthors as EprintAuthorFormData[]) ?? [], [watchedAuthors]);
 
+  // Fetch the submitter's Chive profile to get ORCID and affiliations
+  const { data: submitterProfile } = useAuthor(user?.did ?? '', { enabled: !!user?.did });
+
   // Contribution types would be fetched from API in production
   const [contributionTypes, setContributionTypes] = useState<ContributionType[] | undefined>();
 
-  // Add submitter as initial author on mount
+  // Track if we've already added the initial author
+  const [initialAuthorAdded, setInitialAuthorAdded] = useState(false);
+
+  // Add submitter as initial author on mount, with profile data when available
   useEffect(() => {
-    if (user && authors.length === 0) {
+    if (user && authors.length === 0 && !initialAuthorAdded) {
       const initialAuthor: EprintAuthorFormData = {
         did: user.did,
         name: user.displayName ?? user.handle ?? 'Unknown',
         handle: user.handle,
         avatar: user.avatar,
-        orcid: undefined,
+        orcid: submitterProfile?.profile?.orcid,
         email: undefined,
         order: 1,
-        affiliations: [],
+        affiliations:
+          submitterProfile?.profile?.affiliations?.map((aff) => ({
+            name: aff.name,
+            rorId: aff.rorId,
+          })) ?? [],
         contributions: [],
         isCorrespondingAuthor: true, // Submitter is corresponding by default
         isHighlighted: false,
       };
       form.setValue('authors', [initialAuthor], { shouldValidate: true });
+      setInitialAuthorAdded(true);
     }
-  }, [user, authors.length, form]);
+  }, [user, authors.length, form, submitterProfile, initialAuthorAdded]);
+
+  // Update the submitter's profile data when it loads (if they were already added)
+  useEffect(() => {
+    if (submitterProfile?.profile && authors.length > 0 && user) {
+      const submitterIndex = authors.findIndex((a) => a.did === user.did);
+      if (submitterIndex !== -1) {
+        const currentAuthor = authors[submitterIndex];
+        // Only update if profile data is missing
+        if (!currentAuthor.orcid && submitterProfile.profile.orcid) {
+          const updatedAuthors = [...authors];
+          updatedAuthors[submitterIndex] = {
+            ...currentAuthor,
+            orcid: submitterProfile.profile.orcid,
+            affiliations:
+              submitterProfile.profile.affiliations?.map((aff) => ({
+                name: aff.name,
+                rorId: aff.rorId,
+              })) ?? currentAuthor.affiliations,
+          };
+          form.setValue('authors', updatedAuthors, { shouldValidate: true });
+        }
+      }
+    }
+  }, [submitterProfile, authors, user, form]);
 
   // Handle author list changes
   const handleAuthorsChange = useCallback(
@@ -132,103 +164,22 @@ export function StepAuthors({ form, className }: StepAuthorsProps) {
                 handle: user.handle,
                 displayName: user.displayName,
                 avatar: user.avatar,
+                orcid: submitterProfile?.profile?.orcid,
+                affiliations: submitterProfile?.profile?.affiliations?.map((aff) => ({
+                  name: aff.name,
+                  rorId: aff.rorId,
+                })),
               }
             : undefined
         }
         contributionTypes={contributionTypes}
         maxAuthors={50}
+        isImportMode={isImportMode}
       />
 
       {form.formState.errors.authors && (
         <p className="text-sm text-destructive">{form.formState.errors.authors.message}</p>
       )}
-
-      {/* Help section */}
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="help">
-          <AccordionTrigger className="text-sm">
-            <span className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              About Authors & Contributions
-            </span>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-4 text-sm text-muted-foreground">
-              <div>
-                <h5 className="font-medium text-foreground mb-1">Author Types</h5>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>
-                    <strong>ATProto users:</strong> Authors with ATProto accounts (e.g., Bluesky)
-                    are linked by their DID
-                  </li>
-                  <li>
-                    <strong>External collaborators:</strong> Authors without ATProto accounts can be
-                    added with their name, ORCID, and email
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h5 className="font-medium text-foreground mb-1">CRediT Contributions</h5>
-                <p>
-                  Contributions follow the{' '}
-                  <a
-                    href="https://credit.niso.org/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    CRediT taxonomy
-                  </a>
-                  . Each contribution can be marked as:
-                </p>
-                <ul className="list-disc list-inside mt-1">
-                  <li>
-                    <strong>Lead:</strong> Primary responsibility
-                  </li>
-                  <li>
-                    <strong>Equal:</strong> Shared responsibility
-                  </li>
-                  <li>
-                    <strong>Supporting:</strong> Assisted with this contribution
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h5 className="font-medium text-foreground mb-1">Author Designations</h5>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>
-                    <strong>Corresponding author:</strong> Primary contact for the paper (shown with
-                    envelope icon)
-                  </li>
-                  <li>
-                    <strong>Highlighted (†):</strong> Authors who contributed equally (co-first or
-                    co-last authorship)
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h5 className="font-medium text-foreground mb-1">Affiliations</h5>
-                <p>
-                  Add institutional affiliations with optional{' '}
-                  <a
-                    href="https://ror.org/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    ROR
-                  </a>{' '}
-                  identifiers for disambiguation. Search by organization name for automatic ROR
-                  linking.
-                </p>
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
     </div>
   );
 }

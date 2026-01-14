@@ -135,11 +135,6 @@ export function WizardProgress({
                 >
                   {step.title}
                 </span>
-                {step.description && (
-                  <p className="mt-0.5 text-xs text-muted-foreground hidden sm:block">
-                    {step.description}
-                  </p>
-                )}
               </div>
             </li>
           );

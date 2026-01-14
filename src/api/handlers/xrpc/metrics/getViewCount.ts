@@ -2,7 +2,7 @@
  * Handler for pub.chive.metrics.getViewCount.
  *
  * @remarks
- * Gets simple view count for a eprint.
+ * Gets simple view count for an eprint.
  *
  * @packageDocumentation
  * @public
@@ -51,7 +51,7 @@ export async function getViewCountHandler(
 export const getViewCountEndpoint: XRPCEndpoint<GetViewCountParams, ViewCountResponse> = {
   method: 'pub.chive.metrics.getViewCount' as never,
   type: 'query',
-  description: 'Get view count for a eprint',
+  description: 'Get view count for an eprint',
   inputSchema: getViewCountParamsSchema,
   outputSchema: viewCountResponseSchema,
   handler: getViewCountHandler,

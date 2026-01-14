@@ -141,7 +141,39 @@ export function useAlphaApply() {
 
   return useMutation({
     mutationFn: async (input: AlphaApplyInput): Promise<AlphaApplyResponse> => {
-      // Get authenticated agent for service auth
+      // E2E test mode: use X-E2E-Auth-Did header instead of real OAuth
+      if (isE2ETestMode()) {
+        const e2eDid = getE2ETestUserDid();
+        if (!e2eDid) {
+          throw new APIError(
+            'No E2E test user in localStorage',
+            401,
+            '/xrpc/pub.chive.alpha.apply'
+          );
+        }
+
+        const response = await fetch(`${getApiBaseUrl()}/xrpc/pub.chive.alpha.apply`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-E2E-Auth-Did': e2eDid,
+          },
+          body: JSON.stringify(input),
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new APIError(
+            (body as { message?: string }).message ?? 'Failed to submit application',
+            response.status,
+            '/xrpc/pub.chive.alpha.apply'
+          );
+        }
+
+        return response.json() as Promise<AlphaApplyResponse>;
+      }
+
+      // Production mode: get authenticated agent for service auth
       const agent = getCurrentAgent();
       if (!agent) {
         throw new APIError('Not authenticated', 401, '/xrpc/pub.chive.alpha.apply');

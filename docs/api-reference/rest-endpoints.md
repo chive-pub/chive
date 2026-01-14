@@ -57,7 +57,7 @@ curl "https://api.chive.pub/api/v1/eprints?q=quantum+computing&field=cs.QC&limit
 GET /api/v1/eprints/:uri
 ```
 
-Retrieve a eprint by its AT URI.
+Retrieve an eprint by its AT URI.
 
 **Path parameters**
 

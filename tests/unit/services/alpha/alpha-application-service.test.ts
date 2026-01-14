@@ -59,9 +59,8 @@ const SAMPLE_APPLICATION_ROW = {
   sector_other: null,
   career_stage: 'postdoc',
   career_stage_other: null,
-  affiliation_name: 'MIT',
-  affiliation_ror_id: 'https://ror.org/042nb2s44',
-  research_field: 'Computational Linguistics',
+  affiliations: [{ name: 'MIT', rorId: 'https://ror.org/042nb2s44' }],
+  research_keywords: [{ label: 'Computational Linguistics' }],
   motivation: 'I want to help test the platform',
   status: 'pending',
   zulip_invited: false,
@@ -77,11 +76,13 @@ const SAMPLE_APPLY_INPUT: ApplyInput = {
   email: 'researcher@university.edu',
   sector: 'academia',
   careerStage: 'postdoc',
-  affiliation: {
-    name: 'MIT',
-    rorId: 'https://ror.org/042nb2s44',
-  },
-  researchField: 'Computational Linguistics',
+  affiliations: [
+    {
+      name: 'MIT',
+      rorId: 'https://ror.org/042nb2s44',
+    },
+  ],
+  researchKeywords: [{ label: 'Computational Linguistics' }],
   motivation: 'I want to help test the platform',
 };
 
@@ -118,9 +119,9 @@ describe('AlphaApplicationService', () => {
       expect(result.email).toBe('researcher@university.edu');
       expect(result.sector).toBe('academia');
       expect(result.careerStage).toBe('postdoc');
-      expect(result.affiliation?.name).toBe('MIT');
-      expect(result.affiliation?.rorId).toBe('https://ror.org/042nb2s44');
-      expect(result.researchField).toBe('Computational Linguistics');
+      expect(result.affiliations[0]?.name).toBe('MIT');
+      expect(result.affiliations[0]?.rorId).toBe('https://ror.org/042nb2s44');
+      expect(result.researchKeywords[0]?.label).toBe('Computational Linguistics');
       expect(result.status).toBe('pending');
 
       expect(db.query).toHaveBeenCalledTimes(2);
@@ -147,7 +148,7 @@ describe('AlphaApplicationService', () => {
         sectorOther: 'Science journalism',
         careerStage: 'other',
         careerStageOther: 'Freelance consultant',
-        researchField: 'Science Communication',
+        researchKeywords: [{ label: 'Science Communication' }],
       };
 
       const rowWithOther = {
@@ -175,15 +176,14 @@ describe('AlphaApplicationService', () => {
         email: 'independent@email.com',
         sector: 'independent',
         careerStage: 'retired',
-        researchField: 'History of Science',
+        researchKeywords: [{ label: 'History of Science' }],
       };
 
       const rowNoAffiliation = {
         ...SAMPLE_APPLICATION_ROW,
         sector: 'independent',
         career_stage: 'retired',
-        affiliation_name: null,
-        affiliation_ror_id: null,
+        affiliations: [],
       };
 
       db.query.mockResolvedValueOnce({ rows: [] });
@@ -191,7 +191,7 @@ describe('AlphaApplicationService', () => {
 
       const result = await service.apply(inputNoAffiliation);
 
-      expect(result.affiliation).toBeUndefined();
+      expect(result.affiliations).toEqual([]);
     });
 
     it('should handle database errors gracefully', async () => {
@@ -325,7 +325,7 @@ describe('AlphaApplicationService', () => {
   });
 
   describe('mapRowToApplication', () => {
-    it('should correctly map all fields including affiliation', async () => {
+    it('should correctly map all fields including affiliations', async () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_APPLICATION_ROW] });
 
       const result = await service.getByDid(SAMPLE_DID);
@@ -339,11 +339,13 @@ describe('AlphaApplicationService', () => {
         sectorOther: undefined,
         careerStage: 'postdoc',
         careerStageOther: undefined,
-        affiliation: {
-          name: 'MIT',
-          rorId: 'https://ror.org/042nb2s44',
-        },
-        researchField: 'Computational Linguistics',
+        affiliations: [
+          {
+            name: 'MIT',
+            rorId: 'https://ror.org/042nb2s44',
+          },
+        ],
+        researchKeywords: [{ label: 'Computational Linguistics' }],
         motivation: 'I want to help test the platform',
         status: 'pending',
         zulipInvited: false,
@@ -358,8 +360,7 @@ describe('AlphaApplicationService', () => {
         handle: null,
         sector_other: null,
         career_stage_other: null,
-        affiliation_name: null,
-        affiliation_ror_id: null,
+        affiliations: [],
         motivation: null,
         reviewed_at: null,
         reviewed_by: null,
@@ -374,7 +375,7 @@ describe('AlphaApplicationService', () => {
       expect(result.handle).toBeUndefined();
       expect(result.sectorOther).toBeUndefined();
       expect(result.careerStageOther).toBeUndefined();
-      expect(result.affiliation).toBeUndefined();
+      expect(result.affiliations).toEqual([]);
       expect(result.motivation).toBeUndefined();
       expect(result.reviewedAt).toBeUndefined();
       expect(result.reviewedBy).toBeUndefined();
@@ -383,8 +384,7 @@ describe('AlphaApplicationService', () => {
     it('should handle affiliation with name but no ROR ID', async () => {
       const rowWithNameOnly = {
         ...SAMPLE_APPLICATION_ROW,
-        affiliation_name: 'Small Research Lab',
-        affiliation_ror_id: null,
+        affiliations: [{ name: 'Small Research Lab' }],
       };
 
       db.query.mockResolvedValueOnce({ rows: [rowWithNameOnly] });
@@ -393,10 +393,7 @@ describe('AlphaApplicationService', () => {
 
       expect(result).not.toBeNull();
       if (!result) throw new Error('Expected result to be defined');
-      expect(result.affiliation).toEqual({
-        name: 'Small Research Lab',
-        rorId: undefined,
-      });
+      expect(result.affiliations).toEqual([{ name: 'Small Research Lab' }]);
     });
   });
 });

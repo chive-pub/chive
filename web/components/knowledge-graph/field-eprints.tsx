@@ -86,7 +86,7 @@ export function FieldEprints({
     return (
       <EprintListEmpty
         message="No eprints in this field"
-        description="Be the first to publish a eprint in this field."
+        description="Be the first to publish an eprint in this field."
         className={className}
       />
     );

@@ -220,7 +220,7 @@ describe('CitationGraph', () => {
   });
 
   describe('getReferences', () => {
-    it('should return papers that a eprint cites', async () => {
+    it('should return papers that an eprint cites', async () => {
       const paperUri = 'at://did:plc:abc/pub.chive.eprint.submission/1' as AtUri;
 
       const refRecord: MockQueryResult = {

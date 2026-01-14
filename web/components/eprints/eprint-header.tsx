@@ -19,11 +19,11 @@ export interface EprintHeaderProps {
 }
 
 /**
- * Displays the header section of a eprint detail page.
+ * Displays the header section of an eprint detail page.
  *
  * @remarks
  * Server component that renders the title, authors, and key metadata
- * for a eprint detail page. Designed for the main content area.
+ * for an eprint detail page. Designed for the main content area.
  *
  * @example
  * ```tsx

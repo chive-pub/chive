@@ -79,7 +79,7 @@ test.describe('Author Display - Eprint Page', () => {
 
 test.describe('Author Display - Multiple Authors', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to a eprint with co-authors (if seeded)
+    // Navigate to an eprint with co-authors (if seeded)
     await page.goto(`/eprints/${encodeURIComponent(SEEDED_EPRINTS.grove.uri)}`);
   });
 

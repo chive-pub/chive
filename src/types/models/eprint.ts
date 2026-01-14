@@ -125,7 +125,7 @@ export type AccessType =
  * Published version metadata (Version of Record).
  *
  * @remarks
- * Comprehensive metadata about the published version of a eprint,
+ * Comprehensive metadata about the published version of an eprint,
  * following CrossRef and DataCite standards.
  *
  * @public
@@ -948,7 +948,7 @@ export interface EprintVersion {
 }
 
 /**
- * User-generated tag on a eprint.
+ * User-generated tag on an eprint.
  *
  * @remarks
  * Tags provide folksonomy-style classification alongside formal facets.

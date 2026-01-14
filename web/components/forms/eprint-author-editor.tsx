@@ -36,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  HelpCircle,
 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 import {
@@ -52,6 +54,8 @@ import {
   type ContributionType,
 } from './contribution-type-selector';
 import { AffiliationInput, type AuthorAffiliation } from './affiliation-input';
+import { DidAutocompleteInput, type SelectedAtprotoUser } from './did-autocomplete-input';
+import { OrcidAutocomplete, type OrcidPerson } from './orcid-autocomplete';
 
 // =============================================================================
 // TYPES
@@ -103,6 +107,8 @@ export interface EprintAuthorEditorProps {
     handle?: string;
     displayName?: string;
     avatar?: string;
+    orcid?: string;
+    affiliations?: AuthorAffiliation[];
   };
 
   /** Available contribution types (from API) */
@@ -114,6 +120,9 @@ export interface EprintAuthorEditorProps {
   /** Disabled state */
   disabled?: boolean;
 
+  /** Import mode - shows "This is me" on existing authors instead of "Add myself" */
+  isImportMode?: boolean;
+
   /** Additional CSS classes */
   className?: string;
 }
@@ -121,6 +130,26 @@ export interface EprintAuthorEditorProps {
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * Info tooltip component for field help.
+ */
+function InfoTooltip({ children }: { children: React.ReactNode }) {
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="inline-flex text-muted-foreground hover:text-foreground">
+            <HelpCircle className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs">
+          {children}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 /**
  * Gets initials from a name.
@@ -201,6 +230,38 @@ function AuthorForm({
     author?.did ? 'atproto' : 'external'
   );
 
+  const handleUserSelect = (user: SelectedAtprotoUser) => {
+    setFormData((prev) => ({
+      ...prev,
+      did: user.did,
+      name: user.displayName || prev.name,
+      handle: user.handle,
+      avatar: user.avatar,
+      // Auto-fill ORCID and affiliations from Chive profile if available
+      orcid: user.orcid || prev.orcid,
+      affiliations: user.affiliations?.length ? user.affiliations : prev.affiliations,
+    }));
+    setErrors((prev) => ({ ...prev, did: '' }));
+  };
+
+  const handleOrcidSelect = (person: OrcidPerson) => {
+    setFormData((prev) => ({
+      ...prev,
+      orcid: person.orcid,
+      // Optionally update name if not already set
+      name: prev.name || person.name,
+    }));
+  };
+
+  const handleDidChange = (newDid: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      did: newDid || undefined,
+      // Clear profile data if manually entering DID
+      ...(newDid.startsWith('did:') ? { handle: undefined, avatar: undefined } : {}),
+    }));
+  };
+
   const handleSubmit = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
@@ -271,6 +332,11 @@ function AuthorForm({
               />
               <span className="text-sm">External Collaborator</span>
             </label>
+            <InfoTooltip>
+              <strong>ATProto users</strong> are linked by their DID and can be invited to the
+              platform. <strong>External collaborators</strong> are identified by name/ORCID/email
+              for attribution without an ATProto account.
+            </InfoTooltip>
           </div>
         )}
       </div>
@@ -279,16 +345,13 @@ function AuthorForm({
         {/* DID field (ATProto only) */}
         {authorType === 'atproto' && !isSubmitter && (
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="did">DID *</Label>
-            <Input
-              id="did"
-              value={formData.did ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, did: e.target.value || undefined }))
-              }
-              placeholder="did:plc:..."
+            <Label htmlFor="did">ATProto User *</Label>
+            <DidAutocompleteInput
+              value={formData.did}
+              onSelect={handleUserSelect}
+              onChange={handleDidChange}
               disabled={disabled}
-              className={cn('font-mono text-sm', errors.did && 'border-destructive')}
+              error={!!errors.did}
             />
             {errors.did && <p className="text-sm text-destructive">{errors.did}</p>}
           </div>
@@ -311,15 +374,14 @@ function AuthorForm({
         {/* ORCID */}
         <div className="space-y-1.5">
           <Label htmlFor="orcid">ORCID</Label>
-          <Input
+          <OrcidAutocomplete
             id="orcid"
-            value={formData.orcid ?? ''}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, orcid: e.target.value || undefined }))
-            }
-            placeholder="0000-0002-1825-0097"
+            value={formData.orcid}
+            onSelect={handleOrcidSelect}
+            onChange={(value) => setFormData((prev) => ({ ...prev, orcid: value || undefined }))}
+            onClear={() => setFormData((prev) => ({ ...prev, orcid: undefined }))}
+            placeholder="Search by name or enter ORCID..."
             disabled={disabled}
-            className={cn('font-mono text-sm', errors.orcid && 'border-destructive')}
           />
           {errors.orcid && <p className="text-sm text-destructive">{errors.orcid}</p>}
         </div>
@@ -346,7 +408,13 @@ function AuthorForm({
 
       {/* Affiliations */}
       <div className="space-y-2">
-        <Label>Affiliations</Label>
+        <div className="flex items-center gap-1.5">
+          <Label>Affiliations</Label>
+          <InfoTooltip>
+            Add institutional affiliations with optional ROR identifiers for accurate attribution.
+            ROR (Research Organization Registry) IDs enable reliable linking to institutions.
+          </InfoTooltip>
+        </div>
         <AffiliationInput
           affiliations={formData.affiliations}
           onChange={(affiliations) => setFormData((prev) => ({ ...prev, affiliations }))}
@@ -357,7 +425,14 @@ function AuthorForm({
 
       {/* Contributions */}
       <div className="space-y-2">
-        <Label>Contributions (CRediT)</Label>
+        <div className="flex items-center gap-1.5">
+          <Label>Contributions (CRediT)</Label>
+          <InfoTooltip>
+            Select contribution types using the CRediT (Contributor Roles Taxonomy) standard. Each
+            role can have a degree modifier: <strong>Lead</strong> (primary responsibility),{' '}
+            <strong>Equal</strong> (shared equally), or <strong>Supporting</strong> (assisted).
+          </InfoTooltip>
+        </div>
         <ContributionTypeSelector
           selectedContributions={formData.contributions}
           onChange={(contributions) => setFormData((prev) => ({ ...prev, contributions }))}
@@ -383,6 +458,10 @@ function AuthorForm({
           <Label htmlFor="corresponding" className="text-sm font-normal">
             Corresponding Author
           </Label>
+          <InfoTooltip>
+            The corresponding author is the primary contact for inquiries about the work. At least
+            one corresponding author is required.
+          </InfoTooltip>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -400,6 +479,10 @@ function AuthorForm({
           <Label htmlFor="highlighted" className="text-sm font-normal">
             Highlighted (Co-First/Co-Last)
           </Label>
+          <InfoTooltip>
+            Mark authors who contributed equally as co-first or co-last authors. Multiple
+            highlighted authors in the first or last positions indicate equal contribution.
+          </InfoTooltip>
         </div>
       </div>
 
@@ -431,6 +514,12 @@ interface AuthorCardProps {
   isLast: boolean;
   isSubmitter: boolean;
   disabled?: boolean;
+  /** Number of highlighted authors (only show Co-First badge if > 1) */
+  highlightedCount: number;
+  /** Callback when user claims this author as themselves (import mode) */
+  onClaimAsMe?: () => void;
+  /** Whether to show the "This is me" button */
+  showClaimButton?: boolean;
 }
 
 function AuthorCard({
@@ -444,6 +533,9 @@ function AuthorCard({
   isLast,
   isSubmitter,
   disabled,
+  highlightedCount,
+  onClaimAsMe,
+  showClaimButton,
 }: AuthorCardProps) {
   const [expanded, setExpanded] = useState(false);
   const initials = getInitials(author.name);
@@ -508,7 +600,7 @@ function AuthorCard({
                 Corresponding
               </span>
             )}
-            {author.isHighlighted && (
+            {author.isHighlighted && highlightedCount > 1 && (
               <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                 Co-First
               </span>
@@ -545,25 +637,36 @@ function AuthorCard({
 
         {/* Actions */}
         <div className="flex items-center gap-1">
+          {showClaimButton && onClaimAsMe && (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={onClaimAsMe}
+              disabled={disabled}
+              className="gap-1"
+            >
+              <User className="h-3.5 w-3.5" />
+              This is me
+            </Button>
+          )}
           <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded(!expanded)}>
             {expanded ? 'Hide' : 'Details'}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={onEdit} disabled={disabled}>
             Edit
           </Button>
-          {!isSubmitter && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={onRemove}
-              disabled={disabled}
-              aria-label="Remove author"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onRemove}
+            disabled={disabled}
+            aria-label="Remove author"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -625,6 +728,7 @@ export function EprintAuthorEditor({
   contributionTypes,
   maxAuthors = 50,
   disabled = false,
+  isImportMode = false,
   className,
 }: EprintAuthorEditorProps) {
   const [showForm, setShowForm] = useState(false);
@@ -641,6 +745,12 @@ export function EprintAuthorEditor({
 
   // Check if we have at least one corresponding author
   const hasCorresponding = authors.some((a) => a.isCorrespondingAuthor);
+
+  // Count highlighted authors (for Co-First badge display)
+  const highlightedCount = authors.filter((a) => a.isHighlighted).length;
+
+  // Check if the current user is already in the author list
+  const isUserInAuthorList = submitterDid ? existingDids.has(submitterDid) : false;
 
   // Handle adding new author
   const handleAddAuthor = useCallback(
@@ -695,6 +805,50 @@ export function EprintAuthorEditor({
     [authors, onChange]
   );
 
+  // Handle "This is me" - claim an existing author as the current user (import mode)
+  const handleClaimAuthor = useCallback(
+    (index: number) => {
+      if (!submitterDid) return;
+
+      const updated = [...authors];
+      updated[index] = {
+        ...updated[index],
+        did: submitterDid,
+        handle: submitterProfile?.handle,
+        avatar: submitterProfile?.avatar,
+        // Merge profile data - prefer existing if already set
+        orcid: updated[index].orcid || submitterProfile?.orcid,
+        affiliations:
+          updated[index].affiliations.length > 0
+            ? updated[index].affiliations
+            : (submitterProfile?.affiliations ?? []),
+      };
+      onChange(updated);
+    },
+    [authors, onChange, submitterDid, submitterProfile]
+  );
+
+  // Handle "Add myself" - add the current user as a new author (new submission mode)
+  const handleAddMyself = useCallback(() => {
+    if (!submitterDid || isUserInAuthorList) return;
+
+    const newAuthor: EprintAuthorFormData = {
+      did: submitterDid,
+      name: submitterProfile?.displayName ?? submitterProfile?.handle ?? 'Unknown',
+      handle: submitterProfile?.handle,
+      avatar: submitterProfile?.avatar,
+      orcid: submitterProfile?.orcid,
+      email: undefined,
+      order: authors.length + 1,
+      affiliations: submitterProfile?.affiliations ?? [],
+      contributions: [],
+      isCorrespondingAuthor: false,
+      isHighlighted: false,
+    };
+
+    onChange([...authors, newAuthor]);
+  }, [submitterDid, submitterProfile, authors, onChange, isUserInAuthorList]);
+
   return (
     <div className={cn('space-y-4', className)} data-testid="eprint-author-editor">
       {/* Validation warning */}
@@ -734,6 +888,9 @@ export function EprintAuthorEditor({
                 isLast={index === authors.length - 1}
                 isSubmitter={author.did === submitterDid}
                 disabled={disabled}
+                highlightedCount={highlightedCount}
+                onClaimAsMe={() => handleClaimAuthor(index)}
+                showClaimButton={isImportMode && !author.did && !isUserInAuthorList}
               />
             )
           )}
@@ -754,16 +911,31 @@ export function EprintAuthorEditor({
         canAddMore &&
         !disabled &&
         editingIndex === null && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setShowForm(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add Author
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Add myself button - for new submissions when user isn't in the list */}
+            {!isImportMode && submitterDid && !isUserInAuthorList && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="gap-1.5"
+                onClick={handleAddMyself}
+              >
+                <User className="h-4 w-4" />
+                Add myself
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setShowForm(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Author
+            </Button>
+          </div>
         )
       )}
 

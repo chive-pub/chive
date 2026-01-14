@@ -371,7 +371,7 @@ describe('Discovery ATProto Compliance', () => {
     });
 
     it('related papers are computed on-demand from citation graph', async () => {
-      // Mock database to return a eprint (required for findRelatedEprints to proceed)
+      // Mock database to return an eprint (required for findRelatedEprints to proceed)
       vi.mocked(mockDb.query).mockResolvedValueOnce({
         rows: [
           {

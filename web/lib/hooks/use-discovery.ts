@@ -161,7 +161,7 @@ interface UseCitationsOptions {
 }
 
 /**
- * Fetches citation network data for a eprint.
+ * Fetches citation network data for an eprint.
  *
  * @remarks
  * Returns both citation counts and the actual citation relationships
@@ -211,7 +211,7 @@ interface UseEnrichmentOptions {
 }
 
 /**
- * Fetches enrichment data for a eprint.
+ * Fetches enrichment data for an eprint.
  *
  * @remarks
  * Returns external IDs, citation counts, and concept/topic data

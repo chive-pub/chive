@@ -31,7 +31,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @remarks
  * Records user interactions to improve recommendations:
- * - 'view': User viewed a eprint detail page
+ * - 'view': User viewed an eprint detail page
  * - 'click': User clicked a recommendation
  * - 'endorse': User endorsed the eprint
  * - 'dismiss': User dismissed a recommendation (negative signal)

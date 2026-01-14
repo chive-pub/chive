@@ -10,6 +10,7 @@
 
 import { autocompleteAffiliationEndpoint } from './autocompleteAffiliation.js';
 import { autocompleteKeywordEndpoint } from './autocompleteKeyword.js';
+import { autocompleteOpenReviewEndpoint } from './autocompleteOpenReview.js';
 import { autocompleteOrcidEndpoint } from './autocompleteOrcid.js';
 import { discoverAuthorIdsEndpoint } from './discoverAuthorIds.js';
 import { getDiscoverySettingsEndpoint } from './getDiscoverySettings.js';
@@ -39,6 +40,16 @@ export type {
   OrcidSuggestion,
 } from './autocompleteOrcid.js';
 
+export {
+  autocompleteOpenReviewEndpoint,
+  autocompleteOpenReviewHandler,
+} from './autocompleteOpenReview.js';
+export type {
+  AutocompleteOpenReviewParams,
+  AutocompleteOpenReviewResponse,
+  OpenReviewSuggestion,
+} from './autocompleteOpenReview.js';
+
 export { discoverAuthorIdsEndpoint, discoverAuthorIdsHandler } from './discoverAuthorIds.js';
 export type {
   AuthorMatch,
@@ -63,6 +74,7 @@ export type { DiscoverySettings } from './getDiscoverySettings.js';
 export const actorEndpoints = [
   autocompleteAffiliationEndpoint,
   autocompleteKeywordEndpoint,
+  autocompleteOpenReviewEndpoint,
   autocompleteOrcidEndpoint,
   discoverAuthorIdsEndpoint,
   getDiscoverySettingsEndpoint,

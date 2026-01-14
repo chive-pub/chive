@@ -48,7 +48,7 @@ export interface TagManagerProps {
 // =============================================================================
 
 /**
- * Displays and manages tags for a eprint.
+ * Displays and manages tags for an eprint.
  *
  * @param props - Component props
  * @returns Tag manager element

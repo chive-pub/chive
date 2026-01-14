@@ -606,14 +606,14 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
  *
  * @remarks
  * Routes:
- * - `GET /api/v1/eprints/:uri/integrations` - Get integrations for a eprint
+ * - `GET /api/v1/eprints/:uri/integrations` - Get integrations for an eprint
  *
  * @public
  */
 export function registerIntegrationRoutes(app: Hono<ChiveEnv>): void {
   const basePath = `${REST_PATH_PREFIX}/eprints`;
 
-  // GET /api/v1/eprints/:uri/integrations: Get integrations for a eprint
+  // GET /api/v1/eprints/:uri/integrations: Get integrations for an eprint
   app.get(
     `${basePath}/:uri/integrations`,
     validateParams(uriPathParamSchema),

@@ -101,7 +101,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
     logger.error('Redis health check failed', error instanceof Error ? error : undefined);
   }
 
-  // Check PostgreSQL connectivity via eprint service (which uses PostgreSQL adapter)
+  // Check PostgreSQL connectivity vian eprint service (which uses PostgreSQL adapter)
   try {
     const services = c.get('services');
     if (services?.eprint) {

@@ -72,16 +72,31 @@ export const SUPPLEMENTARY_CATEGORIES = [
 ] as const;
 
 /**
- * External link types for repositories.
+ * External link types for repositories and resources.
  */
 export const EXTERNAL_LINK_TYPES = [
+  // Code repositories
   'github',
   'gitlab',
+  'bitbucket',
+  // ML/AI platforms
+  'huggingface',
+  'kaggle',
+  'paperswithcode',
+  'wandb',
+  'comet',
+  // Data repositories
   'zenodo',
   'osf',
   'figshare',
   'dryad',
   'dataverse',
+  'mendeley-data',
+  // Project pages
+  'project-page',
+  'demo',
+  'documentation',
+  // Other
   'other',
 ] as const;
 
@@ -275,20 +290,43 @@ export type SupplementaryMaterial = z.infer<typeof supplementaryMaterialSchema>;
 // =============================================================================
 
 /**
+ * Resource categories for external links.
+ */
+export const EXTERNAL_LINK_CATEGORIES = [
+  'code',
+  'dataset',
+  'model',
+  'demo',
+  'documentation',
+  'project-page',
+  'video',
+  'slides',
+  'other',
+] as const;
+
+/**
  * External link to repositories or datasets.
  */
 export const externalLinkSchema = z.object({
+  /** Display label for the link */
+  label: z.string().min(1).max(200),
+
   /** Link URL */
   url: z.string().url(),
 
-  /** Type of resource */
+  /** Type/platform of resource (auto-detected from URL) */
   type: z.enum(EXTERNAL_LINK_TYPES),
 
-  /** Description of the link */
-  description: z.string().max(200).optional(),
+  /** Category of the resource (user-specified) */
+  category: z.enum(EXTERNAL_LINK_CATEGORIES),
+
+  /** Optional description */
+  description: z.string().max(500).optional(),
 });
 
 export type ExternalLink = z.infer<typeof externalLinkSchema>;
+export type ExternalLinkType = (typeof EXTERNAL_LINK_TYPES)[number];
+export type ExternalLinkCategory = (typeof EXTERNAL_LINK_CATEGORIES)[number];
 
 /**
  * Funding source information.

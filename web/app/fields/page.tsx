@@ -8,7 +8,7 @@ import { FieldsPageSkeleton } from './loading';
  * Fields browse page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Browse Fields | Chive',
+  title: 'Browse Fields',
   description: 'Explore the knowledge graph of academic fields and subjects on Chive.',
 };
 

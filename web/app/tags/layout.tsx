@@ -1,3 +1,4 @@
+import { AlphaGate } from '@/components/alpha';
 import { PageContainer } from '@/components/layout';
 
 /**
@@ -6,11 +7,14 @@ import { PageContainer } from '@/components/layout';
  * @remarks
  * Provides a consistent layout for tag browsing pages.
  * Uses the "browse" variant for list/grid views.
+ * Protected by AlphaGate during alpha period.
  */
 export default function TagsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PageContainer variant="browse" as="main">
-      {children}
-    </PageContainer>
+    <AlphaGate>
+      <PageContainer variant="browse" as="main">
+        {children}
+      </PageContainer>
+    </AlphaGate>
   );
 }

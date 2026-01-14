@@ -84,11 +84,15 @@ export {
   useClaimableEprints,
   usePendingClaims,
   useStartClaim,
-  useCollectEvidence,
   useCompleteClaim,
   useApproveClaim,
   useRejectClaim,
   usePaperSuggestions,
+  useMyCoauthorRequests,
+  useCoauthorRequests,
+  useRequestCoauthorship,
+  useApproveCoauthor,
+  useRejectCoauthor,
   claimingKeys,
   type SuggestedPaper,
   type SuggestionsProfileMetadata,
@@ -162,3 +166,11 @@ export {
   type BacklinkSourceType,
   type BacklinkCounts,
 } from './use-backlinks';
+
+export {
+  useReviewNotifications,
+  useEndorsementNotifications,
+  notificationKeys,
+  type ReviewNotification,
+  type EndorsementNotification,
+} from './use-notifications';

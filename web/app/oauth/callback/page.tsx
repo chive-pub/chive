@@ -7,7 +7,7 @@ import { OAuthCallbackContent } from './callback-content';
  * OAuth callback page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Authenticating... | Chive',
+  title: 'Authenticating...',
   robots: 'noindex',
 };
 

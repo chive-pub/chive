@@ -10,7 +10,7 @@ import { SidebarLayout, SidebarSection } from '@/components/layout';
  * Governance section metadata.
  */
 export const metadata: Metadata = {
-  title: 'Governance | Chive',
+  title: 'Governance',
   description: 'Community governance for the Chive knowledge graph',
 };
 

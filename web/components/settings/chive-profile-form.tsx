@@ -31,7 +31,8 @@ import type { Affiliation, ResearchKeyword } from '@/lib/api/schema';
 import type { UpdateChiveProfileInput } from '@/lib/atproto/record-creator';
 import { AffiliationAutocompleteInput } from './affiliation-autocomplete-input';
 import { KeywordAutocompleteInput } from './keyword-autocomplete-input';
-import { AuthorIdDiscovery } from './author-id-discovery';
+import { OrcidAutocompleteInput } from './orcid-autocomplete-input';
+import { AuthorIdAutocompleteInput } from './author-id-autocomplete-input';
 
 /**
  * Converts API affiliations (may be string[] or structured) to structured format.
@@ -98,7 +99,6 @@ const profileFormSchema = z.object({
   semanticScholarId: z.string().max(50).optional(),
   openAlexId: z.string().max(50).optional(),
   googleScholarId: z.string().max(50).optional(),
-  arxivAuthorId: z.string().max(100).optional(),
   openReviewId: z.string().max(100).optional(),
   dblpId: z.string().max(200).optional(),
   scopusAuthorId: z.string().max(50).optional(),
@@ -250,7 +250,6 @@ export function ChiveProfileForm() {
       semanticScholarId: '',
       openAlexId: '',
       googleScholarId: '',
-      arxivAuthorId: '',
       openReviewId: '',
       dblpId: '',
       scopusAuthorId: '',
@@ -272,7 +271,6 @@ export function ChiveProfileForm() {
         semanticScholarId?: string;
         openAlexId?: string;
         googleScholarId?: string;
-        arxivAuthorId?: string;
         openReviewId?: string;
         dblpId?: string;
         scopusAuthorId?: string;
@@ -289,7 +287,6 @@ export function ChiveProfileForm() {
         semanticScholarId: profile.semanticScholarId ?? '',
         openAlexId: profile.openAlexId ?? '',
         googleScholarId: profile.googleScholarId ?? '',
-        arxivAuthorId: profile.arxivAuthorId ?? '',
         openReviewId: profile.openReviewId ?? '',
         dblpId: profile.dblpId ?? '',
         scopusAuthorId: profile.scopusAuthorId ?? '',
@@ -312,7 +309,6 @@ export function ChiveProfileForm() {
       semanticScholarId: data.semanticScholarId || undefined,
       openAlexId: data.openAlexId || undefined,
       googleScholarId: data.googleScholarId || undefined,
-      arxivAuthorId: data.arxivAuthorId || undefined,
       openReviewId: data.openReviewId || undefined,
       dblpId: data.dblpId || undefined,
       scopusAuthorId: data.scopusAuthorId || undefined,
@@ -437,89 +433,62 @@ export function ChiveProfileForm() {
             {/* External IDs Section */}
             <CollapsibleSection title="External Authority IDs" icon={Link2}>
               <p className="text-sm text-muted-foreground mb-4">
-                Link your profiles from academic databases for better paper matching.
+                Link your profiles from academic databases for better paper matching. Search by name
+                to find your profiles automatically.
               </p>
 
-              {/* Author ID Discovery */}
-              <AuthorIdDiscovery
-                displayName={form.watch('displayName')}
-                onSelectIds={(ids) => {
-                  if (ids.openAlexId) {
-                    form.setValue('openAlexId', ids.openAlexId);
-                  }
-                  if (ids.semanticScholarId) {
-                    form.setValue('semanticScholarId', ids.semanticScholarId);
-                  }
-                  if (ids.orcid && !form.getValues('orcid')) {
-                    form.setValue('orcid', ids.orcid);
-                  }
-                  if (ids.dblpId) {
-                    form.setValue('dblpId', ids.dblpId);
-                  }
-                  toast.success('IDs imported', {
-                    description: 'Author IDs have been filled in below.',
-                  });
-                }}
-                className="mb-6"
+              {/* ORCID with autocomplete */}
+              <OrcidAutocompleteInput
+                value={form.watch('orcid') ?? ''}
+                onChange={(value) => form.setValue('orcid', value || undefined)}
+                className="mb-4"
               />
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="semanticScholarId">Semantic Scholar ID</Label>
-                  <Input
-                    id="semanticScholarId"
-                    placeholder="Author ID from Semantic Scholar"
-                    {...form.register('semanticScholarId')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="openAlexId">OpenAlex ID</Label>
-                  <Input
-                    id="openAlexId"
-                    placeholder="e.g., A5023888391"
-                    {...form.register('openAlexId')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="googleScholarId">Google Scholar ID</Label>
-                  <Input
-                    id="googleScholarId"
-                    placeholder="Profile ID from URL"
-                    {...form.register('googleScholarId')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="arxivAuthorId">arXiv Author ID</Label>
-                  <Input
-                    id="arxivAuthorId"
-                    placeholder="Your arXiv author identifier"
-                    {...form.register('arxivAuthorId')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="openReviewId">OpenReview ID</Label>
-                  <Input
-                    id="openReviewId"
-                    placeholder="OpenReview profile ID"
-                    {...form.register('openReviewId')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dblpId">DBLP ID</Label>
-                  <Input
-                    id="dblpId"
-                    placeholder="e.g., homepages/s/JohnSmith"
-                    {...form.register('dblpId')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scopusAuthorId">Scopus Author ID</Label>
-                  <Input
-                    id="scopusAuthorId"
-                    placeholder="Scopus author identifier"
-                    {...form.register('scopusAuthorId')}
-                  />
-                </div>
+                {/* Semantic Scholar with autocomplete */}
+                <AuthorIdAutocompleteInput
+                  idType="semanticScholar"
+                  value={form.watch('semanticScholarId') ?? ''}
+                  onChange={(value) => form.setValue('semanticScholarId', value || undefined)}
+                  displayName={form.watch('displayName')}
+                />
+
+                {/* OpenAlex with autocomplete */}
+                <AuthorIdAutocompleteInput
+                  idType="openAlex"
+                  value={form.watch('openAlexId') ?? ''}
+                  onChange={(value) => form.setValue('openAlexId', value || undefined)}
+                  displayName={form.watch('displayName')}
+                />
+
+                {/* DBLP with autocomplete */}
+                <AuthorIdAutocompleteInput
+                  idType="dblp"
+                  value={form.watch('dblpId') ?? ''}
+                  onChange={(value) => form.setValue('dblpId', value || undefined)}
+                  displayName={form.watch('displayName')}
+                />
+
+                {/* Google Scholar with URL extraction */}
+                <AuthorIdAutocompleteInput
+                  idType="googleScholar"
+                  value={form.watch('googleScholarId') ?? ''}
+                  onChange={(value) => form.setValue('googleScholarId', value || undefined)}
+                />
+
+                {/* OpenReview with URL extraction */}
+                <AuthorIdAutocompleteInput
+                  idType="openReview"
+                  value={form.watch('openReviewId') ?? ''}
+                  onChange={(value) => form.setValue('openReviewId', value || undefined)}
+                />
+
+                {/* Scopus with URL extraction */}
+                <AuthorIdAutocompleteInput
+                  idType="scopus"
+                  value={form.watch('scopusAuthorId') ?? ''}
+                  onChange={(value) => form.setValue('scopusAuthorId', value || undefined)}
+                />
               </div>
             </CollapsibleSection>
           </div>

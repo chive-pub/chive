@@ -68,8 +68,6 @@ export async function getUserClaimsHandler(
       id: claim.id,
       importId: claim.importId,
       claimantDid: claim.claimantDid,
-      evidence: [...claim.evidence],
-      verificationScore: claim.verificationScore,
       status: claim.status,
       canonicalUri: claim.canonicalUri,
       rejectionReason: claim.rejectionReason,

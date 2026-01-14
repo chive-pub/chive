@@ -2,7 +2,7 @@
  * Handler for pub.chive.discovery.getCitations.
  *
  * @remarks
- * Returns citation network data for a eprint, including papers that
+ * Returns citation network data for an eprint, including papers that
  * cite it and papers it references (within the Chive index).
  *
  * @packageDocumentation
@@ -139,7 +139,7 @@ export async function getCitationsHandler(
 export const getCitationsEndpoint: XRPCEndpoint<GetCitationsParams, GetCitationsResponse> = {
   method: 'pub.chive.discovery.getCitations' as never,
   type: 'query',
-  description: 'Get citation network for a eprint',
+  description: 'Get citation network for an eprint',
   inputSchema: getCitationsParamsSchema,
   outputSchema: getCitationsResponseSchema,
   handler: getCitationsHandler,

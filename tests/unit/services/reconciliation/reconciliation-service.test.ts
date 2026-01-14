@@ -7,9 +7,11 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { ReconciliationService } from '../../../../src/services/reconciliation/reconciliation-service.js';
+import {
+  ReconciliationService,
+  type ReconciliationEvidence,
+} from '../../../../src/services/reconciliation/reconciliation-service.js';
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
-import type { ClaimEvidence } from '../../../../src/types/interfaces/plugin.interface.js';
 
 // ============================================================================
 // Mock Factories
@@ -76,9 +78,9 @@ const SAMPLE_RECONCILIATION_ROW = {
   updated_at: new Date('2024-01-15T12:00:00Z'),
 };
 
-const SAMPLE_EVIDENCE: ClaimEvidence[] = [
-  { type: 'orcid-match', score: 1.0, details: 'ORCID profile linked' },
-  { type: 'semantic-scholar-match', score: 0.9, details: 'Semantic Scholar profile matched' },
+const SAMPLE_EVIDENCE: ReconciliationEvidence[] = [
+  { type: 'orcid-match', score: 1.0 },
+  { type: 'semantic-scholar-match', score: 0.9 },
 ];
 
 // ============================================================================

@@ -53,7 +53,7 @@ test.describe('Home page', () => {
     const homePage = new HomePage(page);
     await homePage.goto();
 
-    // The home page has "Submit a Eprint" link in the CTA section or Quick Access
+    // The home page has "Submit an Eprint" link in the CTA section or Quick Access
     const submitButton = page
       .getByRole('link', { name: /submit.*eprint/i })
       .first()

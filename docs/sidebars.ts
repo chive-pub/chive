@@ -122,9 +122,7 @@ const sidebars: SidebarsConfig = {
         'governance/voting-system',
         'governance/proposals',
         'governance/authority-control',
-        'governance/moderation',
         'governance/governance-pds',
-        'governance/organization',
       ],
     },
     {

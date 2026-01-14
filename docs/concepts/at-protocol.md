@@ -52,7 +52,7 @@ Key properties of PDSes:
 Your PDS contains a **repository**, a collection of signed records organized by type.
 
 ```typescript
-// Example: A eprint submission record
+// Example: An eprint submission record
 {
   "$type": "pub.chive.eprint.submission",
   "title": "Novel Approach to Quantum Computing",

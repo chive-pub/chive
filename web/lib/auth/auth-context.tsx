@@ -38,6 +38,7 @@ import {
   setE2EMockAgent,
 } from './oauth-client';
 import { clearServiceAuthTokens } from './service-auth';
+import { ensureChiveProfile } from '../atproto/record-creator';
 
 /**
  * Initial auth state.
@@ -166,6 +167,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             },
             error: null,
           });
+
+          // Ensure user has a Chive profile record in their PDS
+          // This enables author profile pages even for users with no eprints
+          const agent = getCurrentAgent();
+          if (agent) {
+            ensureChiveProfile(agent).catch((err) => {
+              console.warn('Failed to ensure Chive profile:', err);
+            });
+          }
           return;
         }
 

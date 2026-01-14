@@ -22,7 +22,7 @@
  * ```typescript
  * const repo = new EprintsRepository(pool);
  *
- * // Store a eprint
+ * // Store an eprint
  * const result = await repo.store({
  *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
  *   cid: toCID('bafyreib...')!,
@@ -126,7 +126,7 @@ export class EprintsRepository {
   private readonly pool: Pool;
 
   /**
-   * Creates a eprints repository.
+   * Creates an eprints repository.
    *
    * @param pool - PostgreSQL connection pool
    *
@@ -139,7 +139,7 @@ export class EprintsRepository {
   }
 
   /**
-   * Stores or updates a eprint index record.
+   * Stores or updates an eprint index record.
    *
    * @param eprint - Eprint metadata to index
    * @returns Result indicating success or failure
@@ -230,7 +230,7 @@ export class EprintsRepository {
   }
 
   /**
-   * Retrieves a eprint index record by URI.
+   * Retrieves an eprint index record by URI.
    *
    * @param uri - AT URI of the eprint
    * @returns Eprint if indexed, null otherwise
@@ -519,7 +519,7 @@ export class EprintsRepository {
   }
 
   /**
-   * Deletes a eprint from the index.
+   * Deletes an eprint from the index.
    *
    * @param uri - Eprint URI
    * @returns Result indicating success or failure
@@ -649,5 +649,118 @@ export class EprintsRepository {
       indexedAt: new Date(row.indexed_at),
       createdAt: new Date(row.created_at),
     };
+  }
+
+  /**
+   * Finds an eprint by external identifiers.
+   *
+   * @param externalIds - External service identifiers to search
+   * @returns First matching eprint or null
+   *
+   * @remarks
+   * Searches in priority order: DOI, arXiv, Semantic Scholar, OpenAlex, DBLP,
+   * OpenReview, PubMed, SSRN. Uses the GIN index on external_ids JSONB column.
+   *
+   * @example
+   * ```typescript
+   * const eprint = await repo.findByExternalIds({
+   *   doi: '10.1234/example',
+   *   arxivId: '2301.12345',
+   * });
+   * ```
+   *
+   * @public
+   */
+  async findByExternalIds(externalIds: {
+    doi?: string;
+    arxivId?: string;
+    semanticScholarId?: string;
+    openAlexId?: string;
+    dblpId?: string;
+    openReviewId?: string;
+    pmid?: string;
+    ssrnId?: string;
+  }): Promise<StoredEprint | null> {
+    // Build OR conditions for each provided external ID
+    const conditions: string[] = [];
+    const params: string[] = [];
+    let paramIndex = 1;
+
+    // DOI is stored both in external_ids and published_version
+    if (externalIds.doi) {
+      conditions.push(`external_ids->>'doi' = $${paramIndex}`);
+      conditions.push(`published_version->>'doi' = $${paramIndex}`);
+      params.push(externalIds.doi);
+      paramIndex++;
+    }
+
+    if (externalIds.arxivId) {
+      conditions.push(`external_ids->>'arxivId' = $${paramIndex}`);
+      params.push(externalIds.arxivId);
+      paramIndex++;
+    }
+
+    if (externalIds.semanticScholarId) {
+      conditions.push(`external_ids->>'semanticScholarId' = $${paramIndex}`);
+      params.push(externalIds.semanticScholarId);
+      paramIndex++;
+    }
+
+    if (externalIds.openAlexId) {
+      conditions.push(`external_ids->>'openAlexId' = $${paramIndex}`);
+      params.push(externalIds.openAlexId);
+      paramIndex++;
+    }
+
+    if (externalIds.dblpId) {
+      conditions.push(`external_ids->>'dblpId' = $${paramIndex}`);
+      params.push(externalIds.dblpId);
+      paramIndex++;
+    }
+
+    if (externalIds.openReviewId) {
+      conditions.push(`external_ids->>'openReviewId' = $${paramIndex}`);
+      params.push(externalIds.openReviewId);
+      paramIndex++;
+    }
+
+    if (externalIds.pmid) {
+      conditions.push(`external_ids->>'pmid' = $${paramIndex}`);
+      params.push(externalIds.pmid);
+      paramIndex++;
+    }
+
+    if (externalIds.ssrnId) {
+      conditions.push(`external_ids->>'ssrnId' = $${paramIndex}`);
+      params.push(externalIds.ssrnId);
+      paramIndex++;
+    }
+
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    const query = `
+      SELECT
+        uri, cid, authors, submitted_by, paper_did, title, abstract,
+        document_blob_cid, document_blob_mime_type, document_blob_size,
+        document_format, keywords, license, publication_status,
+        previous_version_uri, version_notes, supplementary_materials,
+        published_version, external_ids, related_works, repositories,
+        funding, conference_presentation, fields, pds_url, indexed_at, created_at
+      FROM eprints_index
+      WHERE ${conditions.join(' OR ')}
+      LIMIT 1
+    `;
+
+    try {
+      const result = await this.pool.query<EprintRow>(query, params);
+      const row = result.rows[0];
+      return row ? this.rowToEprint(row) : null;
+    } catch (error) {
+      throw error instanceof Error
+        ? error
+        : new Error(`Failed to find eprint by external IDs: ${String(error)}`);
+    }
   }
 }

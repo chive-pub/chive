@@ -10,7 +10,7 @@ If you signed into Chive with your Bluesky account, you're already connected. Ot
 2. Click **Connect Bluesky**
 3. Authorize Chive to post on your behalf
 
-## Sharing a eprint
+## Sharing an eprint
 
 ### Quick share
 

@@ -114,6 +114,10 @@ export type {
   SupplementaryCategory,
 } from './supplementary-panel';
 
+// Repositories panel (code, data, models)
+export { RepositoriesPanel } from './repositories-panel';
+export type { RepositoriesPanelProps } from './repositories-panel';
+
 // Funding panel
 export { FundingPanel } from './funding-panel';
 export type { FundingPanelProps, FundingSource } from './funding-panel';

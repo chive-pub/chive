@@ -49,10 +49,10 @@ All services return `Result<T, Error>` types for explicit error handling.
 
 ### Author and identity
 
-| Service                          | Purpose                 | Key operations                             |
-| -------------------------------- | ----------------------- | ------------------------------------------ |
-| [ClaimingService](./claiming.md) | Authorship verification | `startClaim()`, `collectEvidence()`        |
-| ReconciliationService            | Import reconciliation   | `createReconciliation()`, `updateStatus()` |
+| Service                          | Purpose               | Key operations                                 |
+| -------------------------------- | --------------------- | ---------------------------------------------- |
+| [ClaimingService](./claiming.md) | Paper claiming        | `getSubmissionData()`, `requestCoauthorship()` |
+| ReconciliationService            | Import reconciliation | `createReconciliation()`, `updateStatus()`     |
 
 ### Infrastructure
 

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
  * Not found page for eprints.
  *
  * @remarks
- * Displayed when a eprint cannot be found.
+ * Displayed when an eprint cannot be found.
  */
 export default function EprintNotFound() {
   return (
@@ -17,7 +17,7 @@ export default function EprintNotFound() {
       </div>
       <h1 className="mb-2 text-2xl font-bold">Eprint not found</h1>
       <p className="mb-6 max-w-md text-muted-foreground">
-        We couldn&apos;t find a eprint with that identifier. It may have been removed or the URI
+        We couldn&apos;t find an eprint with that identifier. It may have been removed or the URI
         might be incorrect.
       </p>
       <div className="flex gap-4">

@@ -12,7 +12,7 @@
 import type { Pool } from 'pg';
 
 import type { DID } from '../../types/atproto.js';
-import { DatabaseError, ValidationError } from '../../types/errors.js';
+import { DatabaseError, NotFoundError, ValidationError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 /**
@@ -59,6 +59,15 @@ export interface AlphaAffiliation {
 }
 
 /**
+ * Alpha application research keyword.
+ */
+export interface AlphaResearchKeyword {
+  readonly label: string;
+  readonly fastId?: string;
+  readonly wikidataId?: string;
+}
+
+/**
  * Alpha application input.
  */
 export interface ApplyInput {
@@ -69,8 +78,8 @@ export interface ApplyInput {
   readonly sectorOther?: string;
   readonly careerStage: AlphaCareerStage;
   readonly careerStageOther?: string;
-  readonly affiliation?: AlphaAffiliation;
-  readonly researchField: string;
+  readonly affiliations?: readonly AlphaAffiliation[];
+  readonly researchKeywords: readonly AlphaResearchKeyword[];
   readonly motivation?: string;
 }
 
@@ -86,8 +95,8 @@ export interface AlphaApplication {
   readonly sectorOther?: string;
   readonly careerStage: AlphaCareerStage;
   readonly careerStageOther?: string;
-  readonly affiliation?: AlphaAffiliation;
-  readonly researchField: string;
+  readonly affiliations: readonly AlphaAffiliation[];
+  readonly researchKeywords: readonly AlphaResearchKeyword[];
   readonly motivation?: string;
   readonly status: AlphaApplicationStatus;
   readonly zulipInvited: boolean;
@@ -143,8 +152,8 @@ export class AlphaApplicationService {
       sectorOther,
       careerStage,
       careerStageOther,
-      affiliation,
-      researchField,
+      affiliations,
+      researchKeywords,
       motivation,
     } = input;
 
@@ -164,9 +173,8 @@ export class AlphaApplicationService {
         sector_other: string | null;
         career_stage: string;
         career_stage_other: string | null;
-        affiliation_name: string | null;
-        affiliation_ror_id: string | null;
-        research_field: string;
+        affiliations: AlphaAffiliation[];
+        research_keywords: AlphaResearchKeyword[];
         motivation: string | null;
         status: string;
         zulip_invited: boolean;
@@ -175,8 +183,8 @@ export class AlphaApplicationService {
         created_at: Date;
         updated_at: Date;
       }>(
-        `INSERT INTO alpha_applications (did, handle, email, sector, sector_other, career_stage, career_stage_other, affiliation_name, affiliation_ror_id, research_field, motivation)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO alpha_applications (did, handle, email, sector, sector_other, career_stage, career_stage_other, affiliations, research_keywords, motivation)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING *`,
         [
           did,
@@ -186,9 +194,8 @@ export class AlphaApplicationService {
           sectorOther,
           careerStage,
           careerStageOther,
-          affiliation?.name,
-          affiliation?.rorId,
-          researchField,
+          JSON.stringify(affiliations ?? []),
+          JSON.stringify(researchKeywords),
           motivation,
         ]
       );
@@ -234,9 +241,8 @@ export class AlphaApplicationService {
         sector_other: string | null;
         career_stage: string;
         career_stage_other: string | null;
-        affiliation_name: string | null;
-        affiliation_ror_id: string | null;
-        research_field: string;
+        affiliations: AlphaAffiliation[];
+        research_keywords: AlphaResearchKeyword[];
         motivation: string | null;
         status: string;
         zulip_invited: boolean;
@@ -285,6 +291,239 @@ export class AlphaApplicationService {
     };
   }
 
+  /**
+   * Approve an alpha application.
+   *
+   * @param did - Applicant's DID
+   * @param reviewerDid - Reviewer's DID (optional)
+   * @returns Updated application
+   * @throws NotFoundError if application not found
+   * @throws ValidationError if application is not pending
+   */
+  async approve(did: DID, reviewerDid?: DID): Promise<AlphaApplication> {
+    const existing = await this.getByDid(did);
+    if (!existing) {
+      throw new NotFoundError('AlphaApplication', did);
+    }
+
+    if (existing.status !== 'pending') {
+      throw new ValidationError(
+        `Application is already ${existing.status}`,
+        'status',
+        'pending_required'
+      );
+    }
+
+    try {
+      const result = await this.pool.query<{
+        id: string;
+        did: string;
+        handle: string | null;
+        email: string;
+        sector: string;
+        sector_other: string | null;
+        career_stage: string;
+        career_stage_other: string | null;
+        affiliations: AlphaAffiliation[];
+        research_keywords: AlphaResearchKeyword[];
+        motivation: string | null;
+        status: string;
+        zulip_invited: boolean;
+        reviewed_at: Date | null;
+        reviewed_by: string | null;
+        created_at: Date;
+        updated_at: Date;
+      }>(
+        `UPDATE alpha_applications
+         SET status = 'approved',
+             reviewed_at = NOW(),
+             reviewed_by = $2,
+             updated_at = NOW()
+         WHERE did = $1
+         RETURNING *`,
+        [did, reviewerDid ?? null]
+      );
+
+      const row = result.rows[0];
+      if (!row) {
+        throw new DatabaseError('UPDATE', 'Failed to approve application');
+      }
+
+      this.logger.info('Alpha application approved', { did, reviewerDid });
+
+      return this.mapRowToApplication(row);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof ValidationError) {
+        throw error;
+      }
+      this.logger.error(
+        'Failed to approve alpha application',
+        error instanceof Error ? error : undefined
+      );
+      throw new DatabaseError(
+        'UPDATE',
+        'Failed to approve application',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Reject an alpha application.
+   *
+   * @param did - Applicant's DID
+   * @param reviewerDid - Reviewer's DID (optional)
+   * @returns Updated application
+   * @throws NotFoundError if application not found
+   * @throws ValidationError if application is not pending
+   */
+  async reject(did: DID, reviewerDid?: DID): Promise<AlphaApplication> {
+    const existing = await this.getByDid(did);
+    if (!existing) {
+      throw new NotFoundError('AlphaApplication', did);
+    }
+
+    if (existing.status !== 'pending') {
+      throw new ValidationError(
+        `Application is already ${existing.status}`,
+        'status',
+        'pending_required'
+      );
+    }
+
+    try {
+      const result = await this.pool.query<{
+        id: string;
+        did: string;
+        handle: string | null;
+        email: string;
+        sector: string;
+        sector_other: string | null;
+        career_stage: string;
+        career_stage_other: string | null;
+        affiliations: AlphaAffiliation[];
+        research_keywords: AlphaResearchKeyword[];
+        motivation: string | null;
+        status: string;
+        zulip_invited: boolean;
+        reviewed_at: Date | null;
+        reviewed_by: string | null;
+        created_at: Date;
+        updated_at: Date;
+      }>(
+        `UPDATE alpha_applications
+         SET status = 'rejected',
+             reviewed_at = NOW(),
+             reviewed_by = $2,
+             updated_at = NOW()
+         WHERE did = $1
+         RETURNING *`,
+        [did, reviewerDid ?? null]
+      );
+
+      const row = result.rows[0];
+      if (!row) {
+        throw new DatabaseError('UPDATE', 'Failed to reject application');
+      }
+
+      this.logger.info('Alpha application rejected', { did, reviewerDid });
+
+      return this.mapRowToApplication(row);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof ValidationError) {
+        throw error;
+      }
+      this.logger.error(
+        'Failed to reject alpha application',
+        error instanceof Error ? error : undefined
+      );
+      throw new DatabaseError(
+        'UPDATE',
+        'Failed to reject application',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Mark that Zulip invitation was sent.
+   *
+   * @param did - Applicant's DID
+   * @throws NotFoundError if application not found
+   */
+  async markZulipInvited(did: DID): Promise<void> {
+    try {
+      const result = await this.pool.query(
+        `UPDATE alpha_applications
+         SET zulip_invited = true,
+             updated_at = NOW()
+         WHERE did = $1`,
+        [did]
+      );
+
+      if (result.rowCount === 0) {
+        throw new NotFoundError('AlphaApplication', did);
+      }
+
+      this.logger.info('Marked Zulip invited', { did });
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      this.logger.error('Failed to mark Zulip invited', error instanceof Error ? error : undefined);
+      throw new DatabaseError(
+        'UPDATE',
+        'Failed to mark Zulip invited',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * List all pending applications.
+   *
+   * @returns List of pending applications
+   */
+  async listPending(): Promise<AlphaApplication[]> {
+    try {
+      const result = await this.pool.query<{
+        id: string;
+        did: string;
+        handle: string | null;
+        email: string;
+        sector: string;
+        sector_other: string | null;
+        career_stage: string;
+        career_stage_other: string | null;
+        affiliations: AlphaAffiliation[];
+        research_keywords: AlphaResearchKeyword[];
+        motivation: string | null;
+        status: string;
+        zulip_invited: boolean;
+        reviewed_at: Date | null;
+        reviewed_by: string | null;
+        created_at: Date;
+        updated_at: Date;
+      }>(
+        `SELECT * FROM alpha_applications
+         WHERE status = 'pending'
+         ORDER BY created_at ASC`
+      );
+
+      return result.rows.map((row) => this.mapRowToApplication(row));
+    } catch (error) {
+      this.logger.error(
+        'Failed to list pending applications',
+        error instanceof Error ? error : undefined
+      );
+      throw new DatabaseError(
+        'READ',
+        'Failed to list pending applications',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
   private mapRowToApplication(row: {
     id: string;
     did: string;
@@ -294,9 +533,8 @@ export class AlphaApplicationService {
     sector_other: string | null;
     career_stage: string;
     career_stage_other: string | null;
-    affiliation_name: string | null;
-    affiliation_ror_id: string | null;
-    research_field: string;
+    affiliations: AlphaAffiliation[];
+    research_keywords: AlphaResearchKeyword[];
     motivation: string | null;
     status: string;
     zulip_invited: boolean;
@@ -314,10 +552,8 @@ export class AlphaApplicationService {
       sectorOther: row.sector_other ?? undefined,
       careerStage: row.career_stage as AlphaCareerStage,
       careerStageOther: row.career_stage_other ?? undefined,
-      affiliation: row.affiliation_name
-        ? { name: row.affiliation_name, rorId: row.affiliation_ror_id ?? undefined }
-        : undefined,
-      researchField: row.research_field,
+      affiliations: row.affiliations ?? [],
+      researchKeywords: row.research_keywords ?? [],
       motivation: row.motivation ?? undefined,
       status: row.status as AlphaApplicationStatus,
       zulipInvited: row.zulip_invited,

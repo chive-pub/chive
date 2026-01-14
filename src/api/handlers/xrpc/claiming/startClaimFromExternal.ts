@@ -72,13 +72,6 @@ export async function startClaimFromExternalHandler(
       id: claim.id,
       importId: claim.importId,
       claimantDid: claim.claimantDid,
-      evidence: claim.evidence.map((e) => ({
-        type: e.type,
-        score: e.score,
-        details: e.details,
-        data: e.data,
-      })),
-      verificationScore: claim.verificationScore,
       status: claim.status,
       canonicalUri: claim.canonicalUri,
       rejectionReason: claim.rejectionReason,

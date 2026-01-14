@@ -2,7 +2,7 @@
  * Handler for pub.chive.metrics.getMetrics.
  *
  * @remarks
- * Gets comprehensive metrics for a eprint.
+ * Gets comprehensive metrics for an eprint.
  *
  * @packageDocumentation
  * @public
@@ -58,7 +58,7 @@ export async function getMetricsHandler(
 export const getMetricsEndpoint: XRPCEndpoint<GetMetricsParams, EprintMetrics> = {
   method: 'pub.chive.metrics.getMetrics' as never,
   type: 'query',
-  description: 'Get comprehensive metrics for a eprint',
+  description: 'Get comprehensive metrics for an eprint',
   inputSchema: getMetricsParamsSchema,
   outputSchema: eprintMetricsSchema,
   handler: getMetricsHandler,

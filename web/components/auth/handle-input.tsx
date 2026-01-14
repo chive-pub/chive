@@ -182,7 +182,7 @@ export function HandleInput({
                 role="option"
                 aria-selected={index === selectedIndex}
                 className={cn(
-                  'flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-accent',
+                  'flex cursor-pointer items-center justify-start gap-3 px-3 py-2 hover:bg-accent',
                   index === selectedIndex && 'bg-accent'
                 )}
                 onClick={() => handleSelectSuggestion(actor)}
@@ -195,7 +195,7 @@ export function HandleInput({
                     <User className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
-                <div className="flex-1 overflow-hidden">
+                <div className="overflow-hidden text-left">
                   {actor.displayName && (
                     <p className="truncate text-sm font-medium">{actor.displayName}</p>
                   )}

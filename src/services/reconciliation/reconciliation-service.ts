@@ -24,7 +24,6 @@ import { injectable, inject } from 'tsyringe';
 
 import { DatabaseError, NotFoundError, ValidationError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
-import type { ClaimEvidence } from '../../types/interfaces/plugin.interface.js';
 
 /**
  * Reconciliation record type (matches pub.chive.graph.reconciliation lexicon).
@@ -136,7 +135,7 @@ export interface CreateReconciliationOptions {
   readonly importUri: string;
   readonly canonicalUri: string;
   readonly reconciliationType: 'claim' | 'merge' | 'supersede';
-  readonly evidence: readonly ClaimEvidence[];
+  readonly evidence?: readonly ReconciliationEvidence[];
   readonly verifiedBy?: string;
   readonly notes?: string;
 }
@@ -206,7 +205,7 @@ export class ReconciliationService implements IReconciliationService {
    */
   async createReconciliation(options: CreateReconciliationOptions): Promise<StoredReconciliation> {
     // Convert claim evidence to reconciliation evidence summary
-    const evidenceSummary: ReconciliationEvidence[] = options.evidence.map((e) => ({
+    const evidenceSummary: ReconciliationEvidence[] = (options.evidence ?? []).map((e) => ({
       type: e.type,
       score: e.score,
     }));

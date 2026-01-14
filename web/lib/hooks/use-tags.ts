@@ -152,7 +152,7 @@ export interface CreateTagInput {
 // =============================================================================
 
 /**
- * Fetches tags for a eprint.
+ * Fetches tags for an eprint.
  *
  * @remarks
  * Returns user-generated tags along with TaxoFolk suggestions.
@@ -520,7 +520,7 @@ export function useDeleteTag() {
  * Improves perceived performance by loading tag data before
  * the user views the tags section.
  *
- * @returns Function to prefetch tags for a eprint
+ * @returns Function to prefetch tags for an eprint
  */
 export function usePrefetchTags() {
   const queryClient = useQueryClient();

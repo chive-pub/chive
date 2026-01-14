@@ -4,7 +4,7 @@
   "defs": {
     "main": {
       "type": "query",
-      "description": "Retrieve a eprint submission by URI",
+      "description": "Retrieve an eprint submission by URI",
       "parameters": {
         "type": "params",
         "required": ["uri"],

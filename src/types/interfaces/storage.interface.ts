@@ -303,7 +303,7 @@ export interface EprintQueryOptions {
  */
 export interface IStorageBackend {
   /**
-   * Stores or updates a eprint index record.
+   * Stores or updates an eprint index record.
    *
    * @param eprint - Eprint metadata to index
    * @returns Result indicating success or failure
@@ -345,7 +345,7 @@ export interface IStorageBackend {
   storeEprint(eprint: StoredEprint): Promise<Result<void, Error>>;
 
   /**
-   * Retrieves a eprint index record by URI.
+   * Retrieves an eprint index record by URI.
    *
    * @param uri - AT URI of the eprint
    * @returns Eprint if indexed, null otherwise
@@ -412,6 +412,51 @@ export interface IStorageBackend {
    * @public
    */
   listEprintUris(options?: { limit?: number; cursor?: string }): Promise<readonly string[]>;
+
+  /**
+   * Finds an eprint by external identifiers.
+   *
+   * @param externalIds - External service identifiers to search
+   * @returns First matching eprint or null
+   *
+   * @remarks
+   * Searches the eprints index by DOI and external IDs stored in the
+   * `external_ids` JSONB column. Returns the first match found.
+   *
+   * Search priority:
+   * 1. DOI (most authoritative)
+   * 2. arXiv ID
+   * 3. Semantic Scholar ID
+   * 4. OpenAlex ID
+   * 5. DBLP ID
+   * 6. OpenReview ID
+   * 7. PubMed ID
+   * 8. SSRN ID
+   *
+   * @example
+   * ```typescript
+   * const eprint = await storage.findByExternalIds({
+   *   doi: '10.1234/example',
+   *   arxivId: '2301.12345',
+   * });
+   *
+   * if (eprint) {
+   *   console.log('Found duplicate:', eprint.uri);
+   * }
+   * ```
+   *
+   * @public
+   */
+  findByExternalIds(externalIds: {
+    doi?: string;
+    arxivId?: string;
+    semanticScholarId?: string;
+    openAlexId?: string;
+    dblpId?: string;
+    openReviewId?: string;
+    pmid?: string;
+    ssrnId?: string;
+  }): Promise<StoredEprint | null>;
 
   /**
    * Tracks PDS source for staleness detection.

@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.backlink.list.
  *
  * @remarks
- * Lists backlinks to a eprint from ATProto ecosystem sources including
+ * Lists backlinks to an eprint from ATProto ecosystem sources including
  * Semble collections, Leaflet lists, Whitewind blogs, and Bluesky shares.
  *
  * **ATProto Compliance:**
@@ -107,7 +107,7 @@ export async function listBacklinksHandler(
 export const listBacklinksEndpoint: XRPCEndpoint<ListBacklinksParams, ListBacklinksResponse> = {
   method: 'pub.chive.backlink.list' as never,
   type: 'query',
-  description: 'List backlinks to a eprint',
+  description: 'List backlinks to an eprint',
   inputSchema: listBacklinksParamsSchema,
   outputSchema: listBacklinksResponseSchema,
   handler: listBacklinksHandler,

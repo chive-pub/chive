@@ -105,7 +105,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
-   * Stores or updates a eprint index record.
+   * Stores or updates an eprint index record.
    *
    * @param eprint - Eprint metadata to index
    * @returns Result indicating success or failure
@@ -143,7 +143,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
-   * Retrieves a eprint index record by URI.
+   * Retrieves an eprint index record by URI.
    *
    * @param uri - AT URI of the eprint
    * @returns Eprint if indexed, null otherwise
@@ -242,6 +242,39 @@ export class PostgreSQLAdapter implements IStorageBackend {
    */
   async trackPDSSource(uri: AtUri, pdsUrl: string, lastSynced: Date): Promise<Result<void, Error>> {
     return this.pdsTracker.trackSource(uri, pdsUrl, lastSynced);
+  }
+
+  /**
+   * Finds an eprint by external identifiers.
+   *
+   * @param externalIds - External service identifiers to search
+   * @returns First matching eprint or null
+   *
+   * @remarks
+   * Delegates to EprintsRepository for the query.
+   * Searches by DOI, arXiv ID, Semantic Scholar ID, etc.
+   *
+   * @example
+   * ```typescript
+   * const eprint = await adapter.findByExternalIds({
+   *   doi: '10.1234/example',
+   *   arxivId: '2301.12345',
+   * });
+   * ```
+   *
+   * @public
+   */
+  async findByExternalIds(externalIds: {
+    doi?: string;
+    arxivId?: string;
+    semanticScholarId?: string;
+    openAlexId?: string;
+    dblpId?: string;
+    openReviewId?: string;
+    pmid?: string;
+    ssrnId?: string;
+  }): Promise<StoredEprint | null> {
+    return this.eprintsRepo.findByExternalIds(externalIds);
   }
 
   /**

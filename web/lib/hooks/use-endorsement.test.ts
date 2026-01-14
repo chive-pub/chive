@@ -110,7 +110,7 @@ describe('useEndorsements', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches endorsements for a eprint', async () => {
+  it('fetches endorsements for an eprint', async () => {
     const mockResponse = createMockEndorsementsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -588,7 +588,7 @@ describe('usePrefetchEndorsements', () => {
     vi.clearAllMocks();
   });
 
-  it('prefetches endorsement summary for a eprint', async () => {
+  it('prefetches endorsement summary for an eprint', async () => {
     const mockSummary = createMockEndorsementSummary();
     mockApiGet.mockResolvedValueOnce({
       data: mockSummary,

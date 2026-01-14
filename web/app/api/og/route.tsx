@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Generate OG image for a eprint.
+ * Generate OG image for an eprint.
  */
 async function generateEprintImage(params: URLSearchParams): Promise<ImageResponse> {
   const title = params.get('title') || 'Untitled Eprint';

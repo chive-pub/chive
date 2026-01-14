@@ -119,7 +119,7 @@ Endpoints for peer reviews and comments.
 
 ### pub.chive.review.getThread
 
-Get a review thread for a eprint.
+Get a review thread for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -155,7 +155,7 @@ Get a review thread for a eprint.
 
 ### pub.chive.review.listForEprint
 
-List all reviews for a eprint.
+List all reviews for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -179,7 +179,7 @@ Endpoints for formal endorsements.
 
 ### pub.chive.endorsement.getSummary
 
-Get endorsement summary for a eprint.
+Get endorsement summary for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -216,7 +216,7 @@ Get endorsement summary for a eprint.
 
 ### pub.chive.endorsement.listForEprint
 
-List all endorsements for a eprint.
+List all endorsements for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -233,7 +233,7 @@ List all endorsements for a eprint.
 
 ### pub.chive.endorsement.getUserEndorsement
 
-Get a specific user's endorsement for a eprint.
+Get a specific user's endorsement for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -416,7 +416,7 @@ Search tags.
 
 ### pub.chive.tag.listForEprint
 
-List tags on a eprint.
+List tags on an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -593,7 +593,7 @@ Endpoints for analytics and engagement metrics.
 
 ### pub.chive.metrics.getMetrics
 
-Get metrics for a eprint.
+Get metrics for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -628,7 +628,7 @@ Get metrics for a eprint.
 
 ### pub.chive.metrics.getViewCount
 
-Get view count for a eprint.
+Get view count for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -715,7 +715,7 @@ Record a search result click.
 
 ### pub.chive.metrics.recordDwellTime
 
-Record time spent on a eprint.
+Record time spent on an eprint.
 
 | Property | Value            |
 | -------- | ---------------- |
@@ -787,7 +787,7 @@ Get eprints similar to a given eprint.
 
 ### pub.chive.discovery.getCitations
 
-Get citation graph for a eprint.
+Get citation graph for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -804,7 +804,7 @@ Get citation graph for a eprint.
 
 ### pub.chive.discovery.getEnrichment
 
-Get enriched metadata for a eprint.
+Get enriched metadata for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -878,16 +878,68 @@ Get details of a claim.
 
 ### pub.chive.claiming.completeClaim
 
-Complete a pending claim with verification.
+Complete a pending claim by linking to the canonical record.
 
 | Property | Value            |
 | -------- | ---------------- |
 | Method   | Procedure (POST) |
 | Auth     | Required         |
 
-### pub.chive.claiming.collectEvidence
+### pub.chive.claiming.getSubmissionData
 
-Collect evidence for a claim.
+Get prefilled submission data for external claiming.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Required    |
+
+**Parameters**
+
+| Name         | Type   | Required | Description         |
+| ------------ | ------ | -------- | ------------------- |
+| `source`     | string | Yes      | External source     |
+| `externalId` | string | Yes      | External identifier |
+
+### pub.chive.claiming.requestCoauthorship
+
+Request to be added as co-author on an existing paper.
+
+| Property | Value            |
+| -------- | ---------------- |
+| Method   | Procedure (POST) |
+| Auth     | Required         |
+
+### pub.chive.claiming.getCoauthorRequests
+
+Get pending co-author requests for the authenticated user's papers.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Required    |
+
+### pub.chive.claiming.getMyCoauthorRequests
+
+Get co-author requests submitted by the authenticated user.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Required    |
+
+### pub.chive.claiming.approveCoauthor
+
+Approve a co-author request.
+
+| Property | Value            |
+| -------- | ---------------- |
+| Method   | Procedure (POST) |
+| Auth     | Required         |
+
+### pub.chive.claiming.rejectCoauthor
+
+Reject a co-author request.
 
 | Property | Value            |
 | -------- | ---------------- |
@@ -983,7 +1035,7 @@ Endpoints for AT Protocol app references.
 
 ### pub.chive.backlink.list
 
-List backlinks for a eprint.
+List backlinks for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -1017,7 +1069,7 @@ Delete a backlink.
 
 ### pub.chive.backlink.getCounts
 
-Get backlink counts for a eprint.
+Get backlink counts for an eprint.
 
 | Property | Value       |
 | -------- | ----------- |

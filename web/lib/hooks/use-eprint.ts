@@ -233,7 +233,7 @@ export function useEprintsByAuthor(params: UseEprintsByAuthorParams) {
 }
 
 /**
- * Hook for prefetching a eprint on hover/focus.
+ * Hook for prefetching an eprint on hover/focus.
  *
  * @remarks
  * Improves perceived performance by loading eprint data before navigation.
@@ -252,7 +252,7 @@ export function useEprintsByAuthor(params: UseEprintsByAuthorParams) {
  * );
  * ```
  *
- * @returns Function to prefetch a eprint by URI
+ * @returns Function to prefetch an eprint by URI
  */
 export function usePrefetchEprint() {
   const queryClient = useQueryClient();

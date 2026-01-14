@@ -261,7 +261,7 @@ export interface FacetedSearchResults extends SearchResults {
  */
 export interface ISearchEngine {
   /**
-   * Indexes a eprint document.
+   * Indexes an eprint document.
    *
    * @param eprint - Eprint to index
    * @returns Promise resolving when indexed
@@ -373,7 +373,7 @@ export interface ISearchEngine {
    * @returns Promise resolving when deleted
    *
    * @remarks
-   * Use when a eprint is deleted from the user's PDS.
+   * Use when an eprint is deleted from the user's PDS.
    *
    * @example
    * ```typescript

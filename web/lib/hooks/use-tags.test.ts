@@ -99,7 +99,7 @@ describe('useEprintTags', () => {
     vi.clearAllMocks();
   });
 
-  it('fetches tags for a eprint', async () => {
+  it('fetches tags for an eprint', async () => {
     const mockResponse = createMockEprintTagsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
@@ -555,7 +555,7 @@ describe('usePrefetchTags', () => {
     vi.clearAllMocks();
   });
 
-  it('prefetches tags for a eprint', async () => {
+  it('prefetches tags for an eprint', async () => {
     const mockResponse = createMockEprintTagsResponse();
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,

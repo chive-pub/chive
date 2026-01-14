@@ -406,7 +406,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   }
 
   /**
-   * Fetches contributors for a eprint.
+   * Fetches contributors for an eprint.
    *
    * @param eprint - OSF eprint data
    * @returns Array of author names

@@ -111,7 +111,7 @@ import { ElasticsearchAdapter } from '@/storage/elasticsearch/adapter.js';
 
 const adapter = new ElasticsearchAdapter(client, logger);
 
-// Index a eprint
+// Index an eprint
 await adapter.indexEprint({
   uri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
   title: 'Attention Is All You Need',

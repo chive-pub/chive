@@ -1,20 +1,20 @@
 # Endorsements
 
-Endorsements are public signals of support for a eprint from recognized community members.
+Endorsements are public signals of support for an eprint from recognized community members.
 
 ## What is an Endorsement?
 
-An endorsement indicates that a qualified researcher vouches for the quality and significance of a eprint. Unlike anonymous peer review, endorsements are public and linked to the endorser's identity.
+An endorsement indicates that a qualified researcher vouches for the quality and significance of an eprint. Unlike anonymous peer review, endorsements are public and linked to the endorser's identity.
 
 ## Endorsement Types
 
 ### Personal Endorsement
 
-An individual researcher endorses a eprint based on their expertise. The endorser's profile and credentials are visible.
+An individual researcher endorses an eprint based on their expertise. The endorser's profile and credentials are visible.
 
 ### Organizational Endorsement
 
-An organization (e.g., research group, journal) endorses a eprint. Organizational endorsements require authorized representatives.
+An organization (e.g., research group, journal) endorses an eprint. Organizational endorsements require authorized representatives.
 
 ## Endorsement Levels
 

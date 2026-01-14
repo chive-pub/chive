@@ -118,21 +118,28 @@ export type CodePlatformValue =
   | 'github'
   | 'gitlab'
   | 'bitbucket'
+  | 'huggingface'
+  | 'paperswithcode'
   | 'codeberg'
   | 'sourcehut'
   | 'software_heritage'
+  | 'colab'
+  | 'kaggle'
   | 'other';
 
 /**
  * Data platform values.
  */
 export type DataPlatformValue =
+  | 'huggingface'
   | 'zenodo'
   | 'figshare'
   | 'dryad'
   | 'osf'
   | 'dataverse'
   | 'mendeley_data'
+  | 'kaggle'
+  | 'wandb'
   | 'other';
 
 /**
@@ -217,6 +224,37 @@ export interface EprintFormValues {
 }
 
 /**
+ * Prefilled data from external sources for claim mode.
+ *
+ * @remarks
+ * Maps to the getSubmissionData API response format.
+ */
+export interface PrefilledData {
+  title?: string;
+  abstract?: string;
+  authors?: Array<{
+    order: number;
+    name: string;
+    orcid?: string;
+    email?: string;
+    affiliation?: string;
+  }>;
+  keywords?: string[];
+  doi?: string;
+  pdfUrl?: string;
+  /** Pre-fetched PDF file from external source */
+  documentFile?: File;
+  source?: string;
+  externalId?: string;
+  externalUrl?: string;
+  publicationDate?: string;
+  externalIds?: {
+    arxivId?: string;
+    doi?: string;
+  };
+}
+
+/**
  * Props for SubmissionWizard component.
  */
 export interface SubmissionWizardProps {
@@ -224,6 +262,10 @@ export interface SubmissionWizardProps {
   onSuccess?: (result: CreateRecordResult) => void;
   /** Callback when user cancels */
   onCancel?: () => void;
+  /** Prefilled data from external source (for claim mode) */
+  prefilled?: PrefilledData;
+  /** Whether this is a claim flow (vs new submission) */
+  isClaimMode?: boolean;
   /** Additional CSS classes */
   className?: string;
 }
@@ -321,17 +363,35 @@ const formSchema = z.object({
   keywords: z.array(z.string()).max(20).optional(),
   license: z.enum(LICENSE_VALUES),
 
-  // Step 3
-  // Note: Using nullish() to allow null values from E2E test session data
+  // Step 4: Authors
+  // Note: Using nullish() to allow null values and external collaborators without DIDs
   authors: z
     .array(
       z.object({
-        did: z.string().min(1),
-        displayName: z.string().nullish(),
+        did: z.string().nullish(),
+        name: z.string().min(1, 'Author name is required'),
         handle: z.string().nullish(),
         avatar: z.string().nullish(),
         orcid: z.string().nullish(),
-        isPrimary: z.boolean().optional(),
+        email: z.string().email().nullish().or(z.literal('')),
+        order: z.number().int().min(1),
+        affiliations: z.array(
+          z.object({
+            name: z.string(),
+            rorId: z.string().nullish(),
+            department: z.string().nullish(),
+          })
+        ),
+        contributions: z.array(
+          z.object({
+            typeUri: z.string(),
+            typeId: z.string().nullish(),
+            typeLabel: z.string().nullish(),
+            degree: z.enum(['lead', 'equal', 'supporting']),
+          })
+        ),
+        isCorrespondingAuthor: z.boolean(),
+        isHighlighted: z.boolean(),
       })
     )
     .min(1, 'At least one author is required'),
@@ -483,13 +543,36 @@ const stepSchemas = {
  * @param props - Component props
  * @returns Wizard element
  */
-export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionWizardProps) {
+export function SubmissionWizard({
+  onSuccess,
+  onCancel,
+  prefilled,
+  isClaimMode = false,
+  className,
+}: SubmissionWizardProps) {
   const { isAuthenticated, user: _user } = useAuth();
   const agent = useAgent();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Transform prefilled author data to form format
+  const prefilledAuthors: EprintAuthorFormData[] = (prefilled?.authors ?? []).map((a, index) => ({
+    did: undefined,
+    name: a.name,
+    handle: undefined,
+    avatar: undefined,
+    orcid: a.orcid,
+    email: a.email,
+    order: a.order ?? index + 1,
+    affiliations: a.affiliation
+      ? [{ name: a.affiliation, rorId: undefined, department: undefined }]
+      : [],
+    contributions: [],
+    isCorrespondingAuthor: (a.order ?? index + 1) === 1,
+    isHighlighted: false,
+  }));
 
   // Initialize form with react-hook-form
   // Note: Using explicit type assertion since zodResolver inference
@@ -498,17 +581,21 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
     resolver: zodResolver(formSchema) as never,
     mode: 'onChange',
     defaultValues: {
-      title: '',
-      abstract: '',
-      keywords: [],
+      // In claim mode, use prefilled document file if available
+      documentFile: prefilled?.documentFile,
+      title: prefilled?.title ?? '',
+      abstract: prefilled?.abstract ?? '',
+      keywords: prefilled?.keywords ?? [],
       license: 'cc-by-4.0',
-      authors: [],
+      authors: prefilledAuthors,
       fieldNodes: [],
       supplementaryFiles: [],
       supplementaryMaterials: [],
       publicationStatus: 'eprint',
-      publishedVersion: {},
-      externalIds: {},
+      publishedVersion: prefilled?.doi ? { doi: prefilled.doi } : {},
+      externalIds: {
+        arxivId: prefilled?.externalIds?.arxivId,
+      },
       codeRepositories: [],
       dataRepositories: [],
       preregistration: {},
@@ -578,7 +665,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
   // Handle form submission
   const handleSubmit = useCallback(async () => {
     if (!agent || !isAuthenticated) {
-      setSubmitError('You must be logged in to submit a eprint');
+      setSubmitError('You must be logged in to submit an eprint');
       return;
     }
 
@@ -659,7 +746,7 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
       case 2:
         return <StepMetadata form={form} />;
       case 3:
-        return <StepAuthors form={form} />;
+        return <StepAuthors form={form} isImportMode={isClaimMode} />;
       case 4:
         return <StepFields form={form} />;
       case 5:
@@ -733,12 +820,12 @@ export function SubmissionWizard({ onSuccess, onCancel, className }: SubmissionW
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Submitting...
+                      {isClaimMode ? 'Importing...' : 'Submitting...'}
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4 mr-2" />
-                      Submit Eprint
+                      {isClaimMode ? 'Import Paper' : 'Submit Eprint'}
                     </>
                   )}
                 </Button>

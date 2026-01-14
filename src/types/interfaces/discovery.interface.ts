@@ -623,7 +623,7 @@ export type UserInteractionType =
  */
 export interface IDiscoveryService {
   /**
-   * Enriches a eprint with data from Semantic Scholar and OpenAlex.
+   * Enriches an eprint with data from Semantic Scholar and OpenAlex.
    *
    * @param eprint - Eprint to enrich
    * @returns Enrichment result with external data
@@ -822,7 +822,7 @@ export interface CoCitedPaper extends RankableItem {
  *
  * @example
  * ```typescript
- * // Index citations for a eprint
+ * // Index citations for an eprint
  * await citationGraph.upsertCitationsBatch([
  *   { citingUri, citedUri, isInfluential: true, source: 'semantic-scholar' },
  * ]);
@@ -878,7 +878,7 @@ export interface ICitationGraph {
   findCoCitedPapers(paperUri: AtUri, minCoCitations?: number): Promise<readonly CoCitedPaper[]>;
 
   /**
-   * Gets citation counts for a eprint.
+   * Gets citation counts for an eprint.
    *
    * @param paperUri - AT-URI of the eprint
    * @returns Citation statistics
@@ -890,12 +890,12 @@ export interface ICitationGraph {
   }>;
 
   /**
-   * Deletes all citations for a eprint.
+   * Deletes all citations for an eprint.
    *
    * @param paperUri - AT-URI of the eprint
    *
    * @remarks
-   * Used when a eprint is removed from Chive's index.
+   * Used when an eprint is removed from Chive's index.
    */
   deleteCitationsForPaper(paperUri: AtUri): Promise<void>;
 }

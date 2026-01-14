@@ -121,7 +121,7 @@ function FacetRefChip({ dimension, value }: { dimension: string; value: string }
 }
 
 /**
- * Renders a eprint reference as a chip.
+ * Renders an eprint reference as a chip.
  */
 function EprintRefChip({ uri, title }: { uri: string; title: string }) {
   // Encode the AT-URI for use in the URL

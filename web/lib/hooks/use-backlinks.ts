@@ -75,7 +75,7 @@ interface UseBacklinksOptions {
 }
 
 /**
- * Fetches backlinks to a eprint with pagination.
+ * Fetches backlinks to an eprint with pagination.
  *
  * @remarks
  * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
@@ -147,7 +147,7 @@ interface UseBacklinkCountsOptions {
 }
 
 /**
- * Fetches aggregated backlink counts for a eprint.
+ * Fetches aggregated backlink counts for an eprint.
  *
  * @remarks
  * Returns counts by source type (Semble, Bluesky, WhiteWind, Leaflet, etc.)

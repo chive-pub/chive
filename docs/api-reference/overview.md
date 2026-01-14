@@ -249,7 +249,7 @@ Generated files:
 
 ## Quick examples
 
-### Fetch a eprint
+### Fetch an eprint
 
 ```bash
 curl "https://api.chive.pub/xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.eprint.submission/3k5..."

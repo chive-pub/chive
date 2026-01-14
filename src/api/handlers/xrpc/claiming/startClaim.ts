@@ -54,8 +54,6 @@ export async function startClaimHandler(
       id: claimRequest.id,
       importId: claimRequest.importId,
       claimantDid: claimRequest.claimantDid,
-      evidence: [...claimRequest.evidence],
-      verificationScore: claimRequest.verificationScore,
       status: claimRequest.status,
       canonicalUri: claimRequest.canonicalUri,
       rejectionReason: claimRequest.rejectionReason,

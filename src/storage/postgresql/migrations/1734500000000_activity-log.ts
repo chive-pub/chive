@@ -123,7 +123,7 @@ export function up(pgm: MigrationBuilder): void {
     // Target context (what was the action about)
     target_uri: {
       type: 'varchar(512)',
-      comment: 'AT URI of target record (for reviews, endorsements targeting a eprint)',
+      comment: 'AT URI of target record (for reviews, endorsements targeting an eprint)',
     },
     target_title: {
       type: 'text',

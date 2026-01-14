@@ -82,7 +82,7 @@ describe('XRPC Endorsement Handlers', () => {
   });
 
   describe('listForEprintHandler', () => {
-    it('returns paginated endorsements for a eprint', async () => {
+    it('returns paginated endorsements for an eprint', async () => {
       const endorsements: MockEndorsement[] = [
         {
           uri: 'at://did:plc:user1/pub.chive.review.endorsement/abc' as AtUri,

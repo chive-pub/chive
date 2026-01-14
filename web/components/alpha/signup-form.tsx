@@ -4,7 +4,6 @@ import * as React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Building2, Loader2, X, ExternalLink } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,21 +24,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAlphaApply } from '@/lib/hooks/use-alpha-status';
-import {
-  useAffiliationAutocomplete,
-  type AffiliationSuggestion,
-} from '@/lib/hooks/use-profile-autocomplete';
-import type { AlphaSector, AlphaCareerStage, AlphaAffiliation } from '@/lib/api/schema';
+import { AffiliationAutocompleteInput } from '@/components/settings/affiliation-autocomplete-input';
+import { KeywordAutocompleteInput } from '@/components/settings/keyword-autocomplete-input';
+import type { AlphaSector, AlphaCareerStage, Affiliation, ResearchKeyword } from '@/lib/api/schema';
 
 /**
  * Sector options for alpha applications.
@@ -76,12 +64,19 @@ const CAREER_STAGE_OPTIONS: { value: AlphaCareerStage; label: string }[] = [
 /**
  * Affiliation schema for form validation.
  */
-const affiliationSchema = z
-  .object({
-    name: z.string().min(1).max(200),
-    rorId: z.string().url().optional(),
-  })
-  .optional();
+const affiliationSchema = z.object({
+  name: z.string().min(1).max(200),
+  rorId: z.string().max(100).optional(),
+});
+
+/**
+ * Research keyword schema for form validation.
+ */
+const keywordSchema = z.object({
+  label: z.string().min(1).max(100),
+  fastId: z.string().max(20).optional(),
+  wikidataId: z.string().max(20).optional(),
+});
 
 /**
  * Form validation schema for alpha signup.
@@ -113,11 +108,11 @@ const formSchema = z
       { message: 'Please select your career stage' }
     ),
     careerStageOther: z.string().max(100).optional(),
-    affiliation: affiliationSchema,
-    researchField: z
-      .string()
-      .min(1, 'Please enter your research field')
-      .max(200, 'Research field must be 200 characters or less'),
+    affiliations: z.array(affiliationSchema).max(10).optional(),
+    researchKeywords: z
+      .array(keywordSchema)
+      .min(1, 'Please add at least one research keyword')
+      .max(10),
     motivation: z.string().max(1000, 'Motivation must be 1000 characters or less').optional(),
   })
   .refine(
@@ -144,186 +139,6 @@ export interface AlphaSignupFormProps {
 }
 
 /**
- * Single affiliation autocomplete input.
- */
-function AffiliationInput({
-  value,
-  onChange,
-}: {
-  value: AlphaAffiliation | undefined;
-  onChange: (value: AlphaAffiliation | undefined) => void;
-}) {
-  const [inputValue, setInputValue] = React.useState('');
-  const [open, setOpen] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  const { data, isLoading } = useAffiliationAutocomplete(inputValue, {
-    enabled: inputValue.length >= 2,
-  });
-
-  const suggestions = React.useMemo(() => data?.suggestions ?? [], [data?.suggestions]);
-  const shouldShowDropdown = open && inputValue.length >= 2;
-
-  const handleSelect = React.useCallback(
-    (suggestion: AffiliationSuggestion) => {
-      onChange({ name: suggestion.name, rorId: suggestion.rorId });
-      setInputValue('');
-      setOpen(false);
-    },
-    [onChange]
-  );
-
-  const handleAddFreeText = React.useCallback(() => {
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    onChange({ name: trimmed });
-    setInputValue('');
-    setOpen(false);
-  }, [inputValue, onChange]);
-
-  const handleClear = React.useCallback(() => {
-    onChange(undefined);
-    setInputValue('');
-    inputRef.current?.focus();
-  }, [onChange]);
-
-  const handleKeyDown = React.useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (suggestions.length > 0) {
-          handleSelect(suggestions[0]);
-        } else if (inputValue.trim()) {
-          handleAddFreeText();
-        }
-      } else if (e.key === 'Escape') {
-        setOpen(false);
-      }
-    },
-    [suggestions, handleSelect, inputValue, handleAddFreeText]
-  );
-
-  // If there's a selected value, show it as a badge
-  if (value) {
-    return (
-      <div className="flex items-center gap-2">
-        <Badge variant="secondary" className="gap-1 py-1.5 px-3 text-sm">
-          <Building2 className="h-3 w-3" />
-          {value.name}
-          {value.rorId && (
-            <a
-              href={value.rorId}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-1 text-muted-foreground hover:text-foreground"
-              onClick={(e) => e.stopPropagation()}
-              title="View on ROR"
-            >
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={handleClear}
-            className="ml-1 hover:text-destructive"
-            aria-label="Clear affiliation"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </Badge>
-      </div>
-    );
-  }
-
-  return (
-    <Popover open={shouldShowDropdown} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="relative">
-          <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => {
-              setInputValue(e.target.value);
-              if (e.target.value.length >= 2) {
-                setOpen(true);
-              }
-            }}
-            onKeyDown={handleKeyDown}
-            onFocus={() => inputValue.length >= 2 && setOpen(true)}
-            placeholder="Search institutions..."
-            className="pl-9"
-          />
-          {isLoading && (
-            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-          )}
-        </div>
-      </PopoverTrigger>
-
-      <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
-        align="start"
-        sideOffset={4}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <Command shouldFilter={false}>
-          <CommandList>
-            {isLoading && suggestions.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-                <p className="mt-2">Searching ROR...</p>
-              </div>
-            ) : suggestions.length === 0 ? (
-              <CommandEmpty>
-                <div className="text-center">
-                  <p>No institutions found</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Press Enter to add &quot;{inputValue}&quot; as free text
-                  </p>
-                </div>
-              </CommandEmpty>
-            ) : (
-              <CommandGroup>
-                {suggestions.map((suggestion) => (
-                  <CommandItem
-                    key={suggestion.rorId}
-                    value={suggestion.rorId}
-                    onSelect={() => handleSelect(suggestion)}
-                    className="flex flex-col items-start gap-1 py-3"
-                  >
-                    <div className="flex w-full items-start justify-between gap-2">
-                      <span className="text-sm font-medium">{suggestion.name}</span>
-                      <Badge variant="secondary" className="shrink-0 text-xs">
-                        ROR
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{suggestion.country}</span>
-                      {suggestion.acronym && (
-                        <>
-                          <span>•</span>
-                          <span>{suggestion.acronym}</span>
-                        </>
-                      )}
-                      {suggestion.types.length > 0 && (
-                        <>
-                          <span>•</span>
-                          <span>{suggestion.types.join(', ')}</span>
-                        </>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/**
  * Alpha tester signup form.
  *
  * @remarks
@@ -331,8 +146,8 @@ function AffiliationInput({
  * - Email for notifications
  * - Sector (organization type)
  * - Career stage/position
- * - Institutional affiliation (optional, with ROR lookup)
- * - Research field
+ * - Institutional affiliations (optional, multiple with ROR lookup)
+ * - Research keywords (with FAST/Wikidata autocomplete)
  * - Optional motivation statement
  */
 export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
@@ -346,8 +161,8 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
       sectorOther: '',
       careerStage: undefined,
       careerStageOther: '',
-      affiliation: undefined,
-      researchField: '',
+      affiliations: [],
+      researchKeywords: [],
       motivation: '',
     },
   });
@@ -363,8 +178,8 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
         sectorOther: values.sector === 'other' ? values.sectorOther : undefined,
         careerStage: values.careerStage,
         careerStageOther: values.careerStage === 'other' ? values.careerStageOther : undefined,
-        affiliation: values.affiliation,
-        researchField: values.researchField,
+        affiliations: values.affiliations,
+        researchKeywords: values.researchKeywords,
         motivation: values.motivation || undefined,
       },
       {
@@ -489,14 +304,19 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
 
           <FormField
             control={form.control}
-            name="affiliation"
+            name="affiliations"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Affiliation (optional)</FormLabel>
                 <FormControl>
-                  <AffiliationInput value={field.value} onChange={field.onChange} />
+                  <AffiliationAutocompleteInput
+                    label="Affiliations (optional)"
+                    values={(field.value as Affiliation[]) ?? []}
+                    onChange={(values) => field.onChange(values)}
+                    placeholder="Search institutions..."
+                    maxItems={10}
+                    description="Add your institutional affiliations (up to 10)"
+                  />
                 </FormControl>
-                <FormDescription>Your institutional affiliation, if any.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -504,14 +324,19 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
 
           <FormField
             control={form.control}
-            name="researchField"
+            name="researchKeywords"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Research Field</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Computational Biology, Medieval History" {...field} />
+                  <KeywordAutocompleteInput
+                    label="Research Keywords"
+                    values={(field.value as ResearchKeyword[]) ?? []}
+                    onChange={(values) => field.onChange(values)}
+                    placeholder="Search keywords..."
+                    maxItems={10}
+                    description="Add keywords describing your research areas"
+                  />
                 </FormControl>
-                <FormDescription>Your primary research field or discipline.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

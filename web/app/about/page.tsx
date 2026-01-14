@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  * About page metadata.
  */
 export const metadata: Metadata = {
-  title: 'About | Chive',
+  title: 'About',
   description: 'Learn about Chive, a decentralized eprint server built on AT Protocol.',
 };
 
@@ -33,7 +33,7 @@ export default function AboutPage() {
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Our Mission</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Chive aims to revolutionize scholarly communication by building a eprint server where
+          Chive aims to revolutionize scholarly communication by building an eprint server where
           researchers truly own their work. Using AT Protocol&apos;s decentralized architecture,
           your eprints live in your Personal Data Server (PDS), not in a central database you
           don&apos;t control.
@@ -151,7 +151,7 @@ export default function AboutPage() {
             <Link href="/browse">Browse Eprints</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/submit">Submit a Eprint</Link>
+            <Link href="/submit">Submit an Eprint</Link>
           </Button>
         </div>
       </section>

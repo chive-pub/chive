@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   User,
+  UserCircle,
   FileText,
   MessageSquare,
   ThumbsUp,
@@ -11,6 +12,7 @@ import {
   Settings,
   LogOut,
   ClipboardCheck,
+  Bell,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -76,6 +78,12 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
+            <Link href={`/authors/${encodeURIComponent(user.did)}`}>
+              <UserCircle className="mr-2 h-4 w-4" />
+              View My Profile
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link href="/dashboard">
               <User className="mr-2 h-4 w-4" />
               Dashboard
@@ -90,7 +98,7 @@ export function UserMenu() {
           <DropdownMenuItem asChild>
             <Link href="/dashboard/claims">
               <ClipboardCheck className="mr-2 h-4 w-4" />
-              Claim Eprints
+              Import Papers
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
@@ -109,6 +117,12 @@ export function UserMenu() {
             <Link href="/dashboard/proposals">
               <Vote className="mr-2 h-4 w-4" />
               My Proposals
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/notifications">
+              <Bell className="mr-2 h-4 w-4" />
+              Notifications
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

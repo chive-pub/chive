@@ -122,7 +122,7 @@ function getApiBaseUrl(): string {
 }
 
 /**
- * Fetches integration data for a eprint.
+ * Fetches integration data for an eprint.
  *
  * @remarks
  * Returns cached plugin data from external integrations (GitHub, GitLab, Zenodo,

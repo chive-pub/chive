@@ -238,3 +238,19 @@ export {
   type RecordInteractionParams,
   type RecordInteractionResponse,
 } from './discovery.js';
+
+// Notification schemas
+export {
+  reviewNotificationSchema,
+  endorsementNotificationSchema,
+  listReviewNotificationsParamsSchema,
+  listEndorsementNotificationsParamsSchema,
+  reviewNotificationsResponseSchema,
+  endorsementNotificationsResponseSchema,
+  type ReviewNotification,
+  type EndorsementNotification,
+  type ListReviewNotificationsParams,
+  type ListEndorsementNotificationsParams,
+  type ReviewNotificationsResponse,
+  type EndorsementNotificationsResponse,
+} from './notification.js';

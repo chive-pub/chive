@@ -8,7 +8,7 @@ import { AuthorsPageSkeleton } from './loading';
  * Authors page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Authors | Chive',
+  title: 'Authors',
   description: 'Discover researchers and their eprints on Chive.',
 };
 

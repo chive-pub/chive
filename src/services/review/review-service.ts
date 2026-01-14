@@ -69,7 +69,7 @@ export interface ReviewComment {
   readonly createdAt: string;
   /**
    * Line number for inline comments on specific lines of text.
-   * Used when commenting on a specific line in a eprint.
+   * Used when commenting on a specific line in an eprint.
    */
   readonly lineNumber?: number;
   /**
@@ -161,6 +161,40 @@ export interface EndorsementSummary {
     readonly endorsedAt: Date;
     readonly endorsementType: string;
   }[];
+}
+
+/**
+ * Review notification view including eprint metadata for display.
+ *
+ * @public
+ */
+export interface ReviewNotification {
+  readonly uri: AtUri;
+  readonly reviewerDid: DID;
+  readonly reviewerHandle?: string;
+  readonly reviewerDisplayName?: string;
+  readonly eprintUri: AtUri;
+  readonly eprintTitle: string;
+  readonly text: string;
+  readonly isReply: boolean;
+  readonly createdAt: Date;
+}
+
+/**
+ * Endorsement notification view including eprint metadata for display.
+ *
+ * @public
+ */
+export interface EndorsementNotification {
+  readonly uri: AtUri;
+  readonly endorserDid: DID;
+  readonly endorserHandle?: string;
+  readonly endorserDisplayName?: string;
+  readonly eprintUri: AtUri;
+  readonly eprintTitle: string;
+  readonly endorsementType: 'methods' | 'results' | 'overall';
+  readonly comment?: string;
+  readonly createdAt: Date;
 }
 
 /**
@@ -561,7 +595,7 @@ export class ReviewService {
   }
 
   /**
-   * Gets a specific user's endorsement for a eprint.
+   * Gets a specific user's endorsement for an eprint.
    *
    * @param eprintUri - Eprint URI
    * @param userDid - User's DID
@@ -610,7 +644,7 @@ export class ReviewService {
   }
 
   /**
-   * Lists endorsements for a eprint with pagination.
+   * Lists endorsements for an eprint with pagination.
    *
    * @param eprintUri - Eprint URI
    * @param options - Pagination options
@@ -887,6 +921,222 @@ export class ReviewService {
         { reviewerDid }
       );
       return { items: [], cursor: undefined, hasMore: false, total: 0 };
+    }
+  }
+
+  /**
+   * Lists reviews on papers where the given DID is an author.
+   *
+   * @param authorDid - DID of the paper author
+   * @param options - Pagination options
+   * @returns Paginated list of review notifications
+   *
+   * @remarks
+   * This queries for reviews on eprints where authorDid appears in the
+   * authors JSONB array. Excludes reviews written by the author themselves.
+   *
+   * @public
+   */
+  async listReviewsOnAuthorPapers(
+    authorDid: DID,
+    options: PaginationOptions = {}
+  ): Promise<PaginatedResult<ReviewNotification>> {
+    const limit = Math.min(options.limit ?? 50, 100);
+
+    try {
+      // Count total reviews on author's papers (excluding self-reviews)
+      const countResult = await this.pool.query<{ count: string }>(
+        `SELECT COUNT(*)::text as count
+         FROM reviews_index r
+         INNER JOIN eprints_index e ON r.eprint_uri = e.uri
+         WHERE e.authors @> $1::jsonb
+           AND r.reviewer_did != $2`,
+        [JSON.stringify([{ did: authorDid }]), authorDid]
+      );
+      const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+      // Build query with cursor support
+      let query = `
+        SELECT
+          r.uri,
+          r.reviewer_did,
+          r.eprint_uri,
+          r.content,
+          r.parent_review_uri,
+          r.created_at,
+          e.title as eprint_title,
+          a.handle as reviewer_handle,
+          a.display_name as reviewer_display_name
+        FROM reviews_index r
+        INNER JOIN eprints_index e ON r.eprint_uri = e.uri
+        LEFT JOIN authors_index a ON r.reviewer_did = a.did
+        WHERE e.authors @> $1::jsonb
+          AND r.reviewer_did != $2`;
+      const params: unknown[] = [JSON.stringify([{ did: authorDid }]), authorDid];
+
+      if (options.cursor) {
+        const parts = options.cursor.split('::');
+        const timestamp = parts[0] ?? new Date().toISOString();
+        const cursorUri = parts[1] ?? '';
+        query += ` AND (r.created_at, r.uri) < ($3, $4)`;
+        params.push(new Date(timestamp), cursorUri);
+      }
+
+      query += ` ORDER BY r.created_at DESC, r.uri DESC LIMIT $${params.length + 1}`;
+      params.push(limit + 1);
+
+      const result = await this.pool.query<{
+        uri: string;
+        reviewer_did: string;
+        eprint_uri: string;
+        content: string;
+        parent_review_uri: string | null;
+        created_at: Date;
+        eprint_title: string;
+        reviewer_handle: string | null;
+        reviewer_display_name: string | null;
+      }>(query, params);
+
+      const hasMore = result.rows.length > limit;
+      const items = result.rows.slice(0, limit);
+
+      let cursor: string | undefined;
+      const lastItem = items[items.length - 1];
+      if (hasMore && lastItem) {
+        cursor = `${lastItem.created_at.toISOString()}::${lastItem.uri}`;
+      }
+
+      return {
+        items: items.map((row) => ({
+          uri: row.uri as AtUri,
+          reviewerDid: row.reviewer_did as DID,
+          reviewerHandle: row.reviewer_handle ?? undefined,
+          reviewerDisplayName: row.reviewer_display_name ?? undefined,
+          eprintUri: row.eprint_uri as AtUri,
+          eprintTitle: row.eprint_title,
+          text: row.content,
+          isReply: !!row.parent_review_uri,
+          createdAt: new Date(row.created_at),
+        })),
+        cursor,
+        hasMore,
+        total,
+      };
+    } catch (error) {
+      this.logger.error(
+        'Failed to list reviews on author papers',
+        error instanceof Error ? error : undefined,
+        { authorDid }
+      );
+      return { items: [], hasMore: false, total: 0 };
+    }
+  }
+
+  /**
+   * Lists endorsements on papers where the given DID is an author.
+   *
+   * @param authorDid - DID of the paper author
+   * @param options - Pagination options
+   * @returns Paginated list of endorsement notifications
+   *
+   * @remarks
+   * This queries for endorsements on eprints where authorDid appears in the
+   * authors JSONB array. Excludes self-endorsements.
+   *
+   * @public
+   */
+  async listEndorsementsOnAuthorPapers(
+    authorDid: DID,
+    options: PaginationOptions = {}
+  ): Promise<PaginatedResult<EndorsementNotification>> {
+    const limit = Math.min(options.limit ?? 50, 100);
+
+    try {
+      // Count total endorsements on author's papers (excluding self-endorsements)
+      const countResult = await this.pool.query<{ count: string }>(
+        `SELECT COUNT(*)::text as count
+         FROM endorsements_index en
+         INNER JOIN eprints_index e ON en.eprint_uri = e.uri
+         WHERE e.authors @> $1::jsonb
+           AND en.endorser_did != $2`,
+        [JSON.stringify([{ did: authorDid }]), authorDid]
+      );
+      const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+      // Build query with cursor support
+      let query = `
+        SELECT
+          en.uri,
+          en.endorser_did,
+          en.eprint_uri,
+          en.endorsement_type,
+          en.comment,
+          en.created_at,
+          e.title as eprint_title,
+          a.handle as endorser_handle,
+          a.display_name as endorser_display_name
+        FROM endorsements_index en
+        INNER JOIN eprints_index e ON en.eprint_uri = e.uri
+        LEFT JOIN authors_index a ON en.endorser_did = a.did
+        WHERE e.authors @> $1::jsonb
+          AND en.endorser_did != $2`;
+      const params: unknown[] = [JSON.stringify([{ did: authorDid }]), authorDid];
+
+      if (options.cursor) {
+        const parts = options.cursor.split('::');
+        const timestamp = parts[0] ?? new Date().toISOString();
+        const cursorUri = parts[1] ?? '';
+        query += ` AND (en.created_at, en.uri) < ($3, $4)`;
+        params.push(new Date(timestamp), cursorUri);
+      }
+
+      query += ` ORDER BY en.created_at DESC, en.uri DESC LIMIT $${params.length + 1}`;
+      params.push(limit + 1);
+
+      const result = await this.pool.query<{
+        uri: string;
+        endorser_did: string;
+        eprint_uri: string;
+        endorsement_type: 'methods' | 'results' | 'overall';
+        comment: string | null;
+        created_at: Date;
+        eprint_title: string;
+        endorser_handle: string | null;
+        endorser_display_name: string | null;
+      }>(query, params);
+
+      const hasMore = result.rows.length > limit;
+      const items = result.rows.slice(0, limit);
+
+      let cursor: string | undefined;
+      const lastItem = items[items.length - 1];
+      if (hasMore && lastItem) {
+        cursor = `${lastItem.created_at.toISOString()}::${lastItem.uri}`;
+      }
+
+      return {
+        items: items.map((row) => ({
+          uri: row.uri as AtUri,
+          endorserDid: row.endorser_did as DID,
+          endorserHandle: row.endorser_handle ?? undefined,
+          endorserDisplayName: row.endorser_display_name ?? undefined,
+          eprintUri: row.eprint_uri as AtUri,
+          eprintTitle: row.eprint_title,
+          endorsementType: row.endorsement_type,
+          comment: row.comment ?? undefined,
+          createdAt: new Date(row.created_at),
+        })),
+        cursor,
+        hasMore,
+        total,
+      };
+    } catch (error) {
+      this.logger.error(
+        'Failed to list endorsements on author papers',
+        error instanceof Error ? error : undefined,
+        { authorDid }
+      );
+      return { items: [], hasMore: false, total: 0 };
     }
   }
 }

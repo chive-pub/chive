@@ -116,7 +116,7 @@ export interface CrossRefJournal {
 }
 
 /**
- * Enrichment result for a eprint.
+ * Enrichment result for an eprint.
  *
  * @public
  */
@@ -316,7 +316,7 @@ export async function searchWorks(
 }
 
 /**
- * Attempts to find the published version of a eprint.
+ * Attempts to find the published version of an eprint.
  *
  * @param title - Eprint title
  * @param authors - Eprint authors

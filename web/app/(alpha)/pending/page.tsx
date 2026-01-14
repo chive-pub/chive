@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { useAuth, useIsAuthenticated } from '@/lib/auth';
 import { useAlphaStatus } from '@/lib/hooks/use-alpha-status';
@@ -72,11 +72,6 @@ export default function AlphaPendingPage() {
         {/* Logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-16 w-16 rounded-xl" />
-
-        {/* Status Icon */}
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/20">
-          <Clock className="h-8 w-8 text-amber-600 dark:text-amber-400" />
-        </div>
 
         {/* Title */}
         <h1 className="mb-2 text-2xl font-bold tracking-tight">Application Under Review</h1>

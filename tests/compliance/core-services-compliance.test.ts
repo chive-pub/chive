@@ -107,6 +107,12 @@ function createTrackedStorage(): IStorageBackend & {
       operations.push({ method: 'isStale', args: [uri] });
       return Promise.resolve(false);
     }),
+    findByExternalIds: vi
+      .fn()
+      .mockImplementation((externalIds: Record<string, string | undefined>) => {
+        operations.push({ method: 'findByExternalIds', args: [externalIds] });
+        return Promise.resolve(null);
+      }),
   };
 }
 

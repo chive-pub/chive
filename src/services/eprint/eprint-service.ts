@@ -334,4 +334,56 @@ export class EprintService {
       };
     }
   }
+
+  /**
+   * Finds an eprint by external identifiers.
+   *
+   * @param externalIds - External service identifiers to search
+   * @returns First matching eprint or null
+   *
+   * @remarks
+   * Used for duplicate detection when claiming papers.
+   * Searches by DOI, arXiv ID, Semantic Scholar ID, etc.
+   *
+   * @example
+   * ```typescript
+   * const existing = await eprintService.findByExternalIds({
+   *   doi: '10.1234/example',
+   *   arxivId: '2301.12345',
+   * });
+   *
+   * if (existing) {
+   *   console.log('Paper already exists:', existing.uri);
+   * }
+   * ```
+   *
+   * @public
+   */
+  async findByExternalIds(externalIds: {
+    doi?: string;
+    arxivId?: string;
+    semanticScholarId?: string;
+    openAlexId?: string;
+    dblpId?: string;
+    openReviewId?: string;
+    pmid?: string;
+    ssrnId?: string;
+  }): Promise<EprintView | null> {
+    const stored = await this.storage.findByExternalIds(externalIds);
+    if (!stored) {
+      return null;
+    }
+
+    const versions = await this.versionManager.getVersionChain(stored.uri);
+
+    return {
+      ...stored,
+      versions: versions.versions,
+      metrics: {
+        views: 0,
+        downloads: 0,
+        endorsements: 0,
+      },
+    };
+  }
 }

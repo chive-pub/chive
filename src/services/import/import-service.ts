@@ -70,7 +70,7 @@ export class ImportService implements IImportService {
   }
 
   /**
-   * Checks if a eprint has been imported.
+   * Checks if an eprint has been imported.
    */
   async exists(source: ImportSource, externalId: string): Promise<boolean> {
     const result = await this.db.query<{ exists: boolean }>(
@@ -355,7 +355,7 @@ export class ImportService implements IImportService {
   }
 
   /**
-   * Marks a eprint as claimed.
+   * Marks an eprint as claimed.
    */
   async markClaimed(id: number, canonicalUri: string, claimedByDid: string): Promise<void> {
     await this.update(id, {

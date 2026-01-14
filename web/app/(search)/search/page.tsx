@@ -8,7 +8,7 @@ import { SearchPageSkeleton } from './loading';
  * Search page metadata.
  */
 export const metadata: Metadata = {
-  title: 'Search Eprints | Chive',
+  title: 'Search Eprints',
   description: 'Search across all eprints on Chive, the decentralized eprint server.',
 };
 

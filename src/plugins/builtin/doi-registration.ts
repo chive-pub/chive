@@ -230,7 +230,7 @@ export class DoiRegistrationPlugin extends BasePlugin {
   }
 
   /**
-   * Mints a DOI for a eprint.
+   * Mints a DOI for an eprint.
    *
    * @param data - Eprint data
    * @returns DOI metadata
@@ -320,7 +320,7 @@ export class DoiRegistrationPlugin extends BasePlugin {
   }
 
   /**
-   * Gets DOI for a eprint if already minted.
+   * Gets DOI for an eprint if already minted.
    *
    * @param eprintUri - Eprint AT URI
    * @returns DOI metadata or null

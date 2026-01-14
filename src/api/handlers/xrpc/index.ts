@@ -33,6 +33,7 @@ export * from './eprint/index.js';
 export * from './review/index.js';
 export * from './sync/index.js';
 export * from './tag/index.js';
+export * from './notification/index.js';
 
 // Import endpoints for registration
 import { activityEndpoints } from './activity/index.js';
@@ -40,7 +41,7 @@ import { actorEndpoints } from './actor/index.js';
 import { alphaEndpoints } from './alpha/index.js';
 import { authorEndpoints } from './author/index.js';
 import { backlinkEndpoints } from './backlink/index.js';
-import { claimingEndpoints } from './claiming/index.js';
+import { claimingEndpoints, claimingRestEndpoints } from './claiming/index.js';
 import { contributionEndpoints } from './contribution/index.js';
 import { discoveryEndpoints } from './discovery/index.js';
 import { endorsementEndpoints } from './endorsement/index.js';
@@ -49,6 +50,7 @@ import { governanceEndpoints } from './governance/index.js';
 import { graphEndpoints } from './graph/index.js';
 import { importEndpoints } from './import/index.js';
 import { metricsEndpoints } from './metrics/index.js';
+import { notificationEndpoints } from './notification/index.js';
 import { reviewEndpoints } from './review/index.js';
 import { syncEndpoints } from './sync/index.js';
 import { tagEndpoints } from './tag/index.js';
@@ -70,6 +72,7 @@ export const allXRPCEndpoints = [
   ...graphEndpoints,
   ...importEndpoints,
   ...metricsEndpoints,
+  ...notificationEndpoints,
   ...eprintEndpoints,
   ...reviewEndpoints,
   ...syncEndpoints,
@@ -98,6 +101,7 @@ export const allXRPCEndpoints = [
  * @public
  */
 export function registerXRPCRoutes(app: Hono<ChiveEnv>): void {
+  // Register standard XRPC endpoints (JSON responses)
   for (const endpoint of allXRPCEndpoints) {
     const path = `${XRPC_PATH_PREFIX}/${endpoint.method}`;
     // Cast schema to any to allow dynamic endpoint registration
@@ -118,6 +122,15 @@ export function registerXRPCRoutes(app: Hono<ChiveEnv>): void {
         const result = await handler(c, input);
         return c.json(result);
       });
+    }
+  }
+
+  // Register REST-style endpoints (binary/non-JSON responses)
+  for (const endpoint of claimingRestEndpoints) {
+    if (endpoint.method === 'GET') {
+      app.get(endpoint.path, endpoint.handler);
+    } else if (endpoint.method === 'POST') {
+      app.post(endpoint.path, endpoint.handler);
     }
   }
 }

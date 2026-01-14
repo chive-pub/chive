@@ -93,7 +93,7 @@ export async function listForEprintHandler(
 export const listForEprintEndpoint: XRPCEndpoint<ListTagsForEprintParams, EprintTagsResponse> = {
   method: 'pub.chive.tag.listForEprint' as never,
   type: 'query',
-  description: 'List tags for a eprint',
+  description: 'List tags for an eprint',
   inputSchema: listTagsForEprintParamsSchema,
   outputSchema: eprintTagsResponseSchema,
   handler: listForEprintHandler,

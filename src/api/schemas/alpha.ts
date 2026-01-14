@@ -63,6 +63,17 @@ export const alphaAffiliationSchema = z.object({
 
 export type AlphaAffiliation = z.infer<typeof alphaAffiliationSchema>;
 
+/**
+ * Research keyword schema for alpha applications.
+ */
+export const alphaResearchKeywordSchema = z.object({
+  label: z.string().min(1).max(100).describe('Keyword label'),
+  fastId: z.string().max(20).optional().describe('FAST authority ID'),
+  wikidataId: z.string().max(20).optional().describe('Wikidata ID'),
+});
+
+export type AlphaResearchKeyword = z.infer<typeof alphaResearchKeywordSchema>;
+
 // ============================================================================
 // Apply Endpoint
 // ============================================================================
@@ -81,8 +92,16 @@ export const alphaApplyParamsSchema = z
       .max(100)
       .optional()
       .describe('Custom career stage if "other" selected'),
-    affiliation: alphaAffiliationSchema.optional().describe('Institutional affiliation (optional)'),
-    researchField: z.string().min(1).max(200).describe('Primary research field or discipline'),
+    affiliations: z
+      .array(alphaAffiliationSchema)
+      .max(10)
+      .optional()
+      .describe('Institutional affiliations (optional)'),
+    researchKeywords: z
+      .array(alphaResearchKeywordSchema)
+      .min(1)
+      .max(10)
+      .describe('Research keywords'),
     motivation: z.string().max(1000).optional().describe('Optional motivation statement'),
   })
   .refine(

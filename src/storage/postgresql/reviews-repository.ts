@@ -20,7 +20,7 @@
  * ```typescript
  * const repo = new ReviewsRepository(pool);
  *
- * // Find reviews for a eprint
+ * // Find reviews for an eprint
  * const reviews = await repo.findByEprint(
  *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
  * );
@@ -72,7 +72,7 @@ export type ReviewMotivation =
  * Review anchor for inline annotations.
  *
  * @remarks
- * Specifies a target location within a eprint for inline reviews/comments.
+ * Specifies a target location within an eprint for inline reviews/comments.
  *
  * @public
  */
@@ -249,7 +249,7 @@ interface ReviewRow {
  * **Operations Provided:**
  * - Find reviews by eprint
  * - Find reviews by reviewer
- * - Count reviews for a eprint
+ * - Count reviews for an eprint
  * - Store and update reviews
  *
  * @public
@@ -301,7 +301,7 @@ export class ReviewsRepository {
   }
 
   /**
-   * Finds reviews for a eprint.
+   * Finds reviews for an eprint.
    *
    * @param eprintUri - AT URI of the eprint
    * @param options - Query options (limit, offset)
@@ -403,7 +403,7 @@ export class ReviewsRepository {
   }
 
   /**
-   * Counts reviews for a eprint.
+   * Counts reviews for an eprint.
    *
    * @param eprintUri - AT URI of the eprint
    * @returns Number of reviews for this eprint

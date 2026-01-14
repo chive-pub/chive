@@ -42,7 +42,7 @@ export function EprintsPageContent() {
         <h3 className="text-lg font-medium">No eprints yet</h3>
         <p className="mt-2 text-muted-foreground">Be the first to share your research on Chive</p>
         <Button asChild className="mt-4">
-          <Link href="/submit">Submit a Eprint</Link>
+          <Link href="/submit">Submit an Eprint</Link>
         </Button>
       </div>
     );

@@ -186,7 +186,7 @@ describe('uploadDocument', () => {
 });
 
 describe('createEprintRecord', () => {
-  it('creates a eprint record in user PDS', async () => {
+  it('creates an eprint record in user PDS', async () => {
     const agent = createMockAgent();
     const documentFile = createMockFile('paper.pdf', 'application/pdf');
 
@@ -228,7 +228,7 @@ describe('createEprintRecord', () => {
     expect(createRecordCall.record.license).toBe('cc-by-4.0');
   });
 
-  it('creates a eprint record with DOCX document', async () => {
+  it('creates an eprint record with DOCX document', async () => {
     const agent = createMockAgent();
     const documentFile = createMockFile(
       'paper.docx',

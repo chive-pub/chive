@@ -14,6 +14,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 
+import { getCurrentAgent } from '../auth/oauth-client';
+import { getServiceAuthToken } from '../auth/service-auth';
+import { APIError, AuthenticationError } from '../errors';
 import { useDebounce } from './use-eprint-search';
 
 /**
@@ -26,6 +29,11 @@ export const profileAutocompleteKeys = {
   keyword: (query: string, sources?: string[]) =>
     [...profileAutocompleteKeys.all, 'keyword', query, sources] as const,
   authorIds: (name: string) => [...profileAutocompleteKeys.all, 'author-ids', name] as const,
+  semanticScholar: (query: string) =>
+    [...profileAutocompleteKeys.all, 'semantic-scholar', query] as const,
+  openAlex: (query: string) => [...profileAutocompleteKeys.all, 'openalex', query] as const,
+  dblp: (query: string) => [...profileAutocompleteKeys.all, 'dblp', query] as const,
+  openReview: (query: string) => [...profileAutocompleteKeys.all, 'openreview', query] as const,
 };
 
 /**
@@ -73,6 +81,47 @@ export interface AuthorIdMatch {
     semanticScholar: string | null;
     orcid: string | null;
     dblp: string | null;
+  };
+}
+
+/**
+ * Semantic Scholar author result.
+ */
+export interface SemanticScholarAuthor {
+  authorId: string;
+  name: string;
+  affiliations: string[];
+  paperCount: number;
+  citationCount: number;
+  hIndex: number;
+}
+
+/**
+ * OpenAlex author result.
+ */
+export interface OpenAlexAuthor {
+  id: string;
+  display_name: string;
+  works_count: number;
+  cited_by_count: number;
+  last_known_institution: {
+    display_name: string;
+  } | null;
+}
+
+/**
+ * DBLP author result.
+ */
+export interface DblpAuthor {
+  author: string;
+  url: string;
+  notes?: {
+    note:
+      | {
+          '@type': string;
+          text: string;
+        }
+      | Array<{ '@type': string; text: string }>;
   };
 }
 
@@ -207,6 +256,134 @@ export function useKeywordAutocomplete(
 }
 
 /**
+ * Hook for Semantic Scholar author autocomplete.
+ *
+ * @param query - Search query (author name)
+ * @param options - Hook options
+ * @returns Query result with Semantic Scholar author matches
+ */
+export function useSemanticScholarAutocomplete(
+  query: string,
+  options: UseAutocompleteOptions = {}
+) {
+  const { minLength = 2, debounceMs = 300, enabled = true } = options;
+  const debouncedQuery = useDebounce(query, debounceMs);
+
+  return useQuery({
+    queryKey: profileAutocompleteKeys.semanticScholar(debouncedQuery),
+    queryFn: async (): Promise<{ data: SemanticScholarAuthor[] }> => {
+      const url = `https://api.semanticscholar.org/graph/v1/author/search?query=${encodeURIComponent(debouncedQuery)}&fields=authorId,name,affiliations,paperCount,citationCount,hIndex&limit=10`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new APIError('Semantic Scholar search failed', response.status);
+      }
+
+      return response.json();
+    },
+    enabled: enabled && debouncedQuery.length >= minLength,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Hook for OpenAlex author autocomplete.
+ *
+ * @param query - Search query (author name)
+ * @param options - Hook options
+ * @returns Query result with OpenAlex author matches
+ */
+export function useOpenAlexAutocomplete(query: string, options: UseAutocompleteOptions = {}) {
+  const { minLength = 2, debounceMs = 300, enabled = true } = options;
+  const debouncedQuery = useDebounce(query, debounceMs);
+
+  return useQuery({
+    queryKey: profileAutocompleteKeys.openAlex(debouncedQuery),
+    queryFn: async (): Promise<{ results: OpenAlexAuthor[] }> => {
+      const url = `https://api.openalex.org/authors?filter=display_name.search:${encodeURIComponent(debouncedQuery)}&per-page=10&mailto=admin@chive.pub`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new APIError('OpenAlex search failed', response.status);
+      }
+
+      return response.json();
+    },
+    enabled: enabled && debouncedQuery.length >= minLength,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Hook for DBLP author autocomplete.
+ *
+ * @param query - Search query (author name)
+ * @param options - Hook options
+ * @returns Query result with DBLP author matches
+ */
+export function useDblpAutocomplete(query: string, options: UseAutocompleteOptions = {}) {
+  const { minLength = 2, debounceMs = 300, enabled = true } = options;
+  const debouncedQuery = useDebounce(query, debounceMs);
+
+  return useQuery({
+    queryKey: profileAutocompleteKeys.dblp(debouncedQuery),
+    queryFn: async (): Promise<{ result: { hits: { hit: Array<{ info: DblpAuthor }> } } }> => {
+      const url = `https://dblp.org/search/author/api?q=${encodeURIComponent(debouncedQuery)}&format=json&h=10`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new APIError('DBLP search failed', response.status);
+      }
+
+      return response.json();
+    },
+    enabled: enabled && debouncedQuery.length >= minLength,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * OpenReview suggestion from our backend proxy.
+ */
+export interface OpenReviewSuggestion {
+  id: string;
+  displayName: string;
+  institution: string | null;
+}
+
+/**
+ * Hook for OpenReview profile autocomplete.
+ *
+ * @remarks
+ * Uses our backend proxy since OpenReview API doesn't support CORS.
+ *
+ * @param query - Search query (author name)
+ * @param options - Hook options
+ * @returns Query result with OpenReview profile matches
+ */
+export function useOpenReviewAutocomplete(query: string, options: UseAutocompleteOptions = {}) {
+  const { minLength = 2, debounceMs = 300, enabled = true } = options;
+  const debouncedQuery = useDebounce(query, debounceMs);
+
+  return useQuery({
+    queryKey: profileAutocompleteKeys.openReview(debouncedQuery),
+    queryFn: async (): Promise<{ suggestions: OpenReviewSuggestion[] }> => {
+      // Use our backend proxy since OpenReview doesn't support CORS
+      const url = `/xrpc/pub.chive.actor.autocompleteOpenReview?query=${encodeURIComponent(debouncedQuery)}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new APIError('OpenReview search failed', response.status);
+      }
+
+      return response.json();
+    },
+    enabled: enabled && debouncedQuery.length >= minLength,
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
  * Hook for discovering external author IDs by name.
  *
  * @remarks
@@ -236,16 +413,37 @@ export function useAuthorIdDiscovery(name: string, options: UseAutocompleteOptio
   return useQuery({
     queryKey: profileAutocompleteKeys.authorIds(debouncedName),
     queryFn: async (): Promise<{ searchedName: string; matches: AuthorIdMatch[] }> => {
-      // Use fetch directly until OpenAPI types are regenerated
       // This endpoint requires authentication
-      const url = `/xrpc/pub.chive.actor.discoverAuthorIds?name=${encodeURIComponent(debouncedName)}`;
-      const response = await fetch(url, { credentials: 'include' });
-      if (!response.ok) {
-        throw new Error('Author ID discovery failed');
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new AuthenticationError('Authentication required for author ID discovery');
       }
+
+      const token = await getServiceAuthToken(agent, 'pub.chive.actor.discoverAuthorIds');
+
+      const url = `/xrpc/pub.chive.actor.discoverAuthorIds?name=${encodeURIComponent(debouncedName)}`;
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new APIError(
+          (errorBody as { message?: string }).message ?? 'Author ID discovery failed',
+          response.status
+        );
+      }
+
       return response.json();
     },
-    enabled: enabled && debouncedName.length >= minLength,
+    enabled:
+      enabled &&
+      debouncedName.length >= minLength &&
+      typeof window !== 'undefined' &&
+      !!getCurrentAgent(),
     staleTime: 60 * 1000, // 1 minute
   });
 }

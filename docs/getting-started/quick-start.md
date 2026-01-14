@@ -5,7 +5,7 @@ Submit your first eprint to Chive in under five minutes.
 ## Prerequisites
 
 - A Bluesky account (or any AT Protocol-compatible PDS)
-- A eprint PDF (maximum 100 MB)
+- An eprint PDF (maximum 100 MB)
 - Metadata: title, abstract, and at least one keyword
 
 ## Step 1: Sign In

@@ -1,6 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LayoutDashboard, FileText, MessageSquare, ThumbsUp, Settings, Upload } from 'lucide-react';
+import {
+  LayoutDashboard,
+  FileText,
+  MessageSquare,
+  ThumbsUp,
+  Settings,
+  Upload,
+  Bell,
+} from 'lucide-react';
 
 import { AlphaGate } from '@/components/alpha';
 import { AuthGuard } from '@/components/auth/auth-guard';
@@ -10,7 +18,7 @@ import { SidebarLayout, SidebarSection } from '@/components/layout';
  * Dashboard metadata.
  */
 export const metadata: Metadata = {
-  title: 'Dashboard | Chive',
+  title: 'Dashboard',
   description: 'Your personal Chive dashboard',
 };
 
@@ -20,7 +28,8 @@ export const metadata: Metadata = {
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/eprints', label: 'My Eprints', icon: FileText },
-  { href: '/dashboard/claims', label: 'Claim Eprints', icon: Upload },
+  { href: '/dashboard/claims', label: 'Import Papers', icon: Upload },
+  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
   { href: '/dashboard/reviews', label: 'My Reviews', icon: MessageSquare },
   { href: '/dashboard/endorsements', label: 'My Endorsements', icon: ThumbsUp },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },

@@ -39,7 +39,7 @@ export default function SubmitPage() {
     return (
       <div className="space-y-8">
         <PageHeader
-          title="Submit a Eprint"
+          title="Submit an Eprint"
           description="Share your research with the world through decentralized publishing"
         />
         <div className="flex items-center justify-center py-12">
@@ -56,14 +56,14 @@ export default function SubmitPage() {
     return (
       <div className="space-y-8">
         <PageHeader
-          title="Submit a Eprint"
+          title="Submit an Eprint"
           description="Share your research with the world through decentralized publishing"
         />
 
         <Alert>
           <AlertTitle>Authentication Required</AlertTitle>
           <AlertDescription>
-            You need to sign in with your AT Protocol account to submit a eprint. Your eprint will
+            You need to sign in with your AT Protocol account to submit an eprint. Your eprint will
             be stored in your Personal Data Server (PDS), giving you full control over your
             research.
           </AlertDescription>
@@ -99,7 +99,7 @@ export default function SubmitPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Submit a Eprint"
+        title="Submit an Eprint"
         description="Share your research with the world through decentralized publishing"
       />
 

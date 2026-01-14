@@ -980,7 +980,7 @@ export interface ExternalAuthor {
  * External eprint data fetched from an external source.
  *
  * @remarks
- * Represents the metadata of a eprint before it's imported
+ * Represents the metadata of an eprint before it's imported
  * into the Chive AppView cache.
  *
  * @public
@@ -1157,7 +1157,7 @@ export interface FetchOptions {
  */
 export interface IImportService {
   /**
-   * Checks if a eprint has been imported.
+   * Checks if an eprint has been imported.
    *
    * @param source - External source
    * @param externalId - Source-specific ID
@@ -1244,7 +1244,7 @@ export interface IImportService {
   }): Promise<{ eprints: ImportedEprint[]; cursor?: string }>;
 
   /**
-   * Marks a eprint as claimed.
+   * Marks an eprint as claimed.
    *
    * @param id - Internal database ID
    * @param canonicalUri - AT-URI of user's canonical record
@@ -1496,7 +1496,7 @@ export interface Backlink {
 }
 
 /**
- * Aggregated backlink counts for a eprint.
+ * Aggregated backlink counts for an eprint.
  *
  * @public
  * @since 0.1.0
@@ -1576,7 +1576,7 @@ export interface IBacklinkService {
   deleteBacklink(sourceUri: string): Promise<void>;
 
   /**
-   * Gets backlinks for a eprint.
+   * Gets backlinks for an eprint.
    *
    * @param targetUri - AT-URI of the eprint
    * @param options - Filter options
@@ -1592,7 +1592,7 @@ export interface IBacklinkService {
   ): Promise<{ backlinks: Backlink[]; cursor?: string }>;
 
   /**
-   * Gets aggregated backlink counts for a eprint.
+   * Gets aggregated backlink counts for an eprint.
    *
    * @param targetUri - AT-URI of the eprint
    * @returns Aggregated counts
@@ -1600,7 +1600,7 @@ export interface IBacklinkService {
   getCounts(targetUri: string): Promise<BacklinkCounts>;
 
   /**
-   * Updates cached counts for a eprint.
+   * Updates cached counts for an eprint.
    *
    * @param targetUri - AT-URI of the eprint
    */
@@ -1610,52 +1610,6 @@ export interface IBacklinkService {
 // ============================================================================
 // Claiming Service Interfaces
 // ============================================================================
-
-/**
- * Evidence types for eprint claiming.
- *
- * @public
- * @since 0.1.0
- */
-export type ClaimEvidenceType =
-  | 'orcid-match'
-  | 'semantic-scholar-match'
-  | 'openreview-match'
-  | 'openalex-match'
-  | 'arxiv-ownership'
-  | 'institutional-email'
-  | 'ror-affiliation'
-  | 'name-match'
-  | 'coauthor-overlap'
-  | 'author-claim';
-
-/**
- * Evidence item for a claim.
- *
- * @public
- * @since 0.1.0
- */
-export interface ClaimEvidence {
-  /**
-   * Type of evidence.
-   */
-  readonly type: ClaimEvidenceType;
-
-  /**
-   * Confidence score (0-1).
-   */
-  readonly score: number;
-
-  /**
-   * Human-readable description.
-   */
-  readonly details: string;
-
-  /**
-   * Supporting data.
-   */
-  readonly data?: Record<string, unknown>;
-}
 
 /**
  * Claim request status.
@@ -1686,16 +1640,6 @@ export interface ClaimRequest {
    * DID of the claimant.
    */
   readonly claimantDid: string;
-
-  /**
-   * Evidence supporting the claim.
-   */
-  readonly evidence: readonly ClaimEvidence[];
-
-  /**
-   * Computed verification score (0-1).
-   */
-  readonly verificationScore: number;
 
   /**
    * Current status.
@@ -1734,6 +1678,89 @@ export interface ClaimRequest {
 }
 
 /**
+ * Co-author claim request status.
+ *
+ * @public
+ * @since 0.1.0
+ */
+export type CoauthorClaimStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * Co-author claim request.
+ *
+ * @remarks
+ * Represents a request from one user to be added as co-author
+ * on an eprint in another user's PDS. The claimant selects which
+ * author entry they are claiming (by index), as names may not
+ * match exactly. Claimant profile data (ORCID, external IDs) can
+ * be resolved from claimantDid.
+ *
+ * @public
+ * @since 0.1.0
+ */
+export interface CoauthorClaimRequest {
+  /**
+   * Internal database ID.
+   */
+  readonly id: number;
+
+  /**
+   * AT-URI of the eprint record.
+   */
+  readonly eprintUri: string;
+
+  /**
+   * DID of the PDS owner.
+   */
+  readonly eprintOwnerDid: string;
+
+  /**
+   * DID of person requesting co-authorship.
+   */
+  readonly claimantDid: string;
+
+  /**
+   * Display name at time of request.
+   */
+  readonly claimantName: string;
+
+  /**
+   * Index of the author entry being claimed (0-based).
+   */
+  readonly authorIndex: number;
+
+  /**
+   * Name of the author entry being claimed (for display).
+   */
+  readonly authorName: string;
+
+  /**
+   * Current status.
+   */
+  readonly status: CoauthorClaimStatus;
+
+  /**
+   * Optional message from claimant.
+   */
+  readonly message?: string;
+
+  /**
+   * Reason for rejection (if rejected).
+   */
+  readonly rejectionReason?: string;
+
+  /**
+   * When request was created.
+   */
+  readonly createdAt: Date;
+
+  /**
+   * When request was reviewed.
+   */
+  readonly reviewedAt?: Date;
+}
+
+/**
  * Claiming service interface.
  *
  * @remarks
@@ -1751,33 +1778,9 @@ export interface IClaimingService {
    *
    * @param importId - ID of imported eprint
    * @param claimantDid - DID of user claiming
-   * @param evidence - Initial evidence (e.g., from ORCID OAuth)
    * @returns Created claim request
    */
-  startClaim(
-    importId: number,
-    claimantDid: string,
-    evidence?: readonly ClaimEvidence[]
-  ): Promise<ClaimRequest>;
-
-  /**
-   * Collects evidence for a claim from multiple authorities.
-   *
-   * @param claimId - Claim request ID
-   * @returns Updated claim with all collected evidence
-   */
-  collectEvidence(claimId: number): Promise<ClaimRequest>;
-
-  /**
-   * Computes verification score from evidence.
-   *
-   * @param evidence - All evidence items
-   * @returns Score (0-1) and decision
-   */
-  computeScore(evidence: readonly ClaimEvidence[]): {
-    score: number;
-    decision: 'auto-approve' | 'expedited' | 'manual' | 'insufficient';
-  };
+  startClaim(importId: number, claimantDid: string): Promise<ClaimRequest>;
 
   /**
    * Completes a claim after user creates canonical record.
@@ -1822,4 +1825,65 @@ export interface IClaimingService {
     limit?: number;
     cursor?: string;
   }): Promise<{ eprints: ImportedEprint[]; cursor?: string }>;
+
+  // Co-author claim methods
+
+  /**
+   * Requests co-authorship on an existing eprint.
+   *
+   * @param eprintUri - AT-URI of the eprint record
+   * @param eprintOwnerDid - DID of the PDS owner
+   * @param claimantDid - DID of the person requesting
+   * @param claimantName - Display name for the request
+   * @param authorIndex - Index of the author entry being claimed (0-based)
+   * @param authorName - Name of the author entry being claimed
+   * @param message - Optional message to PDS owner
+   */
+  requestCoauthorship(
+    eprintUri: string,
+    eprintOwnerDid: string,
+    claimantDid: string,
+    claimantName: string,
+    authorIndex: number,
+    authorName: string,
+    message?: string
+  ): Promise<CoauthorClaimRequest>;
+
+  /**
+   * Gets pending co-author requests for a PDS owner.
+   *
+   * @param ownerDid - DID of the PDS owner
+   */
+  getCoauthorRequestsForOwner(ownerDid: string): Promise<readonly CoauthorClaimRequest[]>;
+
+  /**
+   * Gets co-author requests made by a claimant.
+   *
+   * @param claimantDid - DID of the claimant
+   */
+  getCoauthorRequestsByClaimant(claimantDid: string): Promise<readonly CoauthorClaimRequest[]>;
+
+  /**
+   * Approves a co-author request.
+   *
+   * @param requestId - ID of the request
+   * @param ownerDid - DID of the owner (must match eprint_owner_did)
+   */
+  approveCoauthorRequest(requestId: number, ownerDid: string): Promise<void>;
+
+  /**
+   * Rejects a co-author request.
+   *
+   * @param requestId - ID of the request
+   * @param ownerDid - DID of the owner (must match eprint_owner_did)
+   * @param reason - Optional rejection reason
+   */
+  rejectCoauthorRequest(requestId: number, ownerDid: string, reason?: string): Promise<void>;
+
+  /**
+   * Gets a co-author request by ID.
+   *
+   * @param requestId - Request ID
+   */
+  getCoauthorRequest(requestId: number): Promise<CoauthorClaimRequest | null>;
 }

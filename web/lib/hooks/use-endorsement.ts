@@ -89,7 +89,7 @@ export const endorsementKeys = {
   /** Key for endorsement summary (counts by type) */
   summary: (eprintUri: string) => [...endorsementKeys.forEprint(eprintUri), 'summary'] as const,
 
-  /** Key for user's endorsement on a eprint */
+  /** Key for user's endorsement on an eprint */
   userEndorsement: (eprintUri: string, userDid: string) =>
     [...endorsementKeys.forEprint(eprintUri), 'user', userDid] as const,
 
@@ -152,7 +152,7 @@ export interface UpdateEndorsementInput {
 // =============================================================================
 
 /**
- * Fetches endorsements for a eprint.
+ * Fetches endorsements for an eprint.
  *
  * @remarks
  * Returns endorsements with aggregated counts by contribution type.
@@ -258,7 +258,7 @@ export function useEndorsementSummary(eprintUri: string, options: UseEndorsement
 }
 
 /**
- * Checks if a user has endorsed a eprint.
+ * Checks if a user has endorsed an eprint.
  *
  * @remarks
  * Returns the user's endorsement if it exists, or null if not.
@@ -491,7 +491,7 @@ export function useDeleteEndorsement() {
  * );
  * ```
  *
- * @returns Function to prefetch endorsements for a eprint
+ * @returns Function to prefetch endorsements for an eprint
  */
 export function usePrefetchEndorsements() {
   const queryClient = useQueryClient();

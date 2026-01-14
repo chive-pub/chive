@@ -92,7 +92,7 @@ export const searchImportsParamsSchema = z.object({
   claimStatus: claimStatusSchema.optional(),
   authorName: z.string().optional(),
   authorOrcid: z.string().optional(),
-  limit: z.number().int().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
   cursor: z.string().optional(),
 });
 

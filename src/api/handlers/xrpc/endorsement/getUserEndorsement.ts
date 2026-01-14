@@ -102,7 +102,7 @@ export async function getUserEndorsementHandler(
 export const getUserEndorsementEndpoint: XRPCEndpoint<GetUserEndorsementParams, Endorsement> = {
   method: 'pub.chive.endorsement.getUserEndorsement' as never,
   type: 'query',
-  description: "Get a user's endorsement for a eprint",
+  description: "Get a user's endorsement for an eprint",
   inputSchema: getUserEndorsementParamsSchema,
   outputSchema: endorsementSchema,
   handler: getUserEndorsementHandler,

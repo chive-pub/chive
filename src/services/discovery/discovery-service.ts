@@ -195,7 +195,7 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Enriches a eprint with data from Semantic Scholar and OpenAlex.
+   * Enriches an eprint with data from Semantic Scholar and OpenAlex.
    *
    * @param eprint - Eprint to enrich
    * @returns Enrichment result with external data
@@ -782,7 +782,7 @@ export class DiscoveryService implements IDiscoveryService {
   // =============================================================================
 
   /**
-   * Gets citation counts for a eprint.
+   * Gets citation counts for an eprint.
    *
    * @param uri - AT-URI of the eprint
    * @returns Citation statistics
@@ -859,7 +859,7 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Gets enrichment data for a eprint.
+   * Gets enrichment data for an eprint.
    *
    * @param uri - AT-URI of the eprint
    * @returns Enrichment data or null if not available
@@ -919,13 +919,13 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Gets a eprint by URI from the database.
+   * Gets an eprint by URI from the database.
    */
   private async getEprintByUri(uri: AtUri): Promise<EprintRow | null> {
     const result = await this.db.query<EprintRow>(
       `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
               semantic_scholar_id, openalex_id
-       FROM eprints WHERE uri = $1`,
+       FROM eprints_index WHERE uri = $1`,
       [uri]
     );
 
@@ -933,14 +933,14 @@ export class DiscoveryService implements IDiscoveryService {
   }
 
   /**
-   * Finds a eprint by external ID (S2 or DOI).
+   * Finds an eprint by external ID (S2 or DOI).
    */
   private async findEprintByExternalId(s2Id?: string, doi?: string): Promise<EprintRow | null> {
     if (s2Id) {
       const result = await this.db.query<EprintRow>(
         `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
                 semantic_scholar_id, openalex_id
-         FROM eprints WHERE semantic_scholar_id = $1`,
+         FROM eprints_index WHERE semantic_scholar_id = $1`,
         [s2Id]
       );
 
@@ -951,7 +951,7 @@ export class DiscoveryService implements IDiscoveryService {
       const result = await this.db.query<EprintRow>(
         `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
                 semantic_scholar_id, openalex_id
-         FROM eprints WHERE doi = $1`,
+         FROM eprints_index WHERE doi = $1`,
         [doi]
       );
 
@@ -1040,9 +1040,10 @@ export class DiscoveryService implements IDiscoveryService {
    */
   private async getUserClaimedPapers(userDid: DID): Promise<Set<string>> {
     const result = await this.db.query<{ uri: string }>(
-      `SELECT p.uri FROM eprints p
-       JOIN claim_requests c ON c.import_id = p.import_id
-       WHERE c.claimant_did = $1 AND c.status = 'approved'`,
+      `SELECT i.canonical_uri as uri
+       FROM imported_eprints i
+       JOIN claim_requests c ON c.import_id = i.id
+       WHERE c.claimant_did = $1 AND c.status = 'approved' AND i.canonical_uri IS NOT NULL`,
       [userDid]
     );
 
@@ -1051,15 +1052,21 @@ export class DiscoveryService implements IDiscoveryService {
 
   /**
    * Gets dismissed recommendation URIs for a user.
+   * Returns empty set if user_interactions table doesn't exist yet.
    */
   private async getDismissedRecommendations(userDid: DID): Promise<Set<string>> {
-    const result = await this.db.query<InteractionRow>(
-      `SELECT eprint_uri FROM user_interactions
-       WHERE user_did = $1 AND interaction_type = 'dismiss'`,
-      [userDid]
-    );
+    try {
+      const result = await this.db.query<InteractionRow>(
+        `SELECT eprint_uri FROM user_interactions
+         WHERE user_did = $1 AND interaction_type = 'dismiss'`,
+        [userDid]
+      );
 
-    return new Set(result.rows.map((r) => r.eprint_uri));
+      return new Set(result.rows.map((r) => r.eprint_uri));
+    } catch {
+      // Table may not exist yet
+      return new Set();
+    }
   }
 
   /**

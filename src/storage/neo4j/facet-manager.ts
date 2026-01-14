@@ -88,7 +88,7 @@ export interface BatchAssignmentResult {
  *   updatedAt: new Date()
  * });
  *
- * // Assign facets to a eprint
+ * // Assign facets to an eprint
  * await facetManager.assignFacets('at://did:plc:user/pub.chive.eprint/123', [
  *   { facetType: 'matter', facetUri: uri, confidence: 0.95 }
  * ], 'did:plc:user');

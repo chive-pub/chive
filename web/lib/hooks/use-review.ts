@@ -135,7 +135,7 @@ export interface CreateReviewInput {
 // =============================================================================
 
 /**
- * Fetches reviews for a eprint.
+ * Fetches reviews for an eprint.
  *
  * @remarks
  * Uses TanStack Query with a 1-minute stale time. Reviews are more dynamic
@@ -199,7 +199,7 @@ export function useReviews(
 }
 
 /**
- * Fetches inline reviews (span annotations) for a eprint.
+ * Fetches inline reviews (span annotations) for an eprint.
  *
  * @remarks
  * Returns only reviews that have a target text span.
@@ -420,7 +420,7 @@ export function useDeleteReview() {
  *
  * @remarks
  * Improves perceived performance by loading review data before
- * the user navigates to a eprint's reviews section.
+ * the user navigates to an eprint's reviews section.
  *
  * @example
  * ```tsx
@@ -437,7 +437,7 @@ export function useDeleteReview() {
  * );
  * ```
  *
- * @returns Function to prefetch reviews for a eprint
+ * @returns Function to prefetch reviews for an eprint
  */
 export function usePrefetchReviews() {
   const queryClient = useQueryClient();

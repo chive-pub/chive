@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.eprint.getSubmission.
  *
  * @remarks
- * Retrieves a eprint by AT URI from Chive's index. Returns the full
+ * Retrieves an eprint by AT URI from Chive's index. Returns the full
  * eprint record with enriched metadata, version history, and metrics.
  *
  * **ATProto Compliance:**
@@ -188,7 +188,7 @@ export async function getSubmissionHandler(
 export const getSubmissionEndpoint: XRPCEndpoint<GetSubmissionParams, EprintResponse> = {
   method: 'pub.chive.eprint.getSubmission' as never,
   type: 'query',
-  description: 'Get a eprint submission by AT URI',
+  description: 'Get an eprint submission by AT URI',
   inputSchema: getSubmissionParamsSchema,
   outputSchema: eprintResponseSchema,
   handler: getSubmissionHandler,

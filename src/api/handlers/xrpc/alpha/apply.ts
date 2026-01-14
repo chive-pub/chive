@@ -45,8 +45,8 @@ export async function applyHandler(
     did: user.did,
     sector: params.sector,
     careerStage: params.careerStage,
-    affiliation: params.affiliation?.name,
-    researchField: params.researchField,
+    affiliationCount: params.affiliations?.length ?? 0,
+    keywordCount: params.researchKeywords.length,
   });
 
   const application = await alphaService.apply({
@@ -57,8 +57,8 @@ export async function applyHandler(
     sectorOther: params.sectorOther,
     careerStage: params.careerStage,
     careerStageOther: params.careerStageOther,
-    affiliation: params.affiliation,
-    researchField: params.researchField,
+    affiliations: params.affiliations,
+    researchKeywords: params.researchKeywords,
     motivation: params.motivation,
   });
 

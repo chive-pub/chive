@@ -131,7 +131,7 @@ export async function listForEprintHandler(
 export const listForEprintEndpoint: XRPCEndpoint<ListReviewsForEprintParams, ReviewsResponse> = {
   method: 'pub.chive.review.listForEprint' as never,
   type: 'query',
-  description: 'List reviews for a eprint',
+  description: 'List reviews for an eprint',
   inputSchema: listReviewsForEprintParamsSchema,
   outputSchema: reviewsResponseSchema,
   handler: listForEprintHandler,

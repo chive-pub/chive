@@ -44,18 +44,37 @@ export interface AuthorAffiliation {
 }
 
 /**
- * ROR API response organization.
+ * ROR API v2 response organization.
  */
 interface RorOrganization {
   id: string;
-  name: string;
-  aliases: string[];
-  acronyms: string[];
-  country: {
-    country_name: string;
-    country_code: string;
-  };
-  types: string[];
+  names: Array<{
+    value: string;
+    types: string[];
+  }>;
+  locations?: Array<{
+    geonames_details?: {
+      country_name?: string;
+      country_code?: string;
+    };
+  }>;
+  types?: string[];
+}
+
+/**
+ * Gets the display name from ROR v2 names array.
+ * Prefers ror_display type, falls back to first name.
+ */
+function getRorDisplayName(org: RorOrganization): string {
+  const displayName = org.names.find((n) => n.types.includes('ror_display'));
+  return displayName?.value ?? org.names[0]?.value ?? 'Unknown';
+}
+
+/**
+ * Gets the country name from ROR v2 locations array.
+ */
+function getRorCountryName(org: RorOrganization): string | undefined {
+  return org.locations?.[0]?.geonames_details?.country_name;
 }
 
 /**
@@ -115,7 +134,7 @@ function useRorSearch() {
     setIsSearching(true);
     try {
       const response = await fetch(
-        `https://api.ror.org/organizations?query=${encodeURIComponent(searchQuery)}`,
+        `https://api.ror.org/v2/organizations?query=${encodeURIComponent(searchQuery)}`,
         { signal: controller.signal }
       );
 
@@ -245,7 +264,7 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
   const handleSelectOrg = useCallback(
     (org: RorOrganization) => {
       onAdd({
-        name: org.name,
+        name: getRorDisplayName(org),
         rorId: org.id,
         department: undefined,
       });
@@ -317,20 +336,24 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
         <div className="absolute z-50 w-full rounded-md border bg-popover shadow-md">
           {results.length > 0 ? (
             <div className="max-h-64 overflow-y-auto p-1">
-              {results.map((org) => (
-                <button
-                  key={org.id}
-                  type="button"
-                  onClick={() => handleSelectOrg(org)}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                >
-                  <span className="font-medium">{org.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {org.country.country_name}
-                    {org.types.length > 0 && ` • ${org.types.join(', ')}`}
-                  </span>
-                </button>
-              ))}
+              {results.map((org) => {
+                const displayName = getRorDisplayName(org);
+                const countryName = getRorCountryName(org);
+                return (
+                  <button
+                    key={org.id}
+                    type="button"
+                    onClick={() => handleSelectOrg(org)}
+                    className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <span className="font-medium">{displayName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {countryName}
+                      {org.types && org.types.length > 0 && ` • ${org.types.join(', ')}`}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : null}
 

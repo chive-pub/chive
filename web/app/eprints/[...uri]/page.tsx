@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
     });
 
     if (!data) {
-      return { title: 'Eprint Not Found | Chive' };
+      return { title: 'Eprint Not Found' };
     }
 
     // API returns the eprint directly (not wrapped in { eprint: ... })
@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
     const ogImageUrl = `/api/og?${ogImageParams.toString()}`;
 
     return {
-      title: `${eprint.title} | Chive`,
+      title: eprint.title,
       description: eprint.abstract.slice(0, 200),
       openGraph: {
         title: eprint.title,
@@ -81,7 +81,7 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
       },
     };
   } catch {
-    return { title: 'Eprint | Chive' };
+    return { title: 'Eprint' };
   }
 }
 
@@ -89,7 +89,7 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
  * Eprint detail page component.
  *
  * @remarks
- * Server component that renders a eprint's detail page.
+ * Server component that renders an eprint's detail page.
  * Uses catch-all route to handle AT Protocol URIs which contain slashes.
  *
  * @example
