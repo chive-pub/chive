@@ -190,6 +190,78 @@ jobs:
             echo "=== Deployment complete ==="
             echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+      - name: Setup Governance PDS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 5m
+          script: |
+            set -e
+
+            DOMAIN="${{ vars.DOMAIN }}"
+            PDS_CONTAINER="chive-governance-pds"
+            GOVERNANCE_HANDLE="governance.${DOMAIN}"
+            GOVERNANCE_EMAIL="governance@${DOMAIN}"
+
+            echo "=== Governance PDS Setup ==="
+
+            cd /opt/chive/docker
+
+            # Wait for PDS to be healthy
+            echo "Waiting for Governance PDS to be healthy..."
+            for i in {1..30}; do
+              if docker exec ${PDS_CONTAINER} wget -q --spider http://localhost:3000/xrpc/_health 2>/dev/null; then
+                echo "✓ Governance PDS is healthy"
+                break
+              fi
+              if [ $i -eq 30 ]; then
+                echo "::warning::Governance PDS not healthy after 60s - skipping account setup"
+                exit 0
+              fi
+              sleep 2
+            done
+
+            # Check if governance account already exists by trying to resolve the handle
+            echo "Checking if governance account exists..."
+            EXISTING_DID=$(docker exec ${PDS_CONTAINER} sh -c "
+              wget -q -O- 'http://localhost:3000/xrpc/com.atproto.identity.resolveHandle?handle=${GOVERNANCE_HANDLE}' 2>/dev/null || echo ''
+            " | grep -o '"did":"[^"]*"' | cut -d'"' -f4 || echo "")
+
+            if [ -n "$EXISTING_DID" ] && [ "$EXISTING_DID" != "" ]; then
+              echo "✓ Governance account already exists"
+              echo "  DID: ${EXISTING_DID}"
+              echo "  Handle: ${GOVERNANCE_HANDLE}"
+              exit 0
+            fi
+
+            # Create governance account using pdsadmin
+            echo "Creating governance account..."
+            echo "  Handle: ${GOVERNANCE_HANDLE}"
+            echo "  Email: ${GOVERNANCE_EMAIL}"
+
+            # Check if pdsadmin exists
+            if docker exec ${PDS_CONTAINER} test -f /pds/pdsadmin.sh; then
+              RESULT=$(docker exec ${PDS_CONTAINER} /pds/pdsadmin.sh account create "${GOVERNANCE_HANDLE}" "${GOVERNANCE_EMAIL}" 2>&1) || {
+                echo "::warning::Failed to create governance account"
+                echo "$RESULT"
+                exit 0
+              }
+              echo "$RESULT"
+
+              # Try to extract DID
+              NEW_DID=$(echo "$RESULT" | grep -o 'did:plc:[a-z0-9]*' | head -1 || echo "")
+              if [ -n "$NEW_DID" ]; then
+                echo ""
+                echo "✓ Governance account created!"
+                echo "  DID: ${NEW_DID}"
+                echo "  Handle: ${GOVERNANCE_HANDLE}"
+              fi
+            else
+              echo "::warning::pdsadmin.sh not found in container - manual setup may be required"
+            fi
+
       - name: Verify deployment
         if: ${{ vars.DOMAIN != '' }}
         run: |
