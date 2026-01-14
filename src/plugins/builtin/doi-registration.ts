@@ -271,7 +271,7 @@ export class DoiRegistrationPlugin extends BasePlugin {
               : [],
           })),
           titles: [{ title: data.title }],
-          publisher: 'Chive Eprint Server',
+          publisher: 'Chive Eprint Service',
           publicationYear: new Date().getFullYear(),
           types: {
             resourceTypeGeneral: 'Eprint',

@@ -68,7 +68,7 @@ export class AlphaLandingPage {
     this.logo = page.getByRole('img', { name: /chive/i });
     this.title = page.getByRole('heading', { level: 1 });
     this.tagline = page.getByText(/decentralized eprints/i);
-    this.description = page.getByText(/next-generation eprint server/i);
+    this.description = page.getByText(/decentralized eprints on atproto/i);
     this.handleInput = page.getByRole('textbox', { name: /bsky\.social/i });
     this.signInButton = page.getByRole('button', { name: /sign in with bluesky/i });
     this.errorMessage = page.locator('.text-destructive');

@@ -154,7 +154,7 @@ export function createATProtoOAuthClient(options: ATProtoOAuthClientOptions): No
   return new NodeOAuthClient({
     clientMetadata: {
       client_id: config.clientMetadata.clientId,
-      client_name: 'Chive Eprint Server',
+      client_name: 'Chive Eprint Service',
       client_uri: 'https://chive.pub',
       logo_uri: 'https://chive.pub/logo.png',
       tos_uri: 'https://chive.pub/terms',

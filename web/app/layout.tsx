@@ -10,11 +10,10 @@ import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Chive - Decentralized Eprint Server',
+    default: 'Chive | Decentralized Eprint Service',
     template: '%s | Chive',
   },
-  description:
-    'Open access eprint server built on AT Protocol. Discover, share, and discuss academic research with full data sovereignty.',
+  description: 'Decentralized eprints on ATProto.',
   keywords: [
     'eprint',
     'academic',
@@ -34,21 +33,21 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://chive.pub',
     siteName: 'Chive',
-    title: 'Chive - Decentralized Eprint Server',
-    description: 'Open access eprint server built on AT Protocol with full data sovereignty.',
+    title: 'Chive | Decentralized Eprint Service',
+    description: 'Decentralized eprints on ATProto.',
     images: [
       {
         url: 'https://chive.pub/og',
         width: 1200,
         height: 630,
-        alt: 'Chive - Decentralized Eprint Server',
+        alt: 'Chive | Decentralized Eprint Service',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Chive - Decentralized Eprint Server',
-    description: 'Open access eprint server built on AT Protocol.',
+    title: 'Chive | Decentralized Eprint Service',
+    description: 'Decentralized eprints on ATProto.',
     images: ['https://chive.pub/og'],
   },
   robots: {

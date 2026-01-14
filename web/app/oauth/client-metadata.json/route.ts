@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     client_id: `${baseUrl}/oauth/client-metadata.json`,
 
     // Human-readable client name
-    client_name: 'Chive - Decentralized Eprint Server',
+    client_name: 'Chive | Decentralized Eprint Service',
 
     // Client homepage
     client_uri: baseUrl,

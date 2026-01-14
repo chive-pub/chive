@@ -9,7 +9,7 @@ import { SearchPageSkeleton } from './loading';
  */
 export const metadata: Metadata = {
   title: 'Search Eprints',
-  description: 'Search across all eprints on Chive, the decentralized eprint server.',
+  description: 'Search across all eprints on Chive, a decentralized eprint service.',
 };
 
 /**

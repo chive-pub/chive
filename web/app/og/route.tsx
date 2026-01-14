@@ -111,7 +111,7 @@ async function generateDefaultImage(): Promise<ImageResponse> {
           textAlign: 'center',
         }}
       >
-        Decentralized Eprint Server
+        Decentralized Eprint Service
       </div>
 
       {/* Description */}
@@ -124,7 +124,7 @@ async function generateDefaultImage(): Promise<ImageResponse> {
           lineHeight: 1.4,
         }}
       >
-        Open access scholarly communication built on AT Protocol with full data sovereignty
+        Decentralized eprints on ATProto
       </div>
 
       {/* Features */}

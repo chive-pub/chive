@@ -99,7 +99,7 @@ export function renderAlphaApprovalEmail(data: AlphaApprovalEmailData): Rendered
   </div>
 
   <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
-    <p style="margin: 0;">Chive - Decentralized Scholarly Publishing</p>
+    <p style="margin: 0;">Chive | Decentralized Eprint Service</p>
     <p style="margin: 4px 0 0 0;"><a href="https://chive.pub" style="color: #157200;">chive.pub</a></p>
   </div>
 </body>
@@ -135,7 +135,7 @@ Thank you for being part of this journey to make academic publishing more open a
 Best regards,
 The Chive Team
 
-Chive: Decentralized Scholarly Publishing
+Chive | Decentralized Eprint Service
 https://chive.pub
 `.trim();
 

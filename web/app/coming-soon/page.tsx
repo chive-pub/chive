@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const metadata: Metadata = {
-  title: 'Chive - Decentralized Eprints',
-  description: 'A next-generation eprint server built on AT Protocol.',
+  title: 'Chive | Decentralized Eprints',
+  description: 'Decentralized eprints on ATProto.',
 };
 
 const features = [
@@ -78,8 +78,8 @@ export default function ComingSoonPage() {
 
           {/* Description */}
           <p className="max-w-2xl text-lg text-muted-foreground md:text-xl">
-            A next-generation eprint server built on AT Protocol. Share your research with full data
-            sovereignty, open federation, and community governance.
+            Decentralized eprints on ATProto. Share your research with full data sovereignty, open
+            federation, and community governance.
           </p>
 
           {/* Status Badge */}

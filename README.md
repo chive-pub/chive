@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A decentralized eprint server built on AT Protocol</strong>
+  <strong>Decentralized eprints on ATProto</strong>
 </p>
 
 <p align="center">

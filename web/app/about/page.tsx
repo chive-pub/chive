@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  */
 export const metadata: Metadata = {
   title: 'About',
-  description: 'Learn about Chive, a decentralized eprint server built on AT Protocol.',
+  description: 'Learn about Chive, a decentralized eprint service on ATProto.',
 };
 
 /**
@@ -24,16 +24,14 @@ export default function AboutPage() {
       {/* Hero section */}
       <header className="text-center">
         <h1 className="text-4xl font-bold tracking-tight">About Chive</h1>
-        <p className="mt-4 text-xl text-muted-foreground">
-          A decentralized eprint server built on AT Protocol
-        </p>
+        <p className="mt-4 text-xl text-muted-foreground">Decentralized eprints on ATProto</p>
       </header>
 
       {/* Mission */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">Our Mission</h2>
         <p className="text-muted-foreground leading-relaxed">
-          Chive aims to revolutionize scholarly communication by building an eprint server where
+          Chive aims to revolutionize scholarly communication by building an eprint service where
           researchers truly own their work. Using AT Protocol&apos;s decentralized architecture,
           your eprints live in your Personal Data Server (PDS), not in a central database you
           don&apos;t control.

@@ -153,8 +153,8 @@ export default function AlphaLandingPage() {
 
         {/* Description */}
         <p className="mb-8 text-lg leading-relaxed text-muted-foreground">
-          A next-generation eprint server built on AT Protocol. Share your research with full data
-          sovereignty, open federation, and community governance.
+          Decentralized eprints on ATProto. Share your research with full data sovereignty, open
+          federation, and community governance.
         </p>
 
         {/* Handle Input */}

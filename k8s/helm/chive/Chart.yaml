@@ -1,6 +1,6 @@
 apiVersion: v2
 name: chive
-description: Chive - Decentralized Eprint Server on AT Protocol
+description: Chive | Decentralized Eprint Service on ATProto
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
