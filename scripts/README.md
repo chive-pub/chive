@@ -14,8 +14,9 @@ To run locally, you need SSH tunnel access to the production database:
 
 ```bash
 # Terminal 1: Start SSH tunnel to forward PostgreSQL and Redis ports
+# Replace <SERVER_IP> with the production server IP and <SSH_KEY> with your key path
 ssh -L 5432:localhost:5432 -L 6379:localhost:6379 \
-    -i ~/.ssh/chive-key.pem ubuntu@3.229.192.194
+    -i ~/.ssh/<SSH_KEY> ubuntu@<SERVER_IP>
 ```
 
 Keep this terminal open while running commands.

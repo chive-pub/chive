@@ -9,7 +9,7 @@ Post-deployment manual checklist for launching the Chive alpha.
 Verify all required secrets are configured in GitHub repository settings:
 
 - [ ] `SSH_PRIVATE_KEY` - Server access key
-- [ ] `APP_HOST` - Application server IP (3.229.192.194)
+- [ ] `APP_HOST` - Application server IP
 - [ ] `DOCS_HOST` - Docs server IP (same as APP_HOST)
 - [ ] `SSH_USER` - SSH username (ubuntu)
 - [ ] `POSTGRES_PASSWORD` - Database password
@@ -41,8 +41,8 @@ Verify all required secrets are configured in GitHub repository settings:
 ### 1. Verify Services
 
 ```bash
-# SSH to server
-ssh ubuntu@3.229.192.194
+# SSH to server (replace <SERVER_IP> with actual IP from APP_HOST secret)
+ssh ubuntu@<SERVER_IP>
 
 # Check container status
 cd /opt/chive/docker
@@ -160,7 +160,7 @@ If issues are discovered:
 
 ```bash
 # SSH to server
-ssh ubuntu@3.229.192.194
+ssh ubuntu@<SERVER_IP>
 
 # View deployment history
 git log --oneline -10

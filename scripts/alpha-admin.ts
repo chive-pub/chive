@@ -9,8 +9,8 @@
  *   pnpm tsx scripts/alpha-admin.ts <command> [options]
  *
  * Setup for local use (requires SSH tunnel):
- *   # Terminal 1: Start SSH tunnel
- *   ssh -L 5432:localhost:5432 -L 6379:localhost:6379 -i ~/.ssh/chive-key.pem ubuntu@3.229.192.194
+ *   # Terminal 1: Start SSH tunnel (replace <SERVER_IP> and <SSH_KEY> with actual values)
+ *   ssh -L 5432:localhost:5432 -L 6379:localhost:6379 -i ~/.ssh/<SSH_KEY> ubuntu@<SERVER_IP>
  *
  *   # Terminal 2: Run script
  *   DATABASE_URL="postgresql://chive:PASSWORD@localhost:5432/chive" \
@@ -566,9 +566,9 @@ ${colors.dim('Environment Variables:')}
   ZULIP_INVITE_URL        Zulip invite link (for approval emails)
 
 ${colors.dim('Local Setup (requires SSH tunnel):')}
-  # Terminal 1: Start tunnel
+  # Terminal 1: Start tunnel (replace <SERVER_IP> and <SSH_KEY>)
   ssh -L 5432:localhost:5432 -L 6379:localhost:6379 \\
-      -i ~/.ssh/chive-key.pem ubuntu@3.229.192.194
+      -i ~/.ssh/<SSH_KEY> ubuntu@<SERVER_IP>
 
   # Terminal 2: Run commands
   DATABASE_URL="postgresql://chive:PASSWORD@localhost:5432/chive" \\
