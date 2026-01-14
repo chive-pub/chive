@@ -31,11 +31,58 @@ import { renderAlphaApprovalEmail } from '../src/services/email/templates/alpha-
 import type { ILogger } from '../src/types/interfaces/logger.interface.js';
 
 // =============================================================================
+// DID Resolution
+// =============================================================================
+
+async function resolveHandleFromDid(did: string): Promise<string | null> {
+  try {
+    const response = await fetch(`https://plc.directory/${did}`);
+    if (!response.ok) return null;
+
+    const doc = (await response.json()) as { alsoKnownAs?: string[] };
+    const handle = doc.alsoKnownAs?.find((aka) => aka.startsWith('at://'));
+    if (!handle) return null;
+
+    return handle.replace('at://', '@');
+  } catch {
+    return null;
+  }
+}
+
+// Cache for resolved handles
+const handleCache = new Map<string, string | null>();
+
+async function getHandle(did: string, dbHandle: string | null): Promise<string> {
+  // Use DB handle if available
+  if (dbHandle) return dbHandle;
+
+  // Check cache
+  if (handleCache.has(did)) {
+    return handleCache.get(did) ?? '(unknown)';
+  }
+
+  // Resolve from PLC directory
+  const resolved = await resolveHandleFromDid(did);
+  handleCache.set(did, resolved);
+  return resolved ?? '(unknown)';
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 
+interface Affiliation {
+  name: string;
+  rorId?: string;
+}
+
+interface ResearchKeyword {
+  label: string;
+  wikidataId?: string;
+}
+
 interface AlphaApplication {
-  id: number;
+  id: string;
   did: string;
   handle: string | null;
   email: string;
@@ -44,8 +91,8 @@ interface AlphaApplication {
   sectorOther: string | null;
   careerStage: string;
   careerStageOther: string | null;
-  affiliation: { name: string; rorId?: string } | null;
-  researchField: string;
+  affiliations: Affiliation[];
+  researchKeywords: ResearchKeyword[];
   motivation: string | null;
   zulipInvited: boolean;
   reviewedAt: Date | null;
@@ -98,9 +145,8 @@ async function getApplication(pool: pg.Pool, did: string): Promise<AlphaApplicat
       id, did, handle, email, status,
       sector, sector_other as "sectorOther",
       career_stage as "careerStage", career_stage_other as "careerStageOther",
-      affiliation_name, affiliation_ror_id,
-      research_field as "researchField", motivation,
-      zulip_invited as "zulipInvited",
+      affiliations, research_keywords as "researchKeywords",
+      motivation, zulip_invited as "zulipInvited",
       reviewed_at as "reviewedAt", reviewed_by as "reviewedBy",
       created_at as "createdAt", updated_at as "updatedAt"
     FROM alpha_applications WHERE did = $1`,
@@ -112,9 +158,8 @@ async function getApplication(pool: pg.Pool, did: string): Promise<AlphaApplicat
   const row = result.rows[0];
   return {
     ...row,
-    affiliation: row.affiliation_name
-      ? { name: row.affiliation_name, rorId: row.affiliation_ror_id }
-      : null,
+    affiliations: row.affiliations || [],
+    researchKeywords: row.researchKeywords || [],
   };
 }
 
@@ -131,9 +176,8 @@ async function listApplications(
       id, did, handle, email, status,
       sector, sector_other as "sectorOther",
       career_stage as "careerStage", career_stage_other as "careerStageOther",
-      affiliation_name, affiliation_ror_id,
-      research_field as "researchField", motivation,
-      zulip_invited as "zulipInvited",
+      affiliations, research_keywords as "researchKeywords",
+      motivation, zulip_invited as "zulipInvited",
       reviewed_at as "reviewedAt", reviewed_by as "reviewedBy",
       created_at as "createdAt", updated_at as "updatedAt"
     FROM alpha_applications
@@ -145,9 +189,8 @@ async function listApplications(
 
   return result.rows.map((row) => ({
     ...row,
-    affiliation: row.affiliation_name
-      ? { name: row.affiliation_name, rorId: row.affiliation_ror_id }
-      : null,
+    affiliations: row.affiliations || [],
+    researchKeywords: row.researchKeywords || [],
   }));
 }
 
@@ -215,22 +258,30 @@ async function removeAlphaRole(redis: RedisClientType, did: string): Promise<voi
 // Formatters
 // =============================================================================
 
-function formatApplication(app: AlphaApplication, detailed = false): string {
+async function formatApplication(app: AlphaApplication, detailed = false): Promise<string> {
+  const handle = await getHandle(app.did, app.handle);
   const lines = [
     `  ${colors.dim('DID:')}      ${app.did}`,
-    `  ${colors.dim('Handle:')}   ${app.handle ?? '(none)'}`,
+    `  ${colors.dim('Handle:')}   ${handle}`,
     `  ${colors.dim('Email:')}    ${app.email}`,
     `  ${colors.dim('Status:')}   ${formatStatus(app.status)}`,
     `  ${colors.dim('Sector:')}   ${app.sector}${app.sectorOther ? ` (${app.sectorOther})` : ''}`,
     `  ${colors.dim('Career:')}   ${app.careerStage}${app.careerStageOther ? ` (${app.careerStageOther})` : ''}`,
-    `  ${colors.dim('Field:')}    ${app.researchField}`,
     `  ${colors.dim('Applied:')}  ${app.createdAt.toISOString().split('T')[0]}`,
   ];
 
-  if (app.affiliation) {
-    lines.push(
-      `  ${colors.dim('Affiliation:')} ${app.affiliation.name}${app.affiliation.rorId ? ` (${app.affiliation.rorId})` : ''}`
-    );
+  if (app.affiliations && app.affiliations.length > 0) {
+    const affStr = app.affiliations
+      .map((a) => `${a.name}${a.rorId ? ` (${a.rorId})` : ''}`)
+      .join(', ');
+    lines.push(`  ${colors.dim('Affiliations:')} ${affStr}`);
+  }
+
+  if (app.researchKeywords && app.researchKeywords.length > 0) {
+    const keywords = app.researchKeywords.map((k) => k.label).filter(Boolean);
+    if (keywords.length > 0) {
+      lines.push(`  ${colors.dim('Keywords:')} ${keywords.join(', ')}`);
+    }
   }
 
   if (detailed) {
@@ -283,7 +334,7 @@ async function cmdList(pool: pg.Pool, status?: string): Promise<void> {
 
   for (const app of apps) {
     console.log(colors.blue(`${app.did}`));
-    console.log(formatApplication(app));
+    console.log(await formatApplication(app));
     console.log('');
   }
 
@@ -299,7 +350,7 @@ async function cmdShow(pool: pg.Pool, did: string): Promise<void> {
   }
 
   console.log(colors.blue(`\n=== Application Details ===\n`));
-  console.log(formatApplication(app, true));
+  console.log(await formatApplication(app, true));
   console.log('');
 }
 
@@ -318,7 +369,7 @@ async function cmdApprove(
   }
 
   console.log(colors.blue(`\n=== Approving Application ===\n`));
-  console.log(formatApplication(app));
+  console.log(await formatApplication(app));
   console.log('');
 
   if (app.status !== 'pending') {
@@ -391,7 +442,7 @@ async function cmdReject(
   }
 
   console.log(colors.blue(`\n=== Rejecting Application ===\n`));
-  console.log(formatApplication(app));
+  console.log(await formatApplication(app));
   console.log('');
 
   if (options.dryRun) {
@@ -422,7 +473,7 @@ async function cmdRevoke(
   }
 
   console.log(colors.blue(`\n=== Revoking Access ===\n`));
-  console.log(formatApplication(app));
+  console.log(await formatApplication(app));
   console.log('');
 
   if (options.dryRun) {
@@ -482,9 +533,8 @@ async function cmdExport(pool: pg.Pool, filename: string): Promise<void> {
     'sector_other',
     'career_stage',
     'career_stage_other',
-    'affiliation_name',
-    'affiliation_ror_id',
-    'research_field',
+    'affiliations',
+    'research_keywords',
     'motivation',
     'zulip_invited',
     'reviewed_at',
@@ -503,9 +553,8 @@ async function cmdExport(pool: pg.Pool, filename: string): Promise<void> {
     app.sectorOther ?? '',
     app.careerStage,
     app.careerStageOther ?? '',
-    app.affiliation?.name ?? '',
-    app.affiliation?.rorId ?? '',
-    app.researchField,
+    app.affiliations.map((a) => a.name).join('; '),
+    app.researchKeywords.map((k) => k.label).join('; '),
     app.motivation ?? '',
     app.zulipInvited,
     app.reviewedAt?.toISOString() ?? '',
