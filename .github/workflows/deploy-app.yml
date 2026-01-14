@@ -42,6 +42,71 @@ jobs:
 
           echo "✓ All required configuration present"
 
+      - name: Create Docker Compose .env file
+        uses: SpicyPizza/create-envfile@v2
+        with:
+          envkey_DOMAIN: ${{ vars.DOMAIN }}
+          envkey_ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          envkey_CHIVE_VERSION: latest
+          envkey_POSTGRES_DB: chive
+          envkey_POSTGRES_USER: chive
+          envkey_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          envkey_NEO4J_USER: neo4j
+          envkey_NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          envkey_GOVERNANCE_PDS_JWT_SECRET: ${{ secrets.GOVERNANCE_PDS_JWT_SECRET }}
+          envkey_GOVERNANCE_PDS_ADMIN_PASSWORD: ${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }}
+          envkey_GOVERNANCE_PDS_ROTATION_KEY: ${{ secrets.GOVERNANCE_PDS_ROTATION_KEY }}
+          envkey_TRAEFIK_BASIC_AUTH: ${{ secrets.TRAEFIK_BASIC_AUTH }}
+          file_name: .env
+          directory: docker-env
+
+      - name: Create application .env.production file
+        uses: SpicyPizza/create-envfile@v2
+        with:
+          envkey_DOMAIN: ${{ vars.DOMAIN }}
+          envkey_ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+          envkey_CHIVE_VERSION: latest
+          envkey_POSTGRES_HOST: postgres
+          envkey_POSTGRES_DB: chive
+          envkey_POSTGRES_USER: chive
+          envkey_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          envkey_NEO4J_USER: neo4j
+          envkey_NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          envkey_REDIS_URL: redis://redis:6379
+          envkey_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          envkey_SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          envkey_GOVERNANCE_PDS_JWT_SECRET: ${{ secrets.GOVERNANCE_PDS_JWT_SECRET }}
+          envkey_GOVERNANCE_PDS_ADMIN_PASSWORD: ${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }}
+          envkey_GOVERNANCE_PDS_ROTATION_KEY: ${{ secrets.GOVERNANCE_PDS_ROTATION_KEY }}
+          envkey_DATABASE_URL: postgresql://chive:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/chive
+          envkey_ELASTICSEARCH_URL: http://elasticsearch:9200
+          envkey_NEO4J_URI: bolt://neo4j:7687
+          envkey_NEO4J_ENCRYPTED: ENCRYPTION_OFF
+          envkey_ATPROTO_SERVICE_DID: ${{ vars.ATPROTO_SERVICE_DID }}
+          envkey_ATPROTO_RELAY_URL: wss://bsky.network
+          envkey_SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          envkey_SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          envkey_SMTP_USER: ${{ secrets.SMTP_USER }}
+          envkey_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          envkey_EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          envkey_ZULIP_SERVER_URL: ${{ vars.ZULIP_SERVER_URL }}
+          envkey_ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
+          envkey_ZULIP_BOT_API_KEY: ${{ secrets.ZULIP_BOT_API_KEY }}
+          envkey_ZULIP_INVITE_URL: ${{ secrets.ZULIP_INVITE_URL }}
+          envkey_TRAEFIK_BASIC_AUTH: ${{ secrets.TRAEFIK_BASIC_AUTH }}
+          file_name: .env.production
+          directory: docker-env
+
+      - name: Copy env files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-env/.env,docker-env/.env.production"
+          target: "/tmp/chive-deploy"
+          strip_components: 1
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -80,87 +145,12 @@ jobs:
             cd "$DEPLOY_DIR"
             echo "Current commit: $(git rev-parse --short HEAD) - $(git log -1 --format=%s)"
 
-            # Ensure docker directory exists
+            # Ensure docker directory exists and move env files
             mkdir -p docker
-
-            # Create .env for Docker Compose variable substitution (used in compose file itself)
-            echo "Writing Docker Compose environment..."
-            cat > docker/.env << EOF
-# Domain configuration
-DOMAIN=${{ vars.DOMAIN }}
-ACME_EMAIL=${{ vars.ACME_EMAIL }}
-CHIVE_VERSION=latest
-
-# Database credentials (used for compose variable substitution)
-POSTGRES_DB=chive
-POSTGRES_USER=chive
-POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}
-
-# Governance PDS
-GOVERNANCE_PDS_JWT_SECRET=${{ secrets.GOVERNANCE_PDS_JWT_SECRET }}
-GOVERNANCE_PDS_ADMIN_PASSWORD=${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }}
-GOVERNANCE_PDS_ROTATION_KEY=${{ secrets.GOVERNANCE_PDS_ROTATION_KEY }}
-
-# Traefik (generate with: echo \$(htpasswd -nb admin password) | sed -e s/\\$/\\$\\$/g)
-TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}
-EOF
-
-            # Create .env.production for application services (loaded via env_file)
-            echo "Writing application environment configuration..."
-            cat > docker/.env.production << EOF
-# Domain configuration
-DOMAIN=${{ vars.DOMAIN }}
-ACME_EMAIL=${{ vars.ACME_EMAIL }}
-CHIVE_VERSION=latest
-
-# Database credentials
-POSTGRES_HOST=postgres
-POSTGRES_DB=chive
-POSTGRES_USER=chive
-POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}
-
-# Redis
-REDIS_URL=redis://redis:6379
-
-# Application secrets
-JWT_SECRET=${{ secrets.JWT_SECRET }}
-SESSION_SECRET=${{ secrets.SESSION_SECRET }}
-
-# Governance PDS
-GOVERNANCE_PDS_JWT_SECRET=${{ secrets.GOVERNANCE_PDS_JWT_SECRET }}
-GOVERNANCE_PDS_ADMIN_PASSWORD=${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }}
-GOVERNANCE_PDS_ROTATION_KEY=${{ secrets.GOVERNANCE_PDS_ROTATION_KEY }}
-
-# Database URLs
-DATABASE_URL=postgresql://chive:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/chive
-ELASTICSEARCH_URL=http://elasticsearch:9200
-NEO4J_URI=bolt://neo4j:7687
-NEO4J_ENCRYPTED=ENCRYPTION_OFF
-
-# ATProto
-ATPROTO_SERVICE_DID=${{ vars.ATPROTO_SERVICE_DID }}
-ATPROTO_RELAY_URL=wss://bsky.network
-
-# Email (Amazon WorkMail)
-SMTP_HOST=${{ secrets.SMTP_HOST }}
-SMTP_PORT=${{ secrets.SMTP_PORT }}
-SMTP_USER=${{ secrets.SMTP_USER }}
-SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-EMAIL_FROM=${{ vars.EMAIL_FROM }}
-
-# Zulip
-ZULIP_SERVER_URL=${{ vars.ZULIP_SERVER_URL }}
-ZULIP_BOT_EMAIL=${{ secrets.ZULIP_BOT_EMAIL }}
-ZULIP_BOT_API_KEY=${{ secrets.ZULIP_BOT_API_KEY }}
-ZULIP_INVITE_URL=${{ secrets.ZULIP_INVITE_URL }}
-
-# Traefik (generate with: echo \$(htpasswd -nb admin password) | sed -e s/\\$/\\$\\$/g)
-TRAEFIK_BASIC_AUTH=${{ secrets.TRAEFIK_BASIC_AUTH }}
-EOF
+            echo "Moving env files..."
+            mv /tmp/chive-deploy/.env docker/.env
+            mv /tmp/chive-deploy/.env.production docker/.env.production
+            rm -rf /tmp/chive-deploy
 
             # Build and deploy
             echo "=== Building and deploying containers ==="
