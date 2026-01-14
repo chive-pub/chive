@@ -35,9 +35,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/web/public ./public
+# Copy standalone output (includes web/server.js structure for monorepo)
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./.next/static
+# Copy static files to where the server expects them (web/.next/static for monorepo)
+COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
+# Copy public folder to where the server expects it (web/public for monorepo)
+COPY --from=builder /app/web/public ./web/public
 
 USER nextjs
 
