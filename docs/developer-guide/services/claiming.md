@@ -8,8 +8,8 @@ The ClaimingService enables authors to claim ownership of papers by creating rec
 
 **Two distinct claim types:**
 
-1. **External claims** (from arXiv, Semantic Scholar, etc.) - Works like submitting a new eprint, but with prefilled data from the external source
-2. **Co-author claims** (on existing PDS records) - A request/approval flow where the PDS owner decides whether to add the claimant as co-author
+1. **External claims** (from arXiv, Semantic Scholar, etc.): Works like submitting a new eprint, but with prefilled data from the external source
+2. **Co-author claims** (on existing PDS records): A request/approval flow where the PDS owner decides whether to add the claimant as co-author
 
 ## External Claims
 
@@ -171,6 +171,5 @@ The claiming service follows ATProto principles:
 
 ## See Also
 
-- [Import Service](./import.md) - Managing imported eprints
-- [Discovery Service](./discovery.md) - Recommendations and suggestions
-- [Reconciliation Service](./reconciliation.md) - Linking imports to canonical records
+- [Discovery Service](./discovery.md): Recommendations and suggestions
+- [Indexing Service](./indexing.md): Firehose indexing pipeline

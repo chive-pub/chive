@@ -172,9 +172,9 @@ Tracks views, downloads, and trending eprints using Redis data structures.
 
 ### Data structures
 
-- **Counters** (INCR) - Total view and download counts
-- **HyperLogLog** (PFADD) - Unique viewer estimation
-- **Sorted Sets** (ZADD) - Time-windowed metrics for trending
+- **Counters** (INCR): Total view and download counts
+- **HyperLogLog** (PFADD): Unique viewer estimation
+- **Sorted Sets** (ZADD): Time-windowed metrics for trending
 
 ### Recording metrics
 

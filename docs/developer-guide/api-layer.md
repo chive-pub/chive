@@ -10,8 +10,8 @@
 
 Chive's API layer provides two primary interfaces for accessing eprint data:
 
-1. **XRPC Endpoints** (`/xrpc/pub.chive.*`) - ATProto-native procedure calls
-2. **REST Endpoints** (`/api/v1/*`) - Traditional REST API for broader compatibility
+1. **XRPC Endpoints** (`/xrpc/pub.chive.*`): ATProto-native procedure calls
+2. **REST Endpoints** (`/api/v1/*`): Traditional REST API for broader compatibility
 
 Both interfaces share the same middleware stack and return equivalent data with ATProto compliance guarantees.
 
