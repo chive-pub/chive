@@ -141,18 +141,24 @@ export default function AlphaLandingPage() {
 
         {/* Title */}
         <h1 className="mb-2 text-5xl font-bold tracking-tight">Chive</h1>
-        <p className="mb-6 text-2xl text-muted-foreground">Decentralized Eprints</p>
+        <p className="mb-6 text-2xl text-muted-foreground">Decentralized eprints on ATProto</p>
 
         {/* Description */}
         <p className="mb-8 text-lg leading-relaxed text-muted-foreground">
-          Decentralized eprints on ATProto. Share your research with full data sovereignty, open
-          federation, and community governance.
+          Share your research with full data sovereignty and community governance.
         </p>
 
         {/* Alpha Notice */}
-        <div className="mx-auto mb-6 max-w-sm rounded-lg border border-border bg-muted/50 p-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            Sign in with your Bluesky account to request access as an alpha tester
+        <div className="mx-auto mb-6 max-w-sm overflow-hidden rounded-xl border border-[#157200]/20 bg-gradient-to-br from-[#157200]/5 to-[#157200]/10 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-[#157200]/10 bg-[#157200]/5 px-4 py-2">
+            <span className="inline-flex h-2 w-2 rounded-full bg-[#157200] animate-pulse" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#157200]">
+              Alpha
+            </span>
+          </div>
+          <p className="px-4 py-3 text-sm text-muted-foreground">
+            Chive is currently in alpha. Sign in with your Bluesky account to request access as a
+            tester.
           </p>
         </div>
 

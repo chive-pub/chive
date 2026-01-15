@@ -38,8 +38,37 @@ const COLORS = {
 // Chive logo URL
 const LOGO_URL = 'https://chive.pub/chive-logo.svg';
 
-// System font stack (matches app fonts)
-const FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+// Geist Sans font URL (Regular and Bold weights)
+const GEIST_REGULAR_URL =
+  'https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Regular.otf';
+const GEIST_BOLD_URL =
+  'https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Bold.otf';
+
+// Cache font data at module level for reuse
+let geistRegularData: ArrayBuffer | null = null;
+let geistBoldData: ArrayBuffer | null = null;
+
+/**
+ * Load Geist Sans fonts for OG image rendering.
+ */
+async function loadFonts(): Promise<
+  Array<{ name: string; data: ArrayBuffer; weight: 400 | 700; style: 'normal' }>
+> {
+  // Load fonts if not cached
+  if (!geistRegularData || !geistBoldData) {
+    const [regularRes, boldRes] = await Promise.all([
+      fetch(GEIST_REGULAR_URL),
+      fetch(GEIST_BOLD_URL),
+    ]);
+    geistRegularData = await regularRes.arrayBuffer();
+    geistBoldData = await boldRes.arrayBuffer();
+  }
+
+  return [
+    { name: 'Geist', data: geistRegularData, weight: 400, style: 'normal' },
+    { name: 'Geist', data: geistBoldData, weight: 700, style: 'normal' },
+  ];
+}
 
 /**
  * GET handler for OG image generation.
@@ -82,6 +111,8 @@ export async function GET(request: NextRequest) {
  * Generate default OG image for the site homepage.
  */
 async function generateDefaultImage(): Promise<ImageResponse> {
+  const fonts = await loadFonts();
+
   return new ImageResponse(
     <div
       style={{
@@ -89,7 +120,7 @@ async function generateDefaultImage(): Promise<ImageResponse> {
         height: '100%',
         display: 'flex',
         background: COLORS.white,
-        fontFamily: FONT_FAMILY,
+        fontFamily: 'Geist, Helvetica, Arial, sans-serif',
       }}
     >
       {/* Left side - Grey section with logo */}
@@ -141,7 +172,7 @@ async function generateDefaultImage(): Promise<ImageResponse> {
             marginBottom: '32px',
           }}
         >
-          Decentralized Eprints
+          Decentralized eprints on ATProto
         </div>
 
         {/* Description */}
@@ -153,7 +184,7 @@ async function generateDefaultImage(): Promise<ImageResponse> {
             marginBottom: '40px',
           }}
         >
-          Decentralized eprints on ATProto. Share your research with full data sovereignty.
+          Share your research with full data sovereignty and community governance.
         </div>
 
         {/* URL badge */}
@@ -187,6 +218,7 @@ async function generateDefaultImage(): Promise<ImageResponse> {
     {
       width: WIDTH,
       height: HEIGHT,
+      fonts,
       headers: {
         'Cache-Control': 'public, max-age=86400, s-maxage=86400',
       },
@@ -203,6 +235,7 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
   const handle = params.get('handle') || '';
   const affiliation = params.get('affiliation') || '';
   const fields = params.get('fields')?.split(',').filter(Boolean) || [];
+  const fonts = await loadFonts();
 
   return new ImageResponse(
     <div
@@ -213,7 +246,7 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
-        fontFamily: FONT_FAMILY,
+        fontFamily: 'Geist, Helvetica, Arial, sans-serif',
       }}
     >
       {/* Header with logo */}
@@ -298,6 +331,7 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
     {
       width: WIDTH,
       height: HEIGHT,
+      fonts,
       headers: {
         'Cache-Control': 'public, max-age=86400, s-maxage=86400',
       },
@@ -317,6 +351,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
   const eprintCount = params.get('eprints') || '0';
   const endorsementCount = params.get('endorsements') || '0';
   const reviewCount = params.get('reviews') || '0';
+  const fonts = await loadFonts();
 
   return new ImageResponse(
     <div
@@ -327,7 +362,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
-        fontFamily: FONT_FAMILY,
+        fontFamily: 'Geist, Helvetica, Arial, sans-serif',
       }}
     >
       {/* Header with logo */}
@@ -424,6 +459,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
     {
       width: WIDTH,
       height: HEIGHT,
+      fonts,
       headers: {
         'Cache-Control': 'public, max-age=86400, s-maxage=86400',
       },
@@ -439,6 +475,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
   const reviewer = params.get('reviewer') || 'Anonymous';
   const reviewerHandle = params.get('reviewerHandle') || '';
   const eprintTitle = params.get('eprintTitle') || 'Eprint';
+  const fonts = await loadFonts();
 
   return new ImageResponse(
     <div
@@ -449,7 +486,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
-        fontFamily: FONT_FAMILY,
+        fontFamily: 'Geist, Helvetica, Arial, sans-serif',
       }}
     >
       {/* Header */}
@@ -540,6 +577,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
     {
       width: WIDTH,
       height: HEIGHT,
+      fonts,
       headers: {
         'Cache-Control': 'public, max-age=86400, s-maxage=86400',
       },
@@ -556,6 +594,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
   const endorser = params.get('endorser') || 'Anonymous';
   const endorserHandle = params.get('endorserHandle') || '';
   const eprintTitle = params.get('eprintTitle') || 'Eprint';
+  const fonts = await loadFonts();
 
   return new ImageResponse(
     <div
@@ -566,7 +605,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
         flexDirection: 'column',
         padding: '48px',
         background: COLORS.background,
-        fontFamily: FONT_FAMILY,
+        fontFamily: 'Geist, Helvetica, Arial, sans-serif',
       }}
     >
       {/* Header */}
@@ -683,6 +722,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
     {
       width: WIDTH,
       height: HEIGHT,
+      fonts,
       headers: {
         'Cache-Control': 'public, max-age=86400, s-maxage=86400',
       },
