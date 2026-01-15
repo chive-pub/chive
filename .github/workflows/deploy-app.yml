@@ -201,11 +201,7 @@ jobs:
               exit 1
             }
 
-            # Build docs container
-            echo "Building chive-docs container..."
-            docker compose -f docker-compose.prod.yml build chive-docs || {
-              echo "::warning::Failed to build chive-docs image (non-fatal)"
-            }
+            # Note: chive-docs is deployed separately via deploy-docs.yml workflow
 
             # Start all services
             echo "Starting services..."
