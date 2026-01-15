@@ -9,9 +9,41 @@
  * @see {@link https://atproto.com/specs/oauth | ATProto OAuth Specification}
  */
 
-import { BrowserOAuthClient, type OAuthSession } from '@atproto/oauth-client-browser';
+import {
+  BrowserOAuthClient,
+  type OAuthSession,
+  AtprotoDohHandleResolver,
+} from '@atproto/oauth-client-browser';
 import { Agent } from '@atproto/api';
 import type { DID, Handle, ChiveUser, LoginOptions } from './types';
+import { AuthenticationError, NetworkError } from '@/lib/errors';
+
+/**
+ * DNS-over-HTTPS endpoint for handle resolution.
+ *
+ * @remarks
+ * Using Google's DoH service for broad compatibility. This allows resolving
+ * handles from ANY ATProto PDS, not just Bluesky.
+ *
+ * Alternative DoH endpoints:
+ * - Cloudflare: https://cloudflare-dns.com/dns-query
+ * - Quad9: https://dns.quad9.net/dns-query
+ */
+const DOH_ENDPOINT = 'https://dns.google/dns-query';
+
+/**
+ * Handle resolver instance for ATProto handle resolution.
+ *
+ * @remarks
+ * Uses the official ATProto DoH handle resolver which implements:
+ * 1. HTTP method: GET https://<handle>/.well-known/atproto-did
+ * 2. DNS method: _atproto.<handle> TXT record (via DNS-over-HTTPS)
+ *
+ * This supports handles on ANY PDS, not just Bluesky.
+ *
+ * @see {@link https://atproto.com/specs/handle | ATProto Handle Specification}
+ */
+const handleResolver = new AtprotoDohHandleResolver({ dohEndpoint: DOH_ENDPOINT });
 
 /**
  * Get the base URL for OAuth endpoints.
@@ -114,7 +146,7 @@ export async function getOAuthClient(): Promise<BrowserOAuthClient> {
 
   clientInitPromise = BrowserOAuthClient.load({
     clientId,
-    handleResolver: 'https://bsky.social',
+    handleResolver,
   }).then((client) => {
     oauthClient = client;
     return client;
@@ -153,53 +185,87 @@ export function getCurrentAgent(): Agent | null {
 /**
  * Resolve a handle to a DID and PDS endpoint.
  *
- * @param handle - ATProto handle (e.g., "alice.bsky.social")
+ * @remarks
+ * Uses ATProto-standard handle resolution (HTTP .well-known + DNS TXT)
+ * to support any PDS, not just Bluesky.
+ *
+ * @param handle - ATProto handle (e.g., "alice.example.com")
  * @returns DID and PDS endpoint
  */
 export async function resolveHandle(handle: Handle): Promise<{ did: DID; pdsEndpoint: string }> {
-  // Use the public API to resolve handle
-  const response = await fetch(
-    `https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(handle)}`
-  );
+  const did = await handleResolver.resolve(handle);
 
-  if (!response.ok) {
-    throw new Error(`Failed to resolve handle: ${handle}`);
+  if (!did) {
+    throw new AuthenticationError(`Failed to resolve handle: ${handle}`);
   }
 
-  const data = (await response.json()) as { did: string };
-  const did = data.did as DID;
-
   // Get PDS endpoint from DID document
-  const pdsEndpoint = await getPDSEndpoint(did);
+  const pdsEndpoint = await getPDSEndpoint(did as DID);
 
-  return { did, pdsEndpoint };
+  return { did: did as DID, pdsEndpoint };
 }
 
 /**
  * Get PDS endpoint from DID document.
  *
+ * @remarks
+ * Supports both did:plc (via PLC Directory) and did:web (via HTTP fetch).
+ * Throws an error if the PDS endpoint cannot be resolved rather than
+ * falling back to a hardcoded default.
+ *
  * @param did - User's DID
  * @returns PDS endpoint URL
+ * @throws Error if DID resolution fails or no PDS service is found
  */
 async function getPDSEndpoint(did: DID): Promise<string> {
-  // Resolve DID to get service endpoint
-  const plcUrl = did.startsWith('did:plc:') ? `https://plc.directory/${did}` : null;
+  let didDocUrl: string | null = null;
 
-  if (plcUrl) {
-    const response = await fetch(plcUrl);
-    if (response.ok) {
-      const doc = (await response.json()) as {
-        service?: Array<{ id: string; serviceEndpoint: string }>;
-      };
-      const pds = doc.service?.find((s) => s.id === '#atproto_pds');
-      if (pds?.serviceEndpoint) {
-        return pds.serviceEndpoint;
-      }
+  // Determine DID document URL based on DID method
+  if (did.startsWith('did:plc:')) {
+    didDocUrl = `https://plc.directory/${did}`;
+  } else if (did.startsWith('did:web:')) {
+    // did:web:example.com -> https://example.com/.well-known/did.json
+    // did:web:example.com:path -> https://example.com/path/did.json
+    const webId = did.slice(8); // Remove "did:web:"
+    const decoded = decodeURIComponent(webId);
+    if (decoded.includes(':')) {
+      const [domain, ...pathParts] = decoded.split(':');
+      didDocUrl = `https://${domain}/${pathParts.join('/')}/did.json`;
+    } else {
+      didDocUrl = `https://${decoded}/.well-known/did.json`;
     }
   }
 
-  // Fallback to bsky.social
-  return 'https://bsky.social';
+  if (!didDocUrl) {
+    throw new AuthenticationError(`Unsupported DID method: ${did}`);
+  }
+
+  try {
+    const response = await fetch(didDocUrl);
+    if (!response.ok) {
+      throw new NetworkError(`Failed to fetch DID document: ${response.status}`);
+    }
+
+    const doc = (await response.json()) as {
+      service?: Array<{ id: string; type?: string; serviceEndpoint: string }>;
+    };
+
+    // Find the ATProto PDS service
+    const pds = doc.service?.find(
+      (s) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer'
+    );
+
+    if (pds?.serviceEndpoint) {
+      return pds.serviceEndpoint;
+    }
+
+    throw new AuthenticationError(`No ATProto PDS service found in DID document for ${did}`);
+  } catch (error) {
+    if (error instanceof AuthenticationError || error instanceof NetworkError) {
+      throw error;
+    }
+    throw new NetworkError(`Failed to resolve PDS endpoint for ${did}`, error as Error);
+  }
 }
 
 /**
@@ -344,12 +410,16 @@ async function tryRestoreAnySession(client: BrowserOAuthClient): Promise<OAuthSe
 /**
  * Extract PDS endpoint URL from session.
  *
+ * @remarks
+ * The session.server property should always be set after successful OAuth.
+ * If it's missing, we throw an error rather than defaulting to a hardcoded PDS.
+ *
  * @param session - OAuth session
  * @returns PDS endpoint URL string
+ * @throws Error if session has no server information
  */
 function getPdsEndpoint(session: OAuthSession): string {
   const server = session.server;
-  if (!server) return 'https://bsky.social';
 
   // Handle URL object
   if (server instanceof URL) {
@@ -357,12 +427,12 @@ function getPdsEndpoint(session: OAuthSession): string {
   }
 
   // Handle string
-  if (typeof server === 'string') {
+  if (typeof server === 'string' && server) {
     return server;
   }
 
   // Handle object with href or origin property
-  if (typeof server === 'object') {
+  if (server && typeof server === 'object') {
     const serverObj = server as { href?: string; origin?: string; toString?: () => string };
     if (serverObj.href) return serverObj.href;
     if (serverObj.origin) return serverObj.origin;
@@ -372,7 +442,9 @@ function getPdsEndpoint(session: OAuthSession): string {
     }
   }
 
-  return 'https://bsky.social';
+  // If we can't determine the PDS, resolve it from the DID
+  // This will be handled asynchronously in fetchUserProfile
+  throw new AuthenticationError('Session missing server information');
 }
 
 /**
@@ -383,7 +455,20 @@ function getPdsEndpoint(session: OAuthSession): string {
  */
 async function fetchUserProfile(session: OAuthSession): Promise<ChiveUser> {
   const agent = new Agent(session);
-  const pdsEndpoint = getPdsEndpoint(session);
+
+  // Try to get PDS endpoint from session, fall back to DID resolution
+  let pdsEndpoint: string;
+  try {
+    pdsEndpoint = getPdsEndpoint(session);
+  } catch {
+    // Session missing server info, resolve from DID document
+    try {
+      pdsEndpoint = await getPDSEndpoint(session.did as DID);
+    } catch (error) {
+      console.error('Failed to resolve PDS endpoint:', error);
+      pdsEndpoint = 'unknown';
+    }
+  }
 
   try {
     const profile = await agent.getProfile({ actor: session.did });

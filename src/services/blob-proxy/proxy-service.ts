@@ -859,19 +859,15 @@ export class BlobProxyService {
         return endpoint;
       }
 
-      // If identity resolver returns null, fall back to default
-      this.logger.warn('Failed to resolve PDS endpoint, using fallback', { did });
-      const fallback = `https://bsky.social/xrpc`;
-      this.pdsEndpointCache.set(did, fallback);
-      return fallback;
+      // If identity resolver returns null, throw an error
+      // Do NOT fall back to a hardcoded PDS - this would break federation
+      throw new Error(`Failed to resolve PDS endpoint for DID: ${did}`);
     } catch (error) {
       this.logger.error('DID resolution failed', error instanceof Error ? error : undefined, {
         did,
       });
-      // Fall back to default PDS
-      const fallback = `https://bsky.social/xrpc`;
-      this.pdsEndpointCache.set(did, fallback);
-      return fallback;
+      // Re-throw - do NOT fall back to a hardcoded PDS
+      throw error;
     }
   }
 
