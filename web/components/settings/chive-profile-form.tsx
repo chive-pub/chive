@@ -372,14 +372,6 @@ export function ChiveProfileForm() {
                 {...form.register('bio')}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="orcid">ORCID</Label>
-              <Input id="orcid" placeholder="0000-0002-1825-0097" {...form.register('orcid')} />
-              {form.formState.errors.orcid && (
-                <p className="text-sm text-destructive">{form.formState.errors.orcid.message}</p>
-              )}
-            </div>
           </div>
 
           <div className="space-y-3">
