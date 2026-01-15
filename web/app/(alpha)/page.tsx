@@ -149,6 +149,13 @@ export default function AlphaLandingPage() {
           federation, and community governance.
         </p>
 
+        {/* Alpha Notice */}
+        <div className="mx-auto mb-6 max-w-sm rounded-lg border border-border bg-muted/50 p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Sign in with your Bluesky account to request access as an alpha tester
+          </p>
+        </div>
+
         {/* Handle Input */}
         <div className="mx-auto mb-6 max-w-sm">
           <div className="mb-3">

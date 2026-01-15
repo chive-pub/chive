@@ -4,7 +4,7 @@
  * Keyword autocomplete input component.
  *
  * @remarks
- * Provides research keyword input with FAST and Wikidata autocomplete.
+ * Provides research keyword input with Wikidata and FAST autocomplete.
  * Selected keywords include authority IDs for semantic linking.
  *
  * @packageDocumentation
@@ -51,28 +51,14 @@ export interface KeywordAutocompleteInputProps {
 }
 
 /**
- * Get badge variant for source type.
- */
-function getSourceVariant(source: string): 'default' | 'secondary' | 'outline' {
-  switch (source) {
-    case 'fast':
-      return 'default';
-    case 'wikidata':
-      return 'secondary';
-    default:
-      return 'outline';
-  }
-}
-
-/**
  * Get URL for keyword authority.
  */
 function getAuthorityUrl(keyword: ResearchKeyword): string | null {
-  if (keyword.fastId) {
-    return `https://id.worldcat.org/fast/${keyword.fastId}`;
-  }
   if (keyword.wikidataId) {
     return `https://www.wikidata.org/wiki/${keyword.wikidataId}`;
+  }
+  if (keyword.fastId) {
+    return `https://id.worldcat.org/fast/${keyword.fastId}`;
   }
   return null;
 }
@@ -81,13 +67,13 @@ function getAuthorityUrl(keyword: ResearchKeyword): string | null {
  * Get authority badge label.
  */
 function getAuthorityLabel(keyword: ResearchKeyword): string | null {
-  if (keyword.fastId) return 'FAST';
   if (keyword.wikidataId) return 'WD';
+  if (keyword.fastId) return 'FAST';
   return null;
 }
 
 /**
- * Keyword autocomplete input with FAST and Wikidata integration.
+ * Keyword autocomplete input with Wikidata and FAST integration.
  */
 export function KeywordAutocompleteInput({
   label,
@@ -107,7 +93,19 @@ export function KeywordAutocompleteInput({
   });
 
   const suggestions = useMemo(() => data?.suggestions ?? [], [data?.suggestions]);
+
+  // Separate suggestions by source (Wikidata first, then FAST)
+  const wikidataSuggestions = useMemo(
+    () => suggestions.filter((s) => s.source === 'wikidata'),
+    [suggestions]
+  );
+  const fastSuggestions = useMemo(
+    () => suggestions.filter((s) => s.source === 'fast'),
+    [suggestions]
+  );
+
   const shouldShowDropdown = open && inputValue.length >= 2;
+  const hasAnySuggestions = wikidataSuggestions.length > 0 || fastSuggestions.length > 0;
 
   const handleSelect = React.useCallback(
     (suggestion: KeywordSuggestion) => {
@@ -172,8 +170,11 @@ export function KeywordAutocompleteInput({
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (suggestions.length > 0) {
-          handleSelect(suggestions[0]);
+        // Prefer Wikidata over FAST when pressing Enter
+        if (wikidataSuggestions.length > 0) {
+          handleSelect(wikidataSuggestions[0]);
+        } else if (fastSuggestions.length > 0) {
+          handleSelect(fastSuggestions[0]);
         } else if (inputValue.trim()) {
           handleAddFreeText();
         }
@@ -181,7 +182,7 @@ export function KeywordAutocompleteInput({
         setOpen(false);
       }
     },
-    [suggestions, handleSelect, inputValue, handleAddFreeText]
+    [wikidataSuggestions, fastSuggestions, handleSelect, inputValue, handleAddFreeText]
   );
 
   return (
@@ -234,12 +235,12 @@ export function KeywordAutocompleteInput({
         >
           <Command shouldFilter={false}>
             <CommandList>
-              {isLoading && suggestions.length === 0 ? (
+              {isLoading && !hasAnySuggestions ? (
                 <div className="py-6 text-center text-sm text-muted-foreground">
                   <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-                  <p className="mt-2">Searching FAST &amp; Wikidata...</p>
+                  <p className="mt-2">Searching Wikidata &amp; FAST...</p>
                 </div>
-              ) : suggestions.length === 0 ? (
+              ) : !hasAnySuggestions ? (
                 <CommandEmpty>
                   <div className="text-center">
                     <p>No keywords found</p>
@@ -249,36 +250,64 @@ export function KeywordAutocompleteInput({
                   </div>
                 </CommandEmpty>
               ) : (
-                <CommandGroup>
-                  {suggestions.map((suggestion, index) => (
-                    <CommandItem
-                      key={`${suggestion.source}-${suggestion.id}-${index}`}
-                      value={`${suggestion.source}-${suggestion.id}`}
-                      onSelect={() => handleSelect(suggestion)}
-                      className="flex flex-col items-start gap-1 py-3"
-                    >
-                      <div className="flex w-full items-start justify-between gap-2">
-                        <span className="text-sm font-medium">{suggestion.label}</span>
-                        <Badge
-                          variant={getSourceVariant(suggestion.source)}
-                          className="shrink-0 text-xs"
+                <>
+                  {/* Wikidata Concepts (first) */}
+                  {wikidataSuggestions.length > 0 && (
+                    <CommandGroup heading="Wikidata Concepts">
+                      {wikidataSuggestions.map((suggestion, index) => (
+                        <CommandItem
+                          key={`wikidata-${suggestion.id}-${index}`}
+                          value={`wikidata-${suggestion.id}`}
+                          onSelect={() => handleSelect(suggestion)}
+                          className="flex flex-col items-start gap-1 py-3"
                         >
-                          {suggestion.source === 'fast' ? 'FAST' : 'Wikidata'}
-                        </Badge>
-                      </div>
-                      {suggestion.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {suggestion.description}
-                        </p>
-                      )}
-                      {suggestion.usageCount !== null && suggestion.usageCount > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Used in {suggestion.usageCount.toLocaleString()} records
-                        </p>
-                      )}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                          <div className="flex w-full items-start justify-between gap-2">
+                            <span className="text-sm font-medium">{suggestion.label}</span>
+                            <Badge variant="secondary" className="shrink-0 text-xs">
+                              Wikidata
+                            </Badge>
+                          </div>
+                          {suggestion.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {suggestion.description}
+                            </p>
+                          )}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+
+                  {/* FAST Subject Headings (second) */}
+                  {fastSuggestions.length > 0 && (
+                    <CommandGroup heading="FAST Subject Headings">
+                      {fastSuggestions.map((suggestion, index) => (
+                        <CommandItem
+                          key={`fast-${suggestion.id}-${index}`}
+                          value={`fast-${suggestion.id}`}
+                          onSelect={() => handleSelect(suggestion)}
+                          className="flex flex-col items-start gap-1 py-3"
+                        >
+                          <div className="flex w-full items-start justify-between gap-2">
+                            <span className="text-sm font-medium">{suggestion.label}</span>
+                            <Badge variant="default" className="shrink-0 text-xs">
+                              FAST
+                            </Badge>
+                          </div>
+                          {suggestion.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {suggestion.description}
+                            </p>
+                          )}
+                          {suggestion.usageCount !== null && suggestion.usageCount > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Used in {suggestion.usageCount.toLocaleString()} records
+                            </p>
+                          )}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                </>
               )}
             </CommandList>
           </Command>
