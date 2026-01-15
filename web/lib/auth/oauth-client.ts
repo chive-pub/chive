@@ -19,31 +19,22 @@ import type { DID, Handle, ChiveUser, LoginOptions } from './types';
 import { AuthenticationError, NetworkError } from '@/lib/errors';
 
 /**
- * DNS-over-HTTPS endpoint for handle resolution.
+ * Handle resolver using ATProto's official DNS-over-HTTPS resolver.
  *
  * @remarks
- * Using Google's DoH service for broad compatibility. This allows resolving
- * handles from ANY ATProto PDS, not just Bluesky.
+ * Uses Google's DoH JSON API endpoint which supports the application/dns-json
+ * format required by AtprotoDohHandleResolver.
  *
- * Alternative DoH endpoints:
- * - Cloudflare: https://cloudflare-dns.com/dns-query
- * - Quad9: https://dns.quad9.net/dns-query
- */
-const DOH_ENDPOINT = 'https://dns.google/dns-query';
-
-/**
- * Handle resolver instance for ATProto handle resolution.
- *
- * @remarks
- * Uses the official ATProto DoH handle resolver which implements:
+ * The resolver implements ATProto standard handle resolution:
  * 1. HTTP method: GET https://<handle>/.well-known/atproto-did
  * 2. DNS method: _atproto.<handle> TXT record (via DNS-over-HTTPS)
  *
- * This supports handles on ANY PDS, not just Bluesky.
- *
  * @see {@link https://atproto.com/specs/handle | ATProto Handle Specification}
+ * @see {@link https://developers.google.com/speed/public-dns/docs/doh/json | Google DoH JSON API}
  */
-const handleResolver = new AtprotoDohHandleResolver({ dohEndpoint: DOH_ENDPOINT });
+const handleResolver = new AtprotoDohHandleResolver({
+  dohEndpoint: 'https://dns.google/resolve',
+});
 
 /**
  * Get the base URL for OAuth endpoints.
