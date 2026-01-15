@@ -40,9 +40,9 @@ const LOGO_URL = 'https://chive.pub/chive-logo.svg';
 
 // Geist Sans font URL (Regular and Bold weights)
 const GEIST_REGULAR_URL =
-  'https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Regular.otf';
+  'https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Regular.ttf';
 const GEIST_BOLD_URL =
-  'https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Bold.otf';
+  'https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Bold.ttf';
 
 // Cache font data at module level for reuse
 let geistRegularData: ArrayBuffer | null = null;
