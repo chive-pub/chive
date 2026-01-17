@@ -249,9 +249,11 @@ export function FieldSearch({
                             </span>
                           )}
                         </div>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {field.eprintCount} eprints
-                        </span>
+                        {field.eprintCount !== undefined && field.eprintCount > 0 && (
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {field.eprintCount} eprints
+                          </span>
+                        )}
                       </CommandItem>
                     ))}
                   </CommandGroup>
