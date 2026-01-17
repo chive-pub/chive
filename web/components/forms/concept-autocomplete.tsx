@@ -33,14 +33,16 @@ import { AutocompleteInput } from './autocomplete-input';
 // =============================================================================
 
 /**
- * Concept categories matching the backend schema.
+ * Concept categories matching subkinds in the knowledge graph.
+ *
+ * @remarks
+ * These map directly to subkinds defined in scripts/db/lib/subkinds.ts.
+ * For facet VALUES (methodology, geographic scope, time period), use
+ * FacetAutocomplete with the appropriate dimension instead.
  */
 export type ConceptCategory =
   | 'institution-type'
   | 'paper-type'
-  | 'methodology'
-  | 'geographic-scope'
-  | 'temporal-scope'
   | 'document-format'
   | 'publication-status'
   | 'access-type'
@@ -50,8 +52,6 @@ export type ConceptCategory =
   | 'platform-preregistration'
   | 'platform-protocol'
   | 'supplementary-type'
-  | 'researcher-type'
-  | 'identifier-type'
   | 'presentation-type';
 
 /**
@@ -113,14 +113,14 @@ export interface ConceptAutocompleteProps {
 
 /**
  * Maps category to subkind slug.
- * In the unified model, categories are now subkinds.
+ *
+ * @remarks
+ * Most categories map 1:1 to subkinds, except:
+ * - supplementary-type → supplementary-category (different naming convention)
  */
 const CATEGORY_TO_SUBKIND: Record<ConceptCategory, string> = {
   'institution-type': 'institution-type',
   'paper-type': 'paper-type',
-  methodology: 'methodology',
-  'geographic-scope': 'geographic-scope',
-  'temporal-scope': 'temporal-scope',
   'document-format': 'document-format',
   'publication-status': 'publication-status',
   'access-type': 'access-type',
@@ -130,8 +130,6 @@ const CATEGORY_TO_SUBKIND: Record<ConceptCategory, string> = {
   'platform-preregistration': 'platform-preregistration',
   'platform-protocol': 'platform-protocol',
   'supplementary-type': 'supplementary-category',
-  'researcher-type': 'researcher-type',
-  'identifier-type': 'identifier-type',
   'presentation-type': 'presentation-type',
 };
 
@@ -206,9 +204,6 @@ async function searchConcepts(
 const CATEGORY_LABELS: Record<ConceptCategory, string> = {
   'institution-type': 'Institution Type',
   'paper-type': 'Paper Type',
-  methodology: 'Methodology',
-  'geographic-scope': 'Geographic Scope',
-  'temporal-scope': 'Temporal Scope',
   'document-format': 'Document Format',
   'publication-status': 'Publication Status',
   'access-type': 'Access Type',
@@ -218,8 +213,6 @@ const CATEGORY_LABELS: Record<ConceptCategory, string> = {
   'platform-preregistration': 'Preregistration Platform',
   'platform-protocol': 'Protocol Platform',
   'supplementary-type': 'Supplementary Type',
-  'researcher-type': 'Researcher Type',
-  'identifier-type': 'Identifier Type',
   'presentation-type': 'Presentation Type',
 };
 
@@ -229,9 +222,6 @@ const CATEGORY_LABELS: Record<ConceptCategory, string> = {
 const CATEGORY_DESCRIPTIONS: Record<ConceptCategory, string> = {
   'institution-type': 'university, research institute, laboratory, etc.',
   'paper-type': 'article, preprint, review, book chapter, etc.',
-  methodology: 'qualitative, quantitative, mixed methods, etc.',
-  'geographic-scope': 'global, regional, national, etc.',
-  'temporal-scope': 'contemporary, historical, longitudinal, etc.',
   'document-format': 'PDF, LaTeX, Jupyter notebook, etc.',
   'publication-status': 'preprint, under review, published, etc.',
   'access-type': 'open access, green OA, gold OA, etc.',
@@ -241,8 +231,6 @@ const CATEGORY_DESCRIPTIONS: Record<ConceptCategory, string> = {
   'platform-preregistration': 'OSF, AsPredicted, AEA Registry, etc.',
   'platform-protocol': 'protocols.io, STAR Methods, Bio-protocol, etc.',
   'supplementary-type': 'dataset, code, video, figure, etc.',
-  'researcher-type': 'faculty, postdoc, PhD student, etc.',
-  'identifier-type': 'DOI, arXiv ID, PMID, etc.',
   'presentation-type': 'poster, talk, keynote, workshop, etc.',
 };
 
