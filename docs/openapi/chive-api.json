@@ -1257,26 +1257,53 @@
                     "type": "string",
                     "maxLength": 100
                   },
-                  "affiliation": {
-                    "description": "Institutional affiliation (optional)",
-                    "type": "object",
-                    "properties": {
-                      "name": {
-                        "description": "Institution name",
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 200
+                  "affiliations": {
+                    "description": "Institutional affiliations (optional)",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "description": "Institution name",
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "rorId": { "description": "ROR ID URL", "type": "string", "format": "uri" }
                       },
-                      "rorId": { "description": "ROR ID URL", "type": "string", "format": "uri" }
-                    },
-                    "required": ["name"],
-                    "additionalProperties": false
+                      "required": ["name"],
+                      "additionalProperties": false
+                    }
                   },
-                  "researchField": {
-                    "description": "Primary research field or discipline",
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
+                  "researchKeywords": {
+                    "description": "Research keywords",
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "description": "Keyword label",
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "fastId": {
+                          "description": "FAST authority ID",
+                          "type": "string",
+                          "maxLength": 20
+                        },
+                        "wikidataId": {
+                          "description": "Wikidata ID",
+                          "type": "string",
+                          "maxLength": 20
+                        }
+                      },
+                      "required": ["label"],
+                      "additionalProperties": false
+                    }
                   },
                   "motivation": {
                     "description": "Optional motivation statement",
@@ -1284,7 +1311,7 @@
                     "maxLength": 1000
                   }
                 },
-                "required": ["email", "sector", "careerStage", "researchField"],
+                "required": ["email", "sector", "careerStage", "researchKeywords"],
                 "additionalProperties": false
               }
             }
@@ -1619,7 +1646,7 @@
     "/xrpc/pub.chive.backlink.list": {
       "get": {
         "operationId": "pub_chive_backlink_list",
-        "summary": "List backlinks to a eprint",
+        "summary": "List backlinks to an eprint",
         "tags": ["backlink"],
         "parameters": [
           { "name": "targetUri", "in": "query", "required": true, "schema": { "type": "string" } },
@@ -1730,7 +1757,7 @@
     "/xrpc/pub.chive.backlink.getCounts": {
       "get": {
         "operationId": "pub_chive_backlink_getCounts",
-        "summary": "Get aggregated backlink counts for a eprint",
+        "summary": "Get aggregated backlink counts for an eprint",
         "tags": ["backlink"],
         "parameters": [
           { "name": "targetUri", "in": "query", "required": true, "schema": { "type": "string" } }
@@ -3898,336 +3925,6 @@
         }
       }
     },
-    "/xrpc/pub.chive.contribution.listTypes": {
-      "get": {
-        "operationId": "pub_chive_contribution_listTypes",
-        "summary": "List CRediT-based contribution types",
-        "tags": ["contribution"],
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "description": "Maximum number of items to return",
-              "default": 50,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            }
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "required": false,
-            "schema": { "description": "Opaque cursor for pagination", "type": "string" }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "description": "Filter by status",
-              "type": "string",
-              "enum": ["established", "provisional", "deprecated"]
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "description": "Search in labels and descriptions",
-              "type": "string",
-              "maxLength": 100
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "types": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "uri": {
-                            "description": "AT Protocol URI (at://did/collection/rkey)",
-                            "type": "string",
-                            "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
-                          },
-                          "id": { "type": "string" },
-                          "label": { "type": "string" },
-                          "description": { "type": "string" },
-                          "status": {
-                            "description": "Contribution type status",
-                            "type": "string",
-                            "enum": ["established", "provisional", "deprecated"]
-                          }
-                        },
-                        "required": ["uri", "id", "label", "description", "status"],
-                        "additionalProperties": false
-                      }
-                    },
-                    "total": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    "hasMore": { "type": "boolean" },
-                    "cursor": { "type": "string" }
-                  },
-                  "required": ["types", "total", "hasMore"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request - Validation error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests - Rate limit exceeded",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
-        }
-      }
-    },
-    "/xrpc/pub.chive.contribution.getType": {
-      "get": {
-        "operationId": "pub_chive_contribution_getType",
-        "summary": "Get a contribution type by ID",
-        "tags": ["contribution"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "query",
-            "required": true,
-            "schema": { "description": "Contribution type identifier", "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "uri": {
-                      "description": "AT URI of contribution type record",
-                      "type": "string",
-                      "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
-                    },
-                    "id": {
-                      "description": "Type identifier (e.g., \"conceptualization\")",
-                      "type": "string"
-                    },
-                    "label": { "description": "Human-readable label", "type": "string" },
-                    "description": { "description": "Detailed description", "type": "string" },
-                    "externalMappings": {
-                      "description": "External ontology links",
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "system": {
-                            "description": "External ontology system",
-                            "type": "string",
-                            "enum": ["credit", "cro", "scoro", "pro"]
-                          },
-                          "identifier": {
-                            "description": "Identifier in external system",
-                            "type": "string"
-                          },
-                          "uri": {
-                            "description": "Full URI in external system",
-                            "type": "string",
-                            "format": "uri"
-                          },
-                          "matchType": {
-                            "description": "Semantic match type",
-                            "type": "string",
-                            "enum": ["exact-match", "close-match", "broad-match", "narrow-match"]
-                          }
-                        },
-                        "required": ["system", "identifier"],
-                        "additionalProperties": false
-                      }
-                    },
-                    "status": {
-                      "description": "Contribution type status",
-                      "type": "string",
-                      "enum": ["established", "provisional", "deprecated"]
-                    },
-                    "proposalUri": {
-                      "description": "Proposal that created this type",
-                      "type": "string",
-                      "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
-                    },
-                    "deprecatedBy": {
-                      "description": "Type that supersedes this one",
-                      "type": "string",
-                      "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
-                    },
-                    "createdAt": {
-                      "description": "Creation timestamp",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-                    },
-                    "updatedAt": {
-                      "description": "Last update timestamp",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-                    }
-                  },
-                  "required": [
-                    "uri",
-                    "id",
-                    "label",
-                    "description",
-                    "externalMappings",
-                    "status",
-                    "createdAt"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request - Validation error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests - Rate limit exceeded",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
-        }
-      }
-    },
-    "/xrpc/pub.chive.contribution.searchTypes": {
-      "get": {
-        "operationId": "pub_chive_contribution_searchTypes",
-        "summary": "Search contribution types by label or description",
-        "tags": ["contribution"],
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "description": "Search query",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 100
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "description": "Maximum results",
-              "default": 10,
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 50
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "types": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "uri": {
-                            "description": "AT Protocol URI (at://did/collection/rkey)",
-                            "type": "string",
-                            "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
-                          },
-                          "id": { "type": "string" },
-                          "label": { "type": "string" },
-                          "description": { "type": "string" },
-                          "status": {
-                            "description": "Contribution type status",
-                            "type": "string",
-                            "enum": ["established", "provisional", "deprecated"]
-                          }
-                        },
-                        "required": ["uri", "id", "label", "description", "status"],
-                        "additionalProperties": false
-                      }
-                    },
-                    "total": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    }
-                  },
-                  "required": ["types", "total"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request - Validation error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests - Rate limit exceeded",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
-          }
-        }
-      }
-    },
     "/xrpc/pub.chive.discovery.getRecommendations": {
       "get": {
         "operationId": "pub_chive_discovery_getRecommendations",
@@ -4257,11 +3954,11 @@
             "in": "query",
             "required": false,
             "schema": {
-              "description": "Signal types to include",
+              "description": "Signal types to include. \"graph\" adds co-citation and PageRank-based recommendations",
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["fields", "citations", "collaborators", "trending"]
+                "enum": ["fields", "citations", "collaborators", "trending", "graph"]
               }
             }
           }
@@ -4492,7 +4189,7 @@
     "/xrpc/pub.chive.discovery.getSimilar": {
       "get": {
         "operationId": "pub_chive_discovery_getSimilar",
-        "summary": "Get related papers for a eprint",
+        "summary": "Get related papers for an eprint",
         "tags": ["discovery"],
         "parameters": [
           {
@@ -4518,9 +4215,19 @@
             "in": "query",
             "required": false,
             "schema": {
-              "description": "Types of relationships to include",
+              "description": "Types of relationships to include. \"co-citation\" and \"bibliographic-coupling\" use graph analysis",
               "type": "array",
-              "items": { "type": "string", "enum": ["semantic", "citation", "topic", "author"] }
+              "items": {
+                "type": "string",
+                "enum": [
+                  "semantic",
+                  "citation",
+                  "topic",
+                  "author",
+                  "co-citation",
+                  "bibliographic-coupling"
+                ]
+              }
             }
           }
         ],
@@ -4566,10 +4273,21 @@
                               "co-cited",
                               "semantically-similar",
                               "same-author",
-                              "same-topic"
+                              "same-topic",
+                              "bibliographic-coupling"
                             ]
                           },
-                          "explanation": { "type": "string" }
+                          "explanation": { "type": "string" },
+                          "sharedReferences": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "sharedCiters": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
                         },
                         "required": ["uri", "title", "score", "relationshipType", "explanation"],
                         "additionalProperties": false
@@ -4606,7 +4324,7 @@
     "/xrpc/pub.chive.discovery.getCitations": {
       "get": {
         "operationId": "pub_chive_discovery_getCitations",
-        "summary": "Get citation network for a eprint",
+        "summary": "Get citation network for an eprint",
         "tags": ["discovery"],
         "parameters": [
           {
@@ -4743,7 +4461,7 @@
     "/xrpc/pub.chive.discovery.getEnrichment": {
       "get": {
         "operationId": "pub_chive_discovery_getEnrichment",
-        "summary": "Get enrichment data for a eprint",
+        "summary": "Get enrichment data for an eprint",
         "tags": ["discovery"],
         "parameters": [
           {
@@ -4925,7 +4643,7 @@
     "/xrpc/pub.chive.endorsement.listForEprint": {
       "get": {
         "operationId": "pub_chive_endorsement_listForEprint",
-        "summary": "List endorsements for a eprint",
+        "summary": "List endorsements for an eprint",
         "tags": ["endorsement"],
         "parameters": [
           {
@@ -5143,7 +4861,7 @@
     "/xrpc/pub.chive.endorsement.getSummary": {
       "get": {
         "operationId": "pub_chive_endorsement_getSummary",
-        "summary": "Get endorsement summary for a eprint",
+        "summary": "Get endorsement summary for an eprint",
         "tags": ["endorsement"],
         "parameters": [
           {
@@ -5218,7 +4936,7 @@
     "/xrpc/pub.chive.endorsement.getUserEndorsement": {
       "get": {
         "operationId": "pub_chive_endorsement_getUserEndorsement",
-        "summary": "Get a user's endorsement for a eprint",
+        "summary": "Get a user's endorsement for an eprint",
         "tags": ["endorsement"],
         "parameters": [
           {
@@ -5377,7 +5095,7 @@
             "schema": {
               "description": "Filter by proposal category",
               "type": "string",
-              "enum": ["field", "contribution-type", "facet", "organization", "reconciliation"]
+              "enum": ["field", "concept", "institution", "facet", "authority", "external-link"]
             }
           },
           {
@@ -5421,17 +5139,57 @@
                             "properties": {
                               "label": { "type": "string" },
                               "description": { "type": "string" },
+                              "parentId": { "type": "string" },
+                              "mergeTargetId": { "type": "string" },
+                              "wikidataId": { "type": "string" },
                               "fieldType": {
                                 "type": "string",
                                 "enum": ["field", "root", "subfield", "topic"]
                               },
-                              "parentId": { "type": "string" },
-                              "mergeTargetId": { "type": "string" },
-                              "wikidataId": { "type": "string" },
+                              "conceptCategory": {
+                                "type": "string",
+                                "enum": [
+                                  "institution-type",
+                                  "paper-type",
+                                  "methodology",
+                                  "geographic-scope",
+                                  "temporal-scope",
+                                  "document-format",
+                                  "publication-status",
+                                  "access-type",
+                                  "platform-code",
+                                  "platform-data",
+                                  "platform-preprint",
+                                  "platform-preregistration",
+                                  "platform-protocol",
+                                  "supplementary-type",
+                                  "researcher-type",
+                                  "identifier-type",
+                                  "presentation-type"
+                                ]
+                              },
+                              "authorityType": {
+                                "type": "string",
+                                "enum": [
+                                  "person",
+                                  "organization",
+                                  "topic",
+                                  "geographic",
+                                  "temporal",
+                                  "form"
+                                ]
+                              },
+                              "alternateLabels": { "type": "array", "items": { "type": "string" } },
+                              "lcshId": { "type": "string" },
+                              "fastId": { "type": "string" },
+                              "viafId": { "type": "string" },
+                              "orcid": { "type": "string" },
+                              "ror": { "type": "string" },
                               "dimension": {
-                                "description": "PMEST/FAST facet dimension for facet proposals",
+                                "description": "PMEST/FAST facet dimension",
                                 "type": "string"
-                              }
+                              },
+                              "facetLevel": { "type": "number" }
                             },
                             "additionalProperties": false
                           },
@@ -5561,17 +5319,57 @@
                       "properties": {
                         "label": { "type": "string" },
                         "description": { "type": "string" },
+                        "parentId": { "type": "string" },
+                        "mergeTargetId": { "type": "string" },
+                        "wikidataId": { "type": "string" },
                         "fieldType": {
                           "type": "string",
                           "enum": ["field", "root", "subfield", "topic"]
                         },
-                        "parentId": { "type": "string" },
-                        "mergeTargetId": { "type": "string" },
-                        "wikidataId": { "type": "string" },
+                        "conceptCategory": {
+                          "type": "string",
+                          "enum": [
+                            "institution-type",
+                            "paper-type",
+                            "methodology",
+                            "geographic-scope",
+                            "temporal-scope",
+                            "document-format",
+                            "publication-status",
+                            "access-type",
+                            "platform-code",
+                            "platform-data",
+                            "platform-preprint",
+                            "platform-preregistration",
+                            "platform-protocol",
+                            "supplementary-type",
+                            "researcher-type",
+                            "identifier-type",
+                            "presentation-type"
+                          ]
+                        },
+                        "authorityType": {
+                          "type": "string",
+                          "enum": [
+                            "person",
+                            "organization",
+                            "topic",
+                            "geographic",
+                            "temporal",
+                            "form"
+                          ]
+                        },
+                        "alternateLabels": { "type": "array", "items": { "type": "string" } },
+                        "lcshId": { "type": "string" },
+                        "fastId": { "type": "string" },
+                        "viafId": { "type": "string" },
+                        "orcid": { "type": "string" },
+                        "ror": { "type": "string" },
                         "dimension": {
-                          "description": "PMEST/FAST facet dimension for facet proposals",
+                          "description": "PMEST/FAST facet dimension",
                           "type": "string"
-                        }
+                        },
+                        "facetLevel": { "type": "number" }
                       },
                       "additionalProperties": false
                     },
@@ -5899,6 +5697,940 @@
                     }
                   },
                   "required": ["count"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.getEditorStatus": {
+      "get": {
+        "operationId": "pub_chive_governance_getEditorStatus",
+        "summary": "Get trusted editor status and reputation metrics for a user",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "did",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "User DID (defaults to authenticated user)",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "did": { "type": "string" },
+                    "displayName": { "type": "string" },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "community-member",
+                        "trusted-editor",
+                        "authority-editor",
+                        "domain-expert",
+                        "administrator"
+                      ]
+                    },
+                    "roleGrantedAt": { "type": "number" },
+                    "roleGrantedBy": { "type": "string" },
+                    "hasDelegation": { "type": "boolean" },
+                    "delegationExpiresAt": { "type": "number" },
+                    "delegationCollections": { "type": "array", "items": { "type": "string" } },
+                    "recordsCreatedToday": { "type": "number" },
+                    "dailyRateLimit": { "type": "number" },
+                    "metrics": {
+                      "type": "object",
+                      "properties": {
+                        "did": { "type": "string" },
+                        "accountCreatedAt": { "type": "number" },
+                        "accountAgeDays": { "type": "number" },
+                        "eprintCount": { "type": "number" },
+                        "wellEndorsedEprintCount": { "type": "number" },
+                        "totalEndorsements": { "type": "number" },
+                        "proposalCount": { "type": "number" },
+                        "voteCount": { "type": "number" },
+                        "successfulProposals": { "type": "number" },
+                        "warningCount": { "type": "number" },
+                        "violationCount": { "type": "number" },
+                        "reputationScore": { "type": "number" },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "community-member",
+                            "trusted-editor",
+                            "authority-editor",
+                            "domain-expert",
+                            "administrator"
+                          ]
+                        },
+                        "eligibleForTrustedEditor": { "type": "boolean" },
+                        "missingCriteria": { "type": "array", "items": { "type": "string" } }
+                      },
+                      "required": [
+                        "did",
+                        "accountCreatedAt",
+                        "accountAgeDays",
+                        "eprintCount",
+                        "wellEndorsedEprintCount",
+                        "totalEndorsements",
+                        "proposalCount",
+                        "voteCount",
+                        "successfulProposals",
+                        "warningCount",
+                        "violationCount",
+                        "reputationScore",
+                        "role",
+                        "eligibleForTrustedEditor",
+                        "missingCriteria"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "did",
+                    "role",
+                    "hasDelegation",
+                    "recordsCreatedToday",
+                    "dailyRateLimit",
+                    "metrics"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.listTrustedEditors": {
+      "get": {
+        "operationId": "pub_chive_governance_listTrustedEditors",
+        "summary": "List all users with trusted editor or higher roles (admin only)",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum number of items to return",
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "description": "Opaque cursor for pagination", "type": "string" }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Filter by role",
+              "type": "string",
+              "enum": [
+                "community-member",
+                "trusted-editor",
+                "authority-editor",
+                "domain-expert",
+                "administrator"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "editors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "did": { "type": "string" },
+                          "handle": { "type": "string" },
+                          "displayName": { "type": "string" },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "community-member",
+                              "trusted-editor",
+                              "authority-editor",
+                              "domain-expert",
+                              "administrator"
+                            ]
+                          },
+                          "roleGrantedAt": { "type": "number" },
+                          "roleGrantedBy": { "type": "string" },
+                          "hasDelegation": { "type": "boolean" },
+                          "delegationExpiresAt": { "type": "number" },
+                          "recordsCreatedToday": { "type": "number" },
+                          "dailyRateLimit": { "type": "number" },
+                          "metrics": {
+                            "type": "object",
+                            "properties": {
+                              "did": { "type": "string" },
+                              "accountCreatedAt": { "type": "number" },
+                              "accountAgeDays": { "type": "number" },
+                              "eprintCount": { "type": "number" },
+                              "wellEndorsedEprintCount": { "type": "number" },
+                              "totalEndorsements": { "type": "number" },
+                              "proposalCount": { "type": "number" },
+                              "voteCount": { "type": "number" },
+                              "successfulProposals": { "type": "number" },
+                              "warningCount": { "type": "number" },
+                              "violationCount": { "type": "number" },
+                              "reputationScore": { "type": "number" },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "community-member",
+                                  "trusted-editor",
+                                  "authority-editor",
+                                  "domain-expert",
+                                  "administrator"
+                                ]
+                              },
+                              "eligibleForTrustedEditor": { "type": "boolean" },
+                              "missingCriteria": { "type": "array", "items": { "type": "string" } }
+                            },
+                            "required": [
+                              "did",
+                              "accountCreatedAt",
+                              "accountAgeDays",
+                              "eprintCount",
+                              "wellEndorsedEprintCount",
+                              "totalEndorsements",
+                              "proposalCount",
+                              "voteCount",
+                              "successfulProposals",
+                              "warningCount",
+                              "violationCount",
+                              "reputationScore",
+                              "role",
+                              "eligibleForTrustedEditor",
+                              "missingCriteria"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "did",
+                          "role",
+                          "roleGrantedAt",
+                          "hasDelegation",
+                          "recordsCreatedToday",
+                          "dailyRateLimit",
+                          "metrics"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "cursor": { "type": "string" },
+                    "total": { "type": "number" }
+                  },
+                  "required": ["editors", "total"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.requestElevation": {
+      "post": {
+        "operationId": "pub_chive_governance_requestElevation",
+        "summary": "Request elevation to trusted editor role",
+        "tags": ["governance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetRole": {
+                    "description": "Role to request elevation to",
+                    "type": "string",
+                    "enum": ["trusted-editor"]
+                  }
+                },
+                "required": ["targetRole"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "requestId": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["success", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.grantDelegation": {
+      "post": {
+        "operationId": "pub_chive_governance_grantDelegation",
+        "summary": "Grant PDS delegation to a trusted editor (admin only)",
+        "tags": ["governance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "delegateDid": { "type": "string" },
+                  "collections": { "minItems": 1, "type": "array", "items": { "type": "string" } },
+                  "daysValid": { "default": 365, "type": "number", "minimum": 1, "maximum": 365 },
+                  "maxRecordsPerDay": {
+                    "default": 100,
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 1000
+                  }
+                },
+                "required": ["delegateDid", "collections", "daysValid", "maxRecordsPerDay"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "delegationId": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["success", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.revokeDelegation": {
+      "post": {
+        "operationId": "pub_chive_governance_revokeDelegation",
+        "summary": "Revoke an active PDS delegation (admin only)",
+        "tags": ["governance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "delegationId": { "type": "string" } },
+                "required": ["delegationId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "delegationId": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["success", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.revokeRole": {
+      "post": {
+        "operationId": "pub_chive_governance_revokeRole",
+        "summary": "Revoke a user's governance role (admin only)",
+        "tags": ["governance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "did": { "type": "string" },
+                  "reason": { "type": "string", "minLength": 10, "maxLength": 1000 }
+                },
+                "required": ["did", "reason"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "requestId": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["success", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.listElevationRequests": {
+      "get": {
+        "operationId": "pub_chive_governance_listElevationRequests",
+        "summary": "List pending elevation requests (admin only)",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum number of items to return",
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "description": "Opaque cursor for pagination", "type": "string" }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Filter by role",
+              "type": "string",
+              "enum": [
+                "community-member",
+                "trusted-editor",
+                "authority-editor",
+                "domain-expert",
+                "administrator"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "did": { "type": "string" },
+                          "handle": { "type": "string" },
+                          "displayName": { "type": "string" },
+                          "requestedRole": {
+                            "type": "string",
+                            "enum": [
+                              "community-member",
+                              "trusted-editor",
+                              "authority-editor",
+                              "domain-expert",
+                              "administrator"
+                            ]
+                          },
+                          "currentRole": {
+                            "type": "string",
+                            "enum": [
+                              "community-member",
+                              "trusted-editor",
+                              "authority-editor",
+                              "domain-expert",
+                              "administrator"
+                            ]
+                          },
+                          "requestedAt": { "type": "number" },
+                          "metrics": {
+                            "type": "object",
+                            "properties": {
+                              "did": { "type": "string" },
+                              "accountCreatedAt": { "type": "number" },
+                              "accountAgeDays": { "type": "number" },
+                              "eprintCount": { "type": "number" },
+                              "wellEndorsedEprintCount": { "type": "number" },
+                              "totalEndorsements": { "type": "number" },
+                              "proposalCount": { "type": "number" },
+                              "voteCount": { "type": "number" },
+                              "successfulProposals": { "type": "number" },
+                              "warningCount": { "type": "number" },
+                              "violationCount": { "type": "number" },
+                              "reputationScore": { "type": "number" },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "community-member",
+                                  "trusted-editor",
+                                  "authority-editor",
+                                  "domain-expert",
+                                  "administrator"
+                                ]
+                              },
+                              "eligibleForTrustedEditor": { "type": "boolean" },
+                              "missingCriteria": { "type": "array", "items": { "type": "string" } }
+                            },
+                            "required": [
+                              "did",
+                              "accountCreatedAt",
+                              "accountAgeDays",
+                              "eprintCount",
+                              "wellEndorsedEprintCount",
+                              "totalEndorsements",
+                              "proposalCount",
+                              "voteCount",
+                              "successfulProposals",
+                              "warningCount",
+                              "violationCount",
+                              "reputationScore",
+                              "role",
+                              "eligibleForTrustedEditor",
+                              "missingCriteria"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "verificationNotes": { "type": "string" }
+                        },
+                        "required": [
+                          "id",
+                          "did",
+                          "requestedRole",
+                          "currentRole",
+                          "requestedAt",
+                          "metrics"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "cursor": { "type": "string" },
+                    "total": { "type": "number" }
+                  },
+                  "required": ["requests", "total"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.approveElevation": {
+      "post": {
+        "operationId": "pub_chive_governance_approveElevation",
+        "summary": "Approve a pending elevation request (admin only)",
+        "tags": ["governance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": { "type": "string" },
+                  "verificationNotes": { "type": "string" }
+                },
+                "required": ["requestId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "requestId": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["success", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.rejectElevation": {
+      "post": {
+        "operationId": "pub_chive_governance_rejectElevation",
+        "summary": "Reject a pending elevation request (admin only)",
+        "tags": ["governance"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": { "type": "string" },
+                  "reason": { "type": "string", "minLength": 10, "maxLength": 1000 }
+                },
+                "required": ["requestId", "reason"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "requestId": { "type": "string" },
+                    "message": { "type": "string" }
+                  },
+                  "required": ["success", "message"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.governance.listDelegations": {
+      "get": {
+        "operationId": "pub_chive_governance_listDelegations",
+        "summary": "List active PDS delegations (admin only)",
+        "tags": ["governance"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum number of items to return",
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "description": "Opaque cursor for pagination", "type": "string" }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Filter by role",
+              "type": "string",
+              "enum": [
+                "community-member",
+                "trusted-editor",
+                "authority-editor",
+                "domain-expert",
+                "administrator"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "delegations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "delegateDid": { "type": "string" },
+                          "handle": { "type": "string" },
+                          "displayName": { "type": "string" },
+                          "collections": { "type": "array", "items": { "type": "string" } },
+                          "expiresAt": { "type": "number" },
+                          "maxRecordsPerDay": { "type": "number" },
+                          "recordsCreatedToday": { "type": "number" },
+                          "grantedAt": { "type": "number" },
+                          "grantedBy": { "type": "string" },
+                          "active": { "type": "boolean" }
+                        },
+                        "required": [
+                          "id",
+                          "delegateDid",
+                          "collections",
+                          "expiresAt",
+                          "maxRecordsPerDay",
+                          "recordsCreatedToday",
+                          "grantedAt",
+                          "grantedBy",
+                          "active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "cursor": { "type": "string" },
+                    "total": { "type": "number" }
+                  },
+                  "required": ["delegations", "total"],
                   "additionalProperties": false
                 }
               }
@@ -6414,6 +7146,696 @@
                     }
                   },
                   "required": ["authorities", "hasMore", "total"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.searchFacets": {
+      "get": {
+        "operationId": "pub_chive_graph_searchFacets",
+        "summary": "Search facet values in the knowledge graph",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": { "description": "Search query", "type": "string", "minLength": 2 }
+          },
+          {
+            "name": "dimension",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Filter by dimension",
+              "type": "string",
+              "enum": [
+                "personality",
+                "matter",
+                "energy",
+                "space",
+                "time",
+                "person",
+                "organization",
+                "event",
+                "work",
+                "form-genre"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum results",
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "facets": {
+                      "description": "Search results",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "description": "Facet identifier", "type": "string" },
+                          "uri": { "description": "Facet AT-URI", "type": "string" },
+                          "dimension": {
+                            "description": "Facet dimension",
+                            "type": "string",
+                            "enum": [
+                              "personality",
+                              "matter",
+                              "energy",
+                              "space",
+                              "time",
+                              "person",
+                              "organization",
+                              "event",
+                              "work",
+                              "form-genre"
+                            ]
+                          },
+                          "value": { "description": "Facet value", "type": "string" },
+                          "label": { "description": "Display label", "type": "string" },
+                          "level": {
+                            "description": "Hierarchy level",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "parentUri": { "description": "Parent facet URI", "type": "string" },
+                          "authorityRecordUri": {
+                            "description": "Linked authority record",
+                            "type": "string"
+                          },
+                          "usageCount": {
+                            "description": "Number of uses",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": ["id", "uri", "dimension", "value", "level"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "description": "Total count",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": ["facets", "total"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.searchConcepts": {
+      "get": {
+        "operationId": "pub_chive_graph_searchConcepts",
+        "summary": "Search concepts in the knowledge graph",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": { "description": "Search query", "type": "string", "minLength": 1 }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Filter by category",
+              "type": "string",
+              "enum": [
+                "institution-type",
+                "paper-type",
+                "methodology",
+                "geographic-scope",
+                "temporal-scope",
+                "document-format",
+                "publication-status",
+                "access-type",
+                "platform-code",
+                "platform-data",
+                "platform-preprint",
+                "platform-preregistration",
+                "platform-protocol",
+                "supplementary-type",
+                "researcher-type",
+                "identifier-type",
+                "presentation-type"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum results",
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "concepts": {
+                      "description": "Search results",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "description": "Concept UUID identifier (rkey in AT-URI)",
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "slug": {
+                            "description": "Human-readable slug for lookups",
+                            "type": "string"
+                          },
+                          "uri": { "description": "Concept AT-URI", "type": "string" },
+                          "name": { "description": "Concept name", "type": "string" },
+                          "description": { "description": "Concept description", "type": "string" },
+                          "category": {
+                            "description": "Concept category",
+                            "type": "string",
+                            "enum": [
+                              "institution-type",
+                              "paper-type",
+                              "methodology",
+                              "geographic-scope",
+                              "temporal-scope",
+                              "document-format",
+                              "publication-status",
+                              "access-type",
+                              "platform-code",
+                              "platform-data",
+                              "platform-preprint",
+                              "platform-preregistration",
+                              "platform-protocol",
+                              "supplementary-type",
+                              "researcher-type",
+                              "identifier-type",
+                              "presentation-type"
+                            ]
+                          },
+                          "status": {
+                            "description": "Concept status",
+                            "type": "string",
+                            "enum": ["proposed", "provisional", "established", "deprecated"]
+                          },
+                          "wikidataId": { "description": "Wikidata identifier", "type": "string" },
+                          "lcshId": { "description": "LCSH identifier", "type": "string" },
+                          "fastId": { "description": "FAST identifier", "type": "string" },
+                          "parentConceptUri": {
+                            "description": "Parent concept URI",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["id", "slug", "uri", "name", "category", "status"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "description": "Total count",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": ["concepts", "total"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.getConcept": {
+      "get": {
+        "operationId": "pub_chive_graph_getConcept",
+        "summary": "Get a concept by URI",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "query",
+            "required": true,
+            "schema": { "description": "Concept AT-URI", "type": "string" }
+          },
+          {
+            "name": "includeAncestors",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Include ancestor concepts",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeChildren",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Include child concepts",
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "Concept UUID identifier (rkey in AT-URI)",
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "slug": { "description": "Human-readable slug for lookups", "type": "string" },
+                    "uri": { "description": "Concept AT-URI", "type": "string" },
+                    "name": { "description": "Concept name", "type": "string" },
+                    "description": { "description": "Concept description", "type": "string" },
+                    "category": {
+                      "description": "Concept category",
+                      "type": "string",
+                      "enum": [
+                        "institution-type",
+                        "paper-type",
+                        "methodology",
+                        "geographic-scope",
+                        "temporal-scope",
+                        "document-format",
+                        "publication-status",
+                        "access-type",
+                        "platform-code",
+                        "platform-data",
+                        "platform-preprint",
+                        "platform-preregistration",
+                        "platform-protocol",
+                        "supplementary-type",
+                        "researcher-type",
+                        "identifier-type",
+                        "presentation-type"
+                      ]
+                    },
+                    "status": {
+                      "description": "Concept status",
+                      "type": "string",
+                      "enum": ["proposed", "provisional", "established", "deprecated"]
+                    },
+                    "wikidataId": { "description": "Wikidata identifier", "type": "string" },
+                    "lcshId": { "description": "LCSH identifier", "type": "string" },
+                    "fastId": { "description": "FAST identifier", "type": "string" },
+                    "parentConceptUri": { "description": "Parent concept URI", "type": "string" },
+                    "ancestors": {
+                      "description": "Ancestor path",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": { "uri": { "type": "string" }, "name": { "type": "string" } },
+                        "required": ["uri", "name"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "children": {
+                      "description": "Child concepts",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": { "type": "string" },
+                          "name": { "type": "string" },
+                          "description": { "type": "string" }
+                        },
+                        "required": ["uri", "name"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "createdAt": {
+                      "description": "Creation timestamp",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    },
+                    "updatedAt": {
+                      "description": "Last update",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    }
+                  },
+                  "required": ["id", "slug", "uri", "name", "category", "status", "createdAt"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.searchInstitutions": {
+      "get": {
+        "operationId": "pub_chive_graph_searchInstitutions",
+        "summary": "Search institutions in the knowledge graph",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": { "description": "Search query", "type": "string", "minLength": 2 }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "ISO 3166-1 alpha-2 country code",
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum results",
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "institutions": {
+                      "description": "Search results",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "description": "Institution UUID identifier (rkey in AT-URI)",
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "slug": {
+                            "description": "Human-readable slug for lookups",
+                            "type": "string"
+                          },
+                          "uri": { "description": "Institution AT-URI", "type": "string" },
+                          "name": { "description": "Institution name", "type": "string" },
+                          "alternateNames": {
+                            "description": "Alternative names",
+                            "type": "array",
+                            "items": { "type": "string" }
+                          },
+                          "country": {
+                            "description": "ISO 3166-1 alpha-2 country code",
+                            "type": "string"
+                          },
+                          "city": { "description": "City", "type": "string" },
+                          "website": {
+                            "description": "Institution website",
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "status": {
+                            "description": "Organization status",
+                            "type": "string",
+                            "enum": ["active", "inactive", "merged", "defunct"]
+                          },
+                          "ror": { "description": "ROR identifier", "type": "string" },
+                          "isni": { "description": "ISNI identifier", "type": "string" },
+                          "wikidataId": { "description": "Wikidata identifier", "type": "string" },
+                          "gridId": {
+                            "description": "GRID identifier (deprecated)",
+                            "type": "string"
+                          },
+                          "fundrefId": { "description": "FundRef identifier", "type": "string" },
+                          "typeUri": {
+                            "description": "Institution type concept URI",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["id", "uri", "name", "status"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "description": "Total count",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": ["institutions", "total"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.graph.getInstitution": {
+      "get": {
+        "operationId": "pub_chive_graph_getInstitution",
+        "summary": "Get institution details by URI",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "query",
+            "required": true,
+            "schema": { "description": "Institution AT-URI", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "Institution UUID identifier (rkey in AT-URI)",
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "slug": { "description": "Human-readable slug for lookups", "type": "string" },
+                    "uri": { "description": "Institution AT-URI", "type": "string" },
+                    "name": { "description": "Institution name", "type": "string" },
+                    "alternateNames": {
+                      "description": "Alternative names",
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "country": {
+                      "description": "ISO 3166-1 alpha-2 country code",
+                      "type": "string"
+                    },
+                    "city": { "description": "City", "type": "string" },
+                    "website": {
+                      "description": "Institution website",
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "status": {
+                      "description": "Organization status",
+                      "type": "string",
+                      "enum": ["active", "inactive", "merged", "defunct"]
+                    },
+                    "ror": { "description": "ROR identifier", "type": "string" },
+                    "isni": { "description": "ISNI identifier", "type": "string" },
+                    "wikidataId": { "description": "Wikidata identifier", "type": "string" },
+                    "gridId": { "description": "GRID identifier (deprecated)", "type": "string" },
+                    "fundrefId": { "description": "FundRef identifier", "type": "string" },
+                    "typeUri": { "description": "Institution type concept URI", "type": "string" },
+                    "parentOrganization": {
+                      "description": "Parent organization",
+                      "type": "object",
+                      "properties": { "uri": { "type": "string" }, "name": { "type": "string" } },
+                      "required": ["uri", "name"],
+                      "additionalProperties": false
+                    },
+                    "childOrganizations": {
+                      "description": "Child organizations",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": { "uri": { "type": "string" }, "name": { "type": "string" } },
+                        "required": ["uri", "name"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "type": {
+                      "description": "Institution type concept",
+                      "type": "object",
+                      "properties": { "uri": { "type": "string" }, "name": { "type": "string" } },
+                      "required": ["uri", "name"],
+                      "additionalProperties": false
+                    },
+                    "createdAt": {
+                      "description": "Creation timestamp",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    },
+                    "updatedAt": {
+                      "description": "Last update",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    }
+                  },
+                  "required": ["id", "uri", "name", "status"],
                   "additionalProperties": false
                 }
               }
@@ -7319,6 +8741,142 @@
         }
       }
     },
+    "/xrpc/pub.chive.graph.getCommunities": {
+      "get": {
+        "operationId": "pub_chive_graph_getCommunities",
+        "summary": "Detect communities in the knowledge graph",
+        "tags": ["graph"],
+        "parameters": [
+          {
+            "name": "algorithm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Detection algorithm",
+              "default": "louvain",
+              "type": "string",
+              "enum": ["louvain", "label-propagation"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum communities",
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "minSize",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Minimum community size",
+              "default": 2,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "communities": {
+                      "description": "Detected communities",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "communityId": {
+                            "description": "Community identifier",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "members": {
+                            "description": "Member URIs",
+                            "type": "array",
+                            "items": { "type": "string" }
+                          },
+                          "size": {
+                            "description": "Number of members",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "representativeMembers": {
+                            "description": "Representative members with names",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "uri": { "type": "string" },
+                                "name": { "type": "string" }
+                              },
+                              "required": ["uri", "name"],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": ["communityId", "members", "size"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "algorithm": {
+                      "description": "Algorithm used",
+                      "type": "string",
+                      "enum": ["louvain", "label-propagation"]
+                    },
+                    "total": {
+                      "description": "Total communities found",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "generatedAt": {
+                      "description": "Timestamp when generated",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    }
+                  },
+                  "required": ["communities", "algorithm", "total", "generatedAt"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/xrpc/pub.chive.import.search": {
       "get": {
         "operationId": "pub_chive_import_search",
@@ -7626,7 +9184,7 @@
     "/xrpc/pub.chive.import.exists": {
       "get": {
         "operationId": "pub_chive_import_exists",
-        "summary": "Check if a eprint has been imported",
+        "summary": "Check if an eprint has been imported",
         "tags": ["import"],
         "parameters": [
           {
@@ -8012,7 +9570,7 @@
     "/xrpc/pub.chive.metrics.recordView": {
       "post": {
         "operationId": "pub_chive_metrics_recordView",
-        "summary": "Record a view event for a eprint",
+        "summary": "Record a view event for an eprint",
         "tags": ["metrics"],
         "requestBody": {
           "required": true,
@@ -8065,7 +9623,7 @@
     "/xrpc/pub.chive.metrics.recordDownload": {
       "post": {
         "operationId": "pub_chive_metrics_recordDownload",
-        "summary": "Record a download event for a eprint",
+        "summary": "Record a download event for an eprint",
         "tags": ["metrics"],
         "requestBody": {
           "required": true,
@@ -8118,7 +9676,7 @@
     "/xrpc/pub.chive.metrics.getMetrics": {
       "get": {
         "operationId": "pub_chive_metrics_getMetrics",
-        "summary": "Get comprehensive metrics for a eprint",
+        "summary": "Get comprehensive metrics for an eprint",
         "tags": ["metrics"],
         "parameters": [
           { "name": "uri", "in": "query", "required": true, "schema": { "type": "string" } }
@@ -8199,7 +9757,7 @@
     "/xrpc/pub.chive.metrics.getViewCount": {
       "get": {
         "operationId": "pub_chive_metrics_getViewCount",
-        "summary": "Get view count for a eprint",
+        "summary": "Get view count for an eprint",
         "tags": ["metrics"],
         "parameters": [
           { "name": "uri", "in": "query", "required": true, "schema": { "type": "string" } }
@@ -8427,10 +9985,250 @@
         }
       }
     },
+    "/xrpc/pub.chive.notification.listReviewsOnMyPapers": {
+      "get": {
+        "operationId": "pub_chive_notification_listReviewsOnMyPapers",
+        "summary": "List reviews on papers where authenticated user is an author",
+        "tags": ["notification"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum number of items to return",
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "description": "Opaque cursor for pagination", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notifications": {
+                      "description": "List of review notifications",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "description": "Review AT-URI",
+                            "type": "string",
+                            "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
+                          },
+                          "reviewerDid": {
+                            "description": "Reviewer DID",
+                            "type": "string",
+                            "pattern": "^did:[a-z]+:[a-zA-Z0-9._:%-]+$"
+                          },
+                          "reviewerHandle": { "description": "Reviewer handle", "type": "string" },
+                          "reviewerDisplayName": {
+                            "description": "Reviewer display name",
+                            "type": "string"
+                          },
+                          "eprintUri": {
+                            "description": "Eprint AT-URI",
+                            "type": "string",
+                            "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
+                          },
+                          "eprintTitle": { "description": "Eprint title", "type": "string" },
+                          "text": { "description": "Review text content", "type": "string" },
+                          "isReply": {
+                            "description": "Whether this is a reply",
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "description": "Creation timestamp",
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "uri",
+                          "reviewerDid",
+                          "eprintUri",
+                          "eprintTitle",
+                          "text",
+                          "isReply",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "cursor": { "description": "Cursor for next page", "type": "string" },
+                    "hasMore": { "description": "Whether more results exist", "type": "boolean" },
+                    "total": {
+                      "description": "Total count",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": ["notifications", "hasMore"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/xrpc/pub.chive.notification.listEndorsementsOnMyPapers": {
+      "get": {
+        "operationId": "pub_chive_notification_listEndorsementsOnMyPapers",
+        "summary": "List endorsements on papers where authenticated user is an author",
+        "tags": ["notification"],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "description": "Maximum number of items to return",
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "description": "Opaque cursor for pagination", "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notifications": {
+                      "description": "List of endorsement notifications",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "description": "Endorsement AT-URI",
+                            "type": "string",
+                            "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
+                          },
+                          "endorserDid": {
+                            "description": "Endorser DID",
+                            "type": "string",
+                            "pattern": "^did:[a-z]+:[a-zA-Z0-9._:%-]+$"
+                          },
+                          "endorserHandle": { "description": "Endorser handle", "type": "string" },
+                          "endorserDisplayName": {
+                            "description": "Endorser display name",
+                            "type": "string"
+                          },
+                          "eprintUri": {
+                            "description": "Eprint AT-URI",
+                            "type": "string",
+                            "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
+                          },
+                          "eprintTitle": { "description": "Eprint title", "type": "string" },
+                          "endorsementType": {
+                            "description": "Endorsement type",
+                            "type": "string",
+                            "enum": ["methods", "results", "overall"]
+                          },
+                          "comment": { "description": "Optional comment", "type": "string" },
+                          "createdAt": {
+                            "description": "Creation timestamp",
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "uri",
+                          "endorserDid",
+                          "eprintUri",
+                          "eprintTitle",
+                          "endorsementType",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "cursor": { "description": "Cursor for next page", "type": "string" },
+                    "hasMore": { "description": "Whether more results exist", "type": "boolean" },
+                    "total": {
+                      "description": "Total count",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": ["notifications", "hasMore"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/xrpc/pub.chive.eprint.getSubmission": {
       "get": {
         "operationId": "pub_chive_eprint_getSubmission",
-        "summary": "Get a eprint submission by AT URI",
+        "summary": "Get an eprint submission by AT URI",
         "tags": ["eprint"],
         "parameters": [
           {
@@ -9571,7 +11369,7 @@
     "/xrpc/pub.chive.review.listForEprint": {
       "get": {
         "operationId": "pub_chive_review_listForEprint",
-        "summary": "List reviews for a eprint",
+        "summary": "List reviews for an eprint",
         "tags": ["review"],
         "parameters": [
           {
@@ -11178,7 +12976,7 @@
     "/xrpc/pub.chive.tag.listForEprint": {
       "get": {
         "operationId": "pub_chive_tag_listForEprint",
-        "summary": "List tags for a eprint",
+        "summary": "List tags for an eprint",
         "tags": ["tag"],
         "parameters": [
           {

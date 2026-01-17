@@ -32,13 +32,15 @@ import { cn } from '@/lib/utils';
 // =============================================================================
 
 /**
- * Author affiliation with optional ROR ID and department.
+ * Author affiliation with optional ROR ID, Chive URI, and department.
  */
 export interface AuthorAffiliation {
   /** Organization name */
   name: string;
   /** ROR ID (e.g., "https://ror.org/02mhbdp94") */
   rorId?: string;
+  /** Chive institution AT-URI (if linked in knowledge graph) */
+  institutionUri?: string;
   /** Department or division */
   department?: string;
 }
@@ -59,6 +61,19 @@ interface RorOrganization {
     };
   }>;
   types?: string[];
+}
+
+/**
+ * Chive institution from knowledge graph.
+ */
+interface ChiveInstitution {
+  id: string;
+  uri: string;
+  name: string;
+  country?: string;
+  city?: string;
+  ror?: string;
+  status: string;
 }
 
 /**
@@ -104,22 +119,33 @@ export interface AffiliationInputProps {
 }
 
 // =============================================================================
-// ROR SEARCH HOOK
+// DUAL-SOURCE SEARCH HOOK
 // =============================================================================
 
 /**
- * Custom hook for searching ROR organizations.
+ * Search results from both sources.
  */
-function useRorSearch() {
+interface DualSourceResults {
+  chiveInstitutions: ChiveInstitution[];
+  rorOrganizations: RorOrganization[];
+}
+
+/**
+ * Custom hook for searching both Chive institutions and ROR organizations.
+ */
+function useDualSourceSearch() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<RorOrganization[]>([]);
+  const [results, setResults] = useState<DualSourceResults>({
+    chiveInstitutions: [],
+    rorOrganizations: [],
+  });
   const [isSearching, setIsSearching] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Debounced search
   const debouncedSearch = useDebouncedCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim() || searchQuery.length < 3) {
-      setResults([]);
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setResults({ chiveInstitutions: [], rorOrganizations: [] });
       return;
     }
 
@@ -133,21 +159,64 @@ function useRorSearch() {
 
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `https://api.ror.org/v2/organizations?query=${encodeURIComponent(searchQuery)}`,
-        { signal: controller.signal }
-      );
+      // Query both sources in parallel
+      const [chiveResponse, rorResponse] = await Promise.allSettled([
+        // Chive knowledge graph - using unified node search
+        fetch(
+          `/xrpc/pub.chive.graph.searchNodes?q=${encodeURIComponent(searchQuery)}&subkind=institution&kind=object&limit=5`,
+          { signal: controller.signal }
+        ),
+        // ROR API (only if query is 3+ chars)
+        searchQuery.length >= 3
+          ? fetch(`https://api.ror.org/v2/organizations?query=${encodeURIComponent(searchQuery)}`, {
+              signal: controller.signal,
+            })
+          : Promise.resolve(null),
+      ]);
 
-      if (!response.ok) {
-        throw new Error('ROR search failed');
+      // Parse Chive results - map unified node format to ChiveInstitution
+      let chiveInstitutions: ChiveInstitution[] = [];
+      if (chiveResponse.status === 'fulfilled' && chiveResponse.value?.ok) {
+        const chiveData = await chiveResponse.value.json();
+        chiveInstitutions = (chiveData.nodes ?? []).map(
+          (node: {
+            id: string;
+            uri: string;
+            label: string;
+            metadata?: { country?: string; city?: string };
+            externalIds?: Array<{ system: string; identifier: string }>;
+            status: string;
+          }) => ({
+            id: node.id,
+            uri: node.uri,
+            name: node.label,
+            country: node.metadata?.country,
+            city: node.metadata?.city,
+            ror: node.externalIds?.find((ext) => ext.system === 'ror')?.identifier,
+            status: node.status,
+          })
+        );
       }
 
-      const data = await response.json();
-      setResults(data.items?.slice(0, 8) ?? []);
+      // Parse ROR results
+      let rorOrganizations: RorOrganization[] = [];
+      if (rorResponse.status === 'fulfilled' && rorResponse.value?.ok) {
+        const rorData = await rorResponse.value.json();
+        rorOrganizations = rorData.items?.slice(0, 8) ?? [];
+      }
+
+      // Deduplicate: filter out ROR results that are already in Chive (by ROR ID)
+      const chiveRorIds = new Set(chiveInstitutions.map((inst) => inst.ror).filter(Boolean));
+      const filteredRor = rorOrganizations.filter((org) => !chiveRorIds.has(org.id));
+
+      setResults({
+        chiveInstitutions,
+        rorOrganizations: filteredRor,
+      });
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('ROR search error:', error);
-        setResults([]);
+        console.error('Institution search error:', error);
+        setResults({ chiveInstitutions: [], rorOrganizations: [] });
       }
     } finally {
       setIsSearching(false);
@@ -167,12 +236,15 @@ function useRorSearch() {
     };
   }, []);
 
+  const hasResults = results.chiveInstitutions.length > 0 || results.rorOrganizations.length > 0;
+
   return {
     query,
     setQuery,
     results,
+    hasResults,
     isSearching,
-    clearResults: () => setResults([]),
+    clearResults: () => setResults({ chiveInstitutions: [], rorOrganizations: [] }),
   };
 }
 
@@ -257,15 +329,31 @@ interface AddAffiliationFormProps {
 }
 
 function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
-  const { query, setQuery, results, isSearching, clearResults } = useRorSearch();
+  const { query, setQuery, results, hasResults, isSearching, clearResults } = useDualSourceSearch();
   const [showResults, setShowResults] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSelectOrg = useCallback(
+  const handleSelectChiveInstitution = useCallback(
+    (inst: ChiveInstitution) => {
+      onAdd({
+        name: inst.name,
+        rorId: inst.ror ? `https://ror.org/${inst.ror}` : undefined,
+        institutionUri: inst.uri,
+        department: undefined,
+      });
+      setQuery('');
+      clearResults();
+      setShowResults(false);
+    },
+    [onAdd, setQuery, clearResults]
+  );
+
+  const handleSelectRorOrg = useCallback(
     (org: RorOrganization) => {
       onAdd({
         name: getRorDisplayName(org),
         rorId: org.id,
+        institutionUri: undefined,
         department: undefined,
       });
       setQuery('');
@@ -281,6 +369,7 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
     onAdd({
       name: query.trim(),
       rorId: undefined,
+      institutionUri: undefined,
       department: undefined,
     });
     setQuery('');
@@ -292,8 +381,11 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (results.length > 0) {
-          handleSelectOrg(results[0]);
+        // Prefer Chive results, then ROR, then manual
+        if (results.chiveInstitutions.length > 0) {
+          handleSelectChiveInstitution(results.chiveInstitutions[0]);
+        } else if (results.rorOrganizations.length > 0) {
+          handleSelectRorOrg(results.rorOrganizations[0]);
         } else if (query.trim()) {
           handleManualAdd();
         }
@@ -302,7 +394,7 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
         setShowResults(false);
       }
     },
-    [results, query, handleSelectOrg, handleManualAdd]
+    [results, query, handleSelectChiveInstitution, handleSelectRorOrg, handleManualAdd]
   );
 
   return (
@@ -331,34 +423,67 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
         )}
       </div>
 
-      {/* ROR Results dropdown */}
-      {showResults && (results.length > 0 || (query.trim().length >= 3 && !isSearching)) && (
+      {/* Sectioned results dropdown */}
+      {showResults && (hasResults || (query.trim().length >= 2 && !isSearching)) && (
         <div className="absolute z-50 w-full rounded-md border bg-popover shadow-md">
-          {results.length > 0 ? (
-            <div className="max-h-64 overflow-y-auto p-1">
-              {results.map((org) => {
-                const displayName = getRorDisplayName(org);
-                const countryName = getRorCountryName(org);
-                return (
-                  <button
-                    key={org.id}
-                    type="button"
-                    onClick={() => handleSelectOrg(org)}
-                    className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span className="font-medium">{displayName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {countryName}
-                      {org.types && org.types.length > 0 && ` • ${org.types.join(', ')}`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
+          <div className="max-h-72 overflow-y-auto">
+            {/* Chive Institutions Section */}
+            {results.chiveInstitutions.length > 0 && (
+              <div>
+                <div className="sticky top-0 bg-muted/80 px-2 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+                  Chive Institutions
+                </div>
+                <div className="p-1">
+                  {results.chiveInstitutions.map((inst) => (
+                    <button
+                      key={inst.uri}
+                      type="button"
+                      onClick={() => handleSelectChiveInstitution(inst)}
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <span className="font-medium">{inst.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {[inst.city, inst.country].filter(Boolean).join(', ')}
+                        {inst.ror && ' • ROR linked'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ROR Registry Section */}
+            {results.rorOrganizations.length > 0 && (
+              <div>
+                <div className="sticky top-0 bg-muted/80 px-2 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+                  ROR Registry
+                </div>
+                <div className="p-1">
+                  {results.rorOrganizations.map((org) => {
+                    const displayName = getRorDisplayName(org);
+                    const countryName = getRorCountryName(org);
+                    return (
+                      <button
+                        key={org.id}
+                        type="button"
+                        onClick={() => handleSelectRorOrg(org)}
+                        className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <span className="font-medium">{displayName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {countryName}
+                          {org.types && org.types.length > 0 && ` • ${org.types.join(', ')}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Manual entry option */}
-          {query.trim().length >= 3 && (
+          {query.trim().length >= 2 && (
             <div className="border-t p-2">
               <button
                 type="button"
@@ -366,7 +491,7 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add &quot;{query.trim()}&quot; without ROR</span>
+                <span>Add &quot;{query.trim()}&quot; manually</span>
               </button>
             </div>
           )}
@@ -374,7 +499,7 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Search by organization name for automatic ROR linking, or enter manually
+        Search by organization name. Chive-linked institutions are preferred for better metadata.
       </p>
     </div>
   );

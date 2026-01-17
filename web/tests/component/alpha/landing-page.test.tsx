@@ -86,7 +86,8 @@ describe('AlphaLandingPage', () => {
 
       expect(screen.getByRole('img', { name: /chive/i })).toBeInTheDocument();
       expect(screen.getByRole('heading', { level: 1, name: /chive/i })).toBeInTheDocument();
-      expect(screen.getByText(/decentralized eprints/i)).toBeInTheDocument();
+      // There are multiple elements containing "decentralized eprints" text
+      expect(screen.getAllByText(/decentralized eprints/i).length).toBeGreaterThan(0);
     });
 
     it('renders the handle input field', () => {

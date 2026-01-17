@@ -20,7 +20,15 @@ import type {
   ExternalLink,
   FundingSource,
 } from '../schemas/eprint';
-import type { FieldProposal, Vote, ExternalMapping, Reference } from '../schemas/governance';
+import type {
+  FieldProposal,
+  Vote,
+  ExternalMapping,
+  Reference,
+  NodeProposal,
+  ProposedNode,
+  ProposalEvidence,
+} from '../schemas/governance';
 
 // =============================================================================
 // TYPES
@@ -127,6 +135,23 @@ export interface VoteRecord {
   proposalUri: string;
   vote: 'approve' | 'reject' | 'abstain' | 'request-changes';
   rationale?: string;
+  createdAt: string;
+}
+
+/**
+ * Node proposal record as stored in ATProto.
+ */
+export interface NodeProposalRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.graph.nodeProposal';
+  proposalType: 'create' | 'update' | 'deprecate' | 'merge';
+  kind: 'type' | 'object';
+  subkind?: string;
+  proposedNode?: ProposedNode;
+  targetUri?: string;
+  mergeIntoUri?: string;
+  rationale: string;
+  evidence?: ProposalEvidence[];
   createdAt: string;
 }
 
@@ -554,6 +579,81 @@ export async function createVoteRecord(
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
     collection: 'pub.chive.graph.vote',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Create a node proposal record in the user's PDS.
+ *
+ * @remarks
+ * Creates a governance proposal for knowledge graph node changes.
+ * The proposal is stored in the user's PDS and will be indexed by Chive.
+ * Community members can then vote on the proposal.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param data - Proposal data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record creation fails
+ *
+ * @example
+ * ```typescript
+ * const result = await createNodeProposalRecord(agent, {
+ *   proposalType: 'create',
+ *   kind: 'type',
+ *   subkind: 'field',
+ *   proposedNode: {
+ *     label: 'Quantum Machine Learning',
+ *     description: 'Intersection of quantum computing and ML...',
+ *   },
+ *   rationale: 'This field has grown significantly...',
+ * });
+ * ```
+ */
+export async function createNodeProposalRecord(
+  agent: Agent,
+  data: Omit<NodeProposal, 'createdAt'>
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: NodeProposalRecord = {
+    $type: 'pub.chive.graph.nodeProposal',
+    proposalType: data.proposalType,
+    kind: data.kind,
+    rationale: data.rationale,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Add optional fields
+  if (data.subkind) {
+    record.subkind = data.subkind;
+  }
+  if (data.proposedNode) {
+    record.proposedNode = data.proposedNode;
+  }
+  if (data.targetUri) {
+    record.targetUri = data.targetUri;
+  }
+  if (data.mergeIntoUri) {
+    record.mergeIntoUri = data.mergeIntoUri;
+  }
+  if (data.evidence && data.evidence.length > 0) {
+    record.evidence = data.evidence;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.nodeProposal',
     record,
   });
 

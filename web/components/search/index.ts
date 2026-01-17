@@ -74,8 +74,8 @@ export type { FacetChipProps, FacetChipListProps } from './facet-chip';
 export { FacetPanel, FacetPanelSkeleton } from './facet-panel';
 export type { FacetPanelProps, FacetPanelSkeletonProps } from './facet-panel';
 
-export { FacetSelector, FacetSelectorWithUrl } from './facet-selector';
-export type { FacetSelectorProps, FacetSelectorWithUrlProps } from './facet-selector';
+export { FacetSelector } from './facet-selector';
+export type { FacetSelectorProps } from './facet-selector';
 
 // Eprint search autocomplete (for claiming workflow)
 export { EprintSearchAutocomplete } from './eprint-search-autocomplete';

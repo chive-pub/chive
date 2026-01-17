@@ -39,8 +39,18 @@ import type {
   FacetedSearchQuery,
   FacetedSearchResults,
 } from '@/types/interfaces/search.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
 import type { Eprint } from '@/types/models/eprint.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 import {
   createMockAuthzService,
@@ -54,7 +64,11 @@ import {
   createMockBlobProxyService,
   createMockReviewService,
   createMockTagManager,
-  createMockContributionTypeManager,
+  createMockFacetManager,
+  createMockNodeService,
+  createMockEdgeService,
+  createMockNodeRepository,
+  createMockEdgeRepository,
   createMockBacklinkService,
   createMockClaimingService,
   createMockImportService,
@@ -178,7 +192,11 @@ function testRequest(
 /**
  * Creates test eprint record.
  */
-function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
+type TestEprintOverrides = Omit<Partial<Eprint>, 'abstract'> & {
+  abstract?: string | AnnotationBody;
+};
+
+function createTestEprint(uri: AtUri, overrides: TestEprintOverrides = {}): Eprint {
   const testAuthor: EprintAuthor = {
     did: TEST_AUTHOR,
     name: 'Test Author',
@@ -199,8 +217,12 @@ function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
       overrides.title ??
       'Frequency, acceptability, and selection: A case study of clause-embedding',
     abstract:
-      overrides.abstract ??
-      'We investigate the relationship between the frequency with which verbs are found in particular subcategorization frames and the acceptability of those verbs in those frames, focusing in particular on subordinate clause-taking verbs, such as think, want, and tell.',
+      typeof overrides.abstract === 'string'
+        ? createMockAbstract(overrides.abstract)
+        : (overrides.abstract ??
+          createMockAbstract(
+            'We investigate the relationship between the frequency with which verbs are found in particular subcategorization frames and the acceptability of those verbs in those frames, focusing in particular on subordinate clause-taking verbs, such as think, want, and tell.'
+          )),
     keywords: overrides.keywords ?? ['semantics', 'clause-embedding', 'acceptability'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Linguistics' }],
     version: overrides.version ?? 1,
@@ -299,7 +321,11 @@ describe('XRPC Eprint Endpoints Integration', () => {
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
       tagManager: createMockTagManager(),
-      contributionTypeManager: createMockContributionTypeManager(),
+      facetManager: createMockFacetManager(),
+      nodeService: createMockNodeService(),
+      edgeService: createMockEdgeService(),
+      nodeRepository: createMockNodeRepository(),
+      edgeRepository: createMockEdgeRepository(),
       backlinkService: createMockBacklinkService(),
       claimingService: createMockClaimingService(),
       importService: createMockImportService(),
@@ -580,6 +606,10 @@ describe('XRPC Eprint Endpoints Integration', () => {
         `/xrpc/pub.chive.eprint.listByAuthor?did=${encodeURIComponent(TEST_AUTHOR)}`
       );
 
+      if (res.status !== 200) {
+        const errorBody = await res.clone().json();
+        console.error('DEBUG listByAuthor error:', JSON.stringify(errorBody, null, 2));
+      }
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintListResponse;
 
@@ -684,13 +714,12 @@ describe('XRPC Eprint Endpoints Integration', () => {
   });
 
   describe('GET /xrpc/pub.chive.eprint.searchSubmissions', () => {
-    it('returns 400 for missing q parameter', async () => {
-      // searchSubmissions is a GET endpoint (type: 'query')
+    it('returns results even without q parameter (browsing mode)', async () => {
+      // searchSubmissions is a GET endpoint (type: 'query') - q is optional for browsing
       const res = await testRequest(app, '/xrpc/pub.chive.eprint.searchSubmissions');
 
-      expect(res.status).toBe(400);
-      const body = (await res.json()) as ErrorResponse;
-      expect(body.error.code).toBe('VALIDATION_ERROR');
+      // Returns 200 for browse mode (q is optional)
+      expect(res.status).toBe(200);
     });
 
     it('returns search results with source field', async () => {

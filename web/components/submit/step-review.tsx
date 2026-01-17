@@ -550,7 +550,7 @@ export function StepReview({
                           className="flex items-center gap-2 text-sm text-primary hover:underline"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
-                          {repo.label || repo.platform || repo.url}
+                          {repo.label || repo.platformName || repo.url}
                         </a>
                       ))}
                   </div>
@@ -579,7 +579,7 @@ export function StepReview({
                           className="flex items-center gap-2 text-sm text-primary hover:underline"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
-                          {repo.label || repo.platform || repo.url}
+                          {repo.label || repo.platformName || repo.url}
                         </a>
                       ))}
                   </div>
@@ -600,7 +600,7 @@ export function StepReview({
                     className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    {preregistration.platform || preregistration.url}
+                    {preregistration.platformName || preregistration.url}
                   </a>
                 </div>
               </>

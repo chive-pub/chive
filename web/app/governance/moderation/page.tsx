@@ -21,6 +21,7 @@ import {
   type ProposalStatus,
   type ProposalType,
 } from '@/lib/hooks/use-governance';
+import { ConnectedTrustedEditorStatus } from '@/components/governance';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -97,6 +98,9 @@ export default function ModerationPage() {
         </Card>
       ) : (
         <>
+          {/* Your Governance Status */}
+          <ConnectedTrustedEditorStatus />
+
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-3">
             <Card>

@@ -228,20 +228,26 @@ function RepositoryCard({
   url,
   label,
   platform,
+  platformName,
   config,
   doi,
 }: {
   url?: string;
   label?: string;
+  /** @deprecated Use platformName for display, platform for icon lookup */
   platform?: string;
+  /** Display name from knowledge graph concept */
+  platformName?: string;
   config: Record<string, PlatformConfig>;
   doi?: string;
 }) {
   if (!url) return null;
 
+  // Use platform slug for icon/color lookup, platformName for display
   const platformConfig = config[platform ?? 'other'] ?? config.other;
   const Icon = platformConfig.icon;
-  const displayLabel = label || platformConfig.label;
+  // Prefer platformName (from knowledge graph) over config label
+  const displayLabel = label || platformName || platformConfig.label;
 
   return (
     <a
@@ -276,6 +282,8 @@ function PreregistrationCard({ prereg }: { prereg: Preregistration }) {
   const platformConfig =
     PREREG_PLATFORM_CONFIG[prereg.platform ?? 'other'] ?? PREREG_PLATFORM_CONFIG.other;
   const Icon = platformConfig.icon;
+  // Prefer platformName from knowledge graph over config label
+  const displayPlatform = prereg.platformName || platformConfig.label;
 
   return (
     <a
@@ -291,7 +299,7 @@ function PreregistrationCard({ prereg }: { prereg: Preregistration }) {
         <div className="flex items-center gap-2">
           <span className="font-medium">Pre-registration</span>
           <Badge variant="outline" className="text-xs shrink-0">
-            {platformConfig.label}
+            {displayPlatform}
           </Badge>
         </div>
         {prereg.registrationDate && (
@@ -360,6 +368,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   url={repo.url}
                   label={repo.label}
                   platform={repo.platform}
+                  platformName={repo.platformName}
                   config={CODE_PLATFORM_CONFIG}
                 />
               ))}
@@ -381,6 +390,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   url={repo.url}
                   label={repo.label}
                   platform={repo.platform}
+                  platformName={repo.platformName}
                   config={DATA_PLATFORM_CONFIG}
                   doi={repo.doi}
                 />
@@ -414,6 +424,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   url={protocol.url}
                   label="Protocol"
                   platform={protocol.platform}
+                  platformName={protocol.platformName}
                   config={{
                     protocols_io: {
                       label: 'protocols.io',

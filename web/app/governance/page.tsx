@@ -27,7 +27,18 @@ export default function GovernancePage() {
     status: 'approved',
     limit: 5,
   });
+  const { data: rejectedData, isLoading: rejectedLoading } = useProposals({
+    status: 'rejected',
+    limit: 1,
+  });
   const { data: pendingCount, isLoading: countLoading } = usePendingProposalsCount();
+
+  // Calculate total from all statuses
+  const totalLoading = pendingLoading || approvedLoading || rejectedLoading;
+  const total =
+    !totalLoading && pendingData && approvedData && rejectedData
+      ? (pendingData.total ?? 0) + (approvedData.total ?? 0) + (rejectedData.total ?? 0)
+      : null;
 
   return (
     <div className="space-y-8">
@@ -65,11 +76,16 @@ export default function GovernancePage() {
         />
         <StatsCard
           title="Rejected"
-          value={null}
+          value={rejectedLoading ? null : (rejectedData?.total ?? 0)}
           icon={XCircle}
           href="/governance/proposals?status=rejected"
         />
-        <StatsCard title="Total" value={null} icon={FileText} href="/governance/proposals" />
+        <StatsCard
+          title="Total"
+          value={totalLoading ? null : total}
+          icon={FileText}
+          href="/governance/proposals"
+        />
       </div>
 
       {/* Voting Explanation */}

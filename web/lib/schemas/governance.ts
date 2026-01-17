@@ -445,3 +445,138 @@ export function extractWikidataId(input: string): string | null {
   const match = /(?:wikidata\.org\/(?:wiki|entity)\/)(Q\d+)/.exec(trimmed);
   return match ? match[1] : null;
 }
+
+// =============================================================================
+// NODE PROPOSAL SCHEMA
+// =============================================================================
+
+/**
+ * Proposal actions for nodes.
+ */
+export const PROPOSAL_ACTIONS = ['create', 'update', 'deprecate', 'merge'] as const;
+
+export type ProposalAction = (typeof PROPOSAL_ACTIONS)[number];
+
+/**
+ * Node kinds.
+ */
+export const NODE_KINDS = ['type', 'object'] as const;
+
+export type NodeKind = (typeof NODE_KINDS)[number];
+
+/**
+ * Evidence types for proposals.
+ */
+export const PROPOSAL_EVIDENCE_TYPES = [
+  'wikidata',
+  'lcsh',
+  'fast',
+  'viaf',
+  'ror',
+  'orcid',
+  'usage',
+  'citation',
+  'other',
+] as const;
+
+/**
+ * Evidence for a proposal.
+ */
+export const proposalEvidenceSchema = z.object({
+  type: z.enum(PROPOSAL_EVIDENCE_TYPES),
+  uri: z.string().url().optional(),
+  description: z.string().max(500).optional(),
+});
+
+export type ProposalEvidence = z.infer<typeof proposalEvidenceSchema>;
+
+/**
+ * External ID schema for linking to external systems.
+ */
+export const externalIdSchema = z.object({
+  system: z.string(),
+  identifier: z.string(),
+  uri: z.string().url().optional(),
+  matchType: z.enum(['exact', 'close', 'broader', 'narrower', 'related']).optional(),
+});
+
+export type ExternalId = z.infer<typeof externalIdSchema>;
+
+/**
+ * Node metadata schema.
+ */
+export const nodeMetadataSchema = z.object({
+  country: z.string().max(2).optional(),
+  city: z.string().optional(),
+  website: z.string().url().optional(),
+  organizationStatus: z.enum(['active', 'merged', 'inactive', 'defunct']).optional(),
+  mimeTypes: z.array(z.string()).optional(),
+  spdxId: z.string().optional(),
+  displayOrder: z.number().int().optional(),
+});
+
+export type NodeMetadata = z.infer<typeof nodeMetadataSchema>;
+
+/**
+ * Proposed node data for create/update actions.
+ */
+export const proposedNodeSchema = z.object({
+  label: z.string().min(1).max(500),
+  alternateLabels: z.array(z.string().max(500)).max(50).optional(),
+  description: z.string().max(2000).optional(),
+  externalIds: z.array(externalIdSchema).max(20).optional(),
+  metadata: nodeMetadataSchema.optional(),
+});
+
+export type ProposedNode = z.infer<typeof proposedNodeSchema>;
+
+/**
+ * Node proposal for creating or modifying knowledge graph nodes.
+ *
+ * @remarks
+ * Matches the `pub.chive.graph.nodeProposal` lexicon specification.
+ */
+export const nodeProposalSchema = z
+  .object({
+    proposalType: z.enum(PROPOSAL_ACTIONS),
+    kind: z.enum(NODE_KINDS),
+    subkind: z.string().max(50).optional(),
+    proposedNode: proposedNodeSchema.optional(),
+    targetUri: z.string().optional(),
+    mergeIntoUri: z.string().optional(),
+    rationale: z.string().min(10).max(2000),
+    evidence: z.array(proposalEvidenceSchema).max(10).optional(),
+    createdAt: z.string().datetime().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.proposalType === 'create') {
+        return !!data.proposedNode;
+      }
+      return true;
+    },
+    { message: 'Node data is required for create action', path: ['proposedNode'] }
+  )
+  .refine(
+    (data) => {
+      if (data.proposalType === 'update' || data.proposalType === 'deprecate') {
+        return !!data.targetUri;
+      }
+      return true;
+    },
+    { message: 'Target URI is required for update/deprecate action', path: ['targetUri'] }
+  )
+  .refine(
+    (data) => {
+      if (data.proposalType === 'merge') {
+        return !!data.targetUri && !!data.mergeIntoUri;
+      }
+      return true;
+    },
+    {
+      message: 'Both target and merge-into URIs are required for merge action',
+      path: ['mergeIntoUri'],
+    }
+  );
+
+export type NodeProposal = z.infer<typeof nodeProposalSchema>;

@@ -163,7 +163,7 @@ function FeaturedFieldCard({
  * Props for the FieldStatusBadge component.
  */
 interface FieldStatusBadgeProps {
-  status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
+  status: string;
 }
 
 /**
@@ -171,16 +171,17 @@ interface FieldStatusBadgeProps {
  */
 function FieldStatusBadge({ status }: FieldStatusBadgeProps) {
   const variants: Record<
-    typeof status,
+    string,
     { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
   > = {
     proposed: { label: 'Proposed', variant: 'outline' },
     under_review: { label: 'Under Review', variant: 'secondary' },
     approved: { label: 'Approved', variant: 'default' },
+    established: { label: 'Established', variant: 'default' },
     deprecated: { label: 'Deprecated', variant: 'destructive' },
   };
 
-  const { label, variant } = variants[status];
+  const { label, variant } = variants[status] ?? { label: status, variant: 'secondary' as const };
 
   return (
     <Badge variant={variant} className="text-xs">

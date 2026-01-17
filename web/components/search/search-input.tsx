@@ -200,20 +200,25 @@ export function SearchInputWithParams({
 export interface InlineSearchProps {
   /** Placeholder text */
   placeholder?: string;
-  /** Called when search is submitted */
+  /** Called on every input change (filters as you type) */
   onSearch: (query: string) => void;
   /** Additional CSS classes */
   className?: string;
+  /** Debounce delay in ms (default: 0 for instant) */
+  debounceMs?: number;
 }
 
 /**
  * Compact inline search for headers and sidebars.
  *
+ * @remarks
+ * Filters as you type by calling onSearch on every input change.
+ *
  * @example
  * ```tsx
  * <InlineSearch
- *   placeholder="Quick search..."
- *   onSearch={(q) => navigateToSearch(q)}
+ *   placeholder="Filter items..."
+ *   onSearch={(q) => setFilter(q)}
  * />
  * ```
  */
@@ -221,30 +226,60 @@ export function InlineSearch({
   placeholder = 'Search...',
   onSearch,
   className,
+  debounceMs = 0,
 }: InlineSearchProps) {
   const [value, setValue] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (value.trim()) {
-        onSearch(value.trim());
-        setValue('');
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setValue(newValue);
+
+      // Clear existing debounce timeout
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+
+      // Call onSearch immediately or with debounce
+      if (debounceMs > 0) {
+        debounceRef.current = setTimeout(() => {
+          onSearch(newValue);
+        }, debounceMs);
+      } else {
+        onSearch(newValue);
       }
     },
-    [value, onSearch]
+    [onSearch, debounceMs]
   );
 
+  const handleClear = useCallback(() => {
+    setValue('');
+    onSearch('');
+  }, [onSearch]);
+
   return (
-    <form onSubmit={handleSubmit} className={cn('relative', className)}>
+    <div className={cn('relative', className)}>
       <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
-        type="search"
+        type="text"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={handleChange}
         placeholder={placeholder}
-        className="h-8 w-full pl-8 pr-3 text-sm"
+        className="h-8 w-full pl-8 pr-8 text-sm"
       />
-    </form>
+      {value && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2"
+          onClick={handleClear}
+        >
+          <X className="h-3 w-3" />
+          <span className="sr-only">Clear</span>
+        </Button>
+      )}
+    </div>
   );
 }

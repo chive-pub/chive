@@ -373,6 +373,7 @@ export type RelatedEprintRelationship =
   | 'cites' // Source cites target
   | 'cited-by' // Source is cited by target
   | 'co-cited' // Frequently cited together
+  | 'bibliographic-coupling' // Share references (cite same papers)
   | 'same-author' // Share an author
   | 'similar-topics' // Similar OpenAlex topics
   | 'semantically-similar'; // High SPECTER2 similarity

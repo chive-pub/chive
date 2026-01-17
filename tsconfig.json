@@ -30,6 +30,13 @@
       "@tests/*": ["./tests/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "dist", ".turbo", "tests/e2e"]
+  "include": ["src/**/*", "tests/**/*", "scripts/db/lib/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".turbo",
+    "tests/e2e",
+    "src/lexicons/validators",
+    "tests/integration/lexicons/codegen.test.ts"
+  ]
 }

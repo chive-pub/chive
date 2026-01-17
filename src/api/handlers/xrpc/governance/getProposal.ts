@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.governance.getProposal.
  *
  * @remarks
- * Gets a single governance proposal by ID.
+ * Gets a single governance proposal by ID with full enrichment.
  *
  * @packageDocumentation
  * @public
@@ -20,12 +20,14 @@ import {
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
+import { calculateConsensus } from './consensus.js';
+
 /**
  * Handler for pub.chive.governance.getProposal query.
  *
  * @param c - Hono context with Chive environment
  * @param params - Validated query parameters
- * @returns The requested proposal
+ * @returns The requested proposal with enriched data
  *
  * @public
  */
@@ -35,6 +37,7 @@ export async function getProposalHandler(
 ): Promise<Proposal> {
   const logger = c.get('logger');
   const graphService = c.get('services').graph;
+  const trustedEditorService = c.get('services').trustedEditor;
 
   logger.debug('Getting governance proposal', {
     proposalId: params.proposalId,
@@ -47,20 +50,52 @@ export async function getProposalHandler(
     throw new NotFoundError('Proposal', params.proposalId);
   }
 
+  // Look up node label if nodeUri is set
+  let label: string | undefined;
+  if (proposal.nodeUri) {
+    try {
+      const node = await graphService.getNode(proposal.nodeUri);
+      if (node) {
+        label = node.label;
+      }
+    } catch {
+      // Node not found, label will be undefined
+    }
+  } else {
+    // For create proposals, use the label from changes
+    label = (proposal.changes as { label?: string }).label;
+  }
+
+  // Look up proposer display name
+  let proposerName: string | undefined;
+  if (trustedEditorService) {
+    try {
+      const status = await trustedEditorService.getEditorStatus(proposal.proposedBy);
+      if (status.ok && status.value.displayName) {
+        proposerName = status.value.displayName;
+      }
+    } catch {
+      // Proposer not found, name will be undefined
+    }
+  }
+
+  // Calculate consensus
+  const consensus = calculateConsensus(proposal.votes);
+
   // Map to API response format
   const response: Proposal = {
     id: proposal.id,
     uri: proposal.uri,
-    fieldId: proposal.fieldId,
-    label: undefined, // Would need field lookup
+    nodeUri: proposal.nodeUri,
+    label,
     type: proposal.type,
     changes: proposal.changes,
     rationale: proposal.rationale,
     status: proposal.status,
     proposedBy: proposal.proposedBy,
-    proposerName: undefined, // Would need DID resolution
+    proposerName,
     votes: proposal.votes,
-    consensus: undefined, // Would need consensus calculation
+    consensus,
     createdAt: proposal.createdAt.toISOString(),
     updatedAt: undefined,
     expiresAt: undefined,

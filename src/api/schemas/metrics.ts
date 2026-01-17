@@ -8,7 +8,7 @@
  * @public
  */
 
-import { z } from 'zod';
+import { z } from './base.js';
 
 /**
  * Eprint metrics schema.

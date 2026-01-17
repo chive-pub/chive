@@ -401,9 +401,9 @@ export function createMockFieldSummary(overrides: Partial<FieldSummary> = {}): F
  */
 export function createMockExternalId(overrides: Partial<ExternalId> = {}): ExternalId {
   return {
-    source: 'wikidata',
-    id: 'Q21198',
-    url: 'https://www.wikidata.org/wiki/Q21198',
+    system: 'wikidata',
+    identifier: 'Q21198',
+    uri: 'https://www.wikidata.org/wiki/Q21198',
     ...overrides,
   };
 }
@@ -437,14 +437,14 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
     eprintCount: 150,
     externalIds: [
       createMockExternalId({
-        source: 'wikidata',
-        id: 'Q2539',
-        url: 'https://www.wikidata.org/wiki/Q2539',
+        system: 'wikidata',
+        identifier: 'Q2539',
+        uri: 'https://www.wikidata.org/wiki/Q2539',
       }),
       createMockExternalId({
-        source: 'lcsh',
-        id: 'sh85079324',
-        url: 'https://id.loc.gov/authorities/subjects/sh85079324',
+        system: 'lcsh',
+        identifier: 'sh85079324',
+        uri: 'https://id.loc.gov/authorities/subjects/sh85079324',
       }),
     ],
     relationships: [
@@ -839,7 +839,7 @@ export function createMockEprintTagsResponse(
       createMockTagSuggestion({
         normalizedForm: 'transfer-learning',
         displayForm: 'Transfer Learning',
-        source: 'authority',
+        source: 'node',
       }),
     ],
     ...overrides,
@@ -900,7 +900,7 @@ export function createMockAuthorContribution(
   overrides: Partial<AuthorContribution> = {}
 ): AuthorContribution {
   return {
-    typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization',
     typeId: 'conceptualization',
     typeLabel: 'Conceptualization',
     degree: 'lead',
@@ -927,7 +927,7 @@ export function createMockEprintAuthorWithDid(overrides: Partial<EprintAuthor> =
     contributions: [
       createMockAuthorContribution(),
       createMockAuthorContribution({
-        typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/writing-original-draft',
+        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/writing-original-draft',
         typeId: 'writing-original-draft',
         typeLabel: 'Writing - Original Draft',
         degree: 'lead',
@@ -964,7 +964,7 @@ export function createMockExternalAuthor(overrides: Partial<EprintAuthor> = {}):
     ],
     contributions: [
       createMockAuthorContribution({
-        typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/investigation',
+        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/investigation',
         typeId: 'investigation',
         typeLabel: 'Investigation',
         degree: 'equal',
@@ -983,7 +983,7 @@ export function createMockContributionType(
   overrides: Partial<CreditContributionType> = {}
 ): CreditContributionType {
   return {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization',
     id: 'conceptualization',
     label: 'Conceptualization',
     description: 'Ideas; formulation or evolution of overarching research goals and aims',
@@ -1009,7 +1009,7 @@ export function createMockContributionTypeProposal(
   overrides: Partial<ContributionTypeProposal> = {}
 ): ContributionTypeProposal {
   return {
-    uri: 'at://did:plc:user123/pub.chive.contribution.typeProposal/abc',
+    uri: 'at://did:plc:user123/pub.chive.graph.conceptProposal/abc',
     proposerDid: 'did:plc:user123',
     proposerName: 'Test User',
     proposalType: 'create',
@@ -1191,7 +1191,7 @@ export function createMockCreditContributionTypes(): CreditContributionType[] {
 
   return creditRoles.map((role) =>
     createMockContributionType({
-      uri: `at://did:plc:chive-governance/pub.chive.contribution.type/${role.id}`,
+      uri: `at://did:plc:chive-governance/pub.chive.graph.concept/${role.id}`,
       id: role.id,
       label: role.label,
       description: role.description,

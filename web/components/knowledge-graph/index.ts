@@ -3,18 +3,49 @@
  *
  * @remarks
  * This module exports all knowledge graph-related components for
- * displaying fields, hierarchies, relationships, and navigation.
+ * displaying nodes, fields, hierarchies, relationships, and navigation.
+ * The unified knowledge graph model uses a single node type with
+ * kind (type/object) and subkind (field, facet, institution, etc.).
  *
  * @example
  * ```tsx
  * import {
+ *   KnowledgeGraphViewer,
+ *   NodeSearch,
  *   FieldCard,
  *   FieldBreadcrumb,
  *   FieldRelationships,
- *   FieldEprints,
  * } from '@/components/knowledge-graph';
  * ```
  */
+
+// =============================================================================
+// UNIFIED KNOWLEDGE GRAPH COMPONENTS
+// =============================================================================
+
+// Knowledge Graph Viewer - comprehensive graph exploration
+export { KnowledgeGraphViewer, KnowledgeGraphViewerSkeleton } from './knowledge-graph-viewer';
+export type {
+  KnowledgeGraphViewerProps,
+  GraphNode,
+  GraphEdge,
+  NodeKind,
+  NodeStatus,
+  ExternalId,
+} from './knowledge-graph-viewer';
+
+// Node Search - unified search component
+export { NodeSearch } from './node-search';
+export type {
+  NodeSearchProps,
+  NodeResult,
+  NodeKind as NodeSearchKind,
+  NodeStatus as NodeSearchStatus,
+} from './node-search';
+
+// =============================================================================
+// FIELD COMPONENTS
+// =============================================================================
 
 // Field card
 export { FieldCard, FieldCardSkeleton } from './field-card';
@@ -49,6 +80,33 @@ export type {
 // Field external IDs
 export { FieldExternalIds, FieldExternalIdsSkeleton } from './field-external-ids';
 export type { FieldExternalIdsProps, FieldExternalIdsSkeletonProps } from './field-external-ids';
+
+// Institution external IDs
+export { InstitutionExternalIds, InstitutionExternalIdsSkeleton } from './institution-external-ids';
+export type {
+  InstitutionExternalIdsProps,
+  InstitutionExternalIdsSkeletonProps,
+  InstitutionExternalId,
+  InstitutionIdSource,
+} from './institution-external-ids';
+
+// Concept external IDs
+export { ConceptExternalIds, ConceptExternalIdsSkeleton } from './concept-external-ids';
+export type {
+  ConceptExternalIdsProps,
+  ConceptExternalIdsSkeletonProps,
+  ConceptExternalId,
+  ConceptIdSource,
+} from './concept-external-ids';
+
+// Author external IDs
+export { AuthorExternalIds, AuthorExternalIdsSkeleton } from './author-external-ids';
+export type {
+  AuthorExternalIdsProps,
+  AuthorExternalIdsSkeletonProps,
+  AuthorExternalId,
+  AuthorIdSource,
+} from './author-external-ids';
 
 // Field eprints
 export { FieldEprints, FieldEprintsSkeleton } from './field-eprints';

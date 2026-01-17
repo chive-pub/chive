@@ -123,9 +123,9 @@ describe('ReviewService Integration', () => {
     // Insert required eprint for foreign key constraint
     await pool.query(
       `INSERT INTO eprints_index (
-        uri, cid, submitted_by, authors, title, abstract, document_blob_cid, document_blob_mime_type,
+        uri, cid, submitted_by, authors, title, abstract, abstract_plain_text, document_blob_cid, document_blob_mime_type,
         document_blob_size, license, created_at, pds_url, indexed_at, last_synced_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
         TEST_EPRINT_URI,
@@ -142,6 +142,13 @@ describe('ReviewService Integration', () => {
           },
         ]),
         'Test Eprint for Reviews',
+        JSON.stringify({
+          type: 'RichText',
+          items: [
+            { type: 'text', content: 'This is a test eprint used for review integration tests.' },
+          ],
+          format: 'application/x-chive-gloss+json',
+        }),
         'This is a test eprint used for review integration tests.',
         'bafyreipdfblob123',
         'application/pdf',
@@ -312,9 +319,9 @@ describe('ReviewService Notification Integration', () => {
     // Insert test eprint with author DID in the authors array (using fixture)
     await pool.query(
       `INSERT INTO eprints_index (
-        uri, cid, submitted_by, authors, title, abstract, document_blob_cid, document_blob_mime_type,
+        uri, cid, submitted_by, authors, title, abstract, abstract_plain_text, document_blob_cid, document_blob_mime_type,
         document_blob_size, license, created_at, pds_url, indexed_at, last_synced_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), $12, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
         NOTIFICATION_TEST_EPRINT_URI,
@@ -322,6 +329,11 @@ describe('ReviewService Notification Integration', () => {
         NOTIFICATION_TEST_AUTHOR_DID,
         JSON.stringify([testAuthor]),
         'Test Paper for Notification Tests',
+        JSON.stringify({
+          type: 'RichText',
+          items: [{ type: 'text', content: 'This eprint is used to test notification queries.' }],
+          format: 'application/x-chive-gloss+json',
+        }),
         'This eprint is used to test notification queries.',
         'bafyreipdfblob456',
         'application/pdf',
@@ -426,12 +438,13 @@ describe('ReviewService Notification Integration', () => {
       expect(result.total).toBe(1);
       expect(result.hasMore).toBe(false);
 
-      const review = result.items[0]!;
-      expect(review.reviewerDid).toBe(NOTIFICATION_TEST_REVIEWER_DID);
-      expect(review.eprintUri).toBe(NOTIFICATION_TEST_EPRINT_URI);
-      expect(review.eprintTitle).toBe('Test Paper for Notification Tests');
-      expect(review.text).toBe('This is a test review for notification tests.');
-      expect(review.isReply).toBe(false);
+      const review = result.items[0];
+      expect(review).toBeDefined();
+      expect(review?.reviewerDid).toBe(NOTIFICATION_TEST_REVIEWER_DID);
+      expect(review?.eprintUri).toBe(NOTIFICATION_TEST_EPRINT_URI);
+      expect(review?.eprintTitle).toBe('Test Paper for Notification Tests');
+      expect(review?.text).toBe('This is a test review for notification tests.');
+      expect(review?.isReply).toBe(false);
     });
 
     it('excludes self-reviews from results', async () => {
@@ -474,12 +487,13 @@ describe('ReviewService Notification Integration', () => {
       expect(result.total).toBe(1);
       expect(result.hasMore).toBe(false);
 
-      const endorsement = result.items[0]!;
-      expect(endorsement.endorserDid).toBe(NOTIFICATION_TEST_REVIEWER_DID);
-      expect(endorsement.eprintUri).toBe(NOTIFICATION_TEST_EPRINT_URI);
-      expect(endorsement.eprintTitle).toBe('Test Paper for Notification Tests');
-      expect(endorsement.endorsementType).toBe('methods');
-      expect(endorsement.comment).toBe('Great methodology!');
+      const endorsement = result.items[0];
+      expect(endorsement).toBeDefined();
+      expect(endorsement?.endorserDid).toBe(NOTIFICATION_TEST_REVIEWER_DID);
+      expect(endorsement?.eprintUri).toBe(NOTIFICATION_TEST_EPRINT_URI);
+      expect(endorsement?.eprintTitle).toBe('Test Paper for Notification Tests');
+      expect(endorsement?.endorsementType).toBe('methods');
+      expect(endorsement?.comment).toBe('Great methodology!');
     });
 
     it('excludes self-endorsements from results', async () => {

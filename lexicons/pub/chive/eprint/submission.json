@@ -12,7 +12,7 @@
           "title",
           "abstract",
           "document",
-          "license",
+          "licenseSlug",
           "authors",
           "submittedBy",
           "createdAt"
@@ -24,9 +24,18 @@
             "maxLength": 500
           },
           "abstract": {
+            "type": "array",
+            "description": "Rich abstract with text and node references",
+            "items": {
+              "type": "union",
+              "refs": ["#textItem", "#nodeRefItem"]
+            },
+            "maxLength": 100
+          },
+          "abstractPlainText": {
             "type": "string",
-            "description": "Abstract or summary",
-            "maxLength": 5000
+            "description": "Plain text abstract for search indexing (auto-generated)",
+            "maxLength": 10000
           },
           "document": {
             "type": "blob",
@@ -47,9 +56,14 @@
             ],
             "maxSize": 52428800
           },
-          "documentFormat": {
+          "documentFormatUri": {
             "type": "string",
-            "description": "Detected or user-specified document format",
+            "format": "at-uri",
+            "description": "AT-URI to document format node (subkind=document-format)"
+          },
+          "documentFormatSlug": {
+            "type": "string",
+            "description": "Document format slug for display fallback",
             "knownValues": [
               "pdf",
               "docx",
@@ -101,12 +115,30 @@
             },
             "maxLength": 20
           },
-          "facets": {
+          "fieldUris": {
             "type": "array",
-            "description": "10-dimensional faceted classification",
+            "description": "Field node references (subkind=field)",
             "items": {
-              "type": "ref",
-              "ref": "pub.chive.graph.facet"
+              "type": "string",
+              "format": "at-uri"
+            },
+            "maxLength": 10
+          },
+          "topicUris": {
+            "type": "array",
+            "description": "Topic node references (subkind=topic)",
+            "items": {
+              "type": "string",
+              "format": "at-uri"
+            },
+            "maxLength": 20
+          },
+          "facetUris": {
+            "type": "array",
+            "description": "Facet node references (subkind=facet)",
+            "items": {
+              "type": "string",
+              "format": "at-uri"
             },
             "maxLength": 30
           },
@@ -120,14 +152,24 @@
             "format": "at-uri",
             "description": "Previous version URI"
           },
-          "license": {
+          "licenseUri": {
             "type": "string",
-            "description": "SPDX license identifier",
+            "format": "at-uri",
+            "description": "AT-URI to license node (subkind=license)"
+          },
+          "licenseSlug": {
+            "type": "string",
+            "description": "SPDX license identifier for display fallback",
             "knownValues": ["CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "MIT", "Apache-2.0"]
           },
-          "publicationStatus": {
+          "publicationStatusUri": {
             "type": "string",
-            "description": "Current status in publication lifecycle",
+            "format": "at-uri",
+            "description": "AT-URI to publication status node (subkind=publication-status)"
+          },
+          "publicationStatusSlug": {
+            "type": "string",
+            "description": "Publication status slug for display fallback",
             "knownValues": [
               "preprint",
               "under_review",
@@ -138,6 +180,24 @@
               "retracted"
             ],
             "default": "preprint"
+          },
+          "paperTypeUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI to paper type node (subkind=paper-type)"
+          },
+          "paperTypeSlug": {
+            "type": "string",
+            "description": "Paper type slug for display fallback",
+            "knownValues": [
+              "original-research",
+              "review",
+              "meta-analysis",
+              "case-study",
+              "commentary",
+              "tutorial",
+              "survey"
+            ]
           },
           "publishedVersion": {
             "type": "ref",
@@ -205,9 +265,14 @@
           "description": "Description of the supplementary material",
           "maxLength": 1000
         },
-        "category": {
+        "categoryUri": {
           "type": "string",
-          "description": "Auto-detected or user-specified category",
+          "format": "at-uri",
+          "description": "AT-URI to supplementary category node (subkind=supplementary-category)"
+        },
+        "categorySlug": {
+          "type": "string",
+          "description": "Category slug for display fallback",
           "knownValues": [
             "appendix",
             "figure",
@@ -479,9 +544,14 @@
           "format": "uri",
           "description": "Repository URL"
         },
-        "platform": {
+        "platformUri": {
           "type": "string",
-          "description": "Hosting platform",
+          "format": "at-uri",
+          "description": "AT-URI to platform node (subkind=platform-code)"
+        },
+        "platformSlug": {
+          "type": "string",
+          "description": "Platform slug for display fallback",
           "knownValues": [
             "github",
             "gitlab",
@@ -524,9 +594,14 @@
           "type": "string",
           "description": "Dataset DOI"
         },
-        "platform": {
+        "platformUri": {
           "type": "string",
-          "description": "Hosting platform",
+          "format": "at-uri",
+          "description": "AT-URI to platform node (subkind=platform-data)"
+        },
+        "platformSlug": {
+          "type": "string",
+          "description": "Platform slug for display fallback",
           "knownValues": [
             "huggingface",
             "zenodo",
@@ -559,9 +634,14 @@
           "format": "uri",
           "description": "Pre-registration URL"
         },
-        "platform": {
+        "platformUri": {
           "type": "string",
-          "description": "Hosting platform",
+          "format": "at-uri",
+          "description": "AT-URI to platform node (subkind=platform-preregistration)"
+        },
+        "platformSlug": {
+          "type": "string",
+          "description": "Platform slug for display fallback",
           "knownValues": ["osf", "aspredicted", "clinicaltrials", "prospero", "other"]
         },
         "registrationDate": {
@@ -584,9 +664,14 @@
           "type": "string",
           "description": "Protocol DOI"
         },
-        "platform": {
+        "platformUri": {
           "type": "string",
-          "description": "Hosting platform",
+          "format": "at-uri",
+          "description": "AT-URI to platform node (subkind=platform-protocol)"
+        },
+        "platformSlug": {
+          "type": "string",
+          "description": "Platform slug for display fallback",
           "knownValues": ["protocols_io", "bio_protocol", "other"]
         }
       }
@@ -618,6 +703,11 @@
           "type": "string",
           "description": "Funder name",
           "maxLength": 300
+        },
+        "funderUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI to funder institution node (subkind=institution)"
         },
         "funderDoi": {
           "type": "string",
@@ -658,6 +748,11 @@
           "description": "Conference acronym",
           "maxLength": 50
         },
+        "conferenceUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI to conference/event node (subkind=event)"
+        },
         "conferenceUrl": {
           "type": "string",
           "format": "uri",
@@ -672,14 +767,60 @@
           "format": "datetime",
           "description": "Presentation date"
         },
-        "presentationType": {
+        "presentationTypeUri": {
           "type": "string",
-          "description": "Type of presentation",
+          "format": "at-uri",
+          "description": "AT-URI to presentation type node (subkind=presentation-type)"
+        },
+        "presentationTypeSlug": {
+          "type": "string",
+          "description": "Presentation type slug for display fallback",
           "knownValues": ["oral", "poster", "keynote", "workshop", "demo", "other"]
         },
         "proceedingsDoi": {
           "type": "string",
           "description": "Proceedings DOI"
+        }
+      }
+    },
+    "textItem": {
+      "type": "object",
+      "description": "Plain text content item in rich abstract",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "text"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 10000
+        }
+      }
+    },
+    "nodeRefItem": {
+      "type": "object",
+      "description": "Reference to a knowledge graph node in rich abstract",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "nodeRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the referenced node"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Display label (cached from node)"
+        },
+        "subkind": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Subkind slug for styling"
         }
       }
     }

@@ -9,9 +9,9 @@
  * @public
  */
 
-import { z } from 'zod';
-
 import { PAGINATION } from '../config.js';
+
+import { z } from './base.js';
 
 /**
  * AT URI schema.

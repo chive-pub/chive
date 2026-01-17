@@ -6,7 +6,7 @@
  * @remarks
  * Renders annotation body items (FOVEA GlossItem pattern) as a mix of
  * text and interactive reference chips. References link to their targets
- * (Wikidata, authorities, fields, eprints, etc.).
+ * (Wikidata, nodes, fields, eprints, etc.) with subkind-specific colors.
  *
  * @example
  * ```tsx
@@ -21,6 +21,7 @@ import { ExternalLink } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getSubkindColorClasses, getSubkindIcon } from '@/lib/constants/subkind-colors';
 import type { RichAnnotationBody, RichAnnotationItem } from '@/lib/api/schema';
 
 // =============================================================================
@@ -36,6 +37,9 @@ export interface AnnotationBodyRendererProps {
 
   /** Additional CSS classes */
   className?: string;
+
+  /** Render mode - inline for within text, block for standalone */
+  mode?: 'inline' | 'block';
 }
 
 // =============================================================================
@@ -67,19 +71,19 @@ function WikidataRefChip({ qid, label, url }: { qid: string; label: string; url?
 }
 
 /**
- * Renders an authority record reference as a chip.
+ * Renders a knowledge graph node reference as a chip with subkind-specific colors.
  */
-function AuthorityRefChip({ uri, label }: { uri: string; label: string }) {
-  // Extract authority ID from AT-URI for routing
-  const authorityId = uri.split('/').pop() || uri;
+function NodeRefChip({ uri, label, subkind }: { uri: string; label: string; subkind?: string }) {
+  // Extract node ID from AT-URI for routing
+  const nodeId = uri.split('/').pop() || uri;
+  const colorClasses = getSubkindColorClasses(subkind ?? 'default');
+  const Icon = getSubkindIcon(subkind ?? 'default');
 
   return (
-    <Link href={`/authorities/${encodeURIComponent(authorityId)}`}>
-      <Badge
-        variant="secondary"
-        className="bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300"
-      >
-        {label}
+    <Link href={`/graph/${encodeURIComponent(nodeId)}`}>
+      <Badge variant="secondary" className={cn('gap-1', colorClasses)} title={subkind}>
+        <Icon className="h-3 w-3" />
+        <span>{label}</span>
       </Badge>
     </Link>
   );
@@ -91,14 +95,14 @@ function AuthorityRefChip({ uri, label }: { uri: string; label: string }) {
 function FieldRefChip({ uri, label }: { uri: string; label: string }) {
   // Extract field ID from AT-URI
   const fieldId = uri.split('/').pop() || uri;
+  const colorClasses = getSubkindColorClasses('field');
+  const Icon = getSubkindIcon('field');
 
   return (
     <Link href={`/fields/${encodeURIComponent(fieldId)}`}>
-      <Badge
-        variant="secondary"
-        className="bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300"
-      >
-        {label}
+      <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
+        <Icon className="h-3 w-3" />
+        <span>{label}</span>
       </Badge>
     </Link>
   );
@@ -108,13 +112,16 @@ function FieldRefChip({ uri, label }: { uri: string; label: string }) {
  * Renders a facet reference as a chip.
  */
 function FacetRefChip({ dimension, value }: { dimension: string; value: string }) {
+  const colorClasses = getSubkindColorClasses('facet');
+  const Icon = getSubkindIcon('facet');
+
   return (
     <Link href={`/browse?${dimension}=${encodeURIComponent(value)}`}>
-      <Badge
-        variant="secondary"
-        className="bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300"
-      >
-        {dimension}: {value}
+      <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
+        <Icon className="h-3 w-3" />
+        <span>
+          {dimension}: {value}
+        </span>
       </Badge>
     </Link>
   );
@@ -155,13 +162,14 @@ function AnnotationRefChip({ uri: _uri, excerpt }: { uri: string; excerpt: strin
  * Renders an author reference as a chip.
  */
 function AuthorRefChip({ did, displayName }: { did: string; displayName: string }) {
+  const colorClasses = getSubkindColorClasses('person');
+  const Icon = getSubkindIcon('person');
+
   return (
     <Link href={`/authors/${encodeURIComponent(did)}`}>
-      <Badge
-        variant="secondary"
-        className="bg-pink-100 text-pink-800 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300"
-      >
-        @{displayName}
+      <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
+        <Icon className="h-3 w-3" />
+        <span>@{displayName}</span>
       </Badge>
     </Link>
   );
@@ -182,8 +190,8 @@ function BodyItemRenderer({ item }: { item: RichAnnotationItem }) {
     case 'wikidataRef':
       return <WikidataRefChip qid={item.qid} label={item.label} url={item.url} />;
 
-    case 'authorityRef':
-      return <AuthorityRefChip uri={item.uri} label={item.label} />;
+    case 'nodeRef':
+      return <NodeRefChip uri={item.uri} label={item.label} subkind={item.subkind} />;
 
     case 'fieldRef':
       return <FieldRefChip uri={item.uri} label={item.label} />;
@@ -215,7 +223,11 @@ function BodyItemRenderer({ item }: { item: RichAnnotationItem }) {
  * @param props - Component props
  * @returns Rendered annotation body
  */
-export function AnnotationBodyRenderer({ body, className }: AnnotationBodyRendererProps) {
+export function AnnotationBodyRenderer({
+  body,
+  className,
+  mode = 'inline',
+}: AnnotationBodyRendererProps) {
   if (!body || !body.items || body.items.length === 0) {
     return null;
   }
@@ -224,6 +236,7 @@ export function AnnotationBodyRenderer({ body, className }: AnnotationBodyRender
     <div
       className={cn(
         'leading-relaxed [&>*]:inline [&_.badge]:mx-0.5 [&_.badge]:align-baseline',
+        mode === 'block' && 'whitespace-pre-wrap',
         className
       )}
       data-testid="annotation-body"

@@ -23,8 +23,8 @@ export const eprintAuthorContributionSchema = z.object({
   orcid: z.string().max(19).optional(),
   email: z.string().max(254).optional(),
   order: z.number().int().min(1),
-  affiliations: z.array(z.object({ name: z.string().max(300), rorId: z.string().max(100).optional(), department: z.string().max(200).optional() })).max(10).optional(),
-  contributions: z.array(z.object({ typeUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }), degree: z.enum(["lead", "equal", "supporting"]).optional() })).max(14).optional(),
+  affiliations: z.array(z.object({ name: z.string().max(300), institutionUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }).optional(), rorId: z.string().max(100).optional(), department: z.string().max(200).optional() })).max(10).optional(),
+  contributions: z.array(z.object({ typeUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }), typeSlug: z.string().max(50).optional(), degreeUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }).optional(), degreeSlug: z.enum(["lead", "equal", "supporting"]).optional() })).max(14).optional(),
   isCorrespondingAuthor: z.boolean().optional(),
   isHighlighted: z.boolean().optional(),
 });

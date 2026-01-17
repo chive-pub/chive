@@ -17,41 +17,41 @@ describe('FieldExternalIds', () => {
   });
 
   it('renders list variant by default', () => {
-    const externalIds = [createMockExternalId({ source: 'wikidata', id: 'Q21198' })];
+    const externalIds = [createMockExternalId({ system: 'wikidata', identifier: 'Q21198' })];
     render(<FieldExternalIds externalIds={externalIds} />);
     expect(screen.getByText('External Identifiers')).toBeInTheDocument();
   });
 
   it('shows Wikidata link', () => {
-    const externalIds = [createMockExternalId({ source: 'wikidata', id: 'Q21198' })];
+    const externalIds = [createMockExternalId({ system: 'wikidata', identifier: 'Q21198' })];
     render(<FieldExternalIds externalIds={externalIds} />);
     expect(screen.getByText('Wikidata')).toBeInTheDocument();
     expect(screen.getByText('Q21198')).toBeInTheDocument();
   });
 
   it('shows LCSH link', () => {
-    const externalIds = [createMockExternalId({ source: 'lcsh', id: 'sh85029534' })];
+    const externalIds = [createMockExternalId({ system: 'lcsh', identifier: 'sh85029534' })];
     render(<FieldExternalIds externalIds={externalIds} />);
     expect(screen.getByText('LCSH')).toBeInTheDocument();
     expect(screen.getByText('sh85029534')).toBeInTheDocument();
   });
 
   it('shows FAST link', () => {
-    const externalIds = [createMockExternalId({ source: 'fast', id: '872451' })];
+    const externalIds = [createMockExternalId({ system: 'fast', identifier: '872451' })];
     render(<FieldExternalIds externalIds={externalIds} />);
     expect(screen.getByText('FAST')).toBeInTheDocument();
     expect(screen.getByText('872451')).toBeInTheDocument();
   });
 
   it('shows MeSH link', () => {
-    const externalIds = [createMockExternalId({ source: 'mesh', id: 'D003196' })];
+    const externalIds = [createMockExternalId({ system: 'mesh', identifier: 'D003196' })];
     render(<FieldExternalIds externalIds={externalIds} />);
     expect(screen.getByText('MeSH')).toBeInTheDocument();
     expect(screen.getByText('D003196')).toBeInTheDocument();
   });
 
   it('shows arXiv link', () => {
-    const externalIds = [createMockExternalId({ source: 'arxiv', id: 'cs.AI' })];
+    const externalIds = [createMockExternalId({ system: 'arxiv', identifier: 'cs.AI' })];
     render(<FieldExternalIds externalIds={externalIds} />);
     expect(screen.getByText('arXiv')).toBeInTheDocument();
     expect(screen.getByText('cs.AI')).toBeInTheDocument();
@@ -60,9 +60,9 @@ describe('FieldExternalIds', () => {
   it('links to external URL when provided', () => {
     const externalIds = [
       createMockExternalId({
-        source: 'wikidata',
-        id: 'Q21198',
-        url: 'https://www.wikidata.org/wiki/Q21198',
+        system: 'wikidata',
+        identifier: 'Q21198',
+        uri: 'https://www.wikidata.org/wiki/Q21198',
       }),
     ];
     render(<FieldExternalIds externalIds={externalIds} />);
@@ -74,7 +74,7 @@ describe('FieldExternalIds', () => {
 
   it('generates default URL when not provided', () => {
     const externalIds = [
-      createMockExternalId({ source: 'wikidata', id: 'Q21198', url: undefined }),
+      createMockExternalId({ system: 'wikidata', identifier: 'Q21198', uri: undefined }),
     ];
     render(<FieldExternalIds externalIds={externalIds} />);
     const link = screen.getByRole('link');
@@ -83,8 +83,8 @@ describe('FieldExternalIds', () => {
 
   it('renders multiple external IDs', () => {
     const externalIds = [
-      createMockExternalId({ source: 'wikidata', id: 'Q21198' }),
-      createMockExternalId({ source: 'lcsh', id: 'sh85029534' }),
+      createMockExternalId({ system: 'wikidata', identifier: 'Q21198' }),
+      createMockExternalId({ system: 'lcsh', identifier: 'sh85029534' }),
     ];
     render(<FieldExternalIds externalIds={externalIds} />);
     expect(screen.getByText('Wikidata')).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('FieldExternalIds', () => {
 
   describe('badges variant', () => {
     it('renders as badges', () => {
-      const externalIds = [createMockExternalId({ source: 'wikidata', id: 'Q21198' })];
+      const externalIds = [createMockExternalId({ system: 'wikidata', identifier: 'Q21198' })];
       render(<FieldExternalIds externalIds={externalIds} variant="badges" />);
       const link = screen.getByRole('link');
       expect(link).toHaveClass('rounded-full');
@@ -102,7 +102,7 @@ describe('FieldExternalIds', () => {
 
   describe('compact variant', () => {
     it('renders compact display', () => {
-      const externalIds = [createMockExternalId({ source: 'wikidata', id: 'Q21198' })];
+      const externalIds = [createMockExternalId({ system: 'wikidata', identifier: 'Q21198' })];
       render(<FieldExternalIds externalIds={externalIds} variant="compact" />);
       expect(screen.getByText('Wikidata')).toBeInTheDocument();
       // Compact doesn't show the full ID, check title attribute
@@ -112,7 +112,7 @@ describe('FieldExternalIds', () => {
   });
 
   it('applies custom className', () => {
-    const externalIds = [createMockExternalId({ source: 'wikidata', id: 'Q21198' })];
+    const externalIds = [createMockExternalId({ system: 'wikidata', identifier: 'Q21198' })];
     const { container } = render(
       <FieldExternalIds externalIds={externalIds} className="custom-ext-class" />
     );

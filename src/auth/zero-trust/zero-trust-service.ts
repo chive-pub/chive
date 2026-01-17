@@ -500,7 +500,7 @@ export class ZeroTrustService implements IZeroTrustPolicy {
     const roles = input.subject.roles ?? [];
     if (roles.includes('admin')) {
       score += 20;
-    } else if (roles.includes('moderator') || roles.includes('authority-editor')) {
+    } else if (roles.includes('moderator') || roles.includes('graph-editor')) {
       score += 15;
     } else if (roles.includes('author')) {
       score += 10;

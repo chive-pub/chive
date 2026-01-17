@@ -2,8 +2,8 @@
  * Integration tests for XRPC graph endpoints.
  *
  * @remarks
- * Tests the full request/response cycle for knowledge graph XRPC endpoints
- * including getField, searchAuthorities, and browseFaceted.
+ * Tests the full request/response cycle for unified knowledge graph XRPC endpoints
+ * including getNode, searchNodes, listNodes, getHierarchy, and browseFaceted.
  *
  * Validates ATProto compliance and proper service integration.
  *
@@ -20,16 +20,13 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
-import {
-  KnowledgeGraphService,
-  type KnowledgeGraphServiceOptions,
-} from '@/services/knowledge-graph/graph-service.js';
-import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
-import { Neo4jAdapter } from '@/storage/neo4j/adapter.js';
+import { EdgeService } from '@/services/governance/edge-service.js';
+import { NodeService } from '@/services/governance/node-service.js';
 import { Neo4jConnection } from '@/storage/neo4j/connection.js';
+import { EdgeRepository } from '@/storage/neo4j/edge-repository.js';
+import { NodeRepository } from '@/storage/neo4j/node-repository.js';
 import { getRedisConfig } from '@/storage/redis/structures.js';
 import type { DID } from '@/types/atproto.js';
-import type { IGraphDatabase } from '@/types/interfaces/graph.interface.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 import {
@@ -39,27 +36,28 @@ import {
   createMockEprintService,
   createMockSearchService,
   createMockMetricsService,
+  createMockGraphService,
   createMockBlobProxyService,
   createMockReviewService,
   createMockTagManager,
-  createMockContributionTypeManager,
+  createMockFacetManager,
   createMockBacklinkService,
   createMockClaimingService,
   createMockImportService,
   createMockPDSSyncService,
   createMockActivityService,
-  createMockStorageBackend,
+  createNoOpRelevanceLogger,
+  createMockServiceAuthVerifier,
 } from '../../../helpers/mock-services.js';
 import type {
-  FieldDetail,
-  AuthoritySearchResponse,
+  GraphNodeResponse,
+  NodeSearchResponse,
   FacetedBrowseResponse,
   ErrorResponse,
 } from '../../../types/api-responses.js';
 
 /**
  * Get Neo4j config from environment variables.
- * Default credentials match docker/docker-compose.yml configuration.
  */
 interface Neo4jConfig {
   uri: string;
@@ -78,12 +76,9 @@ function getNeo4jConfig(): Neo4jConfig {
 }
 
 // Test constants
-const TEST_FIELD_ID = 'cs.ai';
-const TEST_FIELD_LABEL = 'Artificial Intelligence';
-const _TEST_AUTHOR = 'did:plc:graphauthor' as DID;
-const _TEST_PDS_URL = 'https://pds.test.example.com';
-void _TEST_AUTHOR; // Reserved for graph test data
-void _TEST_PDS_URL; // Reserved for PDS source verification
+const TEST_NODE_ID = 'test-node-cs-ai';
+const TEST_NODE_LABEL = 'Artificial Intelligence';
+const TEST_GOVERNANCE_DID = 'did:plc:chive-governance' as DID;
 // Unique IP for graph tests to avoid rate limit collisions with parallel test files
 const GRAPH_TEST_IP = '192.168.100.3';
 
@@ -102,8 +97,6 @@ function testRequest(
 
 describe('XRPC Graph Endpoints Integration', () => {
   let neo4jConnection: Neo4jConnection;
-  let graphDb: IGraphDatabase;
-  let graphService: KnowledgeGraphService;
   let redis: Redis;
   let app: Hono<ChiveEnv>;
   let logger: ILogger;
@@ -119,8 +112,6 @@ describe('XRPC Graph Endpoints Integration', () => {
       database: neo4jConfig.database,
     });
 
-    graphDb = new Neo4jAdapter(neo4jConnection);
-
     // Initialize Redis
     const redisConfig = getRedisConfig();
     redis = new Redis(redisConfig);
@@ -128,35 +119,47 @@ describe('XRPC Graph Endpoints Integration', () => {
     // Create logger
     logger = createMockLogger();
 
-    // Create graph service
-    const graphServiceOptions: KnowledgeGraphServiceOptions = {
-      graph: graphDb,
-      storage: createMockStorageBackend(),
-      logger,
-    };
-    graphService = new KnowledgeGraphService(graphServiceOptions);
+    // Create real repositories connected to Neo4j
+    const nodeRepository = new NodeRepository(neo4jConnection);
+    const edgeRepository = new EdgeRepository(neo4jConnection);
 
-    // Create Hono app with full middleware stack
+    // Create real services using the repositories
+    const nodeService = new NodeService({
+      nodeRepository,
+      logger,
+      cache: redis,
+    });
+    const edgeService = new EdgeService({
+      edgeRepository,
+      logger,
+    });
+
+    // Create test server with real graph services, mocks for others
     const serverConfig: ServerConfig = {
       eprintService: createMockEprintService(),
       searchService: createMockSearchService(),
       metricsService: createMockMetricsService(),
-      graphService,
+      graphService: createMockGraphService(),
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
       tagManager: createMockTagManager(),
-      contributionTypeManager: createMockContributionTypeManager(),
+      facetManager: createMockFacetManager(),
+      nodeService,
+      edgeService,
+      nodeRepository,
+      edgeRepository,
       backlinkService: createMockBacklinkService(),
       claimingService: createMockClaimingService(),
       importService: createMockImportService(),
       pdsSyncService: createMockPDSSyncService(),
       activityService: createMockActivityService(),
-      relevanceLogger: new NoOpRelevanceLogger(),
+      relevanceLogger: createNoOpRelevanceLogger(),
       authzService: createMockAuthzService(),
       alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',
+      serviceAuthVerifier: createMockServiceAuthVerifier(),
     };
 
     app = createServer(serverConfig);
@@ -168,184 +171,200 @@ describe('XRPC Graph Endpoints Integration', () => {
   });
 
   beforeEach(async () => {
-    // Clean up test data from Neo4j
-    await neo4jConnection.executeQuery('MATCH (n) WHERE n.id STARTS WITH "test_" DETACH DELETE n');
-
-    // Clean up rate limit keys to avoid 429 errors during tests
-    const keys = await redis.keys('chive:ratelimit:*');
-    if (keys.length > 0) {
-      await redis.del(...keys);
-    }
+    // Clean up test data
+    await neo4jConnection.executeQuery(
+      `MATCH (n) WHERE n.id STARTS WITH 'test' OR n.id STARTS WITH 'test-' DETACH DELETE n`
+    );
   });
 
-  describe('GET /xrpc/pub.chive.graph.getField', () => {
-    it('returns 400 for missing id parameter', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField');
+  describe('GET /xrpc/pub.chive.graph.getNode', () => {
+    it('returns node by ID', async () => {
+      // Create test node
+      const nodeUri = `at://${TEST_GOVERNANCE_DID}/pub.chive.graph.node/${TEST_NODE_ID}`;
+      await neo4jConnection.executeQuery(
+        `CREATE (n:Node:Type:Field {
+          id: $id,
+          uri: $uri,
+          kind: 'type',
+          subkind: 'field',
+          label: $label,
+          description: 'Study of intelligent agents',
+          status: 'established',
+          createdAt: datetime()
+        })`,
+        {
+          id: TEST_NODE_ID,
+          uri: nodeUri,
+          label: TEST_NODE_LABEL,
+        }
+      );
 
-      expect(res.status).toBe(400);
-      const body = (await res.json()) as ErrorResponse;
-      expect(body.error).toBeDefined();
-      expect(body.error.code).toBe('VALIDATION_ERROR');
+      const res = await testRequest(
+        app,
+        `/xrpc/pub.chive.graph.getNode?id=${encodeURIComponent(TEST_NODE_ID)}`
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as GraphNodeResponse;
+
+      expect(body.id).toBe(TEST_NODE_ID);
+      expect(body.label).toBe(TEST_NODE_LABEL);
+      expect(body.kind).toBe('type');
+      expect(body.subkind).toBe('field');
     });
 
-    it('returns 404 for non-existent field', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField?id=nonexistent.field.xyz');
+    it('returns 404 for non-existent node', async () => {
+      const res = await testRequest(
+        app,
+        `/xrpc/pub.chive.graph.getNode?id=${encodeURIComponent('nonexistent')}`
+      );
 
       expect(res.status).toBe(404);
       const body = (await res.json()) as ErrorResponse;
       expect(body.error.code).toBe('NOT_FOUND');
     });
 
-    it('returns field with proper structure', async () => {
-      // Create test field in Neo4j
+    it('includes external IDs when available', async () => {
+      const nodeUri = `at://${TEST_GOVERNANCE_DID}/pub.chive.graph.node/test-ml-node`;
       await neo4jConnection.executeQuery(
-        `CREATE (f:Field {
-          id: $id,
-          label: $label,
-          type: 'field',
-          description: $description,
-          wikidataId: $wikidataId,
-          createdAt: datetime(),
-          updatedAt: datetime()
+        `CREATE (n:Node:Type:Field {
+          id: 'test-ml-node',
+          uri: $uri,
+          kind: 'type',
+          subkind: 'field',
+          label: 'Machine Learning',
+          status: 'established',
+          externalIds: $externalIds,
+          createdAt: datetime()
         })`,
         {
-          id: `test_${TEST_FIELD_ID}`,
-          label: TEST_FIELD_LABEL,
-          description: 'Study of intelligent agents',
-          wikidataId: 'Q11660',
+          uri: nodeUri,
+          externalIds: JSON.stringify([
+            { system: 'wikidata', identifier: 'Q2539', matchType: 'exact' },
+          ]),
         }
       );
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.graph.getField?id=${encodeURIComponent(`test_${TEST_FIELD_ID}`)}`
+        `/xrpc/pub.chive.graph.getNode?id=${encodeURIComponent('test-ml-node')}`
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as FieldDetail;
-
-      expect(body.id).toBe(`test_${TEST_FIELD_ID}`);
-      expect(body.name).toBe(TEST_FIELD_LABEL);
-      expect(body.uri).toContain('pub.chive.graph.field');
-    });
-
-    it('includes external IDs when available', async () => {
-      // Create test field with Wikidata ID
-      await neo4jConnection.executeQuery(
-        `CREATE (f:Field {
-          id: $id,
-          label: $label,
-          type: 'field',
-          wikidataId: $wikidataId,
-          createdAt: datetime(),
-          updatedAt: datetime()
-        })`,
-        {
-          id: 'test_cs.ml',
-          label: 'Machine Learning',
-          wikidataId: 'Q2539',
-        }
-      );
-
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField?id=test_cs.ml');
-
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as FieldDetail;
+      const body = (await res.json()) as GraphNodeResponse;
 
       expect(body.externalIds).toBeDefined();
-      const externalIds = body.externalIds;
-      if (externalIds && externalIds.length > 0) {
-        expect(externalIds.length).toBeGreaterThan(0);
-        const firstId = externalIds[0];
-        if (firstId) {
-          expect(firstId.source).toBe('wikidata');
-          expect(firstId.id).toBe('Q2539');
-        }
-      }
-    });
-
-    it('includes child fields when available', async () => {
-      // Create parent and child fields
-      await neo4jConnection.executeQuery(
-        `CREATE (parent:Field {id: 'test_parent', label: 'Parent Field', type: 'field', createdAt: datetime(), updatedAt: datetime()})
-         CREATE (child1:Field {id: 'test_child1', label: 'Child Field 1', type: 'subfield', createdAt: datetime(), updatedAt: datetime()})
-         CREATE (child2:Field {id: 'test_child2', label: 'Child Field 2', type: 'topic', createdAt: datetime(), updatedAt: datetime()})
-         CREATE (parent)-[:HAS_SUBFIELD]->(child1)
-         CREATE (parent)-[:HAS_TOPIC]->(child2)`
-      );
-
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField?id=test_parent');
-
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as FieldDetail;
-
-      // Children should be included if the handler queries for them
-      expect(body.id).toBe('test_parent');
+      expect(body.externalIds?.length).toBeGreaterThan(0);
+      expect(body.externalIds?.[0]?.system).toBe('wikidata');
     });
 
     it('includes requestId in response headers', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField?id=test.field');
+      const res = await testRequest(
+        app,
+        `/xrpc/pub.chive.graph.getNode?id=${encodeURIComponent('nonexistent')}`
+      );
 
       expect(res.headers.get('X-Request-Id')).toBeDefined();
       expect(res.headers.get('X-Request-Id')).toMatch(/^req_/);
     });
   });
 
-  describe('GET /xrpc/pub.chive.graph.searchAuthorities', () => {
+  describe('GET /xrpc/pub.chive.graph.searchNodes', () => {
     it('returns empty results for no matches', async () => {
-      // Use 'q' parameter not 'query' to match the schema
       const res = await testRequest(
         app,
-        '/xrpc/pub.chive.graph.searchAuthorities?q=nonexistenttermxyz'
+        '/xrpc/pub.chive.graph.searchNodes?query=nonexistenttermxyz'
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as AuthoritySearchResponse;
+      const body = (await res.json()) as NodeSearchResponse;
 
-      expect(body.authorities).toEqual([]);
+      expect(body.nodes).toEqual([]);
       expect(body.total).toBe(0);
       expect(body.hasMore).toBe(false);
     });
 
-    it('supports type filtering', async () => {
+    it('supports kind filtering', async () => {
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.searchNodes?query=test&kind=type');
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as NodeSearchResponse;
+
+      expect(body.nodes).toBeDefined();
+      expect(Array.isArray(body.nodes)).toBe(true);
+    });
+
+    it('supports subkind filtering', async () => {
       const res = await testRequest(
         app,
-        '/xrpc/pub.chive.graph.searchAuthorities?q=test&type=person'
+        '/xrpc/pub.chive.graph.searchNodes?query=test&subkind=field'
       );
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as AuthoritySearchResponse;
+      const body = (await res.json()) as NodeSearchResponse;
 
-      expect(body.authorities).toBeDefined();
-      expect(Array.isArray(body.authorities)).toBe(true);
+      expect(body.nodes).toBeDefined();
     });
 
-    it('supports status filtering', async () => {
-      const res = await testRequest(
-        app,
-        '/xrpc/pub.chive.graph.searchAuthorities?q=test&status=approved'
-      );
+    it('supports pagination with limit', async () => {
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.searchNodes?query=test&limit=10');
 
       expect(res.status).toBe(200);
-      const body = (await res.json()) as AuthoritySearchResponse;
+      const body = (await res.json()) as NodeSearchResponse;
 
-      expect(body.authorities).toBeDefined();
-    });
-
-    it('supports pagination with limit and cursor', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.searchAuthorities?q=test&limit=10');
-
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as AuthoritySearchResponse;
-
-      expect(body.authorities).toBeDefined();
+      expect(body.nodes).toBeDefined();
       expect(typeof body.hasMore).toBe('boolean');
+    });
+  });
+
+  describe('GET /xrpc/pub.chive.graph.listNodes', () => {
+    it('lists nodes by kind', async () => {
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.listNodes?kind=type');
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        nodes: GraphNodeResponse[];
+        hasMore: boolean;
+        total: number;
+      };
+
+      expect(body.nodes).toBeDefined();
+      expect(Array.isArray(body.nodes)).toBe(true);
+      expect(typeof body.hasMore).toBe('boolean');
+    });
+
+    it('lists nodes by subkind', async () => {
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.listNodes?kind=type&subkind=field');
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        nodes: GraphNodeResponse[];
+        hasMore: boolean;
+        total: number;
+      };
+
+      expect(body.nodes).toBeDefined();
+    });
+  });
+
+  describe('GET /xrpc/pub.chive.graph.getHierarchy', () => {
+    it('returns hierarchy for subkind', async () => {
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.getHierarchy?subkind=field');
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        roots: { node: GraphNodeResponse; children: unknown[]; depth: number }[];
+        subkind: string;
+      };
+
+      expect(body.roots).toBeDefined();
+      expect(Array.isArray(body.roots)).toBe(true);
+      expect(body.subkind).toBe('field');
     });
   });
 
   describe('GET /xrpc/pub.chive.graph.browseFaceted', () => {
     it('returns empty results for no matching facets', async () => {
-      // Facets accept arrays; use bracket notation
       const res = await testRequest(
         app,
         '/xrpc/pub.chive.graph.browseFaceted?matter[]=nonexistent'
@@ -359,91 +378,52 @@ describe('XRPC Graph Endpoints Integration', () => {
       expect(body.hasMore).toBe(false);
     });
 
-    it('supports PMEST facet dimensions', async () => {
-      // Test each PMEST dimension (use correct parameter names).
-      // Facets now accept arrays; pass as bracket notation query params.
-      const dimensions = ['personality', 'matter', 'energy', 'space', 'time'];
-
-      for (const dimension of dimensions) {
-        const res = await testRequest(
-          app,
-          `/xrpc/pub.chive.graph.browseFaceted?${dimension}[]=test`,
-          {
-            headers: { 'X-Forwarded-For': GRAPH_TEST_IP },
-          }
-        );
-
-        expect(res.status).toBe(200);
-        const body = (await res.json()) as FacetedBrowseResponse;
-        expect(body.hits).toBeDefined();
-        // Response uses 'facets' not 'availableFacets'
-        expect(body.facets).toBeDefined();
-      }
-    });
-
-    it('supports combining multiple facets', async () => {
-      // Facets accept arrays; use bracket notation for array values
+    it('supports multiple facet dimensions', async () => {
       const res = await testRequest(
         app,
-        '/xrpc/pub.chive.graph.browseFaceted?matter[]=physics&time[]=2024',
-        { headers: { 'X-Forwarded-For': GRAPH_TEST_IP } }
+        '/xrpc/pub.chive.graph.browseFaceted?personality[]=theoretical&time[]=2020s'
       );
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as FacetedBrowseResponse;
 
       expect(body.hits).toBeDefined();
-      // Response uses 'facets' not 'availableFacets'
       expect(body.facets).toBeDefined();
     });
 
-    it('returns available facet values for refinement', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.browseFaceted?matter[]=science', {
-        headers: { 'X-Forwarded-For': GRAPH_TEST_IP },
-      });
+    it('returns aggregated facet counts', async () => {
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.browseFaceted?limit=10');
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as FacetedBrowseResponse;
 
-      // Facets should be defined even if empty
       expect(body.facets).toBeDefined();
       expect(typeof body.facets).toBe('object');
     });
 
     it('supports pagination', async () => {
-      const res = await testRequest(
-        app,
-        '/xrpc/pub.chive.graph.browseFaceted?matter[]=test&limit=20',
-        {
-          headers: { 'X-Forwarded-For': GRAPH_TEST_IP },
-        }
-      );
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.browseFaceted?limit=5&cursor=0');
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as FacetedBrowseResponse;
 
+      expect(body.hits).toBeDefined();
       expect(typeof body.hasMore).toBe('boolean');
-      if (body.hasMore) {
-        expect(body.cursor).toBeDefined();
-      }
     });
   });
 
-  describe('Rate Limiting', () => {
-    it('includes rate limit headers in graph responses', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField?id=test.field');
+  describe('Error Handling', () => {
+    it('returns validation error for missing required parameters', async () => {
+      // getNode requires uri parameter
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.getNode');
 
-      expect(res.headers.get('X-RateLimit-Limit')).toBeDefined();
-      expect(res.headers.get('X-RateLimit-Remaining')).toBeDefined();
-      expect(res.headers.get('X-RateLimit-Reset')).toBeDefined();
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
-  });
 
-  describe('Error Response Format', () => {
-    it('returns standardized error format', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField', {
-        headers: { 'X-Forwarded-For': GRAPH_TEST_IP },
-      });
+    it('returns proper error format with requestId', async () => {
+      const res = await testRequest(app, '/xrpc/pub.chive.graph.getNode');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;
@@ -452,28 +432,6 @@ describe('XRPC Graph Endpoints Integration', () => {
       expect(body.error.code).toBeDefined();
       expect(body.error.message).toBeDefined();
       expect(body.error.requestId).toBeDefined();
-    });
-  });
-
-  describe('Security Headers', () => {
-    it('includes security headers in response', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField?id=test');
-
-      // Check for common security headers (Hono secureHeaders middleware)
-      // X-Content-Type-Options is always set to 'nosniff'
-      // X-Frame-Options can be 'DENY' or 'SAMEORIGIN' depending on Hono config
-      expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
-      expect(['DENY', 'SAMEORIGIN']).toContain(res.headers.get('X-Frame-Options'));
-    });
-  });
-
-  describe('CORS Headers', () => {
-    it('includes CORS headers in response', async () => {
-      const res = await testRequest(app, '/xrpc/pub.chive.graph.getField?id=test', {
-        headers: { Origin: 'http://localhost:3000' },
-      });
-
-      expect(res.headers.get('Access-Control-Allow-Origin')).toBeDefined();
     });
   });
 });

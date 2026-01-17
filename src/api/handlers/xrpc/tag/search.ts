@@ -50,20 +50,20 @@ export async function searchHandler(
   let filteredTags = searchResults.tags;
   if (params.minQuality !== undefined) {
     const minQuality = params.minQuality;
-    filteredTags = filteredTags.filter((tag) => tag.qualityScore >= minQuality);
+    filteredTags = filteredTags.filter((tag) => (tag.qualityScore ?? 0) >= minQuality);
   }
 
   // Filter out spam tags unless explicitly included
   if (!params.includeSpam) {
-    filteredTags = filteredTags.filter((tag) => tag.spamScore < 0.5);
+    filteredTags = filteredTags.filter((tag) => (tag.spamScore ?? 0) < 0.5);
   }
 
   // Map to TagSummary format
   const tags: TagSearchResponse['tags'] = filteredTags.map((tag) => ({
     normalizedForm: tag.normalizedForm,
     displayForms: [tag.rawForm],
-    usageCount: tag.usageCount,
-    qualityScore: tag.qualityScore,
+    usageCount: tag.usageCount ?? 0,
+    qualityScore: tag.qualityScore ?? 0,
     isPromoted: false,
     promotedTo: undefined,
   }));

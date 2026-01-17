@@ -97,9 +97,9 @@ const DEFAULT_CONFIG: Required<AuthorizationServiceConfig> = {
  * Role hierarchy for permission inheritance.
  */
 const ROLE_HIERARCHY: Record<Role, readonly Role[]> = {
-  admin: ['admin', 'moderator', 'authority-editor', 'author', 'reader', 'alpha-tester'],
-  moderator: ['moderator', 'authority-editor', 'author', 'reader'],
-  'authority-editor': ['authority-editor', 'author', 'reader'],
+  admin: ['admin', 'moderator', 'graph-editor', 'author', 'reader', 'alpha-tester'],
+  moderator: ['moderator', 'graph-editor', 'author', 'reader'],
+  'graph-editor': ['graph-editor', 'author', 'reader'],
   author: ['author', 'reader'],
   reader: ['reader'],
   'alpha-tester': ['alpha-tester', 'author', 'reader'],
@@ -133,7 +133,7 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'field_node:read',
     'user:read',
   ],
-  'authority-editor': [
+  'graph-editor': [
     'field_node:read',
     'field_node:create',
     'field_node:update',
@@ -561,7 +561,7 @@ export class AuthorizationService implements IAuthorizationService {
     const allRoles: Role[] = [
       'admin',
       'moderator',
-      'authority-editor',
+      'graph-editor',
       'author',
       'reader',
       'alpha-tester',
@@ -602,8 +602,8 @@ export class AuthorizationService implements IAuthorizationService {
 
     // Generate role hierarchy
     policies.push('g, admin, moderator');
-    policies.push('g, moderator, authority-editor');
-    policies.push('g, authority-editor, author');
+    policies.push('g, moderator, graph-editor');
+    policies.push('g, graph-editor, author');
     policies.push('g, author, reader');
 
     return policies.join('\n');

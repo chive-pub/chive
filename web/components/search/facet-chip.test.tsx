@@ -2,34 +2,52 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 
 import { FacetChip, FacetChipList } from './facet-chip';
-import type { FacetDimension } from '@/lib/utils/facets';
+import type { DynamicFacetFilters, FacetDefinition } from '@/lib/hooks/use-faceted-search';
 
 describe('FacetChip', () => {
-  it('renders dimension label and value', () => {
-    render(<FacetChip dimension="matter" value="physics" />);
-    expect(screen.getByText('Matter:')).toBeInTheDocument();
+  it('renders facet label and value', () => {
+    render(<FacetChip facetSlug="matter" facetLabel="Subject" value="physics" removable={false} />);
+    expect(screen.getByText('Subject:')).toBeInTheDocument();
     expect(screen.getByText('physics')).toBeInTheDocument();
   });
 
-  it('uses custom label when provided', () => {
-    render(<FacetChip dimension="matter" value="cs" label="Computer Science" />);
+  it('uses custom value label when provided', () => {
+    render(
+      <FacetChip
+        facetSlug="matter"
+        facetLabel="Subject"
+        value="cs"
+        valueLabel="Computer Science"
+        removable={false}
+      />
+    );
     expect(screen.getByText('Computer Science')).toBeInTheDocument();
     expect(screen.queryByText('cs')).not.toBeInTheDocument();
   });
 
   it('shows remove button when removable', () => {
-    render(<FacetChip dimension="matter" value="physics" removable onRemove={() => {}} />);
+    render(
+      <FacetChip
+        facetSlug="matter"
+        facetLabel="Subject"
+        value="physics"
+        removable
+        onRemove={() => {}}
+      />
+    );
     expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument();
   });
 
   it('hides remove button when not removable', () => {
-    render(<FacetChip dimension="matter" value="physics" removable={false} />);
+    render(<FacetChip facetSlug="matter" facetLabel="Subject" value="physics" removable={false} />);
     expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
   });
 
   it('calls onRemove when remove button clicked', () => {
     const onRemove = vi.fn();
-    render(<FacetChip dimension="matter" value="physics" onRemove={onRemove} />);
+    render(
+      <FacetChip facetSlug="matter" facetLabel="Subject" value="physics" onRemove={onRemove} />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /remove/i }));
     expect(onRemove).toHaveBeenCalled();
@@ -41,7 +59,7 @@ describe('FacetChip', () => {
 
     render(
       <div onClick={parentClick}>
-        <FacetChip dimension="matter" value="physics" onRemove={onRemove} />
+        <FacetChip facetSlug="matter" facetLabel="Subject" value="physics" onRemove={onRemove} />
       </div>
     );
 
@@ -50,72 +68,110 @@ describe('FacetChip', () => {
     expect(parentClick).not.toHaveBeenCalled();
   });
 
-  it('applies dimension-specific color', () => {
-    const { rerender, container } = render(
-      <FacetChip dimension="personality" value="research" removable={false} />
-    );
-    // Check that some color class is applied (text-* class)
-    expect(container.querySelector('[class*="text-"]')).toBeInTheDocument();
-
-    rerender(<FacetChip dimension="person" value="einstein" removable={false} />);
-    expect(container.querySelector('[class*="text-"]')).toBeInTheDocument();
-  });
-
   it('applies size variant', () => {
-    render(<FacetChip dimension="matter" value="physics" size="sm" removable={false} />);
+    render(
+      <FacetChip
+        facetSlug="matter"
+        facetLabel="Subject"
+        value="physics"
+        size="sm"
+        removable={false}
+      />
+    );
     const badge = screen.getByText('physics').closest('.gap-1');
     expect(badge).toHaveClass('text-xs');
   });
 
   it('applies custom className', () => {
     render(
-      <FacetChip dimension="matter" value="physics" className="custom-chip" removable={false} />
+      <FacetChip
+        facetSlug="matter"
+        facetLabel="Subject"
+        value="physics"
+        className="custom-chip"
+        removable={false}
+      />
     );
     const badge = screen.getByText('physics').closest('.gap-1');
     expect(badge).toHaveClass('custom-chip');
   });
 
-  it('includes value in remove button aria-label', () => {
-    render(<FacetChip dimension="matter" value="physics" label="Physics" onRemove={() => {}} />);
+  it('includes value label in remove button aria-label', () => {
+    render(
+      <FacetChip
+        facetSlug="matter"
+        facetLabel="Subject"
+        value="physics"
+        valueLabel="Physics"
+        onRemove={() => {}}
+      />
+    );
     expect(screen.getByRole('button', { name: /remove physics filter/i })).toBeInTheDocument();
   });
 });
 
 describe('FacetChipList', () => {
-  const selections: Partial<Record<FacetDimension, string[]>> = {
+  const mockFacets: FacetDefinition[] = [
+    {
+      slug: 'matter',
+      label: 'Subject',
+      values: [
+        { value: 'physics', label: 'Physics', count: 10 },
+        { value: 'chemistry', label: 'Chemistry', count: 5 },
+      ],
+    },
+    {
+      slug: 'person',
+      label: 'Person',
+      values: [{ value: 'einstein', label: 'Einstein', count: 3 }],
+    },
+  ];
+
+  const filters: DynamicFacetFilters = {
     matter: ['physics', 'chemistry'],
     person: ['einstein'],
   };
 
-  it('renders chips for all selections', () => {
-    render(<FacetChipList selections={selections} />);
-    expect(screen.getByText('physics')).toBeInTheDocument();
-    expect(screen.getByText('chemistry')).toBeInTheDocument();
-    expect(screen.getByText('einstein')).toBeInTheDocument();
-  });
-
-  it('returns null when no selections', () => {
-    const { container } = render(<FacetChipList selections={{}} />);
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('returns null when selections have empty arrays', () => {
-    const { container } = render(<FacetChipList selections={{ matter: [] }} />);
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('uses labels when provided', () => {
-    render(<FacetChipList selections={{ matter: ['phys'] }} labels={{ phys: 'Physics' }} />);
+  it('renders chips for all filter selections', () => {
+    render(<FacetChipList facets={mockFacets} filters={filters} />);
     expect(screen.getByText('Physics')).toBeInTheDocument();
-    expect(screen.queryByText('phys')).not.toBeInTheDocument();
+    expect(screen.getByText('Chemistry')).toBeInTheDocument();
+    expect(screen.getByText('Einstein')).toBeInTheDocument();
   });
 
-  it('calls onRemove with dimension and value', () => {
+  it('returns null when no filters', () => {
+    const { container } = render(<FacetChipList facets={mockFacets} filters={{}} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('returns null when filters have empty arrays', () => {
+    const { container } = render(<FacetChipList facets={mockFacets} filters={{ matter: [] }} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('uses labels from facet definitions', () => {
+    render(<FacetChipList facets={mockFacets} filters={{ matter: ['physics'] }} />);
+    expect(screen.getByText('Physics')).toBeInTheDocument();
+  });
+
+  it('falls back to value when no label in facet definition', () => {
+    const facetsWithNoLabel: FacetDefinition[] = [
+      {
+        slug: 'matter',
+        label: 'Subject',
+        values: [{ value: 'unlabeled', count: 1 }],
+      },
+    ];
+    render(<FacetChipList facets={facetsWithNoLabel} filters={{ matter: ['unlabeled'] }} />);
+    expect(screen.getByText('unlabeled')).toBeInTheDocument();
+  });
+
+  it('calls onRemove with facet slug and value', () => {
     const onRemove = vi.fn();
-    render(<FacetChipList selections={selections} onRemove={onRemove} />);
+    render(<FacetChipList facets={mockFacets} filters={filters} onRemove={onRemove} />);
 
     // Find and click the physics remove button
-    const physicsChip = screen.getByText('physics').closest('.gap-1');
+    const physicsChip = screen.getByText('Physics').closest('.gap-1');
     const removeButton = physicsChip?.querySelector('button');
     if (removeButton) {
       fireEvent.click(removeButton);
@@ -125,40 +181,62 @@ describe('FacetChipList', () => {
   });
 
   it('shows "Clear all" button when multiple chips and onClearAll provided', () => {
-    render(<FacetChipList selections={selections} onClearAll={() => {}} />);
+    render(<FacetChipList facets={mockFacets} filters={filters} onClearAll={() => {}} />);
     expect(screen.getByText('Clear all')).toBeInTheDocument();
   });
 
   it('hides "Clear all" button with single chip', () => {
-    render(<FacetChipList selections={{ matter: ['physics'] }} onClearAll={() => {}} />);
+    render(
+      <FacetChipList facets={mockFacets} filters={{ matter: ['physics'] }} onClearAll={() => {}} />
+    );
     expect(screen.queryByText('Clear all')).not.toBeInTheDocument();
   });
 
   it('calls onClearAll when clicked', () => {
     const onClearAll = vi.fn();
-    render(<FacetChipList selections={selections} onClearAll={onClearAll} />);
+    render(<FacetChipList facets={mockFacets} filters={filters} onClearAll={onClearAll} />);
 
     fireEvent.click(screen.getByText('Clear all'));
     expect(onClearAll).toHaveBeenCalled();
   });
 
   it('truncates chips beyond maxVisible', () => {
-    const manySelections: Partial<Record<FacetDimension, string[]>> = {
+    const manyValuesFacet: FacetDefinition[] = [
+      {
+        slug: 'matter',
+        label: 'Subject',
+        values: [
+          { value: 'a', label: 'A', count: 1 },
+          { value: 'b', label: 'B', count: 1 },
+          { value: 'c', label: 'C', count: 1 },
+          { value: 'd', label: 'D', count: 1 },
+          { value: 'e', label: 'E', count: 1 },
+        ],
+      },
+    ];
+    const manyFilters: DynamicFacetFilters = {
       matter: ['a', 'b', 'c', 'd', 'e'],
     };
-    render(<FacetChipList selections={manySelections} maxVisible={3} />);
+    render(<FacetChipList facets={manyValuesFacet} filters={manyFilters} maxVisible={3} />);
 
-    expect(screen.getByText('a')).toBeInTheDocument();
-    expect(screen.getByText('b')).toBeInTheDocument();
-    expect(screen.getByText('c')).toBeInTheDocument();
-    expect(screen.queryByText('d')).not.toBeInTheDocument();
+    expect(screen.getByText('A')).toBeInTheDocument();
+    expect(screen.getByText('B')).toBeInTheDocument();
+    expect(screen.getByText('C')).toBeInTheDocument();
+    expect(screen.queryByText('D')).not.toBeInTheDocument();
     expect(screen.getByText('+2 more')).toBeInTheDocument();
   });
 
   it('applies custom className', () => {
     const { container } = render(
-      <FacetChipList selections={selections} className="custom-list-class" />
+      <FacetChipList facets={mockFacets} filters={filters} className="custom-list-class" />
     );
     expect(container.firstChild).toHaveClass('custom-list-class');
+  });
+
+  it('handles filters for unknown facets gracefully', () => {
+    render(<FacetChipList facets={mockFacets} filters={{ unknown: ['value'] }} />);
+    // Should still render with the slug as the label
+    expect(screen.getByText('unknown:')).toBeInTheDocument();
+    expect(screen.getByText('value')).toBeInTheDocument();
   });
 });

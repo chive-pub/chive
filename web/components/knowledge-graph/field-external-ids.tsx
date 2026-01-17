@@ -54,7 +54,7 @@ export function FieldExternalIds({
       </h4>
       <ul className="space-y-2">
         {externalIds.map((extId) => (
-          <ExternalIdItem key={`${extId.source}-${extId.id}`} externalId={extId} />
+          <ExternalIdItem key={`${extId.system}-${extId.identifier}`} externalId={extId} />
         ))}
       </ul>
     </div>
@@ -72,8 +72,8 @@ interface ExternalIdItemProps {
  * Single external ID item.
  */
 function ExternalIdItem({ externalId }: ExternalIdItemProps) {
-  const { icon, label, color } = getSourceConfig(externalId.source);
-  const url = externalId.url ?? getDefaultUrl(externalId);
+  const { icon, label, color } = getSystemConfig(externalId.system);
+  const url = externalId.uri ?? getDefaultUrl(externalId);
 
   return (
     <li>
@@ -85,7 +85,7 @@ function ExternalIdItem({ externalId }: ExternalIdItemProps) {
       >
         {icon}
         <span className="font-medium">{label}</span>
-        <span className="font-mono text-muted-foreground">{externalId.id}</span>
+        <span className="font-mono text-muted-foreground">{externalId.identifier}</span>
         <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground" />
       </a>
     </li>
@@ -105,17 +105,17 @@ function ExternalIdCompact({
   return (
     <div className={cn('flex flex-wrap gap-2', className)}>
       {externalIds.map((extId) => {
-        const { icon, label } = getSourceConfig(extId.source);
-        const url = extId.url ?? getDefaultUrl(extId);
+        const { icon, label } = getSystemConfig(extId.system);
+        const url = extId.uri ?? getDefaultUrl(extId);
 
         return (
           <a
-            key={`${extId.source}-${extId.id}`}
+            key={`${extId.system}-${extId.identifier}`}
             href={url}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            title={`${label}: ${extId.id}`}
+            title={`${label}: ${extId.identifier}`}
           >
             {icon}
             <span>{label}</span>
@@ -140,12 +140,12 @@ function ExternalIdBadges({
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
       {externalIds.map((extId) => {
-        const { icon, label, bgColor } = getSourceConfig(extId.source);
-        const url = extId.url ?? getDefaultUrl(extId);
+        const { icon, label, bgColor } = getSystemConfig(extId.system);
+        const url = extId.uri ?? getDefaultUrl(extId);
 
         return (
           <a
-            key={`${extId.source}-${extId.id}`}
+            key={`${extId.system}-${extId.identifier}`}
             href={url}
             target="_blank"
             rel="noopener noreferrer"
@@ -164,16 +164,21 @@ function ExternalIdBadges({
 }
 
 /**
- * Configuration for external ID sources.
+ * Known external ID systems.
  */
-function getSourceConfig(source: ExternalId['source']): {
+type KnownSystem = 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv';
+
+/**
+ * Configuration for external ID systems.
+ */
+function getSystemConfig(system: string): {
   icon: React.ReactNode;
   label: string;
   color: string;
   bgColor: string;
 } {
   const configs: Record<
-    ExternalId['source'],
+    KnownSystem,
     { icon: React.ReactNode; label: string; color: string; bgColor: string }
   > = {
     wikidata: {
@@ -208,22 +213,38 @@ function getSourceConfig(source: ExternalId['source']): {
     },
   };
 
-  return configs[source];
+  // Return config for known systems, or a default for unknown
+  if (system in configs) {
+    return configs[system as KnownSystem];
+  }
+
+  // Default for unknown systems
+  return {
+    icon: <ExternalLink className="h-4 w-4" />,
+    label: system.toUpperCase(),
+    color: 'text-gray-600 dark:text-gray-400',
+    bgColor: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+  };
 }
 
 /**
  * Gets default URL for an external ID.
  */
 function getDefaultUrl(externalId: ExternalId): string {
-  const urlPatterns: Record<ExternalId['source'], string> = {
-    wikidata: `https://www.wikidata.org/wiki/${externalId.id}`,
-    lcsh: `https://id.loc.gov/authorities/subjects/${externalId.id}`,
-    fast: `https://id.worldcat.org/fast/${externalId.id}`,
-    mesh: `https://meshb.nlm.nih.gov/record/ui?ui=${externalId.id}`,
-    arxiv: `https://arxiv.org/list/${externalId.id}/recent`,
+  const urlPatterns: Record<KnownSystem, (id: string) => string> = {
+    wikidata: (id) => `https://www.wikidata.org/wiki/${id}`,
+    lcsh: (id) => `https://id.loc.gov/authorities/subjects/${id}`,
+    fast: (id) => `https://id.worldcat.org/fast/${id}`,
+    mesh: (id) => `https://meshb.nlm.nih.gov/record/ui?ui=${id}`,
+    arxiv: (id) => `https://arxiv.org/list/${id}/recent`,
   };
 
-  return urlPatterns[externalId.source];
+  if (externalId.system in urlPatterns) {
+    return urlPatterns[externalId.system as KnownSystem](externalId.identifier);
+  }
+
+  // No default URL for unknown systems
+  return '#';
 }
 
 /**

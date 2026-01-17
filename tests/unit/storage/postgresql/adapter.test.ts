@@ -7,8 +7,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
 import type { StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
 import { isOk, isErr } from '@/types/result.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 const mockAuthor: EprintAuthor = {
   did: 'did:plc:abc123' as never,
@@ -28,7 +38,11 @@ function createMockEprint(): StoredEprint {
     authors: [mockAuthor],
     submittedBy: 'did:plc:abc123' as never,
     title: 'Neural Networks in Biology',
-    abstract: 'This paper explores the application of neural networks to biological systems.',
+    abstract: createMockAbstract(
+      'This paper explores the application of neural networks to biological systems.'
+    ),
+    abstractPlainText:
+      'This paper explores the application of neural networks to biological systems.',
     documentBlobRef: {
       $type: 'blob',
       ref: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,
@@ -98,7 +112,11 @@ describe('PostgreSQLAdapter', () => {
         submitted_by: 'did:plc:abc123',
         paper_did: null,
         title: 'Neural Networks in Biology',
-        abstract: 'This paper explores the application of neural networks to biological systems.',
+        abstract: createMockAbstract(
+          'This paper explores the application of neural networks to biological systems.'
+        ),
+        abstract_plain_text:
+          'This paper explores the application of neural networks to biological systems.',
         document_blob_cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
         document_blob_mime_type: 'application/pdf',
         document_blob_size: 2048576,
@@ -151,7 +169,11 @@ describe('PostgreSQLAdapter', () => {
         submitted_by: 'did:plc:abc123',
         paper_did: null,
         title: 'Neural Networks in Biology',
-        abstract: 'This paper explores the application of neural networks to biological systems.',
+        abstract: createMockAbstract(
+          'This paper explores the application of neural networks to biological systems.'
+        ),
+        abstract_plain_text:
+          'This paper explores the application of neural networks to biological systems.',
         document_blob_cid: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q',
         document_blob_mime_type: 'application/pdf',
         document_blob_size: 2048576,

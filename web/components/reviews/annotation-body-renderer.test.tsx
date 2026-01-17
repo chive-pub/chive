@@ -123,14 +123,14 @@ describe('AnnotationBodyRenderer', () => {
     });
   });
 
-  describe('authority reference chips', () => {
-    it('renders authority reference with link', () => {
+  describe('node reference chips', () => {
+    it('renders node reference with link', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
         items: [
           {
-            type: 'authorityRef',
-            uri: 'at://did:plc:governance/pub.chive.graph.authorityRecord/auth123',
+            type: 'nodeRef',
+            uri: 'at://did:plc:governance/pub.chive.graph.node/auth123',
             label: 'Library of Congress',
           },
         ],
@@ -143,10 +143,10 @@ describe('AnnotationBodyRenderer', () => {
       expect(link).toHaveAttribute('href', '/authorities/auth123');
     });
 
-    it('applies authority chip styling', () => {
+    it('applies node chip styling', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'authorityRef', uri: 'at://auth/123', label: 'Authority' }],
+        items: [{ type: 'nodeRef', uri: 'at://auth/123', label: 'Authority' }],
         format: 'application/x-chive-gloss+json',
       };
 
@@ -403,7 +403,7 @@ describe('AnnotationBodyRenderer', () => {
         items: [
           { type: 'wikidataRef', qid: 'Q1', label: 'Concept A' },
           { type: 'fieldRef', uri: 'at://field/1', label: 'Field B' },
-          { type: 'authorityRef', uri: 'at://auth/1', label: 'Authority C' },
+          { type: 'nodeRef', uri: 'at://auth/1', label: 'Authority C' },
         ],
         format: 'application/x-chive-gloss+json',
       };

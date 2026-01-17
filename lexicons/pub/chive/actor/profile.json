@@ -4,39 +4,49 @@
   "defs": {
     "affiliation": {
       "type": "object",
-      "description": "Institutional affiliation with optional ROR ID",
+      "description": "Institutional affiliation referencing an institution node",
       "required": ["name"],
       "properties": {
+        "institutionUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of institution node (subkind=institution)"
+        },
         "name": {
           "type": "string",
-          "description": "Organization name",
+          "description": "Organization name (display fallback if no institutionUri)",
           "maxLength": 200
         },
         "rorId": {
           "type": "string",
-          "description": "ROR ID (e.g., https://ror.org/02mhbdp94)",
+          "description": "ROR ID (e.g., https://ror.org/02mhbdp94) for legacy/external data",
           "maxLength": 50
         }
       }
     },
     "keyword": {
       "type": "object",
-      "description": "Research keyword with optional authority IDs",
+      "description": "Research keyword referencing a topic node",
       "required": ["label"],
       "properties": {
+        "topicUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of topic node (subkind=topic)"
+        },
         "label": {
           "type": "string",
-          "description": "Keyword label",
+          "description": "Keyword label (display fallback if no topicUri)",
           "maxLength": 100
         },
         "fastId": {
           "type": "string",
-          "description": "FAST subject heading ID",
+          "description": "FAST subject heading ID for legacy/external data",
           "maxLength": 20
         },
         "wikidataId": {
           "type": "string",
-          "description": "Wikidata entity ID (e.g., Q12345)",
+          "description": "Wikidata entity ID (e.g., Q12345) for legacy/external data",
           "maxLength": 20
         }
       }
@@ -75,11 +85,12 @@
             },
             "maxLength": 10
           },
-          "fields": {
+          "fieldUris": {
             "type": "array",
-            "description": "Research field IDs",
+            "description": "AT-URIs of field nodes (subkind=field)",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "at-uri"
             },
             "maxLength": 20
           },

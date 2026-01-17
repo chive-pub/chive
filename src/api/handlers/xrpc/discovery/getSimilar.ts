@@ -3,7 +3,8 @@
  *
  * @remarks
  * Returns related papers for a given eprint based on citation patterns,
- * semantic similarity, and topic overlap.
+ * semantic similarity, and topic overlap. Supports graph-based analysis
+ * including co-citation and bibliographic coupling.
  *
  * @packageDocumentation
  * @public
@@ -55,6 +56,7 @@ function mapRelationshipType(
     cites: 'cites',
     'cited-by': 'cited-by',
     'co-cited': 'co-cited',
+    'bibliographic-coupling': 'bibliographic-coupling',
     'same-author': 'same-author',
     'similar-topics': 'same-topic',
     'semantically-similar': 'semantically-similar',
@@ -99,9 +101,22 @@ export async function getSimilarHandler(
   params: GetSimilarParams
 ): Promise<GetSimilarResponse> {
   const logger = c.get('logger');
-  const { discovery, eprint } = c.get('services');
+  const { discovery, eprint, recommendationService } = c.get('services');
 
-  logger.debug('Getting similar papers', { uri: params.uri, limit: params.limit });
+  const includeTypes = params.includeTypes ?? [];
+  const includeGraphTypes = includeTypes.some(
+    (t) => t === 'co-citation' || t === 'bibliographic-coupling'
+  );
+  const standardTypes = includeTypes.filter(
+    (t) => t !== 'co-citation' && t !== 'bibliographic-coupling'
+  );
+
+  logger.debug('Getting similar papers', {
+    uri: params.uri,
+    limit: params.limit,
+    includeTypes,
+    includeGraphTypes,
+  });
 
   if (!discovery) {
     throw new ServiceUnavailableError('Discovery service not available');
@@ -113,14 +128,14 @@ export async function getSimilarHandler(
     throw new NotFoundError('Eprint not found', params.uri);
   }
 
-  // Get related papers from discovery service
+  // Get related papers from discovery service (for standard types)
   const related = await discovery.findRelatedEprints(params.uri as AtUri, {
     limit: params.limit,
-    signals: mapIncludeTypesToSignals(params.includeTypes),
+    signals: mapIncludeTypesToSignals(standardTypes.length > 0 ? standardTypes : undefined),
   });
 
   // Map to response format
-  const relatedPapers = related.map((r) => ({
+  const relatedPapers: SchemaRelatedEprint[] = related.map((r) => ({
     uri: r.uri as string,
     title: r.title,
     abstract: r.abstract,
@@ -132,9 +147,69 @@ export async function getSimilarHandler(
     explanation: r.explanation,
   }));
 
+  // Add graph-based similarity if requested and service available
+  if (includeGraphTypes && recommendationService) {
+    try {
+      const graphSimilar = await recommendationService.getSimilar(
+        params.uri as never,
+        params.limit ?? 5
+      );
+      const existingUris = new Set(relatedPapers.map((r) => r.uri));
+
+      for (const paper of graphSimilar) {
+        if (!existingUris.has(paper.uri)) {
+          // Filter by requested graph types
+          const matchesType =
+            (includeTypes.includes('co-citation') && paper.reason === 'co-citation') ||
+            (includeTypes.includes('bibliographic-coupling') &&
+              paper.reason === 'bibliographic-coupling') ||
+            (!includeTypes.includes('co-citation') &&
+              !includeTypes.includes('bibliographic-coupling'));
+
+          if (matchesType) {
+            relatedPapers.push({
+              uri: paper.uri,
+              title: paper.title,
+              abstract: undefined,
+              authors: paper.authors?.map((name) => ({ name })),
+              categories: undefined,
+              publicationDate: undefined,
+              score: paper.similarity,
+              relationshipType:
+                paper.reason === 'bibliographic-coupling' ? 'bibliographic-coupling' : 'co-cited',
+              explanation:
+                paper.reason === 'co-citation'
+                  ? `Frequently cited together (${paper.sharedCiters ?? 0} shared citers)`
+                  : `Share ${paper.sharedReferences ?? 0} common references`,
+              sharedReferences: paper.sharedReferences,
+              sharedCiters: paper.sharedCiters,
+            });
+            existingUris.add(paper.uri);
+          }
+        }
+      }
+
+      // Re-sort by score
+      relatedPapers.sort((a, b) => b.score - a.score);
+
+      logger.debug('Added graph similarity results', {
+        graphCount: graphSimilar.length,
+        totalCount: relatedPapers.length,
+      });
+    } catch (error) {
+      // Log but don't fail if graph similarity unavailable
+      logger.warn('Failed to get graph similarity', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // Limit to requested count
+  const limitedPapers = relatedPapers.slice(0, params.limit ?? 5);
+
   logger.info('Similar papers returned', {
     uri: params.uri,
-    count: relatedPapers.length,
+    count: limitedPapers.length,
   });
 
   return {
@@ -142,7 +217,7 @@ export async function getSimilarHandler(
       uri: params.uri,
       title: sourceEprint.title,
     },
-    related: relatedPapers,
+    related: limitedPapers,
   };
 }
 

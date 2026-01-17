@@ -4,6 +4,8 @@
  * @remarks
  * Returns personalized paper recommendations for the authenticated user
  * based on their research profile, claimed papers, and interaction history.
+ * When 'graph' signal is included, adds co-citation and PageRank-based
+ * recommendations from the knowledge graph.
  *
  * @packageDocumentation
  * @public
@@ -19,6 +21,7 @@ import {
   type GetRecommendationsParams,
   type GetRecommendationsResponse,
   type RecommendationExplanation,
+  type RecommendedEprint,
 } from '../../../schemas/discovery.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
@@ -77,7 +80,7 @@ export async function getRecommendationsHandler(
 ): Promise<GetRecommendationsResponse> {
   const logger = c.get('logger');
   const user = c.get('user');
-  const { discovery } = c.get('services');
+  const { discovery, recommendationService } = c.get('services');
 
   if (!user?.did) {
     throw new AuthenticationError('Authentication required to get recommendations');
@@ -88,17 +91,29 @@ export async function getRecommendationsHandler(
   }
 
   const did = user.did;
-  logger.debug('Getting recommendations', { did, limit: params.limit, signals: params.signals });
+  const signals = params.signals ?? [];
+  const includeGraph = signals.includes('graph');
 
-  // Get recommendations from discovery service
+  logger.debug('Getting recommendations', {
+    did,
+    limit: params.limit,
+    signals,
+    includeGraph,
+  });
+
+  // Get standard recommendations from discovery service
+  // Filter out 'graph' signal since discovery service doesn't know about it
+  const discoverySignals = signals.filter(
+    (s): s is 'fields' | 'citations' | 'collaborators' | 'trending' => s !== 'graph'
+  );
   const result = await discovery.getRecommendationsForUser(did, {
     limit: params.limit,
     cursor: params.cursor,
-    signals: params.signals,
+    signals: discoverySignals.length > 0 ? discoverySignals : undefined,
   });
 
-  // Map to response format
-  const recommendations = result.recommendations.map((r) => ({
+  // Map discovery recommendations to response format
+  const recommendations: RecommendedEprint[] = result.recommendations.map((r) => ({
     uri: r.uri as string,
     title: r.title,
     abstract: r.abstract,
@@ -122,17 +137,95 @@ export async function getRecommendationsHandler(
     },
   }));
 
+  // Add graph-based recommendations if requested and service available
+  if (includeGraph && recommendationService) {
+    try {
+      const graphRecs = await recommendationService.getPersonalized(
+        did as never,
+        params.limit ?? 20
+      );
+
+      // Add graph recommendations that aren't already in the list
+      const existingUris = new Set(recommendations.map((r) => r.uri));
+
+      for (const rec of graphRecs) {
+        if (!existingUris.has(rec.uri)) {
+          recommendations.push({
+            uri: rec.uri as string,
+            title: rec.title,
+            abstract: rec.abstract,
+            authors: rec.authors?.map((name) => ({ name })),
+            categories: rec.relatedFields,
+            publicationDate: undefined,
+            score: rec.score,
+            explanation: {
+              type: mapGraphReasonToExplanationType(rec.reason),
+              text:
+                rec.reason === 'similar-fields'
+                  ? `Matches your research fields`
+                  : rec.reason === 'cited-by-interests'
+                    ? `Cited by papers you've engaged with`
+                    : rec.reason === 'coauthor-network'
+                      ? `From your coauthor network`
+                      : rec.reason === 'trending-in-field'
+                        ? `Trending in your research areas`
+                        : `Recommended based on content similarity`,
+              weight: rec.score,
+              data: undefined,
+            },
+          });
+          existingUris.add(rec.uri);
+        }
+      }
+
+      // Re-sort by score
+      recommendations.sort((a, b) => b.score - a.score);
+
+      logger.debug('Added graph recommendations', {
+        graphCount: graphRecs.length,
+        totalCount: recommendations.length,
+      });
+    } catch (error) {
+      // Log but don't fail if graph recommendations unavailable
+      logger.warn('Failed to get graph recommendations', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // Limit to requested count
+  const limitedRecs = recommendations.slice(0, params.limit ?? 20);
+
   logger.info('Recommendations returned', {
     did,
-    count: recommendations.length,
-    hasMore: result.hasMore,
+    count: limitedRecs.length,
+    hasMore: result.hasMore || recommendations.length > limitedRecs.length,
   });
 
   return {
-    recommendations,
+    recommendations: limitedRecs,
     cursor: result.cursor,
     hasMore: result.hasMore,
   };
+}
+
+/**
+ * Maps graph recommendation reasons to explanation types.
+ */
+function mapGraphReasonToExplanationType(reason: string): RecommendationExplanation['type'] {
+  switch (reason) {
+    case 'similar-fields':
+      return 'fields';
+    case 'cited-by-interests':
+      return 'citation';
+    case 'coauthor-network':
+      return 'collaborator';
+    case 'trending-in-field':
+      return 'trending';
+    case 'similar-content':
+    default:
+      return 'semantic';
+  }
 }
 
 /**

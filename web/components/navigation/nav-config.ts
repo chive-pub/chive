@@ -20,8 +20,8 @@ import {
   TrendingUp,
   Tag,
   Vote,
-  BookMarked,
   Info,
+  MessageCircle,
 } from 'lucide-react';
 
 /**
@@ -70,8 +70,9 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
  * Design rationale:
  * - "Discover" = task of finding/reading content
  * - "Community" = task of participating/contributing
+ * - "About" = standalone link for discoverability
  */
-export const mainNavItems: NavGroup[] = [
+export const mainNavItems: NavEntry[] = [
   {
     label: 'Discover',
     children: [
@@ -117,28 +118,34 @@ export const mainNavItems: NavGroup[] = [
     label: 'Community',
     children: [
       {
+        label: 'Knowledge Graph',
+        href: '/graph',
+        icon: Network,
+        description: 'Explore the unified knowledge graph',
+      },
+      {
         label: 'Governance',
         href: '/governance',
         icon: Vote,
         description: 'Proposals and community voting',
       },
       {
-        label: 'Authorities',
-        href: '/authorities',
-        icon: BookMarked,
-        description: 'Controlled vocabulary records',
-      },
-      {
-        label: 'About',
-        href: '/about',
-        icon: Info,
-        description: 'Learn about Chive and ATProto',
+        label: 'Zulip',
+        href: 'https://community.chive.pub',
+        icon: MessageCircle,
+        description: 'Join the discussion on Zulip',
       },
     ],
+  },
+  {
+    label: 'About',
+    href: '/about',
   },
 ];
 
 /**
  * Flat list of all navigation items for mobile and search.
  */
-export const allNavItems: NavItem[] = mainNavItems.flatMap((group) => group.children);
+export const allNavItems: NavItem[] = mainNavItems.flatMap((entry) =>
+  isNavGroup(entry) ? entry.children : [entry]
+);

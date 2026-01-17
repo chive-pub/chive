@@ -34,7 +34,17 @@ import type {
   FacetedSearchQuery,
   FacetedSearchResults,
 } from '@/types/interfaces/search.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { Eprint } from '@/types/models/eprint.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 import {
   createMockAuthzService,
@@ -48,7 +58,11 @@ import {
   createMockBlobProxyService,
   createMockReviewService,
   createMockTagManager,
-  createMockContributionTypeManager,
+  createMockFacetManager,
+  createMockNodeService,
+  createMockEdgeService,
+  createMockNodeRepository,
+  createMockEdgeRepository,
   createMockBacklinkService,
   createMockClaimingService,
   createMockImportService,
@@ -173,7 +187,11 @@ function testRequest(
 /**
  * Creates test eprint record.
  */
-function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
+type TestEprintOverrides = Omit<Partial<Eprint>, 'abstract'> & {
+  abstract?: string | AnnotationBody;
+};
+
+function createTestEprint(uri: AtUri, overrides: TestEprintOverrides = {}): Eprint {
   return {
     $type: 'pub.chive.eprint.submission',
     uri,
@@ -194,8 +212,12 @@ function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
       overrides.title ??
       'Frequency, acceptability, and selection: A case study of clause-embedding',
     abstract:
-      overrides.abstract ??
-      'We investigate the relationship between the frequency with which verbs are found in particular subcategorization frames and the acceptability of those verbs in those frames, focusing in particular on subordinate clause-taking verbs, such as think, want, and tell.',
+      typeof overrides.abstract === 'string'
+        ? createMockAbstract(overrides.abstract)
+        : (overrides.abstract ??
+          createMockAbstract(
+            'We investigate the relationship between the frequency with which verbs are found in particular subcategorization frames and the acceptability of those verbs in those frames, focusing in particular on subordinate clause-taking verbs, such as think, want, and tell.'
+          )),
     keywords: overrides.keywords ?? ['semantics', 'clause-embedding', 'acceptability'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Linguistics' }],
     version: overrides.version ?? 1,
@@ -294,7 +316,11 @@ describe('REST v1/eprints Endpoints Integration', () => {
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
       tagManager: createMockTagManager(),
-      contributionTypeManager: createMockContributionTypeManager(),
+      facetManager: createMockFacetManager(),
+      nodeService: createMockNodeService(),
+      edgeService: createMockEdgeService(),
+      nodeRepository: createMockNodeRepository(),
+      edgeRepository: createMockEdgeRepository(),
       backlinkService: createMockBacklinkService(),
       claimingService: createMockClaimingService(),
       importService: createMockImportService(),
@@ -448,12 +474,12 @@ describe('REST v1/eprints Endpoints Integration', () => {
   });
 
   describe('GET /api/v1/eprints (search)', () => {
-    it('requires q parameter for search', async () => {
-      // Without q parameter, should return validation error
+    it('returns results even without q parameter (browsing mode)', async () => {
+      // Without q parameter, returns all eprints (faceted browsing)
       const res = await testRequest(app, '/api/v1/eprints');
 
-      // Returns 400 because q is required for search
-      expect(res.status).toBe(400);
+      // Returns 200 for browse mode (q is optional)
+      expect(res.status).toBe(200);
     });
 
     it('returns search results with source field for each', async () => {
@@ -519,12 +545,11 @@ describe('REST v1/eprints Endpoints Integration', () => {
   });
 
   describe('GET /api/v1/search', () => {
-    it('returns 400 for missing query parameter', async () => {
+    it('returns results even without query parameter (browsing mode)', async () => {
       const res = await testRequest(app, '/api/v1/search');
 
-      expect(res.status).toBe(400);
-      const body = (await res.json()) as ErrorResponse;
-      expect(body.error.code).toBe('VALIDATION_ERROR');
+      // Returns 200 for browse mode (q is optional)
+      expect(res.status).toBe(200);
     });
 
     it('returns search results with hits array', async () => {
@@ -651,8 +676,9 @@ describe('REST v1/eprints Endpoints Integration', () => {
   });
 
   describe('Error Response Format', () => {
-    it('returns standardized error format', async () => {
-      const res = await testRequest(app, '/api/v1/search');
+    it('returns standardized error format for invalid parameter', async () => {
+      // Use an invalid limit parameter to trigger validation error
+      const res = await testRequest(app, '/api/v1/search?limit=invalid');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;

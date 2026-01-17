@@ -249,7 +249,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List backlinks to a eprint */
+    /** List backlinks to an eprint */
     get: operations['pub_chive_backlink_list'];
     put?: never;
     post?: never;
@@ -266,7 +266,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get aggregated backlink counts for a eprint */
+    /** Get aggregated backlink counts for an eprint */
     get: operations['pub_chive_backlink_getCounts'];
     put?: never;
     post?: never;
@@ -616,57 +616,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.contribution.listTypes': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List CRediT-based contribution types */
-    get: operations['pub_chive_contribution_listTypes'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/xrpc/pub.chive.contribution.getType': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get a contribution type by ID */
-    get: operations['pub_chive_contribution_getType'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/xrpc/pub.chive.contribution.searchTypes': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Search contribution types by label or description */
-    get: operations['pub_chive_contribution_searchTypes'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/xrpc/pub.chive.discovery.getRecommendations': {
     parameters: {
       query?: never;
@@ -708,7 +657,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get related papers for a eprint */
+    /** Get related papers for an eprint */
     get: operations['pub_chive_discovery_getSimilar'];
     put?: never;
     post?: never;
@@ -725,7 +674,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get citation network for a eprint */
+    /** Get citation network for an eprint */
     get: operations['pub_chive_discovery_getCitations'];
     put?: never;
     post?: never;
@@ -742,7 +691,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get enrichment data for a eprint */
+    /** Get enrichment data for an eprint */
     get: operations['pub_chive_discovery_getEnrichment'];
     put?: never;
     post?: never;
@@ -776,7 +725,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List endorsements for a eprint */
+    /** List endorsements for an eprint */
     get: operations['pub_chive_endorsement_listForEprint'];
     put?: never;
     post?: never;
@@ -793,7 +742,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get endorsement summary for a eprint */
+    /** Get endorsement summary for an eprint */
     get: operations['pub_chive_endorsement_getSummary'];
     put?: never;
     post?: never;
@@ -810,7 +759,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get a user's endorsement for a eprint */
+    /** Get a user's endorsement for an eprint */
     get: operations['pub_chive_endorsement_getUserEndorsement'];
     put?: never;
     post?: never;
@@ -905,15 +854,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.graph.getField': {
+  '/xrpc/pub.chive.governance.getEditorStatus': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Get a knowledge graph field by ID */
-    get: operations['pub_chive_graph_getField'];
+    /** Get trusted editor status and reputation metrics for a user */
+    get: operations['pub_chive_governance_getEditorStatus'];
     put?: never;
     post?: never;
     delete?: never;
@@ -922,15 +871,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.graph.listFields': {
+  '/xrpc/pub.chive.governance.listTrustedEditors': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** List knowledge graph fields */
-    get: operations['pub_chive_graph_listFields'];
+    /** List all users with trusted editor or higher roles (admin only) */
+    get: operations['pub_chive_governance_listTrustedEditors'];
     put?: never;
     post?: never;
     delete?: never;
@@ -939,15 +888,270 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.graph.searchAuthorities': {
+  '/xrpc/pub.chive.governance.requestElevation': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Search authority records in the knowledge graph */
-    get: operations['pub_chive_graph_searchAuthorities'];
+    get?: never;
+    put?: never;
+    /** Request elevation to trusted editor role */
+    post: operations['pub_chive_governance_requestElevation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.governance.grantDelegation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Grant PDS delegation to a trusted editor (admin only) */
+    post: operations['pub_chive_governance_grantDelegation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.governance.revokeDelegation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Revoke an active PDS delegation (admin only) */
+    post: operations['pub_chive_governance_revokeDelegation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.governance.revokeRole': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Revoke a user's governance role (admin only) */
+    post: operations['pub_chive_governance_revokeRole'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.governance.listElevationRequests': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List pending elevation requests (admin only) */
+    get: operations['pub_chive_governance_listElevationRequests'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.governance.approveElevation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Approve a pending elevation request (admin only) */
+    post: operations['pub_chive_governance_approveElevation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.governance.rejectElevation': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reject a pending elevation request (admin only) */
+    post: operations['pub_chive_governance_rejectElevation'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.governance.listDelegations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List active PDS delegations (admin only) */
+    get: operations['pub_chive_governance_listDelegations'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.getNode': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a knowledge graph node by ID */
+    get: operations['pub_chive_graph_getNode'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.listNodes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List knowledge graph nodes with optional filtering */
+    get: operations['pub_chive_graph_listNodes'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.searchNodes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Search knowledge graph nodes */
+    get: operations['pub_chive_graph_searchNodes'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.getSubkinds': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get available subkind type nodes */
+    get: operations['pub_chive_graph_getSubkinds'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.getHierarchy': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get hierarchical tree structure for a subkind */
+    get: operations['pub_chive_graph_getHierarchy'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.getEdge': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get a knowledge graph edge by AT-URI */
+    get: operations['pub_chive_graph_getEdge'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.listEdges': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List knowledge graph edges with optional filtering */
+    get: operations['pub_chive_graph_listEdges'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/xrpc/pub.chive.graph.getRelations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get available relation types */
+    get: operations['pub_chive_graph_getRelations'];
     put?: never;
     post?: never;
     delete?: never;
@@ -973,49 +1177,15 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/xrpc/pub.chive.graph.getFieldEprints': {
+  '/xrpc/pub.chive.graph.getCommunities': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** Get eprints in a knowledge graph field */
-    get: operations['pub_chive_graph_getFieldEprints'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/xrpc/pub.chive.graph.getAuthority': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get authority record details */
-    get: operations['pub_chive_graph_getAuthority'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/xrpc/pub.chive.graph.getAuthorityReconciliations': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get reconciliation records for an authority */
-    get: operations['pub_chive_graph_getAuthorityReconciliations'];
+    /** Detect communities in the knowledge graph */
+    get: operations['pub_chive_graph_getCommunities'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1065,7 +1235,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Check if a eprint has been imported */
+    /** Check if an eprint has been imported */
     get: operations['pub_chive_import_exists'];
     put?: never;
     post?: never;
@@ -1101,7 +1271,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Record a view event for a eprint */
+    /** Record a view event for an eprint */
     post: operations['pub_chive_metrics_recordView'];
     delete?: never;
     options?: never;
@@ -1118,7 +1288,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Record a download event for a eprint */
+    /** Record a download event for an eprint */
     post: operations['pub_chive_metrics_recordDownload'];
     delete?: never;
     options?: never;
@@ -1133,7 +1303,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get comprehensive metrics for a eprint */
+    /** Get comprehensive metrics for an eprint */
     get: operations['pub_chive_metrics_getMetrics'];
     put?: never;
     post?: never;
@@ -1150,7 +1320,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get view count for a eprint */
+    /** Get view count for an eprint */
     get: operations['pub_chive_metrics_getViewCount'];
     put?: never;
     post?: never;
@@ -1252,7 +1422,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Get a eprint submission by AT URI */
+    /** Get an eprint submission by AT URI */
     get: operations['pub_chive_eprint_getSubmission'];
     put?: never;
     post?: never;
@@ -1303,7 +1473,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List reviews for a eprint */
+    /** List reviews for an eprint */
     get: operations['pub_chive_review_listForEprint'];
     put?: never;
     post?: never;
@@ -1405,7 +1575,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** List tags for a eprint */
+    /** List tags for an eprint */
     get: operations['pub_chive_tag_listForEprint'];
     put?: never;
     post?: never;
@@ -1555,6 +1725,117 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    pub_chive_graph_getHierarchy_output___schema0_0: {
+      /** @description Node data */
+      node: {
+        /**
+         * Format: uuid
+         * @description Node UUID identifier
+         */
+        id: string;
+        /** @description AT-URI of the node */
+        uri: string;
+        /**
+         * @description Node kind: type or object
+         * @enum {string}
+         */
+        kind: 'type' | 'object';
+        /** @description Subkind slug (e.g., field, institution) */
+        subkind?: string;
+        /** @description AT-URI of the subkind type node */
+        subkindUri?: string;
+        /** @description Primary display label */
+        label: string;
+        /** @description Alternate labels/synonyms */
+        alternateLabels?: string[];
+        /** @description Detailed description */
+        description?: string;
+        /** @description External identifier mappings */
+        externalIds?: {
+          /**
+           * @description Source system
+           * @enum {string}
+           */
+          system:
+            | 'wikidata'
+            | 'ror'
+            | 'orcid'
+            | 'isni'
+            | 'viaf'
+            | 'lcsh'
+            | 'fast'
+            | 'credit'
+            | 'spdx'
+            | 'fundref'
+            | 'mesh'
+            | 'aat'
+            | 'gnd'
+            | 'anzsrc'
+            | 'arxiv';
+          /** @description External identifier */
+          identifier: string;
+          /**
+           * Format: uri
+           * @description External URI
+           */
+          uri?: string;
+          /**
+           * @description SKOS match type
+           * @enum {string}
+           */
+          matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+        }[];
+        /** @description Subkind-specific metadata */
+        metadata?: {
+          /** @description ISO 3166-1 alpha-2 country code */
+          country?: string;
+          /** @description City name */
+          city?: string;
+          /**
+           * Format: uri
+           * @description Official website URL
+           */
+          website?: string;
+          /**
+           * @description Organization status
+           * @enum {string}
+           */
+          organizationStatus?: 'active' | 'merged' | 'inactive' | 'defunct';
+          /** @description MIME types (for document-format) */
+          mimeTypes?: string[];
+          /** @description SPDX license identifier */
+          spdxId?: string;
+          /** @description Display order for UI sorting */
+          displayOrder?: number;
+          /** @description Slug of inverse relation */
+          inverseSlug?: string;
+        };
+        /**
+         * @description Lifecycle status
+         * @enum {string}
+         */
+        status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+        /** @description AT-URI of superseding node */
+        deprecatedBy?: string;
+        /** @description AT-URI of creating proposal */
+        proposalUri?: string;
+        /**
+         * Format: date-time
+         * @description Creation timestamp
+         */
+        createdAt: string;
+        /** @description DID of creator */
+        createdBy?: string;
+        /**
+         * Format: date-time
+         * @description Last update timestamp
+         */
+        updatedAt?: string;
+      };
+      /** @description Depth in hierarchy */
+      depth: number;
+      children: components['schemas']['pub_chive_graph_getHierarchy_output___schema0_0'][];
+    };
     ErrorResponse: {
       error: {
         code: string;
@@ -4333,241 +4614,12 @@ export interface operations {
       };
     };
   };
-  pub_chive_contribution_listTypes: {
-    parameters: {
-      query: {
-        limit: number;
-        cursor?: string;
-        status?: 'established' | 'provisional' | 'deprecated';
-        search?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            types: {
-              /** @description AT Protocol URI (at://did/collection/rkey) */
-              uri: string;
-              id: string;
-              label: string;
-              description: string;
-              /**
-               * @description Contribution type status
-               * @enum {string}
-               */
-              status: 'established' | 'provisional' | 'deprecated';
-            }[];
-            total: number;
-            hasMore: boolean;
-            cursor?: string;
-          };
-        };
-      };
-      /** @description Bad Request - Validation error */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Too Many Requests - Rate limit exceeded */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
-  pub_chive_contribution_getType: {
-    parameters: {
-      query: {
-        id: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            /** @description AT URI of contribution type record */
-            uri: string;
-            /** @description Type identifier (e.g., "conceptualization") */
-            id: string;
-            /** @description Human-readable label */
-            label: string;
-            /** @description Detailed description */
-            description: string;
-            /** @description External ontology links */
-            externalMappings: {
-              /**
-               * @description External ontology system
-               * @enum {string}
-               */
-              system: 'credit' | 'cro' | 'scoro' | 'pro';
-              /** @description Identifier in external system */
-              identifier: string;
-              /**
-               * Format: uri
-               * @description Full URI in external system
-               */
-              uri?: string;
-              /**
-               * @description Semantic match type
-               * @enum {string}
-               */
-              matchType?: 'exact-match' | 'close-match' | 'broad-match' | 'narrow-match';
-            }[];
-            /**
-             * @description Contribution type status
-             * @enum {string}
-             */
-            status: 'established' | 'provisional' | 'deprecated';
-            /** @description Proposal that created this type */
-            proposalUri?: string;
-            /** @description Type that supersedes this one */
-            deprecatedBy?: string;
-            /**
-             * Format: date-time
-             * @description Creation timestamp
-             */
-            createdAt: string;
-            /**
-             * Format: date-time
-             * @description Last update timestamp
-             */
-            updatedAt?: string;
-          };
-        };
-      };
-      /** @description Bad Request - Validation error */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Too Many Requests - Rate limit exceeded */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
-  pub_chive_contribution_searchTypes: {
-    parameters: {
-      query: {
-        q: string;
-        limit: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            types: {
-              /** @description AT Protocol URI (at://did/collection/rkey) */
-              uri: string;
-              id: string;
-              label: string;
-              description: string;
-              /**
-               * @description Contribution type status
-               * @enum {string}
-               */
-              status: 'established' | 'provisional' | 'deprecated';
-            }[];
-            total: number;
-          };
-        };
-      };
-      /** @description Bad Request - Validation error */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Too Many Requests - Rate limit exceeded */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
   pub_chive_discovery_getRecommendations: {
     parameters: {
       query: {
         limit: number;
         cursor?: string;
-        signals?: ('fields' | 'citations' | 'collaborators' | 'trending')[];
+        signals?: ('fields' | 'citations' | 'collaborators' | 'trending' | 'graph')[];
       };
       header?: never;
       path?: never;
@@ -4718,7 +4770,14 @@ export interface operations {
       query: {
         uri: string;
         limit: number;
-        includeTypes?: ('semantic' | 'citation' | 'topic' | 'author')[];
+        includeTypes?: (
+          | 'semantic'
+          | 'citation'
+          | 'topic'
+          | 'author'
+          | 'co-citation'
+          | 'bibliographic-coupling'
+        )[];
       };
       header?: never;
       path?: never;
@@ -4754,8 +4813,11 @@ export interface operations {
                 | 'co-cited'
                 | 'semantically-similar'
                 | 'same-author'
-                | 'same-topic';
+                | 'same-topic'
+                | 'bibliographic-coupling';
               explanation: string;
+              sharedReferences?: number;
+              sharedCiters?: number;
             }[];
           };
         };
@@ -5299,10 +5361,10 @@ export interface operations {
       query: {
         limit: number;
         cursor?: string;
-        category?: 'field' | 'contribution-type' | 'facet' | 'organization' | 'reconciliation';
+        category?: 'field' | 'concept' | 'institution' | 'facet' | 'authority' | 'external-link';
         status?: 'pending' | 'approved' | 'rejected' | 'expired';
-        type?: 'create' | 'update' | 'merge' | 'delete';
-        fieldId?: string;
+        type?: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
+        nodeUri?: string;
         proposedBy?: string;
       };
       header?: never;
@@ -5321,20 +5383,54 @@ export interface operations {
             proposals: {
               id: string;
               uri: string;
-              fieldId?: string;
+              nodeUri?: string;
               label?: string;
               /** @enum {string} */
-              type: 'create' | 'update' | 'merge' | 'delete';
+              type: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
               changes: {
                 label?: string;
                 description?: string;
-                /** @enum {string} */
-                fieldType?: 'field' | 'root' | 'subfield' | 'topic';
                 parentId?: string;
                 mergeTargetId?: string;
                 wikidataId?: string;
-                /** @description PMEST/FAST facet dimension for facet proposals */
+                /** @enum {string} */
+                fieldType?: 'field' | 'root' | 'subfield' | 'topic';
+                /** @enum {string} */
+                conceptCategory?:
+                  | 'institution-type'
+                  | 'paper-type'
+                  | 'methodology'
+                  | 'geographic-scope'
+                  | 'temporal-scope'
+                  | 'document-format'
+                  | 'publication-status'
+                  | 'access-type'
+                  | 'platform-code'
+                  | 'platform-data'
+                  | 'platform-preprint'
+                  | 'platform-preregistration'
+                  | 'platform-protocol'
+                  | 'supplementary-type'
+                  | 'researcher-type'
+                  | 'identifier-type'
+                  | 'presentation-type';
+                /** @enum {string} */
+                authorityType?:
+                  | 'person'
+                  | 'organization'
+                  | 'topic'
+                  | 'geographic'
+                  | 'temporal'
+                  | 'form';
+                alternateLabels?: string[];
+                lcshId?: string;
+                fastId?: string;
+                viafId?: string;
+                orcid?: string;
+                ror?: string;
+                /** @description PMEST/FAST facet dimension */
                 dimension?: string;
+                facetLevel?: number;
               };
               rationale: string;
               /** @enum {string} */
@@ -5416,20 +5512,54 @@ export interface operations {
           'application/json': {
             id: string;
             uri: string;
-            fieldId?: string;
+            nodeUri?: string;
             label?: string;
             /** @enum {string} */
-            type: 'create' | 'update' | 'merge' | 'delete';
+            type: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
             changes: {
               label?: string;
               description?: string;
-              /** @enum {string} */
-              fieldType?: 'field' | 'root' | 'subfield' | 'topic';
               parentId?: string;
               mergeTargetId?: string;
               wikidataId?: string;
-              /** @description PMEST/FAST facet dimension for facet proposals */
+              /** @enum {string} */
+              fieldType?: 'field' | 'root' | 'subfield' | 'topic';
+              /** @enum {string} */
+              conceptCategory?:
+                | 'institution-type'
+                | 'paper-type'
+                | 'methodology'
+                | 'geographic-scope'
+                | 'temporal-scope'
+                | 'document-format'
+                | 'publication-status'
+                | 'access-type'
+                | 'platform-code'
+                | 'platform-data'
+                | 'platform-preprint'
+                | 'platform-preregistration'
+                | 'platform-protocol'
+                | 'supplementary-type'
+                | 'researcher-type'
+                | 'identifier-type'
+                | 'presentation-type';
+              /** @enum {string} */
+              authorityType?:
+                | 'person'
+                | 'organization'
+                | 'topic'
+                | 'geographic'
+                | 'temporal'
+                | 'form';
+              alternateLabels?: string[];
+              lcshId?: string;
+              fastId?: string;
+              viafId?: string;
+              orcid?: string;
+              ror?: string;
+              /** @description PMEST/FAST facet dimension */
               dimension?: string;
+              facetLevel?: number;
             };
             rationale: string;
             /** @enum {string} */
@@ -5673,13 +5803,10 @@ export interface operations {
       };
     };
   };
-  pub_chive_graph_getField: {
+  pub_chive_governance_getEditorStatus: {
     parameters: {
-      query: {
-        id: string;
-        includeRelationships: boolean;
-        includeChildren: boolean;
-        includeAncestors: boolean;
+      query?: {
+        did?: string;
       };
       header?: never;
       path?: never;
@@ -5694,80 +5821,884 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Field identifier */
-            id: string;
-            /** @description Field URI */
-            uri: string;
-            /** @description Field name */
-            name: string;
-            /** @description Field description */
-            description?: string;
-            /** @description Parent field ID */
-            parentId?: string;
+            did: string;
+            displayName?: string;
+            /** @enum {string} */
+            role:
+              | 'community-member'
+              | 'trusted-editor'
+              | 'graph-editor'
+              | 'domain-expert'
+              | 'administrator';
+            roleGrantedAt?: number;
+            roleGrantedBy?: string;
+            hasDelegation: boolean;
+            delegationExpiresAt?: number;
+            delegationCollections?: string[];
+            recordsCreatedToday: number;
+            dailyRateLimit: number;
+            metrics: {
+              did: string;
+              accountCreatedAt: number;
+              accountAgeDays: number;
+              eprintCount: number;
+              wellEndorsedEprintCount: number;
+              totalEndorsements: number;
+              proposalCount: number;
+              voteCount: number;
+              successfulProposals: number;
+              warningCount: number;
+              violationCount: number;
+              reputationScore: number;
+              /** @enum {string} */
+              role:
+                | 'community-member'
+                | 'trusted-editor'
+                | 'graph-editor'
+                | 'domain-expert'
+                | 'administrator';
+              eligibleForTrustedEditor: boolean;
+              missingCriteria: string[];
+            };
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_listTrustedEditors: {
+    parameters: {
+      query: {
+        limit: number;
+        cursor?: string;
+        role?:
+          | 'community-member'
+          | 'trusted-editor'
+          | 'graph-editor'
+          | 'domain-expert'
+          | 'administrator';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            editors: {
+              did: string;
+              handle?: string;
+              displayName?: string;
+              /** @enum {string} */
+              role:
+                | 'community-member'
+                | 'trusted-editor'
+                | 'graph-editor'
+                | 'domain-expert'
+                | 'administrator';
+              roleGrantedAt: number;
+              roleGrantedBy?: string;
+              hasDelegation: boolean;
+              delegationExpiresAt?: number;
+              recordsCreatedToday: number;
+              dailyRateLimit: number;
+              metrics: {
+                did: string;
+                accountCreatedAt: number;
+                accountAgeDays: number;
+                eprintCount: number;
+                wellEndorsedEprintCount: number;
+                totalEndorsements: number;
+                proposalCount: number;
+                voteCount: number;
+                successfulProposals: number;
+                warningCount: number;
+                violationCount: number;
+                reputationScore: number;
+                /** @enum {string} */
+                role:
+                  | 'community-member'
+                  | 'trusted-editor'
+                  | 'graph-editor'
+                  | 'domain-expert'
+                  | 'administrator';
+                eligibleForTrustedEditor: boolean;
+                missingCriteria: string[];
+              };
+            }[];
+            cursor?: string;
+            total: number;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_requestElevation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /**
+           * @description Role to request elevation to
+           * @enum {string}
+           */
+          targetRole: 'trusted-editor';
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
+            requestId?: string;
+            message: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_grantDelegation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          delegateDid: string;
+          collections: string[];
+          /** @default 365 */
+          daysValid: number;
+          /** @default 100 */
+          maxRecordsPerDay: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
+            delegationId?: string;
+            message: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_revokeDelegation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          delegationId: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
+            delegationId?: string;
+            message: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_revokeRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          did: string;
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
+            requestId?: string;
+            message: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_listElevationRequests: {
+    parameters: {
+      query: {
+        limit: number;
+        cursor?: string;
+        role?:
+          | 'community-member'
+          | 'trusted-editor'
+          | 'graph-editor'
+          | 'domain-expert'
+          | 'administrator';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            requests: {
+              id: string;
+              did: string;
+              handle?: string;
+              displayName?: string;
+              /** @enum {string} */
+              requestedRole:
+                | 'community-member'
+                | 'trusted-editor'
+                | 'graph-editor'
+                | 'domain-expert'
+                | 'administrator';
+              /** @enum {string} */
+              currentRole:
+                | 'community-member'
+                | 'trusted-editor'
+                | 'graph-editor'
+                | 'domain-expert'
+                | 'administrator';
+              requestedAt: number;
+              metrics: {
+                did: string;
+                accountCreatedAt: number;
+                accountAgeDays: number;
+                eprintCount: number;
+                wellEndorsedEprintCount: number;
+                totalEndorsements: number;
+                proposalCount: number;
+                voteCount: number;
+                successfulProposals: number;
+                warningCount: number;
+                violationCount: number;
+                reputationScore: number;
+                /** @enum {string} */
+                role:
+                  | 'community-member'
+                  | 'trusted-editor'
+                  | 'graph-editor'
+                  | 'domain-expert'
+                  | 'administrator';
+                eligibleForTrustedEditor: boolean;
+                missingCriteria: string[];
+              };
+              verificationNotes?: string;
+            }[];
+            cursor?: string;
+            total: number;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_approveElevation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          requestId: string;
+          verificationNotes?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
+            requestId?: string;
+            message: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_rejectElevation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          requestId: string;
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            success: boolean;
+            requestId?: string;
+            message: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_governance_listDelegations: {
+    parameters: {
+      query: {
+        limit: number;
+        cursor?: string;
+        role?:
+          | 'community-member'
+          | 'trusted-editor'
+          | 'graph-editor'
+          | 'domain-expert'
+          | 'administrator';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            delegations: {
+              id: string;
+              delegateDid: string;
+              handle?: string;
+              displayName?: string;
+              collections: string[];
+              expiresAt: number;
+              maxRecordsPerDay: number;
+              recordsCreatedToday: number;
+              grantedAt: number;
+              grantedBy: string;
+              active: boolean;
+            }[];
+            cursor?: string;
+            total: number;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_graph_getNode: {
+    parameters: {
+      query: {
+        id: string;
+        includeEdges: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
             /**
-             * @description Field status
+             * Format: uuid
+             * @description Node UUID identifier
+             */
+            id: string;
+            /** @description AT-URI of the node */
+            uri: string;
+            /**
+             * @description Node kind: type or object
              * @enum {string}
              */
-            status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-            /** @description Number of eprints */
-            eprintCount?: number;
-            /** @description Number of child fields */
-            childCount?: number;
-            /** @description External identifiers */
+            kind: 'type' | 'object';
+            /** @description Subkind slug (e.g., field, institution) */
+            subkind?: string;
+            /** @description AT-URI of the subkind type node */
+            subkindUri?: string;
+            /** @description Primary display label */
+            label: string;
+            /** @description Alternate labels/synonyms */
+            alternateLabels?: string[];
+            /** @description Detailed description */
+            description?: string;
+            /** @description External identifier mappings */
             externalIds?: {
               /**
                * @description Source system
                * @enum {string}
                */
-              source: 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv';
+              system:
+                | 'wikidata'
+                | 'ror'
+                | 'orcid'
+                | 'isni'
+                | 'viaf'
+                | 'lcsh'
+                | 'fast'
+                | 'credit'
+                | 'spdx'
+                | 'fundref'
+                | 'mesh'
+                | 'aat'
+                | 'gnd'
+                | 'anzsrc'
+                | 'arxiv';
               /** @description External identifier */
-              id: string;
+              identifier: string;
               /**
                * Format: uri
-               * @description External URL
+               * @description External URI
                */
-              url?: string;
+              uri?: string;
+              /**
+               * @description SKOS match type
+               * @enum {string}
+               */
+              matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
             }[];
+            /** @description Subkind-specific metadata */
+            metadata?: {
+              /** @description ISO 3166-1 alpha-2 country code */
+              country?: string;
+              /** @description City name */
+              city?: string;
+              /**
+               * Format: uri
+               * @description Official website URL
+               */
+              website?: string;
+              /**
+               * @description Organization status
+               * @enum {string}
+               */
+              organizationStatus?: 'active' | 'merged' | 'inactive' | 'defunct';
+              /** @description MIME types (for document-format) */
+              mimeTypes?: string[];
+              /** @description SPDX license identifier */
+              spdxId?: string;
+              /** @description Display order for UI sorting */
+              displayOrder?: number;
+              /** @description Slug of inverse relation */
+              inverseSlug?: string;
+            };
+            /**
+             * @description Lifecycle status
+             * @enum {string}
+             */
+            status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+            /** @description AT-URI of superseding node */
+            deprecatedBy?: string;
+            /** @description AT-URI of creating proposal */
+            proposalUri?: string;
             /**
              * Format: date-time
              * @description Creation timestamp
              */
             createdAt: string;
+            /** @description DID of creator */
+            createdBy?: string;
             /**
              * Format: date-time
-             * @description Last update
+             * @description Last update timestamp
              */
             updatedAt?: string;
-            /** @description Related fields */
-            relationships?: {
+            /** @description Connected edges */
+            edges?: {
               /**
-               * @description Relationship type
+               * Format: uuid
+               * @description Edge UUID identifier
+               */
+              id: string;
+              /** @description AT-URI of the edge */
+              uri: string;
+              /** @description AT-URI of source node */
+              sourceUri: string;
+              /** @description AT-URI of target node */
+              targetUri: string;
+              /** @description AT-URI of relation type node */
+              relationUri?: string;
+              /** @description Relation slug (broader, narrower, related, etc.) */
+              relationSlug: string;
+              /** @description Edge weight */
+              weight?: number;
+              /** @description Edge-specific metadata */
+              metadata?: {
+                /** @description Confidence score */
+                confidence?: number;
+                /**
+                 * Format: date-time
+                 * @description Temporal start
+                 */
+                startDate?: string;
+                /**
+                 * Format: date-time
+                 * @description Temporal end
+                 */
+                endDate?: string;
+                /** @description Source of the assertion */
+                source?: string;
+              };
+              /**
+               * @description Edge lifecycle status
                * @enum {string}
                */
-              type:
-                | 'broader'
-                | 'narrower'
-                | 'related'
-                | 'equivalent'
-                | 'influences'
-                | 'influenced_by';
-              /** @description Target field ID */
-              targetId: string;
-              /** @description Target field name */
-              targetName: string;
-              /** @description Relationship strength */
-              strength?: number;
-            }[];
-            /** @description Child fields */
-            children?: {
-              id: string;
-              name: string;
-              eprintCount?: number;
-            }[];
-            /** @description Ancestor path */
-            ancestors?: {
-              id: string;
-              name: string;
+              status: 'proposed' | 'established' | 'deprecated';
+              /** @description AT-URI of creating proposal */
+              proposalUri?: string;
+              /**
+               * Format: date-time
+               * @description Creation timestamp
+               */
+              createdAt: string;
+              /** @description DID of creator */
+              createdBy?: string;
+              /**
+               * Format: date-time
+               * @description Last update timestamp
+               */
+              updatedAt?: string;
             }[];
           };
         };
@@ -5801,13 +6732,14 @@ export interface operations {
       };
     };
   };
-  pub_chive_graph_listFields: {
+  pub_chive_graph_listNodes: {
     parameters: {
       query: {
-        status?: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-        parentId?: string;
         limit: number;
         cursor?: string;
+        kind?: 'type' | 'object';
+        subkind?: string;
+        status?: 'proposed' | 'provisional' | 'established' | 'deprecated';
       };
       header?: never;
       path?: never;
@@ -5822,56 +6754,118 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Field list */
-            fields: {
-              /** @description Field identifier */
-              id: string;
-              /** @description Field URI */
-              uri: string;
-              /** @description Field name */
-              name: string;
-              /** @description Field description */
-              description?: string;
-              /** @description Parent field ID */
-              parentId?: string;
+            /** @description Node list */
+            nodes: {
               /**
-               * @description Field status
+               * Format: uuid
+               * @description Node UUID identifier
+               */
+              id: string;
+              /** @description AT-URI of the node */
+              uri: string;
+              /**
+               * @description Node kind: type or object
                * @enum {string}
                */
-              status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-              /** @description Number of eprints */
-              eprintCount?: number;
-              /** @description Number of child fields */
-              childCount?: number;
-              /** @description External identifiers */
+              kind: 'type' | 'object';
+              /** @description Subkind slug (e.g., field, institution) */
+              subkind?: string;
+              /** @description AT-URI of the subkind type node */
+              subkindUri?: string;
+              /** @description Primary display label */
+              label: string;
+              /** @description Alternate labels/synonyms */
+              alternateLabels?: string[];
+              /** @description Detailed description */
+              description?: string;
+              /** @description External identifier mappings */
               externalIds?: {
                 /**
                  * @description Source system
                  * @enum {string}
                  */
-                source: 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv';
+                system:
+                  | 'wikidata'
+                  | 'ror'
+                  | 'orcid'
+                  | 'isni'
+                  | 'viaf'
+                  | 'lcsh'
+                  | 'fast'
+                  | 'credit'
+                  | 'spdx'
+                  | 'fundref'
+                  | 'mesh'
+                  | 'aat'
+                  | 'gnd'
+                  | 'anzsrc'
+                  | 'arxiv';
                 /** @description External identifier */
-                id: string;
+                identifier: string;
                 /**
                  * Format: uri
-                 * @description External URL
+                 * @description External URI
                  */
-                url?: string;
+                uri?: string;
+                /**
+                 * @description SKOS match type
+                 * @enum {string}
+                 */
+                matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
               }[];
+              /** @description Subkind-specific metadata */
+              metadata?: {
+                /** @description ISO 3166-1 alpha-2 country code */
+                country?: string;
+                /** @description City name */
+                city?: string;
+                /**
+                 * Format: uri
+                 * @description Official website URL
+                 */
+                website?: string;
+                /**
+                 * @description Organization status
+                 * @enum {string}
+                 */
+                organizationStatus?: 'active' | 'merged' | 'inactive' | 'defunct';
+                /** @description MIME types (for document-format) */
+                mimeTypes?: string[];
+                /** @description SPDX license identifier */
+                spdxId?: string;
+                /** @description Display order for UI sorting */
+                displayOrder?: number;
+                /** @description Slug of inverse relation */
+                inverseSlug?: string;
+              };
+              /**
+               * @description Lifecycle status
+               * @enum {string}
+               */
+              status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+              /** @description AT-URI of superseding node */
+              deprecatedBy?: string;
+              /** @description AT-URI of creating proposal */
+              proposalUri?: string;
               /**
                * Format: date-time
                * @description Creation timestamp
                */
               createdAt: string;
+              /** @description DID of creator */
+              createdBy?: string;
               /**
                * Format: date-time
-               * @description Last update
+               * @description Last update timestamp
                */
               updatedAt?: string;
             }[];
+            /** @description Pagination cursor */
             cursor?: string;
+            /** @description Whether more results exist */
             hasMore: boolean;
-            total?: number;
+            /** @description Total count */
+            total: number;
           };
         };
       };
@@ -5904,15 +6898,15 @@ export interface operations {
       };
     };
   };
-  pub_chive_graph_searchAuthorities: {
+  pub_chive_graph_searchNodes: {
     parameters: {
       query: {
-        q: string;
+        query: string;
+        kind?: 'type' | 'object';
+        subkind?: string;
+        status?: 'proposed' | 'provisional' | 'established' | 'deprecated';
         limit: number;
         cursor?: string;
-        sort: 'relevance' | 'date' | 'views';
-        type?: 'person' | 'organization' | 'concept' | 'place';
-        status?: 'proposed' | 'under_review' | 'approved' | 'deprecated';
       };
       header?: never;
       path?: never;
@@ -5928,52 +6922,607 @@ export interface operations {
         content: {
           'application/json': {
             /** @description Search results */
-            authorities: {
-              /** @description Authority record ID */
-              id: string;
-              /** @description Authority record URI */
-              uri: string;
-              /** @description Canonical name */
-              name: string;
+            nodes: {
               /**
-               * @description Entity type
+               * Format: uuid
+               * @description Node UUID identifier
+               */
+              id: string;
+              /** @description AT-URI of the node */
+              uri: string;
+              /**
+               * @description Node kind: type or object
                * @enum {string}
                */
-              type: 'person' | 'organization' | 'concept' | 'place';
-              /** @description Alternate names */
-              alternateNames?: string[];
-              /** @description Description */
+              kind: 'type' | 'object';
+              /** @description Subkind slug (e.g., field, institution) */
+              subkind?: string;
+              /** @description AT-URI of the subkind type node */
+              subkindUri?: string;
+              /** @description Primary display label */
+              label: string;
+              /** @description Alternate labels/synonyms */
+              alternateLabels?: string[];
+              /** @description Detailed description */
               description?: string;
-              /** @description External identifiers */
+              /** @description External identifier mappings */
               externalIds?: {
                 /**
                  * @description Source system
                  * @enum {string}
                  */
-                source: 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv';
+                system:
+                  | 'wikidata'
+                  | 'ror'
+                  | 'orcid'
+                  | 'isni'
+                  | 'viaf'
+                  | 'lcsh'
+                  | 'fast'
+                  | 'credit'
+                  | 'spdx'
+                  | 'fundref'
+                  | 'mesh'
+                  | 'aat'
+                  | 'gnd'
+                  | 'anzsrc'
+                  | 'arxiv';
                 /** @description External identifier */
-                id: string;
+                identifier: string;
                 /**
                  * Format: uri
-                 * @description External URL
+                 * @description External URI
                  */
-                url?: string;
+                uri?: string;
+                /**
+                 * @description SKOS match type
+                 * @enum {string}
+                 */
+                matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
               }[];
-              /** @description Number of linked eprints */
-              linkedEprints?: number;
+              /** @description Subkind-specific metadata */
+              metadata?: {
+                /** @description ISO 3166-1 alpha-2 country code */
+                country?: string;
+                /** @description City name */
+                city?: string;
+                /**
+                 * Format: uri
+                 * @description Official website URL
+                 */
+                website?: string;
+                /**
+                 * @description Organization status
+                 * @enum {string}
+                 */
+                organizationStatus?: 'active' | 'merged' | 'inactive' | 'defunct';
+                /** @description MIME types (for document-format) */
+                mimeTypes?: string[];
+                /** @description SPDX license identifier */
+                spdxId?: string;
+                /** @description Display order for UI sorting */
+                displayOrder?: number;
+                /** @description Slug of inverse relation */
+                inverseSlug?: string;
+              };
               /**
-               * @description Field status
+               * @description Lifecycle status
                * @enum {string}
                */
-              status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-              /** Format: date-time */
+              status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+              /** @description AT-URI of superseding node */
+              deprecatedBy?: string;
+              /** @description AT-URI of creating proposal */
+              proposalUri?: string;
+              /**
+               * Format: date-time
+               * @description Creation timestamp
+               */
               createdAt: string;
-              /** Format: date-time */
+              /** @description DID of creator */
+              createdBy?: string;
+              /**
+               * Format: date-time
+               * @description Last update timestamp
+               */
               updatedAt?: string;
             }[];
+            /** @description Pagination cursor */
             cursor?: string;
+            /** @description Whether more results exist */
             hasMore: boolean;
+            /** @description Total count */
             total: number;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_graph_getSubkinds: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Available subkind type nodes */
+            subkinds: {
+              /**
+               * Format: uuid
+               * @description Node UUID identifier
+               */
+              id: string;
+              /** @description AT-URI of the node */
+              uri: string;
+              /**
+               * @description Node kind: type or object
+               * @enum {string}
+               */
+              kind: 'type' | 'object';
+              /** @description Subkind slug (e.g., field, institution) */
+              subkind?: string;
+              /** @description AT-URI of the subkind type node */
+              subkindUri?: string;
+              /** @description Primary display label */
+              label: string;
+              /** @description Alternate labels/synonyms */
+              alternateLabels?: string[];
+              /** @description Detailed description */
+              description?: string;
+              /** @description External identifier mappings */
+              externalIds?: {
+                /**
+                 * @description Source system
+                 * @enum {string}
+                 */
+                system:
+                  | 'wikidata'
+                  | 'ror'
+                  | 'orcid'
+                  | 'isni'
+                  | 'viaf'
+                  | 'lcsh'
+                  | 'fast'
+                  | 'credit'
+                  | 'spdx'
+                  | 'fundref'
+                  | 'mesh'
+                  | 'aat'
+                  | 'gnd'
+                  | 'anzsrc'
+                  | 'arxiv';
+                /** @description External identifier */
+                identifier: string;
+                /**
+                 * Format: uri
+                 * @description External URI
+                 */
+                uri?: string;
+                /**
+                 * @description SKOS match type
+                 * @enum {string}
+                 */
+                matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+              }[];
+              /** @description Subkind-specific metadata */
+              metadata?: {
+                /** @description ISO 3166-1 alpha-2 country code */
+                country?: string;
+                /** @description City name */
+                city?: string;
+                /**
+                 * Format: uri
+                 * @description Official website URL
+                 */
+                website?: string;
+                /**
+                 * @description Organization status
+                 * @enum {string}
+                 */
+                organizationStatus?: 'active' | 'merged' | 'inactive' | 'defunct';
+                /** @description MIME types (for document-format) */
+                mimeTypes?: string[];
+                /** @description SPDX license identifier */
+                spdxId?: string;
+                /** @description Display order for UI sorting */
+                displayOrder?: number;
+                /** @description Slug of inverse relation */
+                inverseSlug?: string;
+              };
+              /**
+               * @description Lifecycle status
+               * @enum {string}
+               */
+              status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+              /** @description AT-URI of superseding node */
+              deprecatedBy?: string;
+              /** @description AT-URI of creating proposal */
+              proposalUri?: string;
+              /**
+               * Format: date-time
+               * @description Creation timestamp
+               */
+              createdAt: string;
+              /** @description DID of creator */
+              createdBy?: string;
+              /**
+               * Format: date-time
+               * @description Last update timestamp
+               */
+              updatedAt?: string;
+            }[];
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_graph_getHierarchy: {
+    parameters: {
+      query: {
+        subkind: string;
+        relationSlug: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Root nodes with children */
+            roots: components['schemas']['pub_chive_graph_getHierarchy_output___schema0_0'][];
+            /** @description Subkind of hierarchy */
+            subkind: string;
+            /** @description Relation used for hierarchy */
+            relationSlug: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_graph_getEdge: {
+    parameters: {
+      query: {
+        uri: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /**
+             * Format: uuid
+             * @description Edge UUID identifier
+             */
+            id: string;
+            /** @description AT-URI of the edge */
+            uri: string;
+            /** @description AT-URI of source node */
+            sourceUri: string;
+            /** @description AT-URI of target node */
+            targetUri: string;
+            /** @description AT-URI of relation type node */
+            relationUri?: string;
+            /** @description Relation slug (broader, narrower, related, etc.) */
+            relationSlug: string;
+            /** @description Edge weight */
+            weight?: number;
+            /** @description Edge-specific metadata */
+            metadata?: {
+              /** @description Confidence score */
+              confidence?: number;
+              /**
+               * Format: date-time
+               * @description Temporal start
+               */
+              startDate?: string;
+              /**
+               * Format: date-time
+               * @description Temporal end
+               */
+              endDate?: string;
+              /** @description Source of the assertion */
+              source?: string;
+            };
+            /**
+             * @description Edge lifecycle status
+             * @enum {string}
+             */
+            status: 'proposed' | 'established' | 'deprecated';
+            /** @description AT-URI of creating proposal */
+            proposalUri?: string;
+            /**
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            createdAt: string;
+            /** @description DID of creator */
+            createdBy?: string;
+            /**
+             * Format: date-time
+             * @description Last update timestamp
+             */
+            updatedAt?: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_graph_listEdges: {
+    parameters: {
+      query: {
+        limit: number;
+        cursor?: string;
+        sourceUri?: string;
+        targetUri?: string;
+        relationSlug?: string;
+        status?: 'proposed' | 'established' | 'deprecated';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Edge list */
+            edges: {
+              /**
+               * Format: uuid
+               * @description Edge UUID identifier
+               */
+              id: string;
+              /** @description AT-URI of the edge */
+              uri: string;
+              /** @description AT-URI of source node */
+              sourceUri: string;
+              /** @description AT-URI of target node */
+              targetUri: string;
+              /** @description AT-URI of relation type node */
+              relationUri?: string;
+              /** @description Relation slug (broader, narrower, related, etc.) */
+              relationSlug: string;
+              /** @description Edge weight */
+              weight?: number;
+              /** @description Edge-specific metadata */
+              metadata?: {
+                /** @description Confidence score */
+                confidence?: number;
+                /**
+                 * Format: date-time
+                 * @description Temporal start
+                 */
+                startDate?: string;
+                /**
+                 * Format: date-time
+                 * @description Temporal end
+                 */
+                endDate?: string;
+                /** @description Source of the assertion */
+                source?: string;
+              };
+              /**
+               * @description Edge lifecycle status
+               * @enum {string}
+               */
+              status: 'proposed' | 'established' | 'deprecated';
+              /** @description AT-URI of creating proposal */
+              proposalUri?: string;
+              /**
+               * Format: date-time
+               * @description Creation timestamp
+               */
+              createdAt: string;
+              /** @description DID of creator */
+              createdBy?: string;
+              /**
+               * Format: date-time
+               * @description Last update timestamp
+               */
+              updatedAt?: string;
+            }[];
+            /** @description Pagination cursor */
+            cursor?: string;
+            /** @description Whether more results exist */
+            hasMore: boolean;
+            /** @description Total count */
+            total: number;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_graph_getRelations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Available relation types */
+            relations: {
+              /** @description Relation slug */
+              slug: string;
+              /** @description Display label */
+              label: string;
+              /** @description Description */
+              description?: string;
+              /** @description Slug of inverse relation */
+              inverseSlug?: string;
+            }[];
           };
         };
       };
@@ -6274,12 +7823,12 @@ export interface operations {
       };
     };
   };
-  pub_chive_graph_getFieldEprints: {
+  pub_chive_graph_getCommunities: {
     parameters: {
       query: {
+        algorithm: 'louvain' | 'label-propagation';
         limit: number;
-        cursor?: string;
-        fieldId: string;
+        minSize: number;
       };
       header?: never;
       path?: never;
@@ -6294,223 +7843,32 @@ export interface operations {
         };
         content: {
           'application/json': {
-            /** @description Eprints in this field */
-            eprints: {
-              /** @description Eprint AT URI */
-              uri: string;
-              /** @description Eprint title */
-              title: string;
-              /** @description Truncated abstract */
-              abstract?: string;
-              /** @description Primary author DID */
-              authorDid: string;
-              /** @description Author display name */
-              authorName?: string;
-              /**
-               * Format: date-time
-               * @description Creation timestamp
-               */
-              createdAt: string;
-              /**
-               * Format: uri
-               * @description PDS endpoint URL
-               */
-              pdsUrl: string;
-              /** @description View count */
-              views?: number;
+            /** @description Detected communities */
+            communities: {
+              /** @description Community identifier */
+              communityId: number;
+              /** @description Member URIs */
+              members: string[];
+              /** @description Number of members */
+              size: number;
+              /** @description Representative members with names */
+              representativeMembers?: {
+                uri: string;
+                name: string;
+              }[];
             }[];
-            /** @description Pagination cursor */
-            cursor?: string;
-            /** @description Whether more results exist */
-            hasMore: boolean;
-            /** @description Total count */
-            total: number;
-          };
-        };
-      };
-      /** @description Bad Request - Validation error */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Too Many Requests - Rate limit exceeded */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
-  pub_chive_graph_getAuthority: {
-    parameters: {
-      query: {
-        id: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            /** @description Authority record ID */
-            id: string;
-            /** @description Authority record URI */
-            uri: string;
-            /** @description Canonical name */
-            name: string;
             /**
-             * @description Entity type
+             * @description Algorithm used
              * @enum {string}
              */
-            type: 'person' | 'organization' | 'concept' | 'place';
-            /** @description Alternate names */
-            alternateNames?: string[];
-            /** @description Description */
-            description?: string;
-            /** @description External identifiers */
-            externalIds?: {
-              /**
-               * @description Source system
-               * @enum {string}
-               */
-              source: 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv';
-              /** @description External identifier */
-              id: string;
-              /**
-               * Format: uri
-               * @description External URL
-               */
-              url?: string;
-            }[];
-            /** @description Number of linked eprints */
-            linkedEprints?: number;
-            /**
-             * @description Field status
-             * @enum {string}
-             */
-            status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            /** @description Number of linked authors */
-            linkedAuthors?: number;
-            /** @description Number of reconciliations */
-            reconciliationCount?: number;
-          };
-        };
-      };
-      /** @description Bad Request - Validation error */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Too Many Requests - Rate limit exceeded */
-      429: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponse'];
-        };
-      };
-    };
-  };
-  pub_chive_graph_getAuthorityReconciliations: {
-    parameters: {
-      query: {
-        limit: number;
-        cursor?: string;
-        authorityId: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            /** @description Reconciliation records */
-            reconciliations: {
-              /** @description Reconciliation ID */
-              id: string;
-              /** @description Authority record ID */
-              authorityId: string;
-              /** @description External source (e.g., arxiv, orcid) */
-              externalSource: string;
-              /** @description External identifier */
-              externalId: string;
-              /**
-               * Format: uri
-               * @description External URL
-               */
-              externalUrl?: string;
-              /**
-               * @description Reconciliation status
-               * @enum {string}
-               */
-              status: 'pending' | 'approved' | 'rejected';
-              /**
-               * Format: date-time
-               * @description Creation timestamp
-               */
-              createdAt: string;
-              /**
-               * Format: date-time
-               * @description Approval timestamp
-               */
-              approvedAt?: string;
-              /** @description Approver DID */
-              approvedBy?: string;
-            }[];
-            /** @description Pagination cursor */
-            cursor?: string;
-            /** @description Whether more results exist */
-            hasMore: boolean;
-            /** @description Total count */
+            algorithm: 'louvain' | 'label-propagation';
+            /** @description Total communities found */
             total: number;
+            /**
+             * Format: date-time
+             * @description Timestamp when generated
+             */
+            generatedAt: string;
           };
         };
       };
@@ -7760,11 +9118,11 @@ export interface operations {
   pub_chive_eprint_searchSubmissions: {
     parameters: {
       query: {
-        q: string;
+        q?: string;
         limit: number;
         cursor?: string;
         sort: 'relevance' | 'date' | 'views';
-        field?: string;
+        fieldId?: string;
         author?: string;
         license?: string;
         dateFrom?: string;

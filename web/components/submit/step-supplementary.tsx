@@ -14,7 +14,7 @@
  * @packageDocumentation
  */
 
-import { useCallback, useState, useMemo, useRef, useEffect } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import {
   FileText,
@@ -31,21 +31,18 @@ import {
   Paperclip,
   GripVertical,
   X,
-  ChevronDown,
   Plus,
 } from 'lucide-react';
 
-import { FileDropzone, type SelectedFile } from '@/components/forms';
+import {
+  FileDropzone,
+  ConceptAutocomplete,
+  type SelectedFile,
+  type ConceptSuggestion,
+} from '@/components/forms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { EprintFormValues, SupplementaryMaterialInput } from './submission-wizard';
@@ -65,21 +62,28 @@ export interface StepSupplementaryProps {
 }
 
 /**
- * Supplementary material category.
+ * Known supplementary category slugs for auto-detection and icons.
+ *
+ * @remarks
+ * Categories are now sourced from the knowledge graph via ConceptAutocomplete.
+ * These slugs are used for auto-detection from file types and for icon display.
  */
-type SupplementaryCategory =
-  | 'appendix'
-  | 'figure'
-  | 'table'
-  | 'dataset'
-  | 'code'
-  | 'notebook'
-  | 'video'
-  | 'audio'
-  | 'presentation'
-  | 'protocol'
-  | 'questionnaire'
-  | 'other';
+const KNOWN_CATEGORY_SLUGS = [
+  'appendix',
+  'figure',
+  'table',
+  'dataset',
+  'code',
+  'notebook',
+  'video',
+  'audio',
+  'presentation',
+  'protocol',
+  'questionnaire',
+  'other',
+] as const;
+
+type KnownCategorySlug = (typeof KNOWN_CATEGORY_SLUGS)[number];
 
 // =============================================================================
 // CONSTANTS
@@ -118,9 +122,9 @@ const MAX_SUPPLEMENTARY_SIZE = 104857600; // 100MB per file
 const MAX_SUPPLEMENTARY_FILES = 50;
 
 /**
- * Category labels for display.
+ * Category labels for display (fallback when knowledge graph name not available).
  */
-const CATEGORY_LABELS: Record<SupplementaryCategory, string> = {
+const CATEGORY_LABELS: Record<KnownCategorySlug, string> = {
   appendix: 'Appendix',
   figure: 'Figure',
   table: 'Table',
@@ -136,9 +140,9 @@ const CATEGORY_LABELS: Record<SupplementaryCategory, string> = {
 };
 
 /**
- * Category icons.
+ * Category icons mapped by slug.
  */
-const CATEGORY_ICONS: Record<SupplementaryCategory, React.ComponentType<{ className?: string }>> = {
+const CATEGORY_ICONS: Record<KnownCategorySlug, React.ComponentType<{ className?: string }>> = {
   appendix: FileText,
   figure: Image,
   table: Table2,
@@ -154,9 +158,19 @@ const CATEGORY_ICONS: Record<SupplementaryCategory, React.ComponentType<{ classN
 };
 
 /**
+ * Gets icon for a category slug.
+ */
+function getCategoryIcon(slug: string): React.ComponentType<{ className?: string }> {
+  if (slug in CATEGORY_ICONS) {
+    return CATEGORY_ICONS[slug as KnownCategorySlug];
+  }
+  return Paperclip;
+}
+
+/**
  * Extension to category mapping for auto-detection.
  */
-const EXTENSION_TO_CATEGORY: Record<string, SupplementaryCategory> = {
+const EXTENSION_TO_CATEGORY: Record<string, KnownCategorySlug> = {
   // Figures
   png: 'figure',
   jpg: 'figure',
@@ -230,7 +244,7 @@ const EXTENSION_TO_CATEGORY: Record<string, SupplementaryCategory> = {
 /**
  * Filename patterns to category mapping.
  */
-const FILENAME_PATTERNS: Array<{ pattern: RegExp; category: SupplementaryCategory }> = [
+const FILENAME_PATTERNS: Array<{ pattern: RegExp; category: KnownCategorySlug }> = [
   { pattern: /appendix/i, category: 'appendix' },
   { pattern: /supplement(ary)?[\s_-]?text/i, category: 'appendix' },
   { pattern: /figure[\s_-]?s?\d*/i, category: 'figure' },
@@ -263,9 +277,9 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
- * Detects category from filename.
+ * Detects category slug from filename.
  */
-function detectCategory(filename: string): SupplementaryCategory {
+function detectCategory(filename: string): KnownCategorySlug {
   // Check filename patterns first
   for (const { pattern, category } of FILENAME_PATTERNS) {
     if (pattern.test(filename)) {
@@ -293,7 +307,7 @@ function detectFormat(filename: string): string {
 /**
  * Generates a default label from filename.
  */
-function generateLabel(filename: string, category: SupplementaryCategory): string {
+function generateLabel(filename: string, category: string): string {
   // Try to extract a meaningful label
   const nameWithoutExt = filename.replace(/\.[^.]+$/, '');
 
@@ -303,9 +317,13 @@ function generateLabel(filename: string, category: SupplementaryCategory): strin
   // Capitalize first letter
   const capitalized = words.charAt(0).toUpperCase() + words.slice(1);
 
-  // If it looks like a generic name, use category + number
+  // If it looks like a generic name, use category label
   if (/^(file|document|image|data)\s*\d*$/i.test(capitalized)) {
-    return `${CATEGORY_LABELS[category]}`;
+    const label =
+      category in CATEGORY_LABELS
+        ? CATEGORY_LABELS[category as KnownCategorySlug]
+        : category.charAt(0).toUpperCase() + category.slice(1);
+    return label;
   }
 
   return capitalized;
@@ -338,7 +356,16 @@ function SupplementaryItem({
   isDragging,
   isDragTarget,
 }: SupplementaryItemProps) {
-  const Icon = CATEGORY_ICONS[item.category];
+  const Icon = getCategoryIcon(item.category);
+
+  // Handler for concept selection
+  const handleConceptSelect = (concept: ConceptSuggestion) => {
+    onUpdate(index, {
+      category: concept.id, // slug
+      categoryUri: concept.uri,
+      categoryName: concept.name,
+    });
+  };
 
   return (
     <div
@@ -407,31 +434,33 @@ function SupplementaryItem({
           </div>
 
           {/* Category selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Category:</span>
-            <Select
-              value={item.category}
-              onValueChange={(value) =>
-                onUpdate(index, { category: value as SupplementaryCategory })
-              }
-            >
-              <SelectTrigger className="h-8 w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => {
-                  const CategoryIcon = CATEGORY_ICONS[value as SupplementaryCategory];
-                  return (
-                    <SelectItem key={value} value={value}>
-                      <div className="flex items-center gap-2">
-                        <CategoryIcon className="h-4 w-4" />
-                        <span>{label}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Category</label>
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1">
+                <ConceptAutocomplete
+                  category="supplementary-type"
+                  value={item.categoryUri}
+                  onSelect={handleConceptSelect}
+                  placeholder={
+                    item.categoryName ??
+                    (item.category in CATEGORY_LABELS
+                      ? CATEGORY_LABELS[item.category as KnownCategorySlug]
+                      : 'Select category...')
+                  }
+                  className="h-8"
+                />
+              </div>
+            </div>
+            {!item.categoryUri && (
+              <p className="text-xs text-muted-foreground">
+                Auto-detected:{' '}
+                {item.category in CATEGORY_LABELS
+                  ? CATEGORY_LABELS[item.category as KnownCategorySlug]
+                  : item.category}
+              </p>
+            )}
           </div>
         </div>
 
@@ -607,17 +636,18 @@ export function StepSupplementary({ form, className }: StepSupplementaryProps) {
         <h4 className="font-medium mb-3">Category Guide</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
           {Object.entries(CATEGORY_LABELS).map(([category, label]) => {
-            const Icon = CATEGORY_ICONS[category as SupplementaryCategory];
+            const CategoryIcon = CATEGORY_ICONS[category as KnownCategorySlug];
             return (
               <div key={category} className="flex items-center gap-2 text-muted-foreground">
-                <Icon className="h-4 w-4" />
+                <CategoryIcon className="h-4 w-4" />
                 <span>{label}</span>
               </div>
             );
           })}
         </div>
         <p className="text-xs text-muted-foreground mt-3">
-          Categories are auto-detected from file type and name but can be changed manually.
+          Categories are auto-detected from file type and name. Search to select from the knowledge
+          graph.
         </p>
       </section>
     </div>

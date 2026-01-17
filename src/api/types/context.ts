@@ -18,6 +18,10 @@ import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.j
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
 import type { DiscoveryService } from '../../services/discovery/discovery-service.js';
 import type { EprintService } from '../../services/eprint/eprint-service.js';
+import type { EdgeService } from '../../services/governance/edge-service.js';
+import type { GovernancePDSWriter } from '../../services/governance/governance-pds-writer.js';
+import type { NodeService } from '../../services/governance/node-service.js';
+import type { TrustedEditorService } from '../../services/governance/trusted-editor-service.js';
 import type { ImportService } from '../../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../../services/metrics/metrics-service.js';
@@ -26,7 +30,11 @@ import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';
 import type { SearchService } from '../../services/search/search-service.js';
-import type { ContributionTypeManager } from '../../storage/neo4j/contribution-type-manager.js';
+import type { EdgeRepository } from '../../storage/neo4j/edge-repository.js';
+import type { FacetManager } from '../../storage/neo4j/facet-manager.js';
+import type { GraphAlgorithmCache } from '../../storage/neo4j/graph-algorithm-cache.js';
+import type { NodeRepository } from '../../storage/neo4j/node-repository.js';
+import type { RecommendationService } from '../../storage/neo4j/recommendations.js';
 import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type { DID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
@@ -46,13 +54,21 @@ export interface ChiveServices {
   readonly blobProxy: BlobProxyService;
   readonly review: ReviewService;
   readonly tagManager: TagManager;
-  readonly contributionTypeManager: ContributionTypeManager;
+  readonly facetManager: FacetManager;
+  readonly nodeRepository: NodeRepository;
+  readonly edgeRepository: EdgeRepository;
+  readonly nodeService: NodeService;
+  readonly edgeService: EdgeService;
   readonly backlink: BacklinkService;
   readonly claiming: ClaimingService;
   readonly import: ImportService;
   readonly pdsSync: PDSSyncService;
   readonly activity: ActivityService;
   readonly discovery?: DiscoveryService;
+  readonly recommendationService?: RecommendationService;
+  readonly graphAlgorithmCache?: GraphAlgorithmCache;
+  readonly trustedEditor?: TrustedEditorService;
+  readonly governancePdsWriter?: GovernancePDSWriter;
 }
 
 /**

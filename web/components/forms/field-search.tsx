@@ -110,9 +110,9 @@ export function FieldSearch({
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Fetch fields, using approved status by default.
+  // Fetch established fields.
   const { data: fieldsData, isLoading } = useFields({
-    status: 'approved',
+    status: 'established',
     limit: 50,
   });
 

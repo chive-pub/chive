@@ -12,6 +12,8 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
 
+import type { AtUri } from '../../../../types/atproto.js';
+import { extractPlainText } from '../../../../utils/rich-text.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import { paginationQuerySchema } from '../../../schemas/common.js';
 import { eprintSummarySchema } from '../../../schemas/eprint.js';
@@ -89,7 +91,7 @@ export async function getTrendingHandler(
   c: Context<ChiveEnv>,
   params: GetTrendingParams
 ): Promise<GetTrendingResponse> {
-  const { metrics, eprint } = c.get('services');
+  const { metrics, eprint, graphAlgorithmCache } = c.get('services');
   const logger = c.get('logger');
 
   const limit = params.limit ?? 20;
@@ -98,15 +100,44 @@ export async function getTrendingHandler(
   logger.debug('Getting trending eprints', {
     window,
     limit,
+    usingCache: !!graphAlgorithmCache,
   });
 
-  // Get trending entries from metrics service
-  const trendingEntries = await metrics.getTrending(window, limit);
+  // Try graph algorithm cache first for faster response
+  let trendingEntries: { uri: string; score: number; velocity?: number }[] = [];
+
+  if (graphAlgorithmCache) {
+    try {
+      const cachedTrending = await graphAlgorithmCache.getTrending(window);
+      if (cachedTrending && cachedTrending.length > 0) {
+        trendingEntries = cachedTrending.slice(0, limit).map((paper) => ({
+          uri: paper.uri as string,
+          score: paper.viewCount ?? paper.score,
+          velocity: undefined,
+        }));
+        logger.debug('Using cached trending data', { count: trendingEntries.length });
+      }
+    } catch (error) {
+      logger.warn('Failed to get cached trending', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // Fall back to metrics service if no cached data
+  if (trendingEntries.length === 0) {
+    const metricsEntries = await metrics.getTrending(window, limit);
+    trendingEntries = metricsEntries.map((entry) => ({
+      uri: entry.uri as string,
+      score: entry.score,
+      velocity: entry.velocity,
+    }));
+  }
 
   // Enrich with eprint data
   const enrichedTrending = await Promise.all(
     trendingEntries.map(async (entry, index) => {
-      const eprintData = await eprint.getEprint(entry.uri);
+      const eprintData = await eprint.getEprint(entry.uri as AtUri);
 
       if (!eprintData) {
         // Skip entries where eprint is no longer indexed
@@ -122,11 +153,12 @@ export async function getTrendingHandler(
       // Calculate staleness using configured threshold
       const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
 
+      const plainAbstract = eprintData.abstractPlainText ?? extractPlainText(eprintData.abstract);
       return {
         uri: eprintData.uri,
         cid: eprintData.cid,
         title: eprintData.title,
-        abstract: eprintData.abstract.substring(0, 500),
+        abstract: plainAbstract.substring(0, 500),
         authors: eprintData.authors.map((author) => ({
           did: author.did,
           name: author.name,

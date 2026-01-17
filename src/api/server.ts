@@ -31,6 +31,10 @@ import type { BlobProxyService } from '../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../services/claiming/claiming-service.js';
 import type { DiscoveryService } from '../services/discovery/discovery-service.js';
 import type { EprintService } from '../services/eprint/eprint-service.js';
+import type { EdgeService } from '../services/governance/edge-service.js';
+import type { GovernancePDSWriter } from '../services/governance/governance-pds-writer.js';
+import type { NodeService } from '../services/governance/node-service.js';
+import type { TrustedEditorService } from '../services/governance/trusted-editor-service.js';
 import type { ImportService } from '../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../services/metrics/metrics-service.js';
@@ -39,7 +43,9 @@ import type { ReviewService } from '../services/review/review-service.js';
 import type { RankingService } from '../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../services/search/relevance-logger.js';
 import type { SearchService } from '../services/search/search-service.js';
-import type { ContributionTypeManager } from '../storage/neo4j/contribution-type-manager.js';
+import type { EdgeRepository } from '../storage/neo4j/edge-repository.js';
+import type { FacetManager } from '../storage/neo4j/facet-manager.js';
+import type { NodeRepository } from '../storage/neo4j/node-repository.js';
 import type { TagManager } from '../storage/neo4j/tag-manager.js';
 import type { IAuthorizationService } from '../types/interfaces/authorization.interface.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
@@ -50,7 +56,7 @@ import { errorHandler } from './middleware/error-handler.js';
 import { conditionalRateLimiter } from './middleware/rate-limit.js';
 import { requestContext } from './middleware/request-context.js';
 import { registerRoutes } from './routes.js';
-import type { ChiveEnv } from './types/context.js';
+import type { ChiveEnv, ChiveServices } from './types/context.js';
 
 /**
  * Server configuration with injected dependencies.
@@ -94,9 +100,29 @@ export interface ServerConfig {
   readonly tagManager: TagManager;
 
   /**
-   * Contribution type manager for CRediT roles.
+   * Node repository for unified graph nodes.
    */
-  readonly contributionTypeManager: ContributionTypeManager;
+  readonly nodeRepository: NodeRepository;
+
+  /**
+   * Edge repository for graph edges.
+   */
+  readonly edgeRepository: EdgeRepository;
+
+  /**
+   * Node service for graph node operations.
+   */
+  readonly nodeService: NodeService;
+
+  /**
+   * Edge service for graph edge operations.
+   */
+  readonly edgeService: EdgeService;
+
+  /**
+   * Facet manager for PMEST/FAST classification.
+   */
+  readonly facetManager: FacetManager;
 
   /**
    * Backlink service instance.
@@ -137,6 +163,16 @@ export interface ServerConfig {
    * Discovery service for recommendations (optional).
    */
   readonly discoveryService?: DiscoveryService;
+
+  /**
+   * Trusted editor service for role management (optional).
+   */
+  readonly trustedEditorService?: TrustedEditorService;
+
+  /**
+   * Governance PDS writer for authority records (optional).
+   */
+  readonly governancePdsWriter?: GovernancePDSWriter;
 
   /**
    * Redis client for rate limiting and caching.
@@ -257,7 +293,11 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       blobProxy: config.blobProxyService,
       review: config.reviewService,
       tagManager: config.tagManager,
-      contributionTypeManager: config.contributionTypeManager,
+      facetManager: config.facetManager,
+      nodeRepository: config.nodeRepository,
+      edgeRepository: config.edgeRepository,
+      nodeService: config.nodeService,
+      edgeService: config.edgeService,
       backlink: config.backlinkService,
       claiming: config.claimingService,
       import: config.importService,
@@ -266,7 +306,9 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       ranking: config.rankingService,
       discovery: config.discoveryService,
       activity: config.activityService,
-    });
+      trustedEditor: config.trustedEditorService,
+      governancePdsWriter: config.governancePdsWriter,
+    } as ChiveServices);
     c.set('redis', config.redis);
     c.set('logger', config.logger);
     c.set('alphaService', config.alphaService);

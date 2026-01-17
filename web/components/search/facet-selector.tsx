@@ -1,34 +1,27 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useCallback } from 'react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FacetPanel, FacetPanelSkeleton } from './facet-panel';
 import { FacetChipList } from './facet-chip';
 import { cn } from '@/lib/utils';
 import {
-  type FacetDimension,
-  type FacetFilters,
-  PMEST_DIMENSIONS,
-  FAST_DIMENSIONS,
-  ALL_FACETS,
-  filtersToSearchParams,
-  searchParamsToFilters,
-  countActiveFilters,
-} from '@/lib/utils/facets';
-import type { FacetedSearchResponse } from '@/lib/api/schema';
+  type DynamicFacetFilters,
+  type FacetDefinition,
+  countTotalFilters,
+} from '@/lib/hooks/use-faceted-search';
 
 /**
  * Props for the FacetSelector component.
  */
 export interface FacetSelectorProps {
-  /** Faceted search response with counts */
-  facets?: FacetedSearchResponse['facets'];
-  /** Current filter selections */
-  filters: FacetFilters;
+  /** Facet definitions from the API */
+  facets?: FacetDefinition[];
+  /** Current filter selections keyed by facet slug */
+  filters: DynamicFacetFilters;
   /** Called when filters change */
-  onFiltersChange: (filters: FacetFilters) => void;
+  onFiltersChange: (filters: DynamicFacetFilters) => void;
   /** Whether facets are loading */
   isLoading?: boolean;
   /** Display mode */
@@ -38,12 +31,11 @@ export interface FacetSelectorProps {
 }
 
 /**
- * 10-dimensional facet selector component.
+ * Dynamic facet selector component.
  *
  * @remarks
  * Client component that provides a full interface for selecting
- * facets across all PMEST and FAST dimensions. Supports multiple
- * display modes for different layouts.
+ * facets fetched dynamically from the knowledge graph.
  *
  * @example
  * ```tsx
@@ -51,60 +43,55 @@ export interface FacetSelectorProps {
  *   facets={searchResponse.facets}
  *   filters={currentFilters}
  *   onFiltersChange={(f) => updateFilters(f)}
- *   mode="tabs"
+ *   mode="sidebar"
  * />
  * ```
- *
- * @param props - Component props
- * @returns React element with facet selection interface
  */
 export function FacetSelector({
-  facets,
+  facets = [],
   filters,
   onFiltersChange,
   isLoading = false,
   mode = 'tabs',
   className,
 }: FacetSelectorProps) {
-  const [activeTab, setActiveTab] = useState<'pmest' | 'fast'>('pmest');
-
-  const handleDimensionChange = useCallback(
-    (dimension: FacetDimension, values: string[]) => {
-      const newFilters = { ...filters };
-      if (dimension === 'form-genre') {
-        newFilters.formGenre = values;
+  const handleFacetChange = useCallback(
+    (facetSlug: string, values: string[]) => {
+      if (values.length === 0) {
+        // Remove the facet key entirely when no values selected
+        const { [facetSlug]: _, ...rest } = filters;
+        onFiltersChange(rest);
       } else {
-        newFilters[dimension as keyof FacetFilters] = values;
+        onFiltersChange({
+          ...filters,
+          [facetSlug]: values,
+        });
       }
-      onFiltersChange(newFilters);
     },
     [filters, onFiltersChange]
   );
 
   const handleRemoveFacet = useCallback(
-    (dimension: FacetDimension, value: string) => {
-      const key = dimension === 'form-genre' ? 'formGenre' : (dimension as keyof FacetFilters);
-      const currentValues = filters[key] ?? [];
-      handleDimensionChange(
-        dimension,
-        currentValues.filter((v) => v !== value)
-      );
+    (facetSlug: string, value: string) => {
+      const currentValues = filters[facetSlug] ?? [];
+      const newValues = currentValues.filter((v) => v !== value);
+      handleFacetChange(facetSlug, newValues);
     },
-    [filters, handleDimensionChange]
+    [filters, handleFacetChange]
   );
 
   const handleClearAll = useCallback(() => {
     onFiltersChange({});
   }, [onFiltersChange]);
 
-  const activeFilterCount = countActiveFilters(filters);
+  const activeFilterCount = countTotalFilters(filters);
 
   if (mode === 'sidebar') {
     return (
       <FacetSidebar
         facets={facets}
         filters={filters}
-        onDimensionChange={handleDimensionChange}
+        onFacetChange={handleFacetChange}
         onRemoveFacet={handleRemoveFacet}
         onClearAll={handleClearAll}
         isLoading={isLoading}
@@ -113,73 +100,74 @@ export function FacetSelector({
     );
   }
 
+  // Tabs mode - show facets in two groups based on index
+  const firstHalf = facets.slice(0, Math.ceil(facets.length / 2));
+  const secondHalf = facets.slice(Math.ceil(facets.length / 2));
+
   return (
     <div className={cn('space-y-4', className)}>
       {/* Active filters */}
       {activeFilterCount > 0 && (
         <FacetChipList
-          selections={filtersToChipSelections(filters)}
+          facets={facets}
+          filters={filters}
           onRemove={handleRemoveFacet}
           onClearAll={handleClearAll}
         />
       )}
 
       {/* Tab navigation */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pmest' | 'fast')}>
+      <Tabs defaultValue="group1">
         <TabsList className="w-full">
-          <TabsTrigger value="pmest" className="flex-1">
-            PMEST
-            <PMESTActiveCount filters={filters} />
+          <TabsTrigger value="group1" className="flex-1">
+            Facets
+            <ActiveCount filters={filters} facets={firstHalf} />
           </TabsTrigger>
-          <TabsTrigger value="fast" className="flex-1">
-            FAST
-            <FASTActiveCount filters={filters} />
-          </TabsTrigger>
+          {secondHalf.length > 0 && (
+            <TabsTrigger value="group2" className="flex-1">
+              More
+              <ActiveCount filters={filters} facets={secondHalf} />
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="pmest" className="mt-4 space-y-4">
+        <TabsContent value="group1" className="mt-4 space-y-4">
           {isLoading ? (
-            <FacetPanelsSkeleton dimensions={PMEST_DIMENSIONS} />
+            <FacetPanelsSkeleton count={5} />
           ) : (
-            PMEST_DIMENSIONS.map((dimension) => (
+            firstHalf.map((facet) => (
               <FacetPanel
-                key={dimension}
-                dimension={dimension}
-                title={ALL_FACETS[dimension].label}
-                values={facets?.[dimension] ?? []}
-                selected={filters[dimension] ?? []}
-                onSelectionChange={(values) => handleDimensionChange(dimension, values)}
+                key={facet.slug}
+                dimension={facet.slug}
+                title={facet.label}
+                values={facet.values}
+                selected={filters[facet.slug] ?? []}
+                onSelectionChange={(values) => handleFacetChange(facet.slug, values)}
                 searchable
               />
             ))
           )}
         </TabsContent>
 
-        <TabsContent value="fast" className="mt-4 space-y-4">
-          {isLoading ? (
-            <FacetPanelsSkeleton dimensions={FAST_DIMENSIONS} />
-          ) : (
-            FAST_DIMENSIONS.map((dimension) => (
-              <FacetPanel
-                key={dimension}
-                dimension={dimension}
-                title={ALL_FACETS[dimension].label}
-                values={
-                  dimension === 'form-genre'
-                    ? (facets?.formGenre ?? [])
-                    : (facets?.[dimension as keyof typeof facets] ?? [])
-                }
-                selected={
-                  dimension === 'form-genre'
-                    ? (filters.formGenre ?? [])
-                    : (filters[dimension as keyof FacetFilters] ?? [])
-                }
-                onSelectionChange={(values) => handleDimensionChange(dimension, values)}
-                searchable
-              />
-            ))
-          )}
-        </TabsContent>
+        {secondHalf.length > 0 && (
+          <TabsContent value="group2" className="mt-4 space-y-4">
+            {isLoading ? (
+              <FacetPanelsSkeleton count={5} />
+            ) : (
+              secondHalf.map((facet) => (
+                <FacetPanel
+                  key={facet.slug}
+                  dimension={facet.slug}
+                  title={facet.label}
+                  values={facet.values}
+                  selected={filters[facet.slug] ?? []}
+                  onSelectionChange={(values) => handleFacetChange(facet.slug, values)}
+                  searchable
+                />
+              ))
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -189,10 +177,10 @@ export function FacetSelector({
  * Props for the FacetSidebar component.
  */
 interface FacetSidebarProps {
-  facets?: FacetedSearchResponse['facets'];
-  filters: FacetFilters;
-  onDimensionChange: (dimension: FacetDimension, values: string[]) => void;
-  onRemoveFacet: (dimension: FacetDimension, value: string) => void;
+  facets: FacetDefinition[];
+  filters: DynamicFacetFilters;
+  onFacetChange: (facetSlug: string, values: string[]) => void;
+  onRemoveFacet: (facetSlug: string, value: string) => void;
   onClearAll: () => void;
   isLoading?: boolean;
   className?: string;
@@ -204,13 +192,13 @@ interface FacetSidebarProps {
 function FacetSidebar({
   facets,
   filters,
-  onDimensionChange,
+  onFacetChange,
   onRemoveFacet,
   onClearAll,
   isLoading,
   className,
 }: FacetSidebarProps) {
-  const activeFilterCount = countActiveFilters(filters);
+  const activeFilterCount = countTotalFilters(filters);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -227,64 +215,31 @@ function FacetSidebar({
             </button>
           </div>
           <FacetChipList
-            selections={filtersToChipSelections(filters)}
+            facets={facets}
+            filters={filters}
             onRemove={onRemoveFacet}
             maxVisible={6}
           />
         </div>
       )}
 
-      {/* PMEST section */}
+      {/* Facet panels */}
       <div>
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          PMEST Facets
+          Filter by
         </h3>
         {isLoading ? (
-          <FacetPanelsSkeleton dimensions={PMEST_DIMENSIONS} />
+          <FacetPanelsSkeleton count={5} />
         ) : (
           <div className="space-y-2">
-            {PMEST_DIMENSIONS.map((dimension) => (
+            {facets.map((facet) => (
               <FacetPanel
-                key={dimension}
-                dimension={dimension}
-                title={ALL_FACETS[dimension].label}
-                values={facets?.[dimension] ?? []}
-                selected={filters[dimension] ?? []}
-                onSelectionChange={(values) => onDimensionChange(dimension, values)}
-                collapsible
-                defaultCollapsed
-                maxVisible={5}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* FAST section */}
-      <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          FAST Facets
-        </h3>
-        {isLoading ? (
-          <FacetPanelsSkeleton dimensions={FAST_DIMENSIONS} />
-        ) : (
-          <div className="space-y-2">
-            {FAST_DIMENSIONS.map((dimension) => (
-              <FacetPanel
-                key={dimension}
-                dimension={dimension}
-                title={ALL_FACETS[dimension].label}
-                values={
-                  dimension === 'form-genre'
-                    ? (facets?.formGenre ?? [])
-                    : (facets?.[dimension as keyof typeof facets] ?? [])
-                }
-                selected={
-                  dimension === 'form-genre'
-                    ? (filters.formGenre ?? [])
-                    : (filters[dimension as keyof FacetFilters] ?? [])
-                }
-                onSelectionChange={(values) => onDimensionChange(dimension, values)}
+                key={facet.slug}
+                dimension={facet.slug}
+                title={facet.label}
+                values={facet.values}
+                selected={filters[facet.slug] ?? []}
+                onSelectionChange={(values) => onFacetChange(facet.slug, values)}
                 collapsible
                 defaultCollapsed
                 maxVisible={5}
@@ -298,24 +253,16 @@ function FacetSidebar({
 }
 
 /**
- * Shows count of active PMEST filters.
+ * Shows count of active filters for a set of facets.
  */
-function PMESTActiveCount({ filters }: { filters: FacetFilters }) {
-  const count = PMEST_DIMENSIONS.reduce((sum, dim) => sum + (filters[dim]?.length ?? 0), 0);
-  if (count === 0) return null;
-  return (
-    <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
-      {count}
-    </span>
-  );
-}
-
-/**
- * Shows count of active FAST filters.
- */
-function FASTActiveCount({ filters }: { filters: FacetFilters }) {
-  const fastKeys: (keyof FacetFilters)[] = ['person', 'organization', 'event', 'work', 'formGenre'];
-  const count = fastKeys.reduce((sum, key) => sum + (filters[key]?.length ?? 0), 0);
+function ActiveCount({
+  filters,
+  facets,
+}: {
+  filters: DynamicFacetFilters;
+  facets: FacetDefinition[];
+}) {
+  const count = facets.reduce((sum, facet) => sum + (filters[facet.slug]?.length ?? 0), 0);
   if (count === 0) return null;
   return (
     <span className="ml-1.5 rounded-full bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
@@ -327,73 +274,12 @@ function FASTActiveCount({ filters }: { filters: FacetFilters }) {
 /**
  * Skeleton for multiple facet panels.
  */
-function FacetPanelsSkeleton({ dimensions }: { dimensions: readonly FacetDimension[] }) {
+function FacetPanelsSkeleton({ count }: { count: number }) {
   return (
     <div className="space-y-4">
-      {dimensions.map((dim) => (
-        <FacetPanelSkeleton key={dim} rows={5} />
+      {Array.from({ length: count }).map((_, i) => (
+        <FacetPanelSkeleton key={i} rows={5} />
       ))}
     </div>
   );
-}
-
-/**
- * Converts FacetFilters to the format expected by FacetChipList.
- */
-function filtersToChipSelections(filters: FacetFilters): Partial<Record<FacetDimension, string[]>> {
-  return {
-    personality: filters.personality,
-    matter: filters.matter,
-    energy: filters.energy,
-    space: filters.space,
-    time: filters.time,
-    person: filters.person,
-    organization: filters.organization,
-    event: filters.event,
-    work: filters.work,
-    'form-genre': filters.formGenre,
-  };
-}
-
-/**
- * Props for the FacetSelectorWithUrl component.
- */
-export interface FacetSelectorWithUrlProps extends Omit<
-  FacetSelectorProps,
-  'filters' | 'onFiltersChange'
-> {
-  /** Base path for navigation */
-  basePath?: string;
-}
-
-/**
- * Facet selector that syncs with URL search params.
- *
- * @example
- * ```tsx
- * <FacetSelectorWithUrl
- *   facets={searchResponse.facets}
- *   basePath="/browse"
- * />
- * ```
- */
-export function FacetSelectorWithUrl({
-  basePath = '/browse',
-  ...props
-}: FacetSelectorWithUrlProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const filters = useMemo(() => searchParamsToFilters(searchParams), [searchParams]);
-
-  const handleFiltersChange = useCallback(
-    (newFilters: FacetFilters) => {
-      const params = filtersToSearchParams(newFilters);
-      const queryString = params.toString();
-      router.push(queryString ? `${basePath}?${queryString}` : basePath, { scroll: false });
-    },
-    [router, basePath]
-  );
-
-  return <FacetSelector filters={filters} onFiltersChange={handleFiltersChange} {...props} />;
 }

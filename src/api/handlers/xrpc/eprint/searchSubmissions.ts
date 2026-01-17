@@ -23,6 +23,7 @@ import { TaxonomyCategoryMatcher } from '../../../../services/search/category-ma
 import type { LTRFeatureVector } from '../../../../services/search/relevance-logger.js';
 import { AcademicTextScorer } from '../../../../services/search/text-scorer.js';
 import type { DID } from '../../../../types/atproto.js';
+import { extractPlainText } from '../../../../utils/rich-text.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import {
   searchEprintsParamsSchema,
@@ -77,21 +78,24 @@ export async function searchSubmissionsHandler(
     }
   }
 
+  // When no query provided, use match-all for filter-based browsing
+  const queryString = params.q ?? '*';
+
   logger.debug('Searching eprints', {
-    query: params.q,
+    query: queryString,
     limit: params.limit,
-    field: params.field,
+    fieldId: params.fieldId,
     author: params.author,
   });
 
   // Build search query
   const searchQuery = {
-    q: params.q,
+    q: queryString,
     limit: params.limit ?? 20,
     offset: params.cursor ? parseInt(params.cursor, 10) : 0,
     filters: {
       author: params.author as DID | undefined,
-      subjects: params.field ? [params.field] : undefined,
+      subjects: params.fieldId ? [params.fieldId] : undefined,
       dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,
       dateTo: params.dateTo ? new Date(params.dateTo) : undefined,
     },
@@ -118,11 +122,12 @@ export async function searchSubmissionsHandler(
       const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
       const recordUrl = `${eprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
 
+      const plainAbstract = eprintData.abstractPlainText ?? extractPlainText(eprintData.abstract);
       return {
         uri: eprintData.uri,
         cid: eprintData.cid,
         title: eprintData.title,
-        abstract: eprintData.abstract.substring(0, 500), // Truncate for list view
+        abstract: plainAbstract.substring(0, 500), // Truncate for list view
         authors: eprintData.authors.map((author) => ({
           did: author.did,
           name: author.name,
@@ -188,11 +193,13 @@ export async function searchSubmissionsHandler(
   const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
   const hasMore = offset + validHits.length < searchResults.total;
 
-  // Generate impression ID and log impression for LTR training
+  // Generate impression ID and log impression for LTR training (only for actual queries, not filter-only)
   let impressionId: string | undefined;
-  if (params.q && validHits.length > 0) {
+  const userQuery = params.q;
+  const hasTextQuery = userQuery !== undefined && userQuery !== '*';
+  if (hasTextQuery && validHits.length > 0) {
     impressionId = relevanceLogger.createImpressionId();
-    const queryId = relevanceLogger.computeQueryId(params.q);
+    const queryId = relevanceLogger.computeQueryId(userQuery);
 
     // Create text scorer and category matcher for computing feature scores
     const textScorer = new AcademicTextScorer();
@@ -201,12 +208,12 @@ export async function searchSubmissionsHandler(
     // Extract features for each result
     const impressionResults = validHits.map((hit, index) => {
       // Compute text relevance features using academic text scorer
-      const titleMatchScore = textScorer.score(params.q, hit.title);
-      const abstractMatchScore = hit.abstract ? textScorer.score(params.q, hit.abstract) : 0;
+      const titleMatchScore = textScorer.score(userQuery, hit.title);
+      const abstractMatchScore = hit.abstract ? textScorer.score(userQuery, hit.abstract) : 0;
 
       // Combined text relevance with field weights
       const textRelevance = textScorer.scoreMultiField(
-        params.q,
+        userQuery,
         { title: hit.title, abstract: hit.abstract },
         { title: 1.0, abstract: 0.5 }
       );
@@ -241,7 +248,7 @@ export async function searchSubmissionsHandler(
       .logImpression({
         impressionId,
         queryId,
-        query: params.q,
+        query: userQuery,
         userDid: user?.did,
         sessionId: c.get('requestId'),
         timestamp: new Date(),
@@ -265,7 +272,7 @@ export async function searchSubmissionsHandler(
   };
 
   logger.info('Search completed', {
-    query: params.q,
+    query: queryString,
     totalHits: searchResults.total,
     returnedHits: response.hits.length,
     impressionId,

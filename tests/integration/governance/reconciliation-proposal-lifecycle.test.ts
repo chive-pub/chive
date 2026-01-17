@@ -327,7 +327,7 @@ class MockReconciliationManager {
       {
         sourceEntityType: 'contribution-type' as ReconcilableEntityType,
         sourceEntityUri:
-          `at://${GOVERNANCE_DID}/pub.chive.contribution.type/conceptualization` as AtUri,
+          `at://${GOVERNANCE_DID}/pub.chive.graph.concept/conceptualization` as AtUri,
         targetSystem: 'credit' as ReconciliationSystem,
         targetIdentifier: 'conceptualization',
         targetUri: 'https://credit.niso.org/contributor-roles/conceptualization/',

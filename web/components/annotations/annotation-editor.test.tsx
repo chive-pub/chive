@@ -189,7 +189,7 @@ describe('AnnotationEditor', () => {
       await user.type(textarea, '@');
 
       expect(screen.getByText('@wikidata:')).toBeInTheDocument();
-      expect(screen.getByText('@authority:')).toBeInTheDocument();
+      expect(screen.getByText('@node:')).toBeInTheDocument();
       expect(screen.getByText('@field:')).toBeInTheDocument();
       expect(screen.getByText('@eprint:')).toBeInTheDocument();
       expect(screen.getByText('^')).toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('AnnotationEditor', () => {
       await user.type(textarea, '@');
 
       expect(screen.getByText('Link to Wikidata entity')).toBeInTheDocument();
-      expect(screen.getByText('Link to authority record')).toBeInTheDocument();
+      expect(screen.getByText('Link to graph node')).toBeInTheDocument();
     });
 
     it('inserts trigger when option clicked', async () => {
@@ -301,16 +301,16 @@ describe('AnnotationPreview', () => {
       expect(badge).toHaveClass('bg-blue-100', 'text-blue-800');
     });
 
-    it('renders authority reference as badge', () => {
+    it('renders node reference as badge', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'authorityRef', uri: 'at://auth/123', label: 'Authority Name' }],
+        items: [{ type: 'nodeRef', uri: 'at://node/123', label: 'Node Name', subkind: 'topic' }],
         format: 'application/x-chive-gloss+json',
       };
 
       render(<AnnotationPreview body={body} />);
 
-      const badge = screen.getByText('Authority Name');
+      const badge = screen.getByText('Node Name');
       expect(badge).toHaveClass('bg-purple-100', 'text-purple-800');
     });
 

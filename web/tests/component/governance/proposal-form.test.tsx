@@ -202,8 +202,8 @@ describe('ProposalForm', () => {
 
     it('shows LCSH and FAST external mapping fields', () => {
       renderWithProviders(<ProposalForm onSuccess={mockOnSuccess} defaultCategory="facet" />);
-      expect(screen.getAllByText(/lcsh uri/i).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(/fast uri/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/lcsh subject heading/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/fast subject heading/i).length).toBeGreaterThan(0);
     });
 
     it('shows existing facet field for update action', async () => {

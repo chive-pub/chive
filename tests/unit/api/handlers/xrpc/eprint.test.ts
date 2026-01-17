@@ -14,7 +14,17 @@ import type { EprintView } from '@/services/eprint/eprint-service.js';
 import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
 import { NotFoundError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 const createMockLogger = (): ILogger => ({
   debug: vi.fn(),
@@ -38,7 +48,8 @@ const createMockEprint = (overrides?: Partial<EprintView>): EprintView => ({
   uri: 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri,
   cid: 'bafyreiabc123' as CID,
   title: 'Quantum Computing Advances',
-  abstract: 'This paper presents advances in quantum computing...',
+  abstract: createMockAbstract('This paper presents advances in quantum computing...'),
+  abstractPlainText: 'This paper presents advances in quantum computing...',
   authors: [mockAuthor],
   submittedBy: 'did:plc:author123' as DID,
   license: 'CC-BY-4.0',
@@ -307,7 +318,10 @@ describe('XRPC Eprint Handlers', () => {
 
     it('truncates abstract to 500 characters', async () => {
       const longAbstract = 'A'.repeat(1000);
-      const eprint = createMockEprint({ abstract: longAbstract });
+      const eprint = createMockEprint({
+        abstract: createMockAbstract(longAbstract),
+        abstractPlainText: longAbstract,
+      });
 
       mockEprintService.getEprintsByAuthor.mockResolvedValue({
         eprints: [eprint],

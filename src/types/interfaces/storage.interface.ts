@@ -16,6 +16,7 @@
  */
 
 import type { AtUri, BlobRef, CID, DID } from '../atproto.js';
+import type { AnnotationBody } from '../models/annotation.js';
 import type { EprintAuthor } from '../models/author.js';
 import type {
   ConferencePresentation,
@@ -91,12 +92,22 @@ export interface StoredEprint {
   readonly title: string;
 
   /**
-   * Eprint abstract.
+   * Rich text abstract with embedded knowledge graph references.
    *
    * @remarks
+   * Stored as AnnotationBody (RichTextBody format) with text items
+   * and nodeRef items. Uses application/x-chive-gloss+json format.
+   */
+  readonly abstract: AnnotationBody;
+
+  /**
+   * Plain text abstract for full-text search indexing.
+   *
+   * @remarks
+   * Auto-generated from the rich abstract by extracting text content.
    * Indexed for full-text search.
    */
-  readonly abstract: string;
+  readonly abstractPlainText?: string;
 
   /**
    * Blob reference to primary document in user's PDS.

@@ -17,8 +17,12 @@ const COLLECTIONS = [
   'pub.chive.review.comment',
   'pub.chive.review.endorsement',
   'pub.chive.graph.userTag',
-  'pub.chive.contribution.type',
-  'pub.chive.contribution.typeProposal',
+  'pub.chive.graph.concept',
+  'pub.chive.graph.conceptProposal',
+  'pub.chive.graph.field',
+  'pub.chive.graph.fieldProposal',
+  'pub.chive.graph.facet',
+  'pub.chive.graph.facetProposal',
 ];
 
 async function listRecords(pdsUrl: string, did: string) {

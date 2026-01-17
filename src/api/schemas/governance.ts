@@ -9,8 +9,7 @@
  * @public
  */
 
-import { z } from 'zod';
-
+import { z } from './base.js';
 import { paginationQuerySchema } from './common.js';
 
 // =============================================================================
@@ -26,14 +25,15 @@ export const voterRoleSchema = z.enum([
 
 export const proposalStatusSchema = z.enum(['pending', 'approved', 'rejected', 'expired']);
 
-export const proposalTypeSchema = z.enum(['create', 'update', 'merge', 'delete']);
+export const proposalTypeSchema = z.enum(['create', 'update', 'merge', 'delete', 'deprecate']);
 
 export const proposalCategorySchema = z.enum([
   'field',
-  'contribution-type',
+  'concept',
+  'institution',
   'facet',
-  'organization',
-  'reconciliation',
+  'authority',
+  'external-link',
 ]);
 
 export const voteValueSchema = z.enum(['approve', 'reject', 'abstain', 'request-changes']);
@@ -49,13 +49,53 @@ export type VoteValue = z.infer<typeof voteValueSchema>;
 // =============================================================================
 
 export const proposalChangesSchema = z.object({
+  // Common fields
   label: z.string().optional(),
   description: z.string().optional(),
-  fieldType: z.enum(['field', 'root', 'subfield', 'topic']).optional(),
   parentId: z.string().optional(),
   mergeTargetId: z.string().optional(),
   wikidataId: z.string().optional(),
-  dimension: z.string().optional().describe('PMEST/FAST facet dimension for facet proposals'),
+
+  // Field proposal fields
+  fieldType: z.enum(['field', 'root', 'subfield', 'topic']).optional(),
+
+  // Concept proposal fields
+  conceptCategory: z
+    .enum([
+      'institution-type',
+      'paper-type',
+      'methodology',
+      'geographic-scope',
+      'temporal-scope',
+      'document-format',
+      'publication-status',
+      'access-type',
+      'platform-code',
+      'platform-data',
+      'platform-preprint',
+      'platform-preregistration',
+      'platform-protocol',
+      'supplementary-type',
+      'researcher-type',
+      'identifier-type',
+      'presentation-type',
+    ])
+    .optional(),
+
+  // Authority proposal fields
+  authorityType: z
+    .enum(['person', 'organization', 'topic', 'geographic', 'temporal', 'form'])
+    .optional(),
+  alternateLabels: z.array(z.string()).optional(),
+  lcshId: z.string().optional(),
+  fastId: z.string().optional(),
+  viafId: z.string().optional(),
+  orcid: z.string().optional(),
+  ror: z.string().optional(),
+
+  // Facet proposal fields
+  dimension: z.string().optional().describe('PMEST/FAST facet dimension'),
+  facetLevel: z.number().optional(),
 });
 
 export type ProposalChanges = z.infer<typeof proposalChangesSchema>;
@@ -74,7 +114,7 @@ export type ConsensusProgress = z.infer<typeof consensusProgressSchema>;
 export const proposalSchema = z.object({
   id: z.string(),
   uri: z.string(),
-  fieldId: z.string().optional(),
+  nodeUri: z.string().optional(),
   label: z.string().optional(),
   type: proposalTypeSchema,
   changes: proposalChangesSchema,
@@ -122,7 +162,7 @@ export const listProposalsParamsSchema = paginationQuerySchema.extend({
   category: proposalCategorySchema.optional().describe('Filter by proposal category'),
   status: proposalStatusSchema.optional(),
   type: proposalTypeSchema.optional(),
-  fieldId: z.string().optional(),
+  nodeUri: z.string().optional(),
   proposedBy: z.string().optional(),
 });
 
@@ -201,3 +241,195 @@ export const pendingCountResponseSchema = z.object({
 });
 
 export type PendingCountResponse = z.infer<typeof pendingCountResponseSchema>;
+
+// =============================================================================
+// TRUSTED EDITOR SCHEMAS
+// =============================================================================
+
+export const governanceRoleSchema = z.enum([
+  'community-member',
+  'trusted-editor',
+  'graph-editor',
+  'domain-expert',
+  'administrator',
+]);
+
+export type GovernanceRole = z.infer<typeof governanceRoleSchema>;
+
+export const reputationMetricsSchema = z.object({
+  did: z.string(),
+  accountCreatedAt: z.number(),
+  accountAgeDays: z.number(),
+  eprintCount: z.number(),
+  wellEndorsedEprintCount: z.number(),
+  totalEndorsements: z.number(),
+  proposalCount: z.number(),
+  voteCount: z.number(),
+  successfulProposals: z.number(),
+  warningCount: z.number(),
+  violationCount: z.number(),
+  reputationScore: z.number(),
+  role: governanceRoleSchema,
+  eligibleForTrustedEditor: z.boolean(),
+  missingCriteria: z.array(z.string()),
+});
+
+export type ReputationMetrics = z.infer<typeof reputationMetricsSchema>;
+
+export const editorStatusSchema = z.object({
+  did: z.string(),
+  displayName: z.string().optional(),
+  role: governanceRoleSchema,
+  roleGrantedAt: z.number().optional(),
+  roleGrantedBy: z.string().optional(),
+  hasDelegation: z.boolean(),
+  delegationExpiresAt: z.number().optional(),
+  delegationCollections: z.array(z.string()).optional(),
+  recordsCreatedToday: z.number(),
+  dailyRateLimit: z.number(),
+  metrics: reputationMetricsSchema,
+});
+
+export type EditorStatus = z.infer<typeof editorStatusSchema>;
+
+export const trustedEditorRecordSchema = z.object({
+  did: z.string(),
+  handle: z.string().optional(),
+  displayName: z.string().optional(),
+  role: governanceRoleSchema,
+  roleGrantedAt: z.number(),
+  roleGrantedBy: z.string().optional(),
+  hasDelegation: z.boolean(),
+  delegationExpiresAt: z.number().optional(),
+  recordsCreatedToday: z.number(),
+  dailyRateLimit: z.number(),
+  metrics: reputationMetricsSchema,
+});
+
+export type TrustedEditorRecord = z.infer<typeof trustedEditorRecordSchema>;
+
+export const elevationRequestSchema = z.object({
+  id: z.string(),
+  did: z.string(),
+  handle: z.string().optional(),
+  displayName: z.string().optional(),
+  requestedRole: governanceRoleSchema,
+  currentRole: governanceRoleSchema,
+  requestedAt: z.number(),
+  metrics: reputationMetricsSchema,
+  verificationNotes: z.string().optional(),
+});
+
+export type ElevationRequest = z.infer<typeof elevationRequestSchema>;
+
+export const delegationRecordSchema = z.object({
+  id: z.string(),
+  delegateDid: z.string(),
+  handle: z.string().optional(),
+  displayName: z.string().optional(),
+  collections: z.array(z.string()),
+  expiresAt: z.number(),
+  maxRecordsPerDay: z.number(),
+  recordsCreatedToday: z.number(),
+  grantedAt: z.number(),
+  grantedBy: z.string(),
+  active: z.boolean(),
+});
+
+export type DelegationRecord = z.infer<typeof delegationRecordSchema>;
+
+// Request schemas
+export const getEditorStatusParamsSchema = z.object({
+  did: z.string().optional().describe('User DID (defaults to authenticated user)'),
+});
+
+export type GetEditorStatusParams = z.infer<typeof getEditorStatusParamsSchema>;
+
+export const listTrustedEditorsParamsSchema = paginationQuerySchema.extend({
+  role: governanceRoleSchema.optional().describe('Filter by role'),
+});
+
+export type ListTrustedEditorsParams = z.infer<typeof listTrustedEditorsParamsSchema>;
+
+export const requestElevationInputSchema = z.object({
+  targetRole: z.enum(['trusted-editor']).describe('Role to request elevation to'),
+});
+
+export type RequestElevationInput = z.infer<typeof requestElevationInputSchema>;
+
+export const approveElevationInputSchema = z.object({
+  requestId: z.string(),
+  verificationNotes: z.string().optional(),
+});
+
+export type ApproveElevationInput = z.infer<typeof approveElevationInputSchema>;
+
+export const rejectElevationInputSchema = z.object({
+  requestId: z.string(),
+  reason: z.string().min(10).max(1000),
+});
+
+export type RejectElevationInput = z.infer<typeof rejectElevationInputSchema>;
+
+export const grantDelegationInputSchema = z.object({
+  delegateDid: z.string(),
+  collections: z.array(z.string()).min(1),
+  daysValid: z.number().min(1).max(365).default(365),
+  maxRecordsPerDay: z.number().min(1).max(1000).default(100),
+});
+
+export type GrantDelegationInput = z.infer<typeof grantDelegationInputSchema>;
+
+export const revokeDelegationInputSchema = z.object({
+  delegationId: z.string(),
+});
+
+export type RevokeDelegationInput = z.infer<typeof revokeDelegationInputSchema>;
+
+export const revokeRoleInputSchema = z.object({
+  did: z.string(),
+  reason: z.string().min(10).max(1000),
+});
+
+export type RevokeRoleInput = z.infer<typeof revokeRoleInputSchema>;
+
+// Response schemas
+export const trustedEditorsResponseSchema = z.object({
+  editors: z.array(trustedEditorRecordSchema),
+  cursor: z.string().optional(),
+  total: z.number(),
+});
+
+export type TrustedEditorsResponse = z.infer<typeof trustedEditorsResponseSchema>;
+
+export const elevationRequestsResponseSchema = z.object({
+  requests: z.array(elevationRequestSchema),
+  cursor: z.string().optional(),
+  total: z.number(),
+});
+
+export type ElevationRequestsResponse = z.infer<typeof elevationRequestsResponseSchema>;
+
+export const delegationsResponseSchema = z.object({
+  delegations: z.array(delegationRecordSchema),
+  cursor: z.string().optional(),
+  total: z.number(),
+});
+
+export type DelegationsResponse = z.infer<typeof delegationsResponseSchema>;
+
+export const elevationResultSchema = z.object({
+  success: z.boolean(),
+  requestId: z.string().optional(),
+  message: z.string(),
+});
+
+export type ElevationResult = z.infer<typeof elevationResultSchema>;
+
+export const delegationResultSchema = z.object({
+  success: z.boolean(),
+  delegationId: z.string().optional(),
+  message: z.string(),
+});
+
+export type DelegationResult = z.infer<typeof delegationResultSchema>;

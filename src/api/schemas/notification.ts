@@ -9,8 +9,7 @@
  * @public
  */
 
-import { z } from 'zod';
-
+import { z } from './base.js';
 import { atUriSchema, didSchema, paginationQuerySchema } from './common.js';
 
 /**

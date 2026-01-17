@@ -38,21 +38,82 @@ export const fieldKeys = {
   ancestors: (id: string) => [...fieldKeys.detail(id), 'ancestors'] as const,
   /** Key for field eprints queries */
   eprints: (id: string) => [...fieldKeys.detail(id), 'eprints'] as const,
+  /** Key for field hierarchy queries */
+  hierarchy: () => [...fieldKeys.all, 'hierarchy'] as const,
 };
 
 interface UseFieldOptions {
-  /** Whether to include relationships in the response */
-  includeRelationships?: boolean;
-  /** Whether to include children in the response */
-  includeChildren?: boolean;
-  /** Whether to include ancestors in the response */
-  includeAncestors?: boolean;
+  /** Whether to include edges in the response */
+  includeEdges?: boolean;
   /** Whether the query is enabled */
   enabled?: boolean;
 }
 
 /**
- * Fetches a single field by ID with optional relationships.
+ * Edge from API response.
+ */
+interface GraphEdge {
+  id: string;
+  uri: string;
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
+  status: string;
+}
+
+/**
+ * Extended FieldDetail with edges.
+ */
+export interface FieldDetailWithEdges extends FieldDetail {
+  edges?: GraphEdge[];
+  externalIds?: { system: string; identifier: string; uri?: string }[];
+}
+
+/**
+ * Maps a graph node response to the FieldDetail shape expected by components.
+ */
+function mapNodeToFieldDetail(node: {
+  id: string;
+  uri: string;
+  label: string;
+  description?: string;
+  externalIds?: { system: string; identifier: string; uri?: string }[];
+  status: string;
+  edges?: GraphEdge[];
+}): FieldDetailWithEdges {
+  return {
+    id: node.id,
+    uri: node.uri,
+    name: node.label,
+    description: node.description,
+    wikidataId: node.externalIds?.find((e) => e.system === 'wikidata')?.identifier,
+    status: node.status as 'proposed' | 'provisional' | 'established' | 'deprecated',
+    edges: node.edges,
+    externalIds: node.externalIds,
+  };
+}
+
+/**
+ * Maps a graph node response to the FieldSummary shape expected by components.
+ */
+function mapNodeToFieldSummary(node: {
+  id: string;
+  uri: string;
+  label: string;
+  description?: string;
+  status: string;
+}): FieldSummary {
+  return {
+    id: node.id,
+    uri: node.uri,
+    name: node.label,
+    description: node.description,
+    status: node.status as 'proposed' | 'provisional' | 'established' | 'deprecated',
+  };
+}
+
+/**
+ * Fetches a single field by ID with optional edges.
  *
  * @remarks
  * Uses TanStack Query with a 6-hour stale time.
@@ -60,34 +121,26 @@ interface UseFieldOptions {
  *
  * @example
  * ```tsx
- * const { data, isLoading, error } = useField('computer-science', {
- *   includeChildren: true,
- *   includeAncestors: true,
+ * const { data, isLoading, error } = useField('c4613057-bc2d-54bc-b4de-43f9b8136438', {
+ *   includeEdges: true,
  * });
  * ```
  *
- * @param id - The field ID
+ * @param id - The field node ID
  * @param options - Query and data options
  * @returns Query result with field data, loading state, and error
  */
 export function useField(id: string, options: UseFieldOptions = {}) {
-  const {
-    includeRelationships = false,
-    includeChildren = false,
-    includeAncestors = false,
-    enabled = true,
-  } = options;
+  const { includeEdges = false, enabled = true } = options;
 
   return useQuery({
     queryKey: fieldKeys.detail(id),
-    queryFn: async (): Promise<FieldDetail> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getField', {
+    queryFn: async (): Promise<FieldDetailWithEdges> => {
+      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getNode', {
         params: {
           query: {
             id,
-            includeRelationships,
-            includeChildren,
-            includeAncestors,
+            includeEdges,
           },
         },
       });
@@ -95,22 +148,133 @@ export function useField(id: string, options: UseFieldOptions = {}) {
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch field',
           undefined,
-          '/xrpc/pub.chive.graph.getField'
+          '/xrpc/pub.chive.graph.getNode'
         );
       }
-      // API returns field properties directly at top level
-      return data!;
+      return mapNodeToFieldDetail(data!);
     },
     enabled: !!id && enabled,
     staleTime: 6 * 60 * 60 * 1000, // 6 hours; fields rarely change.
   });
 }
 
+/**
+ * Related field reference.
+ */
+export interface RelatedField {
+  id: string;
+  uri: string;
+  name: string;
+  relationSlug: string;
+}
+
+/**
+ * Field with resolved relationships.
+ */
+export interface FieldWithRelations extends FieldDetailWithEdges {
+  parents: RelatedField[];
+  children: RelatedField[];
+  related: RelatedField[];
+}
+
+/**
+ * Fetches a field with resolved relationship labels.
+ *
+ * @remarks
+ * Fetches the field with edges, then resolves target node labels.
+ *
+ * @param id - The field node ID
+ * @param options - Query options
+ * @returns Query result with field and resolved relationships
+ */
+export function useFieldWithRelations(id: string, options: { enabled?: boolean } = {}) {
+  const { enabled = true } = options;
+
+  return useQuery({
+    queryKey: [...fieldKeys.detail(id), 'relations'],
+    queryFn: async (): Promise<FieldWithRelations> => {
+      // Fetch field with edges
+      const { data: nodeData, error: nodeError } = await api.GET('/xrpc/pub.chive.graph.getNode', {
+        params: {
+          query: {
+            id,
+            includeEdges: true,
+          },
+        },
+      });
+
+      if (nodeError) {
+        throw new APIError(
+          (nodeError as { message?: string }).message ?? 'Failed to fetch field',
+          undefined,
+          '/xrpc/pub.chive.graph.getNode'
+        );
+      }
+
+      const field = mapNodeToFieldDetail(nodeData!);
+      const edges = nodeData?.edges ?? [];
+
+      // Group edges by relation type
+      const broaderEdges = edges.filter((e) => e.relationSlug === 'broader');
+      const narrowerEdges = edges.filter((e) => e.relationSlug === 'narrower');
+      const relatedEdges = edges.filter((e) => e.relationSlug === 'related');
+
+      // Extract target IDs from edges
+      const extractTargetId = (uri: string) => uri.split('/').pop() ?? '';
+      const allTargetIds = [...broaderEdges, ...narrowerEdges, ...relatedEdges].map((e) =>
+        extractTargetId(e.targetUri)
+      );
+
+      // Fetch all target nodes in parallel
+      const targetNodes = await Promise.all(
+        allTargetIds.map(async (targetId) => {
+          try {
+            const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
+              params: { query: { id: targetId, includeEdges: false } },
+            });
+            return data ? { id: data.id, uri: data.uri, label: data.label } : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      // Build lookup map
+      const nodeMap = new Map(
+        targetNodes.filter((n): n is NonNullable<typeof n> => n !== null).map((n) => [n.id, n])
+      );
+
+      // Map edges to related fields
+      const mapEdgesToRelated = (edgeList: typeof edges, relation: string): RelatedField[] =>
+        edgeList
+          .map((edge) => {
+            const targetId = extractTargetId(edge.targetUri);
+            const target = nodeMap.get(targetId);
+            if (!target) return null;
+            return {
+              id: target.id,
+              uri: target.uri,
+              name: target.label,
+              relationSlug: relation,
+            };
+          })
+          .filter((r): r is RelatedField => r !== null);
+
+      return {
+        ...field,
+        parents: mapEdgesToRelated(broaderEdges, 'broader'),
+        children: mapEdgesToRelated(narrowerEdges, 'narrower'),
+        related: mapEdgesToRelated(relatedEdges, 'related'),
+      };
+    },
+    enabled: !!id && enabled,
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+}
+
 interface UseFieldsParams {
-  /** Parent field ID to filter by */
-  parentId?: string;
-  /** Status filter */
-  status?: 'proposed' | 'under_review' | 'approved' | 'deprecated';
+  /** Status filter (maps to node status) */
+  status?: 'proposed' | 'provisional' | 'established' | 'deprecated';
   /** Number of fields to return */
   limit?: number;
   /** Pagination cursor */
@@ -121,15 +285,12 @@ interface UseFieldsParams {
  * Fetches a list of fields with optional filtering.
  *
  * @remarks
- * Used for browsing the field hierarchy or listing top-level fields.
+ * Uses the unified listNodes endpoint with subkind='field'.
  *
  * @example
  * ```tsx
- * // Get all top-level approved fields
- * const { data } = useFields({ status: 'approved' });
- *
- * // Get children of a specific field
- * const { data } = useFields({ parentId: 'computer-science' });
+ * // Get all established fields
+ * const { data } = useFields({ status: 'established' });
  * ```
  *
  * @param params - Query parameters
@@ -139,17 +300,29 @@ export function useFields(params: UseFieldsParams = {}) {
   return useQuery({
     queryKey: fieldKeys.list(params),
     queryFn: async () => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listFields', {
-        params: { query: { ...params, limit: params.limit ?? 50 } },
+      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listNodes', {
+        params: {
+          query: {
+            subkind: 'field',
+            status: params.status,
+            limit: params.limit ?? 50,
+            cursor: params.cursor,
+          },
+        },
       });
       if (error) {
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch fields',
           undefined,
-          '/xrpc/pub.chive.graph.listFields'
+          '/xrpc/pub.chive.graph.listNodes'
         );
       }
-      return data!;
+      return {
+        fields: data!.nodes.map(mapNodeToFieldSummary),
+        cursor: data!.cursor,
+        hasMore: data!.hasMore,
+        total: data!.total,
+      };
     },
     staleTime: 60 * 60 * 1000, // 1 hour
     placeholderData: (previousData) => previousData,
@@ -157,39 +330,43 @@ export function useFields(params: UseFieldsParams = {}) {
 }
 
 /**
- * Options for useFieldChildren hook.
+ * Options for useFieldHierarchy hook.
  */
-interface UseFieldChildrenOptions {
+interface UseFieldHierarchyOptions {
   /** Whether the query is enabled */
   enabled?: boolean;
 }
 
 /**
- * Fetches child fields for a given parent field.
+ * Fetches the field hierarchy tree.
  *
- * @param parentId - The parent field ID
  * @param options - Query options
- * @returns Query result with child fields
+ * @returns Query result with field hierarchy
  */
-export function useFieldChildren(parentId: string, options: UseFieldChildrenOptions = {}) {
+export function useFieldHierarchy(options: UseFieldHierarchyOptions = {}) {
   const { enabled = true } = options;
 
   return useQuery({
-    queryKey: fieldKeys.children(parentId),
-    queryFn: async (): Promise<FieldSummary[]> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listFields', {
-        params: { query: { parentId, limit: 100 } },
+    queryKey: fieldKeys.hierarchy(),
+    queryFn: async () => {
+      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getHierarchy', {
+        params: {
+          query: {
+            subkind: 'field',
+            relationSlug: 'broader',
+          },
+        },
       });
       if (error) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch field children',
+          (error as { message?: string }).message ?? 'Failed to fetch field hierarchy',
           undefined,
-          '/xrpc/pub.chive.graph.listFields'
+          '/xrpc/pub.chive.graph.getHierarchy'
         );
       }
-      return data!.fields;
+      return data!;
     },
-    enabled: !!parentId && enabled,
+    enabled,
     staleTime: 60 * 60 * 1000, // 1 hour
   });
 }
@@ -202,7 +379,7 @@ interface UseFieldEprintsOptions {
 }
 
 /**
- * Minimal eprint info returned from field eprints API.
+ * Minimal eprint info returned from eprint search.
  */
 interface FieldEprintInfo {
   uri: string;
@@ -230,6 +407,7 @@ interface FieldEprintsResponse {
  *
  * @remarks
  * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
+ * Uses the eprint search endpoint with field filter.
  *
  * @example
  * ```tsx
@@ -239,12 +417,12 @@ interface FieldEprintsResponse {
  *   hasNextPage,
  *   fetchNextPage,
  *   isFetchingNextPage,
- * } = useFieldEprints('computer-science');
+ * } = useFieldEprints('c4613057-bc2d-54bc-b4de-43f9b8136438');
  *
  * const allEprints = data?.pages.flatMap(p => p.eprints) ?? [];
  * ```
  *
- * @param fieldId - The field ID
+ * @param fieldId - The field node ID
  * @param options - Query options
  * @returns Infinite query result with paginated eprints
  */
@@ -254,7 +432,8 @@ export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions
   return useInfiniteQuery({
     queryKey: fieldKeys.eprints(fieldId),
     queryFn: async ({ pageParam }): Promise<FieldEprintsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getFieldEprints', {
+      // Use eprint search with field filter
+      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.searchSubmissions', {
         params: {
           query: {
             fieldId,
@@ -267,10 +446,24 @@ export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch field eprints',
           undefined,
-          '/xrpc/pub.chive.graph.getFieldEprints'
+          '/xrpc/pub.chive.eprint.searchSubmissions'
         );
       }
-      return data!;
+      return {
+        eprints: (data!.hits ?? []).map((hit) => ({
+          uri: hit.uri,
+          title: hit.title,
+          abstract: hit.abstract,
+          authorDid: hit.submittedBy,
+          authorName: hit.authors?.[0]?.name,
+          createdAt: hit.createdAt,
+          pdsUrl: hit.source?.pdsUrl ?? '',
+          views: undefined,
+        })),
+        cursor: data!.cursor,
+        hasMore: data!.hasMore,
+        total: data!.total,
+      };
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
@@ -304,17 +497,15 @@ export function usePrefetchField() {
     queryClient.prefetchQuery({
       queryKey: fieldKeys.detail(id),
       queryFn: async (): Promise<FieldDetail | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.graph.getField', {
+        const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
           params: {
             query: {
               id,
-              includeRelationships: true,
-              includeChildren: true,
-              includeAncestors: true,
+              includeEdges: true,
             },
           },
         });
-        return (data ?? undefined) as FieldDetail | undefined;
+        return data ? mapNodeToFieldDetail(data) : undefined;
       },
       staleTime: 6 * 60 * 60 * 1000,
     });

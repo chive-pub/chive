@@ -1,0 +1,192 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.node",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Unified knowledge graph node combining concepts, organizations, authorities, fields, and facets. All relationships are via edges.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["id", "kind", "label", "status", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID identifier (also used as rkey)"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Human-readable URL-safe identifier (e.g., 'pdf', 'computer-science')"
+          },
+          "kind": {
+            "type": "string",
+            "knownValues": ["type", "object"],
+            "description": "Node kind: 'type' for classifications/categories, 'object' for instances"
+          },
+          "subkind": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Slug identifying the subkind (e.g., 'field', 'facet', 'institution')"
+          },
+          "subkindUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the subkind type node"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Primary display label"
+          },
+          "alternateLabels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "maxLength": 50,
+            "description": "Alternate labels, synonyms, translations"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Detailed description or scope note"
+          },
+          "externalIds": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "#externalId"
+            },
+            "maxLength": 20,
+            "description": "External identifier mappings"
+          },
+          "metadata": {
+            "type": "ref",
+            "ref": "#nodeMetadata",
+            "description": "Subkind-specific metadata"
+          },
+          "status": {
+            "type": "string",
+            "knownValues": ["proposed", "provisional", "established", "deprecated"],
+            "description": "Lifecycle status"
+          },
+          "deprecatedBy": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the node that supersedes this one"
+          },
+          "proposalUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the proposal that created this node (null for seeded)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of creator or governance"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "externalId": {
+      "type": "object",
+      "description": "External identifier mapping",
+      "required": ["system", "identifier"],
+      "properties": {
+        "system": {
+          "type": "string",
+          "knownValues": [
+            "wikidata",
+            "ror",
+            "orcid",
+            "isni",
+            "viaf",
+            "lcsh",
+            "fast",
+            "credit",
+            "spdx",
+            "fundref",
+            "mesh",
+            "aat",
+            "gnd",
+            "anzsrc"
+          ],
+          "description": "Identifier system"
+        },
+        "identifier": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Identifier value"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URI for the identifier"
+        },
+        "matchType": {
+          "type": "string",
+          "knownValues": ["exact", "close", "broader", "narrower", "related"],
+          "description": "SKOS match type"
+        }
+      }
+    },
+    "nodeMetadata": {
+      "type": "object",
+      "description": "Subkind-specific metadata fields",
+      "properties": {
+        "country": {
+          "type": "string",
+          "maxLength": 2,
+          "description": "ISO 3166-1 alpha-2 country code (for institutions)"
+        },
+        "city": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "City name (for institutions)"
+        },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "description": "Official website URL"
+        },
+        "organizationStatus": {
+          "type": "string",
+          "knownValues": ["active", "merged", "inactive", "defunct"],
+          "description": "Organization operational status (for institutions)"
+        },
+        "mimeTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxLength": 10,
+          "description": "MIME types (for document-format)"
+        },
+        "spdxId": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "SPDX license identifier (for licenses)"
+        },
+        "displayOrder": {
+          "type": "integer",
+          "description": "Display order for UI sorting"
+        },
+        "inverseSlug": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Slug of inverse relation (for relation types)"
+        }
+      }
+    }
+  }
+}

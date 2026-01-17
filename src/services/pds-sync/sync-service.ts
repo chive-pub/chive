@@ -314,6 +314,7 @@ export class PDSSyncService {
           paperDid: indexed.paperDid,
           title: indexed.title,
           abstract: indexed.abstract,
+          abstractPlainText: indexed.abstractPlainText,
           documentBlobRef: indexed.documentBlobRef,
           documentFormat: indexed.documentFormat,
           supplementaryMaterials: indexed.supplementaryMaterials,

@@ -16,6 +16,7 @@ export default tseslint.config(
       'src/lexicons/validators/**',
       'tests/performance/k6/**', // k6 uses its own JavaScript runtime
       'tests/e2e/**', // E2E tests have their own tsconfig
+      'tests/integration/lexicons/codegen.test.ts', // Depends on excluded validators
       'docs/**', // Docusaurus has its own config
       'web/**', // Web app has its own eslint config
       '__mocks__/**', // Vitest mocks don't need type checking

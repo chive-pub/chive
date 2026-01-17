@@ -7,9 +7,7 @@
  * @packageDocumentation
  * @public
  */
-
-import { z } from 'zod';
-
+import { z } from './base.js';
 // Import AND re-export from claiming.ts (single source of truth)
 import {
   importSourceSchema as importSourceSchemaFromClaiming,

@@ -20,17 +20,11 @@ import type { AtUri, DID } from '../atproto.js';
  *
  * @remarks
  * Role hierarchy (higher includes lower permissions):
- * - admin > moderator > authority-editor > author > reader
+ * - admin > moderator > graph-editor > author > reader
  *
  * @public
  */
-export type Role =
-  | 'admin'
-  | 'moderator'
-  | 'authority-editor'
-  | 'author'
-  | 'reader'
-  | 'alpha-tester';
+export type Role = 'admin' | 'moderator' | 'graph-editor' | 'author' | 'reader' | 'alpha-tester';
 
 /**
  * Resource types for authorization.

@@ -118,7 +118,7 @@ const DEFAULT_CONFIG: Required<Omit<MFAServiceConfig, 'mfaRequiredRoles'>> & {
   maxAttempts: 5,
   lockoutDurationSeconds: 900,
   enrollmentExpirationSeconds: 600,
-  mfaRequiredRoles: ['admin', 'moderator', 'authority-editor'],
+  mfaRequiredRoles: ['admin', 'moderator', 'graph-editor'],
 };
 
 /**

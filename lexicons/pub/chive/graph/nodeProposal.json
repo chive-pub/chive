@@ -1,0 +1,132 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.nodeProposal",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Unified proposal for creating, updating, merging, or deprecating knowledge graph nodes (stored in user PDS)",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["proposalType", "kind", "rationale", "createdAt"],
+        "properties": {
+          "proposalType": {
+            "type": "string",
+            "knownValues": ["create", "update", "merge", "deprecate"],
+            "description": "Type of proposal action"
+          },
+          "kind": {
+            "type": "string",
+            "knownValues": ["type", "object"],
+            "description": "Node kind being proposed"
+          },
+          "subkind": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Subkind slug (e.g., 'field', 'institution', 'contribution-type')"
+          },
+          "targetUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of node to update/deprecate/merge"
+          },
+          "mergeIntoUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of node to merge into (for merge action)"
+          },
+          "proposedNode": {
+            "type": "ref",
+            "ref": "#proposedNodeData",
+            "description": "Proposed node data (for create/update)"
+          },
+          "rationale": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Justification for the proposal"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "#evidence"
+            },
+            "maxLength": 10,
+            "description": "Supporting evidence for the proposal"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "proposedNodeData": {
+      "type": "object",
+      "description": "Proposed node data",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "alternateLabels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "maxLength": 50
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "externalIds": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "pub.chive.graph.node#externalId"
+          },
+          "maxLength": 20
+        },
+        "metadata": {
+          "type": "ref",
+          "ref": "pub.chive.graph.node#nodeMetadata"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Supporting evidence for a proposal",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "knownValues": [
+            "wikidata",
+            "lcsh",
+            "fast",
+            "ror",
+            "credit",
+            "usage",
+            "citation",
+            "external",
+            "other"
+          ],
+          "description": "Evidence type"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to evidence"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Description of the evidence"
+        }
+      }
+    }
+  }
+}

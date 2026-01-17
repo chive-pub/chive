@@ -7,8 +7,8 @@
 
 # Role hierarchy (higher role includes lower role permissions)
 g2, admin, moderator
-g2, moderator, authority-editor
-g2, authority-editor, author
+g2, moderator, graph-editor
+g2, graph-editor, author
 g2, author, reader
 
 # Admin permissions (full access)
@@ -27,17 +27,17 @@ p, moderator, field_node, read
 p, moderator, user, read
 
 # Authority-editor permissions (knowledge graph)
-p, authority-editor, field_node, read
-p, authority-editor, field_node, create
-p, authority-editor, field_node, update
-p, authority-editor, field_node, approve
-p, authority-editor, authority, read
-p, authority-editor, authority, create
-p, authority-editor, authority, update
-p, authority-editor, authority, approve
-p, authority-editor, facet, read
-p, authority-editor, facet, create
-p, authority-editor, facet, update
+p, graph-editor, field_node, read
+p, graph-editor, field_node, create
+p, graph-editor, field_node, update
+p, graph-editor, field_node, approve
+p, graph-editor, authority, read
+p, graph-editor, authority, create
+p, graph-editor, authority, update
+p, graph-editor, authority, approve
+p, graph-editor, facet, read
+p, graph-editor, facet, create
+p, graph-editor, facet, update
 
 # Author permissions
 p, author, eprint, read

@@ -43,6 +43,24 @@ export interface TagNormalizationResult {
 }
 
 /**
+ * Facet mapping suggestion.
+ */
+export interface FacetMappingSuggestion {
+  /** Facet AT-URI */
+  facetUri: AtUri;
+  /** Facet value */
+  facetValue: string;
+  /** Facet dimension slug */
+  dimension: string;
+  /** Display label */
+  displayLabel: string;
+  /** Confidence score (0-1) */
+  confidence: number;
+  /** Match type */
+  matchType: 'exact' | 'prefix' | 'partial';
+}
+
+/**
  * Tag promotion to field candidate
  */
 export interface FieldCandidate {
@@ -491,11 +509,17 @@ export class TagManager {
       const tag = this.mapTag(record.get('tag'));
 
       // Calculate confidence based on quality metrics
+      const qualityScore = tag.qualityScore ?? 0.5;
+      const usageCount = tag.usageCount ?? 0;
+      const uniqueUsers = tag.uniqueUsers ?? 0;
+      const paperCount = tag.paperCount ?? 0;
+      const growthRate = tag.growthRate ?? 0;
+
       const confidence =
-        tag.qualityScore * 0.4 +
-        Math.min(tag.usageCount / 100, 1.0) * 0.3 +
-        Math.min(tag.uniqueUsers / 20, 1.0) * 0.2 +
-        tag.growthRate * 0.1;
+        qualityScore * 0.4 +
+        Math.min(usageCount / 100, 1.0) * 0.3 +
+        Math.min(uniqueUsers / 20, 1.0) * 0.2 +
+        growthRate * 0.1;
 
       // Suggest field name (capitalize words)
       const suggestedFieldName = tag.normalizedForm
@@ -506,11 +530,11 @@ export class TagManager {
       return {
         tag,
         evidence: {
-          usageCount: tag.usageCount,
-          uniqueUsers: tag.uniqueUsers,
-          paperCount: tag.paperCount,
-          growthRate: tag.growthRate,
-          qualityScore: tag.qualityScore,
+          usageCount,
+          uniqueUsers,
+          paperCount,
+          growthRate,
+          qualityScore,
         },
         suggestedFieldName,
         confidence,
@@ -761,6 +785,109 @@ export class TagManager {
   }
 
   /**
+   * Facet mapping suggestion result.
+   */
+  async suggestFacetMapping(tag: string): Promise<FacetMappingSuggestion[]> {
+    const normalized = this.normalizeTag(tag);
+
+    // Query facets with similar labels using full-text search or CONTAINS fallback
+    const fullTextQuery = `
+      CALL db.index.fulltext.queryNodes('facetTextIndex', $searchText)
+      YIELD node, score
+      WHERE node:Facet
+      WITH node AS facet, score
+      ORDER BY score DESC
+      LIMIT 10
+      RETURN
+        facet.uri AS uri,
+        facet.value AS value,
+        facet.facetType AS dimension,
+        facet.label AS label,
+        score AS searchScore
+    `;
+
+    const fallbackQuery = `
+      MATCH (facet:Facet)
+      WHERE toLower(facet.value) CONTAINS toLower($searchText)
+         OR toLower(facet.label) CONTAINS toLower($searchText)
+      WITH facet,
+           CASE
+             WHEN toLower(facet.value) = toLower($searchText) THEN 1.0
+             WHEN toLower(facet.label) = toLower($searchText) THEN 0.95
+             WHEN toLower(facet.value) STARTS WITH toLower($searchText) THEN 0.8
+             ELSE 0.5
+           END AS score
+      ORDER BY score DESC
+      LIMIT 10
+      RETURN
+        facet.uri AS uri,
+        facet.value AS value,
+        facet.facetType AS dimension,
+        facet.label AS label,
+        score AS searchScore
+    `;
+
+    try {
+      // Try full-text search first
+      const result = await this.connection.executeQuery<{
+        uri: AtUri;
+        value: string;
+        dimension: string;
+        label: string | null;
+        searchScore: number;
+      }>(fullTextQuery, { searchText: `${normalized}*` });
+
+      return this.mapFacetSuggestions(result.records, normalized);
+    } catch {
+      // Fall back to CONTAINS if full-text index not available
+      const result = await this.connection.executeQuery<{
+        uri: AtUri;
+        value: string;
+        dimension: string;
+        label: string | null;
+        searchScore: number;
+      }>(fallbackQuery, { searchText: normalized });
+
+      return this.mapFacetSuggestions(result.records, normalized);
+    }
+  }
+
+  /**
+   * Map facet search results to suggestions.
+   */
+  private mapFacetSuggestions(
+    records: {
+      get: (key: string) => AtUri | string | number | null;
+    }[],
+    searchTerm: string
+  ): FacetMappingSuggestion[] {
+    return records.map((record) => {
+      const value = record.get('value') as string;
+      const searchScore = Number(record.get('searchScore'));
+
+      // Calculate confidence based on search score and string similarity
+      const exactMatch = value.toLowerCase() === searchTerm.toLowerCase();
+      const startsWithMatch = value.toLowerCase().startsWith(searchTerm.toLowerCase());
+
+      let confidence = searchScore;
+      if (exactMatch) {
+        confidence = Math.min(confidence + 0.3, 1.0);
+      } else if (startsWithMatch) {
+        confidence = Math.min(confidence + 0.1, 1.0);
+      }
+
+      return {
+        facetUri: record.get('uri') as AtUri,
+        facetValue: value,
+        dimension: record.get('dimension') as string,
+        displayLabel: (record.get('label') as string | null) ?? value,
+        confidence: Math.round(confidence * 100) / 100,
+        matchType: exactMatch ? 'exact' : startsWithMatch ? 'prefix' : 'partial',
+      };
+    });
+  }
+
+  /**
    * Map Neo4j node to UserTag type.
    */
   private mapTag(node: Record<string, string | number | Date>): UserTag {
@@ -774,7 +901,6 @@ export class TagManager {
       spamScore: Number(node.spamScore) || 0,
       growthRate: Number(node.growthRate) || 0,
       createdAt: new Date(node.createdAt as string | Date),
-      updatedAt: new Date(node.updatedAt as string | Date),
     };
   }
 }

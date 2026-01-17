@@ -13,7 +13,17 @@ import { toTimestamp } from '@/types/atproto-validators.js';
 import type { AtUri, BlobRef, CID, DID } from '@/types/atproto.js';
 import { DatabaseError, NotFoundError } from '@/types/errors.js';
 import type { IStorageBackend, StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 interface MockStorage {
   storage: IStorageBackend;
@@ -52,7 +62,10 @@ const createMockStoredEprint = (overrides?: Partial<StoredEprint>): StoredEprint
   authors: [mockAuthor],
   submittedBy: 'did:plc:author' as DID,
   title: 'Frequency, acceptability, and selection: A case study of clause-embedding',
-  abstract:
+  abstract: createMockAbstract(
+    'We investigate the relationship between the frequency with which verbs are found in particular subcategorization frames and the acceptability of those verbs in those frames, focusing in particular on subordinate clause-taking verbs, such as think, want, and tell.'
+  ),
+  abstractPlainText:
     'We investigate the relationship between the frequency with which verbs are found in particular subcategorization frames and the acceptability of those verbs in those frames, focusing in particular on subordinate clause-taking verbs, such as think, want, and tell.',
   documentBlobRef: {
     $type: 'blob',

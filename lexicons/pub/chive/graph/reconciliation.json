@@ -1,0 +1,76 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.reconciliation",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Entity reconciliation record linking local entities to external authorities",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["sourceUri", "targetSystem", "targetId", "confidence", "status", "createdAt"],
+        "properties": {
+          "sourceUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of local entity being reconciled"
+          },
+          "targetSystem": {
+            "type": "string",
+            "knownValues": [
+              "wikidata",
+              "lcsh",
+              "fast",
+              "ror",
+              "orcid",
+              "viaf",
+              "gnd",
+              "mesh",
+              "aat",
+              "getty"
+            ],
+            "description": "External authority system"
+          },
+          "targetId": {
+            "type": "string",
+            "description": "Identifier in the external system"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Match confidence score (0-1)"
+          },
+          "matchType": {
+            "type": "string",
+            "knownValues": ["exact", "close", "broad", "narrow", "related"],
+            "description": "Type of semantic match (SKOS mapping)"
+          },
+          "status": {
+            "type": "string",
+            "knownValues": ["proposed", "verified", "rejected"],
+            "description": "Reconciliation status"
+          },
+          "verifiedBy": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of user who verified the match"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Notes about the reconciliation"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

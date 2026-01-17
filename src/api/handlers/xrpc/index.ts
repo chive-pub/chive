@@ -22,7 +22,6 @@ export * from './alpha/index.js';
 export * from './author/index.js';
 export * from './backlink/index.js';
 export * from './claiming/index.js';
-export * from './contribution/index.js';
 export * from './discovery/index.js';
 export * from './endorsement/index.js';
 export * from './governance/index.js';
@@ -42,7 +41,6 @@ import { alphaEndpoints } from './alpha/index.js';
 import { authorEndpoints } from './author/index.js';
 import { backlinkEndpoints } from './backlink/index.js';
 import { claimingEndpoints, claimingRestEndpoints } from './claiming/index.js';
-import { contributionEndpoints } from './contribution/index.js';
 import { discoveryEndpoints } from './discovery/index.js';
 import { endorsementEndpoints } from './endorsement/index.js';
 import { eprintEndpoints } from './eprint/index.js';
@@ -65,7 +63,6 @@ export const allXRPCEndpoints = [
   ...authorEndpoints,
   ...backlinkEndpoints,
   ...claimingEndpoints,
-  ...contributionEndpoints,
   ...discoveryEndpoints,
   ...endorsementEndpoints,
   ...governanceEndpoints,

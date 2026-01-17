@@ -103,23 +103,26 @@ export interface ContributionTypeSelectorProps {
 // DEFAULT CREDIT TYPES (fallback if API not available)
 // =============================================================================
 
+/**
+ * Default CRediT types use unified node AT-URI format.
+ */
 const DEFAULT_CREDIT_TYPES: ContributionType[] = [
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-conceptualization',
     id: 'conceptualization',
     label: 'Conceptualization',
     description: 'Ideas; formulation or evolution of overarching research goals and aims',
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/data-curation',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-data-curation',
     id: 'data-curation',
     label: 'Data Curation',
     description: 'Management activities to annotate, scrub data and maintain research data',
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/formal-analysis',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-formal-analysis',
     id: 'formal-analysis',
     label: 'Formal Analysis',
     description:
@@ -127,14 +130,14 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/funding-acquisition',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-funding-acquisition',
     id: 'funding-acquisition',
     label: 'Funding Acquisition',
     description: 'Acquisition of the financial support for the project leading to this publication',
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/investigation',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-investigation',
     id: 'investigation',
     label: 'Investigation',
     description:
@@ -142,14 +145,14 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/methodology',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-methodology',
     id: 'methodology',
     label: 'Methodology',
     description: 'Development or design of methodology; creation of models',
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/project-administration',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-project-administration',
     id: 'project-administration',
     label: 'Project Administration',
     description:
@@ -157,7 +160,7 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/resources',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-resources',
     id: 'resources',
     label: 'Resources',
     description:
@@ -165,7 +168,7 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/software',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-software',
     id: 'software',
     label: 'Software',
     description:
@@ -173,7 +176,7 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/supervision',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-supervision',
     id: 'supervision',
     label: 'Supervision',
     description:
@@ -181,7 +184,7 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/validation',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-validation',
     id: 'validation',
     label: 'Validation',
     description:
@@ -189,7 +192,7 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/visualization',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-visualization',
     id: 'visualization',
     label: 'Visualization',
     description:
@@ -197,7 +200,7 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/writing-original-draft',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-original-draft',
     id: 'writing-original-draft',
     label: 'Writing - Original Draft',
     description:
@@ -205,7 +208,7 @@ const DEFAULT_CREDIT_TYPES: ContributionType[] = [
     status: 'established',
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/writing-review-editing',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-review-editing',
     id: 'writing-review-editing',
     label: 'Writing - Review & Editing',
     description:

@@ -9,7 +9,9 @@ import { ModerationService } from './moderation-service.js';
 import { getGovernanceDid } from './setup.js';
 import type {
   EvidenceItem,
-  FieldProposal,
+  GraphNode,
+  NodeKind,
+  NodeProposal,
   ProposalStatus,
   ProposalType,
   Reference,
@@ -49,7 +51,7 @@ export interface ProposalFilters {
  * Proposal list result
  */
 export interface ProposalListResult {
-  proposals: FieldProposal[];
+  proposals: NodeProposal[];
   total: number;
   hasMore: boolean;
   offset: number;
@@ -173,7 +175,7 @@ export class ProposalHandler {
     const uri = `at://${governanceDid}/pub.chive.graph.proposal/${id}` as AtUri;
 
     const query = `
-      CREATE (p:FieldProposal {
+      CREATE (p:NodeProposal {
         id: $id,
         uri: $uri,
         fieldName: $fieldName,
@@ -225,9 +227,9 @@ export class ProposalHandler {
    * @param uri - Proposal AT-URI
    * @returns Field proposal or null if not found
    */
-  async getProposal(uri: AtUri): Promise<FieldProposal | null> {
+  async getProposal(uri: AtUri): Promise<NodeProposal | null> {
     const query = `
-      MATCH (p:FieldProposal {uri: $uri})
+      MATCH (p:NodeProposal {uri: $uri})
       RETURN p
     `;
 
@@ -249,9 +251,9 @@ export class ProposalHandler {
    * @param id - Proposal identifier
    * @returns Field proposal or null if not found
    */
-  async getProposalById(id: string): Promise<FieldProposal | null> {
+  async getProposalById(id: string): Promise<NodeProposal | null> {
     const query = `
-      MATCH (p:FieldProposal {id: $id})
+      MATCH (p:NodeProposal {id: $id})
       RETURN p
     `;
 
@@ -331,7 +333,7 @@ export class ProposalHandler {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const query = `
-      MATCH (p:FieldProposal)
+      MATCH (p:NodeProposal)
       ${whereClause}
       WITH p
       ORDER BY p.createdAt DESC
@@ -341,7 +343,7 @@ export class ProposalHandler {
     `;
 
     const countQuery = `
-      MATCH (p:FieldProposal)
+      MATCH (p:NodeProposal)
       ${whereClause}
       RETURN count(p) as total
     `;
@@ -374,7 +376,7 @@ export class ProposalHandler {
    */
   async updateProposalStatus(uri: AtUri, status: ProposalStatus, updatedBy: DID): Promise<void> {
     const query = `
-      MATCH (p:FieldProposal {uri: $uri})
+      MATCH (p:NodeProposal {uri: $uri})
       SET p.status = $status,
           p.updatedAt = datetime(),
           p.updatedBy = $updatedBy
@@ -503,7 +505,7 @@ export class ProposalHandler {
 
     await this.connection.executeQuery(
       `
-      MATCH (p:FieldProposal {uri: $uri})
+      MATCH (p:NodeProposal {uri: $uri})
       SET p.status = 'rejected',
           p.rejectionReason = $reason,
           p.rejectedBy = $rejectedBy,
@@ -547,7 +549,7 @@ export class ProposalHandler {
 
     await this.connection.executeQuery(
       `
-      MATCH (p:FieldProposal {uri: $uri})
+      MATCH (p:NodeProposal {uri: $uri})
       SET p.status = 'needs-changes',
           p.requestedChanges = $changes,
           p.changesRequestedBy = $requestedBy,
@@ -582,7 +584,7 @@ export class ProposalHandler {
     const commentId = `comment-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
     const query = `
-      MATCH (p:FieldProposal {uri: $proposalUri})
+      MATCH (p:NodeProposal {uri: $proposalUri})
       CREATE (c:DiscussionComment {
         id: $commentId,
         proposalUri: $proposalUri,
@@ -624,7 +626,7 @@ export class ProposalHandler {
    */
   async getDiscussionComments(proposalUri: AtUri, limit = 100): Promise<DiscussionComment[]> {
     const query = `
-      MATCH (c:DiscussionComment)-[:COMMENT_ON]->(:FieldProposal {uri: $proposalUri})
+      MATCH (c:DiscussionComment)-[:COMMENT_ON]->(:NodeProposal {uri: $proposalUri})
       RETURN c.id as id,
              c.proposalUri as proposalUri,
              c.authorDid as authorDid,
@@ -683,9 +685,9 @@ export class ProposalHandler {
    * @param limit - Maximum results (default: 20)
    * @returns Proposals awaiting community action
    */
-  async getProposalsAwaitingAction(limit = 20): Promise<FieldProposal[]> {
+  async getProposalsAwaitingAction(limit = 20): Promise<NodeProposal[]> {
     const query = `
-      MATCH (p:FieldProposal)
+      MATCH (p:NodeProposal)
       WHERE p.status IN ['pending', 'in-discussion', 'needs-changes']
       WITH p
       ORDER BY p.createdAt ASC
@@ -706,9 +708,9 @@ export class ProposalHandler {
    * @param limit - Maximum results (default: 10)
    * @returns Recently approved proposals
    */
-  async getRecentlyApprovedProposals(limit = 10): Promise<FieldProposal[]> {
+  async getRecentlyApprovedProposals(limit = 10): Promise<NodeProposal[]> {
     const query = `
-      MATCH (p:FieldProposal {status: 'approved'})
+      MATCH (p:NodeProposal {status: 'approved'})
       WITH p
       ORDER BY p.updatedAt DESC
       LIMIT $limit
@@ -723,34 +725,32 @@ export class ProposalHandler {
   }
 
   /**
-   * Map Neo4j node to FieldProposal type.
+   * Map Neo4j node to NodeProposal type.
    */
-  private mapProposal(node: Record<string, string | string[] | Date>): FieldProposal {
-    const evidenceStr = node.evidence as string;
-    const referencesStr = node.references as string | null;
-    const alternateNames = node.alternateNames as string[] | null;
+  private mapProposal(node: Record<string, string | string[] | Date>): NodeProposal {
+    const evidenceStr = node.evidence as string | null;
+    const proposedNodeStr = node.proposedNode as string | null;
 
     const evidence: EvidenceItem[] = evidenceStr ? (JSON.parse(evidenceStr) as EvidenceItem[]) : [];
-    const references: Reference[] | undefined = referencesStr
-      ? (JSON.parse(referencesStr) as Reference[])
+    const proposedNode = proposedNodeStr
+      ? (JSON.parse(proposedNodeStr) as Partial<GraphNode>)
       : undefined;
 
     return {
       id: node.id as string,
       uri: node.uri as AtUri,
-      fieldName: node.fieldName as string,
-      alternateNames: alternateNames ?? undefined,
-      description: node.description as string,
       proposalType: node.proposalType as ProposalType,
-      existingFieldUri: node.existingFieldUri ? (node.existingFieldUri as AtUri) : undefined,
-      mergeTargetUri: node.mergeTargetUri ? (node.mergeTargetUri as AtUri) : undefined,
+      kind: (node.kind as NodeKind) ?? 'type',
+      subkind: node.subkind as string | undefined,
+      targetUri: node.targetUri ? (node.targetUri as AtUri) : undefined,
+      mergeIntoUri: node.mergeIntoUri ? (node.mergeIntoUri as AtUri) : undefined,
+      proposedNode,
       rationale: node.rationale as string,
       evidence,
-      references,
       status: node.status as ProposalStatus,
       proposerDid: node.proposerDid as DID,
       createdAt: new Date(node.createdAt as string | Date),
-      updatedAt: new Date(node.updatedAt as string | Date),
+      updatedAt: node.updatedAt ? new Date(node.updatedAt as string | Date) : undefined,
     };
   }
 }

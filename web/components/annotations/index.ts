@@ -3,7 +3,9 @@
  *
  * Provides:
  * - Rich text editing with embedded knowledge graph references
- * - Entity search (Wikidata, Chive authorities)
+ * - @ trigger for object nodes (institutions, persons, topics, etc.)
+ * - # trigger for type nodes (fields, facets, contribution-types, etc.)
+ * - Entity search (Wikidata, knowledge graph nodes)
  * - Entity linking dialogs for text spans
  *
  * @example
@@ -12,9 +14,10 @@
  *   AnnotationEditor,
  *   EntityLinkDialog,
  *   WikidataSearch,
+ *   NodeMentionAutocomplete,
  * } from '@/components/annotations';
  *
- * // FOVEA-style editor
+ * // FOVEA-style editor with @ and # triggers
  * <AnnotationEditor value={body} onChange={setBody} />
  *
  * // Entity linking
@@ -39,16 +42,22 @@ export {
 } from './annotation-editor';
 
 // =============================================================================
+// NODE MENTION AUTOCOMPLETE
+// =============================================================================
+
+export {
+  NodeMentionAutocomplete,
+  type NodeMentionAutocompleteProps,
+} from './node-mention-autocomplete';
+
+// =============================================================================
 // ENTITY SEARCH
 // =============================================================================
 
 export { WikidataSearch, type WikidataEntity, type WikidataSearchProps } from './wikidata-search';
 
-export {
-  AuthoritySearch,
-  type AuthorityResult,
-  type AuthoritySearchProps,
-} from './authority-search';
+// Node search is exported from knowledge-graph module
+// import { NodeSearch } from '@/components/knowledge-graph';
 
 // =============================================================================
 // ENTITY LINK DIALOG
