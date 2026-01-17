@@ -1167,7 +1167,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Browse eprints using PMEST faceted classification */
+    /** Browse eprints using dynamic faceted classification from the knowledge graph */
     get: operations['pub_chive_graph_browseFaceted'];
     put?: never;
     post?: never;
@@ -7560,11 +7560,10 @@ export interface operations {
       query: {
         limit: number;
         cursor?: string;
-        personality?: string[];
-        matter?: string[];
-        energy?: string[];
-        space?: string[];
-        time?: string[];
+        q?: string;
+        facets?: {
+          [key: string]: string[];
+        };
       };
       header?: never;
       path?: never;
@@ -7702,7 +7701,14 @@ export interface operations {
             }[];
             /** @description Available facet refinements */
             facets: {
-              personality?: {
+              /** @description Facet slug (unique identifier) */
+              slug: string;
+              /** @description Display label */
+              label: string;
+              /** @description Facet description */
+              description?: string;
+              /** @description Available values with counts */
+              values: {
                 /** @description Facet value */
                 value: string;
                 /** @description Display label */
@@ -7710,79 +7716,7 @@ export interface operations {
                 /** @description Number of eprints */
                 count: number;
               }[];
-              matter?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              energy?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              space?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              time?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              person?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              organization?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              event?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              work?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-              formGenre?: {
-                /** @description Facet value */
-                value: string;
-                /** @description Display label */
-                label?: string;
-                /** @description Number of eprints */
-                count: number;
-              }[];
-            };
+            }[];
             cursor?: string;
             hasMore: boolean;
             total: number;

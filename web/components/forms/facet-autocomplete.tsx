@@ -4,21 +4,15 @@
  * Facet value autocomplete component.
  *
  * @remarks
- * Searches facet VALUES in the knowledge graph by querying the browseFaceted
- * endpoint, which resolves values via has-value edges from facet dimension nodes.
- *
- * Facet dimensions (like 'energy', 'space', 'time') have subkind='facet'.
- * Facet VALUES are linked to dimensions via has-value edges and may or may not
- * have their own subkind depending on the value type.
+ * Searches facet values in the knowledge graph. Uses searchNodes for dimensions
+ * with subkinds (form-genre → paper-type), and falls back to hardcoded options
+ * when no backend data is available.
  *
  * @example
  * ```tsx
  * <FacetAutocomplete
  *   dimension="energy"
- *   value={parentFacetId}
- *   onSelect={(facet) => {
- *     setValue('parentFacetId', facet.id);
- *   }}
+ *   onSelect={(facet) => handleSelect(facet)}
  * />
  * ```
  *
@@ -27,7 +21,8 @@
 
 import * as React from 'react';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Layers, Search, Loader2, X, Check } from 'lucide-react';
+import { Layers, Search, Loader2, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +35,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useFacetCounts, type FacetDefinition } from '@/lib/hooks/use-faceted-search';
+import { useDebounce } from '@/lib/hooks/use-eprint-search';
 import type { FacetDimension } from '@/lib/api/schema';
 
 // =============================================================================
@@ -86,7 +81,7 @@ export interface FacetAutocompleteProps {
 }
 
 // =============================================================================
-// DIMENSION LABELS
+// DIMENSION CONFIGURATION
 // =============================================================================
 
 const DIMENSION_LABELS: Record<FacetDimension, string> = {
@@ -102,17 +97,366 @@ const DIMENSION_LABELS: Record<FacetDimension, string> = {
   'form-genre': 'Document Type',
 };
 
+/**
+ * Maps dimensions to their search strategy.
+ */
+const DIMENSION_SUBKINDS: Partial<Record<FacetDimension, string>> = {
+  'form-genre': 'paper-type',
+  personality: 'field',
+};
+
+/**
+ * Fallback options when API has no data.
+ */
+const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
+  'form-genre': [
+    {
+      id: 'original-research',
+      label: 'Original Research',
+      description: 'Primary research article',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'review',
+      label: 'Review',
+      description: 'Literature review',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'systematic-review',
+      label: 'Systematic Review',
+      description: 'Systematic literature review',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'meta-analysis',
+      label: 'Meta-Analysis',
+      description: 'Statistical synthesis of studies',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'case-study',
+      label: 'Case Study',
+      description: 'In-depth case examination',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'commentary',
+      label: 'Commentary',
+      description: 'Commentary or opinion piece',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'methods-paper',
+      label: 'Methods Paper',
+      description: 'Methodology description',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'thesis',
+      label: 'Thesis/Dissertation',
+      description: 'Academic thesis',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'conference-paper',
+      label: 'Conference Paper',
+      description: 'Conference proceeding',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+    {
+      id: 'preprint',
+      label: 'Preprint',
+      description: 'Pre-publication manuscript',
+      dimension: 'form-genre',
+      usageCount: 0,
+    },
+  ],
+  energy: [
+    {
+      id: 'qualitative-research',
+      label: 'Qualitative Research',
+      description: 'Non-numerical data analysis',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'quantitative-research',
+      label: 'Quantitative Research',
+      description: 'Statistical/numerical analysis',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'mixed-methods',
+      label: 'Mixed Methods',
+      description: 'Qualitative and quantitative',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'meta-analysis',
+      label: 'Meta-Analysis',
+      description: 'Statistical synthesis',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'systematic-review',
+      label: 'Systematic Review',
+      description: 'Systematic literature review',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'randomized-controlled-trial',
+      label: 'Randomized Controlled Trial',
+      description: 'RCT methodology',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'observational-study',
+      label: 'Observational Study',
+      description: 'Non-interventional research',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'machine-learning',
+      label: 'Machine Learning',
+      description: 'ML-based analysis',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'simulation',
+      label: 'Simulation',
+      description: 'Computational modeling',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+    {
+      id: 'survey-research',
+      label: 'Survey Research',
+      description: 'Survey-based methodology',
+      dimension: 'energy',
+      usageCount: 0,
+    },
+  ],
+  space: [
+    {
+      id: 'global',
+      label: 'Global',
+      description: 'Worldwide scope',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    {
+      id: 'europe',
+      label: 'Europe',
+      description: 'European region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    {
+      id: 'north-america',
+      label: 'North America',
+      description: 'North American region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    { id: 'asia', label: 'Asia', description: 'Asian region', dimension: 'space', usageCount: 0 },
+    {
+      id: 'africa',
+      label: 'Africa',
+      description: 'African region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    {
+      id: 'south-america',
+      label: 'South America',
+      description: 'South American region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    {
+      id: 'oceania',
+      label: 'Oceania',
+      description: 'Oceanian region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    {
+      id: 'middle-east',
+      label: 'Middle East',
+      description: 'Middle Eastern region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    {
+      id: 'southeast-asia',
+      label: 'Southeast Asia',
+      description: 'Southeast Asian region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+    {
+      id: 'sub-saharan-africa',
+      label: 'Sub-Saharan Africa',
+      description: 'Sub-Saharan African region',
+      dimension: 'space',
+      usageCount: 0,
+    },
+  ],
+  time: [
+    {
+      id: '21st-century',
+      label: '21st Century',
+      description: '2001-present',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: '20th-century',
+      label: '20th Century',
+      description: '1901-2000',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: '19th-century',
+      label: '19th Century',
+      description: '1801-1900',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: 'contemporary',
+      label: 'Contemporary',
+      description: '2010-present',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: 'digital-age',
+      label: 'Digital Age',
+      description: '1970s-present',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: 'cold-war-era',
+      label: 'Cold War Era',
+      description: '1947-1991',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: 'world-war-ii-era',
+      label: 'World War II Era',
+      description: '1939-1945',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: 'interwar-period',
+      label: 'Interwar Period',
+      description: '1918-1939',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: 'industrial-revolution',
+      label: 'Industrial Revolution',
+      description: 'c. 1760-1840',
+      dimension: 'time',
+      usageCount: 0,
+    },
+    {
+      id: 'historical',
+      label: 'Historical',
+      description: 'Pre-1900',
+      dimension: 'time',
+      usageCount: 0,
+    },
+  ],
+  // Entity dimensions - typically empty until user tags
+  personality: [],
+  matter: [],
+  person: [],
+  organization: [],
+  event: [],
+  work: [],
+};
+
+// =============================================================================
+// API SEARCH FUNCTION
+// =============================================================================
+
+/**
+ * Search for facet values via the node search API.
+ */
+async function searchFacetValues(
+  query: string,
+  dimension: FacetDimension
+): Promise<FacetSuggestion[]> {
+  if (query.length < 2) return [];
+
+  const subkind = DIMENSION_SUBKINDS[dimension];
+
+  try {
+    // Build search parameters
+    const params = new URLSearchParams({ query });
+    if (subkind) {
+      params.set('subkind', subkind);
+      params.set('kind', 'type');
+    } else {
+      // For dimensions without subkind, search all objects
+      params.set('kind', 'object');
+    }
+    params.set('status', 'established');
+    params.set('limit', '20');
+
+    const response = await fetch(`/xrpc/pub.chive.graph.searchNodes?${params.toString()}`);
+
+    if (!response.ok) {
+      console.debug('Facet search not available');
+      return [];
+    }
+
+    const data = await response.json();
+    return (data.nodes ?? []).map(
+      (node: { id: string; uri: string; label: string; description?: string; slug?: string }) => ({
+        id: node.slug ?? node.id,
+        label: node.label,
+        description: node.description ?? null,
+        dimension,
+        usageCount: 0,
+      })
+    );
+  } catch (error) {
+    console.debug('Facet search failed:', error);
+    return [];
+  }
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
 /**
  * Autocomplete input for facet values.
- *
- * @remarks
- * Uses the browseFaceted endpoint to get all facets and their values,
- * then filters client-side for the specific dimension and query.
- * This is efficient because facet data is cached and changes infrequently.
  *
  * @param props - Component props
  * @returns Facet autocomplete element
@@ -132,53 +476,59 @@ export function FacetAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState<FacetSuggestion | null>(null);
 
-  // Fetch all facets with their values via browseFaceted
-  // This uses has-value edges to resolve facet values from dimensions
-  const { data: facets, isLoading } = useFacetCounts();
+  const debouncedQuery = useDebounce(query, 300);
 
-  // Find the facet definition for this dimension
-  const facetDefinition = useMemo(() => {
-    if (!facets) return null;
-    return facets.find((f) => f.slug === dimension) ?? null;
-  }, [facets, dimension]);
+  // Search for facet values
+  const { data: apiResults = [], isLoading } = useQuery({
+    queryKey: ['facet-search', dimension, debouncedQuery],
+    queryFn: () => searchFacetValues(debouncedQuery, dimension),
+    enabled: debouncedQuery.length >= 2,
+    staleTime: 60 * 1000,
+  });
 
-  // Convert facet values to suggestions and filter by query
-  const filteredSuggestions = useMemo(() => {
-    if (!facetDefinition) return [];
+  // Get fallback options for this dimension
+  const fallbackOptions = useMemo(() => FALLBACK_OPTIONS[dimension] ?? [], [dimension]);
 
-    const suggestions: FacetSuggestion[] = facetDefinition.values.map((v) => ({
-      id: v.value,
-      label: v.label ?? v.value,
-      description: null,
-      dimension,
-      usageCount: v.count,
-    }));
-
-    // Filter by query (case-insensitive)
-    if (!query) return suggestions;
+  // Combine API results with filtered fallbacks
+  const suggestions = useMemo(() => {
     const lowerQuery = query.toLowerCase();
-    return suggestions.filter(
+
+    // If we have API results, use them
+    if (apiResults.length > 0) {
+      return apiResults;
+    }
+
+    // Otherwise filter fallback options
+    if (!query) {
+      return fallbackOptions;
+    }
+
+    return fallbackOptions.filter(
       (s) => s.label.toLowerCase().includes(lowerQuery) || s.id.toLowerCase().includes(lowerQuery)
     );
-  }, [facetDefinition, dimension, query]);
+  }, [apiResults, fallbackOptions, query]);
 
   // Update selected value when external value changes
   useEffect(() => {
-    if (value && facetDefinition) {
-      const match = facetDefinition.values.find((v) => v.value === value);
+    if (value) {
+      // Try to find in fallbacks first
+      const match = fallbackOptions.find((f) => f.id === value);
       if (match) {
+        setSelectedValue(match);
+      } else {
+        // Create a placeholder for unknown values
         setSelectedValue({
-          id: match.value,
-          label: match.label ?? match.value,
+          id: value,
+          label: value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
           description: null,
           dimension,
-          usageCount: match.count,
+          usageCount: 0,
         });
       }
     } else {
       setSelectedValue(null);
     }
-  }, [value, facetDefinition, dimension]);
+  }, [value, fallbackOptions, dimension]);
 
   const handleSelect = useCallback(
     (suggestion: FacetSuggestion) => {
@@ -202,12 +552,15 @@ export function FacetAutocomplete({
     }
   }, []);
 
-  // Open popover when typing
-  useEffect(() => {
-    if (query.length >= 1) {
-      setIsOpen(true);
-    }
-  }, [query]);
+  // Open popover when typing or focusing
+  const handleFocus = useCallback(() => {
+    setIsOpen(true);
+  }, []);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    setIsOpen(true);
+  }, []);
 
   const defaultPlaceholder = `Search ${DIMENSION_LABELS[dimension].toLowerCase()}...`;
 
@@ -241,11 +594,11 @@ export function FacetAutocomplete({
             ref={inputRef}
             id={id}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsOpen(true)}
+            onFocus={handleFocus}
             placeholder={placeholder ?? defaultPlaceholder}
-            disabled={disabled || isLoading}
+            disabled={disabled}
             className="pl-9"
             aria-label={`Search ${DIMENSION_LABELS[dimension]} values`}
           />
@@ -268,17 +621,15 @@ export function FacetAutocomplete({
               </div>
             )}
 
-            {!isLoading && filteredSuggestions.length === 0 && (
+            {!isLoading && suggestions.length === 0 && (
               <CommandEmpty className="py-3 text-center text-sm">
-                {facetDefinition
-                  ? `No ${DIMENSION_LABELS[dimension].toLowerCase()} values found matching "${query}"`
-                  : `No ${DIMENSION_LABELS[dimension].toLowerCase()} values available yet`}
+                No {DIMENSION_LABELS[dimension].toLowerCase()} values found
               </CommandEmpty>
             )}
 
-            {filteredSuggestions.length > 0 && (
+            {suggestions.length > 0 && (
               <CommandGroup heading={`${DIMENSION_LABELS[dimension]} Values`}>
-                {filteredSuggestions.slice(0, 10).map((suggestion) => (
+                {suggestions.slice(0, 10).map((suggestion) => (
                   <CommandItem
                     key={suggestion.id}
                     value={suggestion.id}
@@ -286,9 +637,16 @@ export function FacetAutocomplete({
                     className="cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-2 w-full">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span>{suggestion.label}</span>
+                      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span>{suggestion.label}</span>
+                        </div>
+                        {suggestion.description && (
+                          <span className="text-xs text-muted-foreground ml-6 line-clamp-1">
+                            {suggestion.description}
+                          </span>
+                        )}
                       </div>
                       {suggestion.usageCount > 0 && (
                         <span className="text-xs text-muted-foreground shrink-0">
