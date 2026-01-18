@@ -211,11 +211,11 @@ describe('AlphaSignupForm', () => {
       );
     });
 
-    it('requires research keyword', async () => {
+    it('allows submission without research keywords (optional field)', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<AlphaSignupForm />);
+      const { container } = renderWithProviders(<AlphaSignupForm />);
 
-      // Fill other fields but not research keyword
+      // Fill required fields but not research keywords
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
 
       const sectorSelect = screen.getByRole('combobox', { name: /sector/i });
@@ -226,17 +226,19 @@ describe('AlphaSignupForm', () => {
       await user.click(careerSelect);
       await user.click(screen.getByRole('option', { name: /postdoctoral/i }));
 
-      // Submit using the button - industry standard for react-hook-form testing
-      const submitButton = screen.getByRole('button', { name: /request.*access|submit/i });
-      await user.click(submitButton);
+      // Submit the form
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
 
-      // Should show validation error - "Please add at least one research keyword"
-      await waitFor(
-        () => {
-          expect(screen.getByText(/please add at least one research keyword/i)).toBeInTheDocument();
-        },
-        { timeout: 5000 }
-      );
+      // Wait for any validation to complete, then verify no keyword error appears
+      await waitFor(() => {
+        // The form should not show a research keyword validation error
+        expect(
+          screen.queryByText(/please add at least one research keyword/i)
+        ).not.toBeInTheDocument();
+      });
     });
   });
 

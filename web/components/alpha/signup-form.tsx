@@ -109,10 +109,7 @@ const formSchema = z
     ),
     careerStageOther: z.string().max(100).optional(),
     affiliations: z.array(affiliationSchema).max(10).optional(),
-    researchKeywords: z
-      .array(keywordSchema)
-      .min(1, 'Please add at least one research keyword')
-      .max(10),
+    researchKeywords: z.array(keywordSchema).max(10).optional(),
     motivation: z.string().max(1000, 'Motivation must be 1000 characters or less').optional(),
   })
   .refine(
@@ -329,12 +326,12 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
               <FormItem>
                 <FormControl>
                   <KeywordAutocompleteInput
-                    label="Research Keywords"
+                    label="Research Keywords (optional)"
                     values={(field.value as ResearchKeyword[]) ?? []}
                     onChange={(values) => field.onChange(values)}
                     placeholder="Search keywords..."
                     maxItems={10}
-                    description="Add keywords describing your research areas"
+                    description="Add keywords describing your research areas (up to 10)"
                   />
                 </FormControl>
                 <FormMessage />
