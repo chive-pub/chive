@@ -11,14 +11,12 @@
 
 import { NodeCreator, type ExternalId } from './lib/node-creator.js';
 import { EdgeCreator } from './lib/edge-creator.js';
-import { ALL_FIELDS } from './lib/fields.js';
+import { ALL_FIELDS, type FieldDefinition } from './lib/fields.js';
 
 /**
  * Sorts fields so parents are created before children.
  */
-function sortFieldsForCreation(
-  fields: readonly { slug: string; type: string; parentSlug?: string }[]
-): typeof fields {
+function sortFieldsForCreation(fields: readonly FieldDefinition[]): readonly FieldDefinition[] {
   return [...fields].sort((a, b) => {
     // Sort by type: domain > division > group > field
     const typeOrder: Record<string, number> = { domain: 0, division: 1, group: 2, field: 3 };

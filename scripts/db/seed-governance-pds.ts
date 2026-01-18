@@ -88,7 +88,11 @@ function getConfig(): SeedConfig {
  */
 function createPdsWriter(agent: AtpAgent, governanceDid: DID) {
   return {
-    async createNode(collection: string, rkey: string, record: unknown): Promise<{ uri: string }> {
+    async createNode(
+      collection: string,
+      rkey: string,
+      record: Record<string, unknown>
+    ): Promise<{ uri: string }> {
       await agent.com.atproto.repo.createRecord({
         repo: governanceDid,
         collection,
@@ -98,7 +102,11 @@ function createPdsWriter(agent: AtpAgent, governanceDid: DID) {
       return { uri: `at://${governanceDid}/${collection}/${rkey}` };
     },
 
-    async createEdge(collection: string, rkey: string, record: unknown): Promise<{ uri: string }> {
+    async createEdge(
+      collection: string,
+      rkey: string,
+      record: Record<string, unknown>
+    ): Promise<{ uri: string }> {
       await agent.com.atproto.repo.createRecord({
         repo: governanceDid,
         collection,

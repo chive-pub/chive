@@ -17,17 +17,6 @@ import {
 } from './lib/concepts.js';
 
 /**
- * Platform category to subkind mapping.
- */
-const CATEGORY_TO_SUBKIND: Record<string, string> = {
-  'platform-code': 'platform-code',
-  'platform-data': 'platform-data',
-  'platform-preprint': 'platform-preprint',
-  'platform-preregistration': 'platform-preregistration',
-  'platform-protocol': 'platform-protocol',
-};
-
-/**
  * Seeds all platform nodes for a given category.
  */
 async function seedPlatformCategory(

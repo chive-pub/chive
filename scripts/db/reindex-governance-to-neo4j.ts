@@ -57,6 +57,33 @@ interface EdgeRecord {
   createdAt: string;
 }
 
+function isNodeRecord(value: unknown): value is NodeRecord {
+  if (typeof value !== 'object' || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.$type === 'string' &&
+    typeof obj.id === 'string' &&
+    (obj.kind === 'type' || obj.kind === 'object') &&
+    typeof obj.label === 'string' &&
+    typeof obj.status === 'string' &&
+    typeof obj.createdAt === 'string'
+  );
+}
+
+function isEdgeRecord(value: unknown): value is EdgeRecord {
+  if (typeof value !== 'object' || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.$type === 'string' &&
+    typeof obj.id === 'string' &&
+    typeof obj.sourceUri === 'string' &&
+    typeof obj.targetUri === 'string' &&
+    typeof obj.relationSlug === 'string' &&
+    typeof obj.status === 'string' &&
+    typeof obj.createdAt === 'string'
+  );
+}
+
 function subkindToLabel(slug: string): string {
   return slug
     .split('-')
@@ -108,7 +135,11 @@ async function main(): Promise<void> {
       });
 
       for (const record of response.data.records) {
-        const node = record.value as NodeRecord;
+        if (!isNodeRecord(record.value)) {
+          console.warn(`Skipping invalid node record: ${record.uri}`);
+          continue;
+        }
+        const node = record.value;
         const uri = record.uri;
 
         const kindLabel = node.kind === 'type' ? 'Type' : 'Object';
@@ -174,7 +205,11 @@ async function main(): Promise<void> {
       });
 
       for (const record of response.data.records) {
-        const edge = record.value as EdgeRecord;
+        if (!isEdgeRecord(record.value)) {
+          console.warn(`Skipping invalid edge record: ${record.uri}`);
+          continue;
+        }
+        const edge = record.value;
         const uri = record.uri;
 
         await session.run(

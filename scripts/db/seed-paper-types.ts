@@ -137,7 +137,7 @@ export async function seedPaperTypes(nodeCreator: NodeCreator): Promise<number> 
   for (const paperType of PAPER_TYPE_DEFINITIONS) {
     const externalIds: ExternalId[] = [];
 
-    if (paperType.wikidataId) {
+    if ('wikidataId' in paperType && paperType.wikidataId) {
       externalIds.push({
         system: 'wikidata',
         identifier: paperType.wikidataId,

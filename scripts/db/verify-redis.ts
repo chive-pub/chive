@@ -9,7 +9,7 @@
  * @packageDocumentation
  */
 
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { DatabaseError } from '../../src/types/errors.js';
 import { getRedisConfig } from '../../src/storage/redis/structures.js';
 

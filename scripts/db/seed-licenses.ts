@@ -256,7 +256,7 @@ export async function seedLicenses(nodeCreator: NodeCreator): Promise<number> {
   for (const license of LICENSE_DEFINITIONS) {
     const externalIds: ExternalId[] = [];
 
-    if (license.spdxId) {
+    if ('spdxId' in license && license.spdxId) {
       externalIds.push({
         system: 'spdx',
         identifier: license.spdxId,
@@ -265,7 +265,7 @@ export async function seedLicenses(nodeCreator: NodeCreator): Promise<number> {
       });
     }
 
-    if (license.wikidataId) {
+    if ('wikidataId' in license && license.wikidataId) {
       externalIds.push({
         system: 'wikidata',
         identifier: license.wikidataId,
@@ -282,7 +282,7 @@ export async function seedLicenses(nodeCreator: NodeCreator): Promise<number> {
       description: license.description,
       externalIds: externalIds.length > 0 ? externalIds : undefined,
       metadata: {
-        spdxId: license.spdxId,
+        spdxId: 'spdxId' in license ? license.spdxId : undefined,
         displayOrder: license.displayOrder,
       },
       status: 'established',
