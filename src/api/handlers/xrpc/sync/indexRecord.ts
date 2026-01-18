@@ -13,6 +13,7 @@
 import type { Context } from 'hono';
 
 import type { RecordMetadata } from '../../../../services/eprint/eprint-service.js';
+import { transformPDSRecord } from '../../../../services/eprint/pds-record-transformer.js';
 import type { AtUri, CID, DID } from '../../../../types/atproto.js';
 import {
   AuthenticationError,
@@ -20,7 +21,6 @@ import {
   NotFoundError,
   ValidationError,
 } from '../../../../types/errors.js';
-import type { Eprint } from '../../../../types/models/eprint.js';
 import {
   indexRecordInputSchema,
   indexRecordResponseSchema,
@@ -95,7 +95,7 @@ async function fetchRecordFromPds(
   did: DID,
   collection: string,
   rkey: string
-): Promise<{ uri: string; cid: string; value: Eprint } | null> {
+): Promise<{ uri: string; cid: string; value: unknown } | null> {
   try {
     const url = new URL('/xrpc/com.atproto.repo.getRecord', pdsUrl);
     url.searchParams.set('repo', did);
@@ -107,7 +107,7 @@ async function fetchRecordFromPds(
       return null;
     }
 
-    const record = (await response.json()) as { uri: string; cid: string; value: Eprint };
+    const record = (await response.json()) as { uri: string; cid: string; value: unknown };
     return record;
   } catch {
     return null;
@@ -188,8 +188,11 @@ export async function indexRecordHandler(
       indexedAt: new Date(),
     };
 
+    // Transform PDS record to internal Eprint model
+    const eprintRecord = transformPDSRecord(record.value, input.uri as AtUri, record.cid as CID);
+
     // Index the eprint
-    const result = await eprintService.indexEprint(record.value, metadata);
+    const result = await eprintService.indexEprint(eprintRecord, metadata);
 
     if (!result.ok) {
       logger.error('Failed to index record', result.error as Error, { uri: input.uri });

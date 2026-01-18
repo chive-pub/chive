@@ -32,9 +32,9 @@ import type {
 import type { AtUri, CID, DID, NSID } from '../../types/atproto.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
-import type { Eprint } from '../../types/models/eprint.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
+import { transformPDSRecord } from '../eprint/pds-record-transformer.js';
 import type { EdgeService } from '../governance/edge-service.js';
 import type { NodeService } from '../governance/node-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
@@ -230,13 +230,22 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
           logger.error('Failed to delete eprint', result.error as Error, { uri });
         }
       } else if (record) {
-        const eprintRecord = record as Eprint;
-        const result =
-          action === 'update'
-            ? await eprintService.indexEprintUpdate(uri, eprintRecord, metadata)
-            : await eprintService.indexEprint(eprintRecord, metadata);
-        if (!result.ok) {
-          logger.error('Failed to index eprint', result.error as Error, { uri, action });
+        try {
+          // Transform PDS record format to internal Eprint model
+          const eprintRecord = transformPDSRecord(record, uri, cid ?? ('' as CID));
+          const result =
+            action === 'update'
+              ? await eprintService.indexEprintUpdate(uri, eprintRecord, metadata)
+              : await eprintService.indexEprint(eprintRecord, metadata);
+          if (!result.ok) {
+            logger.error('Failed to index eprint', result.error as Error, { uri, action });
+          }
+        } catch (transformError) {
+          logger.error(
+            'Failed to transform eprint record',
+            transformError instanceof Error ? transformError : undefined,
+            { uri, action }
+          );
         }
       }
       break;

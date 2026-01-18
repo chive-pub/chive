@@ -414,14 +414,21 @@ export async function seedPostgres(): Promise<void> {
         },
       ];
 
+      // Convert plain text abstract to RichTextBody format
+      const abstractRichText = {
+        type: 'RichText',
+        items: [{ type: 'text', content: eprint.abstract }],
+        format: 'application/x-chive-gloss+json',
+      };
+
       await client.query(
         `INSERT INTO eprints_index (
-          uri, cid, authors, submitted_by, title, abstract,
+          uri, cid, authors, submitted_by, title, abstract, abstract_plain_text,
           document_blob_cid, document_blob_mime_type, document_blob_size,
           document_format, keywords, license, publication_status,
           created_at, indexed_at, pds_url
         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          ON CONFLICT (uri) DO UPDATE SET title = EXCLUDED.title, indexed_at = EXCLUDED.indexed_at`,
         [
           eprint.uri,
@@ -429,6 +436,7 @@ export async function seedPostgres(): Promise<void> {
           JSON.stringify(authorsArray),
           eprint.authorDid,
           eprint.title,
+          JSON.stringify(abstractRichText),
           eprint.abstract,
           eprint.documentBlobCid,
           eprint.documentBlobMimeType,
