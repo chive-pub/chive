@@ -31,6 +31,7 @@ import type {
   FundingSource,
   ConferencePresentation,
 } from '../../types/models/eprint.js';
+import { extractPlainText } from '../../utils/rich-text.js';
 
 /**
  * Indexable eprint document for Elasticsearch.
@@ -373,7 +374,8 @@ export function mapEprintToDocument(
     cid: eprint.cid,
     rkey: extractRkey(eprint.uri),
     title: eprint.title,
-    abstract: eprint.abstract,
+    // Use plain text abstract for full-text search indexing
+    abstract: eprint.abstractPlainText ?? extractPlainText(eprint.abstract),
     authors: mapAuthors(eprint.authors),
     submitted_by: eprint.submittedBy,
     paper_did: eprint.paperDid,
@@ -551,28 +553,28 @@ function mapFacets(facets: readonly Facet[]): FacetDocument {
 }
 
 /**
- * Extracts authority-controlled terms from facets.
+ * Extracts node-linked terms from facets.
  *
  * @param facets - Facet array
- * @returns Authority terms (values with authority records)
+ * @returns Values linked to knowledge graph nodes
  */
 function extractAuthorities(facets: readonly Facet[]): readonly string[] | undefined {
-  const authorities = facets.filter((f) => f.authorityRecordId !== undefined).map((f) => f.value);
+  const authorities = facets.filter((f) => f.nodeUri !== undefined).map((f) => f.value);
 
   return authorities.length > 0 ? authorities : undefined;
 }
 
 /**
- * Extracts authority record URIs from facets.
+ * Extracts node URIs from facets.
  *
  * @param facets - Facet array
- * @returns Authority record URIs
+ * @returns Node URIs
  */
 function extractAuthorityUris(facets: readonly Facet[]): readonly string[] | undefined {
   const uris = facets
-    .filter((f) => f.authorityRecordId !== undefined)
-    .map((f) => f.authorityRecordId)
-    .filter((id): id is string => id !== undefined);
+    .filter((f) => f.nodeUri !== undefined)
+    .map((f) => f.nodeUri)
+    .filter((uri): uri is string => uri !== undefined);
 
   return uris.length > 0 ? uris : undefined;
 }

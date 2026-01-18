@@ -18,8 +18,10 @@ import { z } from 'zod';
  */
 export const reviewCommentSchema = z.object({
   eprintUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }),
-  content: z.string().max(10000),
-  lineNumber: z.number().int().min(1).optional(),
+  body: z.array(z.unknown()).max(100),
+  target: z.object({ versionUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }).optional(), selector: z.unknown() }).optional(),
+  motivationUri: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }).optional(),
+  motivationFallback: z.enum(["commenting", "questioning", "highlighting", "replying", "linking"]).optional(),
   parentComment: z.string().refine((val) => /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/.test(val), { message: "Invalid AT URI format" }).optional(),
   createdAt: z.string().datetime(),
 });

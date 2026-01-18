@@ -44,6 +44,7 @@ const config: Config = {
         out: 'code-reference/backend',
         readme: 'none',
         sanitizeComments: true,
+        treatWarningsAsErrors: false,
         sidebar: {
           autoConfiguration: false,
         },
@@ -60,6 +61,7 @@ const config: Config = {
         out: 'code-reference/frontend',
         readme: 'none',
         sanitizeComments: true,
+        treatWarningsAsErrors: false,
         sidebar: {
           autoConfiguration: false,
         },

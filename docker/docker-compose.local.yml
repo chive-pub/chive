@@ -55,6 +55,9 @@ services:
     container_name: chive-neo4j
     environment:
       NEO4J_AUTH: neo4j/chive_test_password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*
     ports:
       - "7474:7474"
       - "7687:7687"

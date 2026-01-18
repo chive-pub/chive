@@ -8,7 +8,7 @@
  * @public
  */
 
-import { z } from 'zod';
+import { z } from './base.js';
 
 /**
  * Alpha application status.

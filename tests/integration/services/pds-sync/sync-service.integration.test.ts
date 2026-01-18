@@ -26,7 +26,17 @@ import type { AtUri, CID, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IRepository, RepositoryRecord } from '@/types/interfaces/repository.interface.js';
 import type { StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 // Test constants
 const TEST_AUTHOR = 'did:plc:synctestauthor' as DID;
@@ -103,7 +113,8 @@ function createTestStoredEprint(
     authors: [testAuthor],
     submittedBy: TEST_AUTHOR,
     title: 'Test Eprint for Sync',
-    abstract: 'This is a test abstract for sync testing.',
+    abstract: createMockAbstract('This is a test abstract for sync testing.'),
+    abstractPlainText: 'This is a test abstract for sync testing.',
     documentBlobRef: {
       $type: 'blob',
       ref: 'bafyreisyncblob123' as CID,
@@ -363,6 +374,9 @@ describe('PDSSyncService Integration', () => {
 
       const result = await service.refreshRecord(uri);
 
+      if (!result.ok) {
+        console.error('DEBUG refreshRecord failed:', result.error);
+      }
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.refreshed).toBe(true);

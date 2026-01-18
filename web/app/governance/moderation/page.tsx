@@ -21,6 +21,7 @@ import {
   type ProposalStatus,
   type ProposalType,
 } from '@/lib/hooks/use-governance';
+import { ConnectedTrustedEditorStatus } from '@/components/governance';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -97,6 +98,9 @@ export default function ModerationPage() {
         </Card>
       ) : (
         <>
+          {/* Your Governance Status */}
+          <ConnectedTrustedEditorStatus />
+
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
@@ -160,7 +164,7 @@ export default function ModerationPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-medium">
-                              {proposal.label ?? proposal.fieldId ?? 'Untitled'}
+                              {proposal.label ?? proposal.nodeUri ?? 'Untitled'}
                             </h3>
                             <Badge variant="outline" className="text-xs">
                               {TYPE_LABELS[proposal.type]}
@@ -235,7 +239,7 @@ export default function ModerationPage() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-medium truncate">
-                                  {proposal.label ?? proposal.fieldId ?? 'Untitled'}
+                                  {proposal.label ?? proposal.nodeUri ?? 'Untitled'}
                                 </h3>
                                 <Badge variant="outline" className="text-xs">
                                   {TYPE_LABELS[proposal.type]}

@@ -14,19 +14,27 @@
  * @packageDocumentation
  */
 
-import { runner } from 'node-pg-migrate';
+import { runner, Migration } from 'node-pg-migrate';
 import { getMigrationConfig } from '../../src/storage/postgresql/config.js';
 
 const config = getMigrationConfig();
 
-const direction = process.argv[2] || 'up';
+const direction = process.argv[2] ?? 'up';
 const name = process.argv[3];
 
 async function main(): Promise<void> {
-  if (direction === 'create' && !name) {
-    console.error('Error: Migration name required');
-    console.error('Usage: pnpm migrate:create <name>');
-    process.exit(1);
+  if (direction === 'create') {
+    if (!name) {
+      console.error('Error: Migration name required');
+      console.error('Usage: pnpm migrate:create <name>');
+      process.exit(1);
+    }
+
+    const migrationPath = await Migration.create(name, config.dir, {
+      language: 'ts',
+    });
+    console.log(`Created migration: ${migrationPath}`);
+    return;
   }
 
   const runnerOptions: Parameters<typeof runner>[0] = {
@@ -34,17 +42,11 @@ async function main(): Promise<void> {
     dir: config.dir,
     migrationsTable: config.migrationsTable,
     schema: config.schema,
-    direction: direction === 'up' || direction === 'down' ? direction : 'up',
+    direction: direction === 'down' ? 'down' : 'up',
     count: direction === 'down' ? 1 : undefined,
     createMigrationsSchema: true,
     log: (msg) => console.log(msg),
   };
-
-  if (direction === 'create') {
-    runnerOptions.direction = 'up';
-    runnerOptions.count = 0;
-    runnerOptions.name = name;
-  }
 
   try {
     await runner(runnerOptions);

@@ -61,7 +61,8 @@ const CHIVE_COLLECTIONS = [
   'pub.chive.eprint.version',
   'pub.chive.review.comment',
   'pub.chive.review.endorsement',
-  'pub.chive.graph.fieldProposal',
+  'pub.chive.graph.nodeProposal',
+  'pub.chive.graph.edgeProposal',
   'pub.chive.graph.vote',
   'pub.chive.eprint.userTag',
 ];

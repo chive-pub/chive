@@ -22,7 +22,7 @@ import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError } from '../../types/errors.js';
 
 import type { Neo4jConnection } from './connection.js';
-import type { RelationshipType } from './types.js';
+import type { RelationshipSlug } from './types.js';
 
 /**
  * Path between two nodes.
@@ -42,7 +42,7 @@ export interface Path {
 export interface PathRelationship {
   from: AtUri;
   to: AtUri;
-  type: RelationshipType;
+  type: RelationshipSlug;
   weight: number;
 }
 
@@ -108,6 +108,39 @@ export interface SimilarityResult {
   node1: AtUri;
   node2: AtUri;
   similarity: number;
+}
+
+/**
+ * Paper similarity result based on co-citation analysis.
+ */
+export interface PaperSimilarity {
+  paperUri: AtUri;
+  title: string;
+  similarity: number;
+  coCitationCount: number;
+}
+
+/**
+ * Link prediction result.
+ */
+export interface LinkPrediction {
+  node1: AtUri;
+  node2: AtUri;
+  score: number;
+  algorithm: 'adamic-adar' | 'common-neighbors' | 'preferential-attachment';
+}
+
+/**
+ * Collaboration prediction result.
+ */
+export interface CollaborationPrediction {
+  author1Did: DID;
+  author1Name: string;
+  author2Did: DID;
+  author2Name: string;
+  score: number;
+  commonCoauthors: number;
+  commonFields: number;
 }
 
 /**
@@ -479,7 +512,7 @@ export class GraphAlgorithms {
         relationships: relationships.map((rel) => ({
           from: rel.from as AtUri,
           to: rel.to as AtUri,
-          type: rel.type as RelationshipType,
+          type: rel.type as RelationshipSlug,
           weight: rel.weight,
         })),
         totalCost,
@@ -674,6 +707,345 @@ export class GraphAlgorithms {
         uri: record.get('uri') as AtUri,
         communityId: Number(record.get('communityId')),
       };
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Detect communities using Label Propagation algorithm.
+   *
+   * @remarks
+   * Label Propagation is faster than Louvain but may produce different results.
+   * Useful as an alternative community detection method.
+   *
+   * @param graphName - Graph projection name
+   * @returns Communities
+   *
+   * @example
+   * ```typescript
+   * const communities = await algorithms.labelPropagation('fields-graph');
+   * ```
+   */
+  async labelPropagation(graphName: string): Promise<Community[]> {
+    const query = `
+      CALL gds.labelPropagation.stream($graphName)
+      YIELD nodeId, communityId
+      WITH communityId, collect(gds.util.asNode(nodeId).uri) AS members
+      RETURN
+        communityId,
+        members,
+        size(members) AS communitySize
+      ORDER BY communitySize DESC
+    `;
+
+    const session = this.connection.getSession();
+
+    try {
+      const result = await session.run(query, { graphName });
+
+      return result.records.map((record) => ({
+        communityId: Number(record.get('communityId')),
+        members: record.get('members') as AtUri[],
+        size: Number(record.get('communitySize')),
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Find similar papers based on co-citation analysis.
+   *
+   * @remarks
+   * Papers that are frequently cited together are considered similar.
+   * Uses bibliographic coupling and co-citation counts.
+   *
+   * @param paperUri - Target paper URI
+   * @param limit - Maximum results
+   * @returns Similar papers ordered by similarity
+   *
+   * @example
+   * ```typescript
+   * const similar = await algorithms.paperSimilarity(
+   *   'at://did:plc:user/pub.chive.eprint.submission/abc',
+   *   10
+   * );
+   * ```
+   */
+  async paperSimilarity(paperUri: AtUri, limit = 10): Promise<PaperSimilarity[]> {
+    // Co-citation similarity: papers that cite the same papers
+    const query = `
+      MATCH (paper:EprintSubmission {uri: $paperUri})-[:CITES]->(cited:EprintSubmission)
+      WITH paper, collect(cited) AS paperCitations
+
+      // Find papers that cite the same works
+      MATCH (similar:EprintSubmission)-[:CITES]->(sharedCitation)
+      WHERE similar <> paper AND sharedCitation IN paperCitations
+
+      WITH similar, count(sharedCitation) AS coCitationCount, size(paperCitations) AS totalCitations
+
+      // Calculate Jaccard-like similarity
+      OPTIONAL MATCH (similar)-[:CITES]->(similarCitations)
+      WITH similar, coCitationCount, totalCitations, count(similarCitations) AS similarTotalCitations
+
+      WITH similar,
+           coCitationCount,
+           toFloat(coCitationCount) / (totalCitations + similarTotalCitations - coCitationCount) AS similarity
+
+      RETURN
+        similar.uri AS paperUri,
+        similar.title AS title,
+        similarity,
+        coCitationCount
+      ORDER BY similarity DESC, coCitationCount DESC
+      LIMIT $limit
+    `;
+
+    const session = this.connection.getSession();
+
+    try {
+      const result = await session.run(query, { paperUri, limit: neo4j.int(limit) });
+
+      return result.records.map((record) => ({
+        paperUri: record.get('paperUri') as AtUri,
+        title: (record.get('title') as string) ?? 'Untitled',
+        similarity: Number(record.get('similarity')),
+        coCitationCount: Number(record.get('coCitationCount')),
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Predict links using Adamic-Adar index.
+   *
+   * @remarks
+   * Adamic-Adar measures the closeness of nodes based on their shared neighbors,
+   * weighted by the inverse log of the degree of common neighbors.
+   * Useful for suggesting field relationships.
+   *
+   * @param graphName - Graph projection name
+   * @param topK - Top K predictions to return
+   * @returns Link predictions ordered by score
+   *
+   * @example
+   * ```typescript
+   * const predictions = await algorithms.linkPrediction('fields-graph', 20);
+   * ```
+   */
+  async linkPrediction(graphName: string, topK = 20): Promise<LinkPrediction[]> {
+    const query = `
+      CALL gds.alpha.linkprediction.adamicAdar.stream($graphName, {
+        topK: $topK
+      })
+      YIELD node1, node2, score
+      WHERE score > 0
+      WITH gds.util.asNode(node1) AS n1, gds.util.asNode(node2) AS n2, score
+      RETURN
+        n1.uri AS node1,
+        n2.uri AS node2,
+        score
+      ORDER BY score DESC
+      LIMIT $topK
+    `;
+
+    const session = this.connection.getSession();
+
+    try {
+      const result = await session.run(query, { graphName, topK: neo4j.int(topK) });
+
+      return result.records.map((record) => ({
+        node1: record.get('node1') as AtUri,
+        node2: record.get('node2') as AtUri,
+        score: Number(record.get('score')),
+        algorithm: 'adamic-adar' as const,
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Predict potential collaborators for an author.
+   *
+   * @remarks
+   * Uses network analysis to identify researchers who share:
+   * - Common co-authors
+   * - Common research fields
+   * - Similar citation patterns
+   *
+   * @param authorDid - Author DID
+   * @param limit - Maximum predictions
+   * @returns Collaboration predictions
+   *
+   * @example
+   * ```typescript
+   * const collaborators = await algorithms.collaborationPrediction(
+   *   'did:plc:author123',
+   *   10
+   * );
+   * ```
+   */
+  async collaborationPrediction(authorDid: DID, limit = 10): Promise<CollaborationPrediction[]> {
+    const query = `
+      MATCH (author:Author {did: $authorDid})
+
+      // Find co-authors of author's co-authors (2-hop)
+      MATCH (author)-[:COAUTHORED_WITH]-(coauthor:Author)-[:COAUTHORED_WITH]-(candidate:Author)
+      WHERE candidate <> author
+        AND NOT (author)-[:COAUTHORED_WITH]-(candidate)
+
+      WITH author, candidate, count(DISTINCT coauthor) AS commonCoauthors
+
+      // Find common fields
+      OPTIONAL MATCH (author)-[:EXPERT_IN]->(field:FieldNode)<-[:EXPERT_IN]-(candidate)
+      WITH author, candidate, commonCoauthors, count(DISTINCT field) AS commonFields
+
+      // Calculate collaboration score
+      WITH candidate,
+           commonCoauthors,
+           commonFields,
+           (toFloat(commonCoauthors) * 0.7 + toFloat(commonFields) * 0.3) AS score
+
+      WHERE score > 0
+
+      RETURN
+        $authorDid AS author1Did,
+        '' AS author1Name,
+        candidate.did AS author2Did,
+        candidate.name AS author2Name,
+        score,
+        commonCoauthors,
+        commonFields
+      ORDER BY score DESC
+      LIMIT $limit
+    `;
+
+    const session = this.connection.getSession();
+
+    try {
+      const result = await session.run(query, { authorDid, limit: neo4j.int(limit) });
+
+      return result.records.map((record) => ({
+        author1Did: record.get('author1Did') as DID,
+        author1Name: (record.get('author1Name') as string) ?? '',
+        author2Did: record.get('author2Did') as DID,
+        author2Name: (record.get('author2Name') as string) ?? '',
+        score: Number(record.get('score')),
+        commonCoauthors: Number(record.get('commonCoauthors')),
+        commonFields: Number(record.get('commonFields')),
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  // ===========================================================================
+  // WRITE METHODS - Store algorithm results in Neo4j node properties
+  // ===========================================================================
+
+  /**
+   * Writes PageRank scores to node properties.
+   *
+   * @remarks
+   * Updates nodes with their computed PageRank scores, enabling
+   * Cypher queries that filter or sort by importance.
+   *
+   * @param results - PageRank computation results
+   * @returns Number of nodes updated
+   */
+  async writePageRankToNodes(results: { uri: AtUri; score: number }[]): Promise<number> {
+    if (results.length === 0) return 0;
+
+    const query = `
+      UNWIND $results AS result
+      MATCH (n {uri: result.uri})
+      SET n.pageRank = result.score,
+          n.pageRankUpdatedAt = datetime()
+      RETURN count(n) AS updated
+    `;
+
+    const session = this.connection.getSession();
+
+    try {
+      const result = await session.run(query, {
+        results: results.map((r) => ({ uri: r.uri, score: r.score })),
+      });
+
+      return Number(result.records[0]?.get('updated') ?? 0);
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Writes betweenness centrality scores to node properties.
+   *
+   * @param results - Betweenness computation results
+   * @returns Number of nodes updated
+   */
+  async writeBetweennessToNodes(results: { uri: AtUri; score: number }[]): Promise<number> {
+    if (results.length === 0) return 0;
+
+    const query = `
+      UNWIND $results AS result
+      MATCH (n {uri: result.uri})
+      SET n.betweenness = result.score,
+          n.betweennessUpdatedAt = datetime()
+      RETURN count(n) AS updated
+    `;
+
+    const session = this.connection.getSession();
+
+    try {
+      const result = await session.run(query, {
+        results: results.map((r) => ({ uri: r.uri, score: r.score })),
+      });
+
+      return Number(result.records[0]?.get('updated') ?? 0);
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Writes community IDs to node properties.
+   *
+   * @remarks
+   * Assigns each node to a community based on the algorithm results.
+   * Supports both Louvain and Label Propagation community IDs.
+   *
+   * @param results - Community detection results
+   * @param algorithm - Algorithm name ('louvain' or 'label-propagation')
+   * @returns Number of nodes updated
+   */
+  async writeCommunityToNodes(
+    results: { uri: AtUri; communityId: number }[],
+    algorithm: 'louvain' | 'label-propagation'
+  ): Promise<number> {
+    if (results.length === 0) return 0;
+
+    const propertyName = algorithm === 'louvain' ? 'louvainCommunity' : 'lpCommunity';
+    const updatedAtProperty = algorithm === 'louvain' ? 'louvainUpdatedAt' : 'lpUpdatedAt';
+
+    const query = `
+      UNWIND $results AS result
+      MATCH (n {uri: result.uri})
+      SET n.${propertyName} = result.communityId,
+          n.${updatedAtProperty} = datetime()
+      RETURN count(n) AS updated
+    `;
+
+    const session = this.connection.getSession();
+
+    try {
+      const result = await session.run(query, {
+        results: results.map((r) => ({ uri: r.uri, communityId: neo4j.int(r.communityId) })),
+      });
+
+      return Number(result.records[0]?.get('updated') ?? 0);
     } finally {
       await session.close();
     }

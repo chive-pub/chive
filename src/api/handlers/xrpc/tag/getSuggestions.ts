@@ -49,7 +49,7 @@ export async function getSuggestionsHandler(
   const suggestions: TagSuggestionsResponse['suggestions'] = searchResults.tags.map((tag) => ({
     displayForm: tag.rawForm,
     normalizedForm: tag.normalizedForm,
-    confidence: tag.qualityScore,
+    confidence: tag.qualityScore ?? 0.5,
     source: 'cooccurrence' as const,
     matchedTerm: params.q,
   }));

@@ -14,6 +14,19 @@ import {
 // Mock fetch globally
 const mockFetch = vi.fn();
 
+// Mock auth functions for useAuthorIdDiscovery
+vi.mock('../auth/oauth-client', () => ({
+  getCurrentAgent: vi.fn(),
+}));
+
+vi.mock('../auth/service-auth', () => ({
+  getServiceAuthToken: vi.fn(),
+}));
+
+// Import mocked modules to get references to mock functions
+import { getCurrentAgent } from '../auth/oauth-client';
+import { getServiceAuthToken } from '../auth/service-auth';
+
 describe('profileAutocompleteKeys', () => {
   it('generates all key', () => {
     expect(profileAutocompleteKeys.all).toEqual(['profile-autocomplete']);
@@ -291,6 +304,9 @@ describe('useAuthorIdDiscovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('fetch', mockFetch);
+    // Set up auth mocks - hook requires authentication
+    vi.mocked(getCurrentAgent).mockReturnValue({} as never);
+    vi.mocked(getServiceAuthToken).mockResolvedValue('mock-token');
   });
 
   afterEach(() => {
@@ -338,7 +354,11 @@ describe('useAuthorIdDiscovery', () => {
     expect(result.current.data?.matches[0].ids.openalex).toBe('A123456');
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('pub.chive.actor.discoverAuthorIds'),
-      expect.objectContaining({ credentials: 'include' })
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer mock-token',
+        }),
+      })
     );
   });
 

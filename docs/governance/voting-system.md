@@ -8,8 +8,8 @@ Chive uses a weighted voting system where expertise in the relevant domain incre
 | ---------------- | ------ | -------------------------------------------------- |
 | Community member | 1.0x   | Any authenticated user                             |
 | Trusted editor   | 2.0x   | Elevated role for consistent quality contributions |
+| Graph editor     | 2.0x   | Can modify knowledge graph nodes and edges         |
 | Domain expert    | 2.5x   | Recognized expertise in the proposal's field       |
-| Authority editor | 3.0x   | Specialized role for authority record management   |
 | Administrator    | 5.0x   | Platform administrators with veto power            |
 
 ### How weight is determined
@@ -20,8 +20,8 @@ Voting weight is based on the user's assigned role. The highest applicable role 
 const defaultWeights: Record<UserRole, number> = {
   'community-member': 1.0,
   'trusted-editor': 2.0,
+  'graph-editor': 2.0,
   'domain-expert': 2.5,
-  'authority-editor': 3.0,
   administrator: 5.0,
 };
 ```
@@ -82,7 +82,7 @@ Some proposals require endorsement from domain experts:
 
 ```
 Expert vote = Vote from user with publications in the proposal's field
-            OR trusted/authority editor with relevant expertise
+            OR trusted/graph editor with relevant expertise
 ```
 
 This prevents:

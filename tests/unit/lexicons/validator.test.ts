@@ -42,7 +42,15 @@ describe('LexiconValidator', () => {
       const validEprintJson = {
         $type: 'pub.chive.eprint.submission',
         title: 'Frequency, acceptability, and selection: A case study of clause-embedding',
-        abstract:
+        abstract: [
+          {
+            $type: 'pub.chive.eprint.submission#textItem',
+            type: 'text',
+            content:
+              'We investigate the relationship between distributional frequency and acceptability for clause-embedding verbs using the MegaAcceptability dataset.',
+          },
+        ],
+        abstractPlainText:
           'We investigate the relationship between distributional frequency and acceptability for clause-embedding verbs using the MegaAcceptability dataset.',
         document: {
           $type: 'blob',
@@ -64,7 +72,7 @@ describe('LexiconValidator', () => {
           },
         ],
         submittedBy: 'did:plc:abc123',
-        license: 'CC-BY-4.0',
+        licenseSlug: 'CC-BY-4.0',
         createdAt: new Date().toISOString(),
       };
 
@@ -91,9 +99,15 @@ describe('LexiconValidator', () => {
       const validComment = {
         $type: 'pub.chive.review.comment',
         eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
-        content:
-          'The analysis of factive predicates is particularly compelling. Consider extending to non-factive belief verbs.',
-        lineNumber: 42,
+        body: [
+          {
+            $type: 'pub.chive.review.comment#textItem',
+            type: 'text',
+            content:
+              'The analysis of factive predicates is particularly compelling. Consider extending to non-factive belief verbs.',
+          },
+        ],
+        motivationFallback: 'commenting',
         createdAt: new Date().toISOString(),
       };
 
@@ -105,7 +119,13 @@ describe('LexiconValidator', () => {
       const validComment = {
         $type: 'pub.chive.review.comment',
         eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
-        content: 'Well-motivated theoretical framework for semantic selection.',
+        body: [
+          {
+            $type: 'pub.chive.review.comment#textItem',
+            type: 'text',
+            content: 'Well-motivated theoretical framework for semantic selection.',
+          },
+        ],
         createdAt: new Date().toISOString(),
       };
 
@@ -127,18 +147,22 @@ describe('LexiconValidator', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('validates field proposal', () => {
+    it('validates node proposal', () => {
       const validProposal = {
-        $type: 'pub.chive.graph.fieldProposal',
+        $type: 'pub.chive.graph.nodeProposal',
         proposalType: 'create',
-        proposedLabel: 'Dynamic Semantics',
-        proposedDescription: 'Field covering dynamic approaches to natural language meaning',
-        wikidataId: 'Q5318053',
+        kind: 'type',
+        subkind: 'field',
+        proposedNode: {
+          label: 'Dynamic Semantics',
+          description: 'Field covering dynamic approaches to natural language meaning',
+          externalIds: [{ system: 'wikidata', identifier: 'Q5318053' }],
+        },
         rationale: 'Distinct subfield of formal semantics with active research community.',
         createdAt: new Date().toISOString(),
       };
 
-      const result = validator.validateRecord('pub.chive.graph.fieldProposal', validProposal);
+      const result = validator.validateRecord('pub.chive.graph.nodeProposal', validProposal);
       expect(result.valid).toBe(true);
     });
 

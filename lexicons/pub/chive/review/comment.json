@@ -4,26 +4,40 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "Review comment on preprint",
+      "description": "Review comment on preprint with rich body supporting text and node references",
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["eprintUri", "content", "createdAt"],
+        "required": ["eprintUri", "body", "createdAt"],
         "properties": {
           "eprintUri": {
             "type": "string",
             "format": "at-uri",
             "description": "Reviewed eprint URI"
           },
-          "content": {
-            "type": "string",
-            "description": "Review comment text",
-            "maxLength": 10000
+          "body": {
+            "type": "array",
+            "description": "Rich body content with text and node references",
+            "items": {
+              "type": "union",
+              "refs": ["#textItem", "#nodeRefItem", "#eprintRefItem"]
+            },
+            "maxLength": 100
           },
-          "lineNumber": {
-            "type": "integer",
-            "description": "Line number for inline comments",
-            "minimum": 1
+          "target": {
+            "type": "ref",
+            "ref": "#textSpanTarget",
+            "description": "Target text span for inline annotations"
+          },
+          "motivationUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of motivation type node (subkind=motivation)"
+          },
+          "motivationFallback": {
+            "type": "string",
+            "knownValues": ["commenting", "questioning", "highlighting", "replying", "linking"],
+            "description": "Fallback motivation if motivationUri not available"
           },
           "parentComment": {
             "type": "string",
@@ -34,6 +48,147 @@
             "type": "string",
             "format": "datetime"
           }
+        }
+      }
+    },
+    "textItem": {
+      "type": "object",
+      "description": "Plain text content item",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "text"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 10000
+        }
+      }
+    },
+    "nodeRefItem": {
+      "type": "object",
+      "description": "Reference to a knowledge graph node",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "nodeRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the referenced node"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Display label (cached from node)"
+        },
+        "subkind": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Subkind slug for styling"
+        }
+      }
+    },
+    "eprintRefItem": {
+      "type": "object",
+      "description": "Reference to another eprint",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "eprintRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the referenced eprint"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Eprint title (cached)"
+        }
+      }
+    },
+    "textSpanTarget": {
+      "type": "object",
+      "description": "Target text span for inline annotations (W3C Web Annotation compatible)",
+      "required": ["selector"],
+      "properties": {
+        "versionUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of specific eprint version"
+        },
+        "selector": {
+          "type": "union",
+          "refs": ["#textQuoteSelector", "#textPositionSelector", "#fragmentSelector"]
+        }
+      }
+    },
+    "textQuoteSelector": {
+      "type": "object",
+      "description": "W3C Text Quote Selector",
+      "required": ["type", "exact"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextQuoteSelector"
+        },
+        "exact": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 100
+        }
+      }
+    },
+    "textPositionSelector": {
+      "type": "object",
+      "description": "W3C Text Position Selector",
+      "required": ["type", "start", "end"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextPositionSelector"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "fragmentSelector": {
+      "type": "object",
+      "description": "W3C Fragment Selector",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "FragmentSelector"
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Fragment identifier (e.g., page number, section ID)"
+        },
+        "conformsTo": {
+          "type": "string",
+          "format": "uri",
+          "description": "Fragment syntax specification"
         }
       }
     }

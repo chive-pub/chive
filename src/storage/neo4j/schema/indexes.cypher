@@ -1,32 +1,84 @@
-// Field label index for search
+// ===========================================================================
+// Unified Node/Edge Model Indexes
+// ===========================================================================
+
+// Base Node indexes
+CREATE INDEX node_kind_idx IF NOT EXISTS
+FOR (n:Node) ON (n.kind);
+
+CREATE INDEX node_subkind_idx IF NOT EXISTS
+FOR (n:Node) ON (n.subkindSlug);
+
+CREATE INDEX node_status_idx IF NOT EXISTS
+FOR (n:Node) ON (n.status);
+
+CREATE INDEX node_label_idx IF NOT EXISTS
+FOR (n:Node) ON (n.label);
+
+// Kind label indexes for fast filtering
+CREATE INDEX type_status_idx IF NOT EXISTS
+FOR (n:Type) ON (n.status);
+
+CREATE INDEX object_status_idx IF NOT EXISTS
+FOR (n:Object) ON (n.status);
+
+// Subkind label indexes (for fast queries like MATCH (n:Field))
 CREATE INDEX field_label_idx IF NOT EXISTS
-FOR (f:Field) ON (f.label);
+FOR (n:Field) ON (n.label);
 
-// Field type index
-CREATE INDEX field_type_idx IF NOT EXISTS
-FOR (f:Field) ON (f.type);
+CREATE INDEX facet_label_idx IF NOT EXISTS
+FOR (n:Facet) ON (n.label);
 
-// Authority record heading index
-CREATE INDEX authority_heading_idx IF NOT EXISTS
-FOR (a:AuthorityRecord) ON (a.authorizedForm);
+CREATE INDEX institution_label_idx IF NOT EXISTS
+FOR (n:Institution) ON (n.label);
 
-// Authority record status index
-CREATE INDEX authority_status_idx IF NOT EXISTS
-FOR (a:AuthorityRecord) ON (a.status);
+CREATE INDEX person_label_idx IF NOT EXISTS
+FOR (n:Person) ON (n.label);
 
-// Eprint facet dimension index (for faceted browse)
-CREATE INDEX eprint_facet_dim_idx IF NOT EXISTS
-FOR (p:Eprint) ON (p.facet_dimensions);
+CREATE INDEX topic_label_idx IF NOT EXISTS
+FOR (n:Topic) ON (n.label);
 
-// Facet hierarchy index (composite for efficient hierarchy queries)
-CREATE INDEX facet_hierarchy_idx IF NOT EXISTS
-FOR (f:Facet) ON (f.facetType, f.level);
+CREATE INDEX relation_label_idx IF NOT EXISTS
+FOR (n:Relation) ON (n.label);
 
-// Facet materialized path index (for ancestor/descendant queries)
-CREATE INDEX facet_path_idx IF NOT EXISTS
-FOR (f:Facet) ON (f.materializedPath);
+CREATE INDEX contributiontype_label_idx IF NOT EXISTS
+FOR (n:ContributionType) ON (n.label);
 
-// UserTag quality indexes
+CREATE INDEX license_label_idx IF NOT EXISTS
+FOR (n:License) ON (n.label);
+
+CREATE INDEX documentformat_label_idx IF NOT EXISTS
+FOR (n:DocumentFormat) ON (n.label);
+
+CREATE INDEX motivation_label_idx IF NOT EXISTS
+FOR (n:Motivation) ON (n.label);
+
+// Full-text search index for nodes
+CREATE FULLTEXT INDEX nodeTextIndex IF NOT EXISTS
+FOR (n:Node) ON EACH [n.label, n.description];
+
+// Edge indexes (EDGE relationship properties)
+// Note: Neo4j doesn't support relationship property indexes directly
+// These queries use inline property matching
+
+// Vote indexes
+CREATE INDEX vote_proposal_idx IF NOT EXISTS
+FOR (v:Vote) ON (v.proposalUri);
+
+CREATE INDEX vote_timestamp_idx IF NOT EXISTS
+FOR (v:Vote) ON (v.createdAt);
+
+// Proposal indexes
+CREATE INDEX proposal_status_idx IF NOT EXISTS
+FOR (p:Proposal) ON (p.status);
+
+CREATE INDEX proposal_type_idx IF NOT EXISTS
+FOR (p:Proposal) ON (p.type);
+
+CREATE INDEX proposal_created_idx IF NOT EXISTS
+FOR (p:Proposal) ON (p.createdAt);
+
+// UserTag indexes
 CREATE INDEX tag_quality_idx IF NOT EXISTS
 FOR (t:UserTag) ON (t.qualityScore);
 
@@ -36,33 +88,17 @@ FOR (t:UserTag) ON (t.spamScore);
 CREATE INDEX tag_usage_idx IF NOT EXISTS
 FOR (t:UserTag) ON (t.usageCount);
 
-// Proposal status and date index (for filtering active proposals)
-CREATE INDEX proposal_status_date_idx IF NOT EXISTS
-FOR (p:FieldProposal) ON (p.status, p.createdAt);
-
-// Vote proposal index (for aggregating votes by proposal)
-CREATE INDEX vote_proposal_idx IF NOT EXISTS
-FOR (v:Vote) ON (v.proposalUri);
-
-// Vote timestamp index (for chronological ordering)
-CREATE INDEX vote_timestamp_idx IF NOT EXISTS
-FOR (v:Vote) ON (v.createdAt);
-
-// Full-text search index for field labels and descriptions
-CREATE FULLTEXT INDEX fieldTextIndex IF NOT EXISTS
-FOR (f:Field) ON EACH [f.label, f.description];
-
-// Full-text search index for authority records
-CREATE FULLTEXT INDEX authorityTextIndex IF NOT EXISTS
-FOR (a:AuthorityRecord) ON EACH [a.authorizedForm, a.variantForms, a.scopeNote];
-
 // Full-text search index for tags
 CREATE FULLTEXT INDEX tagTextIndex IF NOT EXISTS
 FOR (t:UserTag) ON EACH [t.normalizedForm, t.rawForm];
 
-// Contribution type indexes
-CREATE INDEX contribution_type_status_idx IF NOT EXISTS
-FOR (ct:ContributionType) ON (ct.status);
+// Author indexes
+CREATE INDEX author_name_idx IF NOT EXISTS
+FOR (a:Author) ON (a.displayName);
 
-CREATE INDEX contribution_type_label_idx IF NOT EXISTS
-FOR (ct:ContributionType) ON (ct.label);
+// Eprint indexes
+CREATE INDEX eprint_title_idx IF NOT EXISTS
+FOR (p:Eprint) ON (p.title);
+
+CREATE INDEX eprint_created_idx IF NOT EXISTS
+FOR (p:Eprint) ON (p.createdAt);

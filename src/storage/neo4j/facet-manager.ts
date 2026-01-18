@@ -1,17 +1,22 @@
 import neo4j from 'neo4j-driver';
 import { singleton } from 'tsyringe';
 
-import type { AtUri } from '../../types/atproto.js';
+import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError, ValidationError } from '../../types/errors.js';
 
 import { Neo4jConnection } from './connection.js';
-import type { Facet, FacetType } from './types.js';
+import type { GraphNode, NodeStatus } from './types.js';
+
+/**
+ * Facet dimension identifier (e.g., 'methodology', 'geographic', 'temporal').
+ */
+export type FacetDimensionId = string;
 
 /**
  * Facet search results
  */
 export interface FacetSearchResult {
-  facets: Facet[];
+  facets: GraphNode[];
   total: number;
 }
 
@@ -21,7 +26,7 @@ export interface FacetSearchResult {
 export interface FacetAssignment {
   recordUri: AtUri;
   facets: {
-    facetType: FacetType;
+    facetType: FacetDimensionId;
     facetUri: AtUri;
     confidence: number;
   }[];
@@ -33,7 +38,7 @@ export interface FacetAssignment {
  * Facet dimension metadata
  */
 export interface FacetDimension {
-  type: FacetType;
+  type: FacetDimensionId;
   label: string;
   description: string;
   guidelines: string;
@@ -47,7 +52,7 @@ export interface FacetDimension {
 export interface FacetUsageStats {
   facetUri: AtUri;
   facetValue: string;
-  facetType: FacetType;
+  facetType: FacetDimensionId;
   usageCount: number;
   uniqueRecords: number;
   lastUsed?: Date;
@@ -279,7 +284,7 @@ export class FacetManager {
    * @param type - Facet type
    * @returns Facet dimension or null if not found
    */
-  getFacetDimension(type: FacetType): FacetDimension | null {
+  getFacetDimension(type: FacetDimensionId): FacetDimension | null {
     return FacetManager.FACET_DIMENSIONS.find((dim) => dim.type === type) ?? null;
   }
 
@@ -304,17 +309,17 @@ export class FacetManager {
    * });
    * ```
    */
-  async createFacet(facet: Facet): Promise<AtUri> {
+  async createFacet(node: GraphNode): Promise<AtUri> {
     const query = `
-      CREATE (f:Facet {
+      CREATE (f:Node:Node:Facet {
         id: $id,
         uri: $uri,
-        facetType: $facetType,
-        value: $value,
-        level: $level,
-        materializedPath: $materializedPath,
-        parentUri: $parentUri,
-        authorityRecordUri: $authorityRecordUri,
+        kind: 'type',
+        subkind: 'facet',
+        label: $label,
+        alternateLabels: $alternateLabels,
+        description: $description,
+        status: $status,
         createdAt: datetime(),
         updatedAt: datetime()
       })
@@ -323,14 +328,12 @@ export class FacetManager {
 
     try {
       const result = await this.connection.executeQuery<{ uri: AtUri }>(query, {
-        id: facet.id,
-        uri: facet.uri,
-        facetType: facet.facetType,
-        value: facet.value,
-        level: facet.level,
-        materializedPath: facet.materializedPath ?? `/${facet.id}`,
-        parentUri: facet.parentUri ?? null,
-        authorityRecordUri: facet.authorityRecordUri ?? null,
+        id: node.id,
+        uri: node.uri,
+        label: node.label,
+        alternateLabels: node.alternateLabels ?? [],
+        description: node.description ?? null,
+        status: node.status,
       });
 
       const record = result.records[0];
@@ -345,14 +348,14 @@ export class FacetManager {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       if (error.message.includes('already exists')) {
-        throw new ValidationError(`Facet with ID ${facet.id} already exists`, 'id', 'unique');
+        throw new ValidationError(`Facet with ID ${node.id} already exists`, 'id', 'unique');
       }
       throw error;
     }
   }
 
   /**
-   * Update an existing facet value.
+   * Update an existing facet node.
    *
    * @param uri - Facet AT-URI
    * @param updates - Fields to update
@@ -360,43 +363,33 @@ export class FacetManager {
    */
   async updateFacet(
     uri: AtUri,
-    updates: Partial<Omit<Facet, 'id' | 'uri' | 'createdAt'>>
+    updates: Partial<Omit<GraphNode, 'id' | 'uri' | 'kind' | 'createdAt'>>
   ): Promise<void> {
     const setClauses: string[] = ['f.updatedAt = datetime()'];
-    const params: Record<string, string | number | null> = { uri };
+    const params: Record<string, string | string[] | null> = { uri };
 
-    if (updates.value !== undefined) {
-      setClauses.push('f.value = $value');
-      params.value = updates.value;
+    if (updates.label !== undefined) {
+      setClauses.push('f.label = $label');
+      params.label = updates.label;
     }
 
-    if (updates.facetType !== undefined) {
-      setClauses.push('f.facetType = $facetType');
-      params.facetType = updates.facetType;
+    if (updates.alternateLabels !== undefined) {
+      setClauses.push('f.alternateLabels = $alternateLabels');
+      params.alternateLabels = updates.alternateLabels ?? [];
     }
 
-    if (updates.level !== undefined) {
-      setClauses.push('f.level = $level');
-      params.level = updates.level;
+    if (updates.description !== undefined) {
+      setClauses.push('f.description = $description');
+      params.description = updates.description ?? null;
     }
 
-    if (updates.materializedPath !== undefined) {
-      setClauses.push('f.materializedPath = $materializedPath');
-      params.materializedPath = updates.materializedPath ?? null;
-    }
-
-    if (updates.parentUri !== undefined) {
-      setClauses.push('f.parentUri = $parentUri');
-      params.parentUri = updates.parentUri ?? null;
-    }
-
-    if (updates.authorityRecordUri !== undefined) {
-      setClauses.push('f.authorityRecordUri = $authorityRecordUri');
-      params.authorityRecordUri = updates.authorityRecordUri ?? null;
+    if (updates.status !== undefined) {
+      setClauses.push('f.status = $status');
+      params.status = updates.status;
     }
 
     const query = `
-      MATCH (f:Facet {uri: $uri})
+      MATCH (f:Node:Facet {uri: $uri})
       SET ${setClauses.join(', ')}
       RETURN f
     `;
@@ -404,7 +397,7 @@ export class FacetManager {
     const result = await this.connection.executeQuery(query, params);
 
     if (result.records.length === 0) {
-      throw new NotFoundError('Facet', uri);
+      throw new NotFoundError('Facet node', uri);
     }
   }
 
@@ -414,9 +407,9 @@ export class FacetManager {
    * @param id - Facet identifier
    * @returns Facet or null if not found
    */
-  async getFacetById(id: string): Promise<Facet | null> {
+  async getFacetById(id: string): Promise<GraphNode | null> {
     const query = `
-      MATCH (f:Facet {id: $id})
+      MATCH (f:Node:Facet {id: $id})
       RETURN f
     `;
 
@@ -438,9 +431,9 @@ export class FacetManager {
    * @param uri - Facet AT-URI
    * @returns Facet or null if not found
    */
-  async getFacetByUri(uri: AtUri): Promise<Facet | null> {
+  async getFacetByUri(uri: AtUri): Promise<GraphNode | null> {
     const query = `
-      MATCH (f:Facet {uri: $uri})
+      MATCH (f:Node:Facet {uri: $uri})
       RETURN f
     `;
 
@@ -472,7 +465,7 @@ export class FacetManager {
    * ```
    */
   async searchFacets(
-    facetType: FacetType | undefined,
+    facetType: FacetDimensionId | undefined,
     searchText: string,
     limit = 50
   ): Promise<FacetSearchResult> {
@@ -481,7 +474,7 @@ export class FacetManager {
     const query = `
       CALL db.index.fulltext.queryNodes('facetTextIndex', $searchText)
       YIELD node, score
-      WHERE node:Facet ${typeFilter}
+      WHERE node:Node:Facet ${typeFilter}
       WITH node, score
       ORDER BY score DESC
       LIMIT $limit
@@ -515,7 +508,7 @@ export class FacetManager {
    * @returns Paginated facet list
    */
   async listFacets(options?: {
-    facetType?: FacetType;
+    facetType?: FacetDimensionId;
     level?: number;
     offset?: number;
     limit?: number;
@@ -539,7 +532,7 @@ export class FacetManager {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const query = `
-      MATCH (f:Facet)
+      MATCH (f:Node:Facet)
       ${whereClause}
       WITH f
       ORDER BY f.facetType, f.level, f.value
@@ -549,7 +542,7 @@ export class FacetManager {
     `;
 
     const countQuery = `
-      MATCH (f:Facet)
+      MATCH (f:Node:Facet)
       ${whereClause}
       RETURN count(f) as total
     `;
@@ -587,8 +580,8 @@ export class FacetManager {
    */
   async addFacetHierarchy(childUri: AtUri, parentUri: AtUri): Promise<void> {
     const query = `
-      MATCH (child:Facet {uri: $childUri})
-      MATCH (parent:Facet {uri: $parentUri})
+      MATCH (child:Node:Facet {uri: $childUri})
+      MATCH (parent:Node:Facet {uri: $parentUri})
       WHERE child.facetType = parent.facetType
       MERGE (child)-[r:SUBFACET_OF]->(parent)
       SET r.createdAt = CASE WHEN r.createdAt IS NULL THEN datetime() ELSE r.createdAt END,
@@ -619,17 +612,17 @@ export class FacetManager {
    *
    * @param parentUri - Parent facet URI
    * @param maxDepth - Maximum depth to traverse (default: 1)
-   * @returns Child facets
+   * @returns Child facet nodes
    */
-  async getChildFacets(parentUri: AtUri, maxDepth = 1): Promise<Facet[]> {
+  async getChildFacets(parentUri: AtUri, maxDepth = 1): Promise<GraphNode[]> {
     const query = `
-      MATCH (parent:Facet {uri: $parentUri})<-[:SUBFACET_OF*1..$maxDepth]-(child:Facet)
+      MATCH (parent:Node:Node:Facet {uri: $parentUri})<-[:EDGE {relationSlug: 'narrower'}*1..$maxDepth]-(child:Node:Facet)
       RETURN DISTINCT child
-      ORDER BY child.level, child.value
+      ORDER BY child.label
     `;
 
     const result = await this.connection.executeQuery<{
-      child: Record<string, string | number | Date>;
+      child: Record<string, string | number | Date | string[]>;
     }>(query, { parentUri, maxDepth: neo4j.int(maxDepth) });
 
     return result.records.map((record) => this.mapFacet(record.get('child')));
@@ -639,17 +632,17 @@ export class FacetManager {
    * Get parent facets (broader concepts).
    *
    * @param childUri - Child facet URI
-   * @returns Parent facets (immediate parents only)
+   * @returns Parent facet nodes (immediate parents only)
    */
-  async getParentFacets(childUri: AtUri): Promise<Facet[]> {
+  async getParentFacets(childUri: AtUri): Promise<GraphNode[]> {
     const query = `
-      MATCH (child:Facet {uri: $childUri})-[:SUBFACET_OF]->(parent:Facet)
+      MATCH (child:Node:Node:Facet {uri: $childUri})-[:EDGE {relationSlug: 'broader'}]->(parent:Node:Facet)
       RETURN parent
-      ORDER BY parent.value
+      ORDER BY parent.label
     `;
 
     const result = await this.connection.executeQuery<{
-      parent: Record<string, string | number | Date>;
+      parent: Record<string, string | number | Date | string[]>;
     }>(query, { childUri });
 
     return result.records.map((record) => this.mapFacet(record.get('parent')));
@@ -687,7 +680,7 @@ export class FacetManager {
   async assignFacets(
     recordUri: AtUri,
     facets: {
-      facetType: FacetType;
+      facetType: FacetDimensionId;
       facetUri: AtUri;
       confidence: number;
     }[],
@@ -699,7 +692,7 @@ export class FacetManager {
           `
           MERGE (record {uri: $recordUri})
           WITH record
-          MATCH (facet:Facet {uri: $facetUri})
+          MATCH (facet:Node:Facet {uri: $facetUri})
           WHERE facet.facetType = $facetType
           MERGE (record)-[r:FACET_VALUE {facetType: $facetType}]->(facet)
           SET r.confidence = $confidence,
@@ -729,7 +722,7 @@ export class FacetManager {
     assignments: {
       recordUri: AtUri;
       facets: {
-        facetType: FacetType;
+        facetType: FacetDimensionId;
         facetUri: AtUri;
         confidence: number;
       }[];
@@ -768,10 +761,10 @@ export class FacetManager {
    */
   async getFacetsForRecord(
     recordUri: AtUri,
-    facetType?: FacetType
+    facetType?: FacetDimensionId
   ): Promise<
     {
-      facet: Facet;
+      facet: GraphNode;
       confidence: number;
       assignedBy: string;
       assignedAt: Date;
@@ -780,7 +773,7 @@ export class FacetManager {
     const typeFilter = facetType ? 'AND r.facetType = $facetType' : '';
 
     const query = `
-      MATCH (record {uri: $recordUri})-[r:FACET_VALUE]->(facet:Facet)
+      MATCH (record {uri: $recordUri})-[r:FACET_VALUE]->(facet:Node:Facet)
       WHERE true ${typeFilter}
       RETURN facet, r.confidence as confidence, r.assignedBy as assignedBy, r.assignedAt as assignedAt
       ORDER BY r.facetType, facet.value
@@ -823,7 +816,7 @@ export class FacetManager {
    * ```
    */
   async findRecordsByFacets(
-    facets: { facetType: FacetType; value: string }[],
+    facets: { facetType: FacetDimensionId; value: string }[],
     limit = 100
   ): Promise<AtUri[]> {
     if (facets.length === 0) {
@@ -834,7 +827,7 @@ export class FacetManager {
     const facetMatches = facets
       .map(
         (_, i) =>
-          `MATCH (record)-[:FACET_VALUE]->(f${i}:Facet {facetType: $facet${i}Type, value: $facet${i}Value})`
+          `MATCH (record)-[:FACET_VALUE]->(f${i}:Node:Facet {facetType: $facet${i}Type, value: $facet${i}Value})`
       )
       .join('\n');
 
@@ -863,7 +856,7 @@ export class FacetManager {
    */
   async getFacetUsageStats(facetUri: AtUri): Promise<FacetUsageStats | null> {
     const query = `
-      MATCH (facet:Facet {uri: $facetUri})
+      MATCH (facet:Node:Facet {uri: $facetUri})
       OPTIONAL MATCH (record)-[r:FACET_VALUE]->(facet)
       WITH facet,
            count(DISTINCT record) as usageCount,
@@ -878,7 +871,7 @@ export class FacetManager {
     const result = await this.connection.executeQuery<{
       facetUri: AtUri;
       facetValue: string;
-      facetType: FacetType;
+      facetType: FacetDimensionId;
       usageCount: number;
       lastUsed: string | null;
     }>(query, { facetUri });
@@ -910,11 +903,11 @@ export class FacetManager {
    * @param limit - Maximum results (default: 20)
    * @returns Top facets by usage
    */
-  async getTrendingFacets(facetType?: FacetType, limit = 20): Promise<FacetUsageStats[]> {
+  async getTrendingFacets(facetType?: FacetDimensionId, limit = 20): Promise<FacetUsageStats[]> {
     const typeFilter = facetType ? 'AND facet.facetType = $facetType' : '';
 
     const query = `
-      MATCH (facet:Facet)
+      MATCH (facet:Node:Facet)
       WHERE true ${typeFilter}
       OPTIONAL MATCH (record)-[r:FACET_VALUE]->(facet)
       WITH facet,
@@ -938,7 +931,7 @@ export class FacetManager {
     const result = await this.connection.executeQuery<{
       facetUri: AtUri;
       facetValue: string;
-      facetType: FacetType;
+      facetType: FacetDimensionId;
       usageCount: number;
       lastUsed: string | null;
     }>(query, params);
@@ -968,7 +961,7 @@ export class FacetManager {
    */
   async removeFacetAssignment(recordUri: AtUri, facetUri: AtUri): Promise<void> {
     const query = `
-      MATCH (record {uri: $recordUri})-[r:FACET_VALUE]->(facet:Facet {uri: $facetUri})
+      MATCH (record {uri: $recordUri})-[r:FACET_VALUE]->(facet:Node:Facet {uri: $facetUri})
       DELETE r
     `;
 
@@ -976,17 +969,10 @@ export class FacetManager {
   }
 
   /**
-   * Map Neo4j node to Facet type.
+   * Map Neo4j node to GraphNode.
    */
-  private mapFacet(node: Record<string, string | number | Date>): Facet {
-    if (
-      !node.id ||
-      !node.uri ||
-      !node.facetType ||
-      !node.value ||
-      !node.createdAt ||
-      !node.updatedAt
-    ) {
+  private mapFacet(node: Record<string, string | number | Date | string[]>): GraphNode {
+    if (!node.id || !node.uri || !node.label || !node.createdAt) {
       throw new ValidationError(
         'Invalid facet node: missing required properties',
         'facet_node',
@@ -997,14 +983,15 @@ export class FacetManager {
     return {
       id: node.id as string,
       uri: node.uri as AtUri,
-      facetType: node.facetType as FacetType,
-      value: node.value as string,
-      level: Number(node.level) || 0,
-      materializedPath: (node.materializedPath as string) || undefined,
-      parentUri: node.parentUri ? (node.parentUri as AtUri) : undefined,
-      authorityRecordUri: node.authorityRecordUri ? (node.authorityRecordUri as AtUri) : undefined,
+      kind: 'type',
+      subkind: 'facet',
+      label: node.label as string,
+      alternateLabels: Array.isArray(node.alternateLabels) ? node.alternateLabels : undefined,
+      description: node.description ? (node.description as string) : undefined,
+      status: (node.status as NodeStatus) ?? 'established',
       createdAt: new Date(node.createdAt as string | Date),
-      updatedAt: new Date(node.updatedAt as string | Date),
+      createdBy: node.createdBy ? (node.createdBy as DID) : undefined,
+      updatedAt: node.updatedAt ? new Date(node.updatedAt as string | Date) : undefined,
     };
   }
 }

@@ -34,8 +34,7 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useFields } from '@/lib/hooks/use-field';
-import type { FieldSummary } from '@/lib/api/schema';
+import { useNodeSearch } from '@/lib/hooks/use-nodes';
 
 // =============================================================================
 // TYPES
@@ -110,28 +109,35 @@ export function FieldSearch({
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Fetch fields, using approved status by default.
-  const { data: fieldsData, isLoading } = useFields({
-    status: 'approved',
-    limit: 50,
-  });
+  // Server-side search for fields
+  const { data: searchData, isLoading } = useNodeSearch(
+    query,
+    {
+      subkind: 'field',
+      status: 'established',
+      limit: 20,
+    },
+    { enabled: query.length >= 2 }
+  );
 
   const selectedIds = useMemo(() => new Set(selectedFields.map((f) => f.id)), [selectedFields]);
   const canAddMore = selectedFields.length < maxFields;
 
-  // Filter fields based on query and exclude already selected
-  const filteredFields = (fieldsData?.fields ?? []).filter((field) => {
-    if (selectedIds.has(field.id)) return false;
-    if (!query) return true;
-    const lowerQuery = query.toLowerCase();
-    return (
-      field.name.toLowerCase().includes(lowerQuery) ||
-      field.description?.toLowerCase().includes(lowerQuery)
-    );
-  });
+  // Map search results to field format and exclude already selected
+  const filteredFields = useMemo(() => {
+    if (!searchData?.nodes) return [];
+    return searchData.nodes
+      .filter((node) => !selectedIds.has(node.id))
+      .map((node) => ({
+        id: node.id,
+        uri: node.uri,
+        name: node.label,
+        description: node.description,
+      }));
+  }, [searchData, selectedIds]);
 
   const handleAddField = useCallback(
-    (field: FieldSummary) => {
+    (field: { id: string; uri: string; name: string; description?: string }) => {
       if (!canAddMore) return;
       if (selectedIds.has(field.id)) return;
 
@@ -249,9 +255,6 @@ export function FieldSearch({
                             </span>
                           )}
                         </div>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {field.eprintCount} eprints
-                        </span>
                       </CommandItem>
                     ))}
                   </CommandGroup>

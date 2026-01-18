@@ -166,6 +166,7 @@ export interface RelatedWork {
  */
 export interface CodeRepository {
   url?: string;
+  /** @deprecated Use platformUri instead */
   platform?:
     | 'github'
     | 'gitlab'
@@ -178,6 +179,10 @@ export interface CodeRepository {
     | 'colab'
     | 'kaggle'
     | 'other';
+  /** AT-URI of the platform concept */
+  platformUri?: string;
+  /** Display name of the platform */
+  platformName?: string;
   label?: string;
   archiveUrl?: string;
   swhid?: string;
@@ -189,6 +194,7 @@ export interface CodeRepository {
 export interface DataRepository {
   url?: string;
   doi?: string;
+  /** @deprecated Use platformUri instead */
   platform?:
     | 'huggingface'
     | 'zenodo'
@@ -200,6 +206,10 @@ export interface DataRepository {
     | 'mendeley_data'
     | 'wandb'
     | 'other';
+  /** AT-URI of the platform concept */
+  platformUri?: string;
+  /** Display name of the platform */
+  platformName?: string;
   label?: string;
   accessStatement?: string;
 }
@@ -209,7 +219,12 @@ export interface DataRepository {
  */
 export interface Preregistration {
   url?: string;
+  /** @deprecated Use platformUri instead */
   platform?: 'osf' | 'aspredicted' | 'clinicaltrials' | 'prospero' | 'other';
+  /** AT-URI of the platform concept */
+  platformUri?: string;
+  /** Display name of the platform */
+  platformName?: string;
   registrationDate?: string;
 }
 
@@ -219,7 +234,12 @@ export interface Preregistration {
 export interface Protocol {
   url?: string;
   doi?: string;
+  /** @deprecated Use platformUri instead */
   platform?: 'protocols_io' | 'bio_protocol' | 'other';
+  /** AT-URI of the platform concept */
+  platformUri?: string;
+  /** Display name of the platform */
+  platformName?: string;
 }
 
 /**
@@ -263,7 +283,12 @@ export interface ConferencePresentation {
   conferenceUrl?: string;
   conferenceLocation?: string;
   presentationDate?: string;
+  /** @deprecated Use presentationTypeUri instead */
   presentationType?: 'oral' | 'poster' | 'keynote' | 'workshop' | 'demo' | 'other';
+  /** AT-URI of the presentation type concept */
+  presentationTypeUri?: string;
+  /** Display name of the presentation type */
+  presentationTypeName?: string;
   proceedingsDoi?: string;
 }
 
@@ -511,7 +536,7 @@ export type AnnotationBodyItem = NonNullable<AnnotationBody['facets']>[number];
  */
 export type EntityLinkType =
   | { type: 'wikidata'; qid: string; label: string; url: string }
-  | { type: 'authority'; uri: string; authorizedForm: string; variantForms: string[] }
+  | { type: 'nodeRef'; uri: string; label: string; kind?: 'type' | 'object'; subkind: string }
   | { type: 'fast'; uri: string; label: string }
   | { type: 'orcid'; did: string; displayName?: string }
   | { type: 'eprint'; uri: string; title: string }
@@ -539,19 +564,8 @@ export type Endorsement = EndorsementsResponse['endorsements'][number];
 export type ContributionType = Endorsement['contributions'][number];
 
 // -----------------------------------------------------------------------------
-// Field/Knowledge Graph Types
+// Faceted Search Types
 // -----------------------------------------------------------------------------
-
-/** Response from pub.chive.graph.getField */
-export type GetFieldResponse = SuccessResponseJSON<operations['pub_chive_graph_getField']>;
-
-/** Response from pub.chive.graph.listFields */
-export type ListFieldsResponse = SuccessResponseJSON<operations['pub_chive_graph_listFields']>;
-
-/** Response from pub.chive.graph.getFieldEprints */
-export type FieldEprintsResponse = SuccessResponseJSON<
-  operations['pub_chive_graph_getFieldEprints']
->;
 
 /** Response from pub.chive.graph.browseFaceted */
 export type FacetedSearchResponse = SuccessResponseJSON<
@@ -561,70 +575,104 @@ export type FacetedSearchResponse = SuccessResponseJSON<
 /** Eprint summary in faceted browse results */
 export type FacetedEprintSummary = FacetedSearchResponse['hits'][number];
 
-/** Field detail from API */
-export type FieldDetail = GetFieldResponse['field'];
-
-/** Field summary in list results */
-export type FieldSummary = ListFieldsResponse['fields'][number];
-
-/** Field reference (lightweight) */
-export type FieldRef = NonNullable<EprintSummary['fields']>[number];
-
-/** Field ancestor in hierarchy */
-export type FieldAncestor = NonNullable<FieldDetail['ancestors']>[number];
-
-/** Field child in hierarchy */
-export type FieldChild = NonNullable<FieldDetail['children']>[number];
-
-/** Field relationship */
-export type FieldRelationship = NonNullable<FieldDetail['related']>[number];
-
-/** Alias for list fields response */
-export type FieldListResponse = ListFieldsResponse;
-
-/** Facet value from browseFaceted */
-export type FacetValue = NonNullable<FacetedSearchResponse['facets']>[string][number];
+/** Facet value from browseFaceted - counts for faceted search */
+export interface SearchFacetValue {
+  value: string;
+  label?: string;
+  count: number;
+}
 
 // -----------------------------------------------------------------------------
-// Authority Types
+// Knowledge Graph Node Types
 // -----------------------------------------------------------------------------
 
-/** Response from pub.chive.graph.getAuthority */
-export type GetAuthorityResponse = SuccessResponseJSON<operations['pub_chive_graph_getAuthority']>;
+/** Response from pub.chive.graph.getNode */
+export type GetNodeResponse = SuccessResponseJSON<operations['pub_chive_graph_getNode']>;
 
-/** Response from pub.chive.graph.searchAuthorities */
-export type SearchAuthoritiesResponse = SuccessResponseJSON<
-  operations['pub_chive_graph_searchAuthorities']
->;
+/** Response from pub.chive.graph.listNodes */
+export type ListNodesResponse = SuccessResponseJSON<operations['pub_chive_graph_listNodes']>;
 
-/** Response from pub.chive.graph.getAuthorityReconciliations */
-export type AuthorityReconciliationsResponse = SuccessResponseJSON<
-  operations['pub_chive_graph_getAuthorityReconciliations']
->;
+/** Response from pub.chive.graph.searchNodes */
+export type SearchNodesResponse = SuccessResponseJSON<operations['pub_chive_graph_searchNodes']>;
 
-/** Authority record from API */
-export type AuthorityRecord = GetAuthorityResponse['authority'];
+/** Knowledge graph node from API */
+export type GraphNode = GetNodeResponse['node'];
 
-/** Alias for authority record */
-export type Authority = AuthorityRecord;
+/** Node summary in search/list results */
+export type GraphNodeSummary = ListNodesResponse['nodes'][number];
 
-/** Authority summary in search results */
-export type AuthoritySummary = SearchAuthoritiesResponse['authorities'][number];
+/** Node kind */
+export type NodeKind = 'type' | 'object';
 
-/** Alias for search response */
-export type AuthoritySearchResponse = SearchAuthoritiesResponse;
-
-/** Authority type */
-export type AuthorityType = AuthorityRecord['type'];
-
-/** Authority status */
-export type AuthorityStatus = AuthorityRecord['status'];
-
-/** Authority reconciliation */
-export type AuthorityReconciliation = AuthorityReconciliationsResponse['reconciliations'][number];
+/** Node status */
+export type NodeStatus = 'proposed' | 'provisional' | 'established' | 'deprecated';
 
 /** External ID reference */
-export type ExternalId = NonNullable<AuthorityRecord['externalIds']>[number];
+export type ExternalId = {
+  system: string;
+  identifier: string;
+  uri?: string;
+  matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+};
+
+// -----------------------------------------------------------------------------
+// Field Types (Knowledge Graph Nodes for Academic Disciplines)
+// -----------------------------------------------------------------------------
+
+/**
+ * Minimal field reference for embedding in other types.
+ *
+ * @remarks
+ * Used in Eprint.fields and EprintSummary.fields arrays.
+ * Matches the lexicon and API response shape.
+ */
+export interface FieldRef {
+  /** Internal ID (may be slug or numeric) */
+  id?: string;
+  /** AT-URI of the field node */
+  uri: string;
+  /** Display label for the field */
+  label: string;
+  /** Parent field URI */
+  parentUri?: string;
+}
+
+/**
+ * Field summary for lists, cards, and search results.
+ */
+export interface FieldSummary {
+  id: string;
+  uri: string;
+  label: string;
+  description?: string;
+  status: NodeStatus;
+  eprintCount?: number;
+  childCount?: number;
+}
+
+/**
+ * Field relationship to another field.
+ */
+export interface FieldRelationship {
+  type: 'broader' | 'narrower' | 'related' | 'equivalent' | 'influences';
+  targetId: string;
+  targetLabel: string;
+  strength?: number;
+}
+
+/**
+ * Full field detail with relationships and metadata.
+ */
+export interface FieldDetail extends FieldSummary {
+  wikidataId?: string;
+  parentId?: string;
+  externalIds?: ExternalId[];
+  relationships?: FieldRelationship[];
+  children?: FieldRef[];
+  ancestors?: FieldRef[];
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 // -----------------------------------------------------------------------------
 // Search Types
@@ -832,19 +880,203 @@ export type VoterRole = Vote['voterRole'];
  * Proposal category - the type of entity being proposed.
  *
  * @remarks
- * Categories represent what is being created/modified:
- * - field: Knowledge graph field proposals
- * - contribution-type: CRediT contribution type proposals
- * - facet: PMEST/FAST facet dimension proposals
- * - organization: Research organization/institution proposals
- * - reconciliation: External knowledge base reconciliation proposals
+ * High-level categories for what is being proposed:
+ * - node: Knowledge graph node (any subkind)
+ * - edge: Knowledge graph edge/relationship
+ *
+ * Note: The backend schema has additional categories (field, concept, etc.)
+ * but these don't align with actual subkinds. Use subkind filtering separately.
  */
-export type ProposalCategory =
-  | 'field'
-  | 'contribution-type'
-  | 'facet'
-  | 'organization'
-  | 'reconciliation';
+export type ProposalCategory = 'node' | 'edge';
+
+// -----------------------------------------------------------------------------
+// Trusted Editor Types
+// -----------------------------------------------------------------------------
+
+/** Response from pub.chive.governance.getEditorStatus */
+export type GetEditorStatusResponse = SuccessResponseJSON<
+  operations['pub_chive_governance_getEditorStatus']
+>;
+
+/** Response from pub.chive.governance.listTrustedEditors */
+export type ListTrustedEditorsResponse = SuccessResponseJSON<
+  operations['pub_chive_governance_listTrustedEditors']
+>;
+
+/** Response from pub.chive.governance.requestElevation */
+export type RequestElevationResponse = SuccessResponseJSON<
+  operations['pub_chive_governance_requestElevation']
+>;
+
+/** Response from pub.chive.governance.grantDelegation */
+export type GrantDelegationResponse = SuccessResponseJSON<
+  operations['pub_chive_governance_grantDelegation']
+>;
+
+/** Response from pub.chive.governance.revokeDelegation */
+export type RevokeDelegationResponse = SuccessResponseJSON<
+  operations['pub_chive_governance_revokeDelegation']
+>;
+
+/** Response from pub.chive.governance.revokeRole */
+export type RevokeRoleResponse = SuccessResponseJSON<operations['pub_chive_governance_revokeRole']>;
+
+/**
+ * Governance role for trusted editors.
+ *
+ * @remarks
+ * Roles in ascending order of privilege:
+ * - community-member: Standard user, can propose changes
+ * - trusted-editor: Can create knowledge graph nodes via delegation
+ * - graph-editor: Can modify existing knowledge graph nodes
+ * - domain-expert: Subject matter expert, weighted voting
+ * - administrator: Full governance privileges
+ */
+export type GovernanceRole =
+  | 'community-member'
+  | 'trusted-editor'
+  | 'graph-editor'
+  | 'domain-expert'
+  | 'administrator';
+
+/**
+ * Reputation metrics for a user.
+ */
+export interface ReputationMetrics {
+  did: string;
+  accountCreatedAt: number;
+  accountAgeDays: number;
+  eprintCount: number;
+  wellEndorsedEprintCount: number;
+  totalEndorsements: number;
+  proposalCount: number;
+  voteCount: number;
+  successfulProposals: number;
+  warningCount: number;
+  violationCount: number;
+  reputationScore: number;
+  role: GovernanceRole;
+  eligibleForTrustedEditor: boolean;
+  missingCriteria: string[];
+}
+
+/**
+ * Editor status with delegation and metrics.
+ */
+export interface EditorStatus {
+  did: string;
+  displayName?: string;
+  role: GovernanceRole;
+  roleGrantedAt?: number;
+  roleGrantedBy?: string;
+  hasDelegation: boolean;
+  delegationExpiresAt?: number;
+  delegationCollections?: string[];
+  recordsCreatedToday: number;
+  dailyRateLimit: number;
+  metrics: ReputationMetrics;
+}
+
+/**
+ * Trusted editor record from list response.
+ */
+export interface TrustedEditorRecord {
+  did: string;
+  handle?: string;
+  displayName?: string;
+  role: GovernanceRole;
+  roleGrantedAt: number;
+  roleGrantedBy?: string;
+  hasDelegation: boolean;
+  delegationExpiresAt?: number;
+  recordsCreatedToday: number;
+  dailyRateLimit: number;
+  metrics: ReputationMetrics;
+}
+
+/**
+ * Elevation request result.
+ */
+export interface ElevationResult {
+  success: boolean;
+  requestId?: string;
+  message: string;
+}
+
+/**
+ * Delegation operation result.
+ */
+export interface DelegationResult {
+  success: boolean;
+  delegationId?: string;
+  message: string;
+}
+
+/**
+ * Elevation request record from listElevationRequests.
+ */
+export interface ElevationRequest {
+  id: string;
+  did: string;
+  handle?: string;
+  displayName?: string;
+  requestedRole: GovernanceRole;
+  currentRole: GovernanceRole;
+  requestedAt: number;
+  metrics: ReputationMetrics;
+  verificationNotes?: string;
+}
+
+/**
+ * Response from pub.chive.governance.listElevationRequests.
+ */
+export interface ElevationRequestsResponse {
+  requests: ElevationRequest[];
+  cursor?: string;
+  total: number;
+}
+
+/**
+ * Input for approving an elevation request.
+ */
+export interface ApproveElevationInput {
+  requestId: string;
+  verificationNotes?: string;
+}
+
+/**
+ * Input for rejecting an elevation request.
+ */
+export interface RejectElevationInput {
+  requestId: string;
+  reason: string;
+}
+
+/**
+ * Delegation record from listDelegations.
+ */
+export interface DelegationRecord {
+  id: string;
+  delegateDid: string;
+  handle?: string;
+  displayName?: string;
+  collections: string[];
+  expiresAt: number;
+  maxRecordsPerDay: number;
+  recordsCreatedToday: number;
+  grantedAt: number;
+  grantedBy: string;
+  active: boolean;
+}
+
+/**
+ * Response from pub.chive.governance.listDelegations.
+ */
+export interface DelegationsResponse {
+  delegations: DelegationRecord[];
+  cursor?: string;
+  total: number;
+}
 
 // -----------------------------------------------------------------------------
 // Facet Types (PMEST + FAST Classification)
@@ -1287,7 +1519,7 @@ export interface RichAnnotationBody {
 export type RichAnnotationItem =
   | { type: 'text'; content: string }
   | { type: 'wikidataRef'; qid: string; label: string; url?: string }
-  | { type: 'authorityRef'; uri: string; label: string }
+  | { type: 'nodeRef'; uri: string; label: string; kind?: 'type' | 'object'; subkind?: string }
   | { type: 'fieldRef'; uri: string; label: string }
   | { type: 'facetRef'; dimension: string; value: string }
   | { type: 'eprintRef'; uri: string; title: string }
@@ -1466,8 +1698,7 @@ export interface EndorsementNotificationsResponse {
 }
 
 // -----------------------------------------------------------------------------
-// Re-exports for Compatibility
+// Re-exports
 // -----------------------------------------------------------------------------
 
-// These are re-exported for backward compatibility with existing imports
 export type { paths, operations } from './schema.generated';

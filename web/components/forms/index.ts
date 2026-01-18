@@ -101,3 +101,39 @@ export {
   type EprintAuthorEditorProps,
   type EprintAuthorFormData,
 } from './eprint-author-editor';
+
+// External identifier autocomplete components
+export {
+  LcshAutocomplete,
+  type LcshAutocompleteProps,
+  type LcshSuggestion,
+} from './lcsh-autocomplete';
+
+export {
+  CreditAutocomplete,
+  type CreditAutocompleteProps,
+  type CreditRole,
+  CREDIT_ROLES,
+  getCreditRoleByUri,
+  getCreditRoleById,
+} from './credit-autocomplete';
+
+export {
+  FastAutocomplete,
+  type FastAutocompleteProps,
+  type FastSuggestion,
+} from './fast-autocomplete';
+
+export {
+  FacetAutocomplete,
+  type FacetAutocompleteProps,
+  type FacetSuggestion,
+} from './facet-autocomplete';
+
+export {
+  ConceptAutocomplete,
+  type ConceptAutocompleteProps,
+  type ConceptSuggestion,
+  type ConceptCategory,
+  type ConceptStatus,
+} from './concept-autocomplete';

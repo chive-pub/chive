@@ -22,13 +22,11 @@ export async function generateMetadata({ params }: FieldPageProps): Promise<Meta
   const decodedId = decodeURIComponent(id);
 
   try {
-    const { data } = await api.GET('/xrpc/pub.chive.graph.getField', {
+    const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
       params: {
         query: {
           id: decodedId,
-          includeRelationships: false,
-          includeChildren: false,
-          includeAncestors: false,
+          includeEdges: false,
         },
       },
     });
@@ -38,8 +36,8 @@ export async function generateMetadata({ params }: FieldPageProps): Promise<Meta
     }
 
     return {
-      title: data.name,
-      description: data.description ?? `Eprints in ${data.name} on Chive`,
+      title: data.label,
+      description: data.description ?? `Eprints in ${data.label} on Chive`,
     };
   } catch {
     return { title: 'Field' };
@@ -48,13 +46,6 @@ export async function generateMetadata({ params }: FieldPageProps): Promise<Meta
 
 /**
  * Field detail page component.
- *
- * @remarks
- * Server component that renders a field's detail page.
- * Includes hierarchy, relationships, and eprints.
- *
- * @example
- * URL: /fields/computer-science
  */
 export default async function FieldPage({ params }: FieldPageProps) {
   const { id } = await params;

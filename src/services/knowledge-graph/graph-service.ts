@@ -2,7 +2,7 @@
  * Knowledge graph service managing Neo4j operations.
  *
  * @remarks
- * Indexes graph records (proposals, votes, authority records, facets) and
+ * Indexes graph records (node proposals, edge proposals, votes) and
  * provides graph query operations.
  *
  * @packageDocumentation
@@ -10,13 +10,16 @@
  * @since 0.1.0
  */
 
+import { AtUri as AtUriParser } from '@atproto/api';
+
 import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError } from '../../types/errors.js';
-import type { Facet, IGraphDatabase } from '../../types/interfaces/graph.interface.js';
+import type { Facet, IGraphDatabase, GraphNode } from '../../types/interfaces/graph.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import type { EprintAuthor } from '../../types/models/author.js';
 import type { Result } from '../../types/result.js';
+import { extractPlainText } from '../../utils/rich-text.js';
 import type { RecordMetadata } from '../eprint/eprint-service.js';
 
 /**
@@ -29,115 +32,6 @@ export interface KnowledgeGraphServiceOptions {
   readonly graph: IGraphDatabase;
   readonly storage: IStorageBackend;
   readonly logger: ILogger;
-}
-
-/**
- * Field detail with extended information.
- *
- * @public
- * @since 0.1.0
- */
-export interface FieldDetail {
-  readonly id: string;
-  readonly uri: string;
-  readonly name: string;
-  readonly description?: string;
-  readonly parentId?: string;
-  readonly status: 'proposed' | 'approved' | 'deprecated';
-  readonly eprintCount: number;
-  readonly externalIds?: readonly {
-    readonly source: string;
-    readonly id: string;
-    readonly url?: string;
-  }[];
-  readonly createdAt: Date;
-  readonly updatedAt?: Date;
-}
-
-/**
- * Child field summary.
- *
- * @public
- * @since 0.1.0
- */
-export interface ChildField {
-  readonly id: string;
-  readonly name: string;
-  readonly eprintCount: number;
-}
-
-/**
- * Ancestor field reference.
- *
- * @public
- * @since 0.1.0
- */
-export interface AncestorField {
-  readonly id: string;
-  readonly name: string;
-}
-
-/**
- * Field relationship.
- *
- * @public
- * @since 0.1.0
- */
-export interface FieldRelationship {
-  readonly type: string;
-  readonly targetId: string;
-  readonly targetName: string;
-  readonly strength?: number;
-}
-
-/**
- * Authority record for search results.
- *
- * @public
- * @since 0.1.0
- */
-export interface AuthoritySearchResult {
-  readonly id: string;
-  readonly uri: string;
-  readonly name: string;
-  readonly type: 'person' | 'organization' | 'concept' | 'place';
-  readonly alternateNames?: readonly string[];
-  readonly description?: string;
-  readonly externalIds?: readonly {
-    readonly source: 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'arxiv';
-    readonly id: string;
-    readonly url?: string;
-  }[];
-  readonly status: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-  readonly createdAt: Date;
-  readonly updatedAt?: Date;
-}
-
-/**
- * Authority search response.
- *
- * @public
- * @since 0.1.0
- */
-export interface AuthoritySearchResponse {
-  readonly authorities: readonly AuthoritySearchResult[];
-  readonly cursor?: string;
-  readonly hasMore: boolean;
-  readonly total: number;
-}
-
-/**
- * Authority search query.
- *
- * @public
- * @since 0.1.0
- */
-export interface AuthoritySearchQuery {
-  readonly query?: string;
-  readonly type?: 'person' | 'organization' | 'concept' | 'place';
-  readonly status?: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-  readonly limit?: number;
-  readonly cursor?: string;
 }
 
 /**
@@ -171,7 +65,7 @@ export interface FacetedEprintSummary {
   readonly authors: readonly EprintAuthor[];
   readonly submittedBy: DID;
   readonly paperDid?: DID;
-  readonly fields?: readonly { uri: string; name: string; id?: string; parentUri?: string }[];
+  readonly fields?: readonly { uri: string; label: string; id?: string; parentUri?: string }[];
   readonly license: string;
   readonly keywords?: readonly string[];
   readonly createdAt: Date;
@@ -195,18 +89,17 @@ export interface FacetValue {
 /**
  * Faceted browse response.
  *
+ * @remarks
+ * Uses dynamic facets keyed by slug. Facets are fetched from the knowledge graph
+ * where subkind='facet'.
+ *
  * @public
  * @since 0.1.0
  */
 export interface FacetedBrowseResponse {
   readonly eprints: readonly FacetedEprintSummary[];
-  readonly availableFacets: {
-    readonly personality?: readonly FacetValue[];
-    readonly matter?: readonly FacetValue[];
-    readonly energy?: readonly FacetValue[];
-    readonly space?: readonly FacetValue[];
-    readonly time?: readonly FacetValue[];
-  };
+  /** Facet values keyed by facet slug */
+  readonly availableFacets: Record<string, readonly FacetValue[]>;
   readonly cursor?: string;
   readonly hasMore: boolean;
   readonly total: number;
@@ -216,20 +109,17 @@ export interface FacetedBrowseResponse {
  * Faceted browse query.
  *
  * @remarks
- * Each facet dimension accepts an array of values for multi-select filtering,
- * following industry standard faceted search API design (Algolia, Azure AI Search).
+ * Facets are dynamic and keyed by slug. This allows users to propose new facets
+ * through governance. Each facet accepts an array of values for multi-select filtering.
  *
  * @public
  * @since 0.1.0
  */
 export interface FacetedBrowseQuery {
-  readonly facets: {
-    readonly personality?: readonly string[];
-    readonly matter?: readonly string[];
-    readonly energy?: readonly string[];
-    readonly space?: readonly string[];
-    readonly time?: readonly string[];
-  };
+  /** Optional text query */
+  readonly q?: string;
+  /** Facet filters keyed by facet slug */
+  readonly facets: Record<string, readonly string[]>;
   readonly limit?: number;
   readonly cursor?: string;
 }
@@ -241,12 +131,11 @@ export interface FacetedBrowseQuery {
  * ```typescript
  * const service = new KnowledgeGraphService({ graph, storage, logger });
  *
- * // Index field proposal from firehose
- * await service.indexFieldProposal(proposal, metadata);
+ * // Index node proposal from firehose
+ * await service.indexNodeProposal(proposal, metadata);
  *
- * // Query graph
- * const field = await service.getField(fieldId);
- * const related = await service.getRelatedFields(fieldId, 2);
+ * // Browse faceted
+ * const results = await service.browseFaceted({ facets: { personality: ['cs'] } });
  * ```
  *
  * @public
@@ -269,47 +158,102 @@ export class KnowledgeGraphService {
   }
 
   /**
-   * Indexes field proposal from firehose.
+   * Gets a node by URI.
    *
-   * @param record - Field proposal record
-   * @param metadata - Record metadata
+   * @param uri - Node AT-URI
+   * @returns Node or null if not found
+   *
+   * @public
+   */
+  async getNode(uri: string): Promise<GraphNode | null> {
+    try {
+      return await this.graph.getNodeByUri(uri as AtUri);
+    } catch (error) {
+      this.logger.error('Failed to get node', error instanceof Error ? error : undefined, { uri });
+      return null;
+    }
+  }
+
+  /**
+   * Indexes node proposal from user PDS.
+   *
+   * @remarks
+   * Node proposals allow users to suggest new nodes for the knowledge graph.
+   * Proposals go through community voting before being approved by trusted editors.
+   *
+   * @param record - Node proposal record from firehose
+   * @param metadata - Record metadata including URI and PDS source
    * @returns Result indicating success or failure
    *
    * @public
    */
-  async indexFieldProposal(
+  async indexNodeProposal(
     record: unknown,
     metadata: RecordMetadata
   ): Promise<Result<void, DatabaseError>> {
-    try {
-      // Extract field data from record
-      const fieldRecord = record as {
-        id?: string;
+    const proposalRecord = record as {
+      proposalType?: 'create' | 'update' | 'merge' | 'deprecate';
+      kind?: 'type' | 'object';
+      subkind?: string;
+      targetUri?: string;
+      mergeIntoUri?: string;
+      proposedNode?: {
         label?: string;
-        type?: 'field' | 'subfield' | 'topic';
+        alternateLabels?: readonly string[];
         description?: string;
-        wikidataId?: string;
+        externalIds?: readonly {
+          system: string;
+          identifier: string;
+          uri?: string;
+          matchType?: string;
+        }[];
+        metadata?: Record<string, unknown>;
       };
+      rationale?: string;
+      evidence?: readonly { url?: string; description?: string }[];
+      createdAt?: string;
+    };
 
-      if (fieldRecord.id && fieldRecord.label && fieldRecord.type) {
-        await this.graph.upsertField({
-          id: fieldRecord.id,
-          label: fieldRecord.label,
-          type: fieldRecord.type,
-          description: fieldRecord.description,
-          wikidataId: fieldRecord.wikidataId,
-        });
-      }
+    if (!proposalRecord.proposalType || !proposalRecord.rationale) {
+      this.logger.warn('Invalid node proposal: missing required fields', {
+        uri: metadata.uri,
+        hasProposalType: !!proposalRecord.proposalType,
+        hasRationale: !!proposalRecord.rationale,
+      });
+      return { ok: true, value: undefined };
+    }
 
-      this.logger.info('Indexed field proposal', { uri: metadata.uri });
+    try {
+      const parsedUri = new AtUriParser(metadata.uri);
+      const proposerDid = parsedUri.hostname as import('../../types/atproto.js').DID;
+
+      await this.graph.createProposal({
+        uri: metadata.uri,
+        proposalType: proposalRecord.proposalType,
+        kind: proposalRecord.kind ?? 'type',
+        subkind: proposalRecord.subkind,
+        targetUri: proposalRecord.targetUri as AtUri | undefined,
+        proposedNode: proposalRecord.proposedNode as Partial<GraphNode> | undefined,
+        rationale: proposalRecord.rationale,
+        proposerDid,
+        createdAt: metadata.indexedAt,
+      });
+
+      this.logger.info('Indexed node proposal', {
+        uri: metadata.uri,
+        proposalType: proposalRecord.proposalType,
+        kind: proposalRecord.kind,
+        subkind: proposalRecord.subkind,
+        label: proposalRecord.proposedNode?.label,
+        pdsUrl: metadata.pdsUrl,
+      });
+
       return { ok: true, value: undefined };
     } catch (error) {
       this.logger.error(
-        'Failed to index field proposal',
+        'Failed to index node proposal',
         error instanceof Error ? error : undefined,
-        {
-          uri: metadata.uri,
-        }
+        { uri: metadata.uri }
       );
       return {
         ok: false,
@@ -319,58 +263,123 @@ export class KnowledgeGraphService {
   }
 
   /**
-   * Indexes vote from firehose.
+   * Indexes edge proposal from user PDS.
    *
    * @remarks
-   * Records a community vote on a field proposal. Votes are weighted by user role
-   * for consensus calculation:
-   * - community-member: 1.0x
-   * - trusted-editor: 2.0x
-   * - authority-editor: 3.0x
-   * - domain-expert: 3.0x
-   * - administrator: 5.0x
+   * Edge proposals allow users to suggest new relationships between nodes.
+   * Proposals go through community voting before being approved by trusted editors.
    *
-   * @param record - Vote record from user PDS
+   * @param record - Edge proposal record from firehose
+   * @param metadata - Record metadata including URI and PDS source
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async indexEdgeProposal(
+    record: unknown,
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    const proposalRecord = record as {
+      proposalType?: 'create' | 'update' | 'deprecate';
+      targetEdgeUri?: string;
+      proposedEdge?: {
+        sourceUri?: string;
+        targetUri?: string;
+        relationUri?: string;
+        relationSlug?: string;
+        weight?: number;
+        metadata?: Record<string, unknown>;
+      };
+      rationale?: string;
+      evidence?: readonly { url?: string; description?: string }[];
+      createdAt?: string;
+    };
+
+    if (!proposalRecord.proposalType || !proposalRecord.rationale) {
+      this.logger.warn('Invalid edge proposal: missing required fields', {
+        uri: metadata.uri,
+        hasProposalType: !!proposalRecord.proposalType,
+        hasRationale: !!proposalRecord.rationale,
+      });
+      return { ok: true, value: undefined };
+    }
+
+    try {
+      const parsedUri = new AtUriParser(metadata.uri);
+      const proposerDid = parsedUri.hostname as import('../../types/atproto.js').DID;
+
+      await this.graph.createProposal({
+        uri: metadata.uri,
+        proposalType: proposalRecord.proposalType,
+        kind: 'type', // Edge proposals don't have node kind
+        targetUri: proposalRecord.targetEdgeUri as AtUri | undefined,
+        proposedNode: proposalRecord.proposedEdge as Partial<GraphNode> | undefined,
+        rationale: proposalRecord.rationale,
+        proposerDid,
+        createdAt: metadata.indexedAt,
+      });
+
+      this.logger.info('Indexed edge proposal', {
+        uri: metadata.uri,
+        proposalType: proposalRecord.proposalType,
+        sourceUri: proposalRecord.proposedEdge?.sourceUri,
+        targetUri: proposalRecord.proposedEdge?.targetUri,
+        relationSlug: proposalRecord.proposedEdge?.relationSlug,
+        pdsUrl: metadata.pdsUrl,
+      });
+
+      return { ok: true, value: undefined };
+    } catch (error) {
+      this.logger.error(
+        'Failed to index edge proposal',
+        error instanceof Error ? error : undefined,
+        { uri: metadata.uri }
+      );
+      return {
+        ok: false,
+        error: new DatabaseError('WRITE', error instanceof Error ? error.message : String(error)),
+      };
+    }
+  }
+
+  /**
+   * Indexes a vote on a proposal from user PDS.
+   *
+   * @param record - Vote record from firehose
    * @param metadata - Record metadata including URI and PDS source
    * @returns Result indicating success or failure
    *
    * @public
    */
   async indexVote(record: unknown, metadata: RecordMetadata): Promise<Result<void, DatabaseError>> {
-    // Extract vote data from record
     const voteRecord = record as {
       proposalUri?: string;
       vote?: 'approve' | 'reject' | 'abstain' | 'request-changes';
-      rationale?: string;
-      voterRole?: string;
+      comment?: string;
+      createdAt?: string;
     };
 
-    // Validate required fields
     if (!voteRecord.proposalUri || !voteRecord.vote) {
-      this.logger.warn('Invalid vote record: missing required fields', {
+      this.logger.warn('Invalid vote: missing required fields', {
         uri: metadata.uri,
         hasProposalUri: !!voteRecord.proposalUri,
         hasVote: !!voteRecord.vote,
       });
-      return { ok: true, value: undefined }; // Skip invalid records
+      return { ok: true, value: undefined };
     }
 
     try {
-      // Extract voter DID from AT URI (format: at://did:plc:xxx/collection/rkey)
-      const voterDid = metadata.uri.split('/')[2] as import('../../types/atproto.js').DID;
+      const parsedUri = new AtUriParser(metadata.uri);
+      const voterDid = parsedUri.hostname as import('../../types/atproto.js').DID;
 
-      // Persist to Neo4j
       await this.graph.createVote({
+        id: parsedUri.rkey,
         uri: metadata.uri,
-        proposalUri: voteRecord.proposalUri,
+        proposalUri: voteRecord.proposalUri as AtUri,
         voterDid,
-        voterRole: (voteRecord.voterRole ?? 'community-member') as
-          | 'community-member'
-          | 'reviewer'
-          | 'domain-expert'
-          | 'administrator',
+        voterRole: 'community-member', // Default role; actual role determined by governance service
         vote: voteRecord.vote,
-        rationale: voteRecord.rationale,
+        comment: voteRecord.comment,
         createdAt: metadata.indexedAt,
       });
 
@@ -378,7 +387,6 @@ export class KnowledgeGraphService {
         uri: metadata.uri,
         proposalUri: voteRecord.proposalUri,
         vote: voteRecord.vote,
-        voterRole: voteRecord.voterRole ?? 'community-member',
         pdsUrl: metadata.pdsUrl,
       });
 
@@ -390,353 +398,6 @@ export class KnowledgeGraphService {
       return {
         ok: false,
         error: new DatabaseError('WRITE', error instanceof Error ? error.message : String(error)),
-      };
-    }
-  }
-
-  /**
-   * Indexes authority record from Governance PDS.
-   *
-   * @param record - Authority record
-   * @param metadata - Record metadata
-   * @returns Result indicating success or failure
-   *
-   * @public
-   */
-  async indexAuthorityRecord(
-    record: unknown,
-    metadata: RecordMetadata
-  ): Promise<Result<void, DatabaseError>> {
-    try {
-      const authorityRecord = record as {
-        id?: string;
-        authorizedHeading?: string;
-        alternateHeadings?: readonly string[];
-        scope?: string;
-        source?: 'wikidata' | 'fast' | 'community';
-        wikidataId?: string;
-      };
-
-      if (authorityRecord.id && authorityRecord.authorizedHeading) {
-        await this.graph.createAuthorityRecord({
-          id: authorityRecord.id,
-          authorizedHeading: authorityRecord.authorizedHeading,
-          alternateHeadings: authorityRecord.alternateHeadings ?? [],
-          scope: authorityRecord.scope,
-          source: authorityRecord.source ?? 'community',
-          wikidataId: authorityRecord.wikidataId,
-        });
-      }
-
-      this.logger.info('Indexed authority record', { uri: metadata.uri });
-      return { ok: true, value: undefined };
-    } catch (error) {
-      this.logger.error(
-        'Failed to index authority record',
-        error instanceof Error ? error : undefined,
-        {
-          uri: metadata.uri,
-        }
-      );
-      return {
-        ok: false,
-        error: new DatabaseError('WRITE', error instanceof Error ? error.message : String(error)),
-      };
-    }
-  }
-
-  /**
-   * Gets field node by ID.
-   *
-   * @param id - Field ID
-   * @returns Field detail or null
-   *
-   * @public
-   */
-  async getField(id: string): Promise<FieldDetail | null> {
-    try {
-      // Query Neo4j for field by ID
-      const fieldNode = await this.graph.getFieldById(id);
-
-      if (!fieldNode) {
-        return null;
-      }
-
-      return {
-        id: fieldNode.id,
-        uri: `at://chive.governance/pub.chive.graph.field/${fieldNode.id}`,
-        name: fieldNode.label,
-        description: fieldNode.description,
-        parentId: undefined, // Would be derived from broader relationships
-        status: 'approved',
-        eprintCount: 0, // Would be computed from eprint-field associations
-        externalIds: fieldNode.wikidataId
-          ? [
-              {
-                source: 'wikidata',
-                id: fieldNode.wikidataId,
-                url: `https://www.wikidata.org/wiki/${fieldNode.wikidataId}`,
-              },
-            ]
-          : undefined,
-        createdAt: new Date(),
-        updatedAt: undefined,
-      };
-    } catch (error) {
-      this.logger.error('Failed to get field', error instanceof Error ? error : undefined, { id });
-      return null;
-    }
-  }
-
-  /**
-   * Gets related fields via graph traversal.
-   *
-   * @param fieldId - Field ID
-   * @param maxDepth - Maximum traversal depth
-   * @returns Related field relationships
-   *
-   * @public
-   */
-  async getRelatedFields(fieldId: string, maxDepth = 2): Promise<readonly FieldRelationship[]> {
-    try {
-      const relatedNodes = await this.graph.findRelatedFields(fieldId, maxDepth);
-
-      return relatedNodes
-        .filter((node) => node.id !== fieldId) // Exclude self
-        .map((node) => ({
-          type: 'related',
-          targetId: node.id,
-          targetName: node.label,
-          strength: undefined,
-        }));
-    } catch (error) {
-      this.logger.error(
-        'Failed to get related fields',
-        error instanceof Error ? error : undefined,
-        {
-          fieldId,
-        }
-      );
-      return [];
-    }
-  }
-
-  /**
-   * Gets child fields of a parent field.
-   *
-   * @param fieldId - Parent field ID
-   * @returns Child field summaries
-   *
-   * @public
-   */
-  async getChildFields(fieldId: string): Promise<readonly ChildField[]> {
-    try {
-      // Query for fields that have this field as their broader concept
-      const relatedFields = await this.graph.findRelatedFields(fieldId, 1);
-
-      // Filter to only narrower relationships (children)
-      // In a full implementation, we'd query for specific relationship types
-      return relatedFields
-        .filter((node) => node.type === 'subfield' || node.type === 'topic')
-        .map((node) => ({
-          id: node.id,
-          name: node.label,
-          eprintCount: 0, // Would be computed from associations
-        }));
-    } catch (error) {
-      this.logger.error('Failed to get child fields', error instanceof Error ? error : undefined, {
-        fieldId,
-      });
-      return [];
-    }
-  }
-
-  /**
-   * Gets ancestor path from root to this field.
-   *
-   * @param fieldId - Field ID
-   * @returns Ancestor fields ordered from root to parent
-   *
-   * @public
-   */
-  async getAncestorPath(fieldId: string): Promise<readonly AncestorField[]> {
-    try {
-      // Build ancestor path by traversing broader relationships
-      const ancestors: AncestorField[] = [];
-      let currentId = fieldId;
-      const visited = new Set<string>();
-
-      while (currentId && !visited.has(currentId)) {
-        visited.add(currentId);
-
-        const relatedFields = await this.graph.findRelatedFields(currentId, 1);
-
-        // Find broader (parent) field
-        const parent = relatedFields.find((node) => node.id !== currentId && node.type === 'field');
-
-        if (parent) {
-          ancestors.unshift({
-            id: parent.id,
-            name: parent.label,
-          });
-          currentId = parent.id;
-        } else {
-          break;
-        }
-      }
-
-      return ancestors;
-    } catch (error) {
-      this.logger.error('Failed to get ancestor path', error instanceof Error ? error : undefined, {
-        fieldId,
-      });
-      return [];
-    }
-  }
-
-  /**
-   * Lists fields with optional filtering.
-   *
-   * @param options - List options (status, parentId, limit, cursor)
-   * @returns Paginated list of fields
-   *
-   * @public
-   */
-  async listFields(options: {
-    status?: 'proposed' | 'under_review' | 'approved' | 'deprecated';
-    parentId?: string;
-    limit?: number;
-    cursor?: string;
-  }): Promise<{
-    fields: FieldDetail[];
-    total: number;
-    hasMore: boolean;
-    cursor?: string;
-  }> {
-    try {
-      const result = await this.graph.listFields(options);
-
-      const fields: FieldDetail[] = result.fields.map((f) => ({
-        id: f.id,
-        uri: `at://chive.governance/pub.chive.graph.field/${f.id}`,
-        name: f.label,
-        description: f.description,
-        parentId: undefined,
-        status: 'approved',
-        eprintCount: 0,
-        externalIds: f.wikidataId
-          ? [
-              {
-                source: 'wikidata',
-                id: f.wikidataId,
-                url: `https://www.wikidata.org/wiki/${f.wikidataId}`,
-              },
-            ]
-          : undefined,
-        createdAt: new Date(),
-        updatedAt: undefined,
-      }));
-
-      return {
-        fields,
-        total: result.total,
-        hasMore: result.hasMore,
-        cursor: result.cursor,
-      };
-    } catch (error) {
-      this.logger.error('Failed to list fields', error instanceof Error ? error : undefined, {
-        options,
-      });
-      return { fields: [], total: 0, hasMore: false };
-    }
-  }
-
-  /**
-   * Searches authority records.
-   *
-   * @remarks
-   * Queries Neo4j for authority records matching the query text.
-   * Supports filtering by type (person, organization, concept, place) and status.
-   * Uses cursor-based pagination with offset encoding.
-   *
-   * @param query - Search query with optional filters
-   * @returns Paginated authority search results
-   *
-   * @public
-   */
-  async searchAuthorities(query: AuthoritySearchQuery): Promise<AuthoritySearchResponse> {
-    try {
-      const limit = query.limit ?? 20;
-      const offset = query.cursor ? parseInt(query.cursor, 10) : 0;
-
-      // If no query text provided, return empty results
-      if (!query.query || query.query.trim() === '') {
-        return {
-          authorities: [],
-          cursor: undefined,
-          hasMore: false,
-          total: 0,
-        };
-      }
-
-      this.logger.debug('Searching authorities', {
-        query: query.query,
-        type: query.type,
-        status: query.status,
-        limit,
-        offset,
-      });
-
-      // Query Neo4j using the graph adapter
-      const result = await this.graph.searchAuthorityRecords(query.query, {
-        type: query.type,
-        status: query.status,
-        limit,
-        offset,
-      });
-
-      // Map authority records to search results
-      const authorities: AuthoritySearchResult[] = result.records.map((record) => ({
-        id: record.id,
-        uri: `at://chive.governance/pub.chive.graph.authorityRecord/${record.id}` as const,
-        name: record.authorizedHeading,
-        type: 'concept', // Default type; would be stored in record in production
-        alternateNames: record.alternateHeadings,
-        description: record.scope,
-        externalIds: record.wikidataId
-          ? [
-              {
-                source: 'wikidata' as const,
-                id: record.wikidataId,
-                url: `https://www.wikidata.org/wiki/${record.wikidataId}`,
-              },
-            ]
-          : undefined,
-        status: 'approved' as const, // Would be stored in record
-        createdAt: new Date(),
-      }));
-
-      const nextCursor = result.hasMore ? String(offset + limit) : undefined;
-
-      return {
-        authorities,
-        cursor: nextCursor,
-        hasMore: result.hasMore,
-        total: result.total,
-      };
-    } catch (error) {
-      this.logger.error(
-        'Failed to search authorities',
-        error instanceof Error ? error : undefined,
-        {
-          query: query.query,
-        }
-      );
-      return {
-        authorities: [],
-        cursor: undefined,
-        hasMore: false,
-        total: 0,
       };
     }
   }
@@ -765,33 +426,15 @@ export class KnowledgeGraphService {
       const limit = query.limit ?? 20;
       const offset = query.cursor ? parseInt(query.cursor, 10) : 0;
 
-      // Build facet filter from PMEST dimensions
+      // Build facet filter from dynamic facet dimensions
       // Each dimension can have multiple values for OR-style filtering within the dimension
       const facets: Facet[] = [];
 
-      if (query.facets.personality && query.facets.personality.length > 0) {
-        for (const value of query.facets.personality) {
-          facets.push({ dimension: 'personality', value });
-        }
-      }
-      if (query.facets.matter && query.facets.matter.length > 0) {
-        for (const value of query.facets.matter) {
-          facets.push({ dimension: 'matter', value });
-        }
-      }
-      if (query.facets.energy && query.facets.energy.length > 0) {
-        for (const value of query.facets.energy) {
-          facets.push({ dimension: 'energy', value });
-        }
-      }
-      if (query.facets.space && query.facets.space.length > 0) {
-        for (const value of query.facets.space) {
-          facets.push({ dimension: 'space', value });
-        }
-      }
-      if (query.facets.time && query.facets.time.length > 0) {
-        for (const value of query.facets.time) {
-          facets.push({ dimension: 'time', value });
+      for (const [dimension, values] of Object.entries(query.facets)) {
+        if (values && values.length > 0) {
+          for (const value of values) {
+            facets.push({ dimension, value });
+          }
         }
       }
 
@@ -835,13 +478,13 @@ export class KnowledgeGraphService {
             uri: eprint.uri,
             cid: eprint.cid,
             title: eprint.title,
-            abstract: eprint.abstract,
+            abstract: eprint.abstractPlainText ?? extractPlainText(eprint.abstract),
             authors: eprint.authors,
             submittedBy: eprint.submittedBy,
             paperDid: eprint.paperDid,
             fields: eprint.fields?.map((f) => ({
               uri: f.uri,
-              name: f.name,
+              label: f.label,
               id: f.id,
               parentUri: f.parentUri,
             })),
@@ -859,31 +502,24 @@ export class KnowledgeGraphService {
       }
 
       // Aggregate available facet refinements
-      const availableFacets = await this.graph.aggregateFacetRefinements(facets);
+      const aggregations = await this.graph.aggregateFacets(facets);
 
-      // Convert to FacetValue format
-      const formatFacets = (
-        values?: readonly { value: string; count: number }[]
-      ): FacetValue[] | undefined => {
-        if (!values || values.length === 0) return undefined;
-        return values.map((v) => ({
+      // Group by dimension - availableFacets is dynamic, keyed by facet slug
+      const availableFacets: Record<string, FacetValue[]> = {};
+      for (const agg of aggregations) {
+        const values = agg.values.map((v) => ({
           value: v.value,
-          label: v.value, // Label same as value; could be enriched from authority records
+          label: v.value,
           count: v.count,
         }));
-      };
+        availableFacets[agg.dimension] = values;
+      }
 
       const nextCursor = hasMore ? String(offset + limit) : undefined;
 
       return {
         eprints,
-        availableFacets: {
-          personality: formatFacets(availableFacets.personality),
-          matter: formatFacets(availableFacets.matter),
-          energy: formatFacets(availableFacets.energy),
-          space: formatFacets(availableFacets.space),
-          time: formatFacets(availableFacets.time),
-        },
+        availableFacets,
         cursor: nextCursor,
         hasMore,
         total: matchingEprintUris.length,
@@ -894,13 +530,7 @@ export class KnowledgeGraphService {
       });
       return {
         eprints: [],
-        availableFacets: {
-          personality: undefined,
-          matter: undefined,
-          energy: undefined,
-          space: undefined,
-          time: undefined,
-        },
+        availableFacets: {},
         cursor: undefined,
         hasMore: false,
         total: 0,
@@ -918,8 +548,8 @@ export class KnowledgeGraphService {
    */
   async listProposals(options: {
     status?: 'pending' | 'approved' | 'rejected';
-    type?: 'create' | 'update' | 'merge' | 'delete';
-    fieldId?: string;
+    type?: 'create' | 'update' | 'merge' | 'deprecate';
+    nodeUri?: string;
     proposedBy?: string;
     limit?: number;
     cursor?: string;
@@ -933,10 +563,10 @@ export class KnowledgeGraphService {
       const limit = options.limit ?? 50;
       const offset = options.cursor ? parseInt(options.cursor, 10) : 0;
 
-      const result = await this.graph.getProposals({
+      const result = await this.graph.listProposals({
         status: options.status ? [options.status] : undefined,
         proposalType: options.type ? [options.type] : undefined,
-        fieldUri: options.fieldId,
+        nodeUri: options.nodeUri as AtUri | undefined,
         proposerDid: options.proposedBy as DID | undefined,
         limit,
         offset,
@@ -944,16 +574,16 @@ export class KnowledgeGraphService {
 
       const proposals: ProposalView[] = result.proposals.map((p) => ({
         id: p.id,
-        uri: `at://chive.governance/pub.chive.graph.fieldProposal/${p.id}`,
-        fieldId: p.fieldId,
-        type: p.proposalType,
-        changes: p.changes as Record<string, unknown>,
+        uri: p.uri as string,
+        nodeUri: (p.targetUri ?? '') as string,
+        type: p.proposalType as 'create' | 'update' | 'merge' | 'deprecate',
+        changes: (p.proposedNode ?? {}) as Record<string, unknown>,
         rationale: p.rationale,
-        status: p.status,
-        proposedBy: p.proposedBy,
+        status: p.status as 'pending' | 'approved' | 'rejected',
+        proposedBy: p.proposerDid,
         votes: {
-          approve: p.votes.approve,
-          reject: p.votes.reject,
+          approve: 0, // Would need to calculate from votes
+          reject: 0,
           abstain: 0,
         },
         createdAt: p.createdAt,
@@ -987,7 +617,7 @@ export class KnowledgeGraphService {
    */
   async getProposalById(proposalId: string): Promise<ProposalView | null> {
     try {
-      const proposal = await this.graph.getProposalById(proposalId);
+      const proposal = await this.graph.getProposal(proposalId as AtUri);
 
       if (!proposal) {
         return null;
@@ -995,16 +625,16 @@ export class KnowledgeGraphService {
 
       return {
         id: proposal.id,
-        uri: `at://chive.governance/pub.chive.graph.fieldProposal/${proposal.id}`,
-        fieldId: proposal.fieldId,
-        type: proposal.proposalType,
-        changes: proposal.changes as Record<string, unknown>,
+        uri: proposal.uri as string,
+        nodeUri: (proposal.targetUri ?? '') as string,
+        type: proposal.proposalType as 'create' | 'update' | 'merge' | 'deprecate',
+        changes: (proposal.proposedNode ?? {}) as Record<string, unknown>,
         rationale: proposal.rationale,
-        status: proposal.status,
-        proposedBy: proposal.proposedBy,
+        status: proposal.status as 'pending' | 'approved' | 'rejected',
+        proposedBy: proposal.proposerDid,
         votes: {
-          approve: proposal.votes.approve,
-          reject: proposal.votes.reject,
+          approve: 0,
+          reject: 0,
           abstain: 0,
         },
         createdAt: proposal.createdAt,
@@ -1027,17 +657,17 @@ export class KnowledgeGraphService {
    */
   async getVotesForProposal(proposalUri: string): Promise<VoteView[]> {
     try {
-      const votes = await this.graph.getVotesForProposal(proposalUri);
+      const votes = await this.graph.getVotesForProposal(proposalUri as AtUri);
 
       return votes.map((v) => ({
-        id: v.uri.split('/').pop() ?? '',
+        id: v.id,
         uri: v.uri,
         proposalUri: v.proposalUri,
         voterDid: v.voterDid,
         voterRole: v.voterRole,
         vote: v.vote,
         weight: this.getVoteWeight(v.voterRole),
-        rationale: v.rationale,
+        rationale: v.comment,
         createdAt: v.createdAt,
       }));
     } catch (error) {
@@ -1059,7 +689,8 @@ export class KnowledgeGraphService {
         return 5.0;
       case 'domain-expert':
         return 3.0;
-      case 'reviewer':
+      case 'graph-editor':
+      case 'trusted-editor':
         return 2.0;
       case 'community-member':
       default:
@@ -1076,8 +707,8 @@ export class KnowledgeGraphService {
 export interface ProposalView {
   readonly id: string;
   readonly uri: string;
-  readonly fieldId: string;
-  readonly type: 'create' | 'update' | 'merge' | 'delete';
+  readonly nodeUri: string;
+  readonly type: 'create' | 'update' | 'merge' | 'deprecate';
   readonly changes: Record<string, unknown>;
   readonly rationale: string;
   readonly status: 'pending' | 'approved' | 'rejected';

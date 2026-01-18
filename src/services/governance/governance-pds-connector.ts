@@ -102,7 +102,7 @@ export interface GovernancePDSConnectorOptions {
  * @internal
  */
 interface RawAuthorityRecord {
-  readonly $type: 'pub.chive.graph.authorityRecord';
+  readonly $type: 'pub.chive.graph.authority';
   readonly authorizedForm: string;
   readonly variantForms?: readonly string[];
   readonly scopeNote?: string;
@@ -167,7 +167,7 @@ interface RawOrganizationRecord {
  * Collection NSIDs for governance records.
  */
 const COLLECTIONS = {
-  AUTHORITY_RECORD: 'pub.chive.graph.authorityRecord' as NSID,
+  AUTHORITY_RECORD: 'pub.chive.graph.authority' as NSID,
   FACET: 'pub.chive.graph.facet' as NSID,
   ORGANIZATION: 'pub.chive.graph.organization' as NSID,
 } as const;
@@ -271,7 +271,7 @@ export class GovernancePDSConnector {
    *
    * @example
    * ```typescript
-   * const uri = 'at://did:plc:chive-governance/pub.chive.graph.authorityRecord/abc123' as AtUri;
+   * const uri = 'at://did:plc:chive-governance/pub.chive.graph.authority/abc123' as AtUri;
    * const record = await connector.getAuthorityRecord(uri);
    * ```
    *

@@ -17,8 +17,19 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 import { createElasticsearchClient } from '@/storage/elasticsearch/setup.js';
 import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
 import type { Eprint } from '@/types/models/eprint.js';
+import { extractPlainText } from '@/utils/rich-text.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 // Test constants
 const TEST_INDEX_NAME = 'test-author-indexing';
@@ -38,15 +49,14 @@ const AUTHOR_WITH_DID: EprintAuthor = {
   ],
   contributions: [
     {
-      typeUri:
-        'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization' as AtUri,
+      typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization' as AtUri,
       typeId: 'conceptualization',
       typeLabel: 'Conceptualization',
       degree: 'lead',
     },
     {
       typeUri:
-        'at://did:plc:chive-governance/pub.chive.contribution.type/writing-original-draft' as AtUri,
+        'at://did:plc:chive-governance/pub.chive.graph.concept/writing-original-draft' as AtUri,
       typeId: 'writing-original-draft',
       typeLabel: 'Writing - Original Draft',
       degree: 'lead',
@@ -68,7 +78,7 @@ const AUTHOR_WITH_ORCID_ONLY: EprintAuthor = {
   ],
   contributions: [
     {
-      typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/investigation' as AtUri,
+      typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/investigation' as AtUri,
       typeId: 'investigation',
       typeLabel: 'Investigation',
       degree: 'equal',
@@ -90,7 +100,7 @@ const EXTERNAL_COLLABORATOR: EprintAuthor = {
   ],
   contributions: [
     {
-      typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/data-curation' as AtUri,
+      typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/data-curation' as AtUri,
       typeId: 'data-curation',
       typeLabel: 'Data Curation',
       degree: 'supporting',
@@ -113,7 +123,7 @@ const AUTHOR_WITH_DID_2: EprintAuthor = {
   ],
   contributions: [
     {
-      typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/methodology' as AtUri,
+      typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/methodology' as AtUri,
       typeId: 'methodology',
       typeLabel: 'Methodology',
       degree: 'lead',
@@ -156,7 +166,7 @@ function mapEprintToDocument(eprint: Eprint, pdsUrl: string): object {
     uri: eprint.uri,
     cid: eprint.cid,
     title: eprint.title,
-    abstract: eprint.abstract,
+    abstract: eprint.abstractPlainText ?? extractPlainText(eprint.abstract),
     submittedBy: eprint.submittedBy,
     paperDid: eprint.paperDid,
     authors: eprint.authors.map(mapAuthorToDocument),
@@ -265,7 +275,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:author1/pub.chive.eprint.submission/test1' as AtUri,
         cid: 'bafytest1' as CID,
         title: 'Test Paper with DID Author',
-        abstract: 'This paper has an author with a DID.',
+        abstract: createMockAbstract('This paper has an author with a DID.'),
         submittedBy: 'did:plc:author1' as DID,
         authors: [AUTHOR_WITH_DID],
         version: 1,
@@ -308,7 +318,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:author1/pub.chive.eprint.submission/p1' as AtUri,
         cid: 'bafyp1' as CID,
         title: 'Paper by Author 1',
-        abstract: 'Abstract for paper 1.',
+        abstract: createMockAbstract('Abstract for paper 1.'),
         submittedBy: 'did:plc:author1' as DID,
         authors: [AUTHOR_WITH_DID],
         version: 1,
@@ -330,7 +340,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:author2/pub.chive.eprint.submission/p2' as AtUri,
         cid: 'bafyp2' as CID,
         title: 'Paper by Author 2',
-        abstract: 'Abstract for paper 2.',
+        abstract: createMockAbstract('Abstract for paper 2.'),
         submittedBy: 'did:plc:author2' as DID,
         authors: [AUTHOR_WITH_DID_2],
         version: 1,
@@ -380,7 +390,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:submitter/pub.chive.eprint.submission/orcid1' as AtUri,
         cid: 'bafyorcid1' as CID,
         title: 'Paper with ORCID Author',
-        abstract: 'This paper has an external author with ORCID.',
+        abstract: createMockAbstract('This paper has an external author with ORCID.'),
         submittedBy: 'did:plc:submitter' as DID,
         authors: [AUTHOR_WITH_DID, AUTHOR_WITH_ORCID_ONLY],
         version: 1,
@@ -423,7 +433,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/orcid2' as AtUri,
         cid: 'bafyorcid2' as CID,
         title: 'Another ORCID Paper',
-        abstract: 'Testing ORCID filtering.',
+        abstract: createMockAbstract('Testing ORCID filtering.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [AUTHOR_WITH_DID_2],
         version: 1,
@@ -466,7 +476,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/ext1' as AtUri,
         cid: 'bafyext1' as CID,
         title: 'Paper with External Collaborator',
-        abstract: 'This paper includes an external collaborator without DID.',
+        abstract: createMockAbstract('This paper includes an external collaborator without DID.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [AUTHOR_WITH_DID, EXTERNAL_COLLABORATOR],
         version: 1,
@@ -507,7 +517,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/ext2' as AtUri,
         cid: 'bafyext2' as CID,
         title: 'Another External Paper',
-        abstract: 'Testing email filtering.',
+        abstract: createMockAbstract('Testing email filtering.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [EXTERNAL_COLLABORATOR],
         version: 1,
@@ -550,7 +560,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/hl1' as AtUri,
         cid: 'bafyhl1' as CID,
         title: 'Paper with Co-First Authors',
-        abstract: 'This paper has co-first authors.',
+        abstract: createMockAbstract('This paper has co-first authors.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [
           { ...AUTHOR_WITH_DID, isHighlighted: true },
@@ -594,7 +604,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/ca1' as AtUri,
         cid: 'bafyca1' as CID,
         title: 'Paper with Corresponding Author',
-        abstract: 'Testing corresponding author indexing.',
+        abstract: createMockAbstract('Testing corresponding author indexing.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [AUTHOR_WITH_DID, AUTHOR_WITH_ORCID_ONLY],
         version: 1,
@@ -637,7 +647,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/aff1' as AtUri,
         cid: 'bafyaff1' as CID,
         title: 'Paper with ROR Affiliations',
-        abstract: 'Testing affiliation indexing.',
+        abstract: createMockAbstract('Testing affiliation indexing.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [AUTHOR_WITH_DID],
         version: 1,
@@ -685,7 +695,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/contrib1' as AtUri,
         cid: 'bafycontrib1' as CID,
         title: 'Paper with Contribution Types',
-        abstract: 'Testing contribution indexing.',
+        abstract: createMockAbstract('Testing contribution indexing.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [AUTHOR_WITH_DID],
         version: 1,
@@ -731,7 +741,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:sub/pub.chive.eprint.submission/deg1' as AtUri,
         cid: 'bafydeg1' as CID,
         title: 'Paper with Lead Contributions',
-        abstract: 'Testing degree filtering.',
+        abstract: createMockAbstract('Testing degree filtering.'),
         submittedBy: 'did:plc:sub' as DID,
         authors: [AUTHOR_WITH_DID],
         version: 1,
@@ -779,7 +789,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:user123/pub.chive.eprint.submission/trad1' as AtUri,
         cid: 'bafytrad1' as CID,
         title: 'Traditional Submission',
-        abstract: 'Paper lives in submitter PDS.',
+        abstract: createMockAbstract('Paper lives in submitter PDS.'),
         submittedBy: 'did:plc:user123' as DID,
         paperDid: undefined,
         authors: [AUTHOR_WITH_DID],
@@ -820,7 +830,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:paper-abc/pub.chive.eprint.submission/pc1' as AtUri,
         cid: 'bafypc1' as CID,
         title: 'Paper-Centric Submission',
-        abstract: 'Paper has its own PDS.',
+        abstract: createMockAbstract('Paper has its own PDS.'),
         submittedBy: 'did:plc:user123' as DID,
         paperDid: 'did:plc:paper-abc' as DID,
         authors: [AUTHOR_WITH_DID],
@@ -861,7 +871,7 @@ describe('Author Indexing Integration', () => {
         uri: 'at://did:plc:paper-xyz/pub.chive.eprint.submission/pc2' as AtUri,
         cid: 'bafypc2' as CID,
         title: 'Another Paper-Centric',
-        abstract: 'Testing paperDid filtering.',
+        abstract: createMockAbstract('Testing paperDid filtering.'),
         submittedBy: 'did:plc:user456' as DID,
         paperDid: 'did:plc:paper-xyz' as DID,
         authors: [AUTHOR_WITH_DID_2],

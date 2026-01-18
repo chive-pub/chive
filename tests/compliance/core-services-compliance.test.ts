@@ -42,8 +42,18 @@ import type {
   IStorageBackend,
   StoredEprint,
 } from '../../src/types/interfaces/storage.interface.js';
+import type { AnnotationBody } from '../../src/types/models/annotation.js';
 import type { EprintAuthor } from '../../src/types/models/author.js';
 import type { Eprint } from '../../src/types/models/eprint.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 // Test constants
 const TEST_AUTHOR = 'did:plc:compliance' as DID;
@@ -195,7 +205,7 @@ function createTestEprint(): Eprint {
     authors: [testAuthor],
     submittedBy: TEST_AUTHOR,
     title: 'Compliance Test Eprint',
-    abstract: 'Testing ATProto compliance.',
+    abstract: createMockAbstract('Testing ATProto compliance.'),
     keywords: ['compliance', 'test'],
     facets: [],
     version: 1,

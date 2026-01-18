@@ -39,14 +39,14 @@ Users recognized for expertise in specific fields:
 - Provide specialist input on field changes
 - Weighted votes (2.5x standard)
 
-### Authority editors
+### Graph editors
 
-Users responsible for maintaining authority records:
+Users responsible for maintaining knowledge graph nodes:
 
-- Manage authority records
+- Manage knowledge graph nodes (fields, facets, authorities)
 - Reconcile with external vocabularies (Wikidata, LCSH, VIAF)
-- Approve authority record changes
-- Weighted votes (3.0x standard)
+- Approve node and edge changes
+- Weighted votes (2.0x standard)
 
 ### Administrators
 
@@ -61,13 +61,13 @@ Platform administrators with oversight responsibilities:
 
 ### What is governed
 
-| Area                       | Governance mechanism           |
-| -------------------------- | ------------------------------ |
-| **Knowledge graph fields** | Community proposals and voting |
-| **Authority records**      | Authority editor approval      |
-| **Facet definitions**      | Proposal with lower threshold  |
-| **Content policies**       | Administrator decisions        |
-| **Tag promotion**          | Two-stage nomination and vote  |
+| Area                      | Governance mechanism           |
+| ------------------------- | ------------------------------ |
+| **Knowledge graph nodes** | Community proposals and voting |
+| **Knowledge graph edges** | Community proposals and voting |
+| **Facet definitions**     | Proposal with lower threshold  |
+| **Content policies**      | Administrator decisions        |
+| **Tag promotion**         | Two-stage nomination and vote  |
 
 ### What is not governed
 
@@ -124,8 +124,8 @@ Not all votes are equal. Vote weight depends on:
 | ---------------- | ----------------- |
 | Community member | 1.0x              |
 | Trusted editor   | 2.0x              |
+| Graph editor     | 2.0x              |
 | Domain expert    | 2.5x              |
-| Authority editor | 3.0x              |
 | Administrator    | 5.0x              |
 
 See [Voting system](./voting-system.md) for thresholds and quorum requirements.

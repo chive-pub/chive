@@ -147,7 +147,7 @@ export function SearchAutocomplete({
                     suggestion={{
                       type: 'field',
                       id: fieldId,
-                      label: field.name,
+                      label: field.label,
                       href: `/fields/${encodeURIComponent(fieldId)}`,
                     }}
                     onSelect={onSelect}

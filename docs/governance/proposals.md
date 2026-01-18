@@ -4,37 +4,45 @@ Proposals are the primary mechanism for changing the knowledge graph, authority 
 
 ## Proposal types
 
-### Field proposals
+### Node proposals
 
-Changes to the knowledge graph taxonomy:
+Changes to knowledge graph nodes (fields, facets, authorities). All node types use `pub.chive.graph.nodeProposal`:
 
-| Type          | Description                                      | Threshold     |
-| ------------- | ------------------------------------------------ | ------------- |
-| **Create**    | Add a new field to the taxonomy                  | 67%, 5+ votes |
-| **Update**    | Modify field name, description, or relationships | 60%, 3+ votes |
-| **Merge**     | Combine two or more fields into one              | 67%, 5+ votes |
-| **Deprecate** | Mark a field as obsolete                         | 75%, 7+ votes |
+| Type          | Description                                     | Threshold     |
+| ------------- | ----------------------------------------------- | ------------- |
+| **Create**    | Add a new node to the knowledge graph           | 67%, 5+ votes |
+| **Update**    | Modify node label, description, or external IDs | 60%, 3+ votes |
+| **Merge**     | Combine two or more nodes into one              | 67%, 5+ votes |
+| **Deprecate** | Mark a node as obsolete                         | 75%, 7+ votes |
 
-### Facet proposals
+The `kind` and `subkind` fields determine what type of node is being proposed:
 
-Changes to the PMEST classification system:
+| subkind       | Description                   | Examples                         |
+| ------------- | ----------------------------- | -------------------------------- |
+| `field`       | Academic discipline or topic  | "Machine Learning", "Physics"    |
+| `facet`       | PMEST classification value    | "Arctic", "Holocene"             |
+| `institution` | Research organization         | "MIT CSAIL", "CERN"              |
+| `person`      | Individual (authority record) | Named researcher entries         |
+| `concept`     | General concept               | "Reproducibility", "Open Access" |
 
-| Type                      | Description                    | Threshold     |
-| ------------------------- | ------------------------------ | ------------- |
-| **Create facet value**    | Add a new value to a facet     | 60%, 3+ votes |
-| **Update facet value**    | Modify facet value metadata    | 60%, 3+ votes |
-| **Deprecate facet value** | Mark a facet value as obsolete | 67%, 5+ votes |
+### Edge proposals
 
-### Authority proposals
+Changes to relationships between nodes. Uses `pub.chive.graph.edgeProposal`:
 
-Changes to authority records:
+| Type          | Description                          | Threshold     |
+| ------------- | ------------------------------------ | ------------- |
+| **Create**    | Add a new relationship between nodes | 60%, 3+ votes |
+| **Update**    | Modify edge weight or relation type  | 60%, 3+ votes |
+| **Deprecate** | Remove a relationship                | 67%, 5+ votes |
 
-| Type                  | Description                      | Threshold     |
-| --------------------- | -------------------------------- | ------------- |
-| **Create authority**  | Add a new authority record       | 75%, 7+ votes |
-| **Update authority**  | Modify authority record          | 60%, 3+ votes |
-| **Merge authorities** | Combine duplicate records        | 75%, 7+ votes |
-| **Link external**     | Add link to Wikidata, LCSH, etc. | 60%, 3+ votes |
+Edge relation types:
+
+| Relation   | Description                                |
+| ---------- | ------------------------------------------ |
+| `broader`  | Hierarchical parent (used for "parent of") |
+| `narrower` | Hierarchical child (used for "child of")   |
+| `related`  | Associative relationship                   |
+| `sameAs`   | Equivalence mapping to external entity     |
 
 ### Tag promotion
 
@@ -60,38 +68,53 @@ interface Proposal {
 }
 ```
 
-### Field proposal example
+### Node proposal example
 
 ```json
 {
-  "type": "create_field",
-  "title": "Add Quantum Machine Learning field",
-  "description": "Quantum Machine Learning (QML) is an emerging interdisciplinary field at the intersection of quantum computing and machine learning. The field has grown significantly since 2018, with dedicated conferences (QML Workshop at NeurIPS, QTML) and journals (Quantum Machine Intelligence). This proposal adds QML as a child of both cs.QC (Quantum Computing) and cs.LG (Machine Learning).",
-  "changes": {
-    "action": "create",
-    "field": {
-      "name": "Quantum Machine Learning",
-      "id": "cs.QML",
-      "description": "Algorithms and theory combining quantum computing with machine learning techniques",
-      "aliases": ["QML"],
-      "parentFields": ["cs.QC", "cs.LG"],
-      "relatedFields": ["cs.AI", "quant-ph"],
-      "wikidataId": "Q96207645"
-    }
+  "$type": "pub.chive.graph.nodeProposal",
+  "proposalType": "create",
+  "kind": "object",
+  "subkind": "field",
+  "proposedNode": {
+    "id": "cs.QML",
+    "label": "Quantum Machine Learning",
+    "alternateLabels": ["QML"],
+    "description": "Algorithms and theory combining quantum computing with machine learning techniques",
+    "externalIds": [{ "source": "wikidata", "value": "Q96207645" }]
   },
+  "rationale": "Quantum Machine Learning (QML) is an emerging interdisciplinary field at the intersection of quantum computing and machine learning. The field has grown significantly since 2018, with dedicated conferences (QML Workshop at NeurIPS, QTML) and journals (Quantum Machine Intelligence).",
   "evidence": [
     {
       "type": "publication_count",
       "source": "OpenAlex",
       "value": 4523,
-      "asOf": "2025-01-01"
+      "url": "https://openalex.org/concepts/C2778047726"
     },
     {
       "type": "conference",
-      "name": "QTML 2024",
+      "source": "QTML",
       "url": "https://qtml2024.org"
     }
-  ]
+  ],
+  "createdAt": "2025-01-15T10:30:00Z"
+}
+```
+
+To establish parent-child relationships, submit separate edge proposals:
+
+```json
+{
+  "$type": "pub.chive.graph.edgeProposal",
+  "proposalType": "create",
+  "proposedEdge": {
+    "sourceUri": "at://did:plc:chive-governance/pub.chive.graph.node/cs.QML",
+    "targetUri": "at://did:plc:chive-governance/pub.chive.graph.node/cs.QC",
+    "relationSlug": "broader",
+    "weight": 1.0
+  },
+  "rationale": "QML is a subfield of Quantum Computing",
+  "createdAt": "2025-01-15T10:30:00Z"
 }
 ```
 

@@ -39,8 +39,7 @@ import type {
 const TEST_GOVERNANCE_DID = 'did:plc:chive-governance' as DID;
 const TEST_USER_DID = 'did:plc:testuser' as DID;
 const TEST_GOVERNANCE_PDS = 'https://pds.chive-governance.test';
-const TEST_AUTHORITY_URI =
-  'at://did:plc:chive-governance/pub.chive.graph.authorityRecord/test' as AtUri;
+const TEST_AUTHORITY_URI = 'at://did:plc:chive-governance/pub.chive.graph.authority/test' as AtUri;
 
 /**
  * Creates mock logger for tests.
@@ -76,7 +75,7 @@ function createTrackedRepository(): IRepository & {
         uri,
         cid: 'bafyreimock123' as never,
         value: {
-          $type: 'pub.chive.graph.authorityRecord',
+          $type: 'pub.chive.graph.authority',
           authorizedForm: 'Mock Authority',
           variantForms: ['Mock', 'Test Authority'],
           status: 'established',

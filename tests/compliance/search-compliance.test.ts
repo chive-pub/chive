@@ -25,8 +25,18 @@ import {
 import { createElasticsearchClient } from '../../src/storage/elasticsearch/setup.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../src/types/atproto.js';
 import type { Facet } from '../../src/types/interfaces/graph.interface.js';
+import type { AnnotationBody } from '../../src/types/models/annotation.js';
 import type { EprintAuthor } from '../../src/types/models/author.js';
 import type { Eprint } from '../../src/types/models/eprint.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 describe('ATProto Search Compliance', () => {
   let client: Client;
@@ -111,7 +121,7 @@ describe('ATProto Search Compliance', () => {
         authors: [testAuthor],
         submittedBy: 'did:plc:author123' as DID,
         title: 'Test Eprint for Compliance',
-        abstract: 'Testing ATProto compliance in search index',
+        abstract: createMockAbstract('Testing ATProto compliance in search index'),
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
         publicationStatus: 'eprint',

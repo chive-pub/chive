@@ -49,7 +49,10 @@ import type { Eprint } from '@/types/models/eprint.js';
 import {
   createMockAuthzService,
   createMockAlphaService,
-  createMockContributionTypeManager,
+  createMockNodeService,
+  createMockEdgeService,
+  createMockNodeRepository,
+  createMockEdgeRepository,
 } from '../helpers/mock-services.js';
 import type { EprintResponse, EprintListResponse, ErrorResponse } from '../types/api-responses.js';
 
@@ -263,6 +266,32 @@ function createMockTagManager(): ServerConfig['tagManager'] {
 }
 
 /**
+ * Creates mock facet manager.
+ */
+function createMockFacetManager(): ServerConfig['facetManager'] {
+  return {
+    initializeDimensions: vi.fn().mockResolvedValue(undefined),
+    getFacetDimensions: vi.fn().mockReturnValue([]),
+    getFacetDimension: vi.fn().mockReturnValue(null),
+    createFacet: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.facet/test'),
+    getFacet: vi.fn().mockResolvedValue(null),
+    getFacetById: vi.fn().mockResolvedValue(null),
+    updateFacet: vi.fn().mockResolvedValue(undefined),
+    searchFacets: vi.fn().mockResolvedValue({ facets: [], total: 0 }),
+    getFacetsForRecord: vi.fn().mockResolvedValue([]),
+    assignFacets: vi.fn().mockResolvedValue(undefined),
+    removeFacets: vi.fn().mockResolvedValue(undefined),
+    getFacetTree: vi.fn().mockResolvedValue(null),
+    getFacetChildren: vi.fn().mockResolvedValue([]),
+    findRecordsByFacets: vi.fn().mockResolvedValue([]),
+    getFacetAggregations: vi.fn().mockResolvedValue([]),
+    getTopFacets: vi.fn().mockResolvedValue([]),
+    getFacetUsageStats: vi.fn().mockResolvedValue([]),
+    batchAssignFacets: vi.fn().mockResolvedValue({ succeeded: 0, failed: 0, errors: [] }),
+  } as unknown as ServerConfig['facetManager'];
+}
+
+/**
  * Creates mock backlink service.
  */
 function createMockBacklinkService(): ServerConfig['backlinkService'] {
@@ -390,6 +419,17 @@ function createMockActivityService(): ServerConfig['activityService'] {
 }
 
 /**
+ * Creates a rich text body for testing.
+ */
+function createTestRichTextBody(text: string): Eprint['abstract'] {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
+
+/**
  * Creates test eprint record.
  */
 function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
@@ -410,7 +450,10 @@ function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
     ],
     submittedBy: TEST_AUTHOR,
     title: overrides.title ?? 'ATProto Compliance Test Eprint',
-    abstract: overrides.abstract ?? 'This eprint tests ATProto compliance requirements.',
+    abstract:
+      overrides.abstract ??
+      createTestRichTextBody('This eprint tests ATProto compliance requirements.'),
+    abstractPlainText: 'This eprint tests ATProto compliance requirements.',
     keywords: overrides.keywords ?? ['compliance', 'atproto', 'test'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
     version: overrides.version ?? 1,
@@ -506,7 +549,11 @@ describe('API Layer ATProto Compliance', () => {
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
       tagManager: createMockTagManager(),
-      contributionTypeManager: createMockContributionTypeManager(),
+      facetManager: createMockFacetManager(),
+      nodeService: createMockNodeService(),
+      edgeService: createMockEdgeService(),
+      nodeRepository: createMockNodeRepository(),
+      edgeRepository: createMockEdgeRepository(),
       backlinkService: createMockBacklinkService(),
       claimingService: createMockClaimingService(),
       importService: createMockImportService(),

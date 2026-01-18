@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Dialog for linking a text span to an entity (Wikidata or authority).
+ * Dialog for linking a text span to an entity (Wikidata or knowledge graph node).
  *
  * @example
  * ```tsx
@@ -17,7 +17,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Link2, ExternalLink, BookOpen, Search } from 'lucide-react';
+import { Link2, ExternalLink, Network, Search } from 'lucide-react';
 
 import {
   Dialog,
@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { WikidataSearch, type WikidataEntity } from './wikidata-search';
-import { AuthoritySearch, type AuthorityResult } from './authority-search';
+import { NodeSearch, type NodeResult } from '@/components/knowledge-graph';
 import type { EntityLinkType } from '@/lib/api/schema';
 
 // =============================================================================
@@ -79,10 +79,8 @@ export function EntityLinkDialog({
   className,
 }: EntityLinkDialogProps) {
   const [query, setQuery] = useState(selectedText);
-  const [selectedEntity, setSelectedEntity] = useState<WikidataEntity | AuthorityResult | null>(
-    null
-  );
-  const [activeTab, setActiveTab] = useState<'wikidata' | 'authority'>('wikidata');
+  const [selectedEntity, setSelectedEntity] = useState<WikidataEntity | NodeResult | null>(null);
+  const [activeTab, setActiveTab] = useState<'wikidata' | 'graph'>('wikidata');
 
   // Reset state when dialog opens
   const handleOpenChange = useCallback(
@@ -100,8 +98,8 @@ export function EntityLinkDialog({
     setSelectedEntity(entity);
   }, []);
 
-  const handleAuthoritySelect = useCallback((authority: AuthorityResult) => {
-    setSelectedEntity(authority);
+  const handleNodeSelect = useCallback((node: NodeResult) => {
+    setSelectedEntity(node);
   }, []);
 
   const handleConfirm = useCallback(() => {
@@ -117,12 +115,12 @@ export function EntityLinkDialog({
         url: selectedEntity.url,
       });
     } else {
-      // Authority record
+      // Knowledge graph node
       onLink({
-        type: 'authority',
+        type: 'nodeRef',
         uri: selectedEntity.uri,
-        authorizedForm: selectedEntity.authorizedForm,
-        variantForms: selectedEntity.variantForms,
+        label: selectedEntity.label,
+        subkind: selectedEntity.subkind,
       });
     }
 
@@ -130,7 +128,7 @@ export function EntityLinkDialog({
   }, [selectedEntity, onLink, onOpenChange]);
 
   const isWikidataEntity = selectedEntity && 'qid' in selectedEntity;
-  const isAuthority = selectedEntity && 'authorizedForm' in selectedEntity;
+  const isGraphNode = selectedEntity && 'subkind' in selectedEntity;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -161,19 +159,16 @@ export function EntityLinkDialog({
             </div>
           </div>
 
-          {/* Tabs for Wikidata vs Authority */}
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'wikidata' | 'authority')}
-          >
+          {/* Tabs for Wikidata vs Knowledge Graph */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'wikidata' | 'graph')}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="wikidata" className="gap-1">
                 <ExternalLink className="h-3 w-3" />
                 Wikidata
               </TabsTrigger>
-              <TabsTrigger value="authority" className="gap-1">
-                <BookOpen className="h-3 w-3" />
-                Authorities
+              <TabsTrigger value="graph" className="gap-1">
+                <Network className="h-3 w-3" />
+                Knowledge Graph
               </TabsTrigger>
             </TabsList>
 
@@ -185,10 +180,15 @@ export function EntityLinkDialog({
             </TabsContent>
 
             <TabsContent
-              value="authority"
+              value="graph"
               className="mt-4 max-h-[250px] overflow-y-auto border rounded-md"
             >
-              <AuthoritySearch query={query} onSelect={handleAuthoritySelect} />
+              <NodeSearch
+                query={query}
+                onSelect={handleNodeSelect}
+                showSubkind
+                emptyMessage="No nodes found. Try a different search term."
+              />
             </TabsContent>
           </Tabs>
 
@@ -208,19 +208,22 @@ export function EntityLinkDialog({
                     <span className="font-medium">{selectedEntity.label}</span>
                   </>
                 )}
-                {isAuthority && (
+                {isGraphNode && (
                   <>
                     <Badge
                       variant="secondary"
                       className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
                     >
-                      Authority
+                      {selectedEntity.subkind}
                     </Badge>
-                    <span className="font-medium">{selectedEntity.authorizedForm}</span>
+                    <span className="font-medium">{selectedEntity.label}</span>
                   </>
                 )}
               </div>
               {isWikidataEntity && selectedEntity.description && (
+                <p className="text-xs text-muted-foreground mt-1">{selectedEntity.description}</p>
+              )}
+              {isGraphNode && selectedEntity.description && (
                 <p className="text-xs text-muted-foreground mt-1">{selectedEntity.description}</p>
               )}
             </div>

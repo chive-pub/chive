@@ -612,9 +612,9 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                     entityLabel = entity.label;
                     entityUrl = entity.url;
                     break;
-                  case 'authority':
-                    entityLabel = entity.authorizedForm;
-                    entityUrl = entity.uri;
+                  case 'nodeRef':
+                    entityLabel = entity.label;
+                    entityUrl = `/graph/${encodeURIComponent(entity.uri)}`;
                     break;
                   case 'field':
                     entityLabel = entity.label;

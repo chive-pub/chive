@@ -14,8 +14,8 @@ import type {
   FacetedSearchResponse,
   FacetProposalChanges,
   FacetValue,
+  SearchFacetValue,
   FieldDetail,
-  FieldListResponse,
   FieldRef,
   FieldRelationship,
   FieldSummary,
@@ -108,7 +108,7 @@ export function createMockFieldRef(overrides: Partial<FieldRef> = {}): FieldRef 
   return {
     id: 'computer-science',
     uri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
-    name: 'Computer Science',
+    label: 'Computer Science',
     ...overrides,
   };
 }
@@ -238,7 +238,7 @@ export function createMockFacetedEprintSummary(
     ],
     submittedBy: 'did:plc:test123',
     fields: [
-      { id: 'cs', uri: 'at://did:plc:chive/pub.chive.graph.field/cs', name: 'Computer Science' },
+      { id: 'cs', uri: 'at://did:plc:chive/pub.chive.graph.field/cs', label: 'Computer Science' },
     ],
     keywords: ['machine learning', 'neural networks'],
     license: 'CC-BY-4.0',
@@ -260,8 +260,25 @@ export function createMockFacetedEprintSummary(
  * Creates a mock SearchResultsResponse.
  */
 export function createMockSearchResults(
-  overrides: Partial<SearchResultsResponse> = {}
-): SearchResultsResponse {
+  overrides: Partial<{
+    hits: FacetedEprintSummary[];
+    facets: Array<{
+      slug: string;
+      label: string;
+      description?: string;
+      values: SearchFacetValue[];
+    }>;
+    cursor?: string;
+    hasMore: boolean;
+    total: number;
+  }> = {}
+): {
+  hits: FacetedEprintSummary[];
+  facets: Array<{ slug: string; label: string; description?: string; values: SearchFacetValue[] }>;
+  cursor?: string;
+  hasMore: boolean;
+  total: number;
+} {
   return {
     hits: [
       createMockFacetedEprintSummary({
@@ -277,12 +294,16 @@ export function createMockSearchResults(
     cursor: 'cursor123',
     hasMore: true,
     total: 42,
-    facets: {
-      personality: [
-        { value: 'computer-science', label: 'Computer Science', count: 15 },
-        { value: 'physics', label: 'Physics', count: 10 },
-      ],
-    },
+    facets: [
+      {
+        slug: 'personality',
+        label: 'Personality',
+        values: [
+          { value: 'computer-science', label: 'Computer Science', count: 15 },
+          { value: 'physics', label: 'Physics', count: 10 },
+        ],
+      },
+    ],
     ...overrides,
   };
 }
@@ -386,12 +407,11 @@ export function createMockFieldSummary(overrides: Partial<FieldSummary> = {}): F
   return {
     id: 'computer-science',
     uri: 'at://did:plc:governance/pub.chive.graph.field/computer-science',
-    name: 'Computer Science',
+    label: 'Computer Science',
     description: 'The study of computation and information processing.',
     eprintCount: 250,
     childCount: 12,
-    status: 'approved',
-    createdAt: '2024-01-01T00:00:00Z',
+    status: 'established',
     ...overrides,
   };
 }
@@ -401,9 +421,9 @@ export function createMockFieldSummary(overrides: Partial<FieldSummary> = {}): F
  */
 export function createMockExternalId(overrides: Partial<ExternalId> = {}): ExternalId {
   return {
-    source: 'wikidata',
-    id: 'Q21198',
-    url: 'https://www.wikidata.org/wiki/Q21198',
+    system: 'wikidata',
+    identifier: 'Q21198',
+    uri: 'https://www.wikidata.org/wiki/Q21198',
     ...overrides,
   };
 }
@@ -417,7 +437,7 @@ export function createMockFieldRelationship(
   return {
     type: 'broader',
     targetId: 'science',
-    targetName: 'Science',
+    targetLabel: 'Science',
     strength: 0.9,
     ...overrides,
   };
@@ -430,71 +450,73 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
   return {
     id: 'machine-learning',
     uri: 'at://did:plc:chive-governance/pub.chive.graph.field/machine-learning',
-    name: 'Machine Learning',
+    label: 'Machine Learning',
     description: 'A subset of artificial intelligence that enables systems to learn from data.',
-    parentId: 'computer-science',
-    status: 'approved',
+    status: 'established',
     eprintCount: 150,
     externalIds: [
       createMockExternalId({
-        source: 'wikidata',
-        id: 'Q2539',
-        url: 'https://www.wikidata.org/wiki/Q2539',
+        system: 'wikidata',
+        identifier: 'Q2539',
+        uri: 'https://www.wikidata.org/wiki/Q2539',
       }),
       createMockExternalId({
-        source: 'lcsh',
-        id: 'sh85079324',
-        url: 'https://id.loc.gov/authorities/subjects/sh85079324',
+        system: 'lcsh',
+        identifier: 'sh85079324',
+        uri: 'https://id.loc.gov/authorities/subjects/sh85079324',
       }),
     ],
     relationships: [
       createMockFieldRelationship({
         type: 'broader',
         targetId: 'artificial-intelligence',
-        targetName: 'Artificial Intelligence',
+        targetLabel: 'Artificial Intelligence',
       }),
       createMockFieldRelationship({
         type: 'related',
         targetId: 'data-science',
-        targetName: 'Data Science',
+        targetLabel: 'Data Science',
         strength: 0.8,
       }),
     ],
     children: [
-      { id: 'deep-learning', name: 'Deep Learning', eprintCount: 80 },
-      { id: 'reinforcement-learning', name: 'Reinforcement Learning', eprintCount: 40 },
+      {
+        id: 'deep-learning',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/deep-learning',
+        label: 'Deep Learning',
+      },
+      {
+        id: 'reinforcement-learning',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/reinforcement-learning',
+        label: 'Reinforcement Learning',
+      },
     ],
     ancestors: [
-      { id: 'computer-science', name: 'Computer Science' },
-      { id: 'artificial-intelligence', name: 'Artificial Intelligence' },
+      {
+        id: 'computer-science',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/computer-science',
+        label: 'Computer Science',
+      },
+      {
+        id: 'artificial-intelligence',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/artificial-intelligence',
+        label: 'Artificial Intelligence',
+      },
     ],
-    createdAt: '2023-06-01T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z',
     ...overrides,
   };
 }
 
 /**
- * Creates a mock FieldListResponse.
+ * Creates a list of mock FieldSummary objects.
  */
-export function createMockFieldListResponse(
-  overrides: Partial<FieldListResponse> = {}
-): FieldListResponse {
-  return {
-    fields: [
-      createMockFieldSummary({ id: 'physics', name: 'Physics', eprintCount: 300 }),
-      createMockFieldSummary({
-        id: 'computer-science',
-        name: 'Computer Science',
-        eprintCount: 250,
-      }),
-      createMockFieldSummary({ id: 'biology', name: 'Biology', eprintCount: 200 }),
-    ],
-    cursor: 'cursor-123',
-    hasMore: true,
-    total: 50,
-    ...overrides,
-  };
+export function createMockFieldList(count: number = 3): FieldSummary[] {
+  const fields = [
+    { id: 'physics', label: 'Physics', eprintCount: 300 },
+    { id: 'computer-science', label: 'Computer Science', eprintCount: 250 },
+    { id: 'biology', label: 'Biology', eprintCount: 200 },
+  ];
+  return fields.slice(0, count).map((f) => createMockFieldSummary(f));
 }
 
 // ============================================================================
@@ -502,9 +524,11 @@ export function createMockFieldListResponse(
 // ============================================================================
 
 /**
- * Creates a mock FacetValue.
+ * Creates a mock search facet value (for browseFaceted).
  */
-export function createMockFacetValue(overrides: Partial<FacetValue> = {}): FacetValue {
+export function createMockSearchFacetValue(
+  overrides: Partial<SearchFacetValue> = {}
+): SearchFacetValue {
   return {
     value: 'computer-science',
     count: 42,
@@ -515,10 +539,28 @@ export function createMockFacetValue(overrides: Partial<FacetValue> = {}): Facet
 
 /**
  * Creates a mock FacetedSearchResponse.
+ * Note: This uses the hook's FacetedSearchResponse format with facets as an array.
  */
 export function createMockFacetedSearchResponse(
-  overrides: Partial<FacetedSearchResponse> = {}
-): FacetedSearchResponse {
+  overrides: Partial<{
+    hits: FacetedEprintSummary[];
+    facets: Array<{
+      slug: string;
+      label: string;
+      description?: string;
+      values: SearchFacetValue[];
+    }>;
+    cursor?: string;
+    hasMore: boolean;
+    total: number;
+  }> = {}
+): {
+  hits: FacetedEprintSummary[];
+  facets: Array<{ slug: string; label: string; description?: string; values: SearchFacetValue[] }>;
+  cursor?: string;
+  hasMore: boolean;
+  total: number;
+} {
   return {
     hits: [
       createMockFacetedEprintSummary({
@@ -531,21 +573,55 @@ export function createMockFacetedSearchResponse(
     cursor: 'cursor-456',
     hasMore: true,
     total: 100,
-    facets: {
-      personality: [
-        createMockFacetValue({ value: 'research', count: 50, label: 'Research' }),
-        createMockFacetValue({ value: 'review', count: 30, label: 'Review' }),
-      ],
-      matter: [
-        createMockFacetValue({ value: 'physics', count: 40, label: 'Physics' }),
-        createMockFacetValue({ value: 'computer-science', count: 35, label: 'Computer Science' }),
-      ],
-      energy: [
-        createMockFacetValue({ value: 'classification', count: 25, label: 'Classification' }),
-      ],
-      space: [createMockFacetValue({ value: 'north-america', count: 45, label: 'North America' })],
-      time: [createMockFacetValue({ value: '2024', count: 60, label: '2024' })],
-    },
+    facets: [
+      {
+        slug: 'personality',
+        label: 'Personality',
+        values: [
+          createMockSearchFacetValue({ value: 'research', count: 50, label: 'Research' }),
+          createMockSearchFacetValue({ value: 'review', count: 30, label: 'Review' }),
+        ],
+      },
+      {
+        slug: 'matter',
+        label: 'Matter',
+        values: [
+          createMockSearchFacetValue({ value: 'physics', count: 40, label: 'Physics' }),
+          createMockSearchFacetValue({
+            value: 'computer-science',
+            count: 35,
+            label: 'Computer Science',
+          }),
+        ],
+      },
+      {
+        slug: 'energy',
+        label: 'Energy',
+        values: [
+          createMockSearchFacetValue({
+            value: 'classification',
+            count: 25,
+            label: 'Classification',
+          }),
+        ],
+      },
+      {
+        slug: 'space',
+        label: 'Space',
+        values: [
+          createMockSearchFacetValue({
+            value: 'north-america',
+            count: 45,
+            label: 'North America',
+          }),
+        ],
+      },
+      {
+        slug: 'time',
+        label: 'Time',
+        values: [createMockSearchFacetValue({ value: '2024', count: 60, label: '2024' })],
+      },
+    ],
     ...overrides,
   };
 }
@@ -839,7 +915,7 @@ export function createMockEprintTagsResponse(
       createMockTagSuggestion({
         normalizedForm: 'transfer-learning',
         displayForm: 'Transfer Learning',
-        source: 'authority',
+        source: 'cooccurrence',
       }),
     ],
     ...overrides,
@@ -900,7 +976,7 @@ export function createMockAuthorContribution(
   overrides: Partial<AuthorContribution> = {}
 ): AuthorContribution {
   return {
-    typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization',
     typeId: 'conceptualization',
     typeLabel: 'Conceptualization',
     degree: 'lead',
@@ -927,7 +1003,7 @@ export function createMockEprintAuthorWithDid(overrides: Partial<EprintAuthor> =
     contributions: [
       createMockAuthorContribution(),
       createMockAuthorContribution({
-        typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/writing-original-draft',
+        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/writing-original-draft',
         typeId: 'writing-original-draft',
         typeLabel: 'Writing - Original Draft',
         degree: 'lead',
@@ -964,7 +1040,7 @@ export function createMockExternalAuthor(overrides: Partial<EprintAuthor> = {}):
     ],
     contributions: [
       createMockAuthorContribution({
-        typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/investigation',
+        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/investigation',
         typeId: 'investigation',
         typeLabel: 'Investigation',
         degree: 'equal',
@@ -983,7 +1059,7 @@ export function createMockContributionType(
   overrides: Partial<CreditContributionType> = {}
 ): CreditContributionType {
   return {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization',
     id: 'conceptualization',
     label: 'Conceptualization',
     description: 'Ideas; formulation or evolution of overarching research goals and aims',
@@ -1009,7 +1085,7 @@ export function createMockContributionTypeProposal(
   overrides: Partial<ContributionTypeProposal> = {}
 ): ContributionTypeProposal {
   return {
-    uri: 'at://did:plc:user123/pub.chive.contribution.typeProposal/abc',
+    uri: 'at://did:plc:user123/pub.chive.graph.conceptProposal/abc',
     proposerDid: 'did:plc:user123',
     proposerName: 'Test User',
     proposalType: 'create',
@@ -1191,7 +1267,7 @@ export function createMockCreditContributionTypes(): CreditContributionType[] {
 
   return creditRoles.map((role) =>
     createMockContributionType({
-      uri: `at://did:plc:chive-governance/pub.chive.contribution.type/${role.id}`,
+      uri: `at://did:plc:chive-governance/pub.chive.graph.concept/${role.id}`,
       id: role.id,
       label: role.label,
       description: role.description,

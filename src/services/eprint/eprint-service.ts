@@ -56,6 +56,7 @@ import type {
 } from '../../types/interfaces/storage.interface.js';
 import type { Eprint, EprintVersion } from '../../types/models/eprint.ts';
 import type { Result } from '../../types/result.js';
+import { extractPlainText } from '../../utils/rich-text.js';
 
 import { VersionManager } from './version-manager.js';
 
@@ -148,6 +149,8 @@ export class EprintService {
     metadata: RecordMetadata
   ): Promise<Result<void, DatabaseError>> {
     try {
+      const abstractPlainText = extractPlainText(record.abstract);
+
       const storeResult = await this.storage.storeEprint({
         uri: metadata.uri,
         cid: metadata.cid,
@@ -156,6 +159,7 @@ export class EprintService {
         paperDid: record.paperDid,
         title: record.title,
         abstract: record.abstract,
+        abstractPlainText,
         documentBlobRef: record.documentBlobRef,
         documentFormat: record.documentFormat,
         supplementaryMaterials: record.supplementaryMaterials,
@@ -199,7 +203,7 @@ export class EprintService {
         author: authorDid ?? record.submittedBy,
         authorName,
         title: record.title,
-        abstract: record.abstract,
+        abstract: abstractPlainText,
         keywords: record.keywords as string[],
         subjects,
         createdAt: new Date(record.createdAt),

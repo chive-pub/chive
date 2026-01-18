@@ -18,6 +18,7 @@ import { createServer, type ServerConfig } from './api/server.js';
 import { ATRepository } from './atproto/repository/at-repository.js';
 import { AuthorizationService } from './auth/authorization/authorization-service.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
+import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
 import {
   registerPluginSystem,
@@ -41,6 +42,9 @@ import { ClaimingService } from './services/claiming/claiming-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { DiscoveryService } from './services/discovery/discovery-service.js';
 import { EprintService } from './services/eprint/eprint-service.js';
+import { EdgeService } from './services/governance/edge-service.js';
+import { NodeService } from './services/governance/node-service.js';
+import { TrustedEditorService } from './services/governance/trusted-editor-service.js';
 import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
@@ -56,12 +60,15 @@ import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
 import { CitationGraph } from './storage/neo4j/citation-graph.js';
 import { Neo4jConnection } from './storage/neo4j/connection.js';
-import { ContributionTypeManager } from './storage/neo4j/contribution-type-manager.js';
+import { EdgeRepository } from './storage/neo4j/edge-repository.js';
+import { FacetManager } from './storage/neo4j/facet-manager.js';
+import { NodeRepository } from './storage/neo4j/node-repository.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
 import { getDatabaseConfig } from './storage/postgresql/config.js';
 import { closePool, createPool } from './storage/postgresql/connection.js';
 import { FacetUsageHistoryRepository } from './storage/postgresql/facet-usage-history-repository.js';
+import type { DID } from './types/atproto.js';
 import type { ICacheProvider } from './types/interfaces/cache.interface.js';
 import type { IMetrics } from './types/interfaces/metrics.interface.js';
 
@@ -117,6 +124,10 @@ interface EnvConfig {
 
   // Relevance logging (for LTR training)
   readonly relevanceLoggingEnabled?: boolean;
+
+  // Governance PDS
+  readonly governancePdsUrl: string;
+  readonly governanceDid: string;
 }
 
 /**
@@ -172,6 +183,10 @@ function loadConfig(): EnvConfig {
 
     // Relevance logging
     relevanceLoggingEnabled: process.env.RELEVANCE_LOGGING_ENABLED !== 'false',
+
+    // Governance PDS (uses remote governance.chive.pub for local development)
+    governancePdsUrl: process.env.GOVERNANCE_PDS_URL ?? 'https://governance.chive.pub',
+    governanceDid: process.env.GOVERNANCE_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd',
   };
 }
 
@@ -187,6 +202,7 @@ interface AppState {
   readonly neo4jConnection: Neo4jConnection;
   server?: ReturnType<typeof serve>;
   importScheduler?: ImportScheduler;
+  governanceSyncJob?: GovernanceSyncJob;
 }
 
 /**
@@ -371,8 +387,22 @@ function createServices(
   const facetUsageHistoryRepository = new FacetUsageHistoryRepository(pgPool, logger);
   tagManager.setFacetHistoryRepository(facetUsageHistoryRepository);
 
-  // Create contribution type manager
-  const contributionTypeManager = new ContributionTypeManager(neo4jConnection);
+  // Create facet manager
+  const facetManager = new FacetManager(neo4jConnection);
+
+  // Create node and edge repositories
+  const nodeRepository = new NodeRepository(neo4jConnection);
+  const edgeRepository = new EdgeRepository(neo4jConnection);
+
+  // Create node and edge services
+  const nodeService = new NodeService({
+    nodeRepository,
+    logger,
+  });
+  const edgeService = new EdgeService({
+    edgeRepository,
+    logger,
+  });
 
   // Create backlink service
   const backlinkService = new BacklinkService(logger, pgPool);
@@ -438,6 +468,12 @@ function createServices(
     logger,
   });
 
+  // Create trusted editor service for governance role management
+  const trustedEditorService = new TrustedEditorService({
+    pool: pgPool,
+    logger,
+  });
+
   return {
     eprintService,
     searchService,
@@ -446,7 +482,11 @@ function createServices(
     blobProxyService,
     reviewService,
     tagManager,
-    contributionTypeManager,
+    facetManager,
+    nodeRepository,
+    edgeRepository,
+    nodeService,
+    edgeService,
     backlinkService,
     claimingService,
     importService,
@@ -457,6 +497,7 @@ function createServices(
     rankingService,
     authzService,
     alphaService,
+    trustedEditorService,
     redis,
     logger,
     serviceDid: config.serviceDid,
@@ -541,6 +582,12 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
   if (state.importScheduler) {
     state.logger.info('Stopping import scheduler...');
     await state.importScheduler.stopAll();
+  }
+
+  // Stop governance sync job
+  if (state.governanceSyncJob) {
+    state.logger.info('Stopping governance sync job...');
+    state.governanceSyncJob.stop();
   }
 
   // Close database connections
@@ -803,6 +850,21 @@ async function main(): Promise<void> {
       serverConfig.claimingService,
       logger
     );
+
+    // Start governance sync job to sync nodes/edges from Governance PDS to Neo4j
+    state.governanceSyncJob = new GovernanceSyncJob({
+      pdsUrl: config.governancePdsUrl,
+      governanceDid: config.governanceDid as DID,
+      nodeService: serverConfig.nodeService,
+      edgeService: serverConfig.edgeService,
+      logger,
+      syncIntervalMs: 30_000, // Sync every 30 seconds
+    });
+    await state.governanceSyncJob.start();
+    logger.info('Governance sync job started', {
+      pdsUrl: config.governancePdsUrl,
+      governanceDid: config.governanceDid,
+    });
   } catch (error) {
     logger.error('Failed to start server', error instanceof Error ? error : undefined);
     process.exit(1);

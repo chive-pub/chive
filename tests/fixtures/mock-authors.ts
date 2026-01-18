@@ -9,12 +9,27 @@
  */
 
 import type { DID } from '../../src/types/atproto.js';
+import type { AnnotationBody } from '../../src/types/models/annotation.js';
 import type {
   EprintAuthor,
   EprintAuthorAffiliation,
   EprintAuthorContribution,
   ContributionDegree,
 } from '../../src/types/models/author.js';
+
+/**
+ * Creates a mock rich text body from a plain string.
+ *
+ * @param text - Plain text content
+ * @returns Rich text body suitable for abstract field
+ */
+export function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 /**
  * Creates a mock author affiliation.
@@ -43,7 +58,7 @@ export function createMockContribution(
   overrides: Partial<EprintAuthorContribution> = {}
 ): EprintAuthorContribution {
   return {
-    typeUri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization' as never,
+    typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization' as never,
     typeId: 'conceptualization',
     typeLabel: 'Conceptualization',
     degree: 'lead' as ContributionDegree,
@@ -134,7 +149,7 @@ interface MockEprintData {
   readonly submittedBy: DID;
   readonly paperDid?: DID;
   readonly title: string;
-  readonly abstract: string;
+  readonly abstract: AnnotationBody;
   readonly license: string;
 }
 
@@ -146,13 +161,19 @@ export function createMockEprintData(
     submittedBy?: DID;
     paperDid?: DID;
     title?: string;
-    abstract?: string;
+    abstract?: string | AnnotationBody;
     license?: string;
   } = {}
 ): MockEprintData {
   const defaultAuthors = createMockAuthors(2);
   const firstAuthorDid = defaultAuthors[0]?.did;
   const submittedBy = overrides.submittedBy ?? firstAuthorDid ?? ('did:plc:submitter' as DID);
+
+  // Convert string abstracts to AnnotationBody
+  const abstract =
+    typeof overrides.abstract === 'string'
+      ? createMockAbstract(overrides.abstract)
+      : (overrides.abstract ?? createMockAbstract('This is a test abstract for the eprint.'));
 
   return {
     uri: overrides.uri ?? 'at://did:plc:test123/pub.chive.eprint.submission/xyz',
@@ -161,7 +182,7 @@ export function createMockEprintData(
     submittedBy,
     paperDid: overrides.paperDid,
     title: overrides.title ?? 'Test Eprint Title',
-    abstract: overrides.abstract ?? 'This is a test abstract for the eprint.',
+    abstract,
     license: overrides.license ?? 'CC-BY-4.0',
   };
 }

@@ -4,12 +4,12 @@
  * Interactive field visualization using React Flow.
  *
  * @remarks
- * Renders the knowledge graph field hierarchy as an interactive node graph.
- * Supports zooming, panning, and clicking nodes to navigate.
+ * Renders the knowledge graph field as a simple node display.
+ * A more complete implementation would fetch edges and related nodes.
  *
  * @example
  * ```tsx
- * <FieldVisualization fieldId="computer-science" depth={2} />
+ * <FieldVisualization fieldId="computer-science" />
  * ```
  *
  * @packageDocumentation
@@ -26,7 +26,6 @@ import {
   type Node,
   type Edge,
   type NodeTypes,
-  MarkerType,
   Position,
   Panel,
 } from '@xyflow/react';
@@ -37,7 +36,6 @@ import { useField } from '@/lib/hooks/use-field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { FieldChild, FieldRelationship } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
@@ -49,7 +47,7 @@ import type { FieldChild, FieldRelationship } from '@/lib/api/schema';
 export interface FieldVisualizationProps {
   /** Field ID to visualize */
   fieldId: string;
-  /** Depth of relationships to show */
+  /** Depth of hierarchy to display */
   depth?: number;
   /** Height of the visualization */
   height?: string;
@@ -66,9 +64,8 @@ export interface FieldVisualizationProps {
 interface FieldNodeData {
   [key: string]: unknown; // Required for React Flow compatibility
   label: string;
-  type: 'root' | 'field' | 'subfield' | 'topic';
+  type: 'root' | 'field' | 'subfield';
   status: string;
-  eprintCount?: number;
   isCurrent?: boolean;
 }
 
@@ -88,8 +85,6 @@ function FieldNode({ data }: { data: FieldNodeData }) {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200';
       case 'subfield':
         return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200';
-      case 'topic':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -107,11 +102,8 @@ function FieldNode({ data }: { data: FieldNodeData }) {
       <div className="font-medium text-sm truncate">{data.label}</div>
       <div className="flex items-center gap-2 mt-1">
         <Badge variant="outline" className="text-xs capitalize">
-          {data.type}
+          {data.status}
         </Badge>
-        {data.eprintCount !== undefined && (
-          <span className="text-xs opacity-75">{data.eprintCount} papers</span>
-        )}
       </div>
     </div>
   );
@@ -120,145 +112,6 @@ function FieldNode({ data }: { data: FieldNodeData }) {
 const nodeTypes: NodeTypes = {
   field: FieldNode,
 };
-
-// =============================================================================
-// LAYOUT UTILS
-// =============================================================================
-
-/**
- * Simple tree layout algorithm.
- */
-function layoutNodes(centerField: {
-  id: string;
-  name: string;
-  type: string;
-  status: string;
-  eprintCount?: number;
-  parent?: { id: string; name: string };
-  children?: Array<{ id: string; name: string; type: string; eprintCount?: number }>;
-  relationships?: Array<{
-    targetId: string;
-    targetName: string;
-    type: 'broader' | 'narrower' | 'related';
-  }>;
-}): { nodes: Node<FieldNodeData>[]; edges: Edge[] } {
-  const nodes: Node<FieldNodeData>[] = [];
-  const edges: Edge[] = [];
-
-  const nodeHeight = 80;
-  const horizontalSpacing = 250;
-  const verticalSpacing = 120;
-
-  // Center node
-  nodes.push({
-    id: centerField.id,
-    type: 'field',
-    position: { x: 0, y: 0 },
-    data: {
-      label: centerField.name,
-      type: centerField.type as FieldNodeData['type'],
-      status: centerField.status,
-      eprintCount: centerField.eprintCount,
-      isCurrent: true,
-    },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
-  });
-
-  // Parent node (above)
-  if (centerField.parent) {
-    nodes.push({
-      id: centerField.parent.id,
-      type: 'field',
-      position: { x: 0, y: -verticalSpacing },
-      data: {
-        label: centerField.parent.name,
-        type: 'field',
-        status: 'approved',
-      },
-      sourcePosition: Position.Bottom,
-      targetPosition: Position.Top,
-    });
-
-    edges.push({
-      id: `${centerField.parent.id}-${centerField.id}`,
-      source: centerField.parent.id,
-      target: centerField.id,
-      type: 'smoothstep',
-      animated: false,
-      style: { stroke: 'var(--primary)' },
-      markerEnd: { type: MarkerType.ArrowClosed },
-    });
-  }
-
-  // Children (below)
-  if (centerField.children && centerField.children.length > 0) {
-    const childCount = centerField.children.length;
-    const startX = -((childCount - 1) * horizontalSpacing) / 2;
-
-    centerField.children.forEach((child, index) => {
-      const x = startX + index * horizontalSpacing;
-
-      nodes.push({
-        id: child.id,
-        type: 'field',
-        position: { x, y: verticalSpacing },
-        data: {
-          label: child.name,
-          type: (child.type as FieldNodeData['type']) || 'subfield',
-          status: 'approved',
-          eprintCount: child.eprintCount,
-        },
-        sourcePosition: Position.Top,
-        targetPosition: Position.Bottom,
-      });
-
-      edges.push({
-        id: `${centerField.id}-${child.id}`,
-        source: centerField.id,
-        target: child.id,
-        type: 'smoothstep',
-        animated: false,
-        style: { stroke: 'var(--muted-foreground)' },
-        markerEnd: { type: MarkerType.ArrowClosed },
-      });
-    });
-  }
-
-  // Related fields (to the side)
-  if (centerField.relationships) {
-    const relatedFields = centerField.relationships.filter((r) => r.type === 'related');
-    relatedFields.forEach((rel, index) => {
-      const y = -verticalSpacing / 2 + index * (nodeHeight + 20);
-
-      nodes.push({
-        id: rel.targetId,
-        type: 'field',
-        position: { x: horizontalSpacing + 50, y },
-        data: {
-          label: rel.targetName,
-          type: 'field',
-          status: 'approved',
-        },
-        sourcePosition: Position.Left,
-        targetPosition: Position.Right,
-      });
-
-      edges.push({
-        id: `${centerField.id}-${rel.targetId}-related`,
-        source: centerField.id,
-        target: rel.targetId,
-        type: 'smoothstep',
-        animated: true,
-        style: { stroke: 'var(--muted-foreground)', strokeDasharray: '5 5' },
-        label: 'related',
-        labelStyle: { fontSize: 10 },
-      });
-    });
-  }
-
-  return { nodes, edges };
-}
 
 // =============================================================================
 // COMPONENT
@@ -272,55 +125,34 @@ function layoutNodes(centerField: {
  */
 export function FieldVisualization({
   fieldId,
-  depth: _depth = 1,
   height = '500px',
   className,
 }: FieldVisualizationProps) {
   const router = useRouter();
-  const {
-    data: field,
-    isLoading,
-    error,
-  } = useField(fieldId, {
-    includeRelationships: true,
-    includeChildren: true,
-    includeAncestors: true,
-  });
+  const { data: field, isLoading, error } = useField(fieldId);
 
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!field) return { initialNodes: [], initialEdges: [] };
 
-    // Determine field type from hierarchy position (FieldDetail doesn't have a type property)
-    const fieldType = field.ancestors && field.ancestors.length > 0 ? 'subfield' : 'field';
+    // Create a simple single-node visualization
+    // A more complete implementation would fetch edges and related nodes
+    const nodes: Node<FieldNodeData>[] = [
+      {
+        id: field.id,
+        type: 'field',
+        position: { x: 0, y: 0 },
+        data: {
+          label: field.label,
+          type: 'field',
+          status: field.status,
+          isCurrent: true,
+        },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      },
+    ];
 
-    const { nodes, edges } = layoutNodes({
-      id: field.id,
-      name: field.name,
-      type: fieldType,
-      status: field.status,
-      eprintCount: field.eprintCount,
-      parent: field.ancestors?.[0]
-        ? { id: field.ancestors[0].id, name: field.ancestors[0].name }
-        : undefined,
-      children: field.children?.map((child: FieldChild) => ({
-        id: child.id,
-        name: child.name,
-        type: 'subfield' as const,
-        eprintCount: child.eprintCount,
-      })),
-      relationships: field.relationships
-        ?.filter(
-          (
-            r: FieldRelationship
-          ): r is FieldRelationship & { type: 'broader' | 'narrower' | 'related' } =>
-            r.type === 'broader' || r.type === 'narrower' || r.type === 'related'
-        )
-        .map((r: FieldRelationship) => ({
-          targetId: r.targetId,
-          targetName: r.targetName,
-          type: r.type,
-        })),
-    });
+    const edges: Edge[] = [];
 
     return { initialNodes: nodes, initialEdges: edges };
   }, [field]);
@@ -391,7 +223,7 @@ export function FieldVisualization({
         />
         <Panel position="top-right" className="flex gap-2">
           <Badge variant="outline" className="bg-card">
-            {field.name}
+            {field.label}
           </Badge>
         </Panel>
       </ReactFlow>

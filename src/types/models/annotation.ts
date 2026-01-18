@@ -319,15 +319,33 @@ export interface AuthorRefBodyItem {
 }
 
 /**
+ * Reference to a knowledge graph node (unified model).
+ *
+ * @remarks
+ * Used for referencing any type of node in the unified knowledge graph,
+ * including fields, facets, contribution types, institutions, persons, etc.
+ * The subkind determines the styling.
+ *
+ * @public
+ */
+export interface NodeRefBodyItem {
+  readonly type: 'nodeRef';
+  /** AT-URI of the referenced node */
+  readonly uri: AtUri;
+  /** Human-readable label */
+  readonly label: string;
+  /** Subkind slug for styling (e.g., 'field', 'institution', 'person') */
+  readonly subkind?: string;
+}
+
+/**
  * Union type for all annotation body item types.
  *
  * @remarks
  * Follows the FOVEA GlossItem pattern for rich text with embedded references.
  * Use trigger characters in the editor:
- * - `@wikidata:` for Wikidata entities
- * - `@authority:` for authority records
- * - `@field:` for knowledge graph fields
- * - `@facet:` for PMEST/FAST facets
+ * - `@` for object nodes (institutions, persons, topics, geographic, events)
+ * - `#` for type nodes (fields, facets, contribution-types, licenses, etc.)
  * - `@eprint:` for other eprints
  * - `^` for other annotations
  *
@@ -341,7 +359,8 @@ export type AnnotationBodyItem =
   | FacetRefBodyItem
   | EprintRefBodyItem
   | AnnotationRefBodyItem
-  | AuthorRefBodyItem;
+  | AuthorRefBodyItem
+  | NodeRefBodyItem;
 
 /**
  * Rich text annotation body with embedded references.
@@ -361,6 +380,17 @@ export interface AnnotationBody {
   /** MIME type for the gloss format */
   readonly format: 'application/x-chive-gloss+json';
 }
+
+/**
+ * Generic rich text body type alias.
+ *
+ * @remarks
+ * Used for rich text content outside of annotations (e.g., eprint abstracts, author bios).
+ * Structurally identical to AnnotationBody.
+ *
+ * @public
+ */
+export type RichTextBody = AnnotationBody;
 
 // =============================================================================
 // ENTITY LINKING

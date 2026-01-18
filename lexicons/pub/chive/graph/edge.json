@@ -1,0 +1,102 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.edge",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Typed relationship between knowledge graph nodes. Relation types are themselves nodes with subkind=relation.",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["id", "sourceUri", "targetUri", "relationSlug", "status", "createdAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID identifier (also used as rkey)"
+          },
+          "sourceUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of source node"
+          },
+          "targetUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of target node"
+          },
+          "relationUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of relation type node (subkind=relation)"
+          },
+          "relationSlug": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Relation slug for queries (broader, narrower, related, etc.)"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Optional edge weight for ranking"
+          },
+          "metadata": {
+            "type": "ref",
+            "ref": "#edgeMetadata",
+            "description": "Edge-specific metadata"
+          },
+          "status": {
+            "type": "string",
+            "knownValues": ["proposed", "established", "deprecated"],
+            "description": "Edge lifecycle status"
+          },
+          "proposalUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the proposal that created this edge (null for seeded)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of creator or governance"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "edgeMetadata": {
+      "type": "object",
+      "description": "Edge-specific metadata",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score for automatically inferred edges"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Temporal start (for time-bounded relationships)"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Temporal end (for time-bounded relationships)"
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Source of the relationship assertion"
+        }
+      }
+    }
+  }
+}

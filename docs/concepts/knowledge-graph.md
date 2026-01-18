@@ -32,15 +32,20 @@ The knowledge graph serves three purposes:
 
 A **field node** represents an academic discipline, subdiscipline, or topic. Each field has:
 
-| Property        | Description                                           |
-| --------------- | ----------------------------------------------------- |
-| `name`          | Human-readable name (e.g., "Algebraic Geometry")      |
-| `description`   | Brief explanation of the field's scope                |
-| `aliases`       | Alternative names (e.g., "Algebraic Geometry" = "AG") |
-| `parentFields`  | Broader categories this field belongs to              |
-| `childFields`   | Narrower specializations within this field            |
-| `relatedFields` | Fields with conceptual overlap                        |
-| `externalIds`   | Links to Wikidata, Library of Congress, etc.          |
+| Property          | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `label`           | Human-readable name (e.g., "Algebraic Geometry")      |
+| `description`     | Brief explanation of the field's scope                |
+| `alternateLabels` | Alternative names (e.g., "Algebraic Geometry" = "AG") |
+| `externalIds`     | Links to Wikidata, Library of Congress, etc.          |
+
+Hierarchical and associative relationships are represented as **edges** rather than embedded arrays:
+
+| Edge Relation | Description                             |
+| ------------- | --------------------------------------- |
+| `broader`     | Parent categories this field belongs to |
+| `narrower`    | Child specializations within this field |
+| `related`     | Fields with conceptual overlap          |
 
 ### Field relationships
 
@@ -99,26 +104,34 @@ GET /xrpc/pub.chive.graph.browseFaceted?
 
 ## Authority records
 
-Authority records ensure consistency across the knowledge graph. They're like library catalog entries for concepts:
+Authority records ensure consistency across the knowledge graph. They're like library catalog entries for concepts, represented as `pub.chive.graph.node`:
 
 ```typescript
-// Example authority record for "Quantum Computing"
+// Example: "Quantum Computing" node
 {
-  "name": "Quantum Computing",
-  "aliases": [
+  "$type": "pub.chive.graph.node",
+  "id": "quantum-computing",
+  "kind": "object",
+  "subkind": "field",
+  "label": "Quantum Computing",
+  "alternateLabels": [
     "Quantum Computation",
     "QC"
   ],
   "description": "Computational paradigm using quantum-mechanical phenomena",
-  "externalLinks": {
-    "wikidata": "Q339",
-    "lcsh": "sh2008010405",
-    "viaf": "168470861"
-  },
-  "broaderTerms": ["Computer Science", "Quantum Mechanics"],
-  "narrowerTerms": ["Quantum Error Correction", "Quantum Algorithms"],
-  "relatedTerms": ["Quantum Information Theory"]
+  "externalIds": [
+    { "source": "wikidata", "value": "Q339" },
+    { "source": "lcsh", "value": "sh2008010405" },
+    { "source": "viaf", "value": "168470861" }
+  ],
+  "status": "established",
+  "createdAt": "2025-01-15T10:30:00Z"
 }
+
+// Relationships are stored as separate edge records
+// pub.chive.graph.edge with relationSlug: "broader" → "Computer Science", "Quantum Mechanics"
+// pub.chive.graph.edge with relationSlug: "narrower" → "Quantum Error Correction", "Quantum Algorithms"
+// pub.chive.graph.edge with relationSlug: "related" → "Quantum Information Theory"
 ```
 
 Authority records link to external controlled vocabularies:
@@ -170,8 +183,8 @@ Not all votes carry equal weight. Expertise in the relevant field increases vote
 | ---------------- | ----------- | ------------------------------------ |
 | Community member | 1.0x        | Any authenticated user               |
 | Trusted editor   | 2.0x        | Consistent quality contributions     |
+| Graph editor     | 2.0x        | Can modify knowledge graph nodes     |
 | Domain expert    | 2.5x        | Publications in the field            |
-| Authority editor | 3.0x        | Authority record management role     |
 | Administrator    | 5.0x        | Platform administrators (veto power) |
 
 ### Proposal workflow
@@ -286,14 +299,16 @@ SELECT ?item ?itemLabel WHERE {
 
 ## API endpoints
 
-| Endpoint                            | Purpose                      |
-| ----------------------------------- | ---------------------------- |
-| `pub.chive.graph.getField`          | Get field details            |
-| `pub.chive.graph.listFields`        | List fields (paginated)      |
-| `pub.chive.graph.searchAuthorities` | Search authority records     |
-| `pub.chive.graph.getAuthority`      | Get authority record details |
-| `pub.chive.graph.browseFaceted`     | Faceted search               |
-| `pub.chive.graph.getFieldEprints`   | Eprints in a field           |
+| Endpoint                          | Purpose                          |
+| --------------------------------- | -------------------------------- |
+| `pub.chive.graph.getNode`         | Get node details by ID           |
+| `pub.chive.graph.listNodes`       | List nodes (paginated, filtered) |
+| `pub.chive.graph.searchNodes`     | Search nodes by label            |
+| `pub.chive.graph.getField`        | Get field details (convenience)  |
+| `pub.chive.graph.listFields`      | List fields (paginated)          |
+| `pub.chive.graph.listEdges`       | List edges for a node            |
+| `pub.chive.graph.browseFaceted`   | Faceted search                   |
+| `pub.chive.graph.getFieldEprints` | Eprints in a field               |
 
 ## Next steps
 

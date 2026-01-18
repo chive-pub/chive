@@ -53,6 +53,7 @@ import type { Pool } from 'pg';
 
 import type { AtUri, CID, DID } from '../../types/atproto.js';
 import type { EprintQueryOptions, StoredEprint } from '../../types/interfaces/storage.interface.js';
+import type { AnnotationBody } from '../../types/models/annotation.js';
 import type { EprintAuthor } from '../../types/models/author.js';
 import type {
   ConferencePresentation,
@@ -86,7 +87,8 @@ interface EprintRow extends Record<string, unknown> {
   readonly submitted_by: string;
   readonly paper_did: string | null;
   readonly title: string;
-  readonly abstract: string;
+  readonly abstract: unknown; // JSONB (AnnotationBody)
+  readonly abstract_plain_text: string | null;
   readonly document_blob_cid: string;
   readonly document_blob_mime_type: string;
   readonly document_blob_size: number;
@@ -192,7 +194,8 @@ export class EprintsRepository {
           submitted_by: eprint.submittedBy,
           paper_did: eprint.paperDid ?? null,
           title: eprint.title,
-          abstract: eprint.abstract,
+          abstract: JSON.stringify(eprint.abstract),
+          abstract_plain_text: eprint.abstractPlainText ?? null,
           document_blob_cid: eprint.documentBlobRef.ref,
           document_blob_mime_type: eprint.documentBlobRef.mimeType,
           document_blob_size: eprint.documentBlobRef.size,
@@ -223,6 +226,8 @@ export class EprintsRepository {
       await this.pool.query(query.sql, [...query.params]);
       return Ok(undefined);
     } catch (error) {
+      // Temporary debug logging for test failure investigation
+      console.error('DEBUG eprints-repository store error:', error);
       return Err(
         error instanceof Error ? error : new Error(`Failed to store eprint: ${String(error)}`)
       );
@@ -263,6 +268,7 @@ export class EprintsRepository {
           'paper_did',
           'title',
           'abstract',
+          'abstract_plain_text',
           'document_blob_cid',
           'document_blob_mime_type',
           'document_blob_size',
@@ -345,6 +351,7 @@ export class EprintsRepository {
           'paper_did',
           'title',
           'abstract',
+          'abstract_plain_text',
           'document_blob_cid',
           'document_blob_mime_type',
           'document_blob_size',
@@ -620,6 +627,27 @@ export class EprintsRepository {
       ? (JSON.parse(row.supplementary_materials) as SupplementaryMaterial[])
       : undefined;
 
+    // Parse abstract from JSONB - PostgreSQL returns objects directly
+    // Handle legacy plain text abstracts by wrapping them in rich text format
+    let abstract: AnnotationBody;
+    if (typeof row.abstract === 'string') {
+      try {
+        abstract = JSON.parse(row.abstract) as AnnotationBody;
+      } catch {
+        // Legacy plain text abstract - wrap in rich text format
+        abstract = {
+          type: 'RichText',
+          items: [{ type: 'text', content: row.abstract }],
+          format: 'application/x-chive-gloss+json',
+        };
+      }
+    } else if (row.abstract && typeof row.abstract === 'object') {
+      abstract = row.abstract as AnnotationBody;
+    } else {
+      // Fallback for null/undefined
+      abstract = { type: 'RichText', items: [], format: 'application/x-chive-gloss+json' };
+    }
+
     return {
       uri: row.uri as AtUri,
       cid: row.cid as CID,
@@ -627,7 +655,8 @@ export class EprintsRepository {
       submittedBy: row.submitted_by as DID,
       paperDid: row.paper_did ? (row.paper_did as DID) : undefined,
       title: row.title,
-      abstract: row.abstract,
+      abstract,
+      abstractPlainText: row.abstract_plain_text ?? undefined,
       documentBlobRef: {
         $type: 'blob',
         ref: row.document_blob_cid as CID,

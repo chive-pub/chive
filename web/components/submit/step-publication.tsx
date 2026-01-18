@@ -43,8 +43,16 @@ import { cn } from '@/lib/utils';
 import {
   DoiAutocomplete,
   FunderAutocomplete,
+  ArxivAutocomplete,
+  PubmedAutocomplete,
+  ConferenceAutocomplete,
+  ConceptAutocomplete,
   type CrossRefWork,
   type CrossRefFunder,
+  type ArxivEntry,
+  type PubmedEntry,
+  type Conference,
+  type ConceptSuggestion,
 } from '@/components/forms';
 import type { EprintFormValues } from './submission-wizard';
 
@@ -79,61 +87,12 @@ const PUBLICATION_STATUS_OPTIONS = [
   { value: 'retracted', label: 'Retracted' },
 ] as const;
 
-/**
- * Code platform options.
- */
-const CODE_PLATFORM_OPTIONS = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'gitlab', label: 'GitLab' },
-  { value: 'bitbucket', label: 'Bitbucket' },
-  { value: 'huggingface', label: 'Hugging Face' },
-  { value: 'paperswithcode', label: 'Papers With Code' },
-  { value: 'codeberg', label: 'Codeberg' },
-  { value: 'sourcehut', label: 'Sourcehut' },
-  { value: 'software_heritage', label: 'Software Heritage' },
-  { value: 'colab', label: 'Google Colab' },
-  { value: 'kaggle', label: 'Kaggle' },
-  { value: 'other', label: 'Other' },
-] as const;
-
-/**
- * Data/model platform options.
- */
-const DATA_PLATFORM_OPTIONS = [
-  { value: 'huggingface', label: 'Hugging Face' },
-  { value: 'zenodo', label: 'Zenodo' },
-  { value: 'figshare', label: 'Figshare' },
-  { value: 'kaggle', label: 'Kaggle' },
-  { value: 'dryad', label: 'Dryad' },
-  { value: 'osf', label: 'OSF' },
-  { value: 'dataverse', label: 'Dataverse' },
-  { value: 'mendeley_data', label: 'Mendeley Data' },
-  { value: 'wandb', label: 'Weights & Biases' },
-  { value: 'other', label: 'Other' },
-] as const;
-
-/**
- * Pre-registration platform options.
- */
-const PREREGISTRATION_PLATFORM_OPTIONS = [
-  { value: 'osf', label: 'OSF' },
-  { value: 'aspredicted', label: 'AsPredicted' },
-  { value: 'clinicaltrials', label: 'ClinicalTrials.gov' },
-  { value: 'prospero', label: 'PROSPERO' },
-  { value: 'other', label: 'Other' },
-] as const;
-
-/**
- * Presentation type options.
- */
-const PRESENTATION_TYPE_OPTIONS = [
-  { value: 'oral', label: 'Oral Presentation' },
-  { value: 'poster', label: 'Poster' },
-  { value: 'keynote', label: 'Keynote' },
-  { value: 'workshop', label: 'Workshop' },
-  { value: 'demo', label: 'Demo' },
-  { value: 'other', label: 'Other' },
-] as const;
+// Platform and presentation type options are now sourced from the knowledge graph
+// via ConceptAutocomplete with category constraints:
+// - Code platforms: category='platform-code'
+// - Data repositories: category='platform-data'
+// - Preregistration: category='platform-preregistration'
+// - Presentation types: category='presentation-type'
 
 // =============================================================================
 // COMPONENT
@@ -166,7 +125,8 @@ export function StepPublication({ form, className }: StepPublicationProps) {
   const handleAddCodeRepo = useCallback(() => {
     codeReposArray.append({
       url: '',
-      platform: 'github',
+      platformUri: '',
+      platformName: '',
       label: '',
     });
   }, [codeReposArray]);
@@ -175,10 +135,85 @@ export function StepPublication({ form, className }: StepPublicationProps) {
   const handleAddDataRepo = useCallback(() => {
     dataReposArray.append({
       url: '',
-      platform: 'zenodo',
+      platformUri: '',
+      platformName: '',
       label: '',
     });
   }, [dataReposArray]);
+
+  // Handle code platform selection
+  const handleCodePlatformSelect = useCallback(
+    (concept: ConceptSuggestion, index: number) => {
+      form.setValue(`codeRepositories.${index}.platformUri`, concept.uri, { shouldValidate: true });
+      form.setValue(`codeRepositories.${index}.platformName`, concept.name, {
+        shouldValidate: true,
+      });
+    },
+    [form]
+  );
+
+  // Handle code platform clear
+  const handleCodePlatformClear = useCallback(
+    (index: number) => {
+      form.setValue(`codeRepositories.${index}.platformUri`, '', { shouldValidate: true });
+      form.setValue(`codeRepositories.${index}.platformName`, '', { shouldValidate: true });
+    },
+    [form]
+  );
+
+  // Handle data platform selection
+  const handleDataPlatformSelect = useCallback(
+    (concept: ConceptSuggestion, index: number) => {
+      form.setValue(`dataRepositories.${index}.platformUri`, concept.uri, { shouldValidate: true });
+      form.setValue(`dataRepositories.${index}.platformName`, concept.name, {
+        shouldValidate: true,
+      });
+    },
+    [form]
+  );
+
+  // Handle data platform clear
+  const handleDataPlatformClear = useCallback(
+    (index: number) => {
+      form.setValue(`dataRepositories.${index}.platformUri`, '', { shouldValidate: true });
+      form.setValue(`dataRepositories.${index}.platformName`, '', { shouldValidate: true });
+    },
+    [form]
+  );
+
+  // Handle preregistration platform selection
+  const handlePreregPlatformSelect = useCallback(
+    (concept: ConceptSuggestion) => {
+      form.setValue('preregistration.platformUri', concept.uri, { shouldValidate: true });
+      form.setValue('preregistration.platformName', concept.name, { shouldValidate: true });
+    },
+    [form]
+  );
+
+  // Handle preregistration platform clear
+  const handlePreregPlatformClear = useCallback(() => {
+    form.setValue('preregistration.platformUri', '', { shouldValidate: true });
+    form.setValue('preregistration.platformName', '', { shouldValidate: true });
+  }, [form]);
+
+  // Handle presentation type selection
+  const handlePresentationTypeSelect = useCallback(
+    (concept: ConceptSuggestion) => {
+      form.setValue('conferencePresentation.presentationTypeUri', concept.uri, {
+        shouldValidate: true,
+      });
+      form.setValue('conferencePresentation.presentationTypeName', concept.name, {
+        shouldValidate: true,
+      });
+    },
+    [form]
+  );
+
+  // Handle presentation type clear
+  const handlePresentationTypeClear = useCallback(() => {
+    form.setValue('conferencePresentation.presentationTypeUri', '', { shouldValidate: true });
+    form.setValue('conferencePresentation.presentationTypeName', '', { shouldValidate: true });
+  }, [form]);
 
   // Add funding source
   const handleAddFunding = useCallback(() => {
@@ -221,6 +256,52 @@ export function StepPublication({ form, className }: StepPublicationProps) {
     },
     [form]
   );
+
+  // Handle arXiv selection
+  const handleArxivSelect = useCallback(
+    (entry: ArxivEntry) => {
+      form.setValue('externalIds.arxivId', entry.id, { shouldValidate: true });
+    },
+    [form]
+  );
+
+  // Handle arXiv clear
+  const handleArxivClear = useCallback(() => {
+    form.setValue('externalIds.arxivId', '', { shouldValidate: true });
+  }, [form]);
+
+  // Handle PubMed selection
+  const handlePubmedSelect = useCallback(
+    (entry: PubmedEntry) => {
+      form.setValue('externalIds.pmid', entry.pmid, { shouldValidate: true });
+    },
+    [form]
+  );
+
+  // Handle PubMed clear
+  const handlePubmedClear = useCallback(() => {
+    form.setValue('externalIds.pmid', '', { shouldValidate: true });
+  }, [form]);
+
+  // Handle conference selection
+  const handleConferenceSelect = useCallback(
+    (conference: Conference) => {
+      form.setValue('conferencePresentation.conferenceName', conference.name, {
+        shouldValidate: true,
+      });
+      if (conference.url) {
+        form.setValue('conferencePresentation.conferenceUrl', conference.url, {
+          shouldValidate: true,
+        });
+      }
+    },
+    [form]
+  );
+
+  // Handle conference clear
+  const handleConferenceClear = useCallback(() => {
+    form.setValue('conferencePresentation.conferenceName', '', { shouldValidate: true });
+  }, [form]);
 
   return (
     <div className={cn('space-y-8', className)}>
@@ -337,16 +418,24 @@ export function StepPublication({ form, className }: StepPublicationProps) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="arxivId">arXiv ID</Label>
-            <Input
+            <ArxivAutocomplete
               id="arxivId"
-              placeholder="2401.12345"
-              {...form.register('externalIds.arxivId')}
+              value={form.watch('externalIds.arxivId')}
+              placeholder="Search by title or arXiv ID..."
+              onSelect={handleArxivSelect}
+              onClear={handleArxivClear}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="pmid">PubMed ID</Label>
-            <Input id="pmid" placeholder="12345678" {...form.register('externalIds.pmid')} />
+            <PubmedAutocomplete
+              id="pmid"
+              value={form.watch('externalIds.pmid')}
+              placeholder="Search by title or PMID..."
+              onSelect={handlePubmedSelect}
+              onClear={handlePubmedClear}
+            />
           </div>
 
           <div className="space-y-2">
@@ -414,26 +503,14 @@ export function StepPublication({ form, className }: StepPublicationProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`codeRepo-platform-${index}`}>Platform</Label>
-                    <Select
-                      value={form.watch(`codeRepositories.${index}.platform`) ?? 'github'}
-                      onValueChange={(value) =>
-                        form.setValue(
-                          `codeRepositories.${index}.platform`,
-                          value as (typeof CODE_PLATFORM_OPTIONS)[number]['value']
-                        )
-                      }
-                    >
-                      <SelectTrigger id={`codeRepo-platform-${index}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CODE_PLATFORM_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ConceptAutocomplete
+                      id={`codeRepo-platform-${index}`}
+                      category="platform-code"
+                      value={form.watch(`codeRepositories.${index}.platformUri`)}
+                      onSelect={(concept) => handleCodePlatformSelect(concept, index)}
+                      onClear={() => handleCodePlatformClear(index)}
+                      placeholder="Search platforms..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`codeRepo-label-${index}`}>Label</Label>
@@ -493,26 +570,14 @@ export function StepPublication({ form, className }: StepPublicationProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`dataRepo-platform-${index}`}>Platform</Label>
-                    <Select
-                      value={form.watch(`dataRepositories.${index}.platform`) ?? 'zenodo'}
-                      onValueChange={(value) =>
-                        form.setValue(
-                          `dataRepositories.${index}.platform`,
-                          value as (typeof DATA_PLATFORM_OPTIONS)[number]['value']
-                        )
-                      }
-                    >
-                      <SelectTrigger id={`dataRepo-platform-${index}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DATA_PLATFORM_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ConceptAutocomplete
+                      id={`dataRepo-platform-${index}`}
+                      category="platform-data"
+                      value={form.watch(`dataRepositories.${index}.platformUri`)}
+                      onSelect={(concept) => handleDataPlatformSelect(concept, index)}
+                      onClear={() => handleDataPlatformClear(index)}
+                      placeholder="Search data repositories..."
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`dataRepo-label-${index}`}>Label</Label>
@@ -563,26 +628,14 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
           <div className="space-y-2">
             <Label htmlFor="preregPlatform">Platform</Label>
-            <Select
-              value={form.watch('preregistration.platform') ?? ''}
-              onValueChange={(value) =>
-                form.setValue(
-                  'preregistration.platform',
-                  value as (typeof PREREGISTRATION_PLATFORM_OPTIONS)[number]['value']
-                )
-              }
-            >
-              <SelectTrigger id="preregPlatform">
-                <SelectValue placeholder="Select platform" />
-              </SelectTrigger>
-              <SelectContent>
-                {PREREGISTRATION_PLATFORM_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ConceptAutocomplete
+              id="preregPlatform"
+              category="platform-preregistration"
+              value={form.watch('preregistration.platformUri')}
+              onSelect={handlePreregPlatformSelect}
+              onClear={handlePreregPlatformClear}
+              placeholder="Search preregistration platforms..."
+            />
           </div>
         </div>
       </section>
@@ -660,10 +713,12 @@ export function StepPublication({ form, className }: StepPublicationProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="conferenceName">Conference Name</Label>
-            <Input
+            <ConferenceAutocomplete
               id="conferenceName"
-              placeholder="NeurIPS 2024"
-              {...form.register('conferencePresentation.conferenceName')}
+              value={form.watch('conferencePresentation.conferenceName')}
+              placeholder="Search conferences (e.g., NeurIPS, ICML)..."
+              onSelect={handleConferenceSelect}
+              onClear={handleConferenceClear}
             />
           </div>
 
@@ -678,26 +733,14 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
           <div className="space-y-2">
             <Label htmlFor="presentationType">Presentation Type</Label>
-            <Select
-              value={form.watch('conferencePresentation.presentationType') ?? ''}
-              onValueChange={(value) =>
-                form.setValue(
-                  'conferencePresentation.presentationType',
-                  value as (typeof PRESENTATION_TYPE_OPTIONS)[number]['value']
-                )
-              }
-            >
-              <SelectTrigger id="presentationType">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {PRESENTATION_TYPE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ConceptAutocomplete
+              id="presentationType"
+              category="presentation-type"
+              value={form.watch('conferencePresentation.presentationTypeUri')}
+              onSelect={handlePresentationTypeSelect}
+              onClear={handlePresentationTypeClear}
+              placeholder="Search presentation types..."
+            />
           </div>
 
           <div className="space-y-2">

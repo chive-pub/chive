@@ -93,7 +93,7 @@ export interface MFAEnrollment {
    * Whether MFA is required for this user.
    *
    * @remarks
-   * True for users with elevated roles (moderator, authority-editor, admin).
+   * True for users with elevated roles (moderator, graph-editor, admin).
    */
   readonly mfaRequired: boolean;
 }

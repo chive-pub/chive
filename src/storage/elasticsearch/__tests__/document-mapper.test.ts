@@ -8,10 +8,22 @@ import { describe, expect, it } from 'vitest';
 
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../../types/atproto.js';
 import type { Facet } from '../../../types/interfaces/graph.interface.js';
+import type { AnnotationBody } from '../../../types/models/annotation.js';
 import type { EprintAuthor } from '../../../types/models/author.js';
 import type { Eprint } from '../../../types/models/eprint.js';
 import type { EnrichmentData } from '../document-mapper.js';
 import { mapEprintToDocument } from '../document-mapper.js';
+
+/**
+ * Creates a mock rich text abstract from plain text.
+ */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 describe('mapEprintToDocument', () => {
   const mockBlobRef: BlobRef = {
@@ -33,7 +45,7 @@ describe('mapEprintToDocument', () => {
     {
       dimension: 'topical',
       value: 'Natural Language Processing',
-      authorityRecordId: 'http://id.loc.gov/authorities/subjects/sh2007002463',
+      nodeUri: 'at://did:plc:governance/pub.chive.graph.node/sh2007002463',
     },
   ];
 
@@ -47,7 +59,7 @@ describe('mapEprintToDocument', () => {
       affiliations: [{ name: 'University of Example', rorId: 'https://ror.org/02mhbdp94' }],
       contributions: [
         {
-          typeUri: 'at://did:plc:governance/pub.chive.contribution.type/conceptualization' as AtUri,
+          typeUri: 'at://did:plc:governance/pub.chive.graph.concept/conceptualization' as AtUri,
           typeId: 'conceptualization',
           typeLabel: 'Conceptualization',
           degree: 'lead',
@@ -82,7 +94,10 @@ describe('mapEprintToDocument', () => {
     authors: mockAuthors,
     submittedBy: 'did:plc:abc123' as DID,
     title: 'Advances in Neural Machine Translation',
-    abstract:
+    abstract: createMockAbstract(
+      'This paper presents novel approaches to neural machine translation using transformer architectures with attention mechanisms.'
+    ),
+    abstractPlainText:
       'This paper presents novel approaches to neural machine translation using transformer architectures with attention mechanisms.',
     documentBlobRef: mockBlobRef,
     documentFormat: 'pdf',
@@ -102,7 +117,8 @@ describe('mapEprintToDocument', () => {
       expect(document.cid).toBe(mockEprint.cid);
       expect(document.rkey).toBe('3jzfcijpj2z2a');
       expect(document.title).toBe(mockEprint.title);
-      expect(document.abstract).toBe(mockEprint.abstract);
+      // Document abstract is plain text extracted from rich text
+      expect(document.abstract).toBe(mockEprint.abstractPlainText);
       expect(document.license).toBe(mockEprint.license);
       expect(document.version).toBe(1);
       expect(document.pds_url).toBe('https://example.pds.host');
@@ -309,12 +325,12 @@ describe('mapEprintToDocument', () => {
       expect(document.authorities).toContain('Natural Language Processing');
     });
 
-    it('should extract authority record URIs', () => {
+    it('should extract node URIs for authorities', () => {
       const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.authority_uris).toBeDefined();
       expect(document.authority_uris).toContain(
-        'http://id.loc.gov/authorities/subjects/sh2007002463'
+        'at://did:plc:governance/pub.chive.graph.node/sh2007002463'
       );
     });
 
@@ -474,7 +490,8 @@ describe('mapEprintToDocument', () => {
         authors: [minimalAuthor],
         submittedBy: 'did:plc:test' as DID,
         title: 'Test',
-        abstract: 'Abstract',
+        abstract: createMockAbstract('Abstract'),
+        abstractPlainText: 'Abstract',
         documentBlobRef: mockBlobRef,
         documentFormat: 'pdf',
         publicationStatus: 'eprint',

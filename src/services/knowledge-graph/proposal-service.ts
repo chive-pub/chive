@@ -11,7 +11,7 @@
 
 import type { DID } from '../../types/atproto.js';
 import { ValidationError } from '../../types/errors.js';
-import type { FieldProposal } from '../../types/interfaces/graph.interface.js';
+import type { NodeProposal } from '../../types/interfaces/graph.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 /**
@@ -209,7 +209,7 @@ export class ProposalService {
    * @public
    */
   calculateConsensus(
-    proposal: FieldProposal,
+    proposal: NodeProposal,
     votes: readonly Vote[],
     roles: ReadonlyMap<DID, UserRole>
   ): ConsensusResult {
@@ -339,7 +339,7 @@ export class ProposalService {
    * @public
    */
   canFastTrack(
-    _proposal: FieldProposal,
+    _proposal: NodeProposal,
     votes: readonly Vote[],
     roles: ReadonlyMap<DID, UserRole>
   ): boolean {

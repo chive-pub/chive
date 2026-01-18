@@ -202,10 +202,11 @@ export interface UseContributionTypeOptions {
 
 /**
  * Default CRediT contribution types (fallback when API not available).
+ * Uses unified node AT-URI format: at://governance-did/pub.chive.graph.node/rkey
  */
 const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-conceptualization',
     id: 'conceptualization',
     label: 'Conceptualization',
     description: 'Ideas; formulation or evolution of overarching research goals and aims',
@@ -221,7 +222,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/data-curation',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-data-curation',
     id: 'data-curation',
     label: 'Data Curation',
     description:
@@ -238,7 +239,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/formal-analysis',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-formal-analysis',
     id: 'formal-analysis',
     label: 'Formal Analysis',
     description:
@@ -255,7 +256,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/funding-acquisition',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-funding-acquisition',
     id: 'funding-acquisition',
     label: 'Funding Acquisition',
     description: 'Acquisition of the financial support for the project leading to this publication',
@@ -271,7 +272,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/investigation',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-investigation',
     id: 'investigation',
     label: 'Investigation',
     description:
@@ -288,7 +289,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/methodology',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-methodology',
     id: 'methodology',
     label: 'Methodology',
     description: 'Development or design of methodology; creation of models',
@@ -304,7 +305,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/project-administration',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-project-administration',
     id: 'project-administration',
     label: 'Project Administration',
     description:
@@ -321,7 +322,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/resources',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-resources',
     id: 'resources',
     label: 'Resources',
     description:
@@ -338,7 +339,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/software',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-software',
     id: 'software',
     label: 'Software',
     description:
@@ -355,7 +356,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/supervision',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-supervision',
     id: 'supervision',
     label: 'Supervision',
     description:
@@ -372,7 +373,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/validation',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-validation',
     id: 'validation',
     label: 'Validation',
     description:
@@ -389,7 +390,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/visualization',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-visualization',
     id: 'visualization',
     label: 'Visualization',
     description:
@@ -406,7 +407,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/writing-original-draft',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-original-draft',
     id: 'writing-original-draft',
     label: 'Writing - Original Draft',
     description:
@@ -423,7 +424,7 @@ const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uri: 'at://did:plc:chive-governance/pub.chive.contribution.type/writing-review-editing',
+    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-review-editing',
     id: 'writing-review-editing',
     label: 'Writing - Review & Editing',
     description:
@@ -455,11 +456,11 @@ export function useContributionTypes(
   return useQuery({
     queryKey: contributionTypeKeys.typesList(params),
     queryFn: async (): Promise<{ types: CreditContributionType[]; cursor?: string }> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.contribution.listTypes', {
+      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listNodes', {
         params: {
           query: {
+            subkind: 'contribution-type',
             status: params.status as 'established' | 'provisional' | 'deprecated' | undefined,
-            search: params.query,
             limit: params.limit ?? 50,
           },
         },
@@ -469,19 +470,29 @@ export function useContributionTypes(
         throw new APIError(
           (error as { message?: string }).message ?? 'Failed to fetch contribution types',
           undefined,
-          '/xrpc/pub.chive.contribution.listTypes'
+          '/xrpc/pub.chive.graph.listNodes'
         );
       }
 
       // Map API response to our CreditContributionType interface
-      const types: CreditContributionType[] = data.types.map((t) => ({
-        uri: t.uri,
-        id: t.id,
-        label: t.label,
-        description: t.description,
-        externalMappings: [],
-        status: t.status,
-        createdAt: new Date().toISOString(),
+      const types: CreditContributionType[] = (data.nodes ?? []).map((n) => ({
+        uri: n.uri,
+        id: n.id,
+        label: n.label,
+        description: n.description ?? '',
+        externalMappings: (n.externalIds ?? []).map((ext) => ({
+          system: ext.system,
+          identifier: ext.identifier,
+          uri: ext.uri ?? '',
+          matchType:
+            ext.matchType === 'exact'
+              ? 'exact-match'
+              : ext.matchType === 'close'
+                ? 'close-match'
+                : 'related-match',
+        })),
+        status: n.status as 'established' | 'provisional' | 'deprecated',
+        createdAt: n.createdAt,
       }));
 
       return { types, cursor: data.cursor };
@@ -503,9 +514,9 @@ export function useContributionType(typeId: string, options: UseContributionType
   return useQuery({
     queryKey: contributionTypeKeys.type(typeId),
     queryFn: async (): Promise<CreditContributionType> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.contribution.getType', {
+      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getNode', {
         params: {
-          query: { id: typeId },
+          query: { id: typeId, includeEdges: false },
         },
       });
 
@@ -513,7 +524,7 @@ export function useContributionType(typeId: string, options: UseContributionType
         throw new APIError(
           (error as { message?: string }).message ?? `Contribution type "${typeId}" not found`,
           404,
-          '/xrpc/pub.chive.contribution.getType'
+          '/xrpc/pub.chive.graph.getNode'
         );
       }
 
@@ -521,15 +532,19 @@ export function useContributionType(typeId: string, options: UseContributionType
         uri: data.uri,
         id: data.id,
         label: data.label,
-        description: data.description,
-        externalMappings: data.externalMappings.map((m) => ({
+        description: data.description ?? '',
+        externalMappings: (data.externalIds ?? []).map((m) => ({
           system: m.system,
           identifier: m.identifier,
           uri: m.uri ?? '',
-          matchType: m.matchType as 'exact-match' | 'close-match' | 'related-match' | undefined,
+          matchType:
+            m.matchType === 'exact'
+              ? 'exact-match'
+              : m.matchType === 'close'
+                ? 'close-match'
+                : 'related-match',
         })),
-        status: data.status,
-        proposalUri: data.proposalUri,
+        status: data.status as 'established' | 'provisional' | 'deprecated',
         createdAt: data.createdAt,
       };
     },
@@ -559,10 +574,12 @@ export function useContributionTypeProposals(
       proposals: ContributionTypeProposal[];
       cursor?: string;
     }> => {
+      // Note: 'contribution-type' is not a valid API category, use 'concept' instead
+      // Contribution types are specialized concept nodes
       const { data, error } = await api.GET('/xrpc/pub.chive.governance.listProposals', {
         params: {
           query: {
-            category: 'contribution-type',
+            category: 'concept',
             status: params.status,
             limit: params.limit ?? 20,
             cursor: params.cursor,
@@ -655,7 +672,7 @@ export function useContributionTypeProposal(
           total: (p.votes?.approve ?? 0) + (p.votes?.reject ?? 0) + (p.votes?.abstain ?? 0),
         },
         createdAt: p.createdAt,
-        existingTypeId: p.fieldId,
+        existingTypeId: p.nodeUri,
       };
     },
     enabled: !!proposalUri && (options.enabled ?? true),
@@ -834,19 +851,30 @@ export function useCreateContributionTypeProposal() {
         throw new APIError('Not authenticated. Please log in again.', 401, 'createProposal');
       }
 
-      // Create the proposal record in the user's PDS
+      // Create the proposal record in the user's PDS using unified node proposal
       const result = await agent.com.atproto.repo.createRecord({
         repo: agent.did ?? '',
-        collection: 'pub.chive.contribution.typeProposal',
+        collection: 'pub.chive.graph.nodeProposal',
         record: {
-          $type: 'pub.chive.contribution.typeProposal',
+          $type: 'pub.chive.graph.nodeProposal',
           proposalType: input.proposalType,
-          proposedId: input.proposedId,
-          proposedLabel: input.proposedLabel,
-          proposedDescription: input.proposedDescription,
-          externalMappings: input.externalMappings,
+          kind: 'type',
+          subkind: 'contribution-type',
+          targetUri: input.existingTypeId,
+          proposedNode: {
+            id: input.proposedId,
+            kind: 'type',
+            subkind: 'contribution-type',
+            label: input.proposedLabel,
+            description: input.proposedDescription,
+            externalIds: input.externalMappings?.map((m) => ({
+              system: m.system,
+              identifier: m.identifier,
+              uri: m.uri,
+              matchType: 'exact',
+            })),
+          },
           rationale: input.rationale,
-          typeId: input.existingTypeId,
           createdAt: new Date().toISOString(),
         },
       });
@@ -933,14 +961,67 @@ export function useVoteOnContributionTypeProposal() {
         createdAt: new Date().toISOString(),
       };
     },
-    onSuccess: (data) => {
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({
-        queryKey: contributionTypeKeys.proposal(data.proposalUri),
+    onMutate: async (input) => {
+      // Cancel outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({
+        queryKey: contributionTypeKeys.proposal(input.proposalUri),
       });
-      queryClient.invalidateQueries({
-        queryKey: contributionTypeKeys.proposalVotes(data.proposalUri),
-      });
+
+      // Snapshot previous proposal data for rollback
+      const previousProposal = queryClient.getQueryData<ContributionTypeProposal>(
+        contributionTypeKeys.proposal(input.proposalUri)
+      );
+
+      // Optimistically update the proposal's vote counts
+      if (previousProposal) {
+        queryClient.setQueryData<ContributionTypeProposal>(
+          contributionTypeKeys.proposal(input.proposalUri),
+          {
+            ...previousProposal,
+            votes: {
+              ...previousProposal.votes,
+              [input.value]: previousProposal.votes[input.value] + 1,
+              total: previousProposal.votes.total + 1,
+            },
+          }
+        );
+      }
+
+      return { previousProposal };
+    },
+    onError: (_err, input, context) => {
+      // Rollback to previous state on error
+      if (context?.previousProposal) {
+        queryClient.setQueryData(
+          contributionTypeKeys.proposal(input.proposalUri),
+          context.previousProposal
+        );
+      }
+    },
+    onSuccess: (data, input) => {
+      const proposalUri = input.proposalUri;
+
+      // Optimistically set the user's vote so it appears immediately
+      if (data.voterDid) {
+        queryClient.setQueryData<ContributionTypeVote | null>(
+          contributionTypeKeys.userVote(proposalUri, data.voterDid),
+          data
+        );
+      }
+
+      // Invalidate queries to refetch latest data from server
+      // Use a slight delay to allow firehose indexing
+      setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: contributionTypeKeys.proposal(proposalUri),
+        });
+        queryClient.invalidateQueries({
+          queryKey: contributionTypeKeys.proposalVotes(proposalUri),
+        });
+        queryClient.invalidateQueries({
+          queryKey: contributionTypeKeys.proposalsList(),
+        });
+      }, 1000);
     },
   });
 }

@@ -37,9 +37,14 @@ describe('Lexicon Code Generation Pipeline', () => {
 
     const expectedFiles = [
       'pub/chive/actor/profile.ts',
-      'pub/chive/graph/facet.ts',
-      'pub/chive/graph/fieldProposal.ts',
+      'pub/chive/actor/discoverySettings.ts',
+      'pub/chive/graph/node.ts',
+      'pub/chive/graph/nodeProposal.ts',
+      'pub/chive/graph/edge.ts',
+      'pub/chive/graph/edgeProposal.ts',
+      'pub/chive/graph/reconciliation.ts',
       'pub/chive/graph/vote.ts',
+      'pub/chive/eprint/authorContribution.ts',
       'pub/chive/eprint/getSubmission.ts',
       'pub/chive/eprint/searchSubmissions.ts',
       'pub/chive/eprint/submission.ts',
@@ -84,7 +89,7 @@ describe('Lexicon Code Generation Pipeline', () => {
 
     const validData = {
       title: 'Test Eprint',
-      abstract: 'Abstract',
+      abstract: [{ type: 'text', content: 'This is a test abstract.' }],
       document: {
         $type: 'blob',
         ref: {
@@ -97,14 +102,10 @@ describe('Lexicon Code Generation Pipeline', () => {
         {
           name: 'Test Author',
           order: 1,
-          affiliations: [],
-          contributions: [],
-          isCorrespondingAuthor: true,
-          isHighlighted: false,
         },
       ],
       submittedBy: 'did:plc:abc123',
-      license: 'CC-BY-4.0',
+      licenseSlug: 'CC-BY-4.0',
       createdAt: new Date().toISOString(),
     };
 
@@ -173,15 +174,15 @@ describe('Lexicon Code Generation Pipeline', () => {
     expect(content).toContain('export type EprintSubmission');
   });
 
-  it('facet.ts correctly handles non-record schema', async () => {
-    const facetFile = path.join(
+  it('node.ts correctly handles graph node schema', async () => {
+    const nodeFile = path.join(
       __dirname,
-      '../../../src/lexicons/validators/pub/chive/graph/facet.ts'
+      '../../../src/lexicons/validators/pub/chive/graph/node.ts'
     );
-    const content = await fs.readFile(facetFile, 'utf-8');
+    const content = await fs.readFile(nodeFile, 'utf-8');
 
-    // Facet is an object type, not a record, so it should have minimal content
-    // The generator currently outputs an empty file with just headers
-    expect(content).toContain('pub.chive.graph.facet');
+    // Node is a record type for knowledge graph nodes
+    expect(content).toContain('pub.chive.graph.node');
+    expect(content).toContain('graphNodeSchema');
   });
 });

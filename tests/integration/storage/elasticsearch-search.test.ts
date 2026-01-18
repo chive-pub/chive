@@ -28,8 +28,18 @@ import {
 } from '../../../src/storage/elasticsearch/setup.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../../src/types/atproto.js';
 import type { Facet } from '../../../src/types/interfaces/graph.interface.js';
+import type { AnnotationBody } from '../../../src/types/models/annotation.js';
 import type { EprintAuthor } from '../../../src/types/models/author.js';
 import type { Eprint } from '../../../src/types/models/eprint.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 describe('Elasticsearch Search Integration', () => {
   let client: Client;
@@ -125,7 +135,7 @@ describe('Elasticsearch Search Integration', () => {
         authors: [author1],
         submittedBy: 'did:plc:author1' as DID,
         title: 'Machine Learning in Healthcare',
-        abstract: 'Deep learning models for medical diagnosis',
+        abstract: createMockAbstract('Deep learning models for medical diagnosis'),
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
         publicationStatus: 'eprint',
@@ -145,7 +155,7 @@ describe('Elasticsearch Search Integration', () => {
         authors: [author2],
         submittedBy: 'did:plc:author2' as DID,
         title: 'Neural Networks for Image Classification',
-        abstract: 'Convolutional neural networks and computer vision',
+        abstract: createMockAbstract('Convolutional neural networks and computer vision'),
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
         publicationStatus: 'eprint',
@@ -165,7 +175,7 @@ describe('Elasticsearch Search Integration', () => {
         authors: [author1],
         submittedBy: 'did:plc:author1' as DID,
         title: 'Quantum Computing Algorithms',
-        abstract: 'Novel quantum algorithms for optimization problems',
+        abstract: createMockAbstract('Novel quantum algorithms for optimization problems'),
         documentBlobRef: mockPdfBlob,
         documentFormat: 'pdf',
         publicationStatus: 'eprint',

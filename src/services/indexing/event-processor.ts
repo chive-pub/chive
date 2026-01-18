@@ -21,12 +21,22 @@
 
 import type { Pool } from 'pg';
 
+import type {
+  NodeKind,
+  NodeStatus,
+  EdgeStatus,
+  ExternalId,
+  NodeMetadata,
+  EdgeMetadata,
+} from '../../storage/neo4j/types.js';
 import type { AtUri, CID, DID, NSID } from '../../types/atproto.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { Eprint } from '../../types/models/eprint.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
+import type { EdgeService } from '../governance/edge-service.js';
+import type { NodeService } from '../governance/node-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
 import type { ReviewService, ReviewComment, Endorsement } from '../review/review-service.js';
 
@@ -34,8 +44,6 @@ import type { ProcessedEvent } from './indexing-service.js';
 
 /**
  * User tag record from lexicon.
- *
- * @public
  */
 export interface UserTagRecord {
   readonly eprintUri: string;
@@ -45,8 +53,6 @@ export interface UserTagRecord {
 
 /**
  * Actor profile record from lexicon.
- *
- * @public
  */
 export interface ActorProfileRecord {
   readonly displayName?: string;
@@ -58,83 +64,72 @@ export interface ActorProfileRecord {
 }
 
 /**
+ * Node record from lexicon.
+ */
+export interface NodeRecord {
+  readonly id: string;
+  readonly kind: NodeKind;
+  readonly subkind?: string;
+  readonly subkindUri?: string;
+  readonly label: string;
+  readonly alternateLabels?: readonly string[];
+  readonly description?: string;
+  readonly externalIds?: readonly ExternalId[];
+  readonly metadata?: NodeMetadata;
+  readonly status: NodeStatus;
+  readonly deprecatedBy?: string;
+  readonly proposalUri?: string;
+  readonly createdAt: string;
+}
+
+/**
+ * Edge record from lexicon.
+ */
+export interface EdgeRecord {
+  readonly id: string;
+  readonly sourceUri: string;
+  readonly targetUri: string;
+  readonly relationUri?: string;
+  readonly relationSlug: string;
+  readonly weight?: number;
+  readonly metadata?: EdgeMetadata;
+  readonly status: EdgeStatus;
+  readonly proposalUri?: string;
+  readonly createdAt: string;
+}
+
+/**
  * Event processor configuration.
- *
- * @public
  */
 export interface EventProcessorOptions {
-  /**
-   * PostgreSQL connection pool.
-   */
   readonly pool: Pool;
-
-  /**
-   * Activity service for correlation.
-   */
   readonly activity: ActivityService;
-
-  /**
-   * Eprint service for indexing eprints.
-   */
   readonly eprintService: EprintService;
-
-  /**
-   * Review service for indexing comments and endorsements.
-   */
   readonly reviewService: ReviewService;
-
-  /**
-   * Knowledge graph service for proposals and votes.
-   */
   readonly graphService: KnowledgeGraphService;
-
-  /**
-   * Identity resolver for PDS URL lookup.
-   */
+  readonly nodeService?: NodeService;
+  readonly edgeService?: EdgeService;
   readonly identity: IIdentityResolver;
-
-  /**
-   * Logger instance.
-   */
   readonly logger: ILogger;
 }
 
 /**
  * Creates an event processor with activity correlation.
- *
- * @param options - Processor configuration
- * @returns Event processor function
- *
- * @remarks
- * This processor:
- * 1. Processes the firehose event for indexing (storage, search, etc.)
- * 2. Correlates with any pending user activity
- *
- * The correlation uses (repo, collection, rkey) as the key to match
- * pending activities logged by users before their PDS write.
- *
- * @example
- * ```typescript
- * const processor = createEventProcessor({
- *   pool,
- *   activity: activityService,
- *   logger,
- * });
- *
- * const indexingService = new IndexingService({
- *   relay: 'wss://bsky.network',
- *   db: pool,
- *   redis,
- *   processor,
- * });
- * ```
- *
- * @public
  */
 export function createEventProcessor(
   options: EventProcessorOptions
 ): (event: ProcessedEvent) => Promise<void> {
-  const { pool, activity, eprintService, reviewService, graphService, identity, logger } = options;
+  const {
+    pool,
+    activity,
+    eprintService,
+    reviewService,
+    graphService,
+    nodeService,
+    edgeService,
+    identity,
+    logger,
+  } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
     const { repo, collection, rkey, action, cid, seq, record } = event;
@@ -147,19 +142,17 @@ export function createEventProcessor(
       seq,
     });
 
-    // Construct AT URI for this record
     const uri = `at://${repo}/${collection}/${rkey}` as AtUri;
-
-    // Resolve PDS URL from DID for metadata
     const pdsUrl = await identity.getPDSEndpoint(repo as DID);
 
-    // Process the record based on collection type
     await processRecord(
       {
         pool,
         eprintService,
         reviewService,
         graphService,
+        nodeService,
+        edgeService,
         logger,
       },
       {
@@ -174,7 +167,6 @@ export function createEventProcessor(
       }
     );
 
-    // Correlate with pending user activity (if this is a create/update)
     if (action === 'create' || action === 'update') {
       await correlateActivity(activity, logger, {
         repo: repo as DID,
@@ -195,24 +187,16 @@ export function createEventProcessor(
   };
 }
 
-/**
- * Services context for record processing.
- *
- * @internal
- */
 interface ProcessRecordContext {
   readonly pool: Pool;
   readonly eprintService: EprintService;
   readonly reviewService: ReviewService;
   readonly graphService: KnowledgeGraphService;
+  readonly nodeService?: NodeService;
+  readonly edgeService?: EdgeService;
   readonly logger: ILogger;
 }
 
-/**
- * Record data with metadata for processing.
- *
- * @internal
- */
 interface RecordData {
   readonly uri: AtUri;
   readonly repo: DID;
@@ -224,16 +208,11 @@ interface RecordData {
   readonly pdsUrl: string;
 }
 
-/**
- * Processes a record for indexing.
- *
- * @internal
- */
 async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promise<void> {
-  const { eprintService, reviewService, graphService, pool, logger } = ctx;
+  const { eprintService, reviewService, graphService, nodeService, edgeService, pool, logger } =
+    ctx;
   const { uri, cid, collection, action, record, pdsUrl } = data;
 
-  // Build metadata for indexing
   const metadata: RecordMetadata = {
     uri,
     cid: cid ?? ('' as CID),
@@ -241,7 +220,6 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
     indexedAt: new Date(),
   };
 
-  // Route to appropriate handler based on collection
   switch (collection) {
     case 'pub.chive.eprint.submission': {
       logger.debug('Processing eprint submission', { action, uri });
@@ -268,7 +246,6 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       logger.debug('Processing review comment', { action, uri });
 
       if (action === 'delete') {
-        // Delete review from index
         await pool.query('DELETE FROM reviews_index WHERE uri = $1', [uri]);
         logger.info('Deleted review from index', { uri });
       } else if (record) {
@@ -285,7 +262,6 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       logger.debug('Processing endorsement', { action, uri });
 
       if (action === 'delete') {
-        // Delete endorsement from index
         await pool.query('DELETE FROM endorsements_index WHERE uri = $1', [uri]);
         logger.info('Deleted endorsement from index', { uri });
       } else if (record) {
@@ -303,12 +279,10 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       logger.debug('Processing tag', { action, uri });
 
       if (action === 'delete') {
-        // Delete tag from index
         await pool.query('DELETE FROM user_tags_index WHERE uri = $1', [uri]);
         logger.info('Deleted tag from index', { uri });
       } else if (record) {
         const tagRecord = record as UserTagRecord;
-        // Extract tagger DID from AT URI (format: at://did:xxx/collection/rkey)
         const taggerDid = uri.split('/')[2];
 
         await pool.query(
@@ -334,13 +308,103 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       break;
     }
 
-    case 'pub.chive.graph.fieldProposal': {
-      logger.debug('Processing field proposal', { action, uri });
+    case 'pub.chive.graph.node': {
+      logger.debug('Processing node record', { action, uri });
+
+      if (action === 'delete') {
+        if (nodeService) {
+          await nodeService.deleteNode(uri);
+          logger.info('Deleted node from index', { uri });
+        }
+      } else if (record && nodeService) {
+        const nodeRecord = record as NodeRecord;
+        try {
+          await nodeService.indexNode({
+            id: nodeRecord.id,
+            uri,
+            kind: nodeRecord.kind,
+            subkind: nodeRecord.subkind,
+            subkindUri: nodeRecord.subkindUri as AtUri | undefined,
+            label: nodeRecord.label,
+            alternateLabels: nodeRecord.alternateLabels as string[] | undefined,
+            description: nodeRecord.description,
+            externalIds: nodeRecord.externalIds as ExternalId[] | undefined,
+            metadata: nodeRecord.metadata,
+            status: nodeRecord.status,
+            deprecatedBy: nodeRecord.deprecatedBy as AtUri | undefined,
+            proposalUri: nodeRecord.proposalUri as AtUri | undefined,
+            createdBy: data.repo,
+          });
+          logger.info('Indexed node', { uri, label: nodeRecord.label, kind: nodeRecord.kind });
+        } catch (error) {
+          logger.error('Failed to index node', error instanceof Error ? error : undefined, {
+            uri,
+            action,
+          });
+        }
+      }
+      break;
+    }
+
+    case 'pub.chive.graph.edge': {
+      logger.debug('Processing edge record', { action, uri });
+
+      if (action === 'delete') {
+        if (edgeService) {
+          await edgeService.deleteEdge(uri);
+          logger.info('Deleted edge from index', { uri });
+        }
+      } else if (record && edgeService) {
+        const edgeRecord = record as EdgeRecord;
+        try {
+          await edgeService.indexEdge({
+            id: edgeRecord.id,
+            uri,
+            sourceUri: edgeRecord.sourceUri as AtUri,
+            targetUri: edgeRecord.targetUri as AtUri,
+            relationUri: edgeRecord.relationUri as AtUri | undefined,
+            relationSlug: edgeRecord.relationSlug,
+            weight: edgeRecord.weight,
+            metadata: edgeRecord.metadata,
+            status: edgeRecord.status,
+            proposalUri: edgeRecord.proposalUri as AtUri | undefined,
+            createdBy: data.repo,
+          });
+          logger.info('Indexed edge', {
+            uri,
+            sourceUri: edgeRecord.sourceUri,
+            targetUri: edgeRecord.targetUri,
+            relationSlug: edgeRecord.relationSlug,
+          });
+        } catch (error) {
+          logger.error('Failed to index edge', error instanceof Error ? error : undefined, {
+            uri,
+            action,
+          });
+        }
+      }
+      break;
+    }
+
+    case 'pub.chive.graph.nodeProposal': {
+      logger.debug('Processing node proposal', { action, uri });
 
       if (action !== 'delete' && record) {
-        const result = await graphService.indexFieldProposal(record, metadata);
+        const result = await graphService.indexNodeProposal(record, metadata);
         if (!result.ok) {
-          logger.error('Failed to index field proposal', result.error as Error, { uri, action });
+          logger.error('Failed to index node proposal', result.error as Error, { uri, action });
+        }
+      }
+      break;
+    }
+
+    case 'pub.chive.graph.edgeProposal': {
+      logger.debug('Processing edge proposal', { action, uri });
+
+      if (action !== 'delete' && record) {
+        const result = await graphService.indexEdgeProposal(record, metadata);
+        if (!result.ok) {
+          logger.error('Failed to index edge proposal', result.error as Error, { uri, action });
         }
       }
       break;
@@ -362,7 +426,6 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       logger.debug('Processing actor profile', { action, uri });
 
       if (action === 'delete') {
-        // Delete profile from index
         const did = data.repo;
         await pool.query('DELETE FROM authors_index WHERE did = $1', [did]);
         logger.info('Deleted actor profile from index', { did });
@@ -404,16 +467,10 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       if (collection.startsWith('pub.chive.')) {
         logger.warn('Unhandled Chive collection', { collection, action });
       }
-      // Ignore non-Chive collections
       break;
   }
 }
 
-/**
- * Correlates firehose event with pending user activity.
- *
- * @internal
- */
 async function correlateActivity(
   activity: ActivityService,
   logger: ILogger,
@@ -445,7 +502,6 @@ async function correlateActivity(
       });
     }
   } catch (error) {
-    // Log but don't fail the event processing
     logger.warn('Failed to correlate activity', {
       error: error instanceof Error ? error.message : String(error),
       repo: input.repo,
@@ -457,29 +513,29 @@ async function correlateActivity(
 
 /**
  * Creates a batch processor for efficient correlation.
- *
- * @param options - Processor configuration
- * @returns Batch processor function
- *
- * @remarks
- * Use for batch processing when handling multiple events at once.
- * More efficient than individual correlations.
- *
- * @public
  */
 export function createBatchEventProcessor(
   options: EventProcessorOptions
 ): (events: readonly ProcessedEvent[]) => Promise<void> {
-  const { pool, activity, eprintService, reviewService, graphService, identity, logger } = options;
+  const {
+    pool,
+    activity,
+    eprintService,
+    reviewService,
+    graphService,
+    nodeService,
+    edgeService,
+    identity,
+    logger,
+  } = options;
 
   return async (events: readonly ProcessedEvent[]): Promise<void> => {
-    // Process records
     for (const event of events) {
       const uri = `at://${event.repo}/${event.collection}/${event.rkey}` as AtUri;
       const pdsUrl = await identity.getPDSEndpoint(event.repo as DID);
 
       await processRecord(
-        { pool, eprintService, reviewService, graphService, logger },
+        { pool, eprintService, reviewService, graphService, nodeService, edgeService, logger },
         {
           uri,
           repo: event.repo as DID,
@@ -493,7 +549,6 @@ export function createBatchEventProcessor(
       );
     }
 
-    // Batch correlate activities
     const createUpdateEvents = events.filter((e) => e.action === 'create' || e.action === 'update');
 
     if (createUpdateEvents.length > 0) {

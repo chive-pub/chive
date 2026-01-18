@@ -208,21 +208,30 @@ export function mockFacetedSearchResponse(
 }
 
 /**
- * Type-safe factory for field responses.
+ * Type-safe factory for node responses.
  */
-export function mockFieldResponse(
-  data: SuccessResponseJSON<operations['pub_chive_graph_getField']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_getField']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.graph.getField'>(data);
+export function mockNodeResponse(
+  data: SuccessResponseJSON<operations['pub_chive_graph_getNode']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_getNode']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.graph.getNode'>(data);
 }
 
 /**
- * Type-safe factory for field list responses.
+ * Type-safe factory for node list responses.
  */
-export function mockFieldListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_graph_listFields']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_listFields']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.graph.listFields'>(data);
+export function mockNodeListResponse(
+  data: SuccessResponseJSON<operations['pub_chive_graph_listNodes']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_listNodes']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.graph.listNodes'>(data);
+}
+
+/**
+ * Type-safe factory for node search responses.
+ */
+export function mockNodeSearchResponse(
+  data: SuccessResponseJSON<operations['pub_chive_graph_searchNodes']>
+): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_searchNodes']>> {
+  return mockApiSuccess<'/xrpc/pub.chive.graph.searchNodes'>(data);
 }
 
 /**

@@ -98,7 +98,7 @@ export default function TrendingPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     {eprint.fields?.slice(0, 2).map((field) => (
                       <Badge key={field.uri} variant="outline" className="text-xs">
-                        {field.name}
+                        {field.label}
                       </Badge>
                     ))}
                   </div>

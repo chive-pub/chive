@@ -30,8 +30,18 @@ import type {
   ISearchEngine,
   IndexableEprintDocument,
 } from '@/types/interfaces/search.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
 import type { Eprint } from '@/types/models/eprint.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 // Test constants
 const TEST_AUTHOR = 'did:plc:testauthor123' as DID;
@@ -161,7 +171,11 @@ function createSearchEngine(client: Client): ISearchEngine {
 /**
  * Creates test eprint record.
  */
-function createTestEprint(overrides: Partial<Eprint> = {}): Eprint {
+type TestEprintOverrides = Omit<Partial<Eprint>, 'abstract'> & {
+  abstract?: string | AnnotationBody;
+};
+
+function createTestEprint(overrides: TestEprintOverrides = {}): Eprint {
   const testAuthor: EprintAuthor = {
     did: TEST_AUTHOR,
     name: 'Test Integration Author',
@@ -179,7 +193,10 @@ function createTestEprint(overrides: Partial<Eprint> = {}): Eprint {
     authors: overrides.authors ?? [testAuthor],
     submittedBy: TEST_AUTHOR,
     title: overrides.title ?? 'Test Eprint Title',
-    abstract: overrides.abstract ?? 'This is a test abstract for the eprint.',
+    abstract:
+      typeof overrides.abstract === 'string'
+        ? createMockAbstract(overrides.abstract)
+        : (overrides.abstract ?? createMockAbstract('This is a test abstract for the eprint.')),
     keywords: overrides.keywords ?? ['test', 'integration'],
     facets: overrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
     version: overrides.version ?? 1,

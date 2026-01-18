@@ -18,6 +18,7 @@ import type { Context } from 'hono';
 
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError } from '../../../../types/errors.js';
+import { extractPlainText } from '../../../../utils/rich-text.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import {
   getSubmissionParamsSchema,
@@ -120,7 +121,7 @@ export async function getSubmissionHandler(
     uri: result.uri,
     cid: result.cid,
     title: result.title,
-    abstract: result.abstract,
+    abstract: result.abstractPlainText ?? extractPlainText(result.abstract),
     authors: authorsResponse,
     submittedBy: result.submittedBy,
     paperDid: result.paperDid,

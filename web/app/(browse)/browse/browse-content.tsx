@@ -5,8 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Share2, Bookmark, BookmarkCheck, Check, Copy } from 'lucide-react';
 
 import { SearchInput, SearchResults, SearchPagination, FacetSelector } from '@/components/search';
-import { useFacetedSearch } from '@/lib/hooks/use-faceted-search';
-import { type FacetFilters, filtersToSearchParams, countActiveFilters } from '@/lib/utils/facets';
+import {
+  useFacetedSearch,
+  countTotalFilters,
+  type DynamicFacetFilters,
+} from '@/lib/hooks/use-faceted-search';
+import type { SearchResultsResponse } from '@/lib/api/schema';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,16 +34,7 @@ import { Label } from '@/components/ui/label';
  */
 export interface BrowseInitialParams {
   q?: string;
-  personality?: string[];
-  matter?: string[];
-  energy?: string[];
-  space?: string[];
-  time?: string[];
-  person?: string[];
-  organization?: string[];
-  event?: string[];
-  work?: string[];
-  formGenre?: string[];
+  facets?: DynamicFacetFilters;
 }
 
 /**
@@ -56,39 +51,55 @@ export interface BrowsePageContentProps {
 interface SavedFilter {
   name: string;
   query: string;
-  filters: FacetFilters;
+  filters: DynamicFacetFilters;
   createdAt: string;
 }
 
 const SAVED_FILTERS_KEY = 'chive-saved-filters';
 
 /**
+ * Converts filters to URL search params.
+ */
+function filtersToSearchParams(filters: DynamicFacetFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [slug, values] of Object.entries(filters)) {
+    if (values && values.length > 0) {
+      for (const value of values) {
+        params.append(slug, value);
+      }
+    }
+  }
+  return params;
+}
+
+/**
+ * Parses URL search params into filters.
+ */
+function searchParamsToFilters(searchParams: URLSearchParams): DynamicFacetFilters {
+  const filters: DynamicFacetFilters = {};
+  for (const [key, value] of searchParams.entries()) {
+    if (key === 'q') continue; // Skip query param
+    if (!filters[key]) {
+      filters[key] = [];
+    }
+    filters[key].push(value);
+  }
+  return filters;
+}
+
+/**
  * Client-side browse page content with faceted search.
  *
  * @remarks
  * Manages facet selections, search query, and results with URL sync.
- * Uses the useFacetedSearch hook for data fetching.
- *
- * @param props - Component props
- * @returns React element with faceted browse interface
+ * Facets are fetched dynamically from the knowledge graph.
  */
 export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
   const router = useRouter();
 
   // Initialize state from URL params
   const [query, setQuery] = useState(initialParams.q ?? '');
-  const [filters, setFilters] = useState<FacetFilters>({
-    personality: initialParams.personality,
-    matter: initialParams.matter,
-    energy: initialParams.energy,
-    space: initialParams.space,
-    time: initialParams.time,
-    person: initialParams.person,
-    organization: initialParams.organization,
-    event: initialParams.event,
-    work: initialParams.work,
-    formGenre: initialParams.formGenre,
-  });
+  const [filters, setFilters] = useState<DynamicFacetFilters>(initialParams.facets ?? {});
 
   // Share and save state
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -160,7 +171,7 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
     setFilterName('');
   }, [filterName, query, filters, savedFilters]);
 
-  const activeFilterCount = countActiveFilters(filters);
+  const activeFilterCount = countTotalFilters(filters);
 
   // Fetch results with faceted search
   const {
@@ -170,13 +181,13 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
     refetch,
   } = useFacetedSearch({
     q: query || undefined,
-    ...filters,
+    facets: Object.keys(filters).length > 0 ? filters : undefined,
     limit: 20,
   });
 
   // Update URL when state changes
   const updateUrl = useCallback(
-    (newQuery: string, newFilters: FacetFilters) => {
+    (newQuery: string, newFilters: DynamicFacetFilters) => {
       const params = filtersToSearchParams(newFilters);
       if (newQuery) {
         params.set('q', newQuery);
@@ -198,7 +209,7 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
 
   // Handle filter changes
   const handleFiltersChange = useCallback(
-    (newFilters: FacetFilters) => {
+    (newFilters: DynamicFacetFilters) => {
       setFilters(newFilters);
       updateUrl(query, newFilters);
     },
@@ -229,7 +240,7 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       {/* Sidebar with facets */}
       <aside className="hidden lg:block">
-        <div className="sticky top-8 space-y-4">
+        <div className="sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto space-y-4 pr-2">
           {/* Saved Filters */}
           {savedFilters.length > 0 && (
             <div className="rounded-lg border bg-card p-4">
@@ -327,12 +338,12 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
         {/* Results */}
         <SearchResults
           query={query || 'all eprints'}
-          data={searchResults}
+          data={searchResults as SearchResultsResponse | undefined}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}
           onClearFilters={() => handleFiltersChange({})}
-          hasFilters={Object.values(filters).some((v) => v && v.length > 0)}
+          hasFilters={Object.keys(filters).length > 0}
         />
 
         {/* Pagination */}

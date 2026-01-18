@@ -10,7 +10,7 @@
  * @public
  */
 
-import { z } from 'zod';
+import { z } from './base.js';
 
 // ============================================================================
 // Common Types
@@ -68,8 +68,13 @@ export const relatedEprintSchema = z.object({
     'semantically-similar',
     'same-author',
     'same-topic',
+    'bibliographic-coupling',
   ]),
   explanation: z.string(),
+  /** Number of shared references (for bibliographic coupling) */
+  sharedReferences: z.number().int().optional(),
+  /** Number of papers that cite both (for co-citation) */
+  sharedCiters: z.number().int().optional(),
 });
 
 export type RelatedEprint = z.infer<typeof relatedEprintSchema>;
@@ -141,9 +146,11 @@ export const getRecommendationsParamsSchema = z.object({
     .describe('Maximum number of recommendations'),
   cursor: z.string().optional().describe('Pagination cursor'),
   signals: z
-    .array(z.enum(['fields', 'citations', 'collaborators', 'trending']))
+    .array(z.enum(['fields', 'citations', 'collaborators', 'trending', 'graph']))
     .optional()
-    .describe('Signal types to include'),
+    .describe(
+      'Signal types to include. "graph" adds co-citation and PageRank-based recommendations'
+    ),
 });
 
 export type GetRecommendationsParams = z.infer<typeof getRecommendationsParamsSchema>;
@@ -176,9 +183,13 @@ export const getSimilarParamsSchema = z.object({
     .default(5)
     .describe('Maximum number of similar papers'),
   includeTypes: z
-    .array(z.enum(['semantic', 'citation', 'topic', 'author']))
+    .array(
+      z.enum(['semantic', 'citation', 'topic', 'author', 'co-citation', 'bibliographic-coupling'])
+    )
     .optional()
-    .describe('Types of relationships to include'),
+    .describe(
+      'Types of relationships to include. "co-citation" and "bibliographic-coupling" use graph analysis'
+    ),
 });
 
 export type GetSimilarParams = z.infer<typeof getSimilarParamsSchema>;

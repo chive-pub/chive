@@ -457,7 +457,7 @@ export class ModerationService {
       }
 
       // Count special roles
-      if (vote.voterRole === 'trusted-editor' || vote.voterRole === 'authority-editor') {
+      if (vote.voterRole === 'trusted-editor' || vote.voterRole === 'graph-editor') {
         trustedEditors++;
       }
 
@@ -585,7 +585,7 @@ export class ModerationService {
     const defaultWeights: Record<UserRole, number> = {
       'community-member': 1.0,
       'trusted-editor': 2.0,
-      'authority-editor': 3.0,
+      'graph-editor': 3.0,
       'domain-expert': 2.5,
       administrator: 5.0,
     };

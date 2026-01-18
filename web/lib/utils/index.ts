@@ -36,26 +36,16 @@ export {
   type ParsedAtUri,
 } from './atproto';
 
-// Facet utilities
+// Annotation serialization utilities
 export {
-  PMEST_FACETS,
-  FAST_FACETS,
-  ALL_FACETS,
-  PMEST_DIMENSIONS,
-  FAST_DIMENSIONS,
-  ALL_DIMENSIONS,
-  isPMESTDimension,
-  isFASTDimension,
-  getFacetConfig,
-  countActiveFilters,
-  hasActiveFilters,
-  filtersToSearchParams,
-  searchParamsToFilters,
-  type PMESTDimension,
-  type FASTDimension,
-  type FacetDimension,
-  type FacetConfig,
-  type FacetValue,
-  type FacetCounts,
-  type FacetFilters,
-} from './facets';
+  serializeToBody,
+  renderBodyToHTML,
+  escapeHTML,
+  createChipHTML,
+  createChipElement,
+  extractPlainText,
+  getTextLength,
+  isWithinMaxLength,
+  hasContent,
+  type ChipData,
+} from './annotation-serializer';

@@ -178,7 +178,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
       const neo4jStart = performance.now();
       // A simple field query that validates Neo4j connectivity
       await Promise.race([
-        services.graph.getField?.('health-check-field').catch(() => undefined),
+        services.graph.getNode?.('health-check-field').catch(() => undefined),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
       ]);
       const neo4jLatency = Math.round(performance.now() - neo4jStart);

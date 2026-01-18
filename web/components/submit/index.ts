@@ -23,7 +23,10 @@ export {
 } from './wizard-progress';
 
 export { StepFiles, type StepFilesProps } from './step-files';
+export { StepSupplementary, type StepSupplementaryProps } from './step-supplementary';
 export { StepMetadata, type StepMetadataProps } from './step-metadata';
 export { StepAuthors, type StepAuthorsProps } from './step-authors';
 export { StepFields, type StepFieldsProps } from './step-fields';
+export { StepFacets, type StepFacetsProps } from './step-facets';
+export { StepPublication, type StepPublicationProps } from './step-publication';
 export { StepReview, type StepReviewProps } from './step-review';

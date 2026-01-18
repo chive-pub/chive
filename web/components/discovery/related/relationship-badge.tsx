@@ -8,6 +8,7 @@ type RelationshipType =
   | 'cites'
   | 'cited-by'
   | 'co-cited'
+  | 'bibliographic-coupling'
   | 'semantically-similar'
   | 'same-author'
   | 'same-topic';
@@ -45,6 +46,12 @@ const relationshipConfig: Record<
     description: 'Frequently cited together with this eprint',
     icon: Link2,
     color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  },
+  'bibliographic-coupling': {
+    label: 'Bib. coupled',
+    description: 'Shares common references',
+    icon: Link2,
+    color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
   },
   'semantically-similar': {
     label: 'Similar',

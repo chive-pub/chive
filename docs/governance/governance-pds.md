@@ -40,38 +40,45 @@ The Governance PDS stores:
 
 ## Record types
 
-### Authority records
+### Graph nodes
+
+Knowledge graph nodes stored in the Governance PDS:
 
 ```typescript
-// Collection: pub.chive.governance.authorityRecord
-interface AuthorityRecordDocument {
-  $type: 'pub.chive.governance.authorityRecord';
+// Collection: pub.chive.graph.node
+interface GraphNodeDocument {
+  $type: 'pub.chive.graph.node';
   id: string;
-  name: string;
-  type: 'field' | 'person' | 'organization' | 'concept';
-  aliases: string[];
+  kind: 'type' | 'object';
+  subkind: string; // 'field', 'facet', 'institution', 'person', 'concept'
+  label: string;
+  alternateLabels: string[];
   description: string;
-  broaderTerms: string[];
-  narrowerTerms: string[];
-  relatedTerms: string[];
-  externalIds: Record<string, string>;
+  externalIds: ExternalId[];
+  status: 'proposed' | 'provisional' | 'established' | 'deprecated';
   createdAt: string;
   updatedAt: string;
 }
+
+interface ExternalId {
+  source: string; // 'wikidata', 'lcsh', 'viaf', 'fast', 'orcid', 'ror'
+  value: string;
+}
 ```
 
-### Facet definitions
+### Graph edges
+
+Relationships between nodes are stored as separate edge records:
 
 ```typescript
-// Collection: pub.chive.governance.facet
-interface FacetDocument {
-  $type: 'pub.chive.governance.facet';
-  id: string;
-  type: 'personality' | 'matter' | 'energy' | 'space' | 'time';
-  name: string;
-  description: string;
-  parentId?: string;
-  externalIds: Record<string, string>;
+// Collection: pub.chive.graph.edge
+interface GraphEdgeDocument {
+  $type: 'pub.chive.graph.edge';
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: 'broader' | 'narrower' | 'related' | 'sameAs';
+  weight: number;
+  status: 'proposed' | 'established' | 'deprecated';
   createdAt: string;
 }
 ```
@@ -168,14 +175,14 @@ Proposal approved → Write to Governance PDS
 
 ### Access control
 
-| Operation               | Who can perform                  |
-| ----------------------- | -------------------------------- |
-| Read records            | Anyone                           |
-| Create authority record | Authority editors                |
-| Update authority record | Authority editors (via proposal) |
-| Create facet            | Administrators                   |
-| Update facet            | Via approved proposal            |
-| Sign records            | Authorized administrators        |
+| Operation    | Who can perform              |
+| ------------ | ---------------------------- |
+| Read records | Anyone                       |
+| Create node  | Graph editors                |
+| Update node  | Graph editors (via proposal) |
+| Create edge  | Graph editors                |
+| Update edge  | Graph editors (via proposal) |
+| Sign records | Authorized administrators    |
 
 ### Audit trail
 

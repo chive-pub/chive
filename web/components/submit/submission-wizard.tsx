@@ -33,9 +33,11 @@ import { StepSupplementary } from './step-supplementary';
 import { StepMetadata } from './step-metadata';
 import { StepAuthors } from './step-authors';
 import { StepFields } from './step-fields';
+import { StepFacets } from './step-facets';
 import { StepPublication } from './step-publication';
 import { StepReview } from './step-review';
 import type { EprintAuthorFormData } from '@/components/forms/eprint-author-editor';
+import type { FacetDimension } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
@@ -86,12 +88,22 @@ export type SupplementaryCategoryValue =
 
 /**
  * Supplementary material input with metadata.
+ *
+ * @remarks
+ * Uses knowledge graph concepts for category. The `category` field stores the
+ * slug (e.g., 'dataset', 'code') for auto-detection and icon display.
+ * The `categoryUri` and `categoryName` store the knowledge graph reference.
  */
 export interface SupplementaryMaterialInput {
   file: File;
   label: string;
   description?: string;
-  category: SupplementaryCategoryValue;
+  /** Category slug for auto-detection and icon display */
+  category: string;
+  /** Knowledge graph concept AT-URI */
+  categoryUri?: string;
+  /** Knowledge graph concept display name */
+  categoryName?: string;
   detectedFormat: string;
   order: number;
 }
@@ -111,51 +123,10 @@ export type PublicationStatusValue =
   | 'published'
   | 'retracted';
 
-/**
- * Code platform values.
- */
-export type CodePlatformValue =
-  | 'github'
-  | 'gitlab'
-  | 'bitbucket'
-  | 'huggingface'
-  | 'paperswithcode'
-  | 'codeberg'
-  | 'sourcehut'
-  | 'software_heritage'
-  | 'colab'
-  | 'kaggle'
-  | 'other';
-
-/**
- * Data platform values.
- */
-export type DataPlatformValue =
-  | 'huggingface'
-  | 'zenodo'
-  | 'figshare'
-  | 'dryad'
-  | 'osf'
-  | 'dataverse'
-  | 'mendeley_data'
-  | 'kaggle'
-  | 'wandb'
-  | 'other';
-
-/**
- * Pre-registration platform values.
- */
-export type PreregistrationPlatformValue =
-  | 'osf'
-  | 'aspredicted'
-  | 'clinicaltrials'
-  | 'prospero'
-  | 'other';
-
-/**
- * Presentation type values.
- */
-export type PresentationTypeValue = 'oral' | 'poster' | 'keynote' | 'workshop' | 'demo' | 'other';
+// Platform and presentation types are now sourced from the knowledge graph
+// via ConceptAutocomplete. URIs (e.g., at://did:plc:governance/pub.chive.graph.concept/uuid)
+// are stored in platformUri/presentationTypeUri fields.
+// Display names are stored in platformName/presentationTypeName fields.
 
 export interface EprintFormValues {
   // Step 1: Files
@@ -181,7 +152,14 @@ export interface EprintFormValues {
     name: string;
   }>;
 
-  // Step 6: Publication Metadata
+  // Step 6: Facets (optional)
+  facets?: Array<{
+    type: FacetDimension;
+    value: string;
+    label?: string;
+  }>;
+
+  // Step 7: Publication Metadata
   publicationStatus?: PublicationStatusValue;
   publishedVersion?: {
     doi?: string;
@@ -199,17 +177,20 @@ export interface EprintFormValues {
   };
   codeRepositories?: Array<{
     url?: string;
-    platform?: CodePlatformValue;
+    platformUri?: string;
+    platformName?: string;
     label?: string;
   }>;
   dataRepositories?: Array<{
     url?: string;
-    platform?: DataPlatformValue;
+    platformUri?: string;
+    platformName?: string;
     label?: string;
   }>;
   preregistration?: {
     url?: string;
-    platform?: PreregistrationPlatformValue;
+    platformUri?: string;
+    platformName?: string;
   };
   funding?: Array<{
     funderName?: string;
@@ -218,7 +199,8 @@ export interface EprintFormValues {
   conferencePresentation?: {
     conferenceName?: string;
     conferenceLocation?: string;
-    presentationType?: PresentationTypeValue;
+    presentationTypeUri?: string;
+    presentationTypeName?: string;
     conferenceUrl?: string;
   };
 }
@@ -283,6 +265,7 @@ const WIZARD_STEPS: WizardStep[] = [
   { id: 'metadata', title: 'Metadata', description: 'Title & abstract' },
   { id: 'authors', title: 'Authors', description: 'Add co-authors' },
   { id: 'fields', title: 'Fields', description: 'Categorize your work' },
+  { id: 'facets', title: 'Facets', description: 'Add classifications' },
   { id: 'publication', title: 'Publication', description: 'Status & links' },
   { id: 'review', title: 'Review', description: 'Confirm & submit' },
 ];
@@ -340,7 +323,9 @@ const supplementaryMaterialSchema = z.object({
   file: z.instanceof(File),
   label: z.string().min(1).max(200),
   description: z.string().max(1000).optional(),
-  category: z.enum(SUPPLEMENTARY_CATEGORY_VALUES),
+  category: z.string().min(1), // Slug for auto-detection and icons
+  categoryUri: z.string().optional(), // Knowledge graph AT-URI
+  categoryName: z.string().optional(), // Display name
   detectedFormat: z.string(),
   order: z.number().int().min(1),
 });
@@ -469,6 +454,18 @@ const stepSchemas = {
       .min(1, 'At least one field is required')
       .max(10),
   }),
+  facets: z.object({
+    facets: z
+      .array(
+        z.object({
+          type: z.string(),
+          value: z.string(),
+          label: z.string().optional(),
+        })
+      )
+      .max(30)
+      .optional(),
+  }),
   publication: z.object({
     publicationStatus: z.string().optional(),
     publishedVersion: z
@@ -493,7 +490,8 @@ const stepSchemas = {
       .array(
         z.object({
           url: z.string().url().optional().or(z.literal('')),
-          platform: z.string().optional(),
+          platformUri: z.string().optional(),
+          platformName: z.string().optional(),
           label: z.string().optional(),
         })
       )
@@ -502,7 +500,8 @@ const stepSchemas = {
       .array(
         z.object({
           url: z.string().url().optional().or(z.literal('')),
-          platform: z.string().optional(),
+          platformUri: z.string().optional(),
+          platformName: z.string().optional(),
           label: z.string().optional(),
         })
       )
@@ -510,7 +509,8 @@ const stepSchemas = {
     preregistration: z
       .object({
         url: z.string().url().optional().or(z.literal('')),
-        platform: z.string().optional(),
+        platformUri: z.string().optional(),
+        platformName: z.string().optional(),
       })
       .optional(),
     funding: z
@@ -525,7 +525,8 @@ const stepSchemas = {
       .object({
         conferenceName: z.string().optional(),
         conferenceLocation: z.string().optional(),
-        presentationType: z.string().optional(),
+        presentationTypeUri: z.string().optional(),
+        presentationTypeName: z.string().optional(),
         conferenceUrl: z.string().url().optional().or(z.literal('')),
       })
       .optional(),
@@ -589,6 +590,7 @@ export function SubmissionWizard({
       license: 'cc-by-4.0',
       authors: prefilledAuthors,
       fieldNodes: [],
+      facets: [],
       supplementaryFiles: [],
       supplementaryMaterials: [],
       publicationStatus: 'eprint',
@@ -707,9 +709,16 @@ export function SubmissionWizard({
         file: m.file,
         label: m.label,
         description: m.description,
-        category: m.category,
+        category: m.category as SupplementaryCategoryValue,
         detectedFormat: m.detectedFormat,
         order: m.order,
+      }));
+
+      // Transform facets for submission
+      const transformedFacets = (values.facets ?? []).map((f) => ({
+        type: f.type,
+        value: f.value,
+        label: f.label,
       }));
 
       // Create the eprint record in the user's PDS
@@ -723,6 +732,7 @@ export function SubmissionWizard({
         license: values.license,
         authors: transformedAuthors,
         fieldNodes: transformedFieldNodes,
+        facets: transformedFacets.length > 0 ? transformedFacets : undefined,
       });
 
       onSuccess?.(result);
@@ -750,8 +760,10 @@ export function SubmissionWizard({
       case 4:
         return <StepFields form={form} />;
       case 5:
-        return <StepPublication form={form} />;
+        return <StepFacets form={form} />;
       case 6:
+        return <StepPublication form={form} />;
+      case 7:
         return <StepReview form={form} isSubmitting={isSubmitting} submitError={submitError} />;
       default:
         return null;

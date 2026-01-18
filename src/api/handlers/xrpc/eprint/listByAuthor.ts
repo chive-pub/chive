@@ -16,6 +16,7 @@
 import type { Context } from 'hono';
 
 import type { DID } from '../../../../types/atproto.js';
+import { extractPlainText } from '../../../../utils/rich-text.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import {
   listByAuthorParamsSchema,
@@ -85,23 +86,24 @@ export async function listByAuthorHandler(
       const recordOwner = p.paperDid ?? p.submittedBy;
       const recordUrl = `${p.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
 
+      const plainAbstract = p.abstractPlainText ?? extractPlainText(p.abstract);
       return {
         uri: p.uri,
         cid: p.cid,
         title: p.title,
-        abstract: p.abstract.substring(0, 500), // Truncate for list view
-        authors: p.authors.map((author) => ({
+        abstract: plainAbstract.substring(0, 500), // Truncate for list view
+        authors: (p.authors ?? []).map((author) => ({
           did: author.did,
           name: author.name,
           orcid: author.orcid,
           email: author.email,
           order: author.order,
-          affiliations: author.affiliations.map((aff) => ({
+          affiliations: (author.affiliations ?? []).map((aff) => ({
             name: aff.name,
             rorId: aff.rorId,
             department: aff.department,
           })),
-          contributions: author.contributions.map((contrib) => ({
+          contributions: (author.contributions ?? []).map((contrib) => ({
             typeUri: contrib.typeUri,
             typeId: contrib.typeId,
             typeLabel: contrib.typeLabel,
@@ -115,7 +117,7 @@ export async function listByAuthorHandler(
         submittedBy: p.submittedBy,
         paperDid: p.paperDid,
         fields: undefined as
-          | { id?: string; uri: string; name: string; parentUri?: string }[]
+          | { id?: string; uri: string; label: string; parentUri?: string }[]
           | undefined,
         license: p.license,
         createdAt: p.createdAt.toISOString(),

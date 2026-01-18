@@ -29,7 +29,7 @@ describe('FieldRelationships', () => {
 
   it('renders section heading', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetName: 'Science' }),
+      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetLabel: 'Science' }),
     ];
     render(<FieldRelationships relationships={relationships} />);
     expect(screen.getByText('Related Fields')).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe('FieldRelationships', () => {
 
   it('shows broader terms group', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetName: 'Science' }),
+      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetLabel: 'Science' }),
     ];
     render(<FieldRelationships relationships={relationships} />);
     expect(screen.getByText('Broader Terms')).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe('FieldRelationships', () => {
       createMockFieldRelationship({
         type: 'narrower',
         targetId: 'ml',
-        targetName: 'Machine Learning',
+        targetLabel: 'Machine Learning',
       }),
     ];
     render(<FieldRelationships relationships={relationships} />);
@@ -59,7 +59,7 @@ describe('FieldRelationships', () => {
 
   it('shows related terms group', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetName: 'Data Science' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetLabel: 'Data Science' }),
     ];
     render(<FieldRelationships relationships={relationships} />);
     expect(screen.getByText('Related Terms')).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe('FieldRelationships', () => {
       createMockFieldRelationship({
         type: 'equivalent',
         targetId: 'cs',
-        targetName: 'Informatics',
+        targetLabel: 'Informatics',
       }),
     ];
     render(<FieldRelationships relationships={relationships} />);
@@ -84,7 +84,7 @@ describe('FieldRelationships', () => {
       createMockFieldRelationship({
         type: 'influences',
         targetId: 'bio',
-        targetName: 'Bioinformatics',
+        targetLabel: 'Bioinformatics',
       }),
     ];
     render(<FieldRelationships relationships={relationships} />);
@@ -94,7 +94,7 @@ describe('FieldRelationships', () => {
 
   it('links to field pages', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetName: 'Science' }),
+      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetLabel: 'Science' }),
     ];
     render(<FieldRelationships relationships={relationships} />);
     const link = screen.getByRole('link');
@@ -106,7 +106,7 @@ describe('FieldRelationships', () => {
       createMockFieldRelationship({
         type: 'related',
         targetId: 'ds',
-        targetName: 'Data Science',
+        targetLabel: 'Data Science',
         strength: 0.85,
       }),
     ];
@@ -116,9 +116,9 @@ describe('FieldRelationships', () => {
 
   it('groups multiple relationships by type', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetName: 'Science' }),
-      createMockFieldRelationship({ type: 'broader', targetId: 'tech', targetName: 'Technology' }),
-      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetName: 'Data Science' }),
+      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetLabel: 'Science' }),
+      createMockFieldRelationship({ type: 'broader', targetId: 'tech', targetLabel: 'Technology' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetLabel: 'Data Science' }),
     ];
     render(<FieldRelationships relationships={relationships} />);
 
@@ -129,7 +129,7 @@ describe('FieldRelationships', () => {
 
   it('applies custom className', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetName: 'Science' }),
+      createMockFieldRelationship({ type: 'broader', targetId: 'science', targetLabel: 'Science' }),
     ];
     const { container } = render(
       <FieldRelationships relationships={relationships} className="custom-rel-class" />
@@ -146,7 +146,7 @@ describe('RelatedFieldBadges', () => {
 
   it('renders badges for relationships', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetName: 'Data Science' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetLabel: 'Data Science' }),
     ];
     render(<RelatedFieldBadges relationships={relationships} />);
     expect(screen.getByText('Data Science')).toBeInTheDocument();
@@ -154,9 +154,9 @@ describe('RelatedFieldBadges', () => {
 
   it('limits visible badges with max prop', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'related', targetId: 'ds1', targetName: 'Field 1' }),
-      createMockFieldRelationship({ type: 'related', targetId: 'ds2', targetName: 'Field 2' }),
-      createMockFieldRelationship({ type: 'related', targetId: 'ds3', targetName: 'Field 3' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds1', targetLabel: 'Field 1' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds2', targetLabel: 'Field 2' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds3', targetLabel: 'Field 3' }),
     ];
     render(<RelatedFieldBadges relationships={relationships} max={2} />);
 
@@ -168,7 +168,7 @@ describe('RelatedFieldBadges', () => {
 
   it('links badges to field pages', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetName: 'Data Science' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetLabel: 'Data Science' }),
     ];
     render(<RelatedFieldBadges relationships={relationships} />);
     const link = screen.getByRole('link');
@@ -177,7 +177,7 @@ describe('RelatedFieldBadges', () => {
 
   it('shows relationship type in title', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'broader', targetId: 'sci', targetName: 'Science' }),
+      createMockFieldRelationship({ type: 'broader', targetId: 'sci', targetLabel: 'Science' }),
     ];
     render(<RelatedFieldBadges relationships={relationships} />);
     const badge = screen.getByText('Science').closest('[title]');
@@ -186,7 +186,7 @@ describe('RelatedFieldBadges', () => {
 
   it('applies custom className', () => {
     const relationships = [
-      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetName: 'Data Science' }),
+      createMockFieldRelationship({ type: 'related', targetId: 'ds', targetLabel: 'Data Science' }),
     ];
     const { container } = render(
       <RelatedFieldBadges relationships={relationships} className="custom-badges-class" />

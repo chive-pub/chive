@@ -4,13 +4,18 @@
   "defs": {
     "affiliation": {
       "type": "object",
-      "description": "Author affiliation with optional ROR ID and department",
+      "description": "Author affiliation with optional institution node reference",
       "required": ["name"],
       "properties": {
         "name": {
           "type": "string",
-          "description": "Organization name",
+          "description": "Organization name (display fallback)",
           "maxLength": 300
+        },
+        "institutionUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI to institution node in knowledge graph (subkind=institution)"
         },
         "rorId": {
           "type": "string",
@@ -26,18 +31,28 @@
     },
     "contribution": {
       "type": "object",
-      "description": "Author contribution with type and degree",
+      "description": "Author contribution with type and degree node references",
       "required": ["typeUri"],
       "properties": {
         "typeUri": {
           "type": "string",
           "format": "at-uri",
-          "description": "AT-URI to contribution type from knowledge graph"
+          "description": "AT-URI to contribution type node (subkind=contribution-type)"
         },
-        "degree": {
+        "typeSlug": {
+          "type": "string",
+          "description": "Contribution type slug for display fallback (e.g., 'conceptualization')",
+          "maxLength": 50
+        },
+        "degreeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI to contribution degree node (subkind=contribution-degree)"
+        },
+        "degreeSlug": {
           "type": "string",
           "knownValues": ["lead", "equal", "supporting"],
-          "description": "Contribution degree modifier",
+          "description": "Contribution degree slug for display fallback",
           "default": "equal"
         }
       }

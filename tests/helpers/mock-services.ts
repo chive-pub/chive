@@ -426,18 +426,55 @@ export function createMockServiceAuthVerifier(
 }
 
 /**
- * Creates a mock contribution type manager.
+ * Creates a mock facet manager.
  */
-export function createMockContributionTypeManager(): ServerConfig['contributionTypeManager'] {
+export function createMockFacetManager(): ServerConfig['facetManager'] {
   return {
-    listContributionTypes: vi.fn().mockResolvedValue([]),
-    getContributionType: vi.fn().mockResolvedValue(null),
-    searchContributionTypes: vi.fn().mockResolvedValue([]),
-    initializeContributionTypes: vi.fn().mockResolvedValue(undefined),
-    createContributionType: vi.fn().mockResolvedValue(undefined),
-    updateContributionType: vi.fn().mockResolvedValue(undefined),
-    deprecateContributionType: vi.fn().mockResolvedValue(undefined),
-  } as unknown as ServerConfig['contributionTypeManager'];
+    initializeDimensions: vi.fn().mockResolvedValue(undefined),
+    getFacetDimensions: vi.fn().mockReturnValue([]),
+    getFacetDimension: vi.fn().mockReturnValue(null),
+    createFacet: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.facet/test'),
+    getFacet: vi.fn().mockResolvedValue(null),
+    getFacetById: vi.fn().mockResolvedValue(null),
+    updateFacet: vi.fn().mockResolvedValue(undefined),
+    searchFacets: vi.fn().mockResolvedValue({ facets: [], total: 0 }),
+    getFacetsForRecord: vi.fn().mockResolvedValue([]),
+    assignFacets: vi.fn().mockResolvedValue(undefined),
+    removeFacets: vi.fn().mockResolvedValue(undefined),
+    getFacetTree: vi.fn().mockResolvedValue(null),
+    getFacetChildren: vi.fn().mockResolvedValue([]),
+    findRecordsByFacets: vi.fn().mockResolvedValue([]),
+    getFacetAggregations: vi.fn().mockResolvedValue([]),
+    getTopFacets: vi.fn().mockResolvedValue([]),
+    getFacetUsageStats: vi.fn().mockResolvedValue([]),
+    batchAssignFacets: vi.fn().mockResolvedValue({ succeeded: 0, failed: 0, errors: [] }),
+  } as unknown as ServerConfig['facetManager'];
+}
+
+/**
+ * Creates a mock node service.
+ */
+export function createMockNodeService(): ServerConfig['nodeService'] {
+  return {
+    getNode: vi.fn().mockResolvedValue(null),
+    searchNodes: vi.fn().mockResolvedValue({ nodes: [], total: 0, hasMore: false }),
+    listNodes: vi.fn().mockResolvedValue({ nodes: [], hasMore: false }),
+    getHierarchy: vi.fn().mockResolvedValue([]),
+    getSubkinds: vi.fn().mockResolvedValue([]),
+    proposeNode: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.nodeProposal/test'),
+  } as unknown as ServerConfig['nodeService'];
+}
+
+/**
+ * Creates a mock edge service.
+ */
+export function createMockEdgeService(): ServerConfig['edgeService'] {
+  return {
+    getEdge: vi.fn().mockResolvedValue(null),
+    listEdges: vi.fn().mockResolvedValue({ edges: [], hasMore: false }),
+    getRelations: vi.fn().mockResolvedValue([]),
+    proposeEdge: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.edgeProposal/test'),
+  } as unknown as ServerConfig['edgeService'];
 }
 
 /**
@@ -451,4 +488,34 @@ export function createMockStorageBackend(): IStorageBackend {
     deleteEprint: vi.fn().mockResolvedValue(undefined),
     getEprintsByAuthor: vi.fn().mockResolvedValue({ eprints: [], total: 0 }),
   } as unknown as IStorageBackend;
+}
+
+/**
+ * Creates a mock node repository.
+ */
+export function createMockNodeRepository(): ServerConfig['nodeRepository'] {
+  return {
+    getNode: vi.fn().mockResolvedValue(null),
+    listNodes: vi.fn().mockResolvedValue({ nodes: [], hasMore: false }),
+    searchNodes: vi.fn().mockResolvedValue({ nodes: [], total: 0, hasMore: false }),
+    createNode: vi.fn().mockResolvedValue('test-node-id'),
+    updateNode: vi.fn().mockResolvedValue(undefined),
+    deleteNode: vi.fn().mockResolvedValue(undefined),
+    getSubkinds: vi.fn().mockResolvedValue([]),
+    getHierarchy: vi.fn().mockResolvedValue([]),
+  } as unknown as ServerConfig['nodeRepository'];
+}
+
+/**
+ * Creates a mock edge repository.
+ */
+export function createMockEdgeRepository(): ServerConfig['edgeRepository'] {
+  return {
+    getEdge: vi.fn().mockResolvedValue(null),
+    listEdges: vi.fn().mockResolvedValue({ edges: [], hasMore: false }),
+    createEdge: vi.fn().mockResolvedValue('test-edge-id'),
+    updateEdge: vi.fn().mockResolvedValue(undefined),
+    deleteEdge: vi.fn().mockResolvedValue(undefined),
+    getRelations: vi.fn().mockResolvedValue([]),
+  } as unknown as ServerConfig['edgeRepository'];
 }

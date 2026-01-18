@@ -18,11 +18,9 @@ export type {
 } from '@/api/schemas/eprint.js';
 
 export type {
-  FieldNode,
-  FieldDetail,
-  FieldListResponse,
-  AuthorityRecord,
-  AuthoritySearchResponse,
+  GraphNodeResponse,
+  NodeListResponse,
+  NodeSearchResponse,
   FacetedBrowseResponse,
 } from '@/api/schemas/graph.js';
 

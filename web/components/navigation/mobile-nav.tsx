@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { mainNavItems } from './nav-config';
+import { mainNavItems, isNavGroup } from './nav-config';
 
 interface MobileNavProps {
   className?: string;
@@ -56,57 +56,76 @@ export function MobileNav({ className }: MobileNavProps) {
             </Link>
 
             <nav className="mt-6 flex flex-col space-y-1">
-              {mainNavItems.map((group) => {
-                const isExpanded = expandedSections.includes(group.label);
+              {mainNavItems.map((entry) => {
+                if (isNavGroup(entry)) {
+                  const isExpanded = expandedSections.includes(entry.label);
 
-                return (
-                  <Collapsible
-                    key={group.label}
-                    open={isExpanded}
-                    onOpenChange={() => toggleSection(group.label)}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <button className="flex w-full items-center justify-between rounded-md p-3 text-lg font-medium hover:bg-accent">
-                        {group.label}
-                        <ChevronDown
-                          className={cn(
-                            'h-5 w-5 transition-transform duration-200',
-                            isExpanded && 'rotate-180'
-                          )}
-                        />
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                      <div className="flex flex-col space-y-1 px-3 py-2">
-                        {group.children.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = pathname?.startsWith(item.href);
+                  return (
+                    <Collapsible
+                      key={entry.label}
+                      open={isExpanded}
+                      onOpenChange={() => toggleSection(entry.label)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <button className="flex w-full items-center justify-between rounded-md p-3 text-lg font-medium hover:bg-accent">
+                          {entry.label}
+                          <ChevronDown
+                            className={cn(
+                              'h-5 w-5 transition-transform duration-200',
+                              isExpanded && 'rotate-180'
+                            )}
+                          />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                        <div className="flex flex-col space-y-1 px-3 py-2">
+                          {entry.children.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = pathname?.startsWith(item.href);
 
-                          return (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              onClick={() => setOpen(false)}
-                              className={cn(
-                                'flex items-center gap-3 rounded-md p-3 transition-colors hover:bg-accent',
-                                isActive ? 'bg-accent/50 text-foreground' : 'text-muted-foreground'
-                              )}
-                            >
-                              {Icon && <Icon className="h-5 w-5" />}
-                              <div className="flex flex-col">
-                                <span className="font-medium">{item.label}</span>
-                                {item.description && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {item.description}
-                                  </span>
+                            return (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setOpen(false)}
+                                className={cn(
+                                  'flex items-center gap-3 rounded-md p-3 transition-colors hover:bg-accent',
+                                  isActive
+                                    ? 'bg-accent/50 text-foreground'
+                                    : 'text-muted-foreground'
                                 )}
-                              </div>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                              >
+                                {Icon && <Icon className="h-5 w-5" />}
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{item.label}</span>
+                                  {item.description && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {item.description}
+                                    </span>
+                                  )}
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                }
+
+                const isActive = pathname?.startsWith(entry.href);
+                return (
+                  <Link
+                    key={entry.label}
+                    href={entry.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      'rounded-md p-3 text-lg font-medium hover:bg-accent',
+                      isActive && 'bg-accent/50'
+                    )}
+                  >
+                    {entry.label}
+                  </Link>
                 );
               })}
             </nav>

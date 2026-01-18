@@ -41,8 +41,6 @@ export {
   mockEndorsementSummaryResponse,
   mockSearchResponse,
   mockFacetedSearchResponse,
-  mockFieldResponse,
-  mockFieldListResponse,
   mockTagListResponse,
   mockTrendingTagsResponse,
   mockDiscoveryForYouResponse,

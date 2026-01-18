@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Vote, FileText, CheckCircle, Clock, Shield } from 'lucide-react';
+import { Vote, FileText, CheckCircle, Clock, Shield, Settings } from 'lucide-react';
 
 import { AlphaGate } from '@/components/alpha';
 import { AuthGuard } from '@/components/auth/auth-guard';
@@ -23,6 +23,7 @@ const navItems = [
   { href: '/governance/proposals?status=pending', label: 'Pending', icon: Clock },
   { href: '/governance/proposals?status=approved', label: 'Approved', icon: CheckCircle },
   { href: '/governance/moderation', label: 'Moderation', icon: Shield },
+  { href: '/governance/admin', label: 'Administration', icon: Settings },
 ];
 
 /**

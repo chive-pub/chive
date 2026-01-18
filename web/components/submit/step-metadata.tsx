@@ -5,17 +5,16 @@
  *
  * @remarks
  * Step 2 of the submission wizard. Handles:
- * - Title and abstract
+ * - Title and abstract (with rich text support)
  * - Keywords
  * - License selection
  *
  * @packageDocumentation
  */
 
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, Controller } from 'react-hook-form';
 
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -32,6 +31,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
+import { AnnotationEditor } from '@/components/annotations';
+import { extractPlainText } from '@/lib/utils/annotation-serializer';
+import type { RichAnnotationBody } from '@/lib/api/schema';
 import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
@@ -89,6 +91,15 @@ const LICENSE_OPTIONS = [
   },
 ] as const;
 
+/**
+ * Empty rich text body for form default.
+ */
+const EMPTY_RICH_TEXT: RichAnnotationBody = {
+  type: 'RichText',
+  items: [],
+  format: 'application/x-chive-gloss+json',
+};
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -100,7 +111,8 @@ const LICENSE_OPTIONS = [
  * @returns Metadata step element
  */
 export function StepMetadata({ form, className }: StepMetadataProps) {
-  const abstract = form.watch('abstract') ?? '';
+  const abstract = form.watch('abstract');
+  const abstractPlainText = typeof abstract === 'string' ? abstract : extractPlainText(abstract);
   const keywords = form.watch('keywords') ?? [];
 
   return (
@@ -123,23 +135,43 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
         )}
       />
 
-      {/* Abstract */}
-      <FormField
+      {/* Abstract with Rich Text */}
+      <Controller
         control={form.control}
         name="abstract"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Abstract *</FormLabel>
-            <FormControl>
-              <Textarea
-                {...field}
-                placeholder="Enter your abstract..."
-                rows={8}
-                maxLength={10000}
-              />
-            </FormControl>
-            <FormDescription>{abstract.length}/10,000 characters (minimum 50)</FormDescription>
-            <FormMessage />
+            <AnnotationEditor
+              value={
+                typeof field.value === 'string'
+                  ? field.value
+                    ? {
+                        type: 'RichText',
+                        items: [{ type: 'text', content: field.value }],
+                        format: 'application/x-chive-gloss+json',
+                      }
+                    : EMPTY_RICH_TEXT
+                  : (field.value ?? EMPTY_RICH_TEXT)
+              }
+              onChange={(body) => {
+                // Store rich text body directly (type will be updated in schema)
+                // For backward compatibility, extract plain text if schema expects string
+                const plainText = extractPlainText(body);
+                field.onChange(plainText);
+              }}
+              placeholder="Enter your abstract. Use @ for institutions/people, # for fields/topics..."
+              maxLength={10000}
+              minHeight="10rem"
+              enabledTriggers={['@', '#']}
+            />
+            <FormDescription>
+              {abstractPlainText.length}/10,000 characters (minimum 50). Use @ to reference
+              institutions and people, # to reference fields and topics.
+            </FormDescription>
+            {fieldState.error && (
+              <p className="text-sm text-destructive">{fieldState.error.message}</p>
+            )}
           </FormItem>
         )}
       />
@@ -219,6 +251,10 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
         <ul className="text-sm text-muted-foreground space-y-1 list-inside list-disc">
           <li>Use a descriptive title that summarizes your main finding</li>
           <li>Abstract should cover: background, methods, results, conclusions</li>
+          <li>
+            Use @ to reference institutions (e.g., @MIT) and # to reference fields (e.g.,
+            #machine-learning)
+          </li>
           <li>Choose keywords that researchers would use to find your work</li>
           <li>CC BY 4.0 is the most common license for academic eprints</li>
         </ul>

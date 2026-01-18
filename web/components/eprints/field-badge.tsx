@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { FieldRef } from '@/lib/api/schema';
 
+export type { FieldRef };
+
 /**
  * Props for the FieldBadge component.
  */
@@ -20,21 +22,6 @@ export interface FieldBadgeProps {
 
 /**
  * Displays a field as a badge with optional link to field page.
- *
- * @remarks
- * Server component that renders a field name as a styled badge.
- * When clickable, links to the field's browse page.
- *
- * @example
- * ```tsx
- * <FieldBadge
- *   field={{ uri: 'at://did:plc:chive/pub.chive.graph.field/cs', name: 'Computer Science' }}
- *   clickable
- * />
- * ```
- *
- * @param props - Component props
- * @returns React element displaying the field badge
  */
 export function FieldBadge({
   field,
@@ -47,7 +34,7 @@ export function FieldBadge({
       variant={variant}
       className={cn(clickable && 'cursor-pointer hover:bg-secondary/60', className)}
     >
-      {field.name}
+      {field.label}
     </Badge>
   );
 
@@ -81,17 +68,6 @@ export interface FieldBadgeListProps {
 
 /**
  * Displays a list of field badges with optional truncation.
- *
- * @example
- * ```tsx
- * <FieldBadgeList
- *   fields={eprint.fields}
- *   max={3}
- * />
- * ```
- *
- * @param props - Component props
- * @returns React element displaying the field badge list
  */
 export function FieldBadgeList({
   fields,
@@ -110,7 +86,12 @@ export function FieldBadgeList({
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
       {visibleFields.map((field) => (
-        <FieldBadge key={field.uri} field={field} variant={variant} clickable={clickable} />
+        <FieldBadge
+          key={field.uri ?? field.id}
+          field={field}
+          variant={variant}
+          clickable={clickable}
+        />
       ))}
       {hiddenCount > 0 && (
         <Badge variant="outline" className="text-muted-foreground">

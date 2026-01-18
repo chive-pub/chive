@@ -51,9 +51,9 @@ export async function getTrendingHandler(
   const tags: TrendingTagsResponse['tags'] = trendingTags.map((tag) => ({
     normalizedForm: tag.normalizedForm,
     displayForms: [tag.rawForm],
-    usageCount: tag.usageCount,
-    qualityScore: tag.qualityScore,
-    isPromoted: false, // Tags aren't promoted by default
+    usageCount: tag.usageCount ?? 0,
+    qualityScore: tag.qualityScore ?? 0,
+    isPromoted: false,
     promotedTo: undefined,
   }));
 

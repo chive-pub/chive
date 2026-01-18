@@ -784,25 +784,27 @@ await service.sendBatch([
 
 ## KnowledgeGraphService
 
-Manages the field taxonomy and governance proposals.
+Manages the knowledge graph nodes, edges, and governance proposals.
 
-### Field operations
+### Node operations
 
 ```typescript
 import { KnowledgeGraphService } from '@/services/knowledge-graph/knowledge-graph-service.js';
 
 const service = new KnowledgeGraphService(neo4j, storage, logger);
 
-// Get field by ID
-const field = await service.getField('cs.AI');
+// Get node by ID
+const node = await service.getNode('cs.AI');
 
-// Get field hierarchy
-const children = await service.getFieldChildren('cs');
-const parent = await service.getFieldParent('cs.AI');
-const related = await service.getRelatedFields('cs.AI');
+// Get node hierarchy via edges
+const children = await service.getNodeChildren('cs');
+const parents = await service.getNodeParents('cs.AI');
+const related = await service.getRelatedNodes('cs.AI');
 
-// Search fields
-const matches = await service.searchFields('artificial intelligence');
+// Search nodes
+const matches = await service.searchNodes('artificial intelligence', {
+  subkind: 'field',
+});
 
 // Get eprints in field
 const eprints = await service.getFieldEprints('cs.AI', {
@@ -814,27 +816,41 @@ const eprints = await service.getFieldEprints('cs.AI', {
 ### Proposal operations
 
 ```typescript
-// Create field proposal
-const proposal = await service.createProposal({
-  type: 'create',
-  title: 'Add Quantum Machine Learning field',
-  description: 'Proposed new subfield under cs.AI',
-  changes: {
-    fieldId: 'cs.QML',
-    name: 'Quantum Machine Learning',
-    parent: 'cs.AI',
+// Create node proposal
+const nodeProposal = await service.createNodeProposal({
+  proposalType: 'create',
+  kind: 'object',
+  subkind: 'field',
+  proposedNode: {
+    id: 'cs.QML',
+    label: 'Quantum Machine Learning',
+    alternateLabels: ['QML'],
+    description: 'Algorithms combining quantum computing with ML',
   },
+  rationale: 'Emerging interdisciplinary field',
+  proposerDid: userDid,
+});
+
+// Create edge proposal for parent relationship
+const edgeProposal = await service.createEdgeProposal({
+  proposalType: 'create',
+  proposedEdge: {
+    sourceUri: nodeProposal.uri,
+    targetUri: 'at://did:plc:chive-governance/pub.chive.graph.node/cs.AI',
+    relationSlug: 'broader',
+  },
+  rationale: 'QML is a subfield of AI',
   proposerDid: userDid,
 });
 
 // Vote on proposal
-await service.vote(proposal.id, userDid, {
+await service.vote(nodeProposal.id, userDid, {
   vote: 'approve',
   weight: 1.0, // Based on user tier
 });
 
 // Get proposal status
-const status = await service.getProposalStatus(proposal.id);
+const status = await service.getProposalStatus(nodeProposal.id);
 console.log(`Approval: ${status.approvalPercentage}%`);
 ```
 

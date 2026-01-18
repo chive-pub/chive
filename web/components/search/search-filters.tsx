@@ -137,7 +137,7 @@ export function SearchFiltersPanel({
                 <option value="">All fields</option>
                 {availableFields.map((field) => (
                   <option key={field.uri} value={field.uri}>
-                    {field.name}
+                    {field.label}
                   </option>
                 ))}
               </select>

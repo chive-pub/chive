@@ -7,8 +7,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { BatchOperations } from '@/storage/postgresql/batch-operations.js';
 import type { StoredEprint } from '@/types/interfaces/storage.interface.js';
+import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
 import { isOk, isErr } from '@/types/result.js';
+
+/** Creates a mock rich text abstract from plain text. */
+function createMockAbstract(text: string): AnnotationBody {
+  return {
+    type: 'RichText',
+    items: [{ type: 'text', content: text }],
+    format: 'application/x-chive-gloss+json',
+  };
+}
 
 const mockAuthor: EprintAuthor = {
   did: 'did:plc:abc123' as never,
@@ -27,7 +37,8 @@ function createMockEprint(uri: string): StoredEprint {
     authors: [mockAuthor],
     submittedBy: 'did:plc:abc123' as never,
     title: `Eprint ${uri}`,
-    abstract: 'Abstract text',
+    abstract: createMockAbstract('Abstract text'),
+    abstractPlainText: 'Abstract text',
     documentBlobRef: {
       $type: 'blob',
       ref: 'bafyreib2rxk3rybk3aobmv5dgudb4vls5sj3bkxfq7c42wgk6b6a7q' as never,

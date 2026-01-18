@@ -2,8 +2,8 @@
  * XRPC handler for pub.chive.graph.browseFaceted.
  *
  * @remarks
- * Browse eprints using PMEST (Personality, Matter, Energy, Space, Time)
- * faceted classification. Supports dynamic refinement based on selected facets.
+ * Browse eprints using dynamic faceted classification. Facets are fetched
+ * from the knowledge graph (subkind='facet') rather than being hardcoded.
  *
  * @packageDocumentation
  * @public
@@ -16,6 +16,7 @@ import {
   facetedBrowseResponseSchema,
   type BrowseFacetedParams,
   type FacetedBrowseResponse,
+  type FacetDefinition,
 } from '../../../schemas/graph.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
@@ -28,24 +29,20 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  * @returns Matching eprints with available facet refinements
  *
  * @remarks
- * PMEST Facets:
- * - Personality: Discipline/subject (e.g., "physics", "biology")
- * - Matter: Material/substance (e.g., "graphene", "protein")
- * - Energy: Process/action (e.g., "synthesis", "analysis")
- * - Space: Location/geography (e.g., "arctic", "laboratory")
- * - Time: Time period/era (e.g., "2020s", "prehistoric")
+ * Facets are fetched dynamically from the knowledge graph where subkind='facet'.
+ * This allows users to propose new facets through governance.
  *
  * @example
  * ```http
- * GET /xrpc/pub.chive.graph.browseFaceted?personality=physics&energy=simulation
+ * GET /xrpc/pub.chive.graph.browseFaceted?facets={"methodology":["meta-analysis"]}
  *
  * Response:
  * {
- *   "eprints": [...],
- *   "facets": {
- *     "matter": [{ "value": "graphene", "count": 15 }, ...],
- *     "space": [{ "value": "laboratory", "count": 42 }, ...]
- *   },
+ *   "hits": [...],
+ *   "facets": [
+ *     { "slug": "methodology", "label": "Research Methodology", "values": [...] },
+ *     { "slug": "time-period", "label": "Time Period", "values": [...] }
+ *   ],
  *   "total": 150
  * }
  * ```
@@ -56,31 +53,97 @@ export async function browseFacetedHandler(
   c: Context<ChiveEnv>,
   params: BrowseFacetedParams
 ): Promise<FacetedBrowseResponse> {
-  const { graph } = c.get('services');
+  const { graph, nodeService, edgeService } = c.get('services');
   const logger = c.get('logger');
 
-  const facets = {
-    personality: params.personality,
-    matter: params.matter,
-    energy: params.energy,
-    space: params.space,
-    time: params.time,
-  };
-
   logger.debug('Browsing faceted', {
-    facets,
+    q: params.q,
+    facets: params.facets,
     limit: params.limit,
   });
 
   // Call graph service with faceted browse query
   const results = await graph.browseFaceted({
-    facets,
+    q: params.q,
+    facets: params.facets ?? {},
     limit: params.limit ?? 20,
     cursor: params.cursor,
   });
 
+  // Fetch all facet definitions from the graph (subkind='facet')
+  const facetNodes = await nodeService.listNodes({
+    subkind: 'facet',
+    status: 'established',
+    limit: 100,
+  });
+
+  // Build facet definitions with values from the knowledge graph
+  // Facet values are linked via 'has-value' edges from facet to value nodes
+  const facetDefinitions: FacetDefinition[] = [];
+
+  for (const facetNode of facetNodes.nodes) {
+    // Use slug from node if available, otherwise generate from label
+    const slug =
+      facetNode.slug ??
+      facetNode.label
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+
+    // Fetch value nodes connected to this facet via 'has-value' edges
+    const valueEdges = await edgeService.listEdges({
+      sourceUri: facetNode.uri,
+      relationSlug: 'has-value',
+      status: 'established',
+      limit: 100,
+    });
+
+    // Get counts from aggregation results (if available)
+    const aggregationCounts = results.availableFacets[slug] ?? [];
+    const countMap = new Map(aggregationCounts.map((v) => [v.value, v.count]));
+
+    // Fetch target nodes for each edge to get value labels (deduplicated)
+    const values: { value: string; label?: string; count: number }[] = [];
+    const seenSlugs = new Set<string>();
+
+    for (const edge of valueEdges.edges) {
+      // Get the target node (the value node)
+      const valueNode = await nodeService.getNode(edge.targetUri);
+      if (valueNode) {
+        // Use slug from node if available, otherwise generate from label
+        const valueSlug =
+          valueNode.slug ??
+          valueNode.label
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '');
+
+        // Skip duplicates
+        if (seenSlugs.has(valueSlug)) {
+          continue;
+        }
+        seenSlugs.add(valueSlug);
+
+        values.push({
+          value: valueSlug,
+          label: valueNode.label,
+          count: countMap.get(valueSlug) ?? 0,
+        });
+      }
+    }
+
+    // Sort by count (descending) for better UX
+    values.sort((a, b) => b.count - a.count);
+
+    facetDefinitions.push({
+      slug,
+      label: facetNode.label,
+      description: facetNode.description,
+      values,
+    });
+  }
+
   // Map service response to API response format
-  // Uses `hits` to match frontend SearchResultsResponse interface
   const response: FacetedBrowseResponse = {
     hits: results.eprints.map((p) => ({
       uri: p.uri as string,
@@ -98,11 +161,11 @@ export async function browseFacetedHandler(
           rorId: af.rorId,
           department: af.department,
         })),
-        contributions: a.contributions.map((c) => ({
-          typeUri: c.typeUri,
-          typeId: c.typeId,
-          typeLabel: c.typeLabel,
-          degree: c.degree,
+        contributions: a.contributions.map((contrib) => ({
+          typeUri: contrib.typeUri,
+          typeId: contrib.typeId,
+          typeLabel: contrib.typeLabel,
+          degree: contrib.degree,
         })),
         isCorrespondingAuthor: a.isCorrespondingAuthor,
         isHighlighted: a.isHighlighted,
@@ -113,7 +176,7 @@ export async function browseFacetedHandler(
       paperDid: p.paperDid,
       fields: p.fields?.map((f) => ({
         uri: f.uri,
-        name: f.name,
+        label: f.label,
         id: f.id,
         parentUri: f.parentUri,
       })),
@@ -130,40 +193,16 @@ export async function browseFacetedHandler(
       },
       score: p.score,
     })),
-    facets: {
-      personality: results.availableFacets.personality?.map((f) => ({
-        value: f.value,
-        label: f.label,
-        count: f.count,
-      })),
-      matter: results.availableFacets.matter?.map((f) => ({
-        value: f.value,
-        label: f.label,
-        count: f.count,
-      })),
-      energy: results.availableFacets.energy?.map((f) => ({
-        value: f.value,
-        label: f.label,
-        count: f.count,
-      })),
-      space: results.availableFacets.space?.map((f) => ({
-        value: f.value,
-        label: f.label,
-        count: f.count,
-      })),
-      time: results.availableFacets.time?.map((f) => ({
-        value: f.value,
-        label: f.label,
-        count: f.count,
-      })),
-    },
+    facets: facetDefinitions,
     cursor: results.cursor,
     hasMore: results.hasMore,
     total: results.total,
   };
 
   logger.info('Faceted browse completed', {
-    facets,
+    q: params.q,
+    facetFilters: params.facets,
+    facetCount: facetDefinitions.length,
     total: results.total,
     returned: response.hits.length,
   });
@@ -179,7 +218,7 @@ export async function browseFacetedHandler(
 export const browseFacetedEndpoint: XRPCEndpoint<BrowseFacetedParams, FacetedBrowseResponse> = {
   method: 'pub.chive.graph.browseFaceted' as never,
   type: 'query',
-  description: 'Browse eprints using PMEST faceted classification',
+  description: 'Browse eprints using dynamic faceted classification from the knowledge graph',
   inputSchema: browseFacetedParamsSchema,
   outputSchema: facetedBrowseResponseSchema,
   handler: browseFacetedHandler,

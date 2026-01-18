@@ -2,37 +2,96 @@ import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
-import type { FacetedSearchResponse } from '@/lib/api/schema';
-import type { FacetFilters } from '@/lib/utils/facets';
+
+/**
+ * Facet value with count.
+ */
+export interface FacetValue {
+  value: string;
+  label?: string;
+  count: number;
+}
+
+/**
+ * Facet definition from the knowledge graph.
+ */
+export interface FacetDefinition {
+  slug: string;
+  label: string;
+  description?: string;
+  values: FacetValue[];
+}
+
+/**
+ * Dynamic facet filters keyed by facet slug.
+ */
+export type DynamicFacetFilters = Record<string, string[]>;
+
+/**
+ * Faceted search response with dynamic facets.
+ */
+export interface FacetedSearchResponse {
+  hits: Array<{
+    uri: string;
+    cid: string;
+    title: string;
+    abstract: string;
+    authors: Array<{
+      did: string;
+      name: string;
+      orcid?: string;
+      email?: string;
+      order: number;
+      affiliations: Array<{ name: string; rorId?: string; department?: string }>;
+      contributions: Array<{
+        typeUri?: string;
+        typeId?: string;
+        typeLabel?: string;
+        degree?: string;
+      }>;
+      isCorrespondingAuthor?: boolean;
+      isHighlighted?: boolean;
+      handle?: string;
+      avatarUrl?: string;
+    }>;
+    submittedBy: string;
+    paperDid?: string;
+    fields?: Array<{ uri: string; name: string; id?: string; parentUri?: string }>;
+    license: string;
+    keywords?: string[];
+    createdAt: string;
+    indexedAt: string;
+    source: {
+      pdsEndpoint: string;
+      recordUrl: string;
+      blobUrl?: string;
+      lastVerifiedAt?: string;
+      stale: boolean;
+    };
+    score?: number;
+    highlights?: Record<string, string[]>;
+  }>;
+  facets: FacetDefinition[];
+  cursor?: string;
+  hasMore: boolean;
+  total: number;
+  impressionId?: string;
+}
 
 /**
  * Query key factory for faceted search queries.
- *
- * @remarks
- * Follows TanStack Query best practices for cache key management.
- * Keys include all facet parameters to ensure proper cache separation.
- *
- * @example
- * ```typescript
- * // Invalidate all faceted search queries
- * queryClient.invalidateQueries({ queryKey: facetedSearchKeys.all });
- *
- * // Invalidate specific search
- * queryClient.invalidateQueries({ queryKey: facetedSearchKeys.search({ matter: ['physics'] }) });
- * ```
  */
 export const facetedSearchKeys = {
-  /** Base key for all faceted search queries */
   all: ['faceted-search'] as const,
-  /** Key for specific faceted search with params */
-  search: (params: FacetFilters) => [...facetedSearchKeys.all, params] as const,
-  /** Key for facet counts only */
-  counts: (params: FacetFilters) => [...facetedSearchKeys.all, 'counts', params] as const,
+  search: (params: UseFacetedSearchParams) => [...facetedSearchKeys.all, params] as const,
+  counts: (filters: DynamicFacetFilters) => [...facetedSearchKeys.all, 'counts', filters] as const,
 };
 
-interface UseFacetedSearchParams extends FacetFilters {
+interface UseFacetedSearchParams {
   /** Text query (optional) */
   q?: string;
+  /** Facet filters keyed by slug */
+  facets?: DynamicFacetFilters;
   /** Number of results to return */
   limit?: number;
   /** Pagination cursor */
@@ -40,21 +99,16 @@ interface UseFacetedSearchParams extends FacetFilters {
 }
 
 /**
- * Performs a 10-dimensional faceted search across PMEST and FAST dimensions.
+ * Performs faceted search with dynamic facets from the knowledge graph.
  *
  * @remarks
- * Uses TanStack Query with a 30-second stale time.
- * Returns both results and facet counts for refinement.
- *
- * The 10 dimensions are:
- * - PMEST: Personality, Matter, Energy, Space, Time
- * - FAST: Person, Organization, Event, Work, Form-Genre
+ * Facets are fetched dynamically from nodes with subkind='facet'.
+ * Users can propose new facets through governance.
  *
  * @example
  * ```tsx
  * const { data, isLoading } = useFacetedSearch({
- *   matter: ['computer-science'],
- *   energy: ['classification'],
+ *   facets: { methodology: ['meta-analysis'], 'time-period': ['21st-century'] },
  *   limit: 20,
  * });
  *
@@ -63,29 +117,22 @@ interface UseFacetedSearchParams extends FacetFilters {
  *   console.log('Available facets:', data.facets);
  * }
  * ```
- *
- * @param params - Search parameters including facet filters
- * @returns Query result with search results and facet counts
  */
 export function useFacetedSearch(params: UseFacetedSearchParams) {
-  const hasFilters =
-    !!params.q ||
-    (params.personality && params.personality.length > 0) ||
-    (params.matter && params.matter.length > 0) ||
-    (params.energy && params.energy.length > 0) ||
-    (params.space && params.space.length > 0) ||
-    (params.time && params.time.length > 0) ||
-    (params.person && params.person.length > 0) ||
-    (params.organization && params.organization.length > 0) ||
-    (params.event && params.event.length > 0) ||
-    (params.work && params.work.length > 0) ||
-    (params.formGenre && params.formGenre.length > 0);
+  const hasFilters = !!params.q || (params.facets && Object.keys(params.facets).length > 0);
 
   return useQuery({
     queryKey: facetedSearchKeys.search(params),
     queryFn: async (): Promise<FacetedSearchResponse> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.graph.browseFaceted', {
-        params: { query: { ...params, limit: params.limit ?? 20 } },
+        params: {
+          query: {
+            q: params.q,
+            facets: params.facets ? params.facets : undefined,
+            limit: params.limit ?? 20,
+            cursor: params.cursor,
+          },
+        },
       });
       if (error) {
         throw new APIError(
@@ -94,7 +141,7 @@ export function useFacetedSearch(params: UseFacetedSearchParams) {
           '/xrpc/pub.chive.graph.browseFaceted'
         );
       }
-      return data!;
+      return data as FacetedSearchResponse;
     },
     enabled: hasFilters || params.limit !== undefined,
     staleTime: 30 * 1000, // 30 seconds
@@ -105,31 +152,19 @@ export function useFacetedSearch(params: UseFacetedSearchParams) {
 /**
  * Fetches only facet counts without eprint results.
  *
- * @remarks
- * Useful for displaying available filters before a search is performed.
- * Uses a longer stale time since facet counts change slowly.
- *
  * @example
  * ```tsx
- * const { data } = useFacetCounts({ matter: ['physics'] });
- *
- * // Display available refinements
- * data?.facets.energy?.forEach(facet => {
- *   console.log(`${facet.label}: ${facet.count}`);
- * });
+ * const { data } = useFacetCounts({ methodology: ['meta-analysis'] });
  * ```
- *
- * @param currentFilters - Currently selected facet filters
- * @returns Query result with facet counts
  */
-export function useFacetCounts(currentFilters: FacetFilters = {}) {
+export function useFacetCounts(currentFilters: DynamicFacetFilters = {}) {
   return useQuery({
     queryKey: facetedSearchKeys.counts(currentFilters),
-    queryFn: async (): Promise<FacetedSearchResponse['facets']> => {
+    queryFn: async (): Promise<FacetDefinition[]> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.graph.browseFaceted', {
         params: {
           query: {
-            ...currentFilters,
+            facets: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
             limit: 0, // Don't return results, just facets
           },
         },
@@ -141,38 +176,31 @@ export function useFacetCounts(currentFilters: FacetFilters = {}) {
           '/xrpc/pub.chive.graph.browseFaceted'
         );
       }
-      return data!.facets;
+      return (data as FacetedSearchResponse).facets;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes; facet counts change slowly.
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
 /**
  * Hook for debounced faceted search (useful for live filtering).
- *
- * @remarks
- * Uses a shorter stale time for more responsive results.
- * Automatically enabled when any filter is set.
- *
- * @example
- * ```tsx
- * const debouncedFilters = useDebounce(filters, 300);
- * const { data } = useLiveFacetedSearch(debouncedFilters);
- * ```
- *
- * @param params - Search parameters
- * @returns Query result with search results
  */
 export function useLiveFacetedSearch(params: UseFacetedSearchParams) {
-  const hasFilters = Object.values(params).some(
-    (v) => v !== undefined && (Array.isArray(v) ? v.length > 0 : !!v)
-  );
+  const hasFilters =
+    !!params.q || (params.facets && Object.values(params.facets).some((v) => v && v.length > 0));
 
   return useQuery({
     queryKey: ['live-faceted-search', params],
     queryFn: async (): Promise<FacetedSearchResponse> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.graph.browseFaceted', {
-        params: { query: { ...params, limit: params.limit ?? 20 } },
+        params: {
+          query: {
+            q: params.q,
+            facets: params.facets ? params.facets : undefined,
+            limit: params.limit ?? 20,
+            cursor: params.cursor,
+          },
+        },
       });
       if (error) {
         throw new APIError(
@@ -181,124 +209,97 @@ export function useLiveFacetedSearch(params: UseFacetedSearchParams) {
           '/xrpc/pub.chive.graph.browseFaceted'
         );
       }
-      return data!;
+      return data as FacetedSearchResponse;
     },
     enabled: hasFilters,
-    staleTime: 10 * 1000, // 10 seconds for live search
+    staleTime: 10 * 1000, // 10 seconds
   });
 }
 
 /**
- * Counts total active filters across all dimensions.
- *
- * @param filters - The facet filters
- * @returns Total count of active filter values
+ * Counts total active filters across all facets.
  */
-export function countTotalFilters(filters: FacetFilters): number {
+export function countTotalFilters(filters: DynamicFacetFilters): number {
   return Object.values(filters).reduce((count, values) => count + (values?.length ?? 0), 0);
 }
 
 /**
  * Checks if a specific facet value is selected.
- *
- * @param filters - The current facet filters
- * @param dimension - The facet dimension
- * @param value - The facet value to check
- * @returns True if the value is selected
  */
 export function isFacetSelected(
-  filters: FacetFilters,
-  dimension: keyof FacetFilters,
+  filters: DynamicFacetFilters,
+  facetSlug: string,
   value: string
 ): boolean {
-  return filters[dimension]?.includes(value) ?? false;
+  return filters[facetSlug]?.includes(value) ?? false;
 }
 
 /**
  * Adds a facet value to the filters.
- *
- * @param filters - The current facet filters
- * @param dimension - The facet dimension
- * @param value - The facet value to add
- * @returns New filters with the value added
  */
 export function addFacetValue(
-  filters: FacetFilters,
-  dimension: keyof FacetFilters,
+  filters: DynamicFacetFilters,
+  facetSlug: string,
   value: string
-): FacetFilters {
-  const current = filters[dimension] ?? [];
+): DynamicFacetFilters {
+  const current = filters[facetSlug] ?? [];
   if (current.includes(value)) {
     return filters;
   }
   return {
     ...filters,
-    [dimension]: [...current, value],
+    [facetSlug]: [...current, value],
   };
 }
 
 /**
  * Removes a facet value from the filters.
- *
- * @param filters - The current facet filters
- * @param dimension - The facet dimension
- * @param value - The facet value to remove
- * @returns New filters with the value removed
  */
 export function removeFacetValue(
-  filters: FacetFilters,
-  dimension: keyof FacetFilters,
+  filters: DynamicFacetFilters,
+  facetSlug: string,
   value: string
-): FacetFilters {
-  const current = filters[dimension] ?? [];
+): DynamicFacetFilters {
+  const current = filters[facetSlug] ?? [];
   const filtered = current.filter((v) => v !== value);
+  if (filtered.length === 0) {
+    const { [facetSlug]: _, ...rest } = filters;
+    return rest;
+  }
   return {
     ...filters,
-    [dimension]: filtered.length > 0 ? filtered : undefined,
+    [facetSlug]: filtered,
   };
 }
 
 /**
  * Toggles a facet value in the filters.
- *
- * @param filters - The current facet filters
- * @param dimension - The facet dimension
- * @param value - The facet value to toggle
- * @returns New filters with the value toggled
  */
 export function toggleFacetValue(
-  filters: FacetFilters,
-  dimension: keyof FacetFilters,
+  filters: DynamicFacetFilters,
+  facetSlug: string,
   value: string
-): FacetFilters {
-  if (isFacetSelected(filters, dimension, value)) {
-    return removeFacetValue(filters, dimension, value);
+): DynamicFacetFilters {
+  if (isFacetSelected(filters, facetSlug, value)) {
+    return removeFacetValue(filters, facetSlug, value);
   }
-  return addFacetValue(filters, dimension, value);
+  return addFacetValue(filters, facetSlug, value);
 }
 
 /**
- * Clears all filters for a specific dimension.
- *
- * @param filters - The current facet filters
- * @param dimension - The facet dimension to clear
- * @returns New filters with the dimension cleared
+ * Clears all filters for a specific facet.
  */
 export function clearDimensionFilters(
-  filters: FacetFilters,
-  dimension: keyof FacetFilters
-): FacetFilters {
-  return {
-    ...filters,
-    [dimension]: undefined,
-  };
+  filters: DynamicFacetFilters,
+  facetSlug: string
+): DynamicFacetFilters {
+  const { [facetSlug]: _, ...rest } = filters;
+  return rest;
 }
 
 /**
  * Clears all facet filters.
- *
- * @returns Empty facet filters object
  */
-export function clearAllFilters(): FacetFilters {
+export function clearAllFilters(): DynamicFacetFilters {
   return {};
 }

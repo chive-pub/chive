@@ -5,18 +5,16 @@ import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatCompactNumber } from '@/lib/utils/format-number';
-import type { FacetDimension } from '@/lib/utils/facets';
-import type { FacetValue } from '@/lib/api/schema';
+import type { FacetValue } from '@/lib/hooks/use-faceted-search';
 
 /**
  * Props for the FacetPanel component.
  */
 export interface FacetPanelProps {
-  /** Facet dimension identifier */
-  dimension: FacetDimension;
+  /** Facet dimension identifier (slug) */
+  dimension: string;
   /** Display title */
   title: string;
   /** Available facet values with counts */
@@ -147,24 +145,22 @@ export function FacetPanel({
           )}
 
           {/* Value list */}
-          <ScrollArea className={cn(showAll && hasMore && 'max-h-64')}>
-            <div className="space-y-1">
-              {visibleValues.map((facetValue) => (
-                <FacetValueItem
-                  key={facetValue.value}
-                  value={facetValue.value}
-                  label={facetValue.label}
-                  count={facetValue.count}
-                  isSelected={selected.includes(facetValue.value)}
-                  onToggle={() => handleToggle(facetValue.value)}
-                />
-              ))}
+          <div className={cn('space-y-1', showAll && hasMore && 'max-h-80 overflow-y-auto')}>
+            {visibleValues.map((facetValue) => (
+              <FacetValueItem
+                key={facetValue.value}
+                value={facetValue.value}
+                label={facetValue.label}
+                count={facetValue.count}
+                isSelected={selected.includes(facetValue.value)}
+                onToggle={() => handleToggle(facetValue.value)}
+              />
+            ))}
 
-              {visibleValues.length === 0 && (
-                <p className="py-2 text-center text-sm text-muted-foreground">No matching values</p>
-              )}
-            </div>
-          </ScrollArea>
+            {visibleValues.length === 0 && (
+              <p className="py-2 text-center text-sm text-muted-foreground">No matching values</p>
+            )}
+          </div>
 
           {/* Show more/less toggle */}
           {hasMore && !searchTerm && (

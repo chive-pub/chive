@@ -110,29 +110,106 @@ type EndorsementType =
 
 ## Graph lexicons
 
-### pub.chive.graph.fieldProposal
+### pub.chive.graph.node
 
-Proposal to add or modify a field.
+Node record for the knowledge graph.
 
 ```typescript
 {
-  "$type": "pub.chive.graph.fieldProposal",
-  "type": ProposalType,
-  "title": string,              // Max 200 chars
-  "description": string,        // Max 2000 chars
-  "changes": FieldChanges,
+  "$type": "pub.chive.graph.node",
+  "id": string,                 // Unique identifier
+  "kind": "type" | "object",    // Node classification
+  "subkind": string,            // "field", "facet", "institution", "person", "concept"
+  "label": string,              // Display name
+  "alternateLabels": string[],  // Synonyms (max 20)
+  "description": string,        // Scope note (max 2000 chars)
+  "externalIds": ExternalId[],  // Links to Wikidata, LCSH, etc.
+  "status": NodeStatus,
+  "createdAt": string,
+  "updatedAt": string
+}
+
+type NodeStatus = "proposed" | "provisional" | "established" | "deprecated";
+
+interface ExternalId {
+  source: string;               // "wikidata", "lcsh", "viaf", "fast", "orcid", "ror"
+  value: string;                // The external identifier
+}
+```
+
+### pub.chive.graph.edge
+
+Relationship between two nodes in the knowledge graph.
+
+```typescript
+{
+  "$type": "pub.chive.graph.edge",
+  "sourceUri": string,          // AT URI of source node
+  "targetUri": string,          // AT URI of target node
+  "relationSlug": EdgeRelation, // Relationship type
+  "weight": number,             // Relationship strength (0.0-1.0)
+  "status": EdgeStatus,
+  "createdAt": string
+}
+
+type EdgeRelation = "broader" | "narrower" | "related" | "sameAs" | "partOf" | "hasPart";
+type EdgeStatus = "proposed" | "established" | "deprecated";
+```
+
+### pub.chive.graph.nodeProposal
+
+Proposal to create, update, merge, or deprecate a node.
+
+```typescript
+{
+  "$type": "pub.chive.graph.nodeProposal",
+  "proposalType": ProposalType,
+  "kind": "type" | "object",
+  "subkind": string,
+  "proposedNode": ProposedNodeData,
+  "rationale": string,          // Max 2000 chars
+  "evidence": Evidence[],       // Supporting materials
   "createdAt": string
 }
 
 type ProposalType = "create" | "update" | "merge" | "deprecate";
 
-interface FieldChanges {
-  fieldId?: string;             // For create/update
-  name?: string;
-  parent?: string;
+interface ProposedNodeData {
+  id?: string;                  // Required for update/merge/deprecate
+  label?: string;
+  alternateLabels?: string[];
   description?: string;
-  mergeInto?: string;           // For merge
-  deprecationReason?: string;   // For deprecate
+  externalIds?: ExternalId[];
+  mergeIntoUri?: string;        // For merge proposals
+  deprecationReason?: string;   // For deprecate proposals
+}
+
+interface Evidence {
+  type: string;                 // "publication_count", "conference", "expert_endorsement"
+  source?: string;
+  value?: string | number;
+  url?: string;
+}
+```
+
+### pub.chive.graph.edgeProposal
+
+Proposal to create, update, or deprecate an edge between nodes.
+
+```typescript
+{
+  "$type": "pub.chive.graph.edgeProposal",
+  "proposalType": "create" | "update" | "deprecate",
+  "proposedEdge": ProposedEdgeData,
+  "rationale": string,          // Max 2000 chars
+  "createdAt": string
+}
+
+interface ProposedEdgeData {
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: EdgeRelation;
+  weight?: number;
 }
 ```
 
@@ -147,34 +224,6 @@ Vote on a proposal.
   "vote": "approve" | "reject" | "abstain",
   "comment": string,            // Optional, max 500 chars
   "createdAt": string
-}
-```
-
-### pub.chive.graph.authorityRecord
-
-Authority record for controlled vocabulary (stored in Governance PDS).
-
-```typescript
-{
-  "$type": "pub.chive.graph.authorityRecord",
-  "id": string,
-  "type": "field" | "person" | "organization" | "concept",
-  "name": string,
-  "aliases": string[],
-  "description": string,
-  "broaderTerms": string[],
-  "narrowerTerms": string[],
-  "relatedTerms": string[],
-  "externalIds": {
-    "wikidata": string,
-    "lcsh": string,
-    "viaf": string,
-    "fast": string,
-    "orcid": string,
-    "ror": string
-  },
-  "createdAt": string,
-  "updatedAt": string
 }
 ```
 
@@ -259,7 +308,7 @@ interface BlobRef {
 | Keywords            | 20        |
 | Fields              | 5         |
 | Supplementary blobs | 10        |
-| Aliases             | 20        |
+| Alternate labels    | 20        |
 
 ### Blob limits
 

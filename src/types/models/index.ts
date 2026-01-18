@@ -6,9 +6,33 @@
  */
 
 export * from './annotation.js';
-export * from './author.js';
+// Export all from author except ContributionDegree (also in contribution.ts)
+export {
+  type EprintAuthorAffiliation,
+  type EprintAuthorContribution,
+  type EprintAuthor,
+  type Affiliation,
+  type ResearchKeyword,
+  type Author,
+  type AuthorMetrics,
+} from './author.js';
+// Export all from contribution (includes ContributionDegree)
 export * from './contribution.js';
-export * from './governance.js';
+// Export all from governance except ConsensusResult (also in graph.interface.ts)
+export {
+  type FacetDimension,
+  type AuthorityStatus,
+  type ExternalSource,
+  type GovernanceAuthorityRecord,
+  type GovernanceFacet,
+  type GovernanceOrganization,
+  type GovernanceReconciliation,
+  type ReconciliationEvidence,
+  type GovernanceListOptions,
+  type GovernanceUpdateEvent,
+  type GovernanceUpdateHandler,
+  type GovernanceSubscription,
+} from './governance.js';
 // Export all from eprint except DocumentFormat (already exported from annotation)
 export {
   type SupplementaryCategory,

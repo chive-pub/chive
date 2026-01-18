@@ -13,7 +13,7 @@
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../atproto.js';
 import type { Facet } from '../interfaces/graph.interface.js';
 
-import type { DocumentFormat } from './annotation.js';
+import type { DocumentFormat, RichTextBody } from './annotation.js';
 import type { EprintAuthor } from './author.js';
 
 // Re-export DocumentFormat for consumers (canonical definition in annotation.js)
@@ -757,9 +757,24 @@ export interface Eprint {
   readonly title: string;
 
   /**
-   * Eprint abstract.
+   * Eprint abstract (rich text with embedded references).
+   *
+   * @remarks
+   * Supports @ triggers for object nodes (institutions, persons, topics)
+   * and # triggers for type nodes (fields, facets, contribution-types).
    */
-  readonly abstract: string;
+  readonly abstract: RichTextBody;
+
+  /**
+   * Plain text version of the abstract for search indexing.
+   *
+   * @remarks
+   * Auto-generated from the rich text abstract by extracting plain text
+   * from all items. Used for full-text search and display in contexts
+   * that don't support rich text. Optional since it can be derived from
+   * the abstract field at indexing time.
+   */
+  readonly abstractPlainText?: string;
 
   /**
    * Blob reference to primary document in user's PDS.

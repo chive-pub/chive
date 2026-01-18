@@ -69,7 +69,7 @@ export interface EprintAuthorContribution {
   /**
    * AT-URI to contribution type from knowledge graph.
    *
-   * @example "at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization"
+   * @example "at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization"
    */
   readonly typeUri: AtUri;
 

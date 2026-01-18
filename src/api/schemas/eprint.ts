@@ -9,8 +9,7 @@
  * @public
  */
 
-import { z } from 'zod';
-
+import { z } from './base.js';
 import {
   atUriSchema,
   didSchema,
@@ -113,7 +112,7 @@ export const eprintMetricsSchema = z.object({
 export const fieldRefSchema = z.object({
   id: z.string().optional().describe('Field ID'),
   uri: z.string().describe('Field URI'),
-  name: z.string().describe('Field name'),
+  label: z.string().describe('Field display label'),
   parentUri: z.string().optional().describe('Parent field URI'),
 });
 
@@ -325,7 +324,8 @@ export type ListByAuthorParams = z.infer<typeof listByAuthorParamsSchema>;
  * @public
  */
 export const searchEprintsParamsSchema = searchQuerySchema.extend({
-  field: z.string().optional().describe('Filter by field URI'),
+  q: z.string().max(500).optional().describe('Search query (optional for filtering)'),
+  fieldId: z.string().optional().describe('Filter by field ID'),
   author: didSchema.optional().describe('Filter by author DID'),
   license: z.string().optional().describe('Filter by license'),
   dateFrom: z.string().datetime().optional().describe('Filter by date range start'),

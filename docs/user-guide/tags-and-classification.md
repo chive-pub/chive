@@ -108,14 +108,16 @@ PMEST enables faceted search: "Show me empirical AI papers from European institu
 If the taxonomy lacks a field for your research area:
 
 1. Go to **Governance** → **Proposals**
-2. Click **Propose New Field**
-3. Fill out the form:
+2. Click **Propose New Node**
+3. Select `field` as the node subkind
+4. Fill out the form:
    - Proposed field ID (e.g., `cs.QML`)
-   - Display name (e.g., "Quantum Machine Learning")
-   - Parent field (e.g., `cs.AI`)
+   - Label (e.g., "Quantum Machine Learning")
+   - Alternate labels (synonyms like "QML")
    - Description and scope
    - Justification
-4. Submit for community voting
+5. Optionally propose edge relationships to parent fields
+6. Submit for community voting
 
 ### Voting requirements
 

@@ -186,8 +186,7 @@ function createEprintRecord(overrides: Partial<Eprint> = {}): Record<string, unk
     affiliations: [{ name: 'Test University' }],
     contributions: [
       {
-        typeUri:
-          'at://did:plc:chive-governance/pub.chive.contribution.type/conceptualization' as AtUri,
+        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization' as AtUri,
         typeId: 'conceptualization',
         typeLabel: 'Conceptualization',
         degree: 'lead',
@@ -274,7 +273,7 @@ describe('Firehose Author Records Integration', () => {
         affiliations: [{ name: 'Stanford University', rorId: 'https://ror.org/00f54p054' }],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.contribution.type/conceptualization' as AtUri,
+            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/conceptualization' as AtUri,
             typeId: 'conceptualization',
             typeLabel: 'Conceptualization',
             degree: 'lead',
@@ -373,7 +372,7 @@ describe('Firehose Author Records Integration', () => {
         affiliations: [{ name: 'Partner Organization' }],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.contribution.type/data-curation' as AtUri,
+            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/data-curation' as AtUri,
             typeId: 'data-curation',
             typeLabel: 'Data Curation',
             degree: 'supporting',
@@ -467,19 +466,19 @@ describe('Firehose Author Records Integration', () => {
         affiliations: [],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.contribution.type/conceptualization' as AtUri,
+            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/conceptualization' as AtUri,
             typeId: 'conceptualization',
             typeLabel: 'Conceptualization',
             degree: 'lead',
           },
           {
-            typeUri: 'at://did:plc:gov/pub.chive.contribution.type/methodology' as AtUri,
+            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/methodology' as AtUri,
             typeId: 'methodology',
             typeLabel: 'Methodology',
             degree: 'equal',
           },
           {
-            typeUri: 'at://did:plc:gov/pub.chive.contribution.type/writing-original-draft' as AtUri,
+            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/writing-original-draft' as AtUri,
             typeId: 'writing-original-draft',
             typeLabel: 'Writing - Original Draft',
             degree: 'supporting',

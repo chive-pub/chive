@@ -1,0 +1,86 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.edgeProposal",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Proposal for creating, updating, or deprecating edges between knowledge graph nodes (stored in user PDS)",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["proposalType", "rationale", "createdAt"],
+        "properties": {
+          "proposalType": {
+            "type": "string",
+            "knownValues": ["create", "update", "deprecate"],
+            "description": "Type of proposal action"
+          },
+          "targetEdgeUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of edge to update/deprecate"
+          },
+          "proposedEdge": {
+            "type": "ref",
+            "ref": "#proposedEdgeData",
+            "description": "Proposed edge data (for create/update)"
+          },
+          "rationale": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Justification for the proposal"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "pub.chive.graph.nodeProposal#evidence"
+            },
+            "maxLength": 10,
+            "description": "Supporting evidence for the proposal"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "proposedEdgeData": {
+      "type": "object",
+      "description": "Proposed edge data",
+      "required": ["sourceUri", "targetUri", "relationSlug"],
+      "properties": {
+        "sourceUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of source node"
+        },
+        "targetUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of target node"
+        },
+        "relationUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of relation type node"
+        },
+        "relationSlug": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Relation slug (broader, narrower, related, etc.)"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "metadata": {
+          "type": "ref",
+          "ref": "pub.chive.graph.edge#edgeMetadata"
+        }
+      }
+    }
+  }
+}
