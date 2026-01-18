@@ -273,17 +273,22 @@ Get details for a specific field.
 ```json
 {
   "id": "cs.QC",
-  "name": "Quantum Computing",
+  "kind": "object",
+  "subkind": "field",
+  "label": "Quantum Computing",
+  "alternateLabels": ["Quantum Computation", "QC"],
   "description": "Research on quantum computation and information",
-  "aliases": ["Quantum Computation", "QC"],
-  "parentFields": ["cs", "quant-ph"],
-  "childFields": ["cs.QC.error-correction", "cs.QC.algorithms"],
-  "relatedFields": ["cs.CC", "quant-ph.theory"],
-  "externalIds": {
-    "wikidata": "Q339",
-    "lcsh": "sh2008010405"
-  },
-  "eprintCount": 4523
+  "externalIds": [
+    { "source": "wikidata", "value": "Q339" },
+    { "source": "lcsh", "value": "sh2008010405" }
+  ],
+  "status": "established",
+  "eprintCount": 4523,
+  "edges": {
+    "broader": ["cs", "quant-ph"],
+    "narrower": ["cs.QC.error-correction", "cs.QC.algorithms"],
+    "related": ["cs.CC", "quant-ph.theory"]
+  }
 }
 ```
 
@@ -305,26 +310,9 @@ List all fields with optional filtering.
 | `limit`  | integer | No       | Results per page       |
 | `cursor` | string  | No       | Pagination cursor      |
 
-### pub.chive.graph.searchAuthorities
+### pub.chive.graph.getNode
 
-Search authority records.
-
-| Property | Value       |
-| -------- | ----------- |
-| Method   | Query (GET) |
-| Auth     | Optional    |
-
-**Parameters**
-
-| Name    | Type    | Required | Description                                       |
-| ------- | ------- | -------- | ------------------------------------------------- |
-| `query` | string  | Yes      | Search query                                      |
-| `type`  | string  | No       | Authority type: `field`, `person`, `organization` |
-| `limit` | integer | No       | Results per page                                  |
-
-### pub.chive.graph.getAuthority
-
-Get a specific authority record.
+Get a specific knowledge graph node.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -333,9 +321,80 @@ Get a specific authority record.
 
 **Parameters**
 
-| Name | Type   | Required | Description         |
-| ---- | ------ | -------- | ------------------- |
-| `id` | string | Yes      | Authority record ID |
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `id` | string | Yes      | Node ID     |
+
+**Response**
+
+```json
+{
+  "id": "quantum-computing",
+  "kind": "object",
+  "subkind": "field",
+  "label": "Quantum Computing",
+  "alternateLabels": ["Quantum Computation", "QC"],
+  "description": "Computational paradigm using quantum-mechanical phenomena",
+  "externalIds": [{ "source": "wikidata", "value": "Q339" }],
+  "status": "established",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### pub.chive.graph.listNodes
+
+List knowledge graph nodes with optional filtering.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+**Parameters**
+
+| Name      | Type    | Required | Description                               |
+| --------- | ------- | -------- | ----------------------------------------- |
+| `kind`    | string  | No       | Filter by kind: `type`, `object`          |
+| `subkind` | string  | No       | Filter by subkind: `field`, `facet`, etc. |
+| `status`  | string  | No       | Filter by status: `established`, etc.     |
+| `limit`   | integer | No       | Results per page                          |
+| `cursor`  | string  | No       | Pagination cursor                         |
+
+### pub.chive.graph.searchNodes
+
+Search knowledge graph nodes by label.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+**Parameters**
+
+| Name      | Type    | Required | Description                               |
+| --------- | ------- | -------- | ----------------------------------------- |
+| `query`   | string  | Yes      | Search query                              |
+| `kind`    | string  | No       | Filter by kind                            |
+| `subkind` | string  | No       | Filter by subkind: `field`, `institution` |
+| `limit`   | integer | No       | Results per page                          |
+
+### pub.chive.graph.listEdges
+
+List edges for a node.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+**Parameters**
+
+| Name           | Type    | Required | Description                              |
+| -------------- | ------- | -------- | ---------------------------------------- |
+| `nodeId`       | string  | Yes      | Source or target node ID                 |
+| `relationSlug` | string  | No       | Filter by relation: `broader`, `related` |
+| `direction`    | string  | No       | `outgoing`, `incoming`, or `both`        |
+| `limit`        | integer | No       | Results per page                         |
 
 ### pub.chive.graph.browseFaceted
 

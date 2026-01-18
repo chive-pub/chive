@@ -95,14 +95,15 @@ Lexicons define the schema for record types. They're similar to OpenAPI specific
 
 Chive uses the `pub.chive.*` namespace for all its record types:
 
-| Lexicon                         | Purpose                    |
-| ------------------------------- | -------------------------- |
-| `pub.chive.eprint.submission`   | Core eprint metadata       |
-| `pub.chive.eprint.version`      | Version tracking           |
-| `pub.chive.review.comment`      | Peer review comments       |
-| `pub.chive.review.endorsement`  | Formal endorsements        |
-| `pub.chive.graph.fieldProposal` | Knowledge graph proposals  |
-| `pub.chive.graph.vote`          | Community governance votes |
+| Lexicon                        | Purpose                      |
+| ------------------------------ | ---------------------------- |
+| `pub.chive.eprint.submission`  | Core eprint metadata         |
+| `pub.chive.eprint.version`     | Version tracking             |
+| `pub.chive.review.comment`     | Peer review comments         |
+| `pub.chive.review.endorsement` | Formal endorsements          |
+| `pub.chive.graph.nodeProposal` | Knowledge graph node changes |
+| `pub.chive.graph.edgeProposal` | Knowledge graph edge changes |
+| `pub.chive.graph.vote`         | Community governance votes   |
 
 ### Blobs
 

@@ -459,9 +459,26 @@ if (hasOrcid(author)) {
 | ---------------------- | --------------------------------- |
 | `useField(id)`         | Single field by ID                |
 | `useFields()`          | All fields (for taxonomy display) |
-| `useFieldChildren(id)` | Narrower terms                    |
+| `useFieldChildren(id)` | Narrower terms (via edges)        |
 | `useFieldEprints(id)`  | Eprints in field                  |
 | `usePrefetchField()`   | Prefetch field on hover           |
+
+### Node hooks (unified graph model)
+
+| Hook                    | Description                          |
+| ----------------------- | ------------------------------------ |
+| `useNode(id)`           | Single node by ID                    |
+| `useNodes(options)`     | List nodes with kind/subkind filters |
+| `useNodeChildren(id)`   | Child nodes (via broader edges)      |
+| `useNodeParents(id)`    | Parent nodes (via broader edges)     |
+| `useSearchNodes(query)` | Search nodes by label                |
+
+### Edge hooks
+
+| Hook                   | Description                     |
+| ---------------------- | ------------------------------- |
+| `useEdges(nodeId)`     | Edges for a node                |
+| `useEdgesByRelation()` | Edges filtered by relation slug |
 
 ### Review hooks
 

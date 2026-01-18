@@ -17,40 +17,42 @@ This prevents fragmentation where "machine learning", "Machine Learning", and "M
 
 ## Authority record structure
 
+Authority records use `pub.chive.graph.node` with an appropriate `subkind`. Relationships are stored as separate edge records.
+
 ```typescript
-interface AuthorityRecord {
+interface GraphNode {
   id: string; // Canonical identifier
-  type: 'field' | 'person' | 'organization' | 'concept';
-  name: string; // Preferred name
-  aliases: string[]; // Alternative names
+  kind: 'type' | 'object'; // Node classification
+  subkind: string; // 'field', 'person', 'institution', 'concept'
+  label: string; // Preferred name
+  alternateLabels: string[]; // Alternative names (synonyms)
   description: string; // Scope note
-
-  // Relationships
-  broaderTerms: string[]; // Parent concepts
-  narrowerTerms: string[]; // Child concepts
-  relatedTerms: string[]; // Associated concepts
-
-  // External links
-  externalIds: {
-    wikidata?: string; // Q-identifier
-    lcsh?: string; // Library of Congress
-    viaf?: string; // Virtual International Authority File
-    fast?: string; // Faceted Application of Subject Terminology
-    orcid?: string; // For person records
-    ror?: string; // For organization records
-  };
-
-  // Metadata
+  externalIds: ExternalId[]; // Links to external vocabularies
+  status: NodeStatus;
   createdAt: string;
   updatedAt: string;
-  createdBy: string; // DID of creator
-  source: 'manual' | 'reconciliation' | 'import';
+}
+
+interface ExternalId {
+  source: string; // 'wikidata', 'lcsh', 'viaf', 'fast', 'orcid', 'ror'
+  value: string;
+}
+
+type NodeStatus = 'proposed' | 'provisional' | 'established' | 'deprecated';
+
+// Relationships are stored as separate edge records
+interface GraphEdge {
+  sourceUri: string; // AT URI of source node
+  targetUri: string; // AT URI of target node
+  relationSlug: string; // 'broader', 'narrower', 'related', 'sameAs'
+  weight: number;
+  status: string;
 }
 ```
 
-## Authority editors
+## Graph editors
 
-Authority editors are responsible for maintaining authority records:
+Graph editors are responsible for maintaining knowledge graph nodes (including authority records):
 
 ### Qualifications
 
@@ -61,18 +63,18 @@ Authority editors are responsible for maintaining authority records:
 
 ### Responsibilities
 
-- Create and maintain authority records
+- Create and maintain knowledge graph nodes
 - Reconcile with external vocabularies
-- Review authority-related proposals
+- Review node and edge proposals
 - Train community on authority standards
-- Vote on authority changes (3.0x weight)
+- Vote on graph changes (2.0x weight)
 
-### Current authority editors
+### Current graph editors
 
-Authority editors are listed publicly:
+Graph editors are listed publicly:
 
 ```http
-GET /xrpc/pub.chive.governance.listAuthorityEditors
+GET /xrpc/pub.chive.governance.listGraphEditors
 ```
 
 ## External vocabulary integration
@@ -116,23 +118,26 @@ Reconciliations are scored by evidence quality:
 
 ### Creating a record
 
-Only authority editors can create records directly. Community members propose via the standard proposal process:
+Only graph editors can create records directly. Community members propose via the standard proposal process:
 
 ```json
 {
-  "type": "create_authority",
-  "title": "Add authority record for MIT CSAIL",
-  "changes": {
-    "record": {
-      "type": "organization",
-      "name": "MIT Computer Science and Artificial Intelligence Laboratory",
-      "aliases": ["MIT CSAIL", "CSAIL"],
-      "externalIds": {
-        "wikidata": "Q1500407",
-        "ror": "03fmab257"
-      }
-    }
-  }
+  "$type": "pub.chive.graph.nodeProposal",
+  "proposalType": "create",
+  "kind": "object",
+  "subkind": "institution",
+  "proposedNode": {
+    "id": "mit-csail",
+    "label": "MIT Computer Science and Artificial Intelligence Laboratory",
+    "alternateLabels": ["MIT CSAIL", "CSAIL"],
+    "description": "Research laboratory at MIT focused on CS and AI",
+    "externalIds": [
+      { "source": "wikidata", "value": "Q1500407" },
+      { "source": "ror", "value": "03fmab257" }
+    ]
+  },
+  "rationale": "Major research institution frequently affiliated with Chive authors",
+  "createdAt": "2025-01-15T10:30:00Z"
 }
 ```
 
@@ -140,26 +145,26 @@ Only authority editors can create records directly. Community members propose vi
 
 Changes to existing records follow the proposal process with a 60% threshold:
 
-| Change type           | Threshold    | Approver                  |
-| --------------------- | ------------ | ------------------------- |
-| Add alias             | 60%, 3 votes | Community                 |
-| Update description    | 60%, 3 votes | Community                 |
-| Link external ID      | 60%, 3 votes | Authority editor review   |
-| Change preferred name | 75%, 5 votes | Authority editor approval |
-| Merge records         | 75%, 7 votes | Authority editor approval |
+| Change type         | Threshold    | Approver              |
+| ------------------- | ------------ | --------------------- |
+| Add alternate label | 60%, 3 votes | Community             |
+| Update description  | 60%, 3 votes | Community             |
+| Link external ID    | 60%, 3 votes | Graph editor review   |
+| Change label        | 75%, 5 votes | Graph editor approval |
+| Merge nodes         | 75%, 7 votes | Graph editor approval |
 
 ### Merging records
 
 When duplicate records are discovered:
 
-1. Authority editor identifies duplicates
+1. Graph editor identifies duplicates
 2. Proposal created with merge rationale
 3. Community votes (75% threshold)
-4. If approved, records merged:
-   - Keep record with more usage
-   - Combine aliases
-   - Preserve all external links
-   - Redirect old ID to merged record
+4. If approved, nodes merged:
+   - Keep node with more usage
+   - Combine alternate labels
+   - Preserve all external IDs
+   - Redirect old ID to merged node
 
 ## Reconciliation workflow
 
@@ -168,7 +173,7 @@ When duplicate records are discovered:
 ```
 Day 1-3:   Fetch updates from external sources
 Day 4-7:   Run automated reconciliation
-Day 8-14:  Authority editors review flagged items
+Day 8-14:  Graph editors review flagged items
 Day 15-20: Community proposal period for new links
 Day 21-28: Voting on proposals
 Day 28+:   Changes enacted
@@ -183,50 +188,50 @@ When external sources disagree:
 | **Name variants**           | Use most authoritative source's preferred form  |
 | **Scope differences**       | Document scope notes from each source           |
 | **Hierarchy disagreements** | Follow LCSH for subjects, ROR for organizations |
-| **Identifier conflicts**    | Flag for authority editor review                |
+| **Identifier conflicts**    | Flag for graph editor review                    |
 
 ## Quality assurance
 
 ### Validation rules
 
-Authority records must pass validation:
+Nodes must pass validation:
 
 ```typescript
-function validateAuthority(record: AuthorityRecord): ValidationResult {
+function validateNode(node: GraphNode): ValidationResult {
   const errors: string[] = [];
 
-  if (!record.name || record.name.length < 2) {
-    errors.push('Name required (min 2 characters)');
+  if (!node.label || node.label.length < 2) {
+    errors.push('Label required (min 2 characters)');
   }
 
-  if (record.aliases.some((a) => a === record.name)) {
-    errors.push('Alias cannot match preferred name');
+  if (node.alternateLabels?.some((a) => a === node.label)) {
+    errors.push('Alternate label cannot match primary label');
   }
 
-  if (record.type === 'person' && !record.externalIds.orcid) {
-    errors.push('Person records should have ORCID when available');
-  }
-
-  // Check for circular relationships
-  if (hasCircularRelationship(record)) {
-    errors.push('Circular broader/narrower relationship detected');
+  if (node.subkind === 'person') {
+    const hasOrcid = node.externalIds?.some((e) => e.source === 'orcid');
+    if (!hasOrcid) {
+      errors.push('Person nodes should have ORCID when available');
+    }
   }
 
   return { valid: errors.length === 0, errors };
 }
 ```
 
+Edge validation checks for circular relationships separately via graph traversal.
+
 ### Audit trail
 
-All changes to authority records are logged:
+All changes to nodes are logged:
 
 ```json
 {
-  "recordId": "authority-123",
+  "nodeId": "quantum-computing",
   "action": "update",
   "changes": {
-    "aliases": {
-      "added": ["ML"],
+    "alternateLabels": {
+      "added": ["QC"],
       "removed": []
     }
   },
@@ -238,22 +243,22 @@ All changes to authority records are logged:
 
 ## API endpoints
 
-### Search authorities
+### Search nodes
 
 ```http
-GET /xrpc/pub.chive.graph.searchAuthorities?query=machine+learning&type=field
+GET /xrpc/pub.chive.graph.searchNodes?query=machine+learning&subkind=field
 ```
 
-### Get authority
+### Get node
 
 ```http
-GET /xrpc/pub.chive.graph.getAuthority?id=authority-123
+GET /xrpc/pub.chive.graph.getNode?id=quantum-computing
 ```
 
 ### Get reconciliations
 
 ```http
-GET /xrpc/pub.chive.graph.getAuthorityReconciliations?id=authority-123
+GET /xrpc/pub.chive.graph.getNodeReconciliations?id=quantum-computing
 ```
 
 ## Next steps

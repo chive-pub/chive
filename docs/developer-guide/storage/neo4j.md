@@ -6,14 +6,23 @@ Neo4j stores Chive's knowledge graph: field taxonomy, authority records, citatio
 
 ### Node types
 
-| Label             | Description                    | Key Properties                  |
-| ----------------- | ------------------------------ | ------------------------------- |
-| `Field`           | Hierarchical field taxonomy    | `id`, `label`, `description`    |
-| `AuthorityRecord` | Controlled vocabulary terms    | `id`, `name`, `type`, `aliases` |
-| `WikidataEntity`  | Wikidata Q-IDs for linking     | `qid`, `label`, `description`   |
-| `Eprint`          | Eprint nodes for graph queries | `uri`, `title`                  |
-| `Author`          | Author nodes for collaboration | `did`, `name`                   |
-| `FacetDimension`  | PMEST dimension templates      | `id`, `type`, `name`            |
+| Label            | Description                    | Key Properties                                     |
+| ---------------- | ------------------------------ | -------------------------------------------------- |
+| `GraphNode`      | Knowledge graph node           | `id`, `kind`, `subkind`, `label`, `status`         |
+| `GraphEdge`      | Relationship between nodes     | `sourceUri`, `targetUri`, `relationSlug`, `weight` |
+| `WikidataEntity` | Wikidata Q-IDs for linking     | `qid`, `label`, `description`                      |
+| `Eprint`         | Eprint nodes for graph queries | `uri`, `title`                                     |
+| `Author`         | Author nodes for collaboration | `did`, `name`                                      |
+
+GraphNode `subkind` values:
+
+| subkind       | Description                 |
+| ------------- | --------------------------- |
+| `field`       | Hierarchical field taxonomy |
+| `facet`       | PMEST classification value  |
+| `institution` | Research organization       |
+| `person`      | Individual authority record |
+| `concept`     | General concept             |
 
 ### Relationship types
 
@@ -80,50 +89,60 @@ const driver = await createNeo4jConnection({
 const adapter = new Neo4jAdapter(driver, logger);
 ```
 
-### Field operations
+### Node operations
 
 ```typescript
-// Get field by ID
-const field = await adapter.getField('cs.AI');
+// Get node by ID
+const node = await adapter.getNode('cs.AI');
 
-// Get children
-const children = await adapter.getFieldChildren('cs');
+// Get children (nodes with broader edge pointing to this node)
+const children = await adapter.getNodeChildren('cs');
 
-// Get ancestors (path to root)
-const ancestors = await adapter.getFieldAncestors('cs.AI.ML');
+// Get ancestors (path to root via broader edges)
+const ancestors = await adapter.getNodeAncestors('cs.AI.ML');
 
-// Search fields
-const matches = await adapter.searchFields('artificial intelligence', {
+// Search nodes by label
+const matches = await adapter.searchNodes('artificial intelligence', {
+  kind: 'object',
+  subkind: 'field',
   limit: 10,
-  includeAliases: true,
+  includeAlternateLabels: true,
 });
 
-// Get related fields
-const related = await adapter.getRelatedFields('cs.AI', {
+// Get related nodes (via related edges)
+const related = await adapter.getRelatedNodes('cs.AI', {
   limit: 5,
-  minScore: 0.5,
+  minWeight: 0.5,
+});
+
+// Get edges for a node
+const edges = await adapter.getEdges('cs.AI', {
+  relationSlug: 'broader',
+  direction: 'outgoing',
 });
 ```
 
 ### Authority records
 
-```typescript
-import { AuthorityRepository } from '@/storage/neo4j/authority-repository.js';
+Authority records are `GraphNode` entries with authority-related `subkind` values:
 
-const repo = new AuthorityRepository(driver, logger);
+```typescript
+import { NodeRepository } from '@/storage/neo4j/node-repository.js';
+
+const repo = new NodeRepository(driver, logger);
 
 // Get by ID
-const authority = await repo.findById('authority-123');
+const node = await repo.findById('authority-123');
 
-// Search
+// Search authority-type nodes
 const results = await repo.search('machine learning', {
-  type: 'concept',
+  subkind: 'concept', // or 'institution', 'person'
   limit: 20,
 });
 
 // Get with external links
 const withLinks = await repo.findWithExternalIds('authority-123');
-console.log(withLinks.wikidataQid); // Q2539
+console.log(withLinks.externalIds); // [{ source: 'wikidata', value: 'Q2539' }]
 ```
 
 ## Citation graph
@@ -279,14 +298,31 @@ import { ProposalHandler } from '@/storage/neo4j/proposal-handler.js';
 
 const proposals = new ProposalHandler(driver, storage, logger);
 
-// Create field proposal
-const proposal = await proposals.createFieldProposal({
-  type: 'create',
-  field: {
+// Create node proposal
+const nodeProposal = await proposals.createNodeProposal({
+  proposalType: 'create',
+  kind: 'object',
+  subkind: 'field',
+  proposedNode: {
     id: 'cs.QML',
     label: 'Quantum Machine Learning',
-    parent: 'cs.AI',
+    alternateLabels: ['QML'],
+    description: 'Algorithms combining quantum computing with ML',
   },
+  rationale: 'Emerging interdisciplinary field',
+  proposerDid: userDid,
+});
+
+// Create edge proposal (for parent relationship)
+const edgeProposal = await proposals.createEdgeProposal({
+  proposalType: 'create',
+  proposedEdge: {
+    sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.node/cs.QML',
+    targetUri: 'at://did:plc:chive-governance/pub.chive.graph.node/cs.AI',
+    relationSlug: 'broader',
+    weight: 1.0,
+  },
+  rationale: 'QML is a subfield of AI',
   proposerDid: userDid,
 });
 
