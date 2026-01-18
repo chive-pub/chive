@@ -25,15 +25,15 @@ interface ConstraintRecord {
   type: string;
 }
 
+interface FacetDimensionProperties {
+  name: string;
+  order: number;
+}
+
 interface FieldProperties {
   id: string;
   label: string;
   type: string;
-}
-
-interface FacetDimensionProperties {
-  name: string;
-  order: number;
 }
 
 interface FieldNodeRecord {
@@ -62,7 +62,7 @@ describe('Neo4j Schema', () => {
   });
 
   describe('Constraints', () => {
-    it('creates unique constraint on Field.id', async () => {
+    it('creates unique constraint on Node.uri', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW CONSTRAINTS');
@@ -73,35 +73,35 @@ describe('Neo4j Schema', () => {
           })
         );
 
-        const fieldIdConstraint = constraints.find((c) => c.name === 'field_id_unique');
-        expect(fieldIdConstraint).toBeDefined();
-        if (fieldIdConstraint) {
-          expect(fieldIdConstraint.type).toBe('UNIQUENESS');
+        const nodeUriConstraint = constraints.find((c) => c.name === 'node_uri_unique');
+        expect(nodeUriConstraint).toBeDefined();
+        if (nodeUriConstraint) {
+          expect(nodeUriConstraint.type).toBe('UNIQUENESS');
         }
       } finally {
         await session.close();
       }
     });
 
-    it('creates unique constraint on AuthorityRecord.id', async () => {
+    it('creates unique constraint on Node.id', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW CONSTRAINTS');
         const constraints = result.records.map((record): string => record.get('name') as string);
 
-        expect(constraints).toContain('authority_id_unique');
+        expect(constraints).toContain('node_id_unique');
       } finally {
         await session.close();
       }
     });
 
-    it('creates unique constraint on WikidataEntity.qid', async () => {
+    it('creates unique constraint on Proposal.uri', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW CONSTRAINTS');
         const constraints = result.records.map((record): string => record.get('name') as string);
 
-        expect(constraints).toContain('wikidata_id_unique');
+        expect(constraints).toContain('proposal_uri_unique');
       } finally {
         await session.close();
       }
@@ -133,38 +133,37 @@ describe('Neo4j Schema', () => {
   });
 
   describe('Indexes', () => {
-    it('creates index on Field.label', async () => {
+    it('creates index on Node.label', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW INDEXES');
         const indexes = result.records.map((record): string => record.get('name') as string);
 
-        expect(indexes).toContain('field_label_idx');
+        expect(indexes).toContain('node_label_idx');
       } finally {
         await session.close();
       }
     });
 
-    it('creates index on AuthorityRecord.authorized_heading', async () => {
+    it('creates index on Node.kind', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW INDEXES');
         const indexes = result.records.map((record): string => record.get('name') as string);
 
-        expect(indexes).toContain('authority_heading_idx');
+        expect(indexes).toContain('node_kind_idx');
       } finally {
         await session.close();
       }
     });
 
-    it('creates index on WikidataEntity.qid', async () => {
+    it('creates index on Node.subkindSlug', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW INDEXES');
         const indexes = result.records.map((record): string => record.get('name') as string);
 
-        // Uniqueness constraint on qid creates a backing index
-        expect(indexes).toContain('wikidata_id_unique');
+        expect(indexes).toContain('node_subkind_idx');
       } finally {
         await session.close();
       }
