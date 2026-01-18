@@ -513,7 +513,7 @@ describe('GOVERNANCE_ROLE_LABELS', () => {
   it('has labels for all governance roles', () => {
     expect(GOVERNANCE_ROLE_LABELS['community-member']).toBe('Community Member');
     expect(GOVERNANCE_ROLE_LABELS['trusted-editor']).toBe('Trusted Editor');
-    expect(GOVERNANCE_ROLE_LABELS['authority-editor']).toBe('Authority Editor');
+    expect(GOVERNANCE_ROLE_LABELS['graph-editor']).toBe('Graph Editor');
     expect(GOVERNANCE_ROLE_LABELS['domain-expert']).toBe('Domain Expert');
     expect(GOVERNANCE_ROLE_LABELS['administrator']).toBe('Administrator');
   });

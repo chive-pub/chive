@@ -166,26 +166,28 @@ const NODE_PROPOSAL_TYPES = [
  * Subkinds available for proposals.
  */
 const PROPOSABLE_SUBKINDS: Array<{ value: string; label: string; kind: NodeKind }> = [
-  // Type nodes (classifications)
-  { value: 'field', label: 'Academic Field', kind: 'type' },
+  // Type nodes (classifications used to categorize other things)
   { value: 'facet', label: 'Classification Facet', kind: 'type' },
-  { value: 'contribution-type', label: 'Contribution Type', kind: 'type' },
-  { value: 'contribution-degree', label: 'Contribution Degree', kind: 'type' },
   { value: 'document-format', label: 'Document Format', kind: 'type' },
-  { value: 'license', label: 'License', kind: 'type' },
   { value: 'publication-status', label: 'Publication Status', kind: 'type' },
   { value: 'paper-type', label: 'Paper Type', kind: 'type' },
   { value: 'supplementary-category', label: 'Supplementary Category', kind: 'type' },
-  { value: 'motivation', label: 'Annotation Motivation', kind: 'type' },
+  { value: 'contribution-type', label: 'Contribution Type', kind: 'type' },
+  { value: 'contribution-degree', label: 'Contribution Degree', kind: 'type' },
   { value: 'institution-type', label: 'Institution Type', kind: 'type' },
   { value: 'presentation-type', label: 'Presentation Type', kind: 'type' },
-  { value: 'platform-code', label: 'Code Platform', kind: 'type' },
-  { value: 'platform-data', label: 'Data Repository', kind: 'type' },
-  { value: 'platform-preprint', label: 'Preprint Server', kind: 'type' },
-  { value: 'platform-preregistration', label: 'Preregistration Registry', kind: 'type' },
-  { value: 'platform-protocol', label: 'Protocol Repository', kind: 'type' },
+  { value: 'motivation', label: 'Annotation Motivation', kind: 'type' },
+  { value: 'endorsement-contribution', label: 'Endorsement Contribution', kind: 'type' },
+  { value: 'access-type', label: 'Access Type', kind: 'type' },
   { value: 'relation', label: 'Relation Type', kind: 'type' },
-  // Object nodes (instances)
+  // Object nodes (specific instances/entities)
+  { value: 'field', label: 'Academic Field', kind: 'object' },
+  { value: 'license', label: 'License', kind: 'object' },
+  { value: 'platform-code', label: 'Code Platform', kind: 'object' },
+  { value: 'platform-data', label: 'Data Platform', kind: 'object' },
+  { value: 'platform-preprint', label: 'Preprint Server', kind: 'object' },
+  { value: 'platform-preregistration', label: 'Preregistration Registry', kind: 'object' },
+  { value: 'platform-protocol', label: 'Protocol Repository', kind: 'object' },
   { value: 'institution', label: 'Institution', kind: 'object' },
   { value: 'person', label: 'Person', kind: 'object' },
   { value: 'event', label: 'Event', kind: 'object' },
@@ -270,7 +272,7 @@ export function ProposalForm({
   defaultSubkind,
   className,
 }: ProposalFormProps) {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const agent = useAgent();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -313,7 +315,7 @@ export function ProposalForm({
 
   const onSubmit = useCallback(
     async (values: FormValues) => {
-      if (!session || !agent) {
+      if (!session || !agent || !user) {
         setError('You must be logged in to create proposals.');
         return;
       }
@@ -325,7 +327,7 @@ export function ProposalForm({
         if (values.entityType === 'node') {
           // Create node proposal
           const result = await agent.com.atproto.repo.createRecord({
-            repo: session.did,
+            repo: user.did,
             collection: 'pub.chive.graph.nodeProposal',
             record: {
               $type: 'pub.chive.graph.nodeProposal',
@@ -352,24 +354,36 @@ export function ProposalForm({
           });
 
           // Create a mock Proposal object for onSuccess
-          const proposal: Proposal = {
+          const proposal = {
             uri: result.data.uri,
-            type: values.proposalType,
-            category: 'node',
-            status: 'pending',
             id: values.id,
+            type: values.proposalType,
+            status: 'pending' as const,
             label: values.label,
-            proposedBy: session.did,
+            nodeUri: undefined,
+            changes: {
+              label: values.label,
+              description: values.description,
+              kind: values.kind,
+              subkind: values.subkind,
+              alternateLabels: values.alternateLabels
+                ? values.alternateLabels
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : undefined,
+            },
             rationale: values.rationale,
-            createdAt: new Date().toISOString(),
+            proposedBy: user.did,
             votes: { approve: 0, reject: 0, abstain: 0 },
-          };
+            createdAt: new Date().toISOString(),
+          } satisfies Partial<Proposal>;
 
-          onSuccess?.(proposal);
+          onSuccess?.(proposal as Proposal);
         } else {
           // Create edge proposal
           const result = await agent.com.atproto.repo.createRecord({
-            repo: session.did,
+            repo: user.did,
             collection: 'pub.chive.graph.edgeProposal',
             record: {
               $type: 'pub.chive.graph.edgeProposal',
@@ -385,20 +399,25 @@ export function ProposalForm({
           });
 
           // Create a mock Proposal object for onSuccess
-          const proposal: Proposal = {
+          const proposal = {
             uri: result.data.uri,
-            type: 'create',
-            category: 'edge',
-            status: 'pending',
             id: `${values.sourceUri}-${values.relationSlug}-${values.targetUri}`,
+            type: 'create' as const,
+            status: 'pending' as const,
             label: `${values.sourceLabel ?? 'Source'} → ${values.relationSlug} → ${values.targetLabel ?? 'Target'}`,
-            proposedBy: session.did,
+            nodeUri: undefined,
+            changes: {
+              label: `${values.sourceLabel ?? 'Source'} → ${values.relationSlug} → ${values.targetLabel ?? 'Target'}`,
+              kind: 'type' as const,
+              subkind: 'relation',
+            },
             rationale: values.rationale,
-            createdAt: new Date().toISOString(),
+            proposedBy: user.did,
             votes: { approve: 0, reject: 0, abstain: 0 },
-          };
+            createdAt: new Date().toISOString(),
+          } satisfies Partial<Proposal>;
 
-          onSuccess?.(proposal);
+          onSuccess?.(proposal as Proposal);
         }
       } catch (err) {
         console.error('Failed to create proposal:', err);

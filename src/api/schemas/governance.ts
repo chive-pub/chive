@@ -25,77 +25,44 @@ export const voterRoleSchema = z.enum([
 
 export const proposalStatusSchema = z.enum(['pending', 'approved', 'rejected', 'expired']);
 
-export const proposalTypeSchema = z.enum(['create', 'update', 'merge', 'delete', 'deprecate']);
+export const proposalTypeSchema = z.enum(['create', 'update', 'merge', 'deprecate']);
 
-export const proposalCategorySchema = z.enum([
-  'field',
-  'concept',
-  'institution',
-  'facet',
-  'authority',
-  'external-link',
-]);
+export const nodeKindSchema = z.enum(['type', 'object']);
 
 export const voteValueSchema = z.enum(['approve', 'reject', 'abstain', 'request-changes']);
 
 export type VoterRole = z.infer<typeof voterRoleSchema>;
 export type ProposalStatus = z.infer<typeof proposalStatusSchema>;
 export type ProposalType = z.infer<typeof proposalTypeSchema>;
-export type ProposalCategory = z.infer<typeof proposalCategorySchema>;
+export type NodeKind = z.infer<typeof nodeKindSchema>;
 export type VoteValue = z.infer<typeof voteValueSchema>;
 
 // =============================================================================
 // PROPOSAL SCHEMAS
 // =============================================================================
 
+export const externalIdSchema = z.object({
+  system: z.string(),
+  identifier: z.string(),
+  uri: z.string().optional(),
+  matchType: z.enum(['exact', 'close', 'broader', 'narrower', 'related']).optional(),
+});
+
 export const proposalChangesSchema = z.object({
-  // Common fields
+  // Matches pub.chive.graph.nodeProposal.proposedNode
   label: z.string().optional(),
-  description: z.string().optional(),
-  parentId: z.string().optional(),
-  mergeTargetId: z.string().optional(),
-  wikidataId: z.string().optional(),
-
-  // Field proposal fields
-  fieldType: z.enum(['field', 'root', 'subfield', 'topic']).optional(),
-
-  // Concept proposal fields
-  conceptCategory: z
-    .enum([
-      'institution-type',
-      'paper-type',
-      'methodology',
-      'geographic-scope',
-      'temporal-scope',
-      'document-format',
-      'publication-status',
-      'access-type',
-      'platform-code',
-      'platform-data',
-      'platform-preprint',
-      'platform-preregistration',
-      'platform-protocol',
-      'supplementary-type',
-      'researcher-type',
-      'identifier-type',
-      'presentation-type',
-    ])
-    .optional(),
-
-  // Authority proposal fields
-  authorityType: z
-    .enum(['person', 'organization', 'topic', 'geographic', 'temporal', 'form'])
-    .optional(),
   alternateLabels: z.array(z.string()).optional(),
-  lcshId: z.string().optional(),
-  fastId: z.string().optional(),
-  viafId: z.string().optional(),
-  orcid: z.string().optional(),
-  ror: z.string().optional(),
+  description: z.string().optional(),
+  externalIds: z.array(externalIdSchema).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 
-  // Facet proposal fields
-  dimension: z.string().optional().describe('PMEST/FAST facet dimension'),
-  facetLevel: z.number().optional(),
+  // Node classification (lexicon-aligned)
+  kind: nodeKindSchema.optional(),
+  subkind: z.string().optional(),
+
+  // For update/merge/deprecate proposals
+  targetUri: z.string().optional(),
+  mergeIntoUri: z.string().optional(),
 });
 
 export type ProposalChanges = z.infer<typeof proposalChangesSchema>;
@@ -159,9 +126,10 @@ export type Vote = z.infer<typeof voteSchema>;
 // =============================================================================
 
 export const listProposalsParamsSchema = paginationQuerySchema.extend({
-  category: proposalCategorySchema.optional().describe('Filter by proposal category'),
   status: proposalStatusSchema.optional(),
   type: proposalTypeSchema.optional(),
+  kind: nodeKindSchema.optional().describe('Filter by node kind (type/object)'),
+  subkind: z.string().optional().describe('Filter by subkind (field, institution, etc.)'),
   nodeUri: z.string().optional(),
   proposedBy: z.string().optional(),
 });
@@ -230,7 +198,8 @@ export type GetUserVoteParams = z.infer<typeof getUserVoteParamsSchema>;
 
 export const getPendingCountParamsSchema = z
   .object({
-    category: proposalCategorySchema.optional().describe('Filter by proposal category'),
+    kind: nodeKindSchema.optional().describe('Filter by node kind (type/object)'),
+    subkind: z.string().optional().describe('Filter by subkind (field, institution, etc.)'),
   })
   .optional();
 

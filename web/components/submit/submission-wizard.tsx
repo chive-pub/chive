@@ -709,7 +709,7 @@ export function SubmissionWizard({
         file: m.file,
         label: m.label,
         description: m.description,
-        category: m.category,
+        category: m.category as SupplementaryCategoryValue,
         detectedFormat: m.detectedFormat,
         order: m.order,
       }));

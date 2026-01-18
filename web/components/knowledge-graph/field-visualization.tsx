@@ -47,6 +47,8 @@ import { cn } from '@/lib/utils';
 export interface FieldVisualizationProps {
   /** Field ID to visualize */
   fieldId: string;
+  /** Depth of hierarchy to display */
+  depth?: number;
   /** Height of the visualization */
   height?: string;
   /** Additional CSS classes */

@@ -161,14 +161,16 @@ export const governanceKeys = {
  * Parameters for listing proposals.
  */
 export interface ProposalListParams {
-  /** Filter by category (field, contribution-type) */
-  category?: ProposalCategory;
   /** Filter by status */
   status?: ProposalStatus;
   /** Filter by proposal type */
   type?: ProposalType;
-  /** Filter by field ID */
-  fieldId?: string;
+  /** Filter by node kind (type/object) */
+  kind?: 'type' | 'object';
+  /** Filter by subkind (field, institution, etc.) */
+  subkind?: string;
+  /** Filter by node URI */
+  nodeUri?: string;
   /** Maximum results */
   limit?: number;
   /** Pagination cursor */
@@ -187,12 +189,12 @@ export interface UseGovernanceOptions {
  * Input for creating a proposal.
  */
 export interface CreateProposalInput {
-  /** Proposal category (field, contribution-type) */
+  /** Proposal entity type (node or edge) */
   category: ProposalCategory;
-  /** Proposal type */
+  /** Proposal type (create, update, merge, deprecate) */
   type: ProposalType;
-  /** Target field ID (for update/merge/delete) */
-  fieldId?: string;
+  /** Target node URI (for update/merge/deprecate) */
+  targetUri?: string;
   /** Proposed changes */
   changes: ProposalChanges;
   /** Rationale */
@@ -436,7 +438,7 @@ export function useCreateProposal() {
       switch (input.category) {
         case 'node':
           result = await createNodeProposalRecord(agent, {
-            proposalType: input.type === 'delete' ? 'deprecate' : input.type,
+            proposalType: input.type,
             kind: input.changes.kind ?? 'type',
             subkind: input.changes.subkind,
             proposedNode: {
@@ -446,23 +448,23 @@ export function useCreateProposal() {
               externalIds: input.changes.externalIds,
               metadata: input.changes.metadata,
             },
-            targetUri: input.fieldId,
-            mergeIntoUri: input.changes.mergeTargetId,
+            targetUri: input.targetUri,
+            mergeIntoUri: input.changes.mergeIntoUri,
             rationale: input.rationale,
           } as RecordCreatorNodeProposal);
           break;
 
         case 'edge':
           result = await createNodeProposalRecord(agent, {
-            proposalType: input.type === 'delete' ? 'deprecate' : input.type,
+            proposalType: input.type,
             kind: 'type',
             subkind: 'relation',
             proposedNode: {
               label: input.changes.label ?? '',
               description: input.changes.description,
             },
-            targetUri: input.fieldId,
-            mergeIntoUri: input.changes.mergeTargetId,
+            targetUri: input.targetUri,
+            mergeIntoUri: input.changes.mergeIntoUri,
             rationale: input.rationale,
           } as RecordCreatorNodeProposal);
           break;
@@ -478,7 +480,7 @@ export function useCreateProposal() {
         id: result.uri.split('/').pop() ?? '',
         uri: result.uri,
         type: input.type,
-        fieldId: input.fieldId,
+        nodeUri: input.targetUri,
         changes: input.changes,
         rationale: input.rationale,
         status: 'pending' as ProposalStatus,

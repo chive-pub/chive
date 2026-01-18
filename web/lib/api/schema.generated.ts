@@ -5361,9 +5361,10 @@ export interface operations {
       query: {
         limit: number;
         cursor?: string;
-        category?: 'field' | 'concept' | 'institution' | 'facet' | 'authority' | 'external-link';
         status?: 'pending' | 'approved' | 'rejected' | 'expired';
-        type?: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
+        type?: 'create' | 'update' | 'merge' | 'deprecate';
+        kind?: 'type' | 'object';
+        subkind?: string;
         nodeUri?: string;
         proposedBy?: string;
       };
@@ -5386,51 +5387,26 @@ export interface operations {
               nodeUri?: string;
               label?: string;
               /** @enum {string} */
-              type: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
+              type: 'create' | 'update' | 'merge' | 'deprecate';
               changes: {
                 label?: string;
-                description?: string;
-                parentId?: string;
-                mergeTargetId?: string;
-                wikidataId?: string;
-                /** @enum {string} */
-                fieldType?: 'field' | 'root' | 'subfield' | 'topic';
-                /** @enum {string} */
-                conceptCategory?:
-                  | 'institution-type'
-                  | 'paper-type'
-                  | 'methodology'
-                  | 'geographic-scope'
-                  | 'temporal-scope'
-                  | 'document-format'
-                  | 'publication-status'
-                  | 'access-type'
-                  | 'platform-code'
-                  | 'platform-data'
-                  | 'platform-preprint'
-                  | 'platform-preregistration'
-                  | 'platform-protocol'
-                  | 'supplementary-type'
-                  | 'researcher-type'
-                  | 'identifier-type'
-                  | 'presentation-type';
-                /** @enum {string} */
-                authorityType?:
-                  | 'person'
-                  | 'organization'
-                  | 'topic'
-                  | 'geographic'
-                  | 'temporal'
-                  | 'form';
                 alternateLabels?: string[];
-                lcshId?: string;
-                fastId?: string;
-                viafId?: string;
-                orcid?: string;
-                ror?: string;
-                /** @description PMEST/FAST facet dimension */
-                dimension?: string;
-                facetLevel?: number;
+                description?: string;
+                externalIds?: {
+                  system: string;
+                  identifier: string;
+                  uri?: string;
+                  /** @enum {string} */
+                  matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+                }[];
+                metadata?: {
+                  [key: string]: unknown;
+                };
+                /** @enum {string} */
+                kind?: 'type' | 'object';
+                subkind?: string;
+                targetUri?: string;
+                mergeIntoUri?: string;
               };
               rationale: string;
               /** @enum {string} */
@@ -5515,51 +5491,26 @@ export interface operations {
             nodeUri?: string;
             label?: string;
             /** @enum {string} */
-            type: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
+            type: 'create' | 'update' | 'merge' | 'deprecate';
             changes: {
               label?: string;
-              description?: string;
-              parentId?: string;
-              mergeTargetId?: string;
-              wikidataId?: string;
-              /** @enum {string} */
-              fieldType?: 'field' | 'root' | 'subfield' | 'topic';
-              /** @enum {string} */
-              conceptCategory?:
-                | 'institution-type'
-                | 'paper-type'
-                | 'methodology'
-                | 'geographic-scope'
-                | 'temporal-scope'
-                | 'document-format'
-                | 'publication-status'
-                | 'access-type'
-                | 'platform-code'
-                | 'platform-data'
-                | 'platform-preprint'
-                | 'platform-preregistration'
-                | 'platform-protocol'
-                | 'supplementary-type'
-                | 'researcher-type'
-                | 'identifier-type'
-                | 'presentation-type';
-              /** @enum {string} */
-              authorityType?:
-                | 'person'
-                | 'organization'
-                | 'topic'
-                | 'geographic'
-                | 'temporal'
-                | 'form';
               alternateLabels?: string[];
-              lcshId?: string;
-              fastId?: string;
-              viafId?: string;
-              orcid?: string;
-              ror?: string;
-              /** @description PMEST/FAST facet dimension */
-              dimension?: string;
-              facetLevel?: number;
+              description?: string;
+              externalIds?: {
+                system: string;
+                identifier: string;
+                uri?: string;
+                /** @enum {string} */
+                matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+              }[];
+              metadata?: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              kind?: 'type' | 'object';
+              subkind?: string;
+              targetUri?: string;
+              mergeIntoUri?: string;
             };
             rationale: string;
             /** @enum {string} */
@@ -7785,10 +7736,10 @@ export interface operations {
               members: string[];
               /** @description Number of members */
               size: number;
-              /** @description Representative members with names */
+              /** @description Representative members with labels */
               representativeMembers?: {
                 uri: string;
-                name: string;
+                label: string;
               }[];
             }[];
             /**

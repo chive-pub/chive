@@ -61,7 +61,7 @@ export const SUBKINDS: readonly SubkindDefinition[] = [
     slug: 'field',
     label: 'Academic Field',
     description: 'Research disciplines and academic fields - hierarchy via edges',
-    kind: 'type',
+    kind: 'object',
     displayOrder: 10,
   },
   {
@@ -86,7 +86,7 @@ export const SUBKINDS: readonly SubkindDefinition[] = [
     slug: 'license',
     label: 'License',
     description: 'Distribution licenses (CC-BY, MIT, Apache, etc.)',
-    kind: 'type',
+    kind: 'object',
     displayOrder: 21,
   },
   {
@@ -126,41 +126,41 @@ export const SUBKINDS: readonly SubkindDefinition[] = [
   },
 
   // =============================================================================
-  // Platform type subkinds
+  // Platform subkinds (specific platform instances)
   // =============================================================================
   {
     slug: 'platform-code',
     label: 'Code Platform',
     description: 'Code hosting platforms (GitHub, GitLab, etc.)',
-    kind: 'type',
+    kind: 'object',
     displayOrder: 30,
   },
   {
     slug: 'platform-data',
     label: 'Data Platform',
     description: 'Data hosting platforms (Zenodo, Figshare, etc.)',
-    kind: 'type',
+    kind: 'object',
     displayOrder: 31,
   },
   {
     slug: 'platform-preprint',
     label: 'Preprint Server',
     description: 'Preprint hosting platforms (arXiv, bioRxiv, etc.)',
-    kind: 'type',
+    kind: 'object',
     displayOrder: 32,
   },
   {
     slug: 'platform-preregistration',
     label: 'Preregistration Registry',
     description: 'Preregistration platforms (OSF, ClinicalTrials, etc.)',
-    kind: 'type',
+    kind: 'object',
     displayOrder: 33,
   },
   {
     slug: 'platform-protocol',
     label: 'Protocol Repository',
     description: 'Protocol hosting platforms (protocols.io, etc.)',
-    kind: 'type',
+    kind: 'object',
     displayOrder: 34,
   },
 

@@ -4,12 +4,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createWrapper } from '@/tests/test-utils';
 import {
   createMockFieldDetail,
-  createMockFieldListResponse,
+  createMockFieldList,
   createMockFieldSummary,
-  createMockEprintSummary,
 } from '@/tests/mock-data';
 
-import { fieldKeys, useField, useFields, useFieldChildren, useFieldEprints } from './use-field';
+import { fieldKeys, useField, useFields, useFieldWithRelations } from './use-field';
 
 // Mock functions using vi.hoisted for proper hoisting
 const { mockApiGet } = vi.hoisted(() => ({
@@ -32,7 +31,7 @@ describe('fieldKeys', () => {
   });
 
   it('generates list key with params', () => {
-    const params = { parentId: 'parent', limit: 10 };
+    const params = { status: 'established' as const, limit: 10 };
     expect(fieldKeys.list(params)).toEqual(['fields', 'list', params]);
   });
 
@@ -86,20 +85,18 @@ describe('useField', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toEqual(mockField);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getField', {
+    expect(result.current.data?.id).toBe(mockField.id);
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getNode', {
       params: {
         query: expect.objectContaining({
           id: 'machine-learning',
-          includeRelationships: false,
-          includeChildren: false,
-          includeAncestors: false,
+          includeEdges: false,
         }),
       },
     });
   });
 
-  it('fetches field with relationships', async () => {
+  it('fetches field with edges', async () => {
     const mockField = createMockFieldDetail();
     mockApiGet.mockResolvedValueOnce({
       data: mockField,
@@ -110,9 +107,7 @@ describe('useField', () => {
     const { result } = renderHook(
       () =>
         useField('machine-learning', {
-          includeRelationships: true,
-          includeChildren: true,
-          includeAncestors: true,
+          includeEdges: true,
         }),
       { wrapper: Wrapper }
     );
@@ -121,13 +116,11 @@ describe('useField', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getField', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getNode', {
       params: {
         query: expect.objectContaining({
           id: 'machine-learning',
-          includeRelationships: true,
-          includeChildren: true,
-          includeAncestors: true,
+          includeEdges: true,
         }),
       },
     });
@@ -163,7 +156,16 @@ describe('useFields', () => {
   });
 
   it('fetches field list', async () => {
-    const mockResponse = createMockFieldListResponse();
+    const mockFields = createMockFieldList(3);
+    const mockResponse = {
+      nodes: mockFields.map((f) => ({
+        ...f,
+        uri: `at://did:plc:gov/pub.chive.graph.node/${f.id}`,
+      })),
+      cursor: undefined,
+      hasMore: false,
+      total: 3,
+    };
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
       error: undefined,
@@ -176,14 +178,28 @@ describe('useFields', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.listFields', {
-      params: { query: expect.objectContaining({}) },
+    expect(result.current.data?.fields).toHaveLength(3);
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.listNodes', {
+      params: {
+        query: expect.objectContaining({
+          subkind: 'field',
+        }),
+      },
     });
   });
 
-  it('fetches fields with filters', async () => {
-    const mockResponse = createMockFieldListResponse();
+  it('fetches fields with status filter', async () => {
+    const mockFields = createMockFieldList(2);
+    const mockResponse = {
+      nodes: mockFields.map((f) => ({
+        ...f,
+        uri: `at://did:plc:gov/pub.chive.graph.node/${f.id}`,
+        status: 'established',
+      })),
+      cursor: undefined,
+      hasMore: false,
+      total: 2,
+    };
     mockApiGet.mockResolvedValueOnce({
       data: mockResponse,
       error: undefined,
@@ -193,8 +209,7 @@ describe('useFields', () => {
     const { result } = renderHook(
       () =>
         useFields({
-          parentId: 'computer-science',
-          status: 'approved',
+          status: 'established',
           limit: 20,
         }),
       { wrapper: Wrapper }
@@ -204,11 +219,11 @@ describe('useFields', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.listFields', {
+    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.listNodes', {
       params: {
         query: expect.objectContaining({
-          parentId: 'computer-science',
-          status: 'approved',
+          subkind: 'field',
+          status: 'established',
           limit: 20,
         }),
       },
@@ -216,98 +231,50 @@ describe('useFields', () => {
   });
 });
 
-describe('useFieldChildren', () => {
+describe('useFieldWithRelations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('fetches child fields', async () => {
-    const mockChildren = [
-      createMockFieldSummary({ id: 'ai', label: 'Artificial Intelligence' }),
-      createMockFieldSummary({ id: 'databases', label: 'Databases' }),
-    ];
+  it('fetches field with resolved relations', async () => {
+    const mockField = createMockFieldDetail();
     mockApiGet.mockResolvedValueOnce({
-      data: { fields: mockChildren },
-      error: undefined,
-    });
-
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldChildren('computer-science'), {
-      wrapper: Wrapper,
-    });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data).toEqual(mockChildren);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.listFields', {
-      params: { query: expect.objectContaining({ parentId: 'computer-science' }) },
-    });
-  });
-
-  it('is disabled when parentId is empty', () => {
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldChildren(''), { wrapper: Wrapper });
-
-    expect(result.current.fetchStatus).toBe('idle');
-  });
-});
-
-describe('useFieldEprints', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('fetches field eprints with pagination', async () => {
-    const mockResponse = {
-      eprints: [
-        createMockEprintSummary({ uri: 'at://did:plc:test1/pub.chive.eprint.submission/1' }),
-        createMockEprintSummary({ uri: 'at://did:plc:test2/pub.chive.eprint.submission/2' }),
-      ],
-      cursor: 'next-cursor',
-      hasMore: true,
-      total: 100,
-    };
-    mockApiGet.mockResolvedValueOnce({
-      data: mockResponse,
-      error: undefined,
-    });
-
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldEprints('machine-learning'), {
-      wrapper: Wrapper,
-    });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data?.pages[0]).toEqual(mockResponse);
-    expect(result.current.hasNextPage).toBe(true);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getFieldEprints', {
-      params: {
-        query: expect.objectContaining({
-          fieldId: 'machine-learning',
-          limit: 10,
-        }),
+      data: {
+        ...mockField,
+        edges: [
+          {
+            id: 'edge1',
+            uri: 'at://test/edge/1',
+            sourceUri: mockField.uri,
+            targetUri: 'at://did:plc:gov/pub.chive.graph.node/cs',
+            relationSlug: 'broader',
+            status: 'established',
+          },
+        ],
       },
+      error: undefined,
     });
-  });
 
-  it('handles custom limit', async () => {
-    const mockResponse = {
-      eprints: [],
-      hasMore: false,
-      total: 0,
-    };
+    // Mock the related node lookup
     mockApiGet.mockResolvedValueOnce({
-      data: mockResponse,
+      data: {
+        nodes: [
+          {
+            id: 'cs',
+            uri: 'at://did:plc:gov/pub.chive.graph.node/cs',
+            label: 'Computer Science',
+            status: 'established',
+          },
+        ],
+        cursor: undefined,
+        hasMore: false,
+        total: 1,
+      },
       error: undefined,
     });
 
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldEprints('physics', { limit: 25 }), {
+    const { result } = renderHook(() => useFieldWithRelations('machine-learning'), {
       wrapper: Wrapper,
     });
 
@@ -315,19 +282,14 @@ describe('useFieldEprints', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getFieldEprints', {
-      params: {
-        query: expect.objectContaining({
-          fieldId: 'physics',
-          limit: 25,
-        }),
-      },
-    });
+    expect(result.current.data?.id).toBe(mockField.id);
   });
 
-  it('is disabled when fieldId is empty', () => {
+  it('is disabled when ID is empty', () => {
     const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useFieldEprints(''), { wrapper: Wrapper });
+    const { result } = renderHook(() => useFieldWithRelations('', { enabled: true }), {
+      wrapper: Wrapper,
+    });
 
     expect(result.current.fetchStatus).toBe('idle');
   });

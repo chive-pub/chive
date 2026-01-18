@@ -320,21 +320,16 @@ const nodeFormSchema = z.object({
   kind: z.enum(['type', 'object']),
   subkind: z.string().min(1, 'Subkind is required'),
   label: z.string().min(1, 'Label is required').max(500, 'Label must be 500 characters or less'),
-  alternateLabels: z
-    .array(z.object({ value: z.string().max(500) }))
-    .max(50)
-    .default([]),
+  alternateLabels: z.array(z.object({ value: z.string().max(500) })).max(50),
   description: z.string().max(2000, 'Description must be 2000 characters or less').optional(),
   status: z.enum(['proposed', 'provisional', 'established', 'deprecated']),
-  externalIds: z
-    .array(
-      z.object({
-        system: z.string(),
-        identifier: z.string(),
-        uri: z.string().optional(),
-      })
-    )
-    .default([]),
+  externalIds: z.array(
+    z.object({
+      system: z.string(),
+      identifier: z.string(),
+      uri: z.string().optional(),
+    })
+  ),
   metadata: z
     .object({
       country: z.string().max(2).optional(),
@@ -390,8 +385,8 @@ export function KnowledgeGraphNodeForm({
     return configs;
   }, [restrictKind, restrictSubkind]);
 
-  const form = useForm({
-    resolver: zodResolver(nodeFormSchema) as ReturnType<typeof zodResolver<NodeFormSchema>>,
+  const form = useForm<NodeFormSchema>({
+    resolver: zodResolver(nodeFormSchema),
     defaultValues: {
       kind: initialValues?.kind ?? restrictKind ?? 'type',
       subkind: initialValues?.subkind ?? restrictSubkind ?? availableSubkinds[0]?.slug ?? 'field',

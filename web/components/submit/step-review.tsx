@@ -647,9 +647,9 @@ export function StepReview({
                         {conferencePresentation.conferenceLocation}
                       </p>
                     )}
-                    {conferencePresentation.presentationType && (
+                    {conferencePresentation.presentationTypeName && (
                       <Badge variant="outline" className="text-xs mt-1 capitalize">
-                        {conferencePresentation.presentationType}
+                        {conferencePresentation.presentationTypeName}
                       </Badge>
                     )}
                   </div>

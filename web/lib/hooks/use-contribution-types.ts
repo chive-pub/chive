@@ -516,7 +516,7 @@ export function useContributionType(typeId: string, options: UseContributionType
     queryFn: async (): Promise<CreditContributionType> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.graph.getNode', {
         params: {
-          query: { uri: typeId },
+          query: { id: typeId, includeEdges: false },
         },
       });
 
@@ -574,10 +574,12 @@ export function useContributionTypeProposals(
       proposals: ContributionTypeProposal[];
       cursor?: string;
     }> => {
+      // Note: 'contribution-type' is not a valid API category, use 'concept' instead
+      // Contribution types are specialized concept nodes
       const { data, error } = await api.GET('/xrpc/pub.chive.governance.listProposals', {
         params: {
           query: {
-            category: 'contribution-type',
+            category: 'concept',
             status: params.status,
             limit: params.limit ?? 20,
             cursor: params.cursor,
@@ -670,7 +672,7 @@ export function useContributionTypeProposal(
           total: (p.votes?.approve ?? 0) + (p.votes?.reject ?? 0) + (p.votes?.abstain ?? 0),
         },
         createdAt: p.createdAt,
-        existingTypeId: p.fieldId,
+        existingTypeId: p.nodeUri,
       };
     },
     enabled: !!proposalUri && (options.enabled ?? true),

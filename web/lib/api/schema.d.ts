@@ -575,8 +575,12 @@ export type FacetedSearchResponse = SuccessResponseJSON<
 /** Eprint summary in faceted browse results */
 export type FacetedEprintSummary = FacetedSearchResponse['hits'][number];
 
-/** Facet value from browseFaceted */
-export type FacetValue = NonNullable<FacetedSearchResponse['facets']>[string][number];
+/** Facet value from browseFaceted - counts for faceted search */
+export interface SearchFacetValue {
+  value: string;
+  label?: string;
+  count: number;
+}
 
 // -----------------------------------------------------------------------------
 // Knowledge Graph Node Types
@@ -876,9 +880,12 @@ export type VoterRole = Vote['voterRole'];
  * Proposal category - the type of entity being proposed.
  *
  * @remarks
- * Categories represent what is being created/modified:
- * - node: Knowledge graph node proposals (types and objects)
- * - edge: Knowledge graph edge/relationship proposals
+ * High-level categories for what is being proposed:
+ * - node: Knowledge graph node (any subkind)
+ * - edge: Knowledge graph edge/relationship
+ *
+ * Note: The backend schema has additional categories (field, concept, etc.)
+ * but these don't align with actual subkinds. Use subkind filtering separately.
  */
 export type ProposalCategory = 'node' | 'edge';
 
@@ -1003,6 +1010,72 @@ export interface DelegationResult {
   success: boolean;
   delegationId?: string;
   message: string;
+}
+
+/**
+ * Elevation request record from listElevationRequests.
+ */
+export interface ElevationRequest {
+  id: string;
+  did: string;
+  handle?: string;
+  displayName?: string;
+  requestedRole: GovernanceRole;
+  currentRole: GovernanceRole;
+  requestedAt: number;
+  metrics: ReputationMetrics;
+  verificationNotes?: string;
+}
+
+/**
+ * Response from pub.chive.governance.listElevationRequests.
+ */
+export interface ElevationRequestsResponse {
+  requests: ElevationRequest[];
+  cursor?: string;
+  total: number;
+}
+
+/**
+ * Input for approving an elevation request.
+ */
+export interface ApproveElevationInput {
+  requestId: string;
+  verificationNotes?: string;
+}
+
+/**
+ * Input for rejecting an elevation request.
+ */
+export interface RejectElevationInput {
+  requestId: string;
+  reason: string;
+}
+
+/**
+ * Delegation record from listDelegations.
+ */
+export interface DelegationRecord {
+  id: string;
+  delegateDid: string;
+  handle?: string;
+  displayName?: string;
+  collections: string[];
+  expiresAt: number;
+  maxRecordsPerDay: number;
+  recordsCreatedToday: number;
+  grantedAt: number;
+  grantedBy: string;
+  active: boolean;
+}
+
+/**
+ * Response from pub.chive.governance.listDelegations.
+ */
+export interface DelegationsResponse {
+  delegations: DelegationRecord[];
+  cursor?: string;
+  total: number;
 }
 
 // -----------------------------------------------------------------------------

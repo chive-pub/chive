@@ -14,6 +14,7 @@ import type {
   FacetedSearchResponse,
   FacetProposalChanges,
   FacetValue,
+  SearchFacetValue,
   FieldDetail,
   FieldRef,
   FieldRelationship,
@@ -259,8 +260,25 @@ export function createMockFacetedEprintSummary(
  * Creates a mock SearchResultsResponse.
  */
 export function createMockSearchResults(
-  overrides: Partial<SearchResultsResponse> = {}
-): SearchResultsResponse {
+  overrides: Partial<{
+    hits: FacetedEprintSummary[];
+    facets: Array<{
+      slug: string;
+      label: string;
+      description?: string;
+      values: SearchFacetValue[];
+    }>;
+    cursor?: string;
+    hasMore: boolean;
+    total: number;
+  }> = {}
+): {
+  hits: FacetedEprintSummary[];
+  facets: Array<{ slug: string; label: string; description?: string; values: SearchFacetValue[] }>;
+  cursor?: string;
+  hasMore: boolean;
+  total: number;
+} {
   return {
     hits: [
       createMockFacetedEprintSummary({
@@ -276,12 +294,16 @@ export function createMockSearchResults(
     cursor: 'cursor123',
     hasMore: true,
     total: 42,
-    facets: {
-      personality: [
-        { value: 'computer-science', label: 'Computer Science', count: 15 },
-        { value: 'physics', label: 'Physics', count: 10 },
-      ],
-    },
+    facets: [
+      {
+        slug: 'personality',
+        label: 'Personality',
+        values: [
+          { value: 'computer-science', label: 'Computer Science', count: 15 },
+          { value: 'physics', label: 'Physics', count: 10 },
+        ],
+      },
+    ],
     ...overrides,
   };
 }
@@ -458,12 +480,28 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
       }),
     ],
     children: [
-      { id: 'deep-learning', label: 'Deep Learning' },
-      { id: 'reinforcement-learning', label: 'Reinforcement Learning' },
+      {
+        id: 'deep-learning',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/deep-learning',
+        label: 'Deep Learning',
+      },
+      {
+        id: 'reinforcement-learning',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/reinforcement-learning',
+        label: 'Reinforcement Learning',
+      },
     ],
     ancestors: [
-      { id: 'computer-science', label: 'Computer Science' },
-      { id: 'artificial-intelligence', label: 'Artificial Intelligence' },
+      {
+        id: 'computer-science',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/computer-science',
+        label: 'Computer Science',
+      },
+      {
+        id: 'artificial-intelligence',
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/artificial-intelligence',
+        label: 'Artificial Intelligence',
+      },
     ],
     ...overrides,
   };
@@ -486,9 +524,11 @@ export function createMockFieldList(count: number = 3): FieldSummary[] {
 // ============================================================================
 
 /**
- * Creates a mock FacetValue.
+ * Creates a mock search facet value (for browseFaceted).
  */
-export function createMockFacetValue(overrides: Partial<FacetValue> = {}): FacetValue {
+export function createMockSearchFacetValue(
+  overrides: Partial<SearchFacetValue> = {}
+): SearchFacetValue {
   return {
     value: 'computer-science',
     count: 42,
@@ -499,10 +539,28 @@ export function createMockFacetValue(overrides: Partial<FacetValue> = {}): Facet
 
 /**
  * Creates a mock FacetedSearchResponse.
+ * Note: This uses the hook's FacetedSearchResponse format with facets as an array.
  */
 export function createMockFacetedSearchResponse(
-  overrides: Partial<FacetedSearchResponse> = {}
-): FacetedSearchResponse {
+  overrides: Partial<{
+    hits: FacetedEprintSummary[];
+    facets: Array<{
+      slug: string;
+      label: string;
+      description?: string;
+      values: SearchFacetValue[];
+    }>;
+    cursor?: string;
+    hasMore: boolean;
+    total: number;
+  }> = {}
+): {
+  hits: FacetedEprintSummary[];
+  facets: Array<{ slug: string; label: string; description?: string; values: SearchFacetValue[] }>;
+  cursor?: string;
+  hasMore: boolean;
+  total: number;
+} {
   return {
     hits: [
       createMockFacetedEprintSummary({
@@ -515,21 +573,55 @@ export function createMockFacetedSearchResponse(
     cursor: 'cursor-456',
     hasMore: true,
     total: 100,
-    facets: {
-      personality: [
-        createMockFacetValue({ value: 'research', count: 50, label: 'Research' }),
-        createMockFacetValue({ value: 'review', count: 30, label: 'Review' }),
-      ],
-      matter: [
-        createMockFacetValue({ value: 'physics', count: 40, label: 'Physics' }),
-        createMockFacetValue({ value: 'computer-science', count: 35, label: 'Computer Science' }),
-      ],
-      energy: [
-        createMockFacetValue({ value: 'classification', count: 25, label: 'Classification' }),
-      ],
-      space: [createMockFacetValue({ value: 'north-america', count: 45, label: 'North America' })],
-      time: [createMockFacetValue({ value: '2024', count: 60, label: '2024' })],
-    },
+    facets: [
+      {
+        slug: 'personality',
+        label: 'Personality',
+        values: [
+          createMockSearchFacetValue({ value: 'research', count: 50, label: 'Research' }),
+          createMockSearchFacetValue({ value: 'review', count: 30, label: 'Review' }),
+        ],
+      },
+      {
+        slug: 'matter',
+        label: 'Matter',
+        values: [
+          createMockSearchFacetValue({ value: 'physics', count: 40, label: 'Physics' }),
+          createMockSearchFacetValue({
+            value: 'computer-science',
+            count: 35,
+            label: 'Computer Science',
+          }),
+        ],
+      },
+      {
+        slug: 'energy',
+        label: 'Energy',
+        values: [
+          createMockSearchFacetValue({
+            value: 'classification',
+            count: 25,
+            label: 'Classification',
+          }),
+        ],
+      },
+      {
+        slug: 'space',
+        label: 'Space',
+        values: [
+          createMockSearchFacetValue({
+            value: 'north-america',
+            count: 45,
+            label: 'North America',
+          }),
+        ],
+      },
+      {
+        slug: 'time',
+        label: 'Time',
+        values: [createMockSearchFacetValue({ value: '2024', count: 60, label: '2024' })],
+      },
+    ],
     ...overrides,
   };
 }

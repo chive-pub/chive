@@ -128,7 +128,7 @@ export function useFacetedSearch(params: UseFacetedSearchParams) {
         params: {
           query: {
             q: params.q,
-            facets: params.facets ? JSON.stringify(params.facets) : undefined,
+            facets: params.facets ? params.facets : undefined,
             limit: params.limit ?? 20,
             cursor: params.cursor,
           },
@@ -164,8 +164,7 @@ export function useFacetCounts(currentFilters: DynamicFacetFilters = {}) {
       const { data, error } = await api.GET('/xrpc/pub.chive.graph.browseFaceted', {
         params: {
           query: {
-            facets:
-              Object.keys(currentFilters).length > 0 ? JSON.stringify(currentFilters) : undefined,
+            facets: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
             limit: 0, // Don't return results, just facets
           },
         },
@@ -197,7 +196,7 @@ export function useLiveFacetedSearch(params: UseFacetedSearchParams) {
         params: {
           query: {
             q: params.q,
-            facets: params.facets ? JSON.stringify(params.facets) : undefined,
+            facets: params.facets ? params.facets : undefined,
             limit: params.limit ?? 20,
             cursor: params.cursor,
           },

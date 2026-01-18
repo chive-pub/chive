@@ -76,8 +76,9 @@ function ProposalsContent() {
   const [typeFilter, setTypeFilter] = useState<ProposalType | 'all'>('all');
 
   const isAuthenticated = useIsAuthenticated();
+  // Note: category filter is for UI display only, not sent to API
+  // The API uses kind/subkind for filtering node proposals
   const { data, isLoading, error } = useProposals({
-    category: categoryFilter === 'all' ? undefined : categoryFilter,
     status: statusFilter === 'all' ? undefined : statusFilter,
     type: typeFilter === 'all' ? undefined : typeFilter,
     limit: 50,

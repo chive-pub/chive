@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatCompactNumber } from '@/lib/utils/format-number';
-import type { FacetValue } from '@/lib/api/schema';
+import type { FacetValue } from '@/lib/hooks/use-faceted-search';
 
 /**
  * Props for the FacetPanel component.

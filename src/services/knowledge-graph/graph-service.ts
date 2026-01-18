@@ -548,7 +548,7 @@ export class KnowledgeGraphService {
    */
   async listProposals(options: {
     status?: 'pending' | 'approved' | 'rejected';
-    type?: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
+    type?: 'create' | 'update' | 'merge' | 'deprecate';
     nodeUri?: string;
     proposedBy?: string;
     limit?: number;
@@ -576,7 +576,7 @@ export class KnowledgeGraphService {
         id: p.id,
         uri: p.uri as string,
         nodeUri: (p.targetUri ?? '') as string,
-        type: p.proposalType as 'create' | 'update' | 'merge' | 'delete' | 'deprecate',
+        type: p.proposalType as 'create' | 'update' | 'merge' | 'deprecate',
         changes: (p.proposedNode ?? {}) as Record<string, unknown>,
         rationale: p.rationale,
         status: p.status as 'pending' | 'approved' | 'rejected',
@@ -627,7 +627,7 @@ export class KnowledgeGraphService {
         id: proposal.id,
         uri: proposal.uri as string,
         nodeUri: (proposal.targetUri ?? '') as string,
-        type: proposal.proposalType as 'create' | 'update' | 'merge' | 'delete' | 'deprecate',
+        type: proposal.proposalType as 'create' | 'update' | 'merge' | 'deprecate',
         changes: (proposal.proposedNode ?? {}) as Record<string, unknown>,
         rationale: proposal.rationale,
         status: proposal.status as 'pending' | 'approved' | 'rejected',
@@ -708,7 +708,7 @@ export interface ProposalView {
   readonly id: string;
   readonly uri: string;
   readonly nodeUri: string;
-  readonly type: 'create' | 'update' | 'merge' | 'delete' | 'deprecate';
+  readonly type: 'create' | 'update' | 'merge' | 'deprecate';
   readonly changes: Record<string, unknown>;
   readonly rationale: string;
   readonly status: 'pending' | 'approved' | 'rejected';

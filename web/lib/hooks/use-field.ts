@@ -324,8 +324,10 @@ export function useFieldChildren(fieldId: string, options: UseFieldChildrenOptio
       const { data, error } = await api.GET('/xrpc/pub.chive.graph.listEdges', {
         params: {
           query: {
-            sourceId: fieldId,
+            limit: 100,
+            sourceUri: fieldId,
             relationSlug: 'narrower',
+            status: 'established',
           },
         },
       });
