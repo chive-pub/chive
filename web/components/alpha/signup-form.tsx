@@ -176,7 +176,7 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
         careerStage: values.careerStage,
         careerStageOther: values.careerStage === 'other' ? values.careerStageOther : undefined,
         affiliations: values.affiliations,
-        researchKeywords: values.researchKeywords,
+        researchKeywords: values.researchKeywords ?? [],
         motivation: values.motivation || undefined,
       },
       {
