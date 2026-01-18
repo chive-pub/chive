@@ -80,3 +80,24 @@ export const verifySyncResponseSchema = z.object({
 });
 
 export type VerifySyncResponse = z.infer<typeof verifySyncResponseSchema>;
+
+/**
+ * Parameters for indexing a record from PDS.
+ */
+export const indexRecordInputSchema = z.object({
+  uri: z.string().describe('AT URI of the record to index'),
+});
+
+export type IndexRecordInput = z.infer<typeof indexRecordInputSchema>;
+
+/**
+ * Index record response schema.
+ */
+export const indexRecordResponseSchema = z.object({
+  uri: z.string(),
+  indexed: z.boolean(),
+  cid: z.string().optional(),
+  error: z.string().optional(),
+});
+
+export type IndexRecordResponse = z.infer<typeof indexRecordResponseSchema>;
