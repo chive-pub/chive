@@ -1534,6 +1534,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/xrpc/pub.chive.sync.indexRecord': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Index a record from PDS (owner or admin only) */
+    post: operations['pub_chive_sync_indexRecord'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/xrpc/pub.chive.sync.refreshRecord': {
     parameters: {
       query?: never;
@@ -10143,6 +10160,65 @@ export interface operations {
             isStale: boolean;
             indexedCID: string;
             pdsCID?: string;
+            error?: string;
+          };
+        };
+      };
+      /** @description Bad Request - Validation error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Too Many Requests - Rate limit exceeded */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorResponse'];
+        };
+      };
+    };
+  };
+  pub_chive_sync_indexRecord: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description AT URI of the record to index */
+          uri: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            uri: string;
+            indexed: boolean;
+            cid?: string;
             error?: string;
           };
         };

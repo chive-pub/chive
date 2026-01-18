@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth, useAgent } from '@/lib/auth/auth-context';
 import { createEprintRecord, type CreateRecordResult } from '@/lib/atproto';
+import { authApi } from '@/lib/api/client';
 
 import { WizardProgress, WizardProgressCompact, type WizardStep } from './wizard-progress';
 import { StepFiles } from './step-files';
@@ -734,6 +735,18 @@ export function SubmissionWizard({
         fieldNodes: transformedFieldNodes,
         facets: transformedFacets.length > 0 ? transformedFacets : undefined,
       });
+
+      // Trigger indexing in Chive's AppView
+      // The Bluesky relay doesn't broadcast pub.chive.* records,
+      // so we need to manually trigger indexing after PDS write
+      try {
+        await authApi.POST('/xrpc/pub.chive.sync.indexRecord', {
+          body: { uri: result.uri },
+        });
+      } catch (syncError) {
+        // Log but don't fail - the record exists in the user's PDS
+        console.warn('Sync indexing failed (record saved to PDS):', syncError);
+      }
 
       onSuccess?.(result);
     } catch (error) {
