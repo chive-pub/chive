@@ -223,8 +223,8 @@ describe('useFieldChildren', () => {
 
   it('fetches child fields', async () => {
     const mockChildren = [
-      createMockFieldSummary({ id: 'ai', name: 'Artificial Intelligence' }),
-      createMockFieldSummary({ id: 'databases', name: 'Databases' }),
+      createMockFieldSummary({ id: 'ai', label: 'Artificial Intelligence' }),
+      createMockFieldSummary({ id: 'databases', label: 'Databases' }),
     ];
     mockApiGet.mockResolvedValueOnce({
       data: { fields: mockChildren },

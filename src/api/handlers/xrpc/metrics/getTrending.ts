@@ -184,7 +184,7 @@ export async function getTrendingHandler(
         submittedBy: eprintData.submittedBy,
         paperDid: eprintData.paperDid,
         fields: undefined as
-          | { id?: string; uri: string; name: string; parentUri?: string }[]
+          | { id?: string; uri: string; label: string; parentUri?: string }[]
           | undefined,
         license: eprintData.license,
         createdAt: eprintData.createdAt.toISOString(),

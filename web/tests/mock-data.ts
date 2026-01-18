@@ -15,7 +15,6 @@ import type {
   FacetProposalChanges,
   FacetValue,
   FieldDetail,
-  FieldListResponse,
   FieldRef,
   FieldRelationship,
   FieldSummary,
@@ -108,7 +107,7 @@ export function createMockFieldRef(overrides: Partial<FieldRef> = {}): FieldRef 
   return {
     id: 'computer-science',
     uri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
-    name: 'Computer Science',
+    label: 'Computer Science',
     ...overrides,
   };
 }
@@ -238,7 +237,7 @@ export function createMockFacetedEprintSummary(
     ],
     submittedBy: 'did:plc:test123',
     fields: [
-      { id: 'cs', uri: 'at://did:plc:chive/pub.chive.graph.field/cs', name: 'Computer Science' },
+      { id: 'cs', uri: 'at://did:plc:chive/pub.chive.graph.field/cs', label: 'Computer Science' },
     ],
     keywords: ['machine learning', 'neural networks'],
     license: 'CC-BY-4.0',
@@ -386,12 +385,11 @@ export function createMockFieldSummary(overrides: Partial<FieldSummary> = {}): F
   return {
     id: 'computer-science',
     uri: 'at://did:plc:governance/pub.chive.graph.field/computer-science',
-    name: 'Computer Science',
+    label: 'Computer Science',
     description: 'The study of computation and information processing.',
     eprintCount: 250,
     childCount: 12,
-    status: 'approved',
-    createdAt: '2024-01-01T00:00:00Z',
+    status: 'established',
     ...overrides,
   };
 }
@@ -417,7 +415,7 @@ export function createMockFieldRelationship(
   return {
     type: 'broader',
     targetId: 'science',
-    targetName: 'Science',
+    targetLabel: 'Science',
     strength: 0.9,
     ...overrides,
   };
@@ -430,10 +428,9 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
   return {
     id: 'machine-learning',
     uri: 'at://did:plc:chive-governance/pub.chive.graph.field/machine-learning',
-    name: 'Machine Learning',
+    label: 'Machine Learning',
     description: 'A subset of artificial intelligence that enables systems to learn from data.',
-    parentId: 'computer-science',
-    status: 'approved',
+    status: 'established',
     eprintCount: 150,
     externalIds: [
       createMockExternalId({
@@ -451,50 +448,37 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
       createMockFieldRelationship({
         type: 'broader',
         targetId: 'artificial-intelligence',
-        targetName: 'Artificial Intelligence',
+        targetLabel: 'Artificial Intelligence',
       }),
       createMockFieldRelationship({
         type: 'related',
         targetId: 'data-science',
-        targetName: 'Data Science',
+        targetLabel: 'Data Science',
         strength: 0.8,
       }),
     ],
     children: [
-      { id: 'deep-learning', name: 'Deep Learning', eprintCount: 80 },
-      { id: 'reinforcement-learning', name: 'Reinforcement Learning', eprintCount: 40 },
+      { id: 'deep-learning', label: 'Deep Learning' },
+      { id: 'reinforcement-learning', label: 'Reinforcement Learning' },
     ],
     ancestors: [
-      { id: 'computer-science', name: 'Computer Science' },
-      { id: 'artificial-intelligence', name: 'Artificial Intelligence' },
+      { id: 'computer-science', label: 'Computer Science' },
+      { id: 'artificial-intelligence', label: 'Artificial Intelligence' },
     ],
-    createdAt: '2023-06-01T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z',
     ...overrides,
   };
 }
 
 /**
- * Creates a mock FieldListResponse.
+ * Creates a list of mock FieldSummary objects.
  */
-export function createMockFieldListResponse(
-  overrides: Partial<FieldListResponse> = {}
-): FieldListResponse {
-  return {
-    fields: [
-      createMockFieldSummary({ id: 'physics', name: 'Physics', eprintCount: 300 }),
-      createMockFieldSummary({
-        id: 'computer-science',
-        name: 'Computer Science',
-        eprintCount: 250,
-      }),
-      createMockFieldSummary({ id: 'biology', name: 'Biology', eprintCount: 200 }),
-    ],
-    cursor: 'cursor-123',
-    hasMore: true,
-    total: 50,
-    ...overrides,
-  };
+export function createMockFieldList(count: number = 3): FieldSummary[] {
+  const fields = [
+    { id: 'physics', label: 'Physics', eprintCount: 300 },
+    { id: 'computer-science', label: 'Computer Science', eprintCount: 250 },
+    { id: 'biology', label: 'Biology', eprintCount: 200 },
+  ];
+  return fields.slice(0, count).map((f) => createMockFieldSummary(f));
 }
 
 // ============================================================================
@@ -839,7 +823,7 @@ export function createMockEprintTagsResponse(
       createMockTagSuggestion({
         normalizedForm: 'transfer-learning',
         displayForm: 'Transfer Learning',
-        source: 'node',
+        source: 'cooccurrence',
       }),
     ],
     ...overrides,

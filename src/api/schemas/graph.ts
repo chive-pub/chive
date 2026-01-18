@@ -993,11 +993,11 @@ export const communityResultSchema = z.object({
     .array(
       z.object({
         uri: z.string(),
-        name: z.string(),
+        label: z.string(),
       })
     )
     .optional()
-    .describe('Representative members with names'),
+    .describe('Representative members with labels'),
 });
 
 /**

@@ -221,7 +221,7 @@ function ProposalsContent() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-medium truncate">
-                          {proposal.label ?? proposal.fieldId ?? 'Untitled'}
+                          {proposal.label ?? proposal.nodeUri ?? 'Untitled'}
                         </h3>
                         <Badge variant="outline" className="text-xs">
                           {TYPE_LABELS[proposal.type]}

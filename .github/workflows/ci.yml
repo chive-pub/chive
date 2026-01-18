@@ -36,6 +36,15 @@ jobs:
       - uses: ./.github/actions/setup-node-pnpm
       - run: pnpm typecheck
 
+  lexicon-validation:
+    name: Lexicon Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Validate lexicon schemas match backend
+        run: pnpm lexicons:validate
+
   # ==============================================================================
   # Stage 2: Unit Tests (parallel, no services - tests use mocks)
   # ==============================================================================

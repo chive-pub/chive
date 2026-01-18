@@ -11,7 +11,7 @@ vi.mock('next/link', () => ({
 }));
 
 describe('FieldBadge', () => {
-  const mockField = { uri: 'computer-science', name: 'Computer Science' };
+  const mockField = { uri: 'computer-science', label: 'Computer Science' };
 
   it('renders field name', () => {
     render(<FieldBadge field={mockField} />);
@@ -36,7 +36,7 @@ describe('FieldBadge', () => {
   });
 
   it('encodes field URI in URL', () => {
-    const fieldWithSpecialChars = { uri: 'field/with/slashes', name: 'Special Field' };
+    const fieldWithSpecialChars = { uri: 'field/with/slashes', label: 'Special Field' };
     render(<FieldBadge field={fieldWithSpecialChars} />);
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/fields/field%2Fwith%2Fslashes');
@@ -45,10 +45,10 @@ describe('FieldBadge', () => {
 
 describe('FieldBadgeList', () => {
   const mockFields = [
-    { uri: 'physics', name: 'Physics' },
-    { uri: 'chemistry', name: 'Chemistry' },
-    { uri: 'biology', name: 'Biology' },
-    { uri: 'math', name: 'Mathematics' },
+    { uri: 'physics', label: 'Physics' },
+    { uri: 'chemistry', label: 'Chemistry' },
+    { uri: 'biology', label: 'Biology' },
+    { uri: 'math', label: 'Mathematics' },
   ];
 
   it('renders all fields when count is below max', () => {

@@ -5,6 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { FieldRelationship } from '@/lib/api/schema';
 
+export type { FieldRelationship };
+
+/**
+ * Relationship type for field connections.
+ */
+export type FieldRelationType = FieldRelationship['type'];
+
 /**
  * Props for the FieldRelationships component.
  */
@@ -17,25 +24,12 @@ export interface FieldRelationshipsProps {
 
 /**
  * Displays related fields grouped by relationship type.
- *
- * @remarks
- * Server component that shows fields with broader, narrower,
- * related, equivalent, and influence relationships.
- *
- * @example
- * ```tsx
- * <FieldRelationships relationships={field.relationships} />
- * ```
- *
- * @param props - Component props
- * @returns React element displaying the relationships
  */
 export function FieldRelationships({ relationships, className }: FieldRelationshipsProps) {
   if (!relationships || relationships.length === 0) {
     return null;
   }
 
-  // Group relationships by type
   const grouped = groupRelationships(relationships);
 
   return (
@@ -98,7 +92,7 @@ export function FieldRelationships({ relationships, className }: FieldRelationsh
  * Props for the RelationshipGroup component.
  */
 interface RelationshipGroupProps {
-  type: FieldRelationship['type'];
+  type: FieldRelationType;
   label: string;
   icon: React.ReactNode;
   relationships: FieldRelationship[];
@@ -121,7 +115,7 @@ function RelationshipGroup({ type: _type, label, icon, relationships }: Relation
               href={`/fields/${encodeURIComponent(rel.targetId)}`}
               className="flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-accent"
             >
-              <span>{rel.targetName}</span>
+              <span>{rel.targetLabel}</span>
               {rel.strength !== undefined && <StrengthIndicator strength={rel.strength} />}
             </Link>
           </li>
@@ -135,7 +129,6 @@ function RelationshipGroup({ type: _type, label, icon, relationships }: Relation
  * Props for the StrengthIndicator component.
  */
 interface StrengthIndicatorProps {
-  /** Relationship strength (0-1) */
   strength: number;
 }
 
@@ -170,7 +163,7 @@ function StrengthIndicator({ strength }: StrengthIndicatorProps) {
  */
 function groupRelationships(
   relationships: FieldRelationship[]
-): Record<FieldRelationship['type'], FieldRelationship[]> {
+): Record<FieldRelationType, FieldRelationship[]> {
   return {
     broader: relationships.filter((r) => r.type === 'broader'),
     narrower: relationships.filter((r) => r.type === 'narrower'),
@@ -194,11 +187,6 @@ export interface RelatedFieldBadgesProps {
 
 /**
  * Compact display of related fields as badges.
- *
- * @example
- * ```tsx
- * <RelatedFieldBadges relationships={field.relationships} max={5} />
- * ```
  */
 export function RelatedFieldBadges({ relationships, max = 5, className }: RelatedFieldBadgesProps) {
   if (!relationships || relationships.length === 0) {
@@ -215,9 +203,9 @@ export function RelatedFieldBadges({ relationships, max = 5, className }: Relate
           <Badge
             variant="outline"
             className="cursor-pointer hover:bg-accent"
-            title={`${rel.type}: ${rel.targetName}`}
+            title={`${rel.type}: ${rel.targetLabel}`}
           >
-            {rel.targetName}
+            {rel.targetLabel}
           </Badge>
         </Link>
       ))}
@@ -234,11 +222,8 @@ export function RelatedFieldBadges({ relationships, max = 5, className }: Relate
  * Props for the FieldRelationshipsSkeleton component.
  */
 export interface FieldRelationshipsSkeletonProps {
-  /** Number of groups to show */
   groups?: number;
-  /** Items per group */
   itemsPerGroup?: number;
-  /** Additional CSS classes */
   className?: string;
 }
 

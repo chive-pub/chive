@@ -12,7 +12,22 @@ export { useSearchTracking, markEprintViewStart } from './use-search-tracking';
 
 export { useTrending, trendingKeys } from './use-trending';
 
-export { useField, useFields, useFieldEprints, usePrefetchField, fieldKeys } from './use-field';
+export {
+  useField,
+  useFields,
+  useFieldWithRelations,
+  useFieldEprints,
+  useFieldHierarchy,
+  useFieldChildren,
+  usePrefetchField,
+  fieldKeys,
+  type FieldNode,
+  type FieldSummaryNode,
+  type FieldWithRelations,
+  type RelatedField,
+  type GraphEdge as FieldGraphEdge,
+  type ExternalId as FieldExternalId,
+} from './use-field';
 
 export {
   useAuthor,
@@ -290,8 +305,6 @@ export {
   useNodeParents,
   useNodeAncestors,
   // Convenience hooks
-  useFieldHierarchy,
-  useFieldChildren,
   useFieldAncestors,
   // Query keys
   edgeKeys,

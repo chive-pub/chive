@@ -5,14 +5,14 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatCompactNumber } from '@/lib/utils/format-number';
-import type { FieldSummary, FieldDetail } from '@/lib/api/schema';
+import type { FieldSummary } from '@/lib/api/schema';
 
 /**
  * Props for the FieldCard component.
  */
 export interface FieldCardProps {
   /** Field data */
-  field: FieldSummary | FieldDetail;
+  field: FieldSummary;
   /** Display variant */
   variant?: 'default' | 'compact' | 'featured';
   /** Additional CSS classes */
@@ -21,18 +21,6 @@ export interface FieldCardProps {
 
 /**
  * Displays a field as a summary card.
- *
- * @remarks
- * Server component that renders field name, description, and stats.
- * Links to the field's detail page.
- *
- * @example
- * ```tsx
- * <FieldCard field={fieldData} variant="default" />
- * ```
- *
- * @param props - Component props
- * @returns React element displaying the field card
  */
 export function FieldCard({ field, variant = 'default', className }: FieldCardProps) {
   const fieldUrl = `/fields/${encodeURIComponent(field.id)}`;
@@ -54,13 +42,13 @@ export function FieldCard({ field, variant = 'default', className }: FieldCardPr
             className="flex items-center gap-2 font-semibold hover:text-primary hover:underline"
           >
             <FolderTree className="h-4 w-4 text-muted-foreground" />
-            {field.name}
+            {field.label}
           </Link>
           <FieldStatusBadge status={field.status} />
         </div>
       </CardHeader>
       <CardContent>
-        {'description' in field && field.description && (
+        {field.description && (
           <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">{field.description}</p>
         )}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -68,7 +56,7 @@ export function FieldCard({ field, variant = 'default', className }: FieldCardPr
             <FileText className="h-4 w-4" />
             <span>{formatCompactNumber(field.eprintCount ?? 0)}</span>
           </div>
-          {'childCount' in field && (field.childCount ?? 0) > 0 && (
+          {(field.childCount ?? 0) > 0 && (
             <div className="flex items-center gap-1" title={`${field.childCount} subfields`}>
               <FolderTree className="h-4 w-4" />
               <span>{field.childCount} subfields</span>
@@ -83,13 +71,7 @@ export function FieldCard({ field, variant = 'default', className }: FieldCardPr
 /**
  * Compact variant of the field card.
  */
-function CompactFieldCard({
-  field,
-  className,
-}: {
-  field: FieldSummary | FieldDetail;
-  className?: string;
-}) {
+function CompactFieldCard({ field, className }: { field: FieldSummary; className?: string }) {
   const fieldUrl = `/fields/${encodeURIComponent(field.id)}`;
 
   return (
@@ -102,7 +84,7 @@ function CompactFieldCard({
     >
       <div className="flex items-center gap-2">
         <FolderTree className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{field.name}</span>
+        <span className="font-medium">{field.label}</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">
@@ -117,13 +99,7 @@ function CompactFieldCard({
 /**
  * Featured variant of the field card.
  */
-function FeaturedFieldCard({
-  field,
-  className,
-}: {
-  field: FieldSummary | FieldDetail;
-  className?: string;
-}) {
+function FeaturedFieldCard({ field, className }: { field: FieldSummary; className?: string }) {
   const fieldUrl = `/fields/${encodeURIComponent(field.id)}`;
 
   return (
@@ -134,20 +110,18 @@ function FeaturedFieldCard({
           className="flex items-center gap-2 text-xl font-semibold hover:text-primary hover:underline"
         >
           <FolderTree className="h-5 w-5" />
-          {field.name}
+          {field.label}
         </Link>
         <FieldStatusBadge status={field.status} />
       </CardHeader>
       <CardContent>
-        {'description' in field && field.description && (
-          <p className="mb-4 text-muted-foreground">{field.description}</p>
-        )}
+        {field.description && <p className="mb-4 text-muted-foreground">{field.description}</p>}
         <div className="flex items-center gap-6">
           <div className="text-center">
             <div className="text-2xl font-bold">{formatCompactNumber(field.eprintCount ?? 0)}</div>
             <div className="text-sm text-muted-foreground">Eprints</div>
           </div>
-          {'childCount' in field && (
+          {field.childCount !== undefined && (
             <div className="text-center">
               <div className="text-2xl font-bold">{field.childCount}</div>
               <div className="text-sm text-muted-foreground">Subfields</div>
@@ -175,8 +149,7 @@ function FieldStatusBadge({ status }: FieldStatusBadgeProps) {
     { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
   > = {
     proposed: { label: 'Proposed', variant: 'outline' },
-    under_review: { label: 'Under Review', variant: 'secondary' },
-    approved: { label: 'Approved', variant: 'default' },
+    provisional: { label: 'Provisional', variant: 'secondary' },
     established: { label: 'Established', variant: 'default' },
     deprecated: { label: 'Deprecated', variant: 'destructive' },
   };

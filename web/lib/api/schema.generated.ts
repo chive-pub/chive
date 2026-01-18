@@ -7648,8 +7648,8 @@ export interface operations {
                 id?: string;
                 /** @description Field URI */
                 uri: string;
-                /** @description Field name */
-                name: string;
+                /** @description Field display label */
+                label: string;
                 /** @description Parent field URI */
                 parentUri?: string;
               }[];
@@ -8156,8 +8156,8 @@ export interface operations {
                 id?: string;
                 /** @description Field URI */
                 uri: string;
-                /** @description Field name */
-                name: string;
+                /** @description Field display label */
+                label: string;
                 /** @description Parent field URI */
                 parentUri?: string;
               }[];
@@ -8948,8 +8948,8 @@ export interface operations {
               id?: string;
               /** @description Field URI */
               uri: string;
-              /** @description Field name */
-              name: string;
+              /** @description Field display label */
+              label: string;
               /** @description Parent field URI */
               parentUri?: string;
             }[];
@@ -9145,8 +9145,8 @@ export interface operations {
                 id?: string;
                 /** @description Field URI */
                 uri: string;
-                /** @description Field name */
-                name: string;
+                /** @description Field display label */
+                label: string;
                 /** @description Parent field URI */
                 parentUri?: string;
               }[];
@@ -9344,8 +9344,8 @@ export interface operations {
                 id?: string;
                 /** @description Field URI */
                 uri: string;
-                /** @description Field name */
-                name: string;
+                /** @description Field display label */
+                label: string;
                 /** @description Parent field URI */
                 parentUri?: string;
               }[];

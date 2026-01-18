@@ -139,7 +139,9 @@ export default function GovernancePage() {
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium">{proposal.label ?? proposal.fieldId}</p>
+                      <p className="font-medium">
+                        {proposal.label ?? proposal.nodeUri ?? 'Untitled'}
+                      </p>
                       <p className="text-sm text-muted-foreground line-clamp-1">
                         {proposal.rationale}
                       </p>

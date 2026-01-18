@@ -168,7 +168,7 @@ export interface StoredEprint {
    */
   readonly fields?: readonly {
     readonly uri: string;
-    readonly name: string;
+    readonly label: string;
     readonly id?: string;
     readonly parentUri?: string;
   }[];

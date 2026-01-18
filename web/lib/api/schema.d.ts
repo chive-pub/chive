@@ -612,53 +612,63 @@ export type ExternalId = {
 };
 
 // -----------------------------------------------------------------------------
-// Field/Node Backward Compatibility Aliases
-// These types map old Field terminology to new Node types.
+// Field Types (Knowledge Graph Nodes for Academic Disciplines)
 // -----------------------------------------------------------------------------
 
-/** @deprecated Use GetNodeResponse instead */
-export type GetFieldResponse = GetNodeResponse;
-
-/** @deprecated Use ListNodesResponse instead */
-export type ListFieldsResponse = ListNodesResponse;
-
-/** @deprecated Field types have been unified into Node types */
-export type FieldDetail = GraphNode;
-
-/** @deprecated Use GraphNodeSummary instead */
-export type FieldSummary = GraphNodeSummary;
-
-/** @deprecated Use GraphNodeSummary instead */
-export type FieldRef = {
-  id: string;
+/**
+ * Minimal field reference for embedding in other types.
+ *
+ * @remarks
+ * Used in Eprint.fields and EprintSummary.fields arrays.
+ * Matches the lexicon and API response shape.
+ */
+export interface FieldRef {
+  /** Internal ID (may be slug or numeric) */
+  id?: string;
+  /** AT-URI of the field node */
+  uri: string;
+  /** Display label for the field */
   label: string;
-  uri?: string;
-};
+  /** Parent field URI */
+  parentUri?: string;
+}
 
-/** @deprecated Use edge relationships instead */
-export type FieldAncestor = {
+/**
+ * Field summary for lists, cards, and search results.
+ */
+export interface FieldSummary {
   id: string;
+  uri: string;
   label: string;
-  uri?: string;
-};
+  description?: string;
+  status: NodeStatus;
+  eprintCount?: number;
+  childCount?: number;
+}
 
-/** @deprecated Use edge relationships instead */
-export type FieldChild = {
-  id: string;
-  label: string;
-  uri?: string;
-};
+/**
+ * Field relationship to another field.
+ */
+export interface FieldRelationship {
+  type: 'broader' | 'narrower' | 'related' | 'equivalent' | 'influences';
+  targetId: string;
+  targetLabel: string;
+  strength?: number;
+}
 
-/** @deprecated Use edge relationships instead */
-export type FieldRelationship = {
-  id: string;
-  label: string;
-  uri?: string;
-  relationshipType?: string;
-};
-
-/** @deprecated Use ListNodesResponse instead */
-export type FieldListResponse = ListNodesResponse;
+/**
+ * Full field detail with relationships and metadata.
+ */
+export interface FieldDetail extends FieldSummary {
+  wikidataId?: string;
+  parentId?: string;
+  externalIds?: ExternalId[];
+  relationships?: FieldRelationship[];
+  children?: FieldRef[];
+  ancestors?: FieldRef[];
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 // -----------------------------------------------------------------------------
 // Search Types

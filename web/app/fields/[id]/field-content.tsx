@@ -76,12 +76,12 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
                 href={`/fields/${encodeURIComponent(parent.id)}`}
                 className="hover:text-primary"
               >
-                {parent.name}
+                {parent.label}
               </Link>
             </span>
           ))}
           <span>/</span>
-          <span className="font-medium text-foreground">{field.name}</span>
+          <span className="font-medium text-foreground">{field.label}</span>
         </nav>
       )}
 
@@ -89,7 +89,7 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
       <header className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{field.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{field.label}</h1>
             {field.description && (
               <p className="mt-2 max-w-2xl text-lg text-muted-foreground">{field.description}</p>
             )}
@@ -129,7 +129,7 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
         <div className="space-y-8">
           {/* Eprints section */}
           <section>
-            <h2 className="mb-6 text-2xl font-semibold">Eprints in {field.name}</h2>
+            <h2 className="mb-6 text-2xl font-semibold">Eprints in {field.label}</h2>
             <FieldEprints fieldId={fieldId} layout="list" />
           </section>
         </div>
@@ -215,7 +215,7 @@ function RelatedFieldList({ fields }: { fields: RelatedField[] }) {
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
           >
             <FolderTree className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="truncate">{f.name}</span>
+            <span className="truncate">{f.label}</span>
           </Link>
         </li>
       ))}

@@ -65,7 +65,7 @@ export interface FacetedEprintSummary {
   readonly authors: readonly EprintAuthor[];
   readonly submittedBy: DID;
   readonly paperDid?: DID;
-  readonly fields?: readonly { uri: string; name: string; id?: string; parentUri?: string }[];
+  readonly fields?: readonly { uri: string; label: string; id?: string; parentUri?: string }[];
   readonly license: string;
   readonly keywords?: readonly string[];
   readonly createdAt: Date;
@@ -484,7 +484,7 @@ export class KnowledgeGraphService {
             paperDid: eprint.paperDid,
             fields: eprint.fields?.map((f) => ({
               uri: f.uri,
-              name: f.name,
+              label: f.label,
               id: f.id,
               parentUri: f.parentUri,
             })),

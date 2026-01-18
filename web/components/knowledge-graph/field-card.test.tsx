@@ -23,7 +23,7 @@ vi.mock('next/link', () => ({
 
 describe('FieldCard', () => {
   it('renders field name', () => {
-    const field = createMockFieldSummary({ name: 'Computer Science' });
+    const field = createMockFieldSummary({ label: 'Computer Science' });
     render(<FieldCard field={field} />);
     expect(screen.getByText('Computer Science')).toBeInTheDocument();
   });
@@ -62,9 +62,9 @@ describe('FieldCard', () => {
   });
 
   it('shows status badge', () => {
-    const field = createMockFieldSummary({ status: 'approved' });
+    const field = createMockFieldSummary({ status: 'established' });
     render(<FieldCard field={field} />);
-    expect(screen.getByText('Approved')).toBeInTheDocument();
+    expect(screen.getByText('Established')).toBeInTheDocument();
   });
 
   it('shows proposed status', () => {

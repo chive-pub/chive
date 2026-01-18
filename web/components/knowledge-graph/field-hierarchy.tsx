@@ -5,33 +5,36 @@ import Link from 'next/link';
 import { ChevronRight, ChevronDown, FolderTree, Home } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { useFieldChildren } from '@/lib/hooks/use-field';
-import type { FieldAncestor, FieldChild, FieldDetail, FieldSummary } from '@/lib/api/schema';
+import {
+  useFieldChildren,
+  type FieldNode,
+  type FieldSummaryNode,
+  type RelatedField,
+} from '@/lib/hooks';
+
+/**
+ * Ancestor reference in breadcrumb.
+ */
+interface FieldAncestor {
+  id: string;
+  label: string;
+}
 
 /**
  * Props for the FieldBreadcrumb component.
  */
 export interface FieldBreadcrumbProps {
   /** Current field */
-  field: FieldDetail;
+  field: {
+    label: string;
+    ancestors?: FieldAncestor[];
+  };
   /** Additional CSS classes */
   className?: string;
 }
 
 /**
  * Breadcrumb navigation showing field ancestry.
- *
- * @remarks
- * Server component that renders the path from root to current field.
- * Each ancestor is a clickable link.
- *
- * @example
- * ```tsx
- * <FieldBreadcrumb field={fieldDetail} />
- * ```
- *
- * @param props - Component props
- * @returns React element displaying the breadcrumb
  */
 export function FieldBreadcrumb({ field, className }: FieldBreadcrumbProps) {
   const ancestors = field.ancestors ?? [];
@@ -46,22 +49,32 @@ export function FieldBreadcrumb({ field, className }: FieldBreadcrumbProps) {
         <span className="sr-only">All fields</span>
       </Link>
 
-      {ancestors.map((ancestor: FieldAncestor) => (
+      {ancestors.map((ancestor) => (
         <span key={ancestor.id} className="flex items-center gap-1">
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
           <Link
             href={`/fields/${encodeURIComponent(ancestor.id)}`}
             className="text-muted-foreground hover:text-foreground hover:underline"
           >
-            {ancestor.name}
+            {ancestor.label}
           </Link>
         </span>
       ))}
 
       <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      <span className="font-medium">{field.name}</span>
+      <span className="font-medium">{field.label}</span>
     </nav>
   );
+}
+
+/**
+ * Child field for tree display.
+ */
+interface FieldChild {
+  id: string;
+  label: string;
+  eprintCount?: number;
+  childCount?: number;
 }
 
 /**
@@ -80,11 +93,6 @@ export interface FieldChildrenProps {
 
 /**
  * Displays child fields in a list or expandable tree.
- *
- * @example
- * ```tsx
- * <FieldChildren fields={field.children} expandable />
- * ```
  */
 export function FieldChildren({
   fields,
@@ -114,7 +122,7 @@ export function FieldChildren({
               href={`/fields/${encodeURIComponent(child.id)}`}
               className="flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-accent"
             >
-              <span>{child.name}</span>
+              <span>{child.label}</span>
               {child.eprintCount !== undefined && (
                 <span className="text-xs text-muted-foreground">{child.eprintCount}</span>
               )}
@@ -151,19 +159,6 @@ export interface FieldTreeProps {
 
 /**
  * Interactive tree view of field hierarchy.
- *
- * @remarks
- * Client component that renders an expandable tree of fields.
- * Supports selection and keyboard navigation.
- *
- * @example
- * ```tsx
- * <FieldTree
- *   fields={rootFields}
- *   selectedId={currentFieldId}
- *   onSelect={(id) => navigateToField(id)}
- * />
- * ```
  */
 export function FieldTree({ fields, selectedId, onSelect, className }: FieldTreeProps) {
   return (
@@ -182,68 +177,40 @@ export function FieldTree({ fields, selectedId, onSelect, className }: FieldTree
 }
 
 /**
- * Tree node field type - accepts either FieldChild or FieldSummary.
- *
- * @remarks
- * FieldChild is used for root-level nodes passed to FieldTree.
- * FieldSummary is returned by useFieldChildren and has childCount for determining expandability.
+ * Tree node field type.
  */
-type TreeNodeField = FieldChild | FieldSummary;
+type TreeNodeField = FieldChild | FieldSummaryNode;
 
 /**
  * Props for the FieldTreeNode component.
  */
 interface FieldTreeNodeProps {
-  /** Field data (FieldChild for root nodes, FieldSummary for fetched children) */
   field: TreeNodeField;
-  /** Currently selected field ID */
   selectedId?: string;
-  /** Callback when field is selected */
   onSelect?: (id: string) => void;
-  /** Nesting level for indentation */
   level: number;
 }
 
 /**
- * Type guard to check if field is a FieldSummary with childCount.
+ * Type guard to check if field has childCount.
  */
-function hasChildCount(field: TreeNodeField): field is FieldSummary {
+function hasChildCount(field: TreeNodeField): field is FieldSummaryNode {
   return 'childCount' in field && typeof field.childCount === 'number';
 }
 
 /**
  * Single node in the field tree with lazy-loaded children.
- *
- * @remarks
- * Fetches children on-demand when expanded. For root-level nodes (FieldChild),
- * assumes children may exist and shows expand button. For fetched nodes
- * (FieldSummary), uses childCount to determine expandability.
- *
- * @example
- * ```tsx
- * <FieldTreeNode
- *   field={{ id: 'physics', name: 'Physics', childCount: 5 }}
- *   selectedId="quantum-mechanics"
- *   onSelect={(id) => console.log('Selected:', id)}
- *   level={0}
- * />
- * ```
  */
 function FieldTreeNode({ field, selectedId, onSelect, level }: FieldTreeNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isSelected = field.id === selectedId;
 
-  // Determine if field might have children:
-  // - FieldSummary: use childCount
-  // - FieldChild (root): assume might have children (will verify on expand)
   const mightHaveChildren = hasChildCount(field) ? (field.childCount ?? 0) > 0 : true;
 
-  // Fetch children when expanded
   const { data: children, isLoading: isLoadingChildren } = useFieldChildren(field.id, {
     enabled: isExpanded && mightHaveChildren,
   });
 
-  // Update hasChildren based on actual data once fetched
   const hasChildren = mightHaveChildren && (!isExpanded || (children && children.length > 0));
 
   return (
@@ -279,13 +246,12 @@ function FieldTreeNode({ field, selectedId, onSelect, level }: FieldTreeNodeProp
         )}
         {!hasChildren && <span className="w-4" />}
         <FolderTree className="h-4 w-4 text-muted-foreground" />
-        <span className="flex-1 text-sm">{field.name}</span>
+        <span className="flex-1 text-sm">{field.label}</span>
         {field.eprintCount !== undefined && (
           <span className="text-xs text-muted-foreground">{field.eprintCount}</span>
         )}
       </div>
 
-      {/* Loading indicator */}
       {isExpanded && isLoadingChildren && (
         <div
           className="flex items-center gap-2 py-2 text-sm text-muted-foreground"
@@ -296,7 +262,6 @@ function FieldTreeNode({ field, selectedId, onSelect, level }: FieldTreeNodeProp
         </div>
       )}
 
-      {/* Render children when expanded */}
       {isExpanded && children && children.length > 0 && (
         <ul role="group">
           {children.map((child) => (
@@ -318,9 +283,7 @@ function FieldTreeNode({ field, selectedId, onSelect, level }: FieldTreeNodeProp
  * Props for the FieldBreadcrumbSkeleton component.
  */
 export interface FieldBreadcrumbSkeletonProps {
-  /** Number of items to show */
   items?: number;
-  /** Additional CSS classes */
   className?: string;
 }
 

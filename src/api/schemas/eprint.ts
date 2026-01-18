@@ -112,7 +112,7 @@ export const eprintMetricsSchema = z.object({
 export const fieldRefSchema = z.object({
   id: z.string().optional().describe('Field ID'),
   uri: z.string().describe('Field URI'),
-  name: z.string().describe('Field name'),
+  label: z.string().describe('Field display label'),
   parentUri: z.string().optional().describe('Parent field URI'),
 });
 

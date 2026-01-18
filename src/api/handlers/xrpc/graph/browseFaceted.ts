@@ -176,7 +176,7 @@ export async function browseFacetedHandler(
       paperDid: p.paperDid,
       fields: p.fields?.map((f) => ({
         uri: f.uri,
-        name: f.name,
+        label: f.label,
         id: f.id,
         parentUri: f.parentUri,
       })),

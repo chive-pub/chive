@@ -10,6 +10,7 @@ import {
   countTotalFilters,
   type DynamicFacetFilters,
 } from '@/lib/hooks/use-faceted-search';
+import type { SearchResultsResponse } from '@/lib/api/schema';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -337,7 +338,7 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
         {/* Results */}
         <SearchResults
           query={query || 'all eprints'}
-          data={searchResults}
+          data={searchResults as SearchResultsResponse | undefined}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}

@@ -117,7 +117,7 @@ export async function listByAuthorHandler(
         submittedBy: p.submittedBy,
         paperDid: p.paperDid,
         fields: undefined as
-          | { id?: string; uri: string; name: string; parentUri?: string }[]
+          | { id?: string; uri: string; label: string; parentUri?: string }[]
           | undefined,
         license: p.license,
         createdAt: p.createdAt.toISOString(),

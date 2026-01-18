@@ -153,7 +153,7 @@ export async function searchSubmissionsHandler(
         submittedBy: eprintData.submittedBy,
         paperDid: eprintData.paperDid,
         fields: undefined as
-          | { id?: string; uri: string; name: string; parentUri?: string }[]
+          | { id?: string; uri: string; label: string; parentUri?: string }[]
           | undefined,
         license: eprintData.license,
         createdAt: eprintData.createdAt.toISOString(),
@@ -220,7 +220,7 @@ export async function searchSubmissionsHandler(
 
       // Compute field match score if user has research fields
       // Note: hit.fields contains field URIs, we need to extract category names
-      const itemCategories = hit.fields?.map((f) => f.name) ?? [];
+      const itemCategories = hit.fields?.map((f) => f.label) ?? [];
       const fieldMatchScore =
         userFields.length > 0 && itemCategories.length > 0
           ? categoryMatcher.computeFieldScore(itemCategories, userFields)

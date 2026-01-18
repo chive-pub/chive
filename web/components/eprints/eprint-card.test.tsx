@@ -57,8 +57,8 @@ describe('EprintCard', () => {
   it('shows fields when available', () => {
     const eprint = createMockEprintSummary({
       fields: [
-        { uri: 'physics', name: 'Physics' },
-        { uri: 'chemistry', name: 'Chemistry' },
+        { uri: 'physics', label: 'Physics' },
+        { uri: 'chemistry', label: 'Chemistry' },
       ],
     });
     render(<EprintCard eprint={eprint} />);
