@@ -2,9 +2,11 @@
  * Eprint submission components for Chive.
  *
  * @remarks
- * Multi-step wizard for submitting eprints to the user's PDS.
- * All data is written directly to the user's Personal Data Server,
- * following ATProto compliance principles.
+ * Multi-step wizard for submitting eprints to a PDS.
+ * Users can submit to their own Personal Data Server (default) or
+ * to a paper's dedicated PDS for papers as first-class ATProto citizens.
+ * All data is written directly to the target PDS, following ATProto
+ * compliance principles.
  *
  * @packageDocumentation
  */
@@ -23,6 +25,7 @@ export {
 } from './wizard-progress';
 
 export { StepFiles, type StepFilesProps } from './step-files';
+export { StepDestination, type StepDestinationProps } from './step-destination';
 export { StepSupplementary, type StepSupplementaryProps } from './step-supplementary';
 export { StepMetadata, type StepMetadataProps } from './step-metadata';
 export { StepAuthors, type StepAuthorsProps } from './step-authors';

@@ -11,13 +11,18 @@
 import 'reflect-metadata';
 
 import { serve } from '@hono/node-server';
+import EventEmitter2Module from 'eventemitter2';
 import { Redis } from 'ioredis';
 import { container } from 'tsyringe';
+
+const { EventEmitter2 } = EventEmitter2Module;
+type EventEmitter2Type = InstanceType<typeof EventEmitter2>;
 
 import { createServer, type ServerConfig } from './api/server.js';
 import { ATRepository } from './atproto/repository/at-repository.js';
 import { AuthorizationService } from './auth/authorization/authorization-service.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
+import { FreshnessScanJob } from './jobs/freshness-scan-job.js';
 import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
 import {
@@ -48,6 +53,7 @@ import { TrustedEditorService } from './services/governance/trusted-editor-servi
 import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
+import { PDSRateLimiter } from './services/pds-sync/pds-rate-limiter.js';
 import { PDSSyncService } from './services/pds-sync/sync-service.js';
 import { ReviewService } from './services/review/review-service.js';
 import { TaxonomyCategoryMatcher } from './services/search/category-matcher.js';
@@ -71,6 +77,7 @@ import { FacetUsageHistoryRepository } from './storage/postgresql/facet-usage-hi
 import type { DID } from './types/atproto.js';
 import type { ICacheProvider } from './types/interfaces/cache.interface.js';
 import type { IMetrics } from './types/interfaces/metrics.interface.js';
+import { FreshnessWorker } from './workers/freshness-worker.js';
 
 /**
  * Environment configuration.
@@ -128,6 +135,13 @@ interface EnvConfig {
   // Governance PDS
   readonly governancePdsUrl: string;
   readonly governanceDid: string;
+
+  // Freshness system
+  readonly freshnessEnabled: boolean;
+  readonly freshnessScanIntervalMs: number;
+  readonly freshnessPdsRateLimit: number;
+  readonly freshnessPdsRateWindowMs: number;
+  readonly freshnessWorkerConcurrency: number;
 }
 
 /**
@@ -187,6 +201,13 @@ function loadConfig(): EnvConfig {
     // Governance PDS (uses remote governance.chive.pub for local development)
     governancePdsUrl: process.env.GOVERNANCE_PDS_URL ?? 'https://governance.chive.pub',
     governanceDid: process.env.GOVERNANCE_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd',
+
+    // Freshness system
+    freshnessEnabled: process.env.FRESHNESS_ENABLED !== 'false',
+    freshnessScanIntervalMs: parseInt(process.env.FRESHNESS_SCAN_INTERVAL_MS ?? '60000', 10), // 1 minute
+    freshnessPdsRateLimit: parseInt(process.env.FRESHNESS_PDS_RATE_LIMIT ?? '10', 10),
+    freshnessPdsRateWindowMs: parseInt(process.env.FRESHNESS_PDS_RATE_WINDOW_MS ?? '60000', 10),
+    freshnessWorkerConcurrency: parseInt(process.env.FRESHNESS_WORKER_CONCURRENCY ?? '5', 10),
   };
 }
 
@@ -203,6 +224,9 @@ interface AppState {
   server?: ReturnType<typeof serve>;
   importScheduler?: ImportScheduler;
   governanceSyncJob?: GovernanceSyncJob;
+  freshnessWorker?: FreshnessWorker;
+  freshnessScanJob?: FreshnessScanJob;
+  eventBus?: EventEmitter2Type;
 }
 
 /**
@@ -590,6 +614,18 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
     state.governanceSyncJob.stop();
   }
 
+  // Stop freshness scan job
+  if (state.freshnessScanJob) {
+    state.logger.info('Stopping freshness scan job...');
+    state.freshnessScanJob.stop();
+  }
+
+  // Close freshness worker
+  if (state.freshnessWorker) {
+    state.logger.info('Closing freshness worker...');
+    await state.freshnessWorker.close();
+  }
+
   // Close database connections
   state.logger.info('Closing database connections...');
 
@@ -865,6 +901,57 @@ async function main(): Promise<void> {
       pdsUrl: config.governancePdsUrl,
       governanceDid: config.governanceDid,
     });
+
+    // Initialize freshness system (if enabled)
+    if (config.freshnessEnabled) {
+      logger.info('Initializing freshness system...');
+
+      // Create event bus for freshness events
+      state.eventBus = new EventEmitter2({
+        wildcard: true,
+        maxListeners: 20,
+      });
+
+      // Create PDS rate limiter
+      const pdsRateLimiter = new PDSRateLimiter({
+        redis,
+        logger,
+        maxRequestsPerWindow: config.freshnessPdsRateLimit,
+        windowMs: config.freshnessPdsRateWindowMs,
+      });
+
+      // Create freshness worker
+      state.freshnessWorker = new FreshnessWorker({
+        redis: {
+          host: new URL(config.redisUrl).hostname,
+          port: parseInt(new URL(config.redisUrl).port || '6379', 10),
+        },
+        syncService: serverConfig.pdsSyncService,
+        rateLimiter: pdsRateLimiter,
+        eventBus: state.eventBus,
+        logger,
+        concurrency: config.freshnessWorkerConcurrency,
+      });
+
+      // Create freshness scan job
+      state.freshnessScanJob = new FreshnessScanJob({
+        pool: pgPool,
+        freshnessWorker: state.freshnessWorker,
+        logger,
+        scanIntervalMs: config.freshnessScanIntervalMs,
+      });
+
+      // Start the scan job
+      await state.freshnessScanJob.start();
+
+      logger.info('Freshness system initialized', {
+        scanIntervalMs: config.freshnessScanIntervalMs,
+        pdsRateLimit: config.freshnessPdsRateLimit,
+        workerConcurrency: config.freshnessWorkerConcurrency,
+      });
+    } else {
+      logger.info('Freshness system disabled');
+    }
   } catch (error) {
     logger.error('Failed to start server', error instanceof Error ? error : undefined);
     process.exit(1);

@@ -23,6 +23,13 @@ import type { IStorageBackend, StoredEprint } from '../../types/interfaces/stora
 import type { Result } from '../../types/result.js';
 
 /**
+ * Deletion source types.
+ *
+ * @public
+ */
+export type DeletionSource = 'pds_404' | 'firehose_tombstone' | 'admin';
+
+/**
  * PDS sync service configuration.
  *
  * @public
@@ -496,6 +503,176 @@ export class PDSSyncService {
           error instanceof Error ? error.message : 'Failed to track PDS update'
         ),
       };
+    }
+  }
+
+  /**
+   * Marks a record as deleted (soft delete).
+   *
+   * @param uri - Record URI
+   * @param source - How deletion was detected
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Soft-deletes a record when:
+   * - PDS returns 404 during freshness check
+   * - Firehose emits a tombstone event
+   * - Admin manually deletes
+   *
+   * Records are marked with `deleted_at` timestamp and `deletion_source`.
+   * They are excluded from normal queries but retained for audit purposes.
+   *
+   * @example
+   * ```typescript
+   * // When PDS returns 404
+   * const result = await syncService.markAsDeleted(uri, 'pds_404');
+   *
+   * if (result.ok) {
+   *   console.log('Record marked as deleted');
+   * }
+   * ```
+   *
+   * @public
+   */
+  async markAsDeleted(
+    uri: AtUri,
+    source: DeletionSource
+  ): Promise<Result<void, NotFoundError | DatabaseError>> {
+    this.logger.info('Marking record as deleted', { uri, source });
+
+    try {
+      const result = await this.pool.query(
+        `UPDATE eprints_index
+         SET deleted_at = NOW(), deletion_source = $2
+         WHERE uri = $1 AND deleted_at IS NULL`,
+        [uri, source]
+      );
+
+      if (result.rowCount === 0) {
+        // Record either doesn't exist or already deleted
+        const existsResult = await this.pool.query<{ deleted_at: Date | null }>(
+          `SELECT deleted_at FROM eprints_index WHERE uri = $1`,
+          [uri]
+        );
+
+        if (existsResult.rows.length === 0) {
+          return {
+            ok: false,
+            error: new NotFoundError('eprint', uri),
+          };
+        }
+
+        // Already deleted - no error, just no-op
+        this.logger.debug('Record already deleted', { uri });
+        return { ok: true, value: undefined };
+      }
+
+      this.logger.info('Record marked as deleted', { uri, source });
+      return { ok: true, value: undefined };
+    } catch (error) {
+      this.logger.error(
+        'Failed to mark record as deleted',
+        error instanceof Error ? error : undefined,
+        {
+          uri,
+          source,
+        }
+      );
+
+      return {
+        ok: false,
+        error: new DatabaseError(
+          'WRITE',
+          error instanceof Error ? error.message : 'Failed to mark record as deleted'
+        ),
+      };
+    }
+  }
+
+  /**
+   * Restores a soft-deleted record.
+   *
+   * @param uri - Record URI
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Removes the `deleted_at` and `deletion_source` flags from a record,
+   * restoring it to active status. Useful for admin corrections.
+   *
+   * @public
+   */
+  async restoreRecord(uri: AtUri): Promise<Result<void, NotFoundError | DatabaseError>> {
+    this.logger.info('Restoring deleted record', { uri });
+
+    try {
+      const result = await this.pool.query(
+        `UPDATE eprints_index
+         SET deleted_at = NULL, deletion_source = NULL
+         WHERE uri = $1 AND deleted_at IS NOT NULL`,
+        [uri]
+      );
+
+      if (result.rowCount === 0) {
+        return {
+          ok: false,
+          error: new NotFoundError('eprint', uri),
+        };
+      }
+
+      this.logger.info('Record restored', { uri });
+      return { ok: true, value: undefined };
+    } catch (error) {
+      this.logger.error('Failed to restore record', error instanceof Error ? error : undefined, {
+        uri,
+      });
+
+      return {
+        ok: false,
+        error: new DatabaseError(
+          'WRITE',
+          error instanceof Error ? error.message : 'Failed to restore record'
+        ),
+      };
+    }
+  }
+
+  /**
+   * Gets deleted records for cleanup.
+   *
+   * @param gracePeriodMs - Only return records deleted longer than this
+   * @param limit - Maximum records to return
+   * @returns Array of deleted record URIs
+   *
+   * @remarks
+   * Used by cleanup jobs to find records that have been soft-deleted
+   * for longer than the grace period and can be permanently removed.
+   *
+   * @public
+   */
+  async getDeletedRecords(
+    gracePeriodMs: number = 7 * 24 * 60 * 60 * 1000,
+    limit = 100
+  ): Promise<readonly AtUri[]> {
+    const cutoff = new Date(Date.now() - gracePeriodMs);
+
+    try {
+      const result = await this.pool.query<{ uri: string }>(
+        `SELECT uri
+         FROM eprints_index
+         WHERE deleted_at IS NOT NULL
+           AND deleted_at < $1
+         ORDER BY deleted_at ASC
+         LIMIT $2`,
+        [cutoff, limit]
+      );
+
+      return result.rows.map((row) => row.uri as AtUri);
+    } catch (error) {
+      this.logger.error(
+        'Failed to get deleted records',
+        error instanceof Error ? error : undefined
+      );
+      return [];
     }
   }
 

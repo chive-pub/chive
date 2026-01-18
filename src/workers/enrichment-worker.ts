@@ -43,7 +43,7 @@
 
 import { Queue, Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
-import { EventEmitter2 } from 'eventemitter2';
+import type { EventEmitter2 as EventEmitter2Type } from 'eventemitter2';
 
 import type { AtUri } from '../types/atproto.js';
 import type {
@@ -130,7 +130,7 @@ export interface EnrichmentWorkerOptions {
   /**
    * Event bus for emitting enrichment events.
    */
-  readonly eventBus: EventEmitter2;
+  readonly eventBus: EventEmitter2Type;
 
   /**
    * Logger instance.
@@ -211,7 +211,7 @@ export class EnrichmentWorker {
   private readonly queue: Queue<EnrichmentJobData>;
   private readonly logger: ILogger;
   private readonly discoveryService: IDiscoveryService;
-  private readonly eventBus: EventEmitter2;
+  private readonly eventBus: EventEmitter2Type;
 
   private processedCount = 0;
   private succeededCount = 0;
