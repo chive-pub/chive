@@ -564,19 +564,8 @@ export type Endorsement = EndorsementsResponse['endorsements'][number];
 export type ContributionType = Endorsement['contributions'][number];
 
 // -----------------------------------------------------------------------------
-// Field/Knowledge Graph Types
+// Faceted Search Types
 // -----------------------------------------------------------------------------
-
-/** Response from pub.chive.graph.getField */
-export type GetFieldResponse = SuccessResponseJSON<operations['pub_chive_graph_getField']>;
-
-/** Response from pub.chive.graph.listFields */
-export type ListFieldsResponse = SuccessResponseJSON<operations['pub_chive_graph_listFields']>;
-
-/** Response from pub.chive.graph.getFieldEprints */
-export type FieldEprintsResponse = SuccessResponseJSON<
-  operations['pub_chive_graph_getFieldEprints']
->;
 
 /** Response from pub.chive.graph.browseFaceted */
 export type FacetedSearchResponse = SuccessResponseJSON<
@@ -585,27 +574,6 @@ export type FacetedSearchResponse = SuccessResponseJSON<
 
 /** Eprint summary in faceted browse results */
 export type FacetedEprintSummary = FacetedSearchResponse['hits'][number];
-
-/** Field detail from API */
-export type FieldDetail = GetFieldResponse['field'];
-
-/** Field summary in list results */
-export type FieldSummary = ListFieldsResponse['fields'][number];
-
-/** Field reference (lightweight) */
-export type FieldRef = NonNullable<EprintSummary['fields']>[number];
-
-/** Field ancestor in hierarchy */
-export type FieldAncestor = NonNullable<FieldDetail['ancestors']>[number];
-
-/** Field child in hierarchy */
-export type FieldChild = NonNullable<FieldDetail['children']>[number];
-
-/** Field relationship */
-export type FieldRelationship = NonNullable<FieldDetail['related']>[number];
-
-/** Alias for list fields response */
-export type FieldListResponse = ListFieldsResponse;
 
 /** Facet value from browseFaceted */
 export type FacetValue = NonNullable<FacetedSearchResponse['facets']>[string][number];
@@ -642,6 +610,55 @@ export type ExternalId = {
   uri?: string;
   matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
 };
+
+// -----------------------------------------------------------------------------
+// Field/Node Backward Compatibility Aliases
+// These types map old Field terminology to new Node types.
+// -----------------------------------------------------------------------------
+
+/** @deprecated Use GetNodeResponse instead */
+export type GetFieldResponse = GetNodeResponse;
+
+/** @deprecated Use ListNodesResponse instead */
+export type ListFieldsResponse = ListNodesResponse;
+
+/** @deprecated Field types have been unified into Node types */
+export type FieldDetail = GraphNode;
+
+/** @deprecated Use GraphNodeSummary instead */
+export type FieldSummary = GraphNodeSummary;
+
+/** @deprecated Use GraphNodeSummary instead */
+export type FieldRef = {
+  id: string;
+  label: string;
+  uri?: string;
+};
+
+/** @deprecated Use edge relationships instead */
+export type FieldAncestor = {
+  id: string;
+  label: string;
+  uri?: string;
+};
+
+/** @deprecated Use edge relationships instead */
+export type FieldChild = {
+  id: string;
+  label: string;
+  uri?: string;
+};
+
+/** @deprecated Use edge relationships instead */
+export type FieldRelationship = {
+  id: string;
+  label: string;
+  uri?: string;
+  relationshipType?: string;
+};
+
+/** @deprecated Use ListNodesResponse instead */
+export type FieldListResponse = ListNodesResponse;
 
 // -----------------------------------------------------------------------------
 // Search Types
