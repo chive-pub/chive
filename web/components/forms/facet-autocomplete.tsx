@@ -532,7 +532,8 @@ export function FacetAutocomplete({
 
   const handleSelect = useCallback(
     (suggestion: FacetSuggestion) => {
-      setSelectedValue(suggestion);
+      // Don't set selectedValue - let the parent manage selected state
+      // This allows for multi-select scenarios where the parent displays selected items
       setQuery('');
       setIsOpen(false);
       onSelect(suggestion);

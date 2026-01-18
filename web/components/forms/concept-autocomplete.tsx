@@ -639,7 +639,8 @@ export function ConceptAutocomplete({
 
   const handleSelect = useCallback(
     (suggestion: ConceptSuggestion) => {
-      setSelectedValue(suggestion);
+      // Don't set selectedValue - let the parent manage selected state
+      // This allows the parent to control display of selected items
       setQuery('');
       setIsOpen(false);
       onSelect(suggestion);
