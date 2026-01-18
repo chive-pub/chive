@@ -43,14 +43,15 @@ services:
       - traefik_certs:/letsencrypt
     networks:
       - chive-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik.middlewares=traefik-auth"
-      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}"
+    # Dashboard disabled externally - access via SSH tunnel to localhost:8080 if needed
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
+    #   - "traefik.http.routers.traefik.entrypoints=websecure"
+    #   - "traefik.http.routers.traefik.service=api@internal"
+    #   - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+    #   - "traefik.http.routers.traefik.middlewares=traefik-auth"
+    #   - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH}"
 
   # ---------------------------------------------------------------------------
   # Chive Web Frontend (Next.js)
