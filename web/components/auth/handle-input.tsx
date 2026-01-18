@@ -56,6 +56,7 @@ export function HandleInput({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const justSelectedRef = useRef(false);
 
   // Debounced search function
   const searchHandles = useDebouncedCallback(async (query: string) => {
@@ -99,6 +100,7 @@ export function HandleInput({
   // Handle suggestion selection
   const handleSelectSuggestion = useCallback(
     (actor: ActorSuggestion) => {
+      justSelectedRef.current = true;
       onChange(actor.handle);
       setShowSuggestions(false);
       setSuggestions([]);
@@ -158,7 +160,15 @@ export function HandleInput({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+          onFocus={() => {
+            if (justSelectedRef.current) {
+              justSelectedRef.current = false;
+              return;
+            }
+            if (suggestions.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
           placeholder={placeholder}
           autoComplete="off"
           autoCapitalize="none"

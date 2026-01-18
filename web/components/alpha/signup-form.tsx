@@ -224,7 +224,7 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Sector</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value ?? ''}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select your sector" />
@@ -266,7 +266,7 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Career Stage</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value ?? ''}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select your career stage" />
