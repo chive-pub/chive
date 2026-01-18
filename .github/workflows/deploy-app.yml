@@ -301,6 +301,37 @@ jobs:
               echo "::warning::pdsadmin.sh not found in container - manual setup may be required"
             fi
 
+      - name: Sync Governance PDS to Neo4j
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+
+            echo "=== Syncing Governance PDS records to Neo4j ==="
+
+            cd /opt/chive
+
+            # Run the reindex script inside the chive-api container
+            # The script syncs all pub.chive.graph.node and pub.chive.graph.edge records
+            docker exec \
+              -e GOVERNANCE_PDS_URL=http://governance-pds:3000 \
+              -e GOVERNANCE_DID=${{ vars.GOVERNANCE_DID }} \
+              -e GOVERNANCE_HANDLE=${{ vars.GOVERNANCE_HANDLE }} \
+              -e GOVERNANCE_PASSWORD=${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }} \
+              -e NEO4J_URI=bolt://neo4j:7687 \
+              -e NEO4J_USER=neo4j \
+              -e NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }} \
+              chive-api \
+              node --enable-source-maps dist/scripts/db/reindex-governance-to-neo4j.js || {
+                echo "::warning::Governance sync failed - this may be expected on first deploy before records exist"
+              }
+
+            echo "=== Governance sync complete ==="
+
       - name: Verify deployment
         if: ${{ vars.DOMAIN != '' }}
         run: |

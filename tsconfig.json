@@ -30,7 +30,7 @@
       "@tests/*": ["./tests/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "scripts/db/lib/**/*"],
+  "include": ["src/**/*", "tests/**/*", "scripts/db/**/*"],
   "exclude": [
     "node_modules",
     "dist",
