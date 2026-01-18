@@ -44,9 +44,9 @@ describe('MainNav', () => {
 
     await user.click(screen.getByRole('button', { name: 'Community' }));
 
+    expect(screen.getByText('Knowledge Graph')).toBeInTheDocument();
     expect(screen.getByText('Governance')).toBeInTheDocument();
-    expect(screen.getByText('Authorities')).toBeInTheDocument();
-    expect(screen.getByText('About')).toBeInTheDocument();
+    expect(screen.getByText('Zulip')).toBeInTheDocument();
   });
 
   it('has correct href attributes for Discover links', async () => {

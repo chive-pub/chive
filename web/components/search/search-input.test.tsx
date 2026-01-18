@@ -122,35 +122,41 @@ describe('InlineSearch', () => {
     expect(screen.getByPlaceholderText('Quick search...')).toBeInTheDocument();
   });
 
-  it('calls onSearch on submit', async () => {
+  it('calls onSearch on every input change (instant filter)', async () => {
     const onSearch = vi.fn();
     const user = userEvent.setup();
     render(<InlineSearch onSearch={onSearch} />);
-    const input = screen.getByRole('searchbox');
-    await user.type(input, 'test{enter}');
+    const input = screen.getByRole('textbox');
+    await user.type(input, 'test');
+    expect(onSearch).toHaveBeenCalledWith('t');
+    expect(onSearch).toHaveBeenCalledWith('te');
+    expect(onSearch).toHaveBeenCalledWith('tes');
     expect(onSearch).toHaveBeenCalledWith('test');
   });
 
-  it('clears value after submit', async () => {
+  it('shows clear button when has value', async () => {
     const user = userEvent.setup();
     render(<InlineSearch onSearch={() => {}} />);
-    const input = screen.getByRole('searchbox');
-    await user.type(input, 'test{enter}');
-    expect(input).toHaveValue('');
+    const input = screen.getByRole('textbox');
+    await user.type(input, 'test');
+    expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
   });
 
-  it('does not submit empty query', async () => {
+  it('clears value and calls onSearch when clear clicked', async () => {
     const onSearch = vi.fn();
     const user = userEvent.setup();
     render(<InlineSearch onSearch={onSearch} />);
-    const input = screen.getByRole('searchbox');
-    await user.type(input, '   {enter}');
-    expect(onSearch).not.toHaveBeenCalled();
+    const input = screen.getByRole('textbox');
+    await user.type(input, 'test');
+    onSearch.mockClear();
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(input).toHaveValue('');
+    expect(onSearch).toHaveBeenCalledWith('');
   });
 
   it('applies custom className', () => {
     render(<InlineSearch onSearch={() => {}} className="custom-inline-class" />);
-    const form = screen.getByRole('searchbox').closest('form');
-    expect(form).toHaveClass('custom-inline-class');
+    const container = screen.getByRole('textbox').closest('div');
+    expect(container).toHaveClass('custom-inline-class');
   });
 });

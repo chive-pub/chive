@@ -88,10 +88,10 @@ describe('EntityLinkDialog', () => {
       expect(screen.getByRole('tab', { name: /wikidata/i })).toBeInTheDocument();
     });
 
-    it('shows Authorities tab', () => {
+    it('shows Knowledge Graph tab', () => {
       render(<EntityLinkDialog {...defaultProps} />);
 
-      expect(screen.getByRole('tab', { name: /authorities/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /knowledge graph/i })).toBeInTheDocument();
     });
 
     it('defaults to Wikidata tab', () => {
@@ -103,14 +103,14 @@ describe('EntityLinkDialog', () => {
       );
     });
 
-    it('switches to Authorities tab when clicked', async () => {
+    it('switches to Knowledge Graph tab when clicked', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
       render(<EntityLinkDialog {...defaultProps} />);
 
-      await user.click(screen.getByRole('tab', { name: /authorities/i }));
+      await user.click(screen.getByRole('tab', { name: /knowledge graph/i }));
 
-      expect(screen.getByRole('tab', { name: /authorities/i })).toHaveAttribute(
+      expect(screen.getByRole('tab', { name: /knowledge graph/i })).toHaveAttribute(
         'aria-selected',
         'true'
       );

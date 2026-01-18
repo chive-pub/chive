@@ -1,4 +1,4 @@
-import { render, screen } from '@/tests/test-utils';
+import { render, screen, waitFor } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { AnnotationEditor, AnnotationPreview } from './annotation-editor';
 import type { RichAnnotationBody } from '@/lib/api/schema';
@@ -20,81 +20,31 @@ describe('AnnotationEditor', () => {
       expect(screen.getByTestId('annotation-editor')).toBeInTheDocument();
     });
 
-    it('shows placeholder text', () => {
-      render(<AnnotationEditor {...defaultProps} placeholder="Write here..." />);
-
-      expect(screen.getByPlaceholderText('Write here...')).toBeInTheDocument();
-    });
-
-    it('shows default placeholder', () => {
+    it('renders contenteditable with role textbox', () => {
       render(<AnnotationEditor {...defaultProps} />);
 
-      expect(screen.getByPlaceholderText('Add your annotation...')).toBeInTheDocument();
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
     });
 
     it('shows character count', () => {
       const { container } = render(<AnnotationEditor {...defaultProps} maxLength={1000} />);
 
-      // Character count may be split into multiple text nodes
       const charCount = container.querySelector('#annotation-editor-help');
       expect(charCount).toBeInTheDocument();
       expect(charCount?.textContent).toContain('0');
       expect(charCount?.textContent).toContain('1000');
     });
 
-    it('shows Insert reference button', () => {
+    it('shows trigger hints in footer', () => {
       render(<AnnotationEditor {...defaultProps} />);
 
-      expect(screen.getByText('Insert reference')).toBeInTheDocument();
-    });
-  });
-
-  describe('text input', () => {
-    it('accepts text input', async () => {
-      const user = userEvent.setup();
-
-      render(<AnnotationEditor {...defaultProps} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, 'Hello world');
-
-      expect(textarea).toHaveValue('Hello world');
-    });
-
-    it('calls onChange with parsed body', async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-
-      render(<AnnotationEditor {...defaultProps} onChange={onChange} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, 'Test');
-
-      expect(onChange).toHaveBeenCalledWith({
-        type: 'RichText',
-        items: [{ type: 'text', content: 'Test' }],
-        format: 'application/x-chive-gloss+json',
-      });
-    });
-
-    it('updates character count as typing', async () => {
-      const user = userEvent.setup();
-
-      const { container } = render(<AnnotationEditor {...defaultProps} maxLength={100} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, '12345');
-
-      // Character count may be split into multiple text nodes
-      const charCount = container.querySelector('#annotation-editor-help');
-      // Note: char count uses getTextLength(value), but value prop is null
-      // The component tracks text in local state, but counts length from value prop
-      expect(charCount?.textContent).toContain('/100');
+      expect(screen.getByText('entities')).toBeInTheDocument();
+      expect(screen.getByText('types')).toBeInTheDocument();
     });
   });
 
   describe('initial value', () => {
-    it('displays initial text value', () => {
+    it('displays initial text value', async () => {
       const value: RichAnnotationBody = {
         type: 'RichText',
         items: [{ type: 'text', content: 'Initial content' }],
@@ -103,42 +53,56 @@ describe('AnnotationEditor', () => {
 
       render(<AnnotationEditor {...defaultProps} value={value} />);
 
-      expect(screen.getByRole('textbox')).toHaveValue('Initial content');
+      await waitFor(() => {
+        const editor = screen.getByRole('textbox');
+        expect(editor.textContent).toBe('Initial content');
+      });
     });
 
-    it('converts Wikidata references to text format', () => {
+    it('displays node references as chips', async () => {
       const value: RichAnnotationBody = {
         type: 'RichText',
         items: [
           { type: 'text', content: 'See ' },
-          { type: 'wikidataRef', qid: 'Q123', label: 'Test Entity' },
+          {
+            type: 'nodeRef',
+            uri: 'at://node/123',
+            label: 'Test Entity',
+            kind: 'object',
+            subkind: 'institution',
+          },
         ],
         format: 'application/x-chive-gloss+json',
       };
 
       render(<AnnotationEditor {...defaultProps} value={value} />);
 
-      expect(screen.getByRole('textbox')).toHaveValue('See @wikidata:Q123');
+      await waitFor(() => {
+        const editor = screen.getByRole('textbox');
+        expect(editor.textContent).toContain('See');
+        expect(editor.textContent).toContain('Test Entity');
+      });
     });
   });
 
   describe('disabled state', () => {
-    it('disables textarea when disabled', () => {
+    it('sets contentEditable to false when disabled', () => {
       render(<AnnotationEditor {...defaultProps} disabled />);
 
-      expect(screen.getByRole('textbox')).toBeDisabled();
+      const editor = screen.getByRole('textbox');
+      expect(editor).toHaveAttribute('contenteditable', 'false');
     });
 
-    it('disables Insert reference button when disabled', () => {
+    it('has disabled styling when disabled', () => {
       render(<AnnotationEditor {...defaultProps} disabled />);
 
-      expect(screen.getByText('Insert reference').closest('button')).toBeDisabled();
+      const editor = screen.getByRole('textbox');
+      expect(editor).toHaveClass('cursor-not-allowed', 'opacity-50');
     });
   });
 
   describe('character limit', () => {
     it('shows warning style when over limit', () => {
-      // Provide a value that exceeds maxLength
       const longValue: RichAnnotationBody = {
         type: 'RichText',
         items: [{ type: 'text', content: '123456789' }],
@@ -153,8 +117,7 @@ describe('AnnotationEditor', () => {
       expect(counter).toHaveClass('text-destructive');
     });
 
-    it('shows warning style on textarea when over limit', () => {
-      // Provide a value that exceeds maxLength
+    it('shows warning style on editor when over limit', () => {
       const longValue: RichAnnotationBody = {
         type: 'RichText',
         items: [{ type: 'text', content: '123456789' }],
@@ -163,83 +126,8 @@ describe('AnnotationEditor', () => {
 
       render(<AnnotationEditor {...defaultProps} value={longValue} maxLength={5} />);
 
-      const textarea = screen.getByRole('textbox');
-      expect(textarea).toHaveClass('border-destructive');
-    });
-  });
-
-  describe('trigger help popover', () => {
-    it('shows trigger help when @ is typed', async () => {
-      const user = userEvent.setup();
-
-      render(<AnnotationEditor {...defaultProps} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, '@');
-
-      expect(screen.getByText('Insert reference:')).toBeInTheDocument();
-    });
-
-    it('shows all trigger options', async () => {
-      const user = userEvent.setup();
-
-      render(<AnnotationEditor {...defaultProps} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, '@');
-
-      expect(screen.getByText('@wikidata:')).toBeInTheDocument();
-      expect(screen.getByText('@node:')).toBeInTheDocument();
-      expect(screen.getByText('@field:')).toBeInTheDocument();
-      expect(screen.getByText('@eprint:')).toBeInTheDocument();
-      expect(screen.getByText('^')).toBeInTheDocument();
-    });
-
-    it('shows trigger descriptions', async () => {
-      const user = userEvent.setup();
-
-      render(<AnnotationEditor {...defaultProps} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, '@');
-
-      expect(screen.getByText('Link to Wikidata entity')).toBeInTheDocument();
-      expect(screen.getByText('Link to graph node')).toBeInTheDocument();
-    });
-
-    it('inserts trigger when option clicked', async () => {
-      const user = userEvent.setup();
-
-      render(<AnnotationEditor {...defaultProps} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, '@');
-      await user.click(screen.getByText('Link to Wikidata entity'));
-
-      expect(textarea).toHaveValue('@wikidata:');
-    });
-
-    it('closes trigger help on Escape', async () => {
-      const user = userEvent.setup();
-
-      render(<AnnotationEditor {...defaultProps} />);
-
-      const textarea = screen.getByRole('textbox');
-      await user.type(textarea, '@');
-      expect(screen.getByText('Insert reference:')).toBeInTheDocument();
-
-      await user.keyboard('{Escape}');
-      expect(screen.queryByText('Insert reference:')).not.toBeInTheDocument();
-    });
-
-    it('opens trigger help when Insert reference clicked', async () => {
-      const user = userEvent.setup();
-
-      render(<AnnotationEditor {...defaultProps} />);
-
-      await user.click(screen.getByText('Insert reference'));
-
-      expect(screen.getByText('Insert reference:')).toBeInTheDocument();
+      const editor = screen.getByRole('textbox');
+      expect(editor).toHaveClass('border-destructive');
     });
   });
 
@@ -248,6 +136,15 @@ describe('AnnotationEditor', () => {
       render(<AnnotationEditor {...defaultProps} className="custom-class" />);
 
       expect(screen.getByTestId('annotation-editor')).toHaveClass('custom-class');
+    });
+  });
+
+  describe('enabled triggers', () => {
+    it('shows only enabled trigger hints', () => {
+      render(<AnnotationEditor {...defaultProps} enabledTriggers={['@']} />);
+
+      expect(screen.getByText('entities')).toBeInTheDocument();
+      expect(screen.queryByText('types')).not.toBeInTheDocument();
     });
   });
 });

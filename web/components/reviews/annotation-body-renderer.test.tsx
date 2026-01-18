@@ -140,20 +140,28 @@ describe('AnnotationBodyRenderer', () => {
       render(<AnnotationBodyRenderer body={body} />);
 
       const link = screen.getByRole('link', { name: /library of congress/i });
-      expect(link).toHaveAttribute('href', '/authorities/auth123');
+      expect(link).toHaveAttribute('href', '/graph/auth123');
     });
 
-    it('applies node chip styling', () => {
+    it('renders node reference with subkind-specific colors', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'nodeRef', uri: 'at://auth/123', label: 'Authority' }],
+        items: [
+          {
+            type: 'nodeRef',
+            uri: 'at://auth/123',
+            label: 'Institution',
+            subkind: 'institution',
+          },
+        ],
         format: 'application/x-chive-gloss+json',
       };
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const badge = screen.getByText('Authority');
-      expect(badge).toHaveClass('bg-purple-100', 'text-purple-800');
+      const badge = screen.getByText('Institution').closest('[class*="bg-"]');
+      // institution subkind uses blue colors
+      expect(badge).toHaveClass('bg-blue-100', 'text-blue-800');
     });
   });
 
@@ -186,8 +194,9 @@ describe('AnnotationBodyRenderer', () => {
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const badge = screen.getByText('Physics');
-      expect(badge).toHaveClass('bg-green-100', 'text-green-800');
+      const badge = screen.getByText('Physics').closest('[class*="bg-"]');
+      // field subkind uses emerald colors
+      expect(badge).toHaveClass('bg-emerald-100', 'text-emerald-800');
     });
   });
 
@@ -214,8 +223,9 @@ describe('AnnotationBodyRenderer', () => {
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const badge = screen.getByText('time: 2024');
-      expect(badge).toHaveClass('bg-orange-100', 'text-orange-800');
+      const badge = screen.getByText('time: 2024').closest('[class*="bg-"]');
+      // facet subkind uses amber colors
+      expect(badge).toHaveClass('bg-amber-100', 'text-amber-800');
     });
   });
 
@@ -357,7 +367,8 @@ describe('AnnotationBodyRenderer', () => {
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const badge = screen.getByText('@Author Name');
+      const badge = screen.getByText('@Author Name').closest('[class*="bg-"]');
+      // person subkind uses pink colors
       expect(badge).toHaveClass('bg-pink-100', 'text-pink-800');
     });
 

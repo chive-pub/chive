@@ -24,15 +24,21 @@ import {
 } from './use-governance';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet, mockApiPost } = vi.hoisted(() => ({
+const { mockApiGet, mockApiPost, mockAuthApiGet, mockAuthApiPost } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
   mockApiPost: vi.fn(),
+  mockAuthApiGet: vi.fn(),
+  mockAuthApiPost: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
     GET: mockApiGet,
     POST: mockApiPost,
+  },
+  authApi: {
+    GET: mockAuthApiGet,
+    POST: mockAuthApiPost,
   },
 }));
 
@@ -119,7 +125,7 @@ describe('useMyEditorStatus', () => {
 
   it('fetches current user editor status', async () => {
     const mockStatus = createMockEditorStatus();
-    mockApiGet.mockResolvedValueOnce({
+    mockAuthApiGet.mockResolvedValueOnce({
       data: mockStatus,
       error: undefined,
     });
@@ -132,7 +138,7 @@ describe('useMyEditorStatus', () => {
     });
 
     expect(result.current.data).toEqual(mockStatus);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.getEditorStatus', {});
+    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.getEditorStatus', {});
   });
 
   it('can be disabled via options', () => {
@@ -142,7 +148,7 @@ describe('useMyEditorStatus', () => {
     });
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockAuthApiGet).not.toHaveBeenCalled();
   });
 
   it('includes metrics in response', async () => {
@@ -165,7 +171,7 @@ describe('useMyEditorStatus', () => {
         role: 'community-member' as const,
       },
     });
-    mockApiGet.mockResolvedValueOnce({
+    mockAuthApiGet.mockResolvedValueOnce({
       data: mockStatus,
       error: undefined,
     });
@@ -229,7 +235,7 @@ describe('useTrustedEditors', () => {
       createMockEditorStatus({ role: 'trusted-editor' }),
       createMockEditorStatus({ did: 'did:plc:admin', role: 'administrator' }),
     ]);
-    mockApiGet.mockResolvedValueOnce({
+    mockAuthApiGet.mockResolvedValueOnce({
       data: mockResponse,
       error: undefined,
     });
@@ -243,7 +249,7 @@ describe('useTrustedEditors', () => {
 
     expect(result.current.data?.editors).toHaveLength(2);
     expect(result.current.data?.total).toBe(2);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
+    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
       params: {
         query: {
           limit: 20,
@@ -258,7 +264,7 @@ describe('useTrustedEditors', () => {
     const mockResponse = createMockTrustedEditorsResponse([
       createMockEditorStatus({ role: 'trusted-editor' }),
     ]);
-    mockApiGet.mockResolvedValueOnce({
+    mockAuthApiGet.mockResolvedValueOnce({
       data: mockResponse,
       error: undefined,
     });
@@ -272,7 +278,7 @@ describe('useTrustedEditors', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
+    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
       params: {
         query: {
           limit: 20,
@@ -284,7 +290,7 @@ describe('useTrustedEditors', () => {
   });
 
   it('passes pagination params', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockAuthApiGet.mockResolvedValueOnce({
       data: createMockTrustedEditorsResponse(),
       error: undefined,
     });
@@ -298,7 +304,7 @@ describe('useTrustedEditors', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
+    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
       params: {
         query: {
           limit: 50,
