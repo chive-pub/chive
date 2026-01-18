@@ -43,9 +43,10 @@ FROM base AS builder
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy source code
+# Copy source code and scripts
 COPY package.json pnpm-lock.yaml tsconfig.json ./
 COPY src ./src
+COPY scripts ./scripts
 
 # Build TypeScript to JavaScript
 RUN pnpm exec tsc --project tsconfig.json
