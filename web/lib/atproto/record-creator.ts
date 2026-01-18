@@ -86,6 +86,14 @@ export interface EprintRecord {
   documentFormat?: string;
   fieldNodes: FieldNodeRef[];
   createdAt: string;
+  /**
+   * DID of the user who submitted the eprint.
+   *
+   * @remarks
+   * When submitting to a paper's PDS, this records who actually submitted
+   * the eprint, even though the record lives in the paper's repository.
+   */
+  submittedBy?: string;
   supplementaryMaterials?: Array<{
     blob: BlobRef;
     label: string;
@@ -321,51 +329,61 @@ export async function uploadDocument(agent: Agent, file: File): Promise<UploadBl
 // =============================================================================
 
 /**
- * Create an eprint submission record in the user's PDS.
+ * Create an eprint submission record in a PDS.
  *
  * @remarks
  * This is the primary function for submitting eprints. It:
- * 1. Uploads the document to the user's PDS (PDF, DOCX, HTML, etc.)
+ * 1. Uploads the document to the target PDS (PDF, DOCX, HTML, etc.)
  * 2. Uploads any supplementary materials
  * 3. Creates the eprint record with blob references
  *
- * The record is created in the user's PDS, NOT in Chive's storage.
+ * The record is created in the target PDS (user's or paper's), NOT in Chive's storage.
  * Chive will index this record when it appears on the firehose.
  *
- * @param agent - Authenticated ATProto Agent
+ * When submitting to a paper's PDS:
+ * - The `targetAgent` parameter specifies the paper's authenticated agent
+ * - The `submittedBy` field in the record records who submitted (userAgent's DID)
+ * - Blobs are uploaded to the paper's PDS
+ * - The record is created in the paper's repository
+ *
+ * @param userAgent - Authenticated ATProto Agent for the submitting user
  * @param data - Form data with files and metadata
+ * @param targetAgent - Optional agent for paper PDS (if different from userAgent)
  * @returns Created record result
  *
- * @throws Error if agent is not authenticated
+ * @throws Error if agents are not authenticated
  * @throws Error if document upload fails
  * @throws Error if record creation fails
  *
  * @example
  * ```typescript
+ * // Submit to user's own PDS
  * const agent = useAgent();
- * if (!agent) throw new Error('Not authenticated');
+ * const result = await createEprintRecord(agent, formData);
  *
- * const result = await createEprintRecord(agent, {
- *   documentFile: myDocFile,
- *   title: 'My Research Paper',
- *   abstract: 'This paper presents...',
- *   authors: [{ did: agent.session.did, order: 1, name: 'Alice' }],
- *   fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
- * });
- *
- * console.log('Published at:', result.uri);
+ * // Submit to paper's PDS
+ * const paperAgent = getPaperAgent();
+ * const result = await createEprintRecord(agent, formData, paperAgent);
  * ```
  */
 export async function createEprintRecord(
-  agent: Agent,
-  data: EprintFormData
+  userAgent: Agent,
+  data: EprintFormData,
+  targetAgent?: Agent
 ): Promise<CreateRecordResult> {
-  const did = getAgentDid(agent);
-  if (!did) {
-    throw new Error('Agent is not authenticated');
+  const userDid = getAgentDid(userAgent);
+  if (!userDid) {
+    throw new Error('User agent is not authenticated');
   }
 
-  // 1. Upload document
+  // Use targetAgent if provided (for paper PDS), otherwise use userAgent
+  const agent = targetAgent ?? userAgent;
+  const targetDid = getAgentDid(agent);
+  if (!targetDid) {
+    throw new Error('Target agent is not authenticated');
+  }
+
+  // 1. Upload document to target PDS
   const docUpload = await uploadDocument(agent, data.documentFile);
 
   // 2. Upload supplementary materials (if any)
@@ -402,6 +420,8 @@ export async function createEprintRecord(
     documentFormat: data.documentFormat,
     fieldNodes: data.fieldNodes,
     createdAt: new Date().toISOString(),
+    // Track who submitted, especially important when submitting to paper PDS
+    submittedBy: userDid,
   };
 
   // Add optional fields
@@ -433,9 +453,9 @@ export async function createEprintRecord(
     record.fundingInfo = data.fundingInfo;
   }
 
-  // 4. Create the record in user's PDS
+  // 4. Create the record in target PDS (user's or paper's)
   const response = await agent.com.atproto.repo.createRecord({
-    repo: did,
+    repo: targetDid,
     collection: 'pub.chive.eprint.submission',
     record,
   });

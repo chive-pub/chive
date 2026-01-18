@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
     policy_uri: `${baseUrl}/about/privacy`,
 
     // Allowed redirect URIs
-    redirect_uris: [`${baseUrl}/oauth/callback`],
+    // Includes main callback and paper-specific callback for popup flow
+    redirect_uris: [`${baseUrl}/oauth/callback`, `${baseUrl}/oauth/paper-callback`],
 
     // Token endpoint authentication method
     // "none" means public client (no client secret)

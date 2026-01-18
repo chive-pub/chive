@@ -41,3 +41,27 @@ export {
   getCurrentSession,
   getOAuthClient,
 } from './oauth-client';
+
+// Paper session management (for paper PDS submissions)
+export {
+  setPaperSession,
+  getPaperSession,
+  getActivePaperSession,
+  hasPaperSession,
+  clearPaperSession,
+  clearAllPaperSessions,
+  isPaperSessionValid,
+  getPaperAgent,
+  getAllPaperSessions,
+  type PaperSession,
+} from './paper-session';
+
+// Paper OAuth popup flow
+export {
+  authenticatePaperInPopup,
+  cancelPaperAuthentication,
+  isPaperAuthInProgress,
+  postPaperSessionToOpener,
+  postPaperErrorToOpener,
+  type PaperOAuthMessage,
+} from './paper-oauth-popup';

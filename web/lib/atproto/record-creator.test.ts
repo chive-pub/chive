@@ -262,7 +262,7 @@ describe('createEprintRecord', () => {
         fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
         license: 'cc-by-4.0',
       })
-    ).rejects.toThrow('Agent is not authenticated');
+    ).rejects.toThrow('User agent is not authenticated');
   });
 });
 

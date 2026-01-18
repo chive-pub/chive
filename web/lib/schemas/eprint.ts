@@ -572,12 +572,33 @@ export const stepFieldsSchema = z.object({
 export type StepFieldsData = z.infer<typeof stepFieldsSchema>;
 
 /**
+ * Step: Destination - Choose where to submit (user's PDS or paper's PDS).
+ *
+ * @remarks
+ * This step allows users to choose whether to submit to their own PDS
+ * or to a paper's dedicated PDS (for papers as first-class ATProto citizens).
+ */
+export const stepDestinationSchema = z.object({
+  /** Whether to submit to a paper's PDS instead of user's PDS (defaults to false) */
+  usePaperPds: z.boolean().optional(),
+
+  /** Paper's DID (required if usePaperPds is true) */
+  paperDid: z
+    .string()
+    .regex(/^did:[a-z]+:[a-zA-Z0-9._:%-]+$/, 'Invalid DID format')
+    .optional(),
+});
+
+export type StepDestinationData = z.infer<typeof stepDestinationSchema>;
+
+/**
  * Combined form data for all wizard steps.
  */
 export const eprintFormDataSchema = stepFilesSchema
   .merge(stepMetadataSchema)
   .merge(stepAuthorsSchema)
-  .merge(stepFieldsSchema);
+  .merge(stepFieldsSchema)
+  .merge(stepDestinationSchema);
 
 export type EprintFormData = z.infer<typeof eprintFormDataSchema>;
 

@@ -30,6 +30,7 @@ import { authApi } from '@/lib/api/client';
 
 import { WizardProgress, WizardProgressCompact, type WizardStep } from './wizard-progress';
 import { StepFiles } from './step-files';
+import { StepDestination } from './step-destination';
 import { StepSupplementary } from './step-supplementary';
 import { StepMetadata } from './step-metadata';
 import { StepAuthors } from './step-authors';
@@ -37,6 +38,7 @@ import { StepFields } from './step-fields';
 import { StepFacets } from './step-facets';
 import { StepPublication } from './step-publication';
 import { StepReview } from './step-review';
+import { getActivePaperSession, clearAllPaperSessions } from '@/lib/auth/paper-session';
 import type { EprintAuthorFormData } from '@/components/forms/eprint-author-editor';
 import type { FacetDimension } from '@/lib/api/schema';
 
@@ -134,6 +136,10 @@ export interface EprintFormValues {
   documentFile?: File;
   documentFormat?: DocumentFormatValue;
   supplementaryFiles?: File[];
+
+  // Step 1.5: Destination (where to submit)
+  usePaperPds?: boolean;
+  paperDid?: string;
 
   // Step 2: Supplementary Materials
   supplementaryMaterials?: SupplementaryMaterialInput[];
@@ -262,6 +268,7 @@ export interface SubmissionWizardProps {
  */
 const WIZARD_STEPS: WizardStep[] = [
   { id: 'files', title: 'Files', description: 'Upload your eprint' },
+  { id: 'destination', title: 'Destination', description: 'Choose where to submit' },
   { id: 'supplementary', title: 'Supplementary', description: 'Add supporting files' },
   { id: 'metadata', title: 'Metadata', description: 'Title & abstract' },
   { id: 'authors', title: 'Authors', description: 'Add co-authors' },
@@ -403,6 +410,14 @@ const stepSchemas = {
     documentFormat: z.enum(DOCUMENT_FORMAT_VALUES).optional(),
     supplementaryFiles: z.array(z.instanceof(File)).optional(),
   }),
+  destination: z
+    .object({
+      usePaperPds: z.boolean().optional(),
+      paperDid: z.string().optional(),
+    })
+    .refine((data) => !data.usePaperPds || data.paperDid, {
+      message: 'Paper authentication required when submitting to paper PDS',
+    }),
   supplementary: z.object({
     supplementaryMaterials: z.array(supplementaryMaterialSchema).max(50).optional(),
   }),
@@ -559,6 +574,13 @@ export function SubmissionWizard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Clean up paper sessions when wizard unmounts
+  useEffect(() => {
+    return () => {
+      clearAllPaperSessions();
+    };
+  }, []);
+
   // Transform prefilled author data to form format
   const prefilledAuthors: EprintAuthorFormData[] = (prefilled?.authors ?? []).map((a, index) => ({
     did: undefined,
@@ -585,6 +607,9 @@ export function SubmissionWizard({
     defaultValues: {
       // In claim mode, use prefilled document file if available
       documentFile: prefilled?.documentFile,
+      // Destination defaults to user's own PDS
+      usePaperPds: false,
+      paperDid: undefined,
       title: prefilled?.title ?? '',
       abstract: prefilled?.abstract ?? '',
       keywords: prefilled?.keywords ?? [],
@@ -722,19 +747,36 @@ export function SubmissionWizard({
         label: f.label,
       }));
 
-      // Create the eprint record in the user's PDS
-      const result = await createEprintRecord(agent, {
-        documentFile: values.documentFile!,
-        documentFormat: values.documentFormat,
-        supplementaryMaterials: transformedSupplementary,
-        title: values.title,
-        abstract: values.abstract,
-        keywords: values.keywords ?? [],
-        license: values.license,
-        authors: transformedAuthors,
-        fieldNodes: transformedFieldNodes,
-        facets: transformedFacets.length > 0 ? transformedFacets : undefined,
-      });
+      // Determine target agent (user's or paper's PDS)
+      let targetAgent = undefined;
+      if (values.usePaperPds) {
+        const paperSession = getActivePaperSession();
+        if (!paperSession) {
+          setSubmitError(
+            'Paper account authentication required. Please authenticate on the Destination step.'
+          );
+          return;
+        }
+        targetAgent = paperSession.agent;
+      }
+
+      // Create the eprint record in the target PDS (user's or paper's)
+      const result = await createEprintRecord(
+        agent,
+        {
+          documentFile: values.documentFile!,
+          documentFormat: values.documentFormat,
+          supplementaryMaterials: transformedSupplementary,
+          title: values.title,
+          abstract: values.abstract,
+          keywords: values.keywords ?? [],
+          license: values.license,
+          authors: transformedAuthors,
+          fieldNodes: transformedFieldNodes,
+          facets: transformedFacets.length > 0 ? transformedFacets : undefined,
+        },
+        targetAgent
+      );
 
       // Trigger indexing in Chive's AppView
       // The Bluesky relay doesn't broadcast pub.chive.* records,
@@ -744,9 +786,12 @@ export function SubmissionWizard({
           body: { uri: result.uri },
         });
       } catch (syncError) {
-        // Log but don't fail - the record exists in the user's PDS
+        // Log but don't fail - the record exists in the target PDS
         console.warn('Sync indexing failed (record saved to PDS):', syncError);
       }
+
+      // Clean up paper session after successful submission
+      clearAllPaperSessions();
 
       onSuccess?.(result);
     } catch (error) {
@@ -765,18 +810,20 @@ export function SubmissionWizard({
       case 0:
         return <StepFiles form={form} />;
       case 1:
-        return <StepSupplementary form={form} />;
+        return <StepDestination form={form} />;
       case 2:
-        return <StepMetadata form={form} />;
+        return <StepSupplementary form={form} />;
       case 3:
-        return <StepAuthors form={form} isImportMode={isClaimMode} />;
+        return <StepMetadata form={form} />;
       case 4:
-        return <StepFields form={form} />;
+        return <StepAuthors form={form} isImportMode={isClaimMode} />;
       case 5:
-        return <StepFacets form={form} />;
+        return <StepFields form={form} />;
       case 6:
-        return <StepPublication form={form} />;
+        return <StepFacets form={form} />;
       case 7:
+        return <StepPublication form={form} />;
+      case 8:
         return <StepReview form={form} isSubmitting={isSubmitting} submitError={submitError} />;
       default:
         return null;
