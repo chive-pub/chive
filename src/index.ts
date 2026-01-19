@@ -82,6 +82,7 @@ import type { DID } from './types/atproto.js';
 import type { ICacheProvider } from './types/interfaces/cache.interface.js';
 import type { IMetrics } from './types/interfaces/metrics.interface.js';
 import { FreshnessWorker } from './workers/freshness-worker.js';
+import { IndexRetryWorker } from './workers/index-retry-worker.js';
 
 /**
  * Environment configuration.
@@ -233,6 +234,7 @@ interface AppState {
   pdsScanSchedulerJob?: PDSScanSchedulerJob;
   tagSyncJob?: TagSyncJob;
   eventBus?: EventEmitter2Type;
+  indexRetryWorker?: IndexRetryWorker;
 }
 
 /**
@@ -510,6 +512,20 @@ function createServices(
 
   const pdsScanner = new PDSScanner(pdsRegistry, eprintService, logger);
 
+  // Create index retry worker for failed indexRecord calls
+  const redisUrl = new URL(config.redisUrl);
+  const indexRetryWorker = new IndexRetryWorker({
+    connection: {
+      host: redisUrl.hostname,
+      port: parseInt(redisUrl.port || '6379', 10),
+    },
+    eprintService,
+    logger,
+    concurrency: 3,
+    maxAttempts: 10,
+    baseDelayMs: 60_000, // 1 minute base delay
+  });
+
   return {
     eprintService,
     searchService,
@@ -536,6 +552,7 @@ function createServices(
     trustedEditorService,
     pdsRegistry,
     pdsScanner,
+    indexRetryWorker,
     identityResolver,
     redis,
     logger,
@@ -651,6 +668,12 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
   if (state.freshnessWorker) {
     state.logger.info('Closing freshness worker...');
     await state.freshnessWorker.close();
+  }
+
+  // Close index retry worker
+  if (state.indexRetryWorker) {
+    state.logger.info('Closing index retry worker...');
+    await state.indexRetryWorker.close();
   }
 
   // Close database connections
@@ -1005,6 +1028,9 @@ async function main(): Promise<void> {
     // Create services
     const serverConfig = createServices(config, pgPool, redis, esPool, neo4jConnection, logger);
 
+    // Store index retry worker in state for shutdown handling
+    state.indexRetryWorker = serverConfig.indexRetryWorker;
+
     // Create Hono app
     const app = createServer(serverConfig);
 
@@ -1017,6 +1043,13 @@ async function main(): Promise<void> {
     logger.info(`Chive AppView listening on port ${config.port}`);
     logger.info(`Health check: http://localhost:${config.port}/health`);
     logger.info(`API docs: http://localhost:${config.port}/docs`);
+
+    // Index retry worker is already initialized via createServices
+    logger.info('Index retry worker initialized', {
+      concurrency: 3,
+      maxAttempts: 10,
+      baseDelayMs: 60_000,
+    });
 
     // Initialize plugin system (hybrid search/import architecture)
     state.importScheduler = await initializePluginSystem(

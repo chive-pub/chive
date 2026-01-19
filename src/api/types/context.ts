@@ -40,6 +40,7 @@ import type { RecommendationService } from '../../storage/neo4j/recommendations.
 import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type { DID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
+import type { IndexRetryWorker } from '../../workers/index-retry-worker.js';
 
 /**
  * Services container injected into Hono context.
@@ -73,6 +74,7 @@ export interface ChiveServices {
   readonly governancePdsWriter?: GovernancePDSWriter;
   readonly pdsRegistry?: IPDSRegistry;
   readonly pdsScanner?: PDSScanner;
+  readonly indexRetryWorker?: IndexRetryWorker;
 }
 
 /**

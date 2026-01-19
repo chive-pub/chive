@@ -206,6 +206,30 @@ export async function indexRecordHandler(
 
     if (!result.ok) {
       logger.error('Failed to index record', result.error as Error, { uri: input.uri });
+
+      // Queue for retry if worker is available
+      const { indexRetryWorker } = c.get('services');
+      if (indexRetryWorker) {
+        try {
+          await indexRetryWorker.enqueueRetry({
+            uri: input.uri,
+            did,
+            collection,
+            rkey,
+            pdsUrl,
+            originalError: result.error.message,
+            failedAt: new Date().toISOString(),
+            requestedBy: user?.did,
+          });
+          logger.info('Queued failed index for retry', { uri: input.uri });
+        } catch (queueError) {
+          logger.warn('Failed to queue retry', {
+            uri: input.uri,
+            error: queueError instanceof Error ? queueError.message : String(queueError),
+          });
+        }
+      }
+
       return {
         uri: input.uri,
         indexed: false,
@@ -232,6 +256,28 @@ export async function indexRecordHandler(
     logger.error('Error indexing record', error instanceof Error ? error : undefined, {
       uri: input.uri,
     });
+
+    // Queue for retry on unexpected errors if worker is available
+    const { indexRetryWorker } = c.get('services');
+    if (indexRetryWorker && parsed) {
+      try {
+        await indexRetryWorker.enqueueRetry({
+          uri: input.uri,
+          did: parsed.did,
+          collection: parsed.collection,
+          rkey: parsed.rkey,
+          originalError: error instanceof Error ? error.message : 'Unknown error',
+          failedAt: new Date().toISOString(),
+          requestedBy: user?.did,
+        });
+        logger.info('Queued failed index for retry', { uri: input.uri });
+      } catch (queueError) {
+        logger.warn('Failed to queue retry', {
+          uri: input.uri,
+          error: queueError instanceof Error ? queueError.message : String(queueError),
+        });
+      }
+    }
 
     throw new DatabaseError('INDEX', error instanceof Error ? error.message : 'Unknown error');
   }

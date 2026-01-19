@@ -52,6 +52,7 @@ import type { TagManager } from '../storage/neo4j/tag-manager.js';
 import type { IAuthorizationService } from '../types/interfaces/authorization.interface.js';
 import type { IIdentityResolver } from '../types/interfaces/identity.interface.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
+import type { IndexRetryWorker } from '../workers/index-retry-worker.js';
 
 import { CORS_CONFIG, HEALTH_PATHS } from './config.js';
 import { authenticateServiceAuth } from './middleware/auth.js';
@@ -181,6 +182,11 @@ export interface ServerConfig {
    * PDS scanner for discovering eprints from PDSes (optional).
    */
   readonly pdsScanner?: PDSScanner;
+
+  /**
+   * Index retry worker for retrying failed indexRecord calls (optional).
+   */
+  readonly indexRetryWorker?: IndexRetryWorker;
 
   /**
    * Identity resolver for DID resolution (optional).
@@ -328,6 +334,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       governancePdsWriter: config.governancePdsWriter,
       pdsRegistry: config.pdsRegistry,
       pdsScanner: config.pdsScanner,
+      indexRetryWorker: config.indexRetryWorker,
     } as ChiveServices);
     c.set('redis', config.redis);
     c.set('logger', config.logger);
