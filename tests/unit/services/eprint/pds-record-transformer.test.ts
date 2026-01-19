@@ -392,7 +392,7 @@ describe('transformPDSRecord', () => {
     });
   });
 
-  describe('submittedBy inference', () => {
+  describe('submittedBy handling', () => {
     it('uses explicit submittedBy if provided', () => {
       const pdsRecord = createMockPDSRecord({
         submittedBy: 'did:plc:explicit-submitter',
@@ -402,14 +402,34 @@ describe('transformPDSRecord', () => {
       expect(result.submittedBy).toBe('did:plc:explicit-submitter');
     });
 
-    it('throws ValidationError when submittedBy is missing', () => {
+    it('falls back to URI DID when submittedBy is missing', () => {
       const pdsRecord = createMockPDSRecord({
         submittedBy: undefined,
       });
+      // mockUri is 'at://did:plc:test/pub.chive.eprint.submission/abc123'
+      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      expect(() => transformPDSRecord(pdsRecord, mockUri, mockCid)).toThrow(ValidationError);
-      expect(() => transformPDSRecord(pdsRecord, mockUri, mockCid)).toThrow(
-        'Missing required field: submittedBy'
+      expect(result.submittedBy).toBe('did:plc:test');
+    });
+
+    it('falls back to URI DID when submittedBy is null', () => {
+      const pdsRecord = createMockPDSRecord({
+        submittedBy: null,
+      });
+      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+      expect(result.submittedBy).toBe('did:plc:test');
+    });
+
+    it('throws ValidationError when URI is invalid and submittedBy is missing', () => {
+      const pdsRecord = createMockPDSRecord({
+        submittedBy: undefined,
+      });
+      const invalidUri = 'invalid-uri' as AtUri;
+
+      expect(() => transformPDSRecord(pdsRecord, invalidUri, mockCid)).toThrow(ValidationError);
+      expect(() => transformPDSRecord(pdsRecord, invalidUri, mockCid)).toThrow(
+        'Cannot determine submittedBy: invalid AT-URI'
       );
     });
   });

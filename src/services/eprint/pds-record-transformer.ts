@@ -329,11 +329,20 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
   // Transform facets
   const facets = transformFacets(record.facets);
 
-  // submittedBy is required - it must be the actual user who submitted
-  if (!record.submittedBy) {
-    throw new ValidationError('Missing required field: submittedBy', 'submittedBy');
+  // submittedBy should be the actual user who submitted the eprint.
+  // If present in the record, use it. Otherwise, fall back to the DID from the
+  // AT-URI, which is the PDS owner who created the record.
+  let submittedBy: DID;
+  if (record.submittedBy) {
+    submittedBy = record.submittedBy as DID;
+  } else {
+    // Extract DID from AT-URI: at://did:plc:xyz/collection/rkey -> did:plc:xyz
+    const uriMatch = /^at:\/\/(did:[^/]+)\//.exec(uri);
+    if (!uriMatch) {
+      throw new ValidationError('Cannot determine submittedBy: invalid AT-URI', 'uri');
+    }
+    submittedBy = uriMatch[1] as DID;
   }
-  const submittedBy = record.submittedBy as DID;
 
   // Transform funding
   const funding = record.fundingInfo?.map((f) => ({
