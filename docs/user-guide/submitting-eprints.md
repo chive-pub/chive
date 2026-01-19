@@ -84,8 +84,8 @@ Click "Withdraw" to remove your eprint from Chive. The record remains in your PD
 For eprints with multiple authors:
 
 1. One author (the submitter) creates the submission
-2. Co-authors are notified via email if addresses are provided
-3. Co-authors can claim their authorship through the claiming flow
+2. Co-authors can claim their authorship through the claiming flow
+3. The submitter can also send co-author requests to link verified accounts
 
 ## Troubleshooting
 

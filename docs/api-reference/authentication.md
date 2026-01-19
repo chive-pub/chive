@@ -4,63 +4,53 @@ Chive uses AT Protocol OAuth for user authentication and JWT tokens for session 
 
 ## Authentication methods
 
-| Method                | Use case         | How it works                                           |
-| --------------------- | ---------------- | ------------------------------------------------------ |
-| **AT Protocol OAuth** | User login       | OAuth 2.0 + PKCE/DPoP via `@atproto/oauth-client-node` |
-| **Service auth JWT**  | Server-to-server | Signed JWTs for inter-service calls                    |
-| **Session tokens**    | API requests     | Bearer tokens from OAuth flow                          |
+| Method                | Use case         | How it works                                              |
+| --------------------- | ---------------- | --------------------------------------------------------- |
+| **AT Protocol OAuth** | User login       | OAuth 2.0 + PKCE/DPoP via `@atproto/oauth-client-browser` |
+| **Service auth JWT**  | Server-to-server | Signed JWTs for inter-service calls                       |
+| **Session tokens**    | API requests     | Bearer tokens from OAuth flow                             |
 
 ## AT Protocol OAuth flow
 
-Chive implements the AT Protocol OAuth specification using `@atproto/oauth-client-node`. The OAuth flow is handled by the Next.js frontend, not the API server.
+Chive implements the AT Protocol OAuth specification using `@atproto/oauth-client-browser`. The OAuth flow is handled by the Next.js frontend, not the API server.
 
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│  Browser │     │  Next.js │     │ User PDS │     │  User    │
-└────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘
-     │                │                │                │
-     │  1. Login      │                │                │
-     │───────────────►│                │                │
-     │                │                │                │
-     │  2. Redirect to PDS             │                │
-     │◄───────────────│                │                │
-     │                │                │                │
-     │  3. Auth at PDS                 │                │
-     │────────────────────────────────►│                │
-     │                │                │                │
-     │                │                │  4. Consent    │
-     │                │                │◄───────────────│
-     │                │                │                │
-     │  5. Callback with tokens        │                │
-     │◄────────────────────────────────│                │
-     │                │                │                │
-     │  6. Session created             │                │
-     │───────────────►│                │                │
-     └────────────────┴────────────────┴────────────────┘
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Next.js
+    participant UserPDS as User PDS
+    participant User
+
+    Browser->>Next.js: 1. Login
+    Next.js-->>Browser: 2. Redirect to PDS
+    Browser->>UserPDS: 3. Auth at PDS
+    User->>UserPDS: 4. Consent
+    UserPDS-->>Browser: 5. Callback with tokens
+    Browser->>Next.js: 6. Session created
 ```
 
 ### Implementation
 
-The OAuth flow is implemented in the frontend using `@atproto/oauth-client-node`:
+The OAuth flow is implemented in the frontend using `@atproto/oauth-client-browser`:
 
 ```typescript
 // web/lib/auth/oauth-client.ts
-import { NodeOAuthClient } from '@atproto/oauth-client-node';
+import { BrowserOAuthClient } from '@atproto/oauth-client-browser';
 
-const oauthClient = new NodeOAuthClient({
-  clientMetadata: {
-    client_id: 'https://chive.pub/oauth/client-metadata.json',
-    // ...
-  },
+// Initialize client (handles PKCE, DPoP, PAR automatically)
+const client = await BrowserOAuthClient.load({
+  clientId: 'https://chive.pub/oauth/client-metadata.json',
+  handleResolver,
 });
 
 // Start login
-const url = await oauthClient.authorize(handle, {
+const url = await client.authorize(handle, {
   scope: 'atproto transition:generic',
 });
 
-// Handle callback
-const { session } = await oauthClient.callback(params);
+// Handle callback (on return from auth server)
+const result = await client.callback(params);
+const session = result.session;
 ```
 
 ### Session tokens
@@ -350,31 +340,40 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 ### TypeScript example
 
 ```typescript
-import { ChiveAuth } from '@chive/auth-client';
+// web/lib/auth/oauth-client.ts
+import { BrowserOAuthClient } from '@atproto/oauth-client-browser';
+import { Agent } from '@atproto/api';
 
-const auth = new ChiveAuth({
-  clientId: 'your-client-id',
-  redirectUri: 'https://yourapp.com/callback',
+// Initialize OAuth client
+const client = await BrowserOAuthClient.load({
+  clientId: 'https://chive.pub/oauth/client-metadata.json',
+  handleResolver,
 });
 
 // Start login flow
-const loginUrl = await auth.getLoginUrl({
-  handle: 'alice.bsky.social',
+const loginUrl = await client.authorize('alice.bsky.social', {
+  scope: 'atproto transition:generic',
 });
+window.location.href = loginUrl.toString();
 
-// Handle callback
-const tokens = await auth.handleCallback(callbackUrl);
+// Handle callback (on return from auth server)
+const result = await client.callback(new URLSearchParams(window.location.search));
+const session = result.session;
+const agent = new Agent(session);
 
-// Make authenticated request
-const response = await fetch('/xrpc/pub.chive.actor.getMyProfile', {
-  headers: {
-    Authorization: `Bearer ${tokens.accessToken}`,
-  },
-});
+// Make authenticated request using service auth
+// web/lib/api/client.ts
+import { authApi } from '@/lib/api/client';
 
-// Refresh token
-const newTokens = await auth.refreshToken(tokens.refreshToken);
+// authApi automatically adds service auth JWT via middleware
+const { data } = await authApi.GET('/xrpc/pub.chive.actor.getMyProfile');
 ```
+
+The `authApi` client handles authentication automatically:
+
+1. Gets the authenticated Agent from OAuth session
+2. Calls `com.atproto.server.getServiceAuth` to get a service auth JWT
+3. Adds the JWT to the Authorization header
 
 ## Next steps
 

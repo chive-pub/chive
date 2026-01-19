@@ -13,6 +13,26 @@ import type { DID } from '@/types/atproto.js';
 import type { DIDDocument } from '@/types/interfaces/identity.interface.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
+// Mock @atproto/identity
+const mockDidResolve = vi.fn();
+const mockDidResolveAtprotoData = vi.fn();
+const mockHandleResolve = vi.fn();
+
+vi.mock('@atproto/identity', () => ({
+  IdResolver: class MockIdResolver {
+    did = {
+      resolve: mockDidResolve,
+      resolveAtprotoData: mockDidResolveAtprotoData,
+      cache: {
+        clearEntry: vi.fn(),
+      },
+    };
+    handle = {
+      resolve: mockHandleResolve,
+    };
+  },
+}));
+
 interface MockLogger extends ILogger {
   debugMock: ReturnType<typeof vi.fn>;
   warnMock: ReturnType<typeof vi.fn>;
@@ -83,6 +103,7 @@ describe('DIDResolver', () => {
   };
 
   beforeEach(() => {
+    vi.clearAllMocks();
     logger = createMockLogger();
     redis = createMockRedis();
 
@@ -98,24 +119,37 @@ describe('DIDResolver', () => {
   });
 
   describe('resolveDID', () => {
-    it('should return cached document if available', async () => {
-      // Pre-populate cache
-      const cacheKey = `chive:did:${testPlcDid}`;
-      (redis.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        JSON.stringify(mockDIDDocument)
-      );
+    it('should resolve DID using IdResolver', async () => {
+      // Mock the IdResolver to return a document
+      mockDidResolve.mockResolvedValueOnce({
+        id: testPlcDid,
+        alsoKnownAs: ['at://testuser.bsky.social'],
+        verificationMethod: [
+          {
+            id: `${testPlcDid}#atproto`,
+            type: 'EcdsaSecp256k1VerificationKey2019',
+            controller: testPlcDid,
+            publicKeyMultibase: 'zQ3shXjHeiBuRCKmM36cuYnm7YEMzhGnCmCyW92sRJ9pribSF',
+          },
+        ],
+        service: [
+          {
+            id: '#atproto_pds',
+            type: 'AtprotoPersonalDataServer',
+            serviceEndpoint: 'https://pds.example.com',
+          },
+        ],
+      });
 
       const result = await resolver.resolveDID(testPlcDid);
 
-      expect(redis.get).toHaveBeenCalledWith(cacheKey);
+      expect(mockDidResolve).toHaveBeenCalledWith(testPlcDid);
       expect(result).toEqual(mockDIDDocument);
     });
 
     it('should return null for failed resolution in cache', async () => {
       // Pre-populate failure cache
-      (redis.get as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce(null) // No document cache
-        .mockResolvedValueOnce('1'); // Failure flag present
+      (redis.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce('1'); // Failure flag present
 
       const result = await resolver.resolveDID(testPlcDid);
 
@@ -155,34 +189,31 @@ describe('DIDResolver', () => {
   });
 
   describe('getPDSEndpoint', () => {
-    it('should extract PDS endpoint from service array', async () => {
-      // Pre-populate cache with document
-      (redis.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        JSON.stringify(mockDIDDocument)
-      );
+    it('should extract PDS endpoint using resolveAtprotoData', async () => {
+      // Mock the IdResolver's resolveAtprotoData
+      mockDidResolveAtprotoData.mockResolvedValueOnce({
+        did: testPlcDid,
+        handle: 'testuser.bsky.social',
+        pds: 'https://pds.example.com',
+        signingKey: 'did:key:test',
+      });
 
       const endpoint = await resolver.getPDSEndpoint(testPlcDid);
 
+      expect(mockDidResolveAtprotoData).toHaveBeenCalledWith(testPlcDid);
       expect(endpoint).toBe('https://pds.example.com');
     });
 
-    it('should return null if no PDS service found', async () => {
-      const docWithoutPds: DIDDocument = {
-        ...mockDIDDocument,
-        service: [],
-      };
-
-      (redis.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(JSON.stringify(docWithoutPds));
+    it('should return null if resolveAtprotoData throws', async () => {
+      mockDidResolveAtprotoData.mockRejectedValueOnce(new Error('Resolution failed'));
 
       const endpoint = await resolver.getPDSEndpoint(testPlcDid);
 
       expect(endpoint).toBeNull();
     });
 
-    it('should return null if DID cannot be resolved', async () => {
-      (redis.get as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce(null) // No document cache
-        .mockResolvedValueOnce('1'); // Failure flag present
+    it('should return null if no ATProto data available', async () => {
+      mockDidResolveAtprotoData.mockRejectedValueOnce(new Error('No ATProto service'));
 
       const endpoint = await resolver.getPDSEndpoint(testPlcDid);
 
@@ -191,22 +222,22 @@ describe('DIDResolver', () => {
   });
 
   describe('caching behavior', () => {
-    it('should cache resolved documents with TTL', async () => {
-      // Simulate successful resolution and caching
-      const cacheKey = `chive:did:${testPlcDid}`;
+    it('should check failure cache before resolving', async () => {
+      // The implementation first checks the failure cache
+      const failureCacheKey = `chive:did:fail:${testPlcDid}`;
 
-      // First call returns null (cache miss), triggering fetch
-      (redis.get as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
-
-      // The resolver will attempt to fetch; we don't mock the fetch here
-      // so this tests the cache check path only
-      await resolver.resolveDID(testPlcDid).catch(() => {
-        // Expected to fail without network mocking
+      // No failure cached, then IdResolver resolves
+      (redis.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      mockDidResolve.mockResolvedValueOnce({
+        id: testPlcDid,
+        alsoKnownAs: ['at://testuser.bsky.social'],
+        service: [],
       });
 
-      expect(redis.get).toHaveBeenCalledWith(cacheKey);
+      await resolver.resolveDID(testPlcDid);
+
+      // Should have checked failure cache first
+      expect(redis.get).toHaveBeenCalledWith(failureCacheKey);
     });
   });
 

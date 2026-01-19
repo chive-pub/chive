@@ -89,6 +89,10 @@ export interface DidAutocompleteInputProps {
 
 /**
  * Custom hook for searching ATProto actors.
+ *
+ * @remarks
+ * First searches Chive for authors with eprints/profiles, then falls back
+ * to Bluesky public API for broader ATProto user search.
  */
 function useActorSearch() {
   const [query, setQuery] = useState('');
@@ -116,34 +120,71 @@ function useActorSearch() {
 
     setIsSearching(true);
     try {
-      // Use Bluesky public API for actor search
-      const response = await fetch(
-        `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=${encodeURIComponent(cleanQuery)}&limit=8`,
-        { signal: controller.signal }
-      );
+      // Step 1: Search Chive authors first (users with eprints or profiles on Chive)
+      const baseUrl = getApiBaseUrl();
+      let chiveActors: AtprotoActor[] = [];
 
-      if (!response.ok) {
-        throw new Error('Actor search failed');
+      try {
+        const chiveResponse = await fetch(
+          `${baseUrl}/xrpc/pub.chive.author.searchAuthors?query=${encodeURIComponent(cleanQuery)}&limit=8`,
+          { signal: controller.signal }
+        );
+
+        if (chiveResponse.ok) {
+          const chiveData = await chiveResponse.json();
+          chiveActors = (chiveData.authors ?? []).map(
+            (author: {
+              did: string;
+              handle?: string;
+              displayName?: string;
+              avatar?: string;
+              hasEprints: boolean;
+              hasProfile: boolean;
+            }) => ({
+              did: author.did,
+              handle: author.handle ?? author.did.split(':')[2]?.slice(0, 8) ?? 'unknown',
+              displayName: author.displayName,
+              avatar: author.avatar,
+              description: author.hasEprints ? 'Has eprints on Chive' : 'Has Chive profile',
+            })
+          );
+        }
+      } catch {
+        // Chive search failed, continue with Bluesky fallback
       }
 
-      const data = await response.json();
-      const actors: AtprotoActor[] = (data.actors ?? []).map(
-        (actor: {
-          did: string;
-          handle: string;
-          displayName?: string;
-          avatar?: string;
-          description?: string;
-        }) => ({
-          did: actor.did,
-          handle: actor.handle,
-          displayName: actor.displayName,
-          avatar: actor.avatar,
-          description: actor.description,
-        })
-      );
+      // Step 2: Fall back to Bluesky public API if no Chive results
+      if (chiveActors.length === 0) {
+        const bskyResponse = await fetch(
+          `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=${encodeURIComponent(cleanQuery)}&limit=8`,
+          { signal: controller.signal }
+        );
 
-      setResults(actors);
+        if (!bskyResponse.ok) {
+          throw new Error('Actor search failed');
+        }
+
+        const bskyData = await bskyResponse.json();
+        const bskyActors: AtprotoActor[] = (bskyData.actors ?? []).map(
+          (actor: {
+            did: string;
+            handle: string;
+            displayName?: string;
+            avatar?: string;
+            description?: string;
+          }) => ({
+            did: actor.did,
+            handle: actor.handle,
+            displayName: actor.displayName,
+            avatar: actor.avatar,
+            description: actor.description,
+          })
+        );
+
+        setResults(bskyActors);
+      } else {
+        setResults(chiveActors);
+      }
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Actor search error:', error);

@@ -179,3 +179,4 @@ describe('EprintService', () => {
 - [IndexingService](./indexing.md): Firehose consumption pipeline
 - [DiscoveryService](./discovery.md): Recommendation engine
 - [ClaimingService](./claiming.md): Authorship verification
+- [PDSDiscoveryService](./pds-discovery.md): PDS registration and scanning

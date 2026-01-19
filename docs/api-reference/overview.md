@@ -181,23 +181,25 @@ Access-Control-Allow-Headers: Authorization, Content-Type
 
 XRPC endpoints are organized by namespace:
 
-| Namespace                 | Purpose               | Endpoints |
-| ------------------------- | --------------------- | --------- |
-| `pub.chive.eprint.*`      | Eprint operations     | 4         |
-| `pub.chive.review.*`      | Reviews and comments  | 2         |
-| `pub.chive.endorsement.*` | Endorsements          | 3         |
-| `pub.chive.graph.*`       | Knowledge graph       | 8         |
-| `pub.chive.tag.*`         | User tags             | 5         |
-| `pub.chive.governance.*`  | Proposals and voting  | 5         |
-| `pub.chive.metrics.*`     | Analytics             | 7         |
-| `pub.chive.discovery.*`   | Recommendations       | 5         |
-| `pub.chive.claiming.*`    | Authorship claims     | 12        |
-| `pub.chive.backlink.*`    | AT Protocol app links | 4         |
-| `pub.chive.activity.*`    | User activity         | 4         |
-| `pub.chive.import.*`      | External imports      | 3         |
-| `pub.chive.actor.*`       | User profiles         | 5         |
-| `pub.chive.author.*`      | Author profiles       | 1         |
-| `pub.chive.sync.*`        | Data synchronization  | 3         |
+| Namespace                  | Purpose               | Endpoints |
+| -------------------------- | --------------------- | --------- |
+| `pub.chive.eprint.*`       | Eprint operations     | 3         |
+| `pub.chive.review.*`       | Reviews and comments  | 3         |
+| `pub.chive.endorsement.*`  | Endorsements          | 3         |
+| `pub.chive.graph.*`        | Knowledge graph       | 10        |
+| `pub.chive.tag.*`          | User tags             | 5         |
+| `pub.chive.governance.*`   | Proposals and voting  | 16        |
+| `pub.chive.metrics.*`      | Analytics             | 8         |
+| `pub.chive.discovery.*`    | Recommendations       | 6         |
+| `pub.chive.claiming.*`     | Authorship claims     | 19        |
+| `pub.chive.backlink.*`     | AT Protocol app links | 4         |
+| `pub.chive.activity.*`     | User activity         | 4         |
+| `pub.chive.import.*`       | External imports      | 3         |
+| `pub.chive.actor.*`        | User profiles         | 7         |
+| `pub.chive.author.*`       | Author profiles       | 2         |
+| `pub.chive.sync.*`         | Data synchronization  | 5         |
+| `pub.chive.alpha.*`        | Alpha tester program  | 2         |
+| `pub.chive.notification.*` | Notifications         | 2         |
 
 See [XRPC endpoints](./xrpc-endpoints.md) for the complete reference.
 
@@ -219,16 +221,30 @@ Use this for:
 
 ### TypeScript/JavaScript
 
-```typescript
-import { ChiveClient } from '@chive/api-client';
+The frontend uses `openapi-fetch` with auto-generated types from the OpenAPI specification:
 
-const client = new ChiveClient({
+```typescript
+// web/lib/api/client.ts
+import createClient from 'openapi-fetch';
+import type { paths } from './schema.generated';
+
+// Public API client (unauthenticated)
+export const api = createClient<paths>({
   baseUrl: 'https://api.chive.pub',
-  token: 'your-session-token',
 });
 
-const eprint = await client.eprint.getSubmission({
-  uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...',
+// Usage
+const { data, error } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
+  params: {
+    query: { uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...' },
+  },
+});
+
+// Authenticated API client (uses ATProto service auth)
+import { authApi } from '@/lib/api/client';
+
+const { data } = await authApi.POST('/xrpc/pub.chive.claiming.startClaim', {
+  body: { externalId: '2401.00001', source: 'arxiv' },
 });
 ```
 
@@ -275,7 +291,7 @@ For detailed endpoint documentation with request/response examples and schemas, 
 - Request parameters and body schemas
 - Response schemas with examples
 - Try-it-out functionality
-- All 69 XRPC and REST endpoints
+- All 102 XRPC endpoints (plus REST variants for binary data)
 
 ## Next steps
 

@@ -129,10 +129,20 @@ export async function getSimilarHandler(
   }
 
   // Get related papers from discovery service (for standard types)
-  const related = await discovery.findRelatedEprints(params.uri as AtUri, {
-    limit: params.limit,
-    signals: mapIncludeTypesToSignals(standardTypes.length > 0 ? standardTypes : undefined),
-  });
+  // Use defensive error handling - return empty array if discovery fails
+  let related: Awaited<ReturnType<typeof discovery.findRelatedEprints>> = [];
+  try {
+    related = await discovery.findRelatedEprints(params.uri as AtUri, {
+      limit: params.limit,
+      signals: mapIncludeTypesToSignals(standardTypes.length > 0 ? standardTypes : undefined),
+    });
+  } catch (error) {
+    logger.warn('Discovery service failed, returning empty related papers', {
+      uri: params.uri,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    // Continue with empty array instead of failing
+  }
 
   // Map to response format
   const relatedPapers: SchemaRelatedEprint[] = related.map((r) => ({

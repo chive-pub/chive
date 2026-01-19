@@ -1,12 +1,12 @@
 # Peer Review
 
-Chive supports open peer review with inline comments and formal endorsements.
+Chive supports open peer review through threaded comments on eprints.
 
 ## Review Types
 
 ### Inline Comments
 
-Readers can leave comments on specific sections of an eprint:
+Readers can leave comments on specific lines of an eprint:
 
 1. Select text in the PDF viewer
 2. Click "Add Comment"
@@ -15,47 +15,43 @@ Readers can leave comments on specific sections of an eprint:
 
 Comments are linked to your AT Protocol identity and visible to all readers.
 
-### Formal Reviews
+### General Comments
 
-Formal reviews provide structured feedback:
+For broader feedback not tied to a specific line:
 
-- Overall assessment (accept, minor revision, major revision, reject)
-- Detailed comments by section
-- Optional score (1-5)
-- Reviewer identity (public)
+1. Open an eprint
+2. Scroll to the discussion section
+3. Click "Add Comment"
+4. Write your comment
+5. Submit
+
+## Threaded Discussions
+
+Comments support unlimited-depth threading:
+
+- Reply to any comment to create a thread
+- Threads can be collapsed/expanded
+- Authors and reviewers can have back-and-forth discussions
 
 ## Writing a Review
 
-### Access the Review Form
-
 1. Open an eprint
-2. Click "Write Review" in the sidebar
-3. Complete the structured form
+2. Click "Add Comment" or select text for inline comments
+3. Write your feedback
+4. Submit
 
-### Review Structure
+Your comment is stored in your PDS and indexed by Chive.
 
-| Section           | Description                      |
-| ----------------- | -------------------------------- |
-| Summary           | Brief summary of the eprint      |
-| Strengths         | Main contributions and strengths |
-| Weaknesses        | Areas for improvement            |
-| Detailed Comments | Section-by-section feedback      |
-| Recommendation    | Overall assessment               |
+## Responding to Comments
 
-### Submission
+Authors can respond to comments:
 
-Click "Submit Review" to post your review. Reviews are stored in your PDS and indexed by Chive.
+1. Open the comment
+2. Click "Reply"
+3. Write your response
+4. Submit
 
-## Responding to Reviews
-
-Authors can respond to reviews:
-
-1. Open the review
-2. Click "Respond"
-3. Address specific points
-4. Submit response
-
-Responses appear threaded under the original review.
+Responses appear threaded under the original comment.
 
 ## Review Guidelines
 
@@ -65,26 +61,26 @@ Focus on how the work can be improved. Avoid personal attacks.
 
 ### Be Specific
 
-Reference specific sections, figures, or claims. Quote relevant passages.
+Reference specific sections, figures, or claims. Use inline comments to point to exact text.
 
 ### Be Timely
 
-Complete reviews within a reasonable time frame. If you cannot complete a review, decline promptly.
+Engage promptly when authors respond to your feedback.
 
 ### Declare Conflicts
 
-Disclose any conflicts of interest before reviewing.
+Disclose any conflicts of interest in your comments.
 
 ## Review Visibility
 
-All reviews on Chive are public and signed. This promotes accountability and reduces bias.
+All comments on Chive are public and signed with your AT Protocol identity. This promotes accountability and reduces anonymous attacks.
 
-## Review Statistics
+## Comment Moderation
 
-Your review history appears on your profile:
+Comments that violate community guidelines may be flagged:
 
-- Number of reviews written
-- Average review length
-- Fields reviewed
+1. Click the flag icon on any comment
+2. Select a reason
+3. Submit the report
 
-These statistics are visible to other users and help establish your expertise.
+Trusted editors review flagged content and may remove violations.

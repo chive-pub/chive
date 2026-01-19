@@ -125,11 +125,15 @@ To use managed databases (RDS, ElasticCloud, etc.):
 
 ## Monitoring
 
-ServiceMonitors are in `k8s/monitoring/`:
+ServiceMonitors and observability configs are in `k8s/monitoring/`:
 
 - `servicemonitor-appview.yaml`: API metrics
 - `servicemonitor-indexer.yaml`: Firehose metrics
 - `servicemonitor-databases.yaml`: Database exporters
+- `alert-rules.yaml`: Prometheus alert rules
+- `grafana-dashboards.yaml`: Grafana dashboard configurations
+- `otel-collector.yaml`: OpenTelemetry Collector deployment
+- `promtail-config.yaml`: Promtail log collection configuration
 
 Alert rules included:
 

@@ -124,12 +124,30 @@ describe('AuthorChipList', () => {
     expect(screen.getByText('+1 more')).toBeInTheDocument();
   });
 
-  it('shows equal contribution legend when highlighted authors present', () => {
+  it('shows equal contribution legend when multiple highlighted authors present', () => {
     const authors = [
       createMockEprintAuthor({ did: 'did:plc:1', name: 'Author One', isHighlighted: true }),
       createMockEprintAuthor({ did: 'did:plc:2', name: 'Author Two', isHighlighted: true }),
     ];
     render(<AuthorChipList authors={authors} showBadges />);
     expect(screen.getByText('Equal contribution')).toBeInTheDocument();
+  });
+
+  it('does not show equal contribution legend for single highlighted author', () => {
+    const authors = [
+      createMockEprintAuthor({ did: 'did:plc:1', name: 'Lead Author', isHighlighted: true }),
+      createMockEprintAuthor({ did: 'did:plc:2', name: 'Co-Author', isHighlighted: false }),
+    ];
+    render(<AuthorChipList authors={authors} showBadges />);
+    expect(screen.queryByText('Equal contribution')).not.toBeInTheDocument();
+  });
+
+  it('does not show equal contribution legend when no authors are highlighted', () => {
+    const authors = [
+      createMockEprintAuthor({ did: 'did:plc:1', name: 'Author One', isHighlighted: false }),
+      createMockEprintAuthor({ did: 'did:plc:2', name: 'Author Two', isHighlighted: false }),
+    ];
+    render(<AuthorChipList authors={authors} showBadges />);
+    expect(screen.queryByText('Equal contribution')).not.toBeInTheDocument();
   });
 });

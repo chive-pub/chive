@@ -4,53 +4,43 @@ Chive is an AT Protocol AppView that indexes and presents scholarly eprints from
 
 ## System overview
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              Internet                                   │
-└─────────────────────────────────────────────────────────────────────────┘
-          │                           │                        │
-          ▼                           ▼                        ▼
-┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-│   Web Clients    │      │   API Clients    │      │  AT Protocol     │
-│   (Next.js)      │      │   (Mobile, etc)  │      │  Relay (BGS)     │
-└────────┬─────────┘      └────────┬─────────┘      └────────┬─────────┘
-         │                         │                         │
-         │ HTTPS                   │ HTTPS                   │ WebSocket
-         │                         │                         │
-         └─────────────────────────┼─────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          Load Balancer                                  │
-└─────────────────────────────────────────────────────────────────────────┘
-                                   │
-         ┌─────────────────────────┼─────────────────────────┐
-         │                         │                         │
-         ▼                         ▼                         ▼
-┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-│  API Server 1    │      │  API Server 2    │      │  Firehose        │
-│  (Hono)          │      │  (Hono)          │      │  Consumer        │
-└────────┬─────────┘      └────────┬─────────┘      └────────┬─────────┘
-         │                         │                         │
-         └─────────────────────────┼─────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           Service Layer                                 │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │
-│  │  Eprint   │ │   Search    │ │  Discovery  │ │  Knowledge      │   │
-│  │  Service    │ │   Service   │ │  Service    │ │  Graph Service  │   │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           Storage Layer                                 │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │
-│  │ PostgreSQL  │ │Elasticsearch│ │   Neo4j     │ │     Redis       │   │
-│  │ (metadata)  │ │  (search)   │ │   (graph)   │ │    (cache)      │   │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Internet
+        WebClients["Web Clients<br/>(Next.js)"]
+        APIClients["API Clients<br/>(Mobile, etc)"]
+        Relay["AT Protocol<br/>Relay (BGS)"]
+    end
+
+    WebClients -->|HTTPS| LB
+    APIClients -->|HTTPS| LB
+    Relay -->|WebSocket| LB
+
+    LB["Load Balancer"]
+
+    LB --> API1["API Server 1<br/>(Hono)"]
+    LB --> API2["API Server 2<br/>(Hono)"]
+    LB --> Firehose["Firehose<br/>Consumer"]
+
+    subgraph ServiceLayer["Service Layer"]
+        EprintSvc["Eprint<br/>Service"]
+        SearchSvc["Search<br/>Service"]
+        DiscoverySvc["Discovery<br/>Service"]
+        KGSvc["Knowledge<br/>Graph Service"]
+    end
+
+    API1 --> ServiceLayer
+    API2 --> ServiceLayer
+    Firehose --> ServiceLayer
+
+    subgraph StorageLayer["Storage Layer"]
+        Postgres["PostgreSQL<br/>(metadata)"]
+        ES["Elasticsearch<br/>(search)"]
+        Neo4j["Neo4j<br/>(graph)"]
+        Redis["Redis<br/>(cache)"]
+    end
+
+    ServiceLayer --> StorageLayer
 ```
 
 ## Core components
@@ -71,8 +61,9 @@ The API layer handles all incoming requests through Hono:
 
 Subscribes to the AT Protocol relay to receive real-time events:
 
-```
-Relay WebSocket → Event Parser → Collection Filter → Event Handler → Storage
+```mermaid
+flowchart LR
+    A["Relay WebSocket"] --> B["Event Parser"] --> C["Collection Filter"] --> D["Event Handler"] --> E["Storage"]
 ```
 
 The consumer filters for `pub.chive.*` records and processes:
@@ -113,13 +104,12 @@ Four specialized storage systems:
 
 ### Write path (indexing)
 
-```
-User PDS → Relay → Firehose Consumer → Event Handler
-                                            │
-                     ┌──────────────────────┼──────────────────────┐
-                     ▼                      ▼                      ▼
-              PostgreSQL            Elasticsearch              Neo4j
-              (metadata)              (search)                (graph)
+```mermaid
+flowchart TB
+    A["User PDS"] --> B["Relay"] --> C["Firehose Consumer"] --> D["Event Handler"]
+    D --> E["PostgreSQL<br/>(metadata)"]
+    D --> F["Elasticsearch<br/>(search)"]
+    D --> G["Neo4j<br/>(graph)"]
 ```
 
 1. User creates a record in their PDS
@@ -130,11 +120,10 @@ User PDS → Relay → Firehose Consumer → Event Handler
 
 ### Read path (queries)
 
-```
-Client Request → API Handler → Service → Storage Adapter → Database
-                                  │
-                                  ▼
-                              Response
+```mermaid
+flowchart LR
+    A["Client Request"] --> B["API Handler"] --> C["Service"] --> D["Storage Adapter"] --> E["Database"]
+    C --> F["Response"]
 ```
 
 1. Client sends request to API
@@ -157,20 +146,25 @@ All indexes can be rebuilt from the firehose.
 
 ### Horizontal scalability
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                     Kubernetes Cluster                         │
-│                                                                │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
-│  │ API Pod  │  │ API Pod  │  │ API Pod  │  │ Firehose Pod │   │
-│  │   (1)    │  │   (2)    │  │   (3)    │  │              │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘   │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │                    Managed Services                       │ │
-│  │  PostgreSQL (RDS)  │  Elasticsearch  │  Neo4j  │  Redis  │ │
-│  └──────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph K8s["Kubernetes Cluster"]
+        subgraph Pods["Application Pods"]
+            API1["API Pod (1)"]
+            API2["API Pod (2)"]
+            API3["API Pod (3)"]
+            FH["Firehose Pod"]
+        end
+
+        subgraph Managed["Managed Services"]
+            PG["PostgreSQL (RDS)"]
+            ES["Elasticsearch"]
+            N4J["Neo4j"]
+            RD["Redis"]
+        end
+    end
+
+    Pods --> Managed
 ```
 
 - API servers scale horizontally
@@ -190,13 +184,13 @@ All indexes can be rebuilt from the firehose.
 
 ### Zero trust model
 
-```
-Client → TLS → Load Balancer → mTLS → API Server → mTLS → Services
-                                 │
-                                 ▼
-                          Authentication
-                          Authorization
-                          Audit Logging
+```mermaid
+flowchart LR
+    Client -->|TLS| LB["Load Balancer"]
+    LB -->|mTLS| API["API Server"]
+    API -->|mTLS| Services
+
+    API --> Auth["Authentication<br/>Authorization<br/>Audit Logging"]
 ```
 
 - Every request authenticated
@@ -206,31 +200,30 @@ Client → TLS → Load Balancer → mTLS → API Server → mTLS → Services
 
 ### Authentication flow
 
-```
-User → OAuth 2.0 + PKCE → User's PDS → Callback → JWT Session
+```mermaid
+flowchart LR
+    User --> OAuth["OAuth 2.0 + PKCE"] --> PDS["User's PDS"] --> Callback --> JWT["JWT Session"]
 ```
 
 ## Plugin architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Plugin Host                             │
-│                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │   Plugin    │  │   Plugin    │  │       Plugin            │ │
-│  │   (ORCID)   │  │   (DOI)     │  │      (Zenodo)           │ │
-│  │             │  │             │  │                         │ │
-│  │ isolated-vm │  │ isolated-vm │  │      isolated-vm        │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
-│         │                │                    │                 │
-│         └────────────────┼────────────────────┘                 │
-│                          │                                      │
-│                          ▼                                      │
-│                   Event Bus (EventEmitter2)                     │
-│                          │                                      │
-│                          ▼                                      │
-│                   Core Services                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph PluginHost["Plugin Host"]
+        subgraph Plugins["Plugins (isolated-vm)"]
+            ORCID["Plugin<br/>(ORCID)"]
+            DOI["Plugin<br/>(DOI)"]
+            Zenodo["Plugin<br/>(Zenodo)"]
+        end
+
+        EventBus["Event Bus (EventEmitter2)"]
+        CoreServices["Core Services"]
+
+        ORCID --> EventBus
+        DOI --> EventBus
+        Zenodo --> EventBus
+        EventBus --> CoreServices
+    end
 ```
 
 Plugins run in isolated-vm sandboxes with:
@@ -241,20 +234,17 @@ Plugins run in isolated-vm sandboxes with:
 
 ## Observability
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Application                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │   Traces    │  │   Metrics   │  │         Logs            │ │
-│  │ (OpenTelemetry)│ (Prometheus)│  │        (Pino)           │ │
-│  └──────┬──────┘  └──────┬──────┘  └───────────┬─────────────┘ │
-└─────────┼────────────────┼─────────────────────┼───────────────┘
-          │                │                     │
-          ▼                ▼                     ▼
-   ┌─────────────┐  ┌─────────────┐      ┌─────────────┐
-   │    Jaeger   │  │   Grafana   │      │    Loki     │
-   │  (traces)   │  │  (metrics)  │      │   (logs)    │
-   └─────────────┘  └─────────────┘      └─────────────┘
+```mermaid
+flowchart TB
+    subgraph Application
+        Traces["Traces<br/>(OpenTelemetry)"]
+        Metrics["Metrics<br/>(Prometheus)"]
+        Logs["Logs<br/>(Pino)"]
+    end
+
+    Traces --> Jaeger["Jaeger<br/>(traces)"]
+    Metrics --> Grafana["Grafana<br/>(metrics)"]
+    Logs --> Loki["Loki<br/>(logs)"]
 ```
 
 ## Technology choices

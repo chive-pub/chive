@@ -38,6 +38,8 @@ import type { TrustedEditorService } from '../services/governance/trusted-editor
 import type { ImportService } from '../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../services/metrics/metrics-service.js';
+import type { IPDSRegistry } from '../services/pds-discovery/pds-registry.js';
+import type { PDSScanner } from '../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
 import type { ReviewService } from '../services/review/review-service.js';
 import type { RankingService } from '../services/search/ranking-service.js';
@@ -48,6 +50,7 @@ import type { FacetManager } from '../storage/neo4j/facet-manager.js';
 import type { NodeRepository } from '../storage/neo4j/node-repository.js';
 import type { TagManager } from '../storage/neo4j/tag-manager.js';
 import type { IAuthorizationService } from '../types/interfaces/authorization.interface.js';
+import type { IIdentityResolver } from '../types/interfaces/identity.interface.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
 
 import { CORS_CONFIG, HEALTH_PATHS } from './config.js';
@@ -168,6 +171,21 @@ export interface ServerConfig {
    * Trusted editor service for role management (optional).
    */
   readonly trustedEditorService?: TrustedEditorService;
+
+  /**
+   * PDS registry for tracking known PDSes (optional).
+   */
+  readonly pdsRegistry?: IPDSRegistry;
+
+  /**
+   * PDS scanner for discovering eprints from PDSes (optional).
+   */
+  readonly pdsScanner?: PDSScanner;
+
+  /**
+   * Identity resolver for DID resolution (optional).
+   */
+  readonly identityResolver?: IIdentityResolver;
 
   /**
    * Governance PDS writer for authority records (optional).
@@ -308,6 +326,8 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       activity: config.activityService,
       trustedEditor: config.trustedEditorService,
       governancePdsWriter: config.governancePdsWriter,
+      pdsRegistry: config.pdsRegistry,
+      pdsScanner: config.pdsScanner,
     } as ChiveServices);
     c.set('redis', config.redis);
     c.set('logger', config.logger);

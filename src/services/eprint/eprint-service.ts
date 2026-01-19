@@ -43,6 +43,7 @@
  * @public
  */
 
+import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type { AtUri, CID, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError } from '../../types/errors.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
@@ -83,6 +84,11 @@ export interface EprintServiceOptions {
   readonly repository: IRepository;
   readonly identity: IIdentityResolver;
   readonly logger: ILogger;
+  /**
+   * Optional TagManager for auto-generating tags from keywords.
+   * If provided, keywords from eprints will be indexed as user tags.
+   */
+  readonly tagManager?: TagManager;
 }
 
 /**
@@ -134,6 +140,7 @@ export class EprintService {
   private readonly identity: IIdentityResolver;
   private readonly logger: ILogger;
   private readonly versionManager: VersionManager;
+  private readonly tagManager: TagManager | null;
 
   constructor(options: EprintServiceOptions) {
     this.storage = options.storage;
@@ -142,6 +149,7 @@ export class EprintService {
     this.identity = options.identity;
     this.logger = options.logger;
     this.versionManager = new VersionManager({ storage: options.storage });
+    this.tagManager = options.tagManager ?? null;
   }
 
   async indexEprint(
@@ -166,6 +174,7 @@ export class EprintService {
         previousVersionUri: record.previousVersionUri,
         versionNotes: record.versionNotes,
         keywords: record.keywords,
+        fields: record.fields,
         license: record.license,
         publicationStatus: record.publicationStatus,
         publishedVersion: record.publishedVersion,
@@ -209,6 +218,36 @@ export class EprintService {
         createdAt: new Date(record.createdAt),
         indexedAt: metadata.indexedAt,
       });
+
+      // Auto-generate tags from keywords
+      if (this.tagManager && record.keywords && record.keywords.length > 0) {
+        const submitterDid = record.submittedBy;
+        let tagsIndexed = 0;
+
+        for (const keyword of record.keywords) {
+          if (typeof keyword === 'string' && keyword.trim().length > 0) {
+            try {
+              await this.tagManager.addTag(metadata.uri, keyword.trim(), submitterDid);
+              tagsIndexed++;
+            } catch (tagError) {
+              // Log but don't fail the indexing if tag creation fails
+              this.logger.debug('Failed to create tag from keyword', {
+                keyword,
+                uri: metadata.uri,
+                error: tagError instanceof Error ? tagError.message : String(tagError),
+              });
+            }
+          }
+        }
+
+        if (tagsIndexed > 0) {
+          this.logger.debug('Created tags from keywords', {
+            uri: metadata.uri,
+            tagsIndexed,
+            totalKeywords: record.keywords.length,
+          });
+        }
+      }
 
       this.logger.info('Indexed eprint', { uri: metadata.uri });
 

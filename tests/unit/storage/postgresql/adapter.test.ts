@@ -211,8 +211,10 @@ describe('PostgreSQLAdapter', () => {
 
       const call = queryMock.mock.calls[0];
       expect(call?.[0]).toContain('ORDER BY title ASC');
-      expect(call?.[0]).toContain('LIMIT 10');
-      expect(call?.[0]).toContain('OFFSET 5');
+      // Query uses parameterized values $2 and $3 for LIMIT and OFFSET
+      expect(call?.[0]).toContain('LIMIT $2 OFFSET $3');
+      // Verify the parameter values
+      expect(call?.[1]).toEqual([JSON.stringify([{ did: 'did:plc:abc123' }]), 10, 5]);
     });
 
     it('should enforce maximum limit of 100', async () => {
@@ -224,7 +226,8 @@ describe('PostgreSQLAdapter', () => {
       });
 
       const call = queryMock.mock.calls[0];
-      expect(call?.[0]).toContain('LIMIT 100');
+      // Query uses parameterized value, verify the limit is capped at 100
+      expect(call?.[1]?.[1]).toBe(100);
     });
 
     it('should throw error on database failure', async () => {

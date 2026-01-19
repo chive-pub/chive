@@ -379,8 +379,9 @@ export function mapEprintToDocument(
     authors: mapAuthors(eprint.authors),
     submitted_by: eprint.submittedBy,
     paper_did: eprint.paperDid,
-    field_nodes: extractFieldNodes(eprint.facets),
-    primary_field: extractPrimaryField(eprint.facets),
+    field_nodes: eprint.fields?.map((f) => f.uri ?? f.id) ?? extractFieldNodes(eprint.facets),
+    primary_field:
+      eprint.fields?.[0]?.uri ?? eprint.fields?.[0]?.id ?? extractPrimaryField(eprint.facets),
     keywords: eprint.keywords ? [...eprint.keywords] : undefined,
     facets: mapFacets(eprint.facets),
     authorities: extractAuthorities(eprint.facets),

@@ -264,6 +264,27 @@ function transformFacets(pdsFacets?: PDSFacetValue[]): readonly Facet[] {
   }));
 }
 
+/**
+ * Transform PDS field nodes to field references.
+ *
+ * @remarks
+ * Field nodes are knowledge graph nodes representing research fields.
+ * They are stored directly as field references, not as facets.
+ */
+function transformFieldNodes(
+  fieldNodes?: PDSFieldNode[]
+): readonly { uri: string; label: string; id?: string }[] {
+  if (!fieldNodes || fieldNodes.length === 0) {
+    return [];
+  }
+
+  return fieldNodes.map((f) => ({
+    uri: f.uri,
+    label: f.uri, // Label should be resolved from knowledge graph
+    id: f.uri,
+  }));
+}
+
 // =============================================================================
 // MAIN TRANSFORMER
 // =============================================================================
@@ -329,6 +350,9 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
   // Transform facets
   const facets = transformFacets(record.facets);
 
+  // Transform field nodes (knowledge graph references)
+  const fields = transformFieldNodes(record.fieldNodes);
+
   // submittedBy should be the actual user who submitted the eprint.
   // If present in the record, use it. Otherwise, fall back to the DID from the
   // AT-URI, which is the PDS owner who created the record.
@@ -374,6 +398,7 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
     license: record.license ?? 'CC-BY-4.0',
     keywords: record.keywords ?? [],
     facets,
+    fields: fields.length > 0 ? fields : undefined,
 
     // Optional fields
     paperDid: record.paperDid as DID | undefined,

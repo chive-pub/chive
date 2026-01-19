@@ -1,6 +1,5 @@
 {
-  "index_patterns": ["eprints"],
-  "data_stream": {},
+  "index_patterns": ["eprints-v*"],
   "priority": 500,
   "template": {
     "settings": {

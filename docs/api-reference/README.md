@@ -62,14 +62,17 @@ Use this for:
 ### TypeScript
 
 ```typescript
-import { ChiveClient } from '@chive/api-client';
+import createClient from 'openapi-fetch';
+import type { paths } from './schema.generated';
 
-const client = new ChiveClient({
+const api = createClient<paths>({
   baseUrl: 'https://api.chive.pub',
 });
 
-const eprint = await client.eprint.getSubmission({
-  uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...',
+const { data: eprint } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
+  params: {
+    query: { uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...' },
+  },
 });
 ```
 

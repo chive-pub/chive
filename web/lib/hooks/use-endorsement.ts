@@ -294,9 +294,10 @@ export function useUserEndorsement(
       const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.getUserEndorsement', {
         params: { query: { eprintUri, userDid } },
       });
+
       if (error) {
-        const errorObj = error as { message?: string; status?: number };
-        // Return null for 404 (user has not endorsed)
+        // Return null for 404 (user has not endorsed) - this is expected behavior
+        const errorObj = error as { status?: number; message?: string };
         if (errorObj.status === 404) {
           return null;
         }
@@ -306,6 +307,7 @@ export function useUserEndorsement(
           '/xrpc/pub.chive.endorsement.getUserEndorsement'
         );
       }
+
       return data!;
     },
     enabled: !!eprintUri && !!userDid && (options.enabled ?? true),

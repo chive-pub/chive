@@ -10,22 +10,15 @@ The knowledge graph serves three purposes:
 2. **Context**: Understand how a work fits into broader research areas
 3. **Navigation**: Browse eprints by field, subfield, or topic
 
-```
-                    ┌──────────────────┐
-                    │   Mathematics    │
-                    └────────┬─────────┘
-           ┌─────────────────┼─────────────────┐
-           ▼                 ▼                 ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │   Algebra    │  │   Analysis   │  │   Geometry   │
-    └──────┬───────┘  └──────────────┘  └──────────────┘
-           │
-    ┌──────┴──────┬──────────────┐
-    ▼             ▼              ▼
-┌────────┐  ┌──────────┐  ┌───────────┐
-│ Group  │  │  Ring    │  │  Linear   │
-│ Theory │  │  Theory  │  │  Algebra  │
-└────────┘  └──────────┘  └───────────┘
+```mermaid
+flowchart TB
+    Math["Mathematics"]
+    Math --> Algebra
+    Math --> Analysis
+    Math --> Geometry
+    Algebra --> GroupTheory["Group Theory"]
+    Algebra --> RingTheory["Ring Theory"]
+    Algebra --> LinearAlgebra["Linear Algebra"]
 ```
 
 ## Field nodes
@@ -51,19 +44,21 @@ Hierarchical and associative relationships are represented as **edges** rather t
 
 Fields connect through three relationship types:
 
-```
-Broader/Narrower (hierarchical)
-    Mathematics
-        └── Algebra
-              └── Group Theory
+```mermaid
+flowchart TB
+    subgraph hierarchical["Broader/Narrower (hierarchical)"]
+        Math2["Mathematics"] --> Algebra2["Algebra"]
+        Algebra2 --> GroupTheory2["Group Theory"]
+    end
 
-Related (conceptual overlap)
-    Algebraic Topology ──related──► Algebraic Geometry
+    subgraph related["Related (conceptual overlap)"]
+        AlgTop["Algebraic Topology"] -.->|related| AlgGeom["Algebraic Geometry"]
+    end
 
-Cross-disciplinary
-    Computational Linguistics
-        ├── parent: Linguistics
-        └── parent: Computer Science
+    subgraph cross["Cross-disciplinary"]
+        Ling["Linguistics"] --> CompLing["Computational\nLinguistics"]
+        CS["Computer Science"] --> CompLing
+    end
 ```
 
 ## PMEST classification
@@ -147,12 +142,13 @@ Authority records link to external controlled vocabularies:
 
 When users tag eprints, Chive reconciles tags against authority records:
 
-```
-User enters: "quantum computing"
-         ↓
-Chive matches: Authority record "Quantum Computing" (Q339)
-         ↓
-Eprint linked to canonical concept
+```mermaid
+flowchart TB
+    Input["User enters: 'quantum computing'"]
+    Match["Chive matches: Authority record\n'Quantum Computing' (Q339)"]
+    Link["Eprint linked to canonical concept"]
+
+    Input --> Match --> Link
 ```
 
 This prevents fragmentation ("quantum computing" vs "Quantum Computation" vs "QC" all map to the same concept).
@@ -183,23 +179,22 @@ Not all votes carry equal weight. Expertise in the relevant field increases vote
 | ---------------- | ----------- | ------------------------------------ |
 | Community member | 1.0x        | Any authenticated user               |
 | Trusted editor   | 2.0x        | Consistent quality contributions     |
-| Graph editor     | 2.0x        | Can modify knowledge graph nodes     |
-| Domain expert    | 2.5x        | Publications in the field            |
+| Graph editor     | 3.0x        | Can modify knowledge graph nodes     |
+| Domain expert    | 3.0x        | Publications in the field            |
 | Administrator    | 5.0x        | Platform administrators (veto power) |
 
 ### Proposal workflow
 
-```
-┌──────────┐     ┌─────────────┐     ┌──────────┐     ┌───────────┐
-│  Draft   │────►│  Discussion │────►│  Voting  │────►│  Outcome  │
-│          │     │  (7 days)   │     │ (5 days) │     │           │
-└──────────┘     └─────────────┘     └──────────┘     └───────────┘
-                       │                   │
-                       │                   │
-                       ▼                   ▼
-              Revisions allowed     Threshold met?
-                                    ├── Yes → Approved
-                                    └── No  → Rejected
+```mermaid
+flowchart LR
+    Draft --> Discussion["Discussion\n(7 days)"]
+    Discussion --> Voting["Voting\n(5 days)"]
+    Voting --> Outcome
+
+    Discussion -.->|Revisions allowed| Discussion
+    Voting -->|Threshold met?| Decision{" "}
+    Decision -->|Yes| Approved
+    Decision -->|No| Rejected
 ```
 
 ## User tags vs. authority terms

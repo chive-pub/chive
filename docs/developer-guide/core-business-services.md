@@ -18,34 +18,32 @@ All services follow ATProto compliance rules: they index data from the firehose 
 
 ### Service dependencies
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Firehose Consumer                       │
-│                   (receives ATProto events)                  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-           ┌───────────────┼───────────────┐
-           ▼               ▼               ▼
-    ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-    │  Eprint   │ │   Review    │ │   Metrics   │
-    │   Service   │ │   Service   │ │   Service   │
-    └──────┬──────┘ └──────┬──────┘ └──────┬──────┘
-           │               │               │
-    ┌──────┴──────┐ ┌──────┴──────┐ ┌──────┴──────┐
-    │ PostgreSQL  │ │ PostgreSQL  │ │    Redis    │
-    │Elasticsearch│ │             │ │             │
-    └─────────────┘ └─────────────┘ └─────────────┘
+```mermaid
+flowchart TB
+    subgraph Firehose["Firehose Consumer (receives ATProto events)"]
+        FC[Consumer]
+    end
 
-    ┌─────────────┐ ┌─────────────┐
-    │  BlobProxy  │ │  PDSSync    │
-    │   Service   │ │   Service   │
-    └──────┬──────┘ └──────┬──────┘
-           │               │
-    ┌──────┴──────┐ ┌──────┴──────┐
-    │ Redis (L1)  │ │ PostgreSQL  │
-    │ R2/CDN (L2) │ │ IRepository │
-    │ PDS (L3)    │ │             │
-    └─────────────┘ └─────────────┘
+    FC --> ES[EprintService]
+    FC --> RS[ReviewService]
+    FC --> MS[MetricsService]
+
+    ES --> ES_DB[(PostgreSQL<br/>Elasticsearch)]
+    RS --> RS_DB[(PostgreSQL)]
+    MS --> MS_DB[(Redis)]
+
+    subgraph BlobProxy["BlobProxyService"]
+        BP[BlobProxy]
+    end
+    BP --> BP_L1[(Redis - L1)]
+    BP --> BP_L2[(R2/CDN - L2)]
+    BP --> BP_L3[(PDS - L3)]
+
+    subgraph PDSSync["PDSSyncService"]
+        PS[PDSSync]
+    end
+    PS --> PS_DB[(PostgreSQL)]
+    PS --> PS_REPO[IRepository]
 ```
 
 ### Data flow
@@ -295,6 +293,61 @@ for (const uri of staleUris) {
   }
 }
 ```
+
+## PDSDiscoveryService
+
+Discovers and scans Personal Data Servers (PDSes) that may contain Chive records but are not connected to the main relay firehose.
+
+### Components
+
+| Component             | Purpose                                          |
+| --------------------- | ------------------------------------------------ |
+| `PDSRegistry`         | Tracks known PDSes and their scan state          |
+| `PDSDiscoveryService` | Discovers PDSes from PLC directory, relays, DIDs |
+| `PDSScanner`          | Scans PDSes for `pub.chive.*` records            |
+
+### Discovery sources
+
+```typescript
+import { PDSDiscoveryService } from '@/services/pds-discovery/discovery-service.js';
+
+const discovery = new PDSDiscoveryService(registry, logger, redis);
+
+// Discover from PLC directory (streams incrementally)
+for await (const pds of discovery.discoverFromPLCDirectory(cursor)) {
+  console.log(`Found: ${pds.pdsUrl}`);
+}
+
+// Discover from relay listHosts
+const relayPDSes = await discovery.discoverFromRelay('wss://bsky.network');
+
+// Discover from DIDs in indexed records
+const didPDSes = await discovery.discoverFromDIDMentions(authorDids);
+```
+
+### Scanning PDSes
+
+```typescript
+import { PDSScanner } from '@/services/pds-discovery/pds-scanner.js';
+
+const scanner = new PDSScanner(registry, eprintService, logger, {
+  requestsPerMinute: 10,
+  maxRecordsPerPDS: 1000,
+});
+
+// Scan a PDS for Chive records
+const result = await scanner.scanPDS('https://pds.example.com');
+console.log(`Found ${result.chiveRecordCount} records`);
+
+// Scan a specific DID
+const count = await scanner.scanDID(pdsUrl, 'did:plc:abc123');
+```
+
+### User PDS registration
+
+Users can register their PDS via `pub.chive.sync.registerPDS`. If authenticated, their records are scanned immediately.
+
+See [PDS Discovery](./services/pds-discovery.md) for detailed documentation.
 
 ## ReviewService
 

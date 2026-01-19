@@ -133,7 +133,7 @@ export async function indexRecordHandler(
 ): Promise<IndexRecordResponse> {
   const logger = c.get('logger');
   const user = c.get('user');
-  const { eprint: eprintService } = c.get('services');
+  const { eprint: eprintService, pdsRegistry } = c.get('services');
 
   if (!user) {
     throw new AuthenticationError('Authentication required');
@@ -167,6 +167,16 @@ export async function indexRecordHandler(
     }
 
     logger.debug('Resolved PDS endpoint', { did, pdsUrl });
+
+    // Register the PDS for future scanning (fire-and-forget)
+    if (pdsRegistry) {
+      pdsRegistry.registerPDS(pdsUrl, 'did_mention').catch((err) => {
+        logger.debug('PDS registration skipped', {
+          pdsUrl,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
 
     // Fetch the record from the PDS
     const record = await fetchRecordFromPds(pdsUrl, did, collection, rkey);

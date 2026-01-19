@@ -58,7 +58,7 @@ export type AlphaCareerStage = z.infer<typeof alphaCareerStageSchema>;
  */
 export const alphaAffiliationSchema = z.object({
   name: z.string().min(1).max(200).describe('Institution name'),
-  rorId: z.string().url().optional().describe('ROR ID URL'),
+  rorId: z.string().max(100).optional().describe('ROR ID'),
 });
 
 export type AlphaAffiliation = z.infer<typeof alphaAffiliationSchema>;
@@ -99,9 +99,9 @@ export const alphaApplyParamsSchema = z
       .describe('Institutional affiliations (optional)'),
     researchKeywords: z
       .array(alphaResearchKeywordSchema)
-      .min(1)
       .max(10)
-      .describe('Research keywords'),
+      .default([])
+      .describe('Research keywords (optional)'),
     motivation: z.string().max(1000).optional().describe('Optional motivation statement'),
   })
   .refine(

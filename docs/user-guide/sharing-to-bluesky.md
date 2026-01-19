@@ -110,19 +110,19 @@ Paste a Chive URL into your post:
 
 ## Notifications
 
-### Bluesky activity
-
-When someone interacts with your shared content on Bluesky:
-
-- Likes, reposts, and replies appear in your Chive notifications
-- Click to view the activity on Bluesky
-
 ### Chive activity
 
 When someone engages with your paper on Chive:
 
 - Reviews, endorsements, and comments appear in your Chive notifications
 - Optionally share these to Bluesky
+
+### Bluesky engagement
+
+To see engagement on your shared posts:
+
+- Visit Bluesky directly to view likes, reposts, and replies
+- Chive does not currently sync Bluesky engagement to its notifications
 
 ## Privacy and control
 

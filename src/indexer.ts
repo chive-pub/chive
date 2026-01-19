@@ -32,11 +32,13 @@ import { EprintService } from './services/eprint/eprint-service.js';
 import { createEventProcessor } from './services/indexing/event-processor.js';
 import { IndexingService } from './services/indexing/indexing-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
+import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
 import { ReviewService } from './services/review/review-service.js';
 import { ElasticsearchAdapter } from './storage/elasticsearch/adapter.js';
 import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.js';
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
 import { Neo4jConnection } from './storage/neo4j/connection.js';
+import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
 import { getDatabaseConfig } from './storage/postgresql/config.js';
 import { closePool, createPool } from './storage/postgresql/connection.js';
@@ -310,6 +312,12 @@ async function main(): Promise<void> {
       },
     });
 
+    // Create tag manager for keyword-to-tag indexing
+    const tagManager = new TagManager({
+      connection: neo4jConnection,
+      logger,
+    });
+
     // Create services for event processing
     const eprintService = new EprintService({
       storage: storageAdapter,
@@ -317,6 +325,7 @@ async function main(): Promise<void> {
       repository,
       identity: identityResolver,
       logger,
+      tagManager, // Auto-generate tags from eprint keywords
     });
 
     const reviewService = new ReviewService({
@@ -337,7 +346,10 @@ async function main(): Promise<void> {
       timeoutInterval: '1 hour',
     });
 
-    // Create event processor
+    // Create PDS registry for automatic PDS discovery
+    const pdsRegistry = new PDSRegistry(pgPool, logger);
+
+    // Create event processor with PDS auto-discovery
     const processor = createEventProcessor({
       pool: pgPool,
       activity: activityService,
@@ -346,6 +358,7 @@ async function main(): Promise<void> {
       graphService,
       identity: identityResolver,
       logger,
+      pdsRegistry, // Auto-register PDSes discovered during indexing
     });
 
     // Create indexing service

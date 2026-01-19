@@ -1,6 +1,6 @@
 # Storage Layer
 
-Database schema and configuration for Chive's local indexes.
+Database adapters and schema for Chive's local indexes.
 
 ## Overview
 
@@ -12,6 +12,54 @@ Chive uses four databases for different purposes:
 - **Redis** - Caching, rate limiting, and job queues
 
 **CRITICAL**: All databases store **indexes only**, never source data. All indexed data can be rebuilt from the AT Protocol firehose.
+
+## Directory Structure
+
+```
+storage/
+├── README.md
+├── elasticsearch/               # Elasticsearch adapter
+│   ├── index.ts                 # Barrel exports
+│   ├── adapter.ts               # Storage interface implementation
+│   ├── connection.ts            # ES client connection
+│   ├── setup.ts                 # Index/template initialization
+│   ├── index-manager.ts         # Index lifecycle management
+│   ├── search-query-builder.ts  # Query DSL builder
+│   ├── aggregations-builder.ts  # Facet aggregations
+│   ├── document-mapper.ts       # Record to document mapping
+│   ├── autocomplete-service.ts  # Completion suggestions
+│   ├── external-paper-search.ts # External paper index
+│   ├── query-cache.ts           # Query result caching
+│   ├── __tests__/               # Unit tests
+│   ├── ilm/                     # Index lifecycle policies
+│   │   └── eprints_policy.json
+│   ├── pipelines/               # Ingest pipelines
+│   │   └── eprint-processing.json
+│   └── templates/               # Index templates
+│       ├── eprints.json
+│       └── external-papers.json
+├── neo4j/                       # Neo4j adapter (see neo4j/README.md)
+├── postgresql/                  # PostgreSQL adapter
+│   ├── index.ts                 # Barrel exports
+│   ├── adapter.ts               # Storage interface implementation
+│   ├── config.ts                # Connection configuration
+│   ├── connection.ts            # Connection pooling
+│   ├── transaction.ts           # Transaction utilities
+│   ├── query-builder.ts         # SQL query building
+│   ├── batch-operations.ts      # Bulk insert/update
+│   ├── eprints-repository.ts    # Eprint CRUD
+│   ├── reviews-repository.ts    # Review CRUD
+│   ├── facet-usage-history-repository.ts  # Facet tracking
+│   ├── pds-tracker.ts           # PDS source tracking
+│   ├── staleness-detector.ts    # Record staleness checks
+│   └── migrations/              # Database migrations
+│       ├── 1732910000000_initial-schema.ts
+│       ├── 1733400000000_auth-tables.ts
+│       ├── ... (20+ migration files)
+│       └── 1737400000000_pds-registry-relay-connected.ts
+└── redis/                       # Redis utilities
+    └── structures.ts            # Key patterns and data structures
+```
 
 ## ATProto Compliance
 

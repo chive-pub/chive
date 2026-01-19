@@ -10,6 +10,7 @@
 
 import type { Context } from 'hono';
 
+import type { UserTag } from '../../../../storage/neo4j/types.js';
 import {
   getTrendingTagsParamsSchema,
   trendingTagsResponseSchema,
@@ -43,9 +44,19 @@ export async function getTrendingHandler(
   const limit = params.limit ?? 20;
 
   // Get trending tags from TagManager with time window support
-  const trendingTags = await tagManager.getTrendingTags(limit, {
-    timeWindow: params.timeWindow,
-  });
+  // Use minUsage=1 to show tags even with low usage (bootstrapping new systems)
+  let trendingTags: UserTag[];
+  try {
+    trendingTags = await tagManager.getTrendingTags(limit, {
+      timeWindow: params.timeWindow,
+      minUsage: 1, // Lower threshold for new systems
+    });
+  } catch (error) {
+    logger.warn('Failed to get trending tags from TagManager', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    trendingTags = [];
+  }
 
   // Map to TagSummary format
   const tags: TrendingTagsResponse['tags'] = trendingTags.map((tag) => ({

@@ -71,12 +71,12 @@ The following can be hidden in settings:
 
 If eprints were imported from external sources (e.g., arXiv) before you joined Chive, you can claim them:
 
-1. Go to Dashboard > Claims
-2. Find your eprint
-3. Provide evidence of authorship
-4. Submit claim
+1. Go to **Dashboard** > **Import Your Papers**
+2. Review suggested papers or search for your paper
+3. Click **Start Claim** to begin the import process
+4. Your Chive client creates a record in your PDS
 
-Claims are reviewed manually and typically processed within 48 hours.
+Claims with strong evidence (e.g., ORCID match) are processed automatically. Others may require co-author confirmation. See [Claiming Authorship](./claiming-authorship.md) for details.
 
 ## Deleting Your Profile
 

@@ -39,13 +39,15 @@ The service combines multiple signals for recommendations:
 
 ### Signal sources
 
-| Signal              | Weight | Source                    |
-| ------------------- | ------ | ------------------------- |
-| SPECTER2 similarity | 0.35   | Semantic Scholar          |
-| Citation overlap    | 0.25   | OpenAlex/Semantic Scholar |
-| Field match         | 0.20   | Local knowledge graph     |
-| Author co-citation  | 0.10   | Citation analysis         |
-| Recency             | 0.10   | Publication date          |
+| Signal              | Source                    |
+| ------------------- | ------------------------- |
+| SPECTER2 similarity | Semantic Scholar          |
+| Citation overlap    | OpenAlex/Semantic Scholar |
+| Field match         | Local knowledge graph     |
+| Author co-citation  | Citation analysis         |
+| Recency             | Publication date          |
+
+Signals are combined dynamically based on availability and user context.
 
 ### Personalization
 
@@ -63,21 +65,7 @@ interface UserProfile {
 
 ### Scoring
 
-```typescript
-function scoreRecommendation(
-  eprint: Eprint,
-  userProfile: UserProfile,
-  signals: SignalScores
-): number {
-  return (
-    signals.specter2Similarity * 0.35 +
-    signals.citationOverlap * 0.25 +
-    signals.fieldMatch * 0.2 +
-    signals.authorCoCitation * 0.1 +
-    signals.recencyScore * 0.1
-  );
-}
-```
+The ranking service combines available signals into a final score. When external APIs are unavailable, local signals (field match, recency) receive higher weight.
 
 ## Enrichment
 

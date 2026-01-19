@@ -101,3 +101,28 @@ export const indexRecordResponseSchema = z.object({
 });
 
 export type IndexRecordResponse = z.infer<typeof indexRecordResponseSchema>;
+
+// ============================================================================
+// PDS Registration Schemas
+// ============================================================================
+
+/**
+ * Parameters for registering a PDS.
+ */
+export const registerPDSInputSchema = z.object({
+  pdsUrl: z.string().url().describe('PDS endpoint URL to register'),
+});
+
+export type RegisterPDSInput = z.infer<typeof registerPDSInputSchema>;
+
+/**
+ * Register PDS response schema.
+ */
+export const registerPDSResponseSchema = z.object({
+  pdsUrl: z.string(),
+  registered: z.boolean(),
+  status: z.enum(['pending', 'already_exists', 'scanned']),
+  message: z.string().optional(),
+});
+
+export type RegisterPDSResponse = z.infer<typeof registerPDSResponseSchema>;

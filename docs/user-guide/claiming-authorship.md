@@ -17,9 +17,9 @@ Claiming links imported eprints to your Chive identity:
 
 After you complete your profile (especially ORCID linking), Chive suggests papers that may be yours:
 
-1. Go to **Profile** → **Claim Papers**
-2. Review the suggested papers
-3. Papers are matched by name, ORCID, email domain, and institutional affiliation
+1. Go to **Dashboard** → **Import Your Papers**
+2. Review the **Suggested For You** tab
+3. Papers are matched by name variants, ORCID, and affiliations from your profile
 
 ### Manual search
 
@@ -32,41 +32,39 @@ If a paper isn't suggested:
 
 ## The verification process
 
-Chive verifies claims using multiple evidence sources. Each source contributes to your verification score.
+Chive verifies claims using multiple evidence sources linked to your profile.
 
 ### Evidence sources
 
-| Source                | Weight | How it works                                               |
-| --------------------- | ------ | ---------------------------------------------------------- |
-| ORCID match           | 35%    | Paper linked to your verified ORCID                        |
-| Semantic Scholar      | 15%    | Paper claimed on your S2 profile                           |
-| OpenReview            | 15%    | Paper submitted via your OpenReview account                |
-| OpenAlex              | 10%    | Paper linked to your OpenAlex author ID                    |
-| arXiv ownership       | 10%    | You're listed as paper owner on arXiv                      |
-| Institutional email   | 8%     | Your Bluesky handle domain matches the paper's affiliation |
-| Coauthor confirmation | 5%     | A verified coauthor confirms your authorship               |
-| Name match            | 2%     | Author name matches your profile                           |
+| Source                | How it works                                                |
+| --------------------- | ----------------------------------------------------------- |
+| ORCID                 | Paper linked to your verified ORCID iD (highest confidence) |
+| Semantic Scholar      | Paper claimed on your Semantic Scholar profile              |
+| OpenReview            | Paper submitted via your OpenReview account                 |
+| OpenAlex              | Paper linked to your OpenAlex author ID                     |
+| arXiv ownership       | You're listed as paper owner on arXiv                       |
+| Institutional email   | Your handle domain matches the paper's affiliation          |
+| Coauthor confirmation | A verified coauthor confirms your authorship                |
+| Name match            | Author name matches your profile (lowest confidence)        |
 
-### Verification outcomes
+### Verification process
 
-| Score         | Outcome                                     |
-| ------------- | ------------------------------------------- |
-| 90% or higher | Automatically approved                      |
-| 70-89%        | Expedited review (approved within 24 hours) |
-| 50-69%        | Manual review required                      |
-| Below 50%     | Additional evidence needed                  |
+1. **Link accounts**: Connect ORCID, Semantic Scholar, or other academic profiles to your Chive account
+2. **Start claim**: Select a paper and initiate the claim process
+3. **Evidence collection**: Chive checks your linked accounts for matching records
+4. **Review**: Claims with strong evidence (ORCID match) are prioritized; weaker evidence may require manual review
 
 ## Completing a claim
 
-Once your claim is verified:
+Once you import a paper:
 
-1. Chive creates a canonical record in your Personal Data Server (PDS)
-2. The imported eprint is linked to your AT Protocol identity
-3. The paper appears on your profile as "verified"
+1. Your Chive client creates a `pub.chive.eprint.submission` record in your Personal Data Server (PDS)
+2. Chive indexes the record and links it to your AT Protocol identity
+3. The paper appears on your profile
 
 ### What gets created
 
-The claim creates a `pub.chive.eprint.submission` record in your PDS containing:
+The import creates a `pub.chive.eprint.submission` record in your PDS containing:
 
 - Paper metadata (title, abstract, authors)
 - Link to the original source (arXiv, bioRxiv, etc.)
@@ -76,29 +74,27 @@ You own this record. It stays in your PDS even if you leave Chive.
 
 ## Claim statuses
 
-| Status       | Meaning                             |
-| ------------ | ----------------------------------- |
-| Pending      | Claim submitted, gathering evidence |
-| Under review | Manual review in progress           |
-| Approved     | Claim verified, record created      |
-| Rejected     | Claim could not be verified         |
-| Withdrawn    | You cancelled the claim             |
+| Status   | Meaning                                   |
+| -------- | ----------------------------------------- |
+| Pending  | Claim submitted, awaiting record creation |
+| Approved | Record created and indexed                |
+| Rejected | Claim could not be verified               |
 
 ## Troubleshooting
 
 ### My paper wasn't found
 
-- Try searching by DOI instead of title
-- Check that the paper is indexed in arXiv, bioRxiv, Semantic Scholar, or OpenAlex
+- Try searching by DOI or arXiv ID instead of title
+- Check that the paper is indexed in arXiv, OpenReview, or other supported sources
 - Recently published papers may take a few days to appear
 
-### My score is too low
+### Improving your suggestions
 
-Add more evidence:
+To get better paper suggestions:
 
 - Link your ORCID to your Chive profile
-- Claim the paper on Semantic Scholar
-- Ask a verified coauthor to confirm your authorship
+- Add name variants (maiden name, initials, etc.) in profile settings
+- Add your institutional affiliations
 
 ### The wrong person claimed my paper
 

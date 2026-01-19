@@ -66,16 +66,15 @@ describe('Elasticsearch Templates', () => {
       expect(response.index_templates[0]?.name).toBe('eprints');
     });
 
-    it('template is configured as data stream', async () => {
+    it('template matches eprints-v* index pattern', async () => {
       const response = await client.indices.getIndexTemplate({
         name: 'eprints',
       });
 
       const template = response.index_templates[0];
       expect(template).toBeDefined();
-      expect(template?.index_template.index_patterns).toContain('eprints');
-      // Data stream templates have a data_stream property
-      expect(template?.index_template.data_stream).toBeDefined();
+      // Template matches versioned index pattern for zero-downtime reindexing
+      expect(template?.index_template.index_patterns).toContain('eprints-v*');
     });
 
     it('configures custom analyzers', async () => {
@@ -179,33 +178,31 @@ describe('Elasticsearch Templates', () => {
     });
   });
 
-  describe('Data Stream Bootstrap', () => {
-    it('creates eprints data stream', async () => {
-      const response = await client.indices.getDataStream({
-        name: 'eprints',
+  describe('Index and Alias Bootstrap', () => {
+    it('creates eprints-v1 index', async () => {
+      const response = await client.indices.exists({
+        index: 'eprints-v1',
       });
 
-      expect(response.data_streams).toHaveLength(1);
-      expect(response.data_streams[0]?.name).toBe('eprints');
+      expect(response).toBe(true);
     });
 
-    it('data stream has backing indices', async () => {
-      const response = await client.indices.getDataStream({
+    it('creates eprints alias pointing to eprints-v1', async () => {
+      const response = await client.indices.getAlias({
         name: 'eprints',
       });
 
-      const dataStream = response.data_streams[0];
-      expect(dataStream?.indices).toBeDefined();
-      expect(dataStream?.indices.length).toBeGreaterThanOrEqual(1);
+      expect(response).toHaveProperty('eprints-v1');
+      expect(response['eprints-v1']?.aliases).toHaveProperty('eprints');
     });
 
-    it('data stream uses ILM policy', async () => {
-      const response = await client.indices.getDataStream({
-        name: 'eprints',
+    it('index has ILM policy applied', async () => {
+      const response = await client.indices.getSettings({
+        index: 'eprints-v1',
       });
 
-      const dataStream = response.data_streams[0];
-      expect(dataStream?.ilm_policy).toBe('eprints_ilm_policy');
+      const settings = response['eprints-v1']?.settings;
+      expect(settings?.index?.lifecycle?.name).toBe('eprints_ilm_policy');
     });
   });
 

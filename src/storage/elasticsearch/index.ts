@@ -96,7 +96,7 @@ export {
   setupILMPolicy,
   setupIndexTemplate,
   setupIngestPipeline,
-  bootstrapDataStream,
+  bootstrapIndex,
   checkHealth,
   createElasticsearchClient,
   getElasticsearchConfig,

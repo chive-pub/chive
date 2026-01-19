@@ -15,13 +15,20 @@ Chive has two classification systems:
 
 Fields form a hierarchical taxonomy similar to arXiv categories:
 
-```
-cs (Computer Science)
-├── cs.AI (Artificial Intelligence)
-│   ├── cs.AI.ML (Machine Learning)
-│   └── cs.AI.NLP (Natural Language Processing)
-├── cs.CL (Computation and Language)
-└── cs.CV (Computer Vision)
+```mermaid
+flowchart TB
+    CS["cs (Computer Science)"]
+    AI["cs.AI (Artificial Intelligence)"]
+    ML["cs.AI.ML (Machine Learning)"]
+    NLP["cs.AI.NLP (Natural Language Processing)"]
+    CL["cs.CL (Computation and Language)"]
+    CV["cs.CV (Computer Vision)"]
+
+    CS --> AI
+    CS --> CL
+    CS --> CV
+    AI --> ML
+    AI --> NLP
 ```
 
 Authors assign fields when submitting. Community proposals can add new fields or reorganize the hierarchy.
@@ -124,8 +131,32 @@ If the taxonomy lacks a field for your research area:
 | Proposal type | Approval threshold | Minimum votes                 |
 | ------------- | ------------------ | ----------------------------- |
 | New field     | 67%                | 5 votes, 3 from field experts |
-| Rename field  | 60%                | 3 votes                       |
-| Merge fields  | 75%                | 7 votes                       |
+| Update field  | 60%                | 3 votes                       |
+| Merge fields  | 67%                | 5 votes                       |
+
+## Trending tags
+
+View which tags are gaining popularity:
+
+1. Go to **Trending** in the navigation
+2. Select a time window: 24 hours, 7 days, or 30 days
+3. See tags ranked by recent usage growth
+
+### How trending is calculated
+
+Tags are scored based on:
+
+- **Recent usage count**: Number of times the tag was applied in the time window
+- **Quality score**: Considers uniqueness and relevance
+- **Growth rate**: Comparison to previous period
+
+### API access
+
+```http
+GET /xrpc/pub.chive.tag.getTrending?timeWindow=7d&limit=20
+```
+
+Time windows: `24h`, `7d`, `30d`
 
 ## Searching by classification
 

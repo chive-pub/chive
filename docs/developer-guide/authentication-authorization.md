@@ -262,10 +262,13 @@ During the overlap period, both old and new keys are valid for verification, ens
 
 ### Session Lifecycle
 
-```
-Create → Active → (Update) → Revoke
-                     ↓
-              Sliding Expiration
+```mermaid
+flowchart LR
+    C[Create] --> A[Active]
+    A --> U[Update]
+    U --> A
+    U --> SE[Sliding Expiration]
+    A --> R[Revoke]
 ```
 
 ### Creating Sessions
@@ -325,16 +328,12 @@ Token blacklist: chive:token:revoked:{jti}
 
 ### Role Hierarchy
 
-```
-admin
-  ↓
-moderator
-  ↓
-authority-editor
-  ↓
-author
-  ↓
-reader
+```mermaid
+flowchart TB
+    admin --> moderator
+    moderator --> authority-editor
+    authority-editor --> author
+    author --> reader
 ```
 
 ### Permission Model

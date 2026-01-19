@@ -18,31 +18,19 @@ All plugins follow ATProto compliance rules: they can read events and cache comp
 
 ### Component diagram
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      PluginManager                          │
-│              (lifecycle, dependency ordering)               │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-         ┌─────────────────┼─────────────────┐
-         ▼                 ▼                 ▼
-  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-  │PluginLoader │   │ContextFact │   │PluginEvent  │
-  │ (manifest   │   │ (scoped    │   │    Bus      │
-  │  validation)│   │  context)  │   │ (hooks)     │
-  └─────────────┘   └──────┬──────┘   └──────┬──────┘
-                           │                 │
-         ┌─────────────────┴─────────────────┤
-         ▼                                   ▼
-  ┌─────────────┐                     ┌─────────────┐
-  │ Permission  │                     │  Resource   │
-  │  Enforcer   │                     │  Governor   │
-  └──────┬──────┘                     └──────┬──────┘
-         │                                   │
-  ┌──────┴──────┐                     ┌──────┴──────┐
-  │ IsolatedVm  │                     │   Memory    │
-  │   Sandbox   │                     │   Limits    │
-  └─────────────┘                     └─────────────┘
+```mermaid
+flowchart TB
+    PM["PluginManager<br/>(lifecycle, dependency ordering)"]
+
+    PM --> PL["PluginLoader<br/>(manifest validation)"]
+    PM --> CF["ContextFactory<br/>(scoped context)"]
+    PM --> PEB["PluginEventBus<br/>(hooks)"]
+
+    CF --> PE["PermissionEnforcer"]
+    PEB --> RG["ResourceGovernor"]
+
+    PE --> IVM["IsolatedVm Sandbox"]
+    RG --> ML["Memory Limits"]
 ```
 
 ### Data flow

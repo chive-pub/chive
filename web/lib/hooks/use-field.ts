@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-quer
 
 import { api } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
+import type { EprintSummary } from '@/lib/api/schema';
 
 /**
  * Query key factory for field-related queries.
@@ -384,19 +385,8 @@ interface UseFieldEprintsOptions {
   enabled?: boolean;
 }
 
-interface FieldEprintInfo {
-  uri: string;
-  title: string;
-  abstract?: string;
-  authorDid: string;
-  authorName?: string;
-  createdAt: string;
-  pdsUrl: string;
-  views?: number;
-}
-
 interface FieldEprintsResponse {
-  eprints: FieldEprintInfo[];
+  eprints: EprintSummary[];
   cursor?: string;
   hasMore: boolean;
   total: number;
@@ -431,13 +421,15 @@ export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions
       return {
         eprints: (data!.hits ?? []).map((hit) => ({
           uri: hit.uri,
+          cid: hit.cid,
           title: hit.title,
           abstract: hit.abstract,
-          authorDid: hit.submittedBy,
-          authorName: hit.authors?.[0]?.name,
+          submittedBy: hit.submittedBy,
+          authors: hit.authors ?? [],
+          fields: hit.fields,
           createdAt: hit.createdAt,
-          pdsUrl: hit.source?.pdsEndpoint ?? '',
-          views: undefined,
+          source: hit.source,
+          metrics: hit.metrics,
         })),
         cursor: data!.cursor,
         hasMore: data!.hasMore,

@@ -7,7 +7,12 @@ Docker configurations for Chive development and single-server production deploym
 - `Dockerfile`: Multi-stage build for Node.js 22 application
 - `docker-compose.yml`: Local development stack (databases only)
 - `docker-compose.prod.yml`: Production single-server deployment
+- `docker-compose.local.yml`: Local development with all services including app
+- `docker-compose.docs.yml`: Documentation site deployment
 - `.env.production.example`: Environment variables template
+- `otel-collector-config.yaml`: OpenTelemetry Collector configuration
+- `prometheus.yml`: Prometheus monitoring configuration
+- `nginx-docs.conf`: Nginx configuration for documentation site
 
 ## Quick Start
 

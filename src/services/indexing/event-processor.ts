@@ -38,6 +38,7 @@ import { transformPDSRecord } from '../eprint/pds-record-transformer.js';
 import type { EdgeService } from '../governance/edge-service.js';
 import type { NodeService } from '../governance/node-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
+import type { IPDSRegistry } from '../pds-discovery/pds-registry.js';
 import type { ReviewService, ReviewComment, Endorsement } from '../review/review-service.js';
 
 import type { ProcessedEvent } from './indexing-service.js';
@@ -111,6 +112,11 @@ export interface EventProcessorOptions {
   readonly edgeService?: EdgeService;
   readonly identity: IIdentityResolver;
   readonly logger: ILogger;
+  /**
+   * Optional PDS registry for automatic PDS discovery.
+   * When provided, PDSes discovered during DID resolution are automatically registered.
+   */
+  readonly pdsRegistry?: IPDSRegistry;
 }
 
 /**
@@ -129,6 +135,7 @@ export function createEventProcessor(
     edgeService,
     identity,
     logger,
+    pdsRegistry,
   } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
@@ -144,6 +151,18 @@ export function createEventProcessor(
 
     const uri = `at://${repo}/${collection}/${rkey}` as AtUri;
     const pdsUrl = await identity.getPDSEndpoint(repo as DID);
+
+    // Auto-register discovered PDS for future scanning
+    if (pdsUrl && pdsRegistry) {
+      try {
+        await pdsRegistry.registerPDS(pdsUrl, 'did_mention');
+      } catch (error) {
+        logger.debug('PDS registration skipped', {
+          pdsUrl,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
 
     await processRecord(
       {
@@ -536,12 +555,25 @@ export function createBatchEventProcessor(
     edgeService,
     identity,
     logger,
+    pdsRegistry,
   } = options;
 
   return async (events: readonly ProcessedEvent[]): Promise<void> => {
     for (const event of events) {
       const uri = `at://${event.repo}/${event.collection}/${event.rkey}` as AtUri;
       const pdsUrl = await identity.getPDSEndpoint(event.repo as DID);
+
+      // Auto-register discovered PDS for future scanning
+      if (pdsUrl && pdsRegistry) {
+        try {
+          await pdsRegistry.registerPDS(pdsUrl, 'did_mention');
+        } catch (error) {
+          logger.debug('PDS registration skipped', {
+            pdsUrl,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
 
       await processRecord(
         { pool, eprintService, reviewService, graphService, nodeService, edgeService, logger },

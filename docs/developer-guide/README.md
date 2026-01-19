@@ -6,27 +6,33 @@ This guide covers the technical architecture and implementation details of Chive
 
 Chive is an AT Protocol AppView that indexes scholarly eprints from the decentralized network. The system consists of:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Chive AppView                            │
-│                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   Hono API  │  │  Services   │  │      Storage Layer      │  │
-│  │  (XRPC+REST)│  │  (Business  │  │  ┌─────┐ ┌────┐ ┌─────┐ │  │
-│  │             │  │   Logic)    │  │  │ PG  │ │ ES │ │Neo4j│ │  │
-│  └──────┬──────┘  └──────┬──────┘  │  └─────┘ └────┘ └─────┘ │  │
-│         │                │         │  ┌─────────────────────┐ │  │
-│         └────────────────┘         │  │       Redis         │ │  │
-│                                    │  └─────────────────────┘ │  │
-│                                    └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-                              │ Firehose
-                              │
-                    ┌─────────┴─────────┐
-                    │   AT Protocol     │
-                    │   Relay Network   │
-                    └───────────────────┘
+```mermaid
+flowchart TB
+    subgraph Relay["AT Protocol Relay Network"]
+        R[Relay]
+    end
+
+    subgraph AppView["Chive AppView"]
+        subgraph API["Hono API (XRPC+REST)"]
+            A[API Handlers]
+        end
+
+        subgraph Services["Services (Business Logic)"]
+            S[Business Logic]
+        end
+
+        subgraph Storage["Storage Layer"]
+            PG[(PostgreSQL)]
+            ES[(Elasticsearch)]
+            Neo4j[(Neo4j)]
+            Redis[(Redis)]
+        end
+
+        A --> S
+        S --> Storage
+    end
+
+    R -->|Firehose| AppView
 ```
 
 ## Key principles
@@ -66,6 +72,14 @@ Plugins extend functionality through a hybrid DI + EventEmitter2 architecture. P
 | [Plugin system](./plugin-system.md)                 | Creating and managing plugins         |
 | [Advanced features](./advanced-features.md)         | Knowledge graph, discovery, and more  |
 | [Observability](./observability-monitoring.md)      | Logging, metrics, and tracing         |
+
+### Subdirectories
+
+| Directory                | Description                             |
+| ------------------------ | --------------------------------------- |
+| [plugins/](./plugins/)   | Plugin development guides and reference |
+| [services/](./services/) | Individual service documentation        |
+| [storage/](./storage/)   | Database adapter documentation          |
 
 ## Technology stack
 

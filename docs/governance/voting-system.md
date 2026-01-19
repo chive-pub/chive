@@ -8,8 +8,8 @@ Chive uses a weighted voting system where expertise in the relevant domain incre
 | ---------------- | ------ | -------------------------------------------------- |
 | Community member | 1.0x   | Any authenticated user                             |
 | Trusted editor   | 2.0x   | Elevated role for consistent quality contributions |
-| Graph editor     | 2.0x   | Can modify knowledge graph nodes and edges         |
-| Domain expert    | 2.5x   | Recognized expertise in the proposal's field       |
+| Graph editor     | 3.0x   | Can modify knowledge graph nodes and edges         |
+| Domain expert    | 3.0x   | Recognized expertise in the proposal's field       |
 | Administrator    | 5.0x   | Platform administrators with veto power            |
 
 ### How weight is determined
@@ -17,11 +17,11 @@ Chive uses a weighted voting system where expertise in the relevant domain incre
 Voting weight is based on the user's assigned role. The highest applicable role weight is used:
 
 ```typescript
-const defaultWeights: Record<UserRole, number> = {
+const ROLE_VOTE_WEIGHTS: Record<GovernanceRole, number> = {
   'community-member': 1.0,
   'trusted-editor': 2.0,
-  'graph-editor': 2.0,
-  'domain-expert': 2.5,
+  'graph-editor': 3.0,
+  'domain-expert': 3.0,
   administrator: 5.0,
 };
 ```
@@ -53,12 +53,12 @@ Example:
 ```
 Votes:
 - 3 community members approve (3 × 1.0 = 3.0)
-- 2 domain experts approve (2 × 2.5 = 5.0)
+- 2 domain experts approve (2 × 3.0 = 6.0)
 - 1 trusted editor rejects (1 × 2.0 = 2.0)
 
-Weighted approve: 3.0 + 5.0 = 8.0
-Weighted total: 3.0 + 5.0 + 2.0 = 10.0
-Approval: 8.0 / 10.0 = 80%
+Weighted approve: 3.0 + 6.0 = 9.0
+Weighted total: 3.0 + 6.0 + 2.0 = 11.0
+Approval: 9.0 / 11.0 = 81.8%
 
 For a "Create field" proposal (67% threshold): APPROVED
 ```
@@ -192,7 +192,7 @@ All voting data is public:
     {
       "voter": "did:plc:voter1...",
       "vote": "approve",
-      "weight": 2.5,
+      "weight": 3.0,
       "tier": "domain_expert",
       "timestamp": "2025-01-15T10:30:00Z"
     }
