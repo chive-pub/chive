@@ -29,16 +29,16 @@ import type { ILogger } from '@/types/interfaces/logger.interface.js';
 // =============================================================================
 
 const TEST_DB_CONFIG = {
-  host: 'localhost',
-  port: 5432,
-  user: 'chive',
-  password: 'chive_test_password',
-  database: 'chive',
+  host: process.env.POSTGRES_HOST ?? 'localhost',
+  port: parseInt(process.env.POSTGRES_PORT ?? '5432', 10),
+  user: process.env.POSTGRES_USER ?? 'chive',
+  password: process.env.POSTGRES_PASSWORD ?? 'chive_test_password',
+  database: process.env.POSTGRES_DB ?? 'chive',
 };
 
 const TEST_REDIS_CONFIG = {
-  host: 'localhost',
-  port: 6379,
+  host: process.env.REDIS_HOST ?? 'localhost',
+  port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
   db: 1, // Use a different DB for tests
 };
 
