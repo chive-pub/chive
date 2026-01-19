@@ -12,7 +12,7 @@
 #   2. Create required directories: mkdir -p data/{postgres,redis,elasticsearch,neo4j}
 #   3. Build the application: docker build -t chive:latest -f docker/Dockerfile .
 #
-# Estimated resources: 4GB RAM minimum, 8GB recommended
+# Estimated resources: 6GB RAM minimum, 8GB recommended
 # =============================================================================
 
 services:
@@ -426,7 +426,7 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       - cluster.name=chive-cluster
       - bootstrap.memory_lock=true
       - cluster.routing.allocation.disk.threshold_enabled=true
@@ -440,10 +440,10 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 1G
+          memory: 2G
         reservations:
           cpus: '0.5'
-          memory: 768M
+          memory: 1G
     ulimits:
       memlock:
         soft: -1
