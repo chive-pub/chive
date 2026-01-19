@@ -6,11 +6,13 @@ Chive helps you find relevant eprints through personalized recommendations, rela
 
 The For You feed on your homepage shows personalized recommendations based on:
 
-| Signal               | Weight | Description                                            |
-| -------------------- | ------ | ------------------------------------------------------ |
-| Your research fields | 60%    | Papers in fields you follow or publish in              |
-| Citation network     | 25%    | Papers citing your work or cited by papers you've read |
-| Semantic similarity  | 30%    | Papers similar to ones you've engaged with             |
+| Signal               | Description                                            |
+| -------------------- | ------------------------------------------------------ |
+| Your research fields | Papers in fields you follow or publish in              |
+| Citation network     | Papers citing your work or cited by papers you've read |
+| Semantic similarity  | Papers similar to ones you've engaged with             |
+
+Signals are combined using a scoring algorithm that considers recency, relevance, and diversity.
 
 ### Customizing recommendations
 

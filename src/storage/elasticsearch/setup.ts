@@ -196,52 +196,47 @@ export async function setupIngestPipeline(client: Client): Promise<void> {
 }
 
 /**
- * Creates the eprints data stream if it doesn't exist.
+ * Creates the eprints index with an alias if it doesn't exist.
  *
  * @param client - Elasticsearch client
  *
  * @remarks
- * Uses Elasticsearch data streams (recommended approach since ES 7.9+).
- * Data streams automatically manage backing indices and rollover.
+ * Uses a regular index with an alias (not a data stream) to support:
+ * - Document IDs for upserts
+ * - Updating existing documents when records change on PDS
+ * - Zero-downtime reindexing via alias switching
  *
- * @see https://www.elastic.co/docs/manage-data/data-store/data-streams/set-up-data-stream
+ * The alias "eprints" points to the current index "eprints-v1".
+ * Future migrations can create "eprints-v2" and switch the alias.
  *
  * @public
  */
-export async function bootstrapDataStream(client: Client): Promise<void> {
-  // Check if data stream already exists
-  try {
-    await client.indices.getDataStream({ name: 'eprints' });
-    // Data stream exists, nothing to do
+export async function bootstrapIndex(client: Client): Promise<void> {
+  const indexName = 'eprints-v1';
+  const aliasName = 'eprints';
+
+  // Check if alias already exists
+  const aliasExists = await client.indices.existsAlias({ name: aliasName });
+  if (aliasExists) {
+    // Alias exists, nothing to do
     return;
-  } catch {
-    // Data stream doesn't exist, create it
   }
 
-  // Check for legacy index that would conflict
-  const legacyIndexExists = await client.indices.exists({ index: 'eprints' });
-  if (legacyIndexExists) {
-    // Check if it's actually a data stream backing index
-    try {
-      const indexInfo = await client.indices.get({ index: 'eprints' });
-      const isDataStreamIndex = Object.values(indexInfo).some(
-        (info) => info.data_stream !== undefined
-      );
-      if (!isDataStreamIndex) {
-        throw new DatabaseError(
-          'BOOTSTRAP_CONFLICT',
-          'A legacy index named "eprints" exists. Migrate to data stream: ' +
-            'https://www.elastic.co/guide/en/elasticsearch/reference/current/migrate-index-alias-to-data-stream.html'
-        );
-      }
-    } catch (error) {
-      if (error instanceof DatabaseError) throw error;
-      // Index check failed, proceed with creation attempt
-    }
+  // Check if index already exists
+  const indexExists = await client.indices.exists({ index: indexName });
+  if (indexExists) {
+    // Index exists but no alias - add the alias
+    await client.indices.putAlias({ index: indexName, name: aliasName });
+    return;
   }
 
-  // Create the data stream explicitly
-  await client.indices.createDataStream({ name: 'eprints' });
+  // Create index with alias
+  await client.indices.create({
+    index: indexName,
+    aliases: {
+      [aliasName]: {},
+    },
+  });
 }
 
 /**
@@ -291,7 +286,7 @@ export async function setupElasticsearch(client: Client): Promise<void> {
   await setupILMPolicy(client);
   await setupIndexTemplate(client);
   await setupIngestPipeline(client);
-  await bootstrapDataStream(client);
+  await bootstrapIndex(client);
 
   const healthy = await checkHealth(client);
   if (!healthy) {

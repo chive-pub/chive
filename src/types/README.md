@@ -2,29 +2,44 @@
 
 This directory contains all TypeScript type definitions for Chive.
 
-## Structure
+## Directory Structure
 
 ```
 types/
+├── index.ts                      # Barrel exports
 ├── atproto.ts                    # AT Protocol primitives (AtUri, DID, CID, etc.)
 ├── atproto-validators.ts         # Type guards for AT Protocol types
 ├── errors.ts                     # Error hierarchy
 ├── result.ts                     # Result monad for error handling
 ├── validation.ts                 # Validation types
 ├── interfaces/                   # Service interfaces
+│   ├── index.ts                  # Interface barrel exports
+│   ├── auth.interface.ts         # Authentication service
+│   ├── authorization.interface.ts # RBAC authorization
 │   ├── cache.interface.ts        # Cache provider (Redis)
+│   ├── database.interface.ts     # Database operations
+│   ├── discovery.interface.ts    # Content discovery
 │   ├── event-stream.interface.ts # Firehose consumer
 │   ├── graph.interface.ts        # Knowledge graph (Neo4j)
 │   ├── identity.interface.ts     # DID resolution
 │   ├── logger.interface.ts       # Structured logging
 │   ├── metrics.interface.ts      # Metrics (Prometheus)
+│   ├── mfa.interface.ts          # Multi-factor auth
 │   ├── plugin.interface.ts       # Plugin system
+│   ├── ranking.interface.ts      # Search ranking
 │   ├── repository.interface.ts   # PDS access (read-only)
 │   ├── search.interface.ts       # Search engine (Elasticsearch)
-│   └── storage.interface.ts      # Index storage (PostgreSQL)
+│   ├── session.interface.ts      # Session management
+│   ├── storage.interface.ts      # Index storage (PostgreSQL)
+│   ├── webauthn.interface.ts     # WebAuthn/passkey
+│   └── zero-trust.interface.ts   # Zero trust verification
 └── models/                       # Domain models
+    ├── index.ts                  # Model barrel exports
+    ├── annotation.ts             # Rich text annotations
     ├── author.ts                 # Author profiles and metrics
+    ├── contribution.ts           # Author contributions
     ├── eprint.ts                 # Eprint, versions, tags
+    ├── governance.ts             # Governance records
     └── review.ts                 # Reviews and endorsements
 ```
 

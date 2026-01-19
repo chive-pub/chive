@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { SearchBar } from './search-bar';
 
@@ -16,13 +17,37 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+// Mock the useInstantSearch hook
+vi.mock('@/lib/hooks/use-search', () => ({
+  useInstantSearch: () => ({
+    data: null,
+    isLoading: false,
+  }),
+}));
+
+// Create a wrapper with QueryClientProvider
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  const TestWrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  TestWrapper.displayName = 'TestWrapper';
+  return TestWrapper;
+};
+
 describe('SearchBar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('renders search input', () => {
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const input = screen.getByRole('searchbox');
     expect(input).toBeInTheDocument();
@@ -30,14 +55,14 @@ describe('SearchBar', () => {
   });
 
   it('has search form with correct role', () => {
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const form = screen.getByRole('search', { name: 'Search eprints' });
     expect(form).toBeInTheDocument();
   });
 
   it('has accessible label for input', () => {
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const label = screen.getByText('Search for eprints');
     expect(label).toHaveClass('sr-only');
@@ -46,7 +71,7 @@ describe('SearchBar', () => {
   it('updates input value on typing', async () => {
     const user = userEvent.setup();
 
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const input = screen.getByRole('searchbox');
     await user.type(input, 'machine learning');
@@ -57,7 +82,7 @@ describe('SearchBar', () => {
   it('navigates to search page on form submit', async () => {
     const user = userEvent.setup();
 
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const input = screen.getByRole('searchbox');
     await user.type(input, 'neural networks');
@@ -69,7 +94,7 @@ describe('SearchBar', () => {
   it('does not navigate when query is empty', async () => {
     const user = userEvent.setup();
 
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const submitButton = screen.getByRole('button', { name: 'Submit search' });
     await user.click(submitButton);
@@ -80,7 +105,7 @@ describe('SearchBar', () => {
   it('does not navigate when query is only whitespace', async () => {
     const user = userEvent.setup();
 
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const input = screen.getByRole('searchbox');
     await user.type(input, '   ');
@@ -92,7 +117,7 @@ describe('SearchBar', () => {
   it('trims whitespace from query', async () => {
     const user = userEvent.setup();
 
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const input = screen.getByRole('searchbox');
     await user.type(input, '  quantum physics  ');
@@ -104,7 +129,7 @@ describe('SearchBar', () => {
   it('encodes special characters in query', async () => {
     const user = userEvent.setup();
 
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const input = screen.getByRole('searchbox');
     await user.type(input, 'test&query=1');
@@ -114,21 +139,21 @@ describe('SearchBar', () => {
   });
 
   it('renders submit button', () => {
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const submitButton = screen.getByRole('button', { name: 'Submit search' });
     expect(submitButton).toBeInTheDocument();
   });
 
   it('applies custom className', () => {
-    render(<SearchBar className="custom-search" />);
+    render(<SearchBar className="custom-search" />, { wrapper: createWrapper() });
 
     const form = screen.getByRole('search', { name: 'Search eprints' });
     expect(form).toHaveClass('custom-search');
   });
 
   it('has autocomplete disabled', () => {
-    render(<SearchBar />);
+    render(<SearchBar />, { wrapper: createWrapper() });
 
     const input = screen.getByRole('searchbox');
     expect(input).toHaveAttribute('autoComplete', 'off');

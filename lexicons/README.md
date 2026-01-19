@@ -15,6 +15,9 @@ Version metadata tracking eprint revisions and changelogs.
 **`pub.chive.eprint.userTag`**
 User-generated tags for folksonomy-style classification (TaxoFolk system).
 
+**`pub.chive.eprint.authorContribution`**
+Author contribution records tracking individual author contributions to eprints.
+
 ### Review Records
 
 **`pub.chive.review.comment`**
@@ -23,21 +26,36 @@ Review comments on eprints, supporting inline comments and threaded discussions.
 **`pub.chive.review.endorsement`**
 Formal endorsements of eprints (methods, results, or overall).
 
+**`pub.chive.review.entityLink`**
+Links between review entities and external resources.
+
 ### Knowledge Graph Records
 
-**`pub.chive.graph.fieldProposal`**
-Community proposals for creating, updating, merging, or deleting knowledge graph fields.
+**`pub.chive.graph.node`**
+Knowledge graph nodes representing fields, concepts, and entities.
+
+**`pub.chive.graph.nodeProposal`**
+Community proposals for creating or updating knowledge graph nodes.
+
+**`pub.chive.graph.edge`**
+Knowledge graph edges representing relationships between nodes.
+
+**`pub.chive.graph.edgeProposal`**
+Community proposals for creating or updating knowledge graph edges.
 
 **`pub.chive.graph.vote`**
-Votes on field proposals (approve/reject with optional comment).
+Votes on node or edge proposals (approve/reject with optional comment).
 
-**`pub.chive.graph.facet`**
-10-dimensional faceted classification values (PMEST + FAST dimensions).
+**`pub.chive.graph.reconciliation`**
+Reconciliation records for merging or splitting graph entities.
 
 ### Actor Records
 
 **`pub.chive.actor.profile`**
 Chive-specific author profile with ORCID, affiliations, and research fields.
+
+**`pub.chive.actor.discoverySettings`**
+User preferences for discovery and notification settings.
 
 ### XRPC Queries
 

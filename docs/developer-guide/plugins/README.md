@@ -10,13 +10,14 @@ The plugin system uses a hybrid approach:
 - **EventEmitter2** for event hooks
 - **isolated-vm** for execution isolation
 
-```
-PluginManager
-├── PluginLoader (dynamic loading from manifests)
-├── PluginRegistry (discovery and listing)
-├── PluginEventBus (event publication)
-├── PermissionEnforcer (security limits)
-└── IsolatedVmSandbox (execution isolation)
+```mermaid
+flowchart TB
+    PM[PluginManager]
+    PM --> PL[PluginLoader<br/>dynamic loading from manifests]
+    PM --> PR[PluginRegistry<br/>discovery and listing]
+    PM --> PEB[PluginEventBus<br/>event publication]
+    PM --> PE[PermissionEnforcer<br/>security limits]
+    PM --> IVM[IsolatedVmSandbox<br/>execution isolation]
 ```
 
 ## Plugin types
@@ -124,11 +125,14 @@ class MyBacklinkTracker extends BacklinkTrackingPlugin {
 
 ## Plugin lifecycle
 
-```
-1. Load: PluginLoader reads manifest and validates
-2. Initialize: Plugin.initialize(context) called
-3. Active: Plugin responds to events
-4. Shutdown: Plugin.shutdown() called for cleanup
+```mermaid
+flowchart LR
+    L[Load<br/>PluginLoader reads manifest and validates]
+    I[Initialize<br/>Plugin.initialize called]
+    A[Active<br/>Plugin responds to events]
+    S[Shutdown<br/>Plugin.shutdown called for cleanup]
+
+    L --> I --> A --> S
 ```
 
 ### Initialization

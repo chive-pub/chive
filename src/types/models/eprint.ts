@@ -813,9 +813,22 @@ export interface Eprint {
    * Faceted classification values.
    *
    * @remarks
-   * 10-dimensional PMEST + FAST facets for precise classification.
+   * Optional facets for additional classification dimensions.
    */
   readonly facets: readonly Facet[];
+
+  /**
+   * Research field references from the knowledge graph.
+   *
+   * @remarks
+   * Links to field nodes in the knowledge graph for categorization.
+   * These are knowledge graph nodes, not a fixed taxonomy.
+   */
+  readonly fields?: readonly {
+    readonly uri: string;
+    readonly label: string;
+    readonly id?: string;
+  }[];
 
   /**
    * Version number (1-indexed).

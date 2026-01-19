@@ -24,6 +24,8 @@ import { AuthorizationService } from './auth/authorization/authorization-service
 import { DIDResolver } from './auth/did/did-resolver.js';
 import { FreshnessScanJob } from './jobs/freshness-scan-job.js';
 import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
+import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
+import { TagSyncJob } from './jobs/tag-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
 import {
   registerPluginSystem,
@@ -53,6 +55,8 @@ import { TrustedEditorService } from './services/governance/trusted-editor-servi
 import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
+import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
+import { PDSScanner } from './services/pds-discovery/pds-scanner.js';
 import { PDSRateLimiter } from './services/pds-sync/pds-rate-limiter.js';
 import { PDSSyncService } from './services/pds-sync/sync-service.js';
 import { ReviewService } from './services/review/review-service.js';
@@ -226,6 +230,8 @@ interface AppState {
   governanceSyncJob?: GovernanceSyncJob;
   freshnessWorker?: FreshnessWorker;
   freshnessScanJob?: FreshnessScanJob;
+  pdsScanSchedulerJob?: PDSScanSchedulerJob;
+  tagSyncJob?: TagSyncJob;
   eventBus?: EventEmitter2Type;
 }
 
@@ -356,6 +362,12 @@ function createServices(
   // Create CDN adapter (optional; only if R2 is configured)
   const cdnAdapter = createCDNAdapter(config, logger);
 
+  // Create tag manager early so it can be used by EprintService for keyword-to-tag indexing
+  const tagManager = new TagManager({
+    connection: neo4jConnection,
+    logger,
+  });
+
   // Create services
   const eprintService = new EprintService({
     storage: storageAdapter,
@@ -363,6 +375,7 @@ function createServices(
     repository,
     identity: identityResolver,
     logger,
+    tagManager, // Auto-generate tags from eprint keywords
   });
 
   const searchService = new SearchService({
@@ -401,13 +414,7 @@ function createServices(
     logger,
   });
 
-  // Create tag manager
-  const tagManager = new TagManager({
-    connection: neo4jConnection,
-    logger,
-  });
-
-  // Create facet usage history repository and wire it to TagManager
+  // Wire facet usage history repository to TagManager (TagManager created earlier for EprintService)
   const facetUsageHistoryRepository = new FacetUsageHistoryRepository(pgPool, logger);
   tagManager.setFacetHistoryRepository(facetUsageHistoryRepository);
 
@@ -498,6 +505,11 @@ function createServices(
     logger,
   });
 
+  // Create PDS Discovery services
+  const pdsRegistry = new PDSRegistry(pgPool, logger);
+
+  const pdsScanner = new PDSScanner(pdsRegistry, eprintService, logger);
+
   return {
     eprintService,
     searchService,
@@ -522,6 +534,9 @@ function createServices(
     authzService,
     alphaService,
     trustedEditorService,
+    pdsRegistry,
+    pdsScanner,
+    identityResolver,
     redis,
     logger,
     serviceDid: config.serviceDid,
@@ -618,6 +633,18 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
   if (state.freshnessScanJob) {
     state.logger.info('Stopping freshness scan job...');
     state.freshnessScanJob.stop();
+  }
+
+  // Stop PDS scan scheduler job
+  if (state.pdsScanSchedulerJob) {
+    state.logger.info('Stopping PDS scan scheduler job...');
+    state.pdsScanSchedulerJob.stop();
+  }
+
+  // Stop tag sync job
+  if (state.tagSyncJob) {
+    state.logger.info('Stopping tag sync job...');
+    state.tagSyncJob.stop();
   }
 
   // Close freshness worker
@@ -825,6 +852,118 @@ async function initializePluginSystem(
 }
 
 /**
+ * Seeds the PDS registry with PDSes from known DIDs.
+ *
+ * @remarks
+ * On startup, queries all unique DIDs from eprints_index (submitted_by and
+ * authors), resolves each to its PDS, and registers in the PDS registry.
+ * This ensures we scan PDSes for all users who already have records indexed.
+ *
+ * This is critical for ATProto compliance: we NEVER rely solely on the
+ * firehose. We proactively discover and scan PDSes to catch records that
+ * may have been missed.
+ */
+async function seedPDSRegistryFromKnownDIDs(
+  pgPool: ReturnType<typeof createPool>,
+  identityResolver: InstanceType<typeof DIDResolver>,
+  pdsRegistry: PDSRegistry,
+  logger: PinoLogger
+): Promise<void> {
+  logger.info('Seeding PDS registry from known DIDs...');
+
+  try {
+    // Check if pds_registry table exists (migrations may not have run yet)
+    const tableCheck = await pgPool.query<{ exists: boolean }>(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'pds_registry'
+      ) as exists
+    `);
+
+    if (!tableCheck.rows[0]?.exists) {
+      logger.warn('pds_registry table does not exist, skipping seed (run migrations first)');
+      return;
+    }
+
+    // Query all unique DIDs from eprints_index
+    const result = await pgPool.query<{ did: DID }>(`
+      SELECT DISTINCT did FROM (
+        SELECT submitted_by as did FROM eprints_index WHERE submitted_by IS NOT NULL
+        UNION
+        SELECT jsonb_array_elements(authors)->>'did' as did FROM eprints_index WHERE authors IS NOT NULL
+      ) dids
+      WHERE did IS NOT NULL AND did != ''
+    `);
+
+    const uniqueDIDs = result.rows.map((row) => row.did);
+    logger.info('Found unique DIDs to seed from', { count: uniqueDIDs.length });
+
+    if (uniqueDIDs.length === 0) {
+      logger.info('No DIDs found in eprints_index, skipping PDS registry seed');
+      return;
+    }
+
+    // Resolve each DID to its PDS and register
+    const pdsUrls = new Set<string>();
+    let resolved = 0;
+    let failed = 0;
+
+    for (const did of uniqueDIDs) {
+      try {
+        const pdsUrl = await identityResolver.getPDSEndpoint(did);
+        if (pdsUrl) {
+          pdsUrls.add(pdsUrl);
+          resolved++;
+        } else {
+          logger.debug('Could not resolve PDS for DID', { did });
+          failed++;
+        }
+      } catch (error) {
+        logger.debug('Failed to resolve DID', {
+          did,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        failed++;
+      }
+    }
+
+    logger.info('Resolved DIDs to PDSes', {
+      resolved,
+      failed,
+      uniquePDSes: pdsUrls.size,
+    });
+
+    // Register each PDS in the registry
+    let registered = 0;
+    for (const pdsUrl of pdsUrls) {
+      try {
+        await pdsRegistry.registerPDS(pdsUrl, 'did_mention');
+        registered++;
+      } catch (error) {
+        logger.debug('Failed to register PDS', {
+          pdsUrl,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    logger.info('PDS registry seeded', {
+      totalDIDs: uniqueDIDs.length,
+      resolvedDIDs: resolved,
+      uniquePDSes: pdsUrls.size,
+      registeredPDSes: registered,
+    });
+
+    // Optionally trigger immediate scans for high-priority PDSes (those with Chive records)
+    // The PDSScanSchedulerJob will pick these up and scan them
+    logger.info('PDS registry seed complete, PDSScanSchedulerJob will scan registered PDSes');
+  } catch (error) {
+    logger.error('Failed to seed PDS registry', error instanceof Error ? error : undefined);
+    // Don't fail startup, just log the error
+  }
+}
+
+/**
  * Main entry point.
  */
 async function main(): Promise<void> {
@@ -952,6 +1091,42 @@ async function main(): Promise<void> {
     } else {
       logger.info('Freshness system disabled');
     }
+
+    // Initialize PDS scan scheduler job
+    if (serverConfig.pdsRegistry && serverConfig.pdsScanner && serverConfig.identityResolver) {
+      logger.info('Initializing PDS scan scheduler...');
+
+      // First, seed the registry from known DIDs so we scan their PDSes
+      await seedPDSRegistryFromKnownDIDs(
+        pgPool,
+        serverConfig.identityResolver as InstanceType<typeof DIDResolver>,
+        serverConfig.pdsRegistry as PDSRegistry,
+        logger
+      );
+
+      // Then start the scheduler which will scan the registered PDSes
+      state.pdsScanSchedulerJob = new PDSScanSchedulerJob({
+        registry: serverConfig.pdsRegistry,
+        scanner: serverConfig.pdsScanner,
+        logger,
+        scanIntervalMs: 15 * 60 * 1000, // 15 minutes
+        batchSize: 10,
+      });
+      await state.pdsScanSchedulerJob.start();
+      logger.info('PDS scan scheduler initialized');
+    }
+
+    // Initialize tag sync job (syncs Neo4j tags to PostgreSQL for trending)
+    logger.info('Initializing tag sync job...');
+    state.tagSyncJob = new TagSyncJob({
+      neo4jConnection: state.neo4jConnection,
+      pool: pgPool,
+      logger,
+      syncIntervalMs: 60 * 60 * 1000, // 1 hour
+      runOnStartup: true, // Backfill existing tags on startup
+    });
+    await state.tagSyncJob.start();
+    logger.info('Tag sync job initialized');
   } catch (error) {
     logger.error('Failed to start server', error instanceof Error ? error : undefined);
     process.exit(1);

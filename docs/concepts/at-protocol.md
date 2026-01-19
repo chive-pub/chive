@@ -27,18 +27,19 @@ did:web:example.com       # Web-based, tied to a domain
 
 A PDS stores your data and serves it to applications. Think of it as your personal cloud storage for AT Protocol data.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Your PDS                               │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  Eprints  │  │   Reviews   │  │  Endorsements       │  │
-│  │  (records)  │  │  (records)  │  │  (records)          │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │                      Blobs                              ││
-│  │  (PDFs, images, supplementary files)                    ││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+block-beta
+  columns 1
+  block:pds["Your PDS"]
+    columns 3
+    eprints["Eprints\n(records)"]
+    reviews["Reviews\n(records)"]
+    endorsements["Endorsements\n(records)"]
+  end
+  block:blobs["Blobs"]
+    columns 1
+    blobcontent["PDFs, images, supplementary files"]
+  end
 ```
 
 Key properties of PDSes:
@@ -131,24 +132,21 @@ The CID (Content Identifier) is a cryptographic hash of the blob content. This e
 
 The firehose is a real-time stream of all repository events across the network. It's how AppViews like Chive discover new content.
 
-```
-┌─────────┐     ┌─────────┐     ┌─────────┐
-│  PDS 1  │     │  PDS 2  │     │  PDS 3  │
-│ (Alice) │     │  (Bob)  │     │ (Carol) │
-└────┬────┘     └────┬────┘     └────┬────┘
-     │               │               │
-     └───────────────┼───────────────┘
-                     ▼
-              ┌─────────────┐
-              │   Relay     │
-              │  (BGS.bsky) │
-              └──────┬──────┘
-                     │
-                     ▼  Firehose (WebSocket)
-              ┌─────────────┐
-              │   Chive     │
-              │  (AppView)  │
-              └─────────────┘
+```mermaid
+flowchart TB
+    subgraph PDSes["Personal Data Servers"]
+        PDS1["PDS 1\n(Alice)"]
+        PDS2["PDS 2\n(Bob)"]
+        PDS3["PDS 3\n(Carol)"]
+    end
+
+    Relay["Relay\n(BGS.bsky)"]
+    Chive["Chive\n(AppView)"]
+
+    PDS1 --> Relay
+    PDS2 --> Relay
+    PDS3 --> Relay
+    Relay -->|"Firehose (WebSocket)"| Chive
 ```
 
 The firehose delivers events in near real-time:
@@ -179,18 +177,16 @@ An AppView is a read-only service that indexes data from the firehose and presen
 
 If Chive's database is deleted, no user data is lost - everything remains in user PDSes.
 
-```
-┌────────────────────────────────────────────────────────────┐
-│                         Chive AppView                      │
-│                                                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ PostgreSQL   │  │ Elasticsearch│  │ Neo4j            │  │
-│  │ (metadata)   │  │ (search)     │  │ (knowledge graph)│  │
-│  └──────────────┘  └──────────────┘  └──────────────────┘  │
-│                                                            │
-│  These are indexes, not source of truth.                   │
-│  All data can be rebuilt from the firehose.                │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+block-beta
+  columns 1
+  block:appview["Chive AppView"]
+    columns 3
+    pg["PostgreSQL\n(metadata)"]
+    es["Elasticsearch\n(search)"]
+    neo["Neo4j\n(knowledge graph)"]
+  end
+  note["These are indexes, not source of truth.\nAll data can be rebuilt from the firehose."]
 ```
 
 ### AppView responsibilities

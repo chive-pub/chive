@@ -236,28 +236,52 @@ export class TagManager {
         tag.updatedAt = datetime()
       ON MATCH SET
         tag.updatedAt = datetime()
-      WITH tag, tag.usageCount as existedCount
+      WITH tag
       MERGE (record {uri: $recordUri})
-      MERGE (record)-[r:TAGGED_WITH]->(tag)
-      ON CREATE SET
-        r.addedBy = $userDid,
-        r.addedAt = datetime()
-      WITH tag, existedCount > 0 as existed
-      SET tag.usageCount = tag.usageCount + 1
-      RETURN existed
+      // Check if relationship already exists before creating
+      OPTIONAL MATCH (record)-[existing:TAGGED_WITH]->(tag)
+      WITH tag, record, existing IS NULL as isNewRelationship
+      FOREACH (_ IN CASE WHEN isNewRelationship THEN [1] ELSE [] END |
+        MERGE (record)-[r:TAGGED_WITH]->(tag)
+        ON CREATE SET
+          r.addedBy = $userDid,
+          r.addedAt = datetime()
+      )
+      // Only increment usageCount if this is a new relationship
+      SET tag.usageCount = tag.usageCount + CASE WHEN isNewRelationship THEN 1 ELSE 0 END
+      RETURN NOT isNewRelationship as existed, tag.usageCount as usageCount, tag.paperCount as paperCount
     `;
 
-    const result = await this.connection.executeQuery<{ existed: boolean }>(query, {
+    const result = await this.connection.executeQuery<{
+      existed: boolean;
+      usageCount: number;
+      paperCount: number;
+    }>(query, {
       normalized,
       rawTag,
       recordUri,
       userDid,
     });
 
-    const existed = result.records[0]?.get('existed') ?? false;
+    const record = result.records[0];
+    const existed = record?.get('existed') ?? false;
+    const usageCount = Number(record?.get('usageCount')) || 1;
+    const paperCount = Number(record?.get('paperCount')) || 0;
 
     // Update unique users and paper counts asynchronously
     void this.updateTagStatistics(normalized);
+
+    // Record usage to facet history for trending calculation
+    if (this.facetHistoryRepository) {
+      void this.facetHistoryRepository
+        .recordDailySnapshot(normalized, usageCount, paperCount)
+        .catch((error) => {
+          this.logger?.warn('Failed to record tag usage snapshot', {
+            tag: normalized,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }
 
     return {
       rawForm: rawTag,
@@ -279,12 +303,32 @@ export class TagManager {
       WITH tag
       SET tag.usageCount = CASE WHEN tag.usageCount > 0 THEN tag.usageCount - 1 ELSE 0 END,
           tag.updatedAt = datetime()
+      RETURN tag.usageCount as usageCount, tag.paperCount as paperCount
     `;
 
-    await this.connection.executeQuery(query, { recordUri, normalizedTag });
+    const result = await this.connection.executeQuery<{
+      usageCount: number;
+      paperCount: number;
+    }>(query, { recordUri, normalizedTag });
+
+    const record = result.records[0];
+    const usageCount = Number(record?.get('usageCount')) || 0;
+    const paperCount = Number(record?.get('paperCount')) || 0;
 
     // Update statistics
     void this.updateTagStatistics(normalizedTag);
+
+    // Record updated usage to facet history for trending calculation
+    if (this.facetHistoryRepository) {
+      void this.facetHistoryRepository
+        .recordDailySnapshot(normalizedTag, usageCount, paperCount)
+        .catch((error) => {
+          this.logger?.warn('Failed to record tag usage snapshot after removal', {
+            tag: normalizedTag,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }
   }
 
   /**
@@ -404,7 +448,7 @@ export class TagManager {
     const minUsage = options?.minUsage ?? 5;
     const timeWindow = options?.timeWindow ?? 'week';
 
-    // If we have a facet history repository, use time-windowed trending
+    // If we have a facet history repository, try time-windowed trending first
     if (this.facetHistoryRepository) {
       const trendingFacets = await this.facetHistoryRepository.getTopTrending(
         timeWindow,
@@ -412,33 +456,32 @@ export class TagManager {
         minUsage
       );
 
-      // Look up the corresponding UserTag nodes
-      if (trendingFacets.length === 0) {
-        return [];
+      // If facet history has data, look up the corresponding UserTag nodes
+      if (trendingFacets.length > 0) {
+        const uris = trendingFacets.map((f) => f.facetUri);
+        const query = `
+          MATCH (tag:UserTag)
+          WHERE tag.normalizedForm IN $uris
+          RETURN tag
+        `;
+
+        const result = await this.connection.executeQuery<{
+          tag: Record<string, string | number | Date>;
+        }>(query, { uris });
+
+        // Map results preserving trending order
+        const tagMap = new Map<string, UserTag>();
+        for (const record of result.records) {
+          const tag = this.mapTag(record.get('tag'));
+          tagMap.set(tag.normalizedForm, tag);
+        }
+
+        // Return in trending order
+        return trendingFacets
+          .map((f) => tagMap.get(f.facetUri))
+          .filter((t): t is UserTag => t !== undefined);
       }
-
-      const uris = trendingFacets.map((f) => f.facetUri);
-      const query = `
-        MATCH (tag:UserTag)
-        WHERE tag.normalizedForm IN $uris
-        RETURN tag
-      `;
-
-      const result = await this.connection.executeQuery<{
-        tag: Record<string, string | number | Date>;
-      }>(query, { uris });
-
-      // Map results preserving trending order
-      const tagMap = new Map<string, UserTag>();
-      for (const record of result.records) {
-        const tag = this.mapTag(record.get('tag'));
-        tagMap.set(tag.normalizedForm, tag);
-      }
-
-      // Return in trending order
-      return trendingFacets
-        .map((f) => tagMap.get(f.facetUri))
-        .filter((t): t is UserTag => t !== undefined);
+      // Fall through to Neo4j query if facet history is empty
     }
 
     // Fallback: Use Neo4j growthRate field directly
@@ -890,17 +933,37 @@ export class TagManager {
   /**
    * Map Neo4j node to UserTag type.
    */
-  private mapTag(node: Record<string, string | number | Date>): UserTag {
+  private mapTag(node: Record<string, unknown>): UserTag {
+    // Neo4j Node objects have properties in a `properties` field
+    // Handle both direct property access and Node.properties access
+    const props =
+      'properties' in node && typeof node.properties === 'object' && node.properties !== null
+        ? (node.properties as Record<string, unknown>)
+        : node;
+
+    // Handle Neo4j DateTime object - it has toStandardDate() method
+    let createdAt: Date;
+    const rawCreatedAt = props.createdAt;
+    if (rawCreatedAt && typeof rawCreatedAt === 'object' && 'toStandardDate' in rawCreatedAt) {
+      createdAt = (rawCreatedAt as { toStandardDate: () => Date }).toStandardDate();
+    } else if (rawCreatedAt instanceof Date) {
+      createdAt = rawCreatedAt;
+    } else if (typeof rawCreatedAt === 'string') {
+      createdAt = new Date(rawCreatedAt);
+    } else {
+      createdAt = new Date(); // Fallback to now
+    }
+
     return {
-      normalizedForm: node.normalizedForm as string,
-      rawForm: node.rawForm as string,
-      usageCount: Number(node.usageCount) || 0,
-      uniqueUsers: Number(node.uniqueUsers) || 0,
-      paperCount: Number(node.paperCount) || 0,
-      qualityScore: Number(node.qualityScore) || 0.5,
-      spamScore: Number(node.spamScore) || 0,
-      growthRate: Number(node.growthRate) || 0,
-      createdAt: new Date(node.createdAt as string | Date),
+      normalizedForm: props.normalizedForm as string,
+      rawForm: props.rawForm as string,
+      usageCount: Number(props.usageCount) || 0,
+      uniqueUsers: Number(props.uniqueUsers) || 0,
+      paperCount: Number(props.paperCount) || 0,
+      qualityScore: Number(props.qualityScore) || 0.5,
+      spamScore: Number(props.spamScore) || 0,
+      growthRate: Number(props.growthRate) || 0,
+      createdAt,
     };
   }
 }

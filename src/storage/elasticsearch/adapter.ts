@@ -423,7 +423,8 @@ export class ElasticsearchAdapter implements ISearchEngine {
     const must: estypes.QueryDslQueryContainer[] = [];
     const filter: estypes.QueryDslQueryContainer[] = [];
 
-    if (query.q?.trim()) {
+    // Skip multi_match for empty queries or wildcard-only queries
+    if (query.q?.trim() && query.q.trim() !== '*') {
       must.push({
         multi_match: {
           query: query.q,

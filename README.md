@@ -132,6 +132,10 @@ chive/
 │   ├── integration/       # Integration tests
 │   ├── e2e/               # Playwright E2E tests
 │   └── compliance/        # ATProto compliance tests
+├── lexicons/               # ATProto lexicon schemas (pub.chive.*)
+├── scripts/                # Development and admin scripts
+├── docker/                 # Docker configurations
+└── k8s/                    # Kubernetes manifests
 ```
 
 ## ATProto compliance

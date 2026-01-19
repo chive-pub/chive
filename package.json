@@ -30,6 +30,7 @@
     "dev:stop": "./scripts/dev-stop.sh",
     "dev:stop:all": "./scripts/dev-stop.sh --all",
     "dev:api": "PORT=3001 tsx watch src/index.ts",
+    "dev:indexer": "tsx watch src/indexer.ts",
     "dev:turbo": "turbo dev",
     "build": "turbo build",
     "test": "turbo test",

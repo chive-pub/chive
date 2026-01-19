@@ -11,7 +11,7 @@ import { Search } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingTags, TagCloud, TagCloudSkeleton, TagList } from '@/components/tags';
+import { TrendingTags, TagList, TagListSkeleton } from '@/components/tags';
 import { useTrendingTags, useTagSearch } from '@/lib/hooks/use-tags';
 
 /**
@@ -68,7 +68,7 @@ export function TagsPageContent() {
       {/* Trending tags */}
       {!showSearchResults && <TrendingTags limit={20} timeWindow="week" linkToTags />}
 
-      {/* All tags cloud */}
+      {/* All tags */}
       {!showSearchResults && (
         <Card>
           <CardHeader>
@@ -76,9 +76,9 @@ export function TagsPageContent() {
           </CardHeader>
           <CardContent>
             {trendingLoading ? (
-              <TagCloudSkeleton count={30} />
-            ) : trendingData?.tags ? (
-              <TagCloud tags={trendingData.tags} linkToTags />
+              <TagListSkeleton count={20} layout="wrap" />
+            ) : trendingData?.tags && trendingData.tags.length > 0 ? (
+              <TagList tags={trendingData.tags} layout="wrap" linkToTags showCounts />
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">No tags yet</p>
             )}

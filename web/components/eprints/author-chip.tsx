@@ -207,8 +207,9 @@ export function AuthorChipList({
   const remainingCount = authors.length - displayedAuthors.length;
   const textSize = size === 'sm' ? 'text-xs' : 'text-sm';
 
-  // Check if any displayed authors are highlighted (for legend)
-  const hasHighlighted = displayedAuthors.some((a) => a.isHighlighted);
+  // Count highlighted authors - only show legend if multiple authors have equal contribution
+  const highlightedCount = displayedAuthors.filter((a) => a.isHighlighted).length;
+  const showEqualContributionLegend = highlightedCount >= 2;
 
   return (
     <div className={cn('space-y-1', className)}>
@@ -231,8 +232,8 @@ export function AuthorChipList({
         )}
       </div>
 
-      {/* Legend for highlighted authors */}
-      {showBadges && hasHighlighted && (
+      {/* Legend for highlighted authors - only show when multiple authors share equal contribution */}
+      {showBadges && showEqualContributionLegend && (
         <div className={cn('text-muted-foreground', textSize)}>
           <span className="text-primary">†</span> Equal contribution
         </div>

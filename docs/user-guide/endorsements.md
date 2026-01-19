@@ -1,35 +1,68 @@
 # Endorsements
 
-Endorsements are public signals of support for an eprint from recognized community members.
+Endorsements are public signals of support for an eprint from community members. They indicate which aspects of the research an endorser found valuable.
 
 ## What is an Endorsement?
 
-An endorsement indicates that a qualified researcher vouches for the quality and significance of an eprint. Unlike anonymous peer review, endorsements are public and linked to the endorser's identity.
+An endorsement indicates that a researcher vouches for specific contributions of an eprint. Unlike anonymous peer review, endorsements are public and linked to the endorser's identity.
 
-## Endorsement Types
+When you endorse an eprint, you select one or more **contribution types** that you're endorsing. This tells others exactly what you found valuable about the work.
 
-### Personal Endorsement
+## Contribution Types
 
-An individual researcher endorses an eprint based on their expertise. The endorser's profile and credentials are visible.
+Endorsements use a fine-grained system based on the CRediT (Contributor Roles Taxonomy) framework:
 
-### Organizational Endorsement
+### Core Research
 
-An organization (e.g., research group, journal) endorses an eprint. Organizational endorsements require authorized representatives.
+| Type           | Description                                                 |
+| -------------- | ----------------------------------------------------------- |
+| Methodological | Novel methods, techniques, approaches, protocols            |
+| Analytical     | Statistical, computational, or mathematical analysis        |
+| Theoretical    | Theoretical framework, conceptual model, theory development |
+| Empirical      | Data collection, experiments, observations, fieldwork       |
+| Conceptual     | Novel ideas, hypotheses, problem framing                    |
 
-## Endorsement Levels
+### Technical
 
-| Level       | Meaning                                      |
-| ----------- | -------------------------------------------- |
-| Read        | Endorser has read the eprint                 |
-| Verified    | Endorser has verified key claims or methods  |
-| Recommended | Endorser recommends the eprint to colleagues |
+| Type      | Description                                      |
+| --------- | ------------------------------------------------ |
+| Technical | Software, tools, infrastructure, instrumentation |
+| Data      | Dataset creation, curation, availability         |
+
+### Validation
+
+| Type            | Description                                        |
+| --------------- | -------------------------------------------------- |
+| Replication     | Successful replication of prior work               |
+| Reproducibility | Code/materials availability, reproducible workflow |
+
+### Synthesis
+
+| Type              | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| Synthesis         | Literature review, meta-analysis, systematic review |
+| Interdisciplinary | Cross-disciplinary integration, bridging fields     |
+
+### Communication
+
+| Type          | Description                              |
+| ------------- | ---------------------------------------- |
+| Pedagogical   | Educational value, clarity of exposition |
+| Visualization | Figures, graphics, data presentation     |
+
+### Impact
+
+| Type            | Description                                      |
+| --------------- | ------------------------------------------------ |
+| Societal Impact | Real-world applications, policy implications     |
+| Clinical        | Clinical relevance (for medical/health research) |
 
 ## Giving an Endorsement
 
 1. Open the eprint you want to endorse
 2. Click "Endorse" in the sidebar
-3. Select your endorsement level
-4. Optionally add a brief statement
+3. Select one or more contribution types you're endorsing
+4. Optionally add a comment explaining your endorsement
 5. Submit
 
 Endorsements are recorded in your PDS and displayed on the eprint page.
@@ -38,38 +71,45 @@ Endorsements are recorded in your PDS and displayed on the eprint page.
 
 Endorsements appear on:
 
-- The eprint detail page (sidebar)
-- Search results (endorsement count)
+- The eprint detail page (sidebar with counts by contribution type)
+- Search results (endorsement count badge)
 - Author profiles (endorsements given)
 
-## Endorser Eligibility
+The endorsement summary shows how many endorsers selected each contribution type, giving readers a quick overview of the paper's strengths.
 
-Anyone with an AT Protocol account can endorse eprints. However, endorsements from established researchers carry more weight in search rankings.
+## Endorser Visibility
 
-Factors that increase endorsement visibility:
+Anyone with an AT Protocol account can endorse eprints. Endorsements from established researchers may carry more weight in search rankings based on:
 
 - Account age
 - Number of authored eprints
 - Verification status (e.g., ORCID linked)
 - Previous endorsement history
 
-## Withdrawing Endorsements
+## Updating or Withdrawing Endorsements
 
-You can withdraw an endorsement at any time:
+You can update your endorsement at any time:
 
 1. Open the eprint
 2. Click "Your Endorsement"
-3. Click "Withdraw"
+3. Modify your contribution type selections or comment
+4. Save changes
 
-Withdrawn endorsements are removed from display but remain in the historical record.
+To withdraw an endorsement:
+
+1. Open the eprint
+2. Click "Your Endorsement"
+3. Click "Delete Endorsement"
+
+Deleted endorsements are removed from display and from your PDS.
 
 ## Endorsement Ethics
 
 ### Do
 
 - Endorse work you have actually read
-- Declare any relationships with authors
-- Base endorsements on scientific merit
+- Declare any relationships with authors in your comment
+- Select contribution types that accurately reflect the paper's strengths
 
 ### Do Not
 

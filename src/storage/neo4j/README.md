@@ -8,19 +8,48 @@ This is the knowledge graph layer for Chive. It stores field taxonomy (hierarchi
 
 **Critical note**: Neo4j is an index only. All source data lives in user PDSes and the Governance PDS. If Neo4j is deleted, rebuild from ATProto firehose. No user data is lost.
 
-## Files
+## Directory Structure
 
-The `connection.ts` file handles connection pooling, health checks, and session management. Schema setup happens in `setup.ts`, which creates constraints and indexes from the `.cypher` files in the schema directory.
+```
+neo4j/
+├── README.md                    # This file
+├── adapter.ts                   # IGraphStorage interface implementation
+├── connection.ts                # Connection pooling and health checks
+├── setup.ts                     # Schema initialization
+├── setup-manager.ts             # Schema migration management
+├── types.ts                     # Neo4j-specific type definitions
+├── author-repository.ts         # Author node operations
+├── citation-graph.ts            # Citation relationship tracking
+├── collaboration-graph.ts       # Co-author network
+├── edge-repository.ts           # Graph edge CRUD
+├── node-repository.ts           # Graph node CRUD
+├── facet-manager.ts             # PMEST/FAST facet system
+├── tag-manager.ts               # User tag management
+├── tag-spam-detector.ts         # Tag spam detection
+├── recommendations.ts           # Graph-based recommendations
+├── graph-algorithms.ts          # Neo4j GDS wrappers
+├── graph-algorithm-cache.ts     # Algorithm result caching
+├── moderation-service.ts        # Community voting logic
+├── proposal-handler.ts          # Proposal lifecycle
+├── sparql-client.ts             # Wikidata SPARQL queries
+└── schema/                      # Cypher schema files
+    ├── constraints.cypher       # Unique constraints
+    ├── indexes.cypher           # Performance indexes
+    └── initial-data.cypher      # Bootstrap data
+```
 
-Field operations live in `field-repository.ts`, which handles CRUD operations and hierarchy queries using materialized paths. Authority control is in `authority-repository.ts`, implementing IFLA LRM with variant detection and USE chain resolution.
+## Key Files
 
-The `facet-manager.ts` file manages the 10-dimensional classification system. User tags are handled by `tag-manager.ts`, which supports promotion from folksonomy to formal taxonomy.
-
-Community governance is split between `moderation-service.ts` (voting, consensus calculation, role weights) and `proposal-handler.ts` (proposal lifecycle, discussion threads).
-
-Wikidata integration uses `sparql-client.ts` for rate-limited SPARQL queries and `wikidata-connector.ts` for bootstrapping the taxonomy and enriching entities.
-
-Graph algorithms are in `graph-algorithms.ts`, which wraps Neo4j GDS library procedures for PageRank, betweenness, Dijkstra shortest path, and Louvain community detection.
+- **connection.ts**: Connection pooling, health checks, and session management
+- **setup.ts**: Creates constraints and indexes from `.cypher` files
+- **node-repository.ts**: CRUD for graph nodes (fields, authority records)
+- **edge-repository.ts**: CRUD for edges (relationships between nodes)
+- **facet-manager.ts**: 10-dimensional PMEST+FAST classification
+- **tag-manager.ts**: User tags with promotion to formal taxonomy
+- **moderation-service.ts**: Voting, consensus calculation, role weights
+- **proposal-handler.ts**: Proposal lifecycle and discussion threads
+- **graph-algorithms.ts**: Neo4j GDS wrappers (PageRank, Louvain, etc.)
+- **sparql-client.ts**: Rate-limited Wikidata SPARQL queries
 
 ## Authority Records
 

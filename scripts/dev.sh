@@ -108,6 +108,7 @@ echo "$MODE" > "$LOCKFILE"
 > "$PIDFILE"
 TUNNEL_PID=""
 API_PID=""
+INDEXER_PID=""
 WEB_PID=""
 
 # Cleanup handler
@@ -117,11 +118,13 @@ cleanup() {
 
   # Kill processes in reverse order
   [ -n "$WEB_PID" ] && kill $WEB_PID 2>/dev/null || true
+  [ -n "$INDEXER_PID" ] && kill $INDEXER_PID 2>/dev/null || true
   [ -n "$API_PID" ] && kill $API_PID 2>/dev/null || true
   [ -n "$TUNNEL_PID" ] && kill $TUNNEL_PID 2>/dev/null || true
 
   # Also kill by pattern to catch any stragglers
   pkill -f "ngrok http 3000" 2>/dev/null || true
+  pkill -f "tsx watch src/indexer.ts" 2>/dev/null || true
 
   # Clean up temp files
   rm -f "$LOCKFILE" "$PIDFILE" /tmp/chive-tunnel-url.env /tmp/lt-output.txt
@@ -260,6 +263,13 @@ for i in {1..30}; do
   sleep 1
 done
 
+# Start firehose indexer (consumes pub.chive.* records from ATProto relay)
+echo "   Starting firehose indexer..."
+npx tsx watch src/indexer.ts 2>&1 | sed 's/^/   [IDX] /' &
+INDEXER_PID=$!
+echo $INDEXER_PID >> "$PIDFILE"
+echo -e "${GREEN}   ✅ Indexer started${NC}"
+
 # Start frontend
 echo "   Starting frontend on :3000..."
 cd "$ROOT_DIR/web"
@@ -295,6 +305,10 @@ echo "   Local URLs:"
 echo "      Frontend:  http://127.0.0.1:3000"
 echo "      Backend:   http://127.0.0.1:3001"
 echo "      API Docs:  http://127.0.0.1:3001/docs"
+echo ""
+echo "   Background Services:"
+echo "      Firehose Indexer: Consuming pub.chive.* from wss://bsky.network"
+echo "      PDS Scanner:      Scanning registered PDSes every 15 minutes"
 echo ""
 echo "   Databases:"
 echo "      PostgreSQL:    postgresql://chive:chive_test_password@127.0.0.1:5432/chive"

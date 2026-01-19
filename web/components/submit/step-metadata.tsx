@@ -7,7 +7,7 @@
  * Step 2 of the submission wizard. Handles:
  * - Title and abstract (with rich text support)
  * - Keywords
- * - License selection
+ * - License selection (via knowledge graph autocomplete)
  *
  * @packageDocumentation
  */
@@ -15,13 +15,6 @@
 import { UseFormReturn, Controller } from 'react-hook-form';
 
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   FormControl,
   FormDescription,
@@ -33,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AnnotationEditor } from '@/components/annotations';
 import { extractPlainText } from '@/lib/utils/annotation-serializer';
+import { ConceptAutocomplete } from '@/components/forms/concept-autocomplete';
 import type { RichAnnotationBody } from '@/lib/api/schema';
 import type { EprintFormValues } from './submission-wizard';
 
@@ -53,43 +47,6 @@ export interface StepMetadataProps {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-
-/**
- * Available license options.
- * Values must match the Zod schema in submission-wizard.tsx
- */
-const LICENSE_OPTIONS = [
-  {
-    value: 'cc-by-4.0',
-    label: 'CC BY 4.0',
-    description: 'Attribution required. Commercial use allowed.',
-  },
-  {
-    value: 'cc-by-sa-4.0',
-    label: 'CC BY-SA 4.0',
-    description: 'Attribution required. Share-alike for derivatives.',
-  },
-  {
-    value: 'cc-by-nc-4.0',
-    label: 'CC BY-NC 4.0',
-    description: 'Attribution required. Non-commercial use only.',
-  },
-  {
-    value: 'cc-by-nc-sa-4.0',
-    label: 'CC BY-NC-SA 4.0',
-    description: 'Attribution, non-commercial, share-alike.',
-  },
-  {
-    value: 'cc0-1.0',
-    label: 'CC0 1.0 (Public Domain)',
-    description: 'No rights reserved. Public domain dedication.',
-  },
-  {
-    value: 'arxiv-perpetual',
-    label: 'arXiv Perpetual',
-    description: 'arXiv.org perpetual non-exclusive license.',
-  },
-] as const;
 
 /**
  * Empty rich text body for form default.
@@ -212,23 +169,19 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>License *</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a license" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {LICENSE_OPTIONS.map((license) => (
-                  <SelectItem key={license.value} value={license.value}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{license.label}</span>
-                      <span className="text-xs text-muted-foreground">{license.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <ConceptAutocomplete
+                id="license-select"
+                category="license"
+                value={field.value}
+                onSelect={(concept) => {
+                  // Use the concept ID as the license value
+                  field.onChange(concept.id);
+                }}
+                onClear={() => field.onChange('')}
+                placeholder="Search licenses..."
+              />
+            </FormControl>
             <FormDescription>
               Choose how others can use and share your work.{' '}
               <a

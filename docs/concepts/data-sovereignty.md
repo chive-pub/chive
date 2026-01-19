@@ -6,28 +6,26 @@ Data sovereignty means you own and control your scholarly work. In Chive, your e
 
 Traditional eprint services store your work on their servers. You're a guest in their house. Chive inverts this relationship:
 
-```
-Traditional Model                    Chive Model
-┌─────────────────────┐              ┌─────────────────────┐
-│   Platform Server   │              │      Your PDS       │
-│                     │              │                     │
-│  ┌───────────────┐  │              │  ┌───────────────┐  │
-│  │ Your eprint │  │              │  │ Your eprint │  │
-│  │ (they own it) │  │              │  │ (you own it)  │  │
-│  └───────────────┘  │              │  └───────────────┘  │
-│                     │              │                     │
-│  Platform controls  │              │  You control access │
-│  access, deletion,  │              │  and can migrate    │
-│  and terms          │              │  anytime            │
-└─────────────────────┘              └─────────────────────┘
-                                              │
-                                              ▼
-                                     ┌─────────────────────┐
-                                     │   Chive (AppView)   │
-                                     │                     │
-                                     │  Indexes your work  │
-                                     │  Never stores it    │
-                                     └─────────────────────┘
+```mermaid
+flowchart TB
+    subgraph traditional["Traditional Model"]
+        PlatformServer["Platform Server"]
+        PlatformEprint["Your eprint\n(they own it)"]
+        PlatformControl["Platform controls access,\ndeletion, and terms"]
+        PlatformServer --> PlatformEprint
+        PlatformServer --> PlatformControl
+    end
+
+    subgraph chive["Chive Model"]
+        YourPDS["Your PDS"]
+        YourEprint["Your eprint\n(you own it)"]
+        YouControl["You control access\nand can migrate anytime"]
+        ChiveAppView["Chive (AppView)\nIndexes your work\nNever stores it"]
+
+        YourPDS --> YourEprint
+        YourPDS --> YouControl
+        YourPDS --> ChiveAppView
+    end
 ```
 
 ## What Chive stores (and doesn't)
@@ -84,23 +82,17 @@ Every index in Chive can be rebuilt from the AT Protocol firehose. This design p
 2. **No lock-in**: Another AppView could index the same data
 3. **Auditability**: The firehose provides a complete event history
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                         Firehose                               │
-│  (complete stream of all repository events)                    │
-└────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌────────────────────────────────────────────────────────────────┐
-│                      Chive Indexes                             │
-│                                                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │ PostgreSQL   │  │ Elasticsearch│  │ Neo4j                │  │
-│  │              │  │              │  │                      │  │
-│  │ Can rebuild  │  │ Can rebuild  │  │ Can rebuild          │  │
-│  │ from firehose│  │ from firehose│  │ from firehose        │  │
-│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
-└────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Firehose["Firehose\n(complete stream of all repository events)"]
+
+    subgraph indexes["Chive Indexes"]
+        PG["PostgreSQL\nCan rebuild from firehose"]
+        ES["Elasticsearch\nCan rebuild from firehose"]
+        Neo["Neo4j\nCan rebuild from firehose"]
+    end
+
+    Firehose --> indexes
 ```
 
 ### Rebuild process
@@ -118,19 +110,18 @@ No user action required. No data migration. No export/import.
 
 Since your PDS is the source of truth, Chive periodically checks for staleness:
 
-```
-┌──────────┐        ┌──────────┐        ┌──────────┐
-│  Chive   │───────►│ Your PDS │───────►│  Result  │
-│  Index   │ check  │  Record  │compare │          │
-└──────────┘        └──────────┘        └──────────┘
-     │                   │                   │
-     │                   │                   │
-   Indexed            Current             Match?
-   version            version              │
-     │                   │                 ├─ Yes: Index valid
-     │                   │                 └─ No: Re-index
-     ▼                   ▼
-   rev: 3k5...        rev: 3k7...
+```mermaid
+flowchart LR
+    ChiveIndex["Chive Index\n(rev: 3k5...)"]
+    PDSRecord["Your PDS Record\n(rev: 3k7...)"]
+    Result{"Match?"}
+    Valid["Index valid"]
+    Reindex["Re-index"]
+
+    ChiveIndex -->|check| PDSRecord
+    PDSRecord -->|compare| Result
+    Result -->|Yes| Valid
+    Result -->|No| Reindex
 ```
 
 Staleness detection catches:
@@ -157,18 +148,16 @@ Your eprints, reviews, and endorsements move with you. No broken links. No lost 
 
 Your data is accessible to any compliant AppView:
 
-```
-                    ┌──────────────┐
-                    │   Your PDS   │
-                    └──────┬───────┘
-                           │
-           ┌───────────────┼───────────────┐
-           │               │               │
-           ▼               ▼               ▼
-    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-    │    Chive     │ │  Future App  │ │  Another App │
-    │  (eprints) │ │  (analytics) │ │  (citations) │
-    └──────────────┘ └──────────────┘ └──────────────┘
+```mermaid
+flowchart TB
+    PDS["Your PDS"]
+    Chive["Chive\n(eprints)"]
+    FutureApp["Future App\n(analytics)"]
+    AnotherApp["Another App\n(citations)"]
+
+    PDS --> Chive
+    PDS --> FutureApp
+    PDS --> AnotherApp
 ```
 
 Each AppView provides a different lens on your data. You don't need to re-upload anything.

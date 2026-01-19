@@ -377,3 +377,95 @@ export const authorsListResponseSchema = z.object({
  * @public
  */
 export type AuthorsListResponse = z.infer<typeof authorsListResponseSchema>;
+
+/**
+ * Search authors query params schema.
+ *
+ * @public
+ */
+export const searchAuthorsParamsSchema = z.object({
+  /**
+   * Search query text.
+   */
+  query: z.string().min(1).max(100).describe('Search query for author name'),
+
+  /**
+   * Maximum number of results.
+   */
+  limit: z.number().int().min(1).max(50).default(10).describe('Maximum results'),
+});
+
+/**
+ * Search authors params type.
+ *
+ * @public
+ */
+export type SearchAuthorsParams = z.infer<typeof searchAuthorsParamsSchema>;
+
+/**
+ * Search author result schema.
+ *
+ * @public
+ */
+export const searchAuthorResultSchema = z.object({
+  /**
+   * Author's DID.
+   */
+  did: didSchema,
+
+  /**
+   * Author's handle.
+   */
+  handle: z.string().optional().describe('Author handle'),
+
+  /**
+   * Display name.
+   */
+  displayName: z.string().optional().describe('Display name'),
+
+  /**
+   * Avatar URL.
+   */
+  avatar: z.string().url().optional().describe('Avatar URL'),
+
+  /**
+   * ORCID if available.
+   */
+  orcid: z.string().optional().describe('ORCID identifier'),
+
+  /**
+   * Whether author has eprints on Chive.
+   */
+  hasEprints: z.boolean().describe('Whether author has eprints on Chive'),
+
+  /**
+   * Whether author has a Chive profile.
+   */
+  hasProfile: z.boolean().describe('Whether author has a Chive profile'),
+});
+
+/**
+ * Search author result type.
+ *
+ * @public
+ */
+export type SearchAuthorResult = z.infer<typeof searchAuthorResultSchema>;
+
+/**
+ * Search authors response schema.
+ *
+ * @public
+ */
+export const searchAuthorsResponseSchema = z.object({
+  /**
+   * Matching authors.
+   */
+  authors: z.array(searchAuthorResultSchema).describe('Search results'),
+});
+
+/**
+ * Search authors response type.
+ *
+ * @public
+ */
+export type SearchAuthorsResponse = z.infer<typeof searchAuthorsResponseSchema>;

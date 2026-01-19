@@ -33,7 +33,7 @@ Click "Filters" to open the facet panel. Facets narrow results without changing 
 
 **Date Range**: Filter by submission date (e.g., last week, last month, custom range).
 
-**Status**: Filter by eprint status (under review, endorsed, published).
+**Publication Status**: Filter by lifecycle stage (eprint, under review, accepted, in press, published).
 
 **Author Affiliation**: Filter by institutional affiliation when available.
 
@@ -53,6 +53,39 @@ Results can be sorted by:
 3. Check spelling; the search suggests corrections
 4. Browse related fields for serendipitous discovery
 
+## Author Search
+
+Find researchers who have eprints on Chive:
+
+1. Go to **Authors** in the navigation
+2. Enter a researcher's name or DID
+3. Results show authors with Chive presence
+
+### Author Results Include
+
+- Display name and handle
+- Avatar (from Bluesky profile)
+- Number of eprints on Chive
+- Links to their author profile page
+
+### Search by DID
+
+You can search directly by AT Protocol DID:
+
+```
+did:plc:abc123xyz
+```
+
+This is useful when you know someone's identifier but not their handle.
+
 ## API Access
 
 Developers can access search via the REST API. See the [API Reference](../api-reference/rest-endpoints) for endpoint documentation.
+
+### Author Search API
+
+```http
+GET /xrpc/pub.chive.author.searchAuthors?query=Smith&limit=10
+```
+
+Returns matching authors with handles, avatars, and Chive presence indicators.

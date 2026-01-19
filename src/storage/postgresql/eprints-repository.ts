@@ -103,6 +103,7 @@ interface EprintRow extends Record<string, unknown> {
   readonly funding: string | null; // JSONB
   readonly conference_presentation: string | null; // JSONB
   readonly supplementary_materials: string | null; // JSONB
+  readonly fields: string | null; // JSONB
   readonly pds_url: string;
   readonly indexed_at: Date;
   readonly created_at: Date;
@@ -216,6 +217,7 @@ export class EprintsRepository {
           supplementary_materials: eprint.supplementaryMaterials
             ? JSON.stringify(eprint.supplementaryMaterials)
             : null,
+          fields: eprint.fields ? JSON.stringify(eprint.fields) : null,
           pds_url: eprint.pdsUrl,
           indexed_at: eprint.indexedAt,
           created_at: eprint.createdAt,
@@ -283,6 +285,7 @@ export class EprintsRepository {
           'funding',
           'conference_presentation',
           'supplementary_materials',
+          'fields',
           'pds_url',
           'indexed_at',
           'created_at'
@@ -340,39 +343,6 @@ export class EprintsRepository {
       const sortBy = options.sortBy ?? 'createdAt';
       const sortOrder = options.sortOrder ?? 'desc';
 
-      // Note: This queries by submitted_by. To query by any author DID,
-      // use the JSONB query: authors @> '[{"did": "..."}]'
-      let query = new SelectBuilder<EprintRow>()
-        .select(
-          'uri',
-          'cid',
-          'authors',
-          'submitted_by',
-          'paper_did',
-          'title',
-          'abstract',
-          'abstract_plain_text',
-          'document_blob_cid',
-          'document_blob_mime_type',
-          'document_blob_size',
-          'document_format',
-          'keywords',
-          'license',
-          'publication_status',
-          'published_version',
-          'external_ids',
-          'related_works',
-          'repositories',
-          'funding',
-          'conference_presentation',
-          'supplementary_materials',
-          'pds_url',
-          'indexed_at',
-          'created_at'
-        )
-        .from('eprints_index')
-        .where({ submitted_by: author });
-
       // Map sortBy to column name
       const sortColumn =
         sortBy === 'createdAt' ? 'created_at' : sortBy === 'indexedAt' ? 'indexed_at' : 'title';
@@ -380,10 +350,28 @@ export class EprintsRepository {
       // Convert to uppercase for SQL
       const sortDirection = sortOrder.toUpperCase() as 'ASC' | 'DESC';
 
-      query = query.orderBy(sortColumn, sortDirection).limit(limit).offset(offset);
+      // Use JSONB containment query to find eprints where the author DID
+      // appears anywhere in the authors array (not just submitted_by).
+      // The @> operator checks if the authors array contains an object with the given DID.
+      const query = `
+        SELECT
+          uri, cid, authors, submitted_by, paper_did, title, abstract,
+          abstract_plain_text, document_blob_cid, document_blob_mime_type,
+          document_blob_size, document_format, keywords, license,
+          publication_status, published_version, external_ids, related_works,
+          repositories, funding, conference_presentation, supplementary_materials,
+          fields, pds_url, indexed_at, created_at
+        FROM eprints_index
+        WHERE authors @> $1::jsonb
+        ORDER BY ${sortColumn} ${sortDirection}
+        LIMIT $2 OFFSET $3
+      `;
 
-      const builtQuery = query.build();
-      const result = await this.pool.query<EprintRow>(builtQuery.sql, [...builtQuery.params]);
+      const result = await this.pool.query<EprintRow>(query, [
+        JSON.stringify([{ did: author }]),
+        limit,
+        offset,
+      ]);
 
       return result.rows.map((row) => this.rowToEprint(row));
     } catch (error) {
@@ -626,6 +614,17 @@ export class EprintsRepository {
     const supplementaryMaterials = row.supplementary_materials
       ? (JSON.parse(row.supplementary_materials) as SupplementaryMaterial[])
       : undefined;
+    interface FieldRow {
+      uri: string;
+      label: string;
+      id?: string;
+      parentUri?: string;
+    }
+    const fields = row.fields
+      ? typeof row.fields === 'string'
+        ? (JSON.parse(row.fields) as FieldRow[])
+        : (row.fields as FieldRow[])
+      : undefined;
 
     // Parse abstract from JSONB - PostgreSQL returns objects directly
     // Handle legacy plain text abstracts by wrapping them in rich text format
@@ -674,6 +673,7 @@ export class EprintsRepository {
       funding,
       conferencePresentation,
       supplementaryMaterials,
+      fields,
       pdsUrl: row.pds_url,
       indexedAt: new Date(row.indexed_at),
       createdAt: new Date(row.created_at),

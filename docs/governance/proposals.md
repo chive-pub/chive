@@ -120,15 +120,14 @@ To establish parent-child relationships, submit separate edge proposals:
 
 ## Proposal lifecycle
 
-```
-┌─────────┐     ┌────────────┐     ┌────────┐     ┌─────────┐
-│  Draft  │────►│ Discussion │────►│ Voting │────►│ Outcome │
-└─────────┘     └────────────┘     └────────┘     └─────────┘
-     │                │                 │              │
-     │                │                 │              │
-     ▼                ▼                 ▼              ▼
-  Author           Comments          Tallied        Enacted
-  refines          & revisions       votes          or archived
+```mermaid
+flowchart LR
+    Draft --> Discussion --> Voting --> Outcome
+
+    Draft -.- DraftNote["Author refines"]
+    Discussion -.- DiscNote["Comments & revisions"]
+    Voting -.- VoteNote["Tallied votes"]
+    Outcome -.- OutNote["Enacted or archived"]
 ```
 
 ### Phase 1: Draft

@@ -61,15 +61,23 @@ export async function listForEprintHandler(
   let suggestions: EprintTagsResponse['suggestions'] = [];
   const topTag = eprintTags[0];
   if (topTag) {
-    // Use the most popular tag to get co-occurrence suggestions
-    const coOccurrences = await tagManager.getTagSuggestions(topTag.normalizedForm, 5);
-    suggestions = coOccurrences.map(({ tag, coOccurrenceCount }) => ({
-      displayForm: tag.rawForm,
-      normalizedForm: tag.normalizedForm,
-      confidence: Math.min(coOccurrenceCount / 10, 1), // Normalize to 0-1
-      source: 'cooccurrence' as const,
-      matchedTerm: topTag.normalizedForm,
-    }));
+    try {
+      // Use the most popular tag to get co-occurrence suggestions
+      const coOccurrences = await tagManager.getTagSuggestions(topTag.normalizedForm, 5);
+      suggestions = coOccurrences.map(({ tag, coOccurrenceCount }) => ({
+        displayForm: tag.rawForm,
+        normalizedForm: tag.normalizedForm,
+        confidence: Math.min(coOccurrenceCount / 10, 1), // Normalize to 0-1
+        source: 'cooccurrence' as const,
+        matchedTerm: topTag.normalizedForm,
+      }));
+    } catch (error) {
+      // Log but don't fail - suggestions are optional
+      logger.debug('Failed to get tag suggestions', {
+        error: error instanceof Error ? error.message : String(error),
+        topTag: topTag.normalizedForm,
+      });
+    }
   }
 
   const response: EprintTagsResponse = {

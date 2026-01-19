@@ -156,7 +156,10 @@ describe('XRPC Tag Handlers', () => {
       expect(result.tags).toHaveLength(3);
       expect(result.tags[0]?.normalizedForm).toBe('ai');
       expect(result.timeWindow).toBe('week');
-      expect(mockTagManager.getTrendingTags).toHaveBeenCalledWith(10, { timeWindow: 'week' });
+      expect(mockTagManager.getTrendingTags).toHaveBeenCalledWith(10, {
+        timeWindow: 'week',
+        minUsage: 1,
+      });
     });
 
     it('uses default limit of 20', async () => {
@@ -166,7 +169,10 @@ describe('XRPC Tag Handlers', () => {
         timeWindow: 'week',
       });
 
-      expect(mockTagManager.getTrendingTags).toHaveBeenCalledWith(20, { timeWindow: 'week' });
+      expect(mockTagManager.getTrendingTags).toHaveBeenCalledWith(20, {
+        timeWindow: 'week',
+        minUsage: 1,
+      });
     });
   });
 

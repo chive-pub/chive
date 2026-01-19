@@ -152,9 +152,12 @@ export async function searchSubmissionsHandler(
         })),
         submittedBy: eprintData.submittedBy,
         paperDid: eprintData.paperDid,
-        fields: undefined as
-          | { id?: string; uri: string; label: string; parentUri?: string }[]
-          | undefined,
+        fields: eprintData.fields?.map((f) => ({
+          id: f.id,
+          uri: f.uri,
+          label: f.label,
+          parentUri: f.parentUri,
+        })),
         license: eprintData.license,
         createdAt: eprintData.createdAt.toISOString(),
         indexedAt: eprintData.indexedAt.toISOString(),

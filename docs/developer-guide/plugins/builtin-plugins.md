@@ -323,17 +323,22 @@ Tracks references from WhiteWind research notes.
 
 Some plugins depend on others:
 
-```
-DiscoveryService
-├── semantic-scholar (optional)
-├── openalex (optional)
-└── crossref (optional)
+```mermaid
+flowchart TB
+    subgraph Discovery["DiscoveryService"]
+        DS[DiscoveryService]
+        DS -.->|optional| SS1[semantic-scholar]
+        DS -.->|optional| OA1[openalex]
+        DS -.->|optional| CR[crossref]
+    end
 
-ClaimingService
-├── orcid (for verification)
-├── semantic-scholar (for author matching)
-├── openalex (for author matching)
-└── openreview (for profile verification)
+    subgraph Claiming["ClaimingService"]
+        CS[ClaimingService]
+        CS --> ORCID[orcid<br/>for verification]
+        CS --> SS2[semantic-scholar<br/>for author matching]
+        CS --> OA2[openalex<br/>for author matching]
+        CS --> OR[openreview<br/>for profile verification]
+    end
 ```
 
 If optional plugins are unavailable, the service falls back to local data.

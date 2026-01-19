@@ -118,32 +118,26 @@ interface ReconciliationDocument {
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Governance PDS                              │
-│                     (did:plc:chive-governance)                  │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                     Repository                           │   │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐│   │
-│  │  │  Authority  │ │   Facets    │ │    Proposals        ││   │
-│  │  │  Records    │ │             │ │                     ││   │
-│  │  └─────────────┘ └─────────────┘ └─────────────────────┘│   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                              │                                  │
-│                              ▼                                  │
-│                      AT Protocol Firehose                       │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       Chive AppView                             │
-│                                                                 │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────────┐   │
-│  │   L1 Cache  │────►│   L2 Cache  │────►│   PostgreSQL    │   │
-│  │   (Redis)   │     │   (PDS)     │     │   (indexed)     │   │
-│  └─────────────┘     └─────────────┘     └─────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph GovPDS["Governance PDS (did:plc:chive-governance)"]
+        subgraph Repo["Repository"]
+            Auth["Authority Records"]
+            Facets["Facets"]
+            Proposals["Proposals"]
+        end
+    end
+
+    Firehose["AT Protocol Firehose"]
+
+    subgraph AppView["Chive AppView"]
+        L1["L1 Cache (Redis)"]
+        L2["L2 Cache (PDS)"]
+        PG["PostgreSQL (indexed)"]
+        L1 --> L2 --> PG
+    end
+
+    GovPDS --> Firehose --> AppView
 ```
 
 ## Cache strategy
@@ -160,15 +154,13 @@ interface ReconciliationDocument {
 
 When governance data changes:
 
-```
-Proposal approved → Write to Governance PDS
-                          │
-                          ▼
-                    Firehose event
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-     Redis clear    ES reindex      Neo4j update
+```mermaid
+flowchart TB
+    Approved["Proposal approved"] --> Write["Write to Governance PDS"]
+    Write --> Event["Firehose event"]
+    Event --> Redis["Redis clear"]
+    Event --> ES["ES reindex"]
+    Event --> Neo["Neo4j update"]
 ```
 
 ## Security

@@ -11,11 +11,13 @@
 import { checkStalenessEndpoint } from './checkStaleness.js';
 import { indexRecordEndpoint } from './indexRecord.js';
 import { refreshRecordEndpoint } from './refreshRecord.js';
+import { registerPDSEndpoint } from './registerPDS.js';
 import { verifySyncEndpoint } from './verify.js';
 
 export { checkStalenessEndpoint, checkStalenessHandler } from './checkStaleness.js';
 export { indexRecordEndpoint, indexRecordHandler } from './indexRecord.js';
 export { refreshRecordEndpoint, refreshRecordHandler } from './refreshRecord.js';
+export { registerPDSEndpoint, registerPDSHandler } from './registerPDS.js';
 export { verifySyncEndpoint, verifySyncHandler } from './verify.js';
 
 /**
@@ -27,5 +29,6 @@ export const syncEndpoints = [
   checkStalenessEndpoint,
   indexRecordEndpoint,
   refreshRecordEndpoint,
+  registerPDSEndpoint,
   verifySyncEndpoint,
 ] as const;

@@ -37,8 +37,60 @@ import {
   getCurrentAgent,
   setE2EMockAgent,
 } from './oauth-client';
-import { clearServiceAuthTokens } from './service-auth';
+import { clearServiceAuthTokens, getServiceAuthToken } from './service-auth';
 import { ensureChiveProfile } from '../atproto/record-creator';
+
+/**
+ * Registers the user's PDS with Chive and syncs their existing records.
+ *
+ * @remarks
+ * This ensures records from non-Bluesky PDSes are discovered and indexed,
+ * even if they don't appear in the firehose. When called with an authenticated
+ * agent, it also scans the user's DID for existing Chive records to backfill
+ * any historical submissions.
+ */
+async function registerUserPDS(pdsEndpoint: string, agent: Agent | null): Promise<void> {
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // If we have an agent, get a service auth token so the backend knows our DID
+    // This enables scanning our records for backfill
+    if (agent) {
+      try {
+        const token = await getServiceAuthToken(agent, 'pub.chive.sync.registerPDS');
+        headers['Authorization'] = `Bearer ${token}`;
+      } catch (authError) {
+        console.warn('Failed to get service auth token for PDS registration:', authError);
+        // Continue without auth - PDS will still be registered
+      }
+    }
+
+    const response = await fetch(`${apiBase}/xrpc/pub.chive.sync.registerPDS`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ pdsUrl: pdsEndpoint }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+      // Don't throw for "already exists" - that's fine
+      if (error.status !== 'already_exists' && error.status !== 'scanned') {
+        console.warn('PDS registration response:', error);
+      }
+    } else {
+      const result = await response.json().catch(() => ({}));
+      if (result.status === 'scanned') {
+        console.info('Synced existing records:', result.message);
+      }
+    }
+  } catch (error) {
+    // Log but don't fail login if PDS registration fails
+    console.warn('PDS registration failed:', error);
+  }
+}
 
 /**
  * Initial auth state.
@@ -176,6 +228,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
               console.warn('Failed to ensure Chive profile:', err);
             });
           }
+
+          // Register user's PDS and sync their existing Chive records
+          // This backfills historical submissions that weren't captured in real-time
+          if (callbackResult.user.pdsEndpoint && callbackResult.user.pdsEndpoint !== 'unknown') {
+            registerUserPDS(callbackResult.user.pdsEndpoint, agent).catch((err) => {
+              console.warn('Failed to register PDS:', err);
+            });
+          }
           return;
         }
 
@@ -197,6 +257,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
             },
             error: null,
           });
+
+          // Register user's PDS and sync their existing Chive records on session restore
+          if (restoredSession.user.pdsEndpoint && restoredSession.user.pdsEndpoint !== 'unknown') {
+            const restoredAgent = getCurrentAgent();
+            registerUserPDS(restoredSession.user.pdsEndpoint, restoredAgent).catch((err) => {
+              console.warn('Failed to register PDS:', err);
+            });
+          }
           return;
         }
 

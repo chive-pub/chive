@@ -606,26 +606,14 @@ The frontend uses AT Protocol OAuth for authentication.
 
 ### OAuth flow
 
-```
-User clicks "Sign in"
-         │
-         ▼
-Enter handle (e.g., user.bsky.social)
-         │
-         ▼
-Redirect to PDS authorization endpoint
-         │
-         ▼
-User approves access to Chive AppView
-         │
-         ▼
-Redirect back with authorization code
-         │
-         ▼
-Exchange code for access token
-         │
-         ▼
-Store session in secure cookie
+```mermaid
+flowchart TB
+    A[User clicks 'Sign in'] --> B[Enter handle<br/>e.g., user.bsky.social]
+    B --> C[Redirect to PDS authorization endpoint]
+    C --> D[User approves access to Chive AppView]
+    D --> E[Redirect back with authorization code]
+    E --> F[Exchange code for access token]
+    F --> G[Store session in secure cookie]
 ```
 
 ### Auth utilities
@@ -674,18 +662,68 @@ await createEndorsementRecord(agent, {
 
 ## Page routes
 
-| Route                      | Description                                 |
-| -------------------------- | ------------------------------------------- |
-| `/`                        | Home page with trending and recent eprints  |
-| `/search`                  | Search results with faceted filtering       |
-| `/eprints/[uri]`           | Eprint detail with reviews and endorsements |
-| `/authors/[did]`           | Author profile with their eprints           |
-| `/fields`                  | Field taxonomy browser                      |
-| `/fields/[id]`             | Field detail with eprints                   |
-| `/governance`              | Governance proposals list                   |
-| `/governance/[proposalId]` | Proposal detail with voting                 |
-| `/claims`                  | User's authorship claims                    |
-| `/settings`                | User settings and preferences               |
+### Public routes
+
+| Route                        | Description                                 |
+| ---------------------------- | ------------------------------------------- |
+| `/`                          | Home page with trending and recent eprints  |
+| `/about`                     | About Chive                                 |
+| `/search`                    | Search results with faceted filtering       |
+| `/browse`                    | Browse eprints by category                  |
+| `/trending`                  | Trending eprints and tags                   |
+| `/eprints`                   | Eprints listing                             |
+| `/eprints/[...uri]`          | Eprint detail with reviews and endorsements |
+| `/authors`                   | Author discovery and search                 |
+| `/authors/[did]`             | Author profile with their eprints           |
+| `/tags`                      | Tag cloud and popular tags                  |
+| `/tags/[tag]`                | Eprints for a specific tag                  |
+| `/fields`                    | Field taxonomy browser                      |
+| `/fields/[id]`               | Field detail with eprints                   |
+| `/fields/explore`            | Interactive field explorer                  |
+| `/graph`                     | Knowledge graph visualization               |
+| `/governance`                | Governance overview                         |
+| `/governance/proposals`      | Proposal listings                           |
+| `/governance/proposals/[id]` | Proposal detail with voting                 |
+| `/governance/proposals/new`  | Create new proposal                         |
+| `/governance/moderation`     | Moderation queue                            |
+| `/governance/admin`          | Governance administration                   |
+
+### Authentication routes
+
+| Route                       | Description                |
+| --------------------------- | -------------------------- |
+| `/login`                    | Login page                 |
+| `/oauth/callback`           | OAuth callback handler     |
+| `/oauth/paper-callback`     | Paper OAuth callback       |
+| `/oauth/paper-popup`        | Paper OAuth popup flow     |
+| `/onboarding/link-accounts` | Account linking onboarding |
+
+### Dashboard routes (authenticated)
+
+| Route                      | Description                   |
+| -------------------------- | ----------------------------- |
+| `/dashboard`               | User dashboard overview       |
+| `/dashboard/eprints`       | User's eprints                |
+| `/dashboard/claims`        | Authorship claims management  |
+| `/dashboard/reviews`       | User's reviews                |
+| `/dashboard/endorsements`  | User's endorsements           |
+| `/dashboard/notifications` | Notifications center          |
+| `/dashboard/settings`      | User settings and preferences |
+
+### Submission routes (authenticated)
+
+| Route                                 | Description                        |
+| ------------------------------------- | ---------------------------------- |
+| `/submit`                             | Eprint submission wizard           |
+| `/submit/claim/[source]/[externalId]` | Claim external paper (arXiv, etc.) |
+
+### Alpha program routes
+
+| Route          | Description                |
+| -------------- | -------------------------- |
+| `/apply`       | Alpha tester application   |
+| `/pending`     | Pending application status |
+| `/coming-soon` | Coming soon placeholder    |
 
 ## Testing
 

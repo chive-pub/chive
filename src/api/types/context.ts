@@ -25,6 +25,8 @@ import type { TrustedEditorService } from '../../services/governance/trusted-edi
 import type { ImportService } from '../../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../../services/metrics/metrics-service.js';
+import type { IPDSRegistry } from '../../services/pds-discovery/pds-registry.js';
+import type { PDSScanner } from '../../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../../services/pds-sync/sync-service.js';
 import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
@@ -69,6 +71,8 @@ export interface ChiveServices {
   readonly graphAlgorithmCache?: GraphAlgorithmCache;
   readonly trustedEditor?: TrustedEditorService;
   readonly governancePdsWriter?: GovernancePDSWriter;
+  readonly pdsRegistry?: IPDSRegistry;
+  readonly pdsScanner?: PDSScanner;
 }
 
 /**

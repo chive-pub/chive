@@ -4,17 +4,11 @@ Chive uses OpenTelemetry for observability with Prometheus metrics and Grafana d
 
 ## Architecture
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Chive     │────▶│  OTel       │────▶│  Prometheus │
-│   Services  │     │  Collector  │     │             │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                               │
-                                               ▼
-                                        ┌─────────────┐
-                                        │   Grafana   │
-                                        │ (Dashboards)│
-                                        └─────────────┘
+```mermaid
+flowchart LR
+    A[Chive Services] --> B[OTel Collector]
+    B --> C[Prometheus]
+    C --> D[Grafana<br/>Dashboards]
 ```
 
 ## Metrics

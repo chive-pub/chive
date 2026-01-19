@@ -209,20 +209,14 @@ cd docker && docker compose -f docker-compose.local.yml down
 
 ## Architecture
 
-```
-┌─────────────────┐     ┌─────────────────┐
-│   Frontend      │────▶│   Backend API   │
-│ 127.0.0.1:3000  │     │ 127.0.0.1:3001  │
-└────────┬────────┘     └────────┬────────┘
-         │                       │
-         │              ┌────────┴────────┐
-         │              │                 │
-         ▼              ▼                 ▼
-┌─────────────┐  ┌───────────┐  ┌─────────────┐
-│  ATProto    │  │  Docker   │  │   Docker    │
-│  OAuth PDS  │  │  Postgres │  │   Redis     │
-└─────────────┘  │  Neo4j    │  │ Elasticsearch│
-                 └───────────┘  └─────────────┘
+```mermaid
+flowchart TB
+    Frontend["Frontend<br/>127.0.0.1:3000"] --> Backend["Backend API<br/>127.0.0.1:3001"]
+
+    Frontend --> ATProto["ATProto<br/>OAuth PDS"]
+
+    Backend --> Docker1["Docker<br/>Postgres<br/>Neo4j"]
+    Backend --> Docker2["Docker<br/>Redis<br/>Elasticsearch"]
 ```
 
 ## Security Notes

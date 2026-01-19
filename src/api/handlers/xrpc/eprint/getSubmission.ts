@@ -145,7 +145,12 @@ export async function getSubmissionHandler(
       detectedFormat: item.detectedFormat,
       order: item.order,
     })),
-    fields: undefined,
+    fields: result.fields?.map((f) => ({
+      id: f.id,
+      uri: f.uri,
+      label: f.label,
+      parentUri: f.parentUri,
+    })),
     keywords: result.keywords ? [...result.keywords] : undefined,
     license: result.license,
     doi: undefined,

@@ -37,7 +37,7 @@ Users recognized for expertise in specific fields:
 
 - Vote on proposals in their area of expertise
 - Provide specialist input on field changes
-- Weighted votes (2.5x standard)
+- Weighted votes (3.0x standard)
 
 ### Graph editors
 
@@ -46,7 +46,7 @@ Users responsible for maintaining knowledge graph nodes:
 - Manage knowledge graph nodes (fields, facets, authorities)
 - Reconcile with external vocabularies (Wikidata, LCSH, VIAF)
 - Approve node and edge changes
-- Weighted votes (2.0x standard)
+- Weighted votes (3.0x standard)
 
 ### Administrators
 
@@ -102,11 +102,9 @@ By storing governance data in a PDS, it remains:
 
 ## Proposal lifecycle
 
-```
-┌──────────┐     ┌─────────────┐     ┌──────────┐     ┌───────────┐
-│  Draft   │────►│  Discussion │────►│  Voting  │────►│  Outcome  │
-│          │     │  (7 days)   │     │ (5 days) │     │           │
-└──────────┘     └─────────────┘     └──────────┘     └───────────┘
+```mermaid
+flowchart LR
+    Draft --> Discussion["Discussion\n(7 days)"] --> Voting["Voting\n(5 days)"] --> Outcome
 ```
 
 1. **Draft**: Proposer creates and refines the proposal
@@ -124,8 +122,8 @@ Not all votes are equal. Vote weight depends on:
 | ---------------- | ----------------- |
 | Community member | 1.0x              |
 | Trusted editor   | 2.0x              |
-| Graph editor     | 2.0x              |
-| Domain expert    | 2.5x              |
+| Graph editor     | 3.0x              |
+| Domain expert    | 3.0x              |
 | Administrator    | 5.0x              |
 
 See [Voting system](./voting-system.md) for thresholds and quorum requirements.

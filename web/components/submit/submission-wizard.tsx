@@ -279,18 +279,6 @@ const WIZARD_STEPS: WizardStep[] = [
 ];
 
 /**
- * License values for validation.
- */
-const LICENSE_VALUES = [
-  'cc-by-4.0',
-  'cc-by-sa-4.0',
-  'cc-by-nc-4.0',
-  'cc-by-nc-sa-4.0',
-  'cc0-1.0',
-  'arxiv-perpetual',
-] as const;
-
-/**
  * Document format values for validation.
  */
 const DOCUMENT_FORMAT_VALUES = [
@@ -354,7 +342,7 @@ const formSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500, 'Title too long'),
   abstract: z.string().min(50, 'Abstract must be at least 50 characters').max(10000),
   keywords: z.array(z.string()).max(20).optional(),
-  license: z.enum(LICENSE_VALUES),
+  license: z.string().min(1, 'License is required'),
 
   // Step 4: Authors
   // Note: Using nullish() to allow null values and external collaborators without DIDs
@@ -425,7 +413,7 @@ const stepSchemas = {
     title: z.string().min(1, 'Title is required').max(500),
     abstract: z.string().min(50, 'Abstract must be at least 50 characters').max(10000),
     keywords: z.array(z.string()).max(20).optional(),
-    license: z.enum(LICENSE_VALUES),
+    license: z.string().min(1, 'License is required'),
   }),
   authors: z.object({
     authors: z

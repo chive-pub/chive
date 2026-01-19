@@ -61,7 +61,8 @@ export type ConceptCategory =
   | 'platform-preregistration'
   | 'platform-protocol'
   | 'supplementary-type'
-  | 'presentation-type';
+  | 'presentation-type'
+  | 'license';
 
 /**
  * Concept status.
@@ -136,6 +137,7 @@ const CATEGORY_TO_SUBKIND: Record<ConceptCategory, string> = {
   'platform-protocol': 'platform-protocol',
   'supplementary-type': 'supplementary-category',
   'presentation-type': 'presentation-type',
+  license: 'license',
 };
 
 const CATEGORY_LABELS: Record<ConceptCategory, string> = {
@@ -151,6 +153,7 @@ const CATEGORY_LABELS: Record<ConceptCategory, string> = {
   'platform-protocol': 'Protocol Platform',
   'supplementary-type': 'Supplementary Type',
   'presentation-type': 'Presentation Type',
+  license: 'License',
 };
 
 /**
@@ -506,20 +509,97 @@ const FALLBACK_OPTIONS: Partial<Record<ConceptCategory, ConceptSuggestion[]>> = 
 // =============================================================================
 
 /**
+ * Maps category to kind in the knowledge graph.
+ */
+const CATEGORY_TO_KIND: Partial<Record<ConceptCategory, string>> = {
+  license: 'object',
+};
+
+/**
+ * Maps a node response to a ConceptSuggestion.
+ */
+function mapNodeToSuggestion(
+  node: {
+    id: string;
+    uri: string;
+    label: string;
+    description?: string;
+    subkind: string;
+    status: string;
+    externalIds?: Array<{ system: string; identifier: string }>;
+  },
+  category: ConceptCategory
+): ConceptSuggestion {
+  return {
+    id: node.id,
+    uri: node.uri,
+    name: node.label,
+    description: node.description,
+    category: category,
+    status: node.status as ConceptStatus,
+    wikidataId: node.externalIds?.find((ext) => ext.system === 'wikidata')?.identifier,
+    lcshId: node.externalIds?.find((ext) => ext.system === 'lcsh')?.identifier,
+    fastId: node.externalIds?.find((ext) => ext.system === 'fast')?.identifier,
+  };
+}
+
+/**
+ * List all concepts of a category using the listNodes endpoint.
+ */
+async function listConcepts(category: ConceptCategory): Promise<ConceptSuggestion[]> {
+  try {
+    const subkind = CATEGORY_TO_SUBKIND[category] ?? category;
+    const kind = CATEGORY_TO_KIND[category] ?? 'type';
+    const params = new URLSearchParams({
+      subkind,
+      kind,
+      limit: '50',
+    });
+
+    const url = `/xrpc/pub.chive.graph.listNodes?${params.toString()}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.debug('Node list not available yet');
+      return [];
+    }
+
+    const data = await response.json();
+    return (data.nodes ?? []).map((node: Parameters<typeof mapNodeToSuggestion>[0]) =>
+      mapNodeToSuggestion(node, category)
+    );
+  } catch (error) {
+    console.debug('Node list failed:', error);
+    return [];
+  }
+}
+
+/**
  * Search concepts using unified node API.
  */
 async function searchConcepts(
   query: string,
   category: ConceptCategory
 ): Promise<ConceptSuggestion[]> {
-  if (query.length < 2) return [];
+  // For categories without fallbacks (like license), use listNodes when query is empty
+  const hasFallbacks = FALLBACK_OPTIONS[category] !== undefined;
+
+  // If no query and no fallbacks, list all nodes of this category
+  if (query.length < 2) {
+    if (hasFallbacks) {
+      return [];
+    }
+    // Use listNodes for categories without fallbacks
+    return listConcepts(category);
+  }
 
   try {
     const subkind = CATEGORY_TO_SUBKIND[category] ?? category;
+    const kind = CATEGORY_TO_KIND[category] ?? 'type';
     const params = new URLSearchParams({
-      query,
       subkind,
-      kind: 'type',
+      kind,
+      query,
     });
 
     const url = `/xrpc/pub.chive.graph.searchNodes?${params.toString()}`;
@@ -531,27 +611,9 @@ async function searchConcepts(
     }
 
     const data = await response.json();
-    return (data.nodes ?? []).map(
-      (node: {
-        id: string;
-        uri: string;
-        label: string;
-        description?: string;
-        subkind: string;
-        status: string;
-        externalIds?: Array<{ system: string; identifier: string }>;
-      }) => ({
-        id: node.id,
-        uri: node.uri,
-        name: node.label,
-        description: node.description,
-        category: category,
-        status: node.status as ConceptStatus,
-        wikidataId: node.externalIds?.find((ext) => ext.system === 'wikidata')?.identifier,
-        lcshId: node.externalIds?.find((ext) => ext.system === 'lcsh')?.identifier,
-        fastId: node.externalIds?.find((ext) => ext.system === 'fast')?.identifier,
-      })
-    ) as ConceptSuggestion[];
+    return (data.nodes ?? []).map((node: Parameters<typeof mapNodeToSuggestion>[0]) =>
+      mapNodeToSuggestion(node, category)
+    );
   } catch (error) {
     console.debug('Node search failed:', error);
     return [];
@@ -585,16 +647,22 @@ export function ConceptAutocomplete({
 
   const debouncedQuery = useDebounce(query, 300);
 
-  // Search for concepts
-  const { data: apiResults = [], isLoading } = useQuery({
-    queryKey: ['concept-search', category, debouncedQuery],
-    queryFn: () => searchConcepts(debouncedQuery, category),
-    enabled: debouncedQuery.length >= 2,
-    staleTime: 60 * 1000,
-  });
-
   // Get fallback options for this category
   const fallbackOptions = useMemo(() => FALLBACK_OPTIONS[category] ?? [], [category]);
+  const hasFallbacks = fallbackOptions.length > 0;
+
+  // Search for concepts
+  // For categories without fallbacks (like license), enable search even with empty query
+  const {
+    data: apiResults = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['concept-search', category, debouncedQuery],
+    queryFn: () => searchConcepts(debouncedQuery, category),
+    enabled: hasFallbacks ? debouncedQuery.length >= 2 : true,
+    staleTime: 60 * 1000,
+  });
 
   // Combine API results with filtered fallbacks
   const suggestions = useMemo(() => {
@@ -602,6 +670,13 @@ export function ConceptAutocomplete({
 
     // If we have API results, use them
     if (apiResults.length > 0) {
+      // Filter by query if provided
+      if (query.length >= 1) {
+        return apiResults.filter(
+          (s) =>
+            s.name.toLowerCase().includes(lowerQuery) || s.id.toLowerCase().includes(lowerQuery)
+        );
+      }
       return apiResults;
     }
 
@@ -616,31 +691,47 @@ export function ConceptAutocomplete({
   }, [apiResults, fallbackOptions, query]);
 
   // Update selected value when external value changes
+  // Skip if selectedValue already matches (we just selected it via handleSelect)
   useEffect(() => {
     if (value) {
-      const match = fallbackOptions.find((f) => f.uri === value || f.id === value);
-      if (match) {
-        setSelectedValue(match);
-      } else {
-        // Try to extract a reasonable display name
-        const name = value.split('/').pop() ?? value;
-        setSelectedValue({
-          id: name,
-          uri: value,
-          name: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-          category,
-          status: 'established',
-        });
+      // If selectedValue already matches this value, don't overwrite it
+      // This preserves the name from handleSelect
+      if (selectedValue && (selectedValue.id === value || selectedValue.uri === value)) {
+        return;
       }
+
+      // First check fallback options
+      const fallbackMatch = fallbackOptions.find((f) => f.uri === value || f.id === value);
+      if (fallbackMatch) {
+        setSelectedValue(fallbackMatch);
+        return;
+      }
+
+      // Then check API results
+      const apiMatch = apiResults.find((r) => r.uri === value || r.id === value);
+      if (apiMatch) {
+        setSelectedValue(apiMatch);
+        return;
+      }
+
+      // Fallback: create a display-friendly name from the ID
+      const name = value.split('/').pop() ?? value;
+      setSelectedValue({
+        id: value,
+        uri: value,
+        name: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        category,
+        status: 'established',
+      });
     } else {
       setSelectedValue(null);
     }
-  }, [value, fallbackOptions, category]);
+  }, [value, fallbackOptions, apiResults, category, selectedValue]);
 
   const handleSelect = useCallback(
     (suggestion: ConceptSuggestion) => {
-      // Don't set selectedValue - let the parent manage selected state
-      // This allows the parent to control display of selected items
+      // Set selectedValue immediately so we preserve the full concept info (including name)
+      setSelectedValue(suggestion);
       setQuery('');
       setIsOpen(false);
       onSelect(suggestion);
@@ -662,7 +753,11 @@ export function ConceptAutocomplete({
 
   const handleFocus = useCallback(() => {
     setIsOpen(true);
-  }, []);
+    // For categories without fallbacks, refetch to ensure we have data
+    if (!hasFallbacks) {
+      refetch();
+    }
+  }, [hasFallbacks, refetch]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
