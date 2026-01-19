@@ -329,19 +329,11 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
   // Transform facets
   const facets = transformFacets(record.facets);
 
-  // Determine submittedBy - use explicit field or infer from first author with DID
-  let submittedBy: DID;
-  if (record.submittedBy) {
-    submittedBy = record.submittedBy as DID;
-  } else {
-    const authorWithDid = authors.find((a) => a.did);
-    if (authorWithDid?.did) {
-      submittedBy = authorWithDid.did;
-    } else {
-      // Extract DID from URI: at://did:plc:xxx/collection/rkey
-      submittedBy = uri.split('/')[2] as DID;
-    }
+  // submittedBy is required - it must be the actual user who submitted
+  if (!record.submittedBy) {
+    throw new ValidationError('Missing required field: submittedBy', 'submittedBy');
   }
+  const submittedBy = record.submittedBy as DID;
 
   // Transform funding
   const funding = record.fundingInfo?.map((f) => ({

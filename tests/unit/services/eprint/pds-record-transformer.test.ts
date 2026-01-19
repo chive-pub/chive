@@ -402,28 +402,15 @@ describe('transformPDSRecord', () => {
       expect(result.submittedBy).toBe('did:plc:explicit-submitter');
     });
 
-    it('infers submittedBy from first author with DID', () => {
+    it('throws ValidationError when submittedBy is missing', () => {
       const pdsRecord = createMockPDSRecord({
         submittedBy: undefined,
-        authors: [
-          { name: 'External Author', order: 1 }, // No DID
-          { name: 'Author With DID', order: 2, did: 'did:plc:inferred' },
-        ],
       });
-      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      expect(result.submittedBy).toBe('did:plc:inferred');
-    });
-
-    it('infers submittedBy from URI if no author has DID', () => {
-      const pdsRecord = createMockPDSRecord({
-        submittedBy: undefined,
-        authors: [{ name: 'External Author', order: 1 }],
-      });
-      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
-
-      // URI is at://did:plc:test/..., so DID is extracted
-      expect(result.submittedBy).toBe('did:plc:test');
+      expect(() => transformPDSRecord(pdsRecord, mockUri, mockCid)).toThrow(ValidationError);
+      expect(() => transformPDSRecord(pdsRecord, mockUri, mockCid)).toThrow(
+        'Missing required field: submittedBy'
+      );
     });
   });
 
