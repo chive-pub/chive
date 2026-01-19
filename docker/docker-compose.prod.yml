@@ -190,6 +190,22 @@ services:
     restart: "no"
 
   # ---------------------------------------------------------------------------
+  # Elasticsearch Setup (runs once before API starts)
+  # ---------------------------------------------------------------------------
+  chive-es-setup:
+    image: chive:${CHIVE_VERSION:-latest}
+    container_name: chive-es-setup
+    command: ["node", "--enable-source-maps", "dist/scripts/db/setup-elasticsearch.js"]
+    env_file:
+      - .env.production
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - chive-network
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
   # Chive API (AppView)
   # ---------------------------------------------------------------------------
   chive-api:
@@ -212,6 +228,8 @@ services:
       neo4j:
         condition: service_healthy
       chive-migrate:
+        condition: service_completed_successfully
+      chive-es-setup:
         condition: service_completed_successfully
     networks:
       - chive-network
