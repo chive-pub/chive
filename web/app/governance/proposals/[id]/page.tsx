@@ -128,7 +128,7 @@ export default function ProposalDetailPage() {
           </Badge>
         </div>
         <h1 className="text-2xl font-bold tracking-tight">
-          {proposal.label ?? proposal.fieldId ?? 'Untitled Proposal'}
+          {proposal.label ?? proposal.changes.label ?? 'Untitled Proposal'}
         </h1>
         <p className="text-muted-foreground">
           Proposed by {proposal.proposerName ?? proposal.proposedBy} on{' '}
