@@ -33,14 +33,27 @@ interface ParsedErrorResponse {
 function parseErrorResponse(body: unknown): ParsedErrorResponse {
   if (body && typeof body === 'object') {
     const e = body as Record<string, unknown>;
+
+    // Handle backend format: { error: { code, message, ... } }
+    // The backend wraps errors in an `error` object per Stripe/GitHub conventions
+    const errorObj = (e.error && typeof e.error === 'object' ? e.error : e) as Record<
+      string,
+      unknown
+    >;
+
     return {
       code:
-        typeof e.code === 'string' ? e.code : typeof e.error === 'string' ? e.error : 'API_ERROR',
-      message: typeof e.message === 'string' ? e.message : 'An unknown error occurred',
-      status: typeof e.status === 'number' ? e.status : undefined,
+        typeof errorObj.code === 'string'
+          ? errorObj.code
+          : typeof e.error === 'string'
+            ? e.error
+            : 'API_ERROR',
+      message:
+        typeof errorObj.message === 'string' ? errorObj.message : 'An unknown error occurred',
+      status: typeof errorObj.status === 'number' ? errorObj.status : undefined,
       details:
-        typeof e.details === 'object' && e.details !== null
-          ? (e.details as ParsedErrorResponse['details'])
+        typeof errorObj.details === 'object' && errorObj.details !== null
+          ? (errorObj.details as ParsedErrorResponse['details'])
           : undefined,
     };
   }

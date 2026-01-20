@@ -151,6 +151,12 @@ export async function indexRecordHandler(
 
   // Users can only index their own records (or admins can index any)
   if (!user.isAdmin && user.did !== did) {
+    // Log DID mismatch for debugging (at debug level per industry standard)
+    logger.debug('DID ownership check failed', {
+      userDid: user.did,
+      recordDid: did,
+      uri: input.uri,
+    });
     throw new ValidationError('Can only index your own records', 'uri');
   }
 
