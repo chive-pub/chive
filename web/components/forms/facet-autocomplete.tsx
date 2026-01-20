@@ -46,8 +46,12 @@ import type { FacetDimension } from '@/lib/api/schema';
  * Facet value suggestion.
  */
 export interface FacetSuggestion {
-  /** Facet value slug (used as ID) */
+  /** Human-readable slug (used as the facet value) */
   id: string;
+  /** Human-readable slug (alias for id, for clarity) */
+  slug: string;
+  /** AT-URI of the node (if from API) */
+  uri?: string;
   /** Display label */
   label: string;
   /** Description */
@@ -112,6 +116,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
   'form-genre': [
     {
       id: 'original-research',
+      slug: 'original-research',
       label: 'Original Research',
       description: 'Primary research article',
       dimension: 'form-genre',
@@ -119,6 +124,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'review',
+      slug: 'review',
       label: 'Review',
       description: 'Literature review',
       dimension: 'form-genre',
@@ -126,6 +132,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'systematic-review',
+      slug: 'systematic-review',
       label: 'Systematic Review',
       description: 'Systematic literature review',
       dimension: 'form-genre',
@@ -133,6 +140,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'meta-analysis',
+      slug: 'meta-analysis',
       label: 'Meta-Analysis',
       description: 'Statistical synthesis of studies',
       dimension: 'form-genre',
@@ -140,6 +148,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'case-study',
+      slug: 'case-study',
       label: 'Case Study',
       description: 'In-depth case examination',
       dimension: 'form-genre',
@@ -147,6 +156,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'commentary',
+      slug: 'commentary',
       label: 'Commentary',
       description: 'Commentary or opinion piece',
       dimension: 'form-genre',
@@ -154,6 +164,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'methods-paper',
+      slug: 'methods-paper',
       label: 'Methods Paper',
       description: 'Methodology description',
       dimension: 'form-genre',
@@ -161,6 +172,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'thesis',
+      slug: 'thesis',
       label: 'Thesis/Dissertation',
       description: 'Academic thesis',
       dimension: 'form-genre',
@@ -168,6 +180,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'conference-paper',
+      slug: 'conference-paper',
       label: 'Conference Paper',
       description: 'Conference proceeding',
       dimension: 'form-genre',
@@ -175,6 +188,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'preprint',
+      slug: 'preprint',
       label: 'Preprint',
       description: 'Pre-publication manuscript',
       dimension: 'form-genre',
@@ -184,6 +198,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
   energy: [
     {
       id: 'qualitative-research',
+      slug: 'qualitative-research',
       label: 'Qualitative Research',
       description: 'Non-numerical data analysis',
       dimension: 'energy',
@@ -191,6 +206,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'quantitative-research',
+      slug: 'quantitative-research',
       label: 'Quantitative Research',
       description: 'Statistical/numerical analysis',
       dimension: 'energy',
@@ -198,6 +214,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'mixed-methods',
+      slug: 'mixed-methods',
       label: 'Mixed Methods',
       description: 'Qualitative and quantitative',
       dimension: 'energy',
@@ -205,6 +222,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'meta-analysis',
+      slug: 'meta-analysis',
       label: 'Meta-Analysis',
       description: 'Statistical synthesis',
       dimension: 'energy',
@@ -212,6 +230,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'systematic-review',
+      slug: 'systematic-review',
       label: 'Systematic Review',
       description: 'Systematic literature review',
       dimension: 'energy',
@@ -219,6 +238,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'randomized-controlled-trial',
+      slug: 'randomized-controlled-trial',
       label: 'Randomized Controlled Trial',
       description: 'RCT methodology',
       dimension: 'energy',
@@ -226,6 +246,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'observational-study',
+      slug: 'observational-study',
       label: 'Observational Study',
       description: 'Non-interventional research',
       dimension: 'energy',
@@ -233,6 +254,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'machine-learning',
+      slug: 'machine-learning',
       label: 'Machine Learning',
       description: 'ML-based analysis',
       dimension: 'energy',
@@ -240,6 +262,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'simulation',
+      slug: 'simulation',
       label: 'Simulation',
       description: 'Computational modeling',
       dimension: 'energy',
@@ -247,6 +270,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'survey-research',
+      slug: 'survey-research',
       label: 'Survey Research',
       description: 'Survey-based methodology',
       dimension: 'energy',
@@ -256,6 +280,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
   space: [
     {
       id: 'global',
+      slug: 'global',
       label: 'Global',
       description: 'Worldwide scope',
       dimension: 'space',
@@ -263,6 +288,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'europe',
+      slug: 'europe',
       label: 'Europe',
       description: 'European region',
       dimension: 'space',
@@ -270,14 +296,23 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'north-america',
+      slug: 'north-america',
       label: 'North America',
       description: 'North American region',
       dimension: 'space',
       usageCount: 0,
     },
-    { id: 'asia', label: 'Asia', description: 'Asian region', dimension: 'space', usageCount: 0 },
+    {
+      id: 'asia',
+      slug: 'asia',
+      label: 'Asia',
+      description: 'Asian region',
+      dimension: 'space',
+      usageCount: 0,
+    },
     {
       id: 'africa',
+      slug: 'africa',
       label: 'Africa',
       description: 'African region',
       dimension: 'space',
@@ -285,6 +320,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'south-america',
+      slug: 'south-america',
       label: 'South America',
       description: 'South American region',
       dimension: 'space',
@@ -292,6 +328,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'oceania',
+      slug: 'oceania',
       label: 'Oceania',
       description: 'Oceanian region',
       dimension: 'space',
@@ -299,6 +336,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'middle-east',
+      slug: 'middle-east',
       label: 'Middle East',
       description: 'Middle Eastern region',
       dimension: 'space',
@@ -306,6 +344,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'southeast-asia',
+      slug: 'southeast-asia',
       label: 'Southeast Asia',
       description: 'Southeast Asian region',
       dimension: 'space',
@@ -313,6 +352,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'sub-saharan-africa',
+      slug: 'sub-saharan-africa',
       label: 'Sub-Saharan Africa',
       description: 'Sub-Saharan African region',
       dimension: 'space',
@@ -322,6 +362,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
   time: [
     {
       id: '21st-century',
+      slug: '21st-century',
       label: '21st Century',
       description: '2001-present',
       dimension: 'time',
@@ -329,6 +370,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: '20th-century',
+      slug: '20th-century',
       label: '20th Century',
       description: '1901-2000',
       dimension: 'time',
@@ -336,6 +378,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: '19th-century',
+      slug: '19th-century',
       label: '19th Century',
       description: '1801-1900',
       dimension: 'time',
@@ -343,6 +386,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'contemporary',
+      slug: 'contemporary',
       label: 'Contemporary',
       description: '2010-present',
       dimension: 'time',
@@ -350,6 +394,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'digital-age',
+      slug: 'digital-age',
       label: 'Digital Age',
       description: '1970s-present',
       dimension: 'time',
@@ -357,6 +402,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'cold-war-era',
+      slug: 'cold-war-era',
       label: 'Cold War Era',
       description: '1947-1991',
       dimension: 'time',
@@ -364,6 +410,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'world-war-ii-era',
+      slug: 'world-war-ii-era',
       label: 'World War II Era',
       description: '1939-1945',
       dimension: 'time',
@@ -371,6 +418,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'interwar-period',
+      slug: 'interwar-period',
       label: 'Interwar Period',
       description: '1918-1939',
       dimension: 'time',
@@ -378,6 +426,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'industrial-revolution',
+      slug: 'industrial-revolution',
       label: 'Industrial Revolution',
       description: 'c. 1760-1840',
       dimension: 'time',
@@ -385,6 +434,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
     },
     {
       id: 'historical',
+      slug: 'historical',
       label: 'Historical',
       description: 'Pre-1900',
       dimension: 'time',
@@ -437,13 +487,18 @@ async function searchFacetValues(
 
     const data = await response.json();
     return (data.nodes ?? []).map(
-      (node: { id: string; uri: string; label: string; description?: string; slug?: string }) => ({
-        id: node.slug ?? node.id,
-        label: node.label,
-        description: node.description ?? null,
-        dimension,
-        usageCount: 0,
-      })
+      (node: { id: string; uri: string; label: string; description?: string; slug?: string }) => {
+        const slug = node.slug ?? node.id;
+        return {
+          id: slug,
+          slug,
+          uri: node.uri,
+          label: node.label,
+          description: node.description ?? null,
+          dimension,
+          usageCount: 0,
+        };
+      }
     );
   } catch (error) {
     console.debug('Facet search failed:', error);
@@ -519,6 +574,7 @@ export function FacetAutocomplete({
         // Create a placeholder for unknown values
         setSelectedValue({
           id: value,
+          slug: value,
           label: value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
           description: null,
           dimension,

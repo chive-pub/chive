@@ -207,7 +207,7 @@ function FieldTreeNode({ field, selectedId, onSelect, level }: FieldTreeNodeProp
 
   const mightHaveChildren = hasChildCount(field) ? (field.childCount ?? 0) > 0 : true;
 
-  const { data: children, isLoading: isLoadingChildren } = useFieldChildren(field.id, {
+  const { data: children, isLoading: isLoadingChildren } = useFieldChildren(field.uri, {
     enabled: isExpanded && mightHaveChildren,
   });
 

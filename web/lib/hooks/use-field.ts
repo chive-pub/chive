@@ -315,18 +315,21 @@ interface UseFieldChildrenOptions {
 
 /**
  * Fetches children of a field.
+ *
+ * @param fieldUri - The AT-URI of the field node
+ * @param options - Query options
  */
-export function useFieldChildren(fieldId: string, options: UseFieldChildrenOptions = {}) {
+export function useFieldChildren(fieldUri: string, options: UseFieldChildrenOptions = {}) {
   const { enabled = true } = options;
 
   return useQuery({
-    queryKey: fieldKeys.children(fieldId),
+    queryKey: fieldKeys.children(fieldUri),
     queryFn: async (): Promise<FieldSummaryNode[]> => {
       const { data, error } = await api.GET('/xrpc/pub.chive.graph.listEdges', {
         params: {
           query: {
             limit: 100,
-            sourceUri: fieldId,
+            sourceUri: fieldUri,
             relationSlug: 'narrower',
             status: 'established',
           },
@@ -375,7 +378,7 @@ export function useFieldChildren(fieldId: string, options: UseFieldChildrenOptio
           })
         );
     },
-    enabled: !!fieldId && enabled,
+    enabled: !!fieldUri && enabled,
     staleTime: 60 * 60 * 1000,
   });
 }
