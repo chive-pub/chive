@@ -22,26 +22,6 @@ import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Maps internal endorsement type to API contribution types.
- *
- * @internal
- */
-function mapEndorsementTypeToContributions(
-  endorsementType: 'methods' | 'results' | 'overall'
-): ('methodological' | 'analytical' | 'theoretical' | 'empirical' | 'conceptual')[] {
-  switch (endorsementType) {
-    case 'methods':
-      return ['methodological'];
-    case 'results':
-      return ['empirical'];
-    case 'overall':
-      return ['conceptual'];
-    default:
-      return ['conceptual'];
-  }
-}
-
-/**
  * Handler for pub.chive.endorsement.getUserEndorsement query.
  *
  * @param c - Hono context with Chive environment
@@ -72,7 +52,7 @@ export async function getUserEndorsementHandler(
     throw new NotFoundError('Endorsement', `user=${params.userDid}, eprint=${params.eprintUri}`);
   }
 
-  // Map to API format
+  // Map to API format (contributions now comes directly from service)
   const response: Endorsement = {
     uri: endorsement.uri,
     eprintUri: endorsement.eprintUri,
@@ -80,7 +60,7 @@ export async function getUserEndorsementHandler(
       did: endorsement.endorser,
       handle: 'unknown', // Handle would need to be resolved via DID
     },
-    contributions: mapEndorsementTypeToContributions(endorsement.endorsementType),
+    contributions: endorsement.contributions as string[],
     comment: endorsement.comment,
     createdAt: endorsement.createdAt.toISOString(),
   };

@@ -21,26 +21,6 @@ import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCEndpoint } from '../../../types/handlers.js';
 
 /**
- * Maps internal endorsement type to API contribution types.
- *
- * @internal
- */
-function mapEndorsementTypeToContributions(
-  endorsementType: 'methods' | 'results' | 'overall'
-): ('methodological' | 'analytical' | 'theoretical' | 'empirical' | 'conceptual')[] {
-  switch (endorsementType) {
-    case 'methods':
-      return ['methodological'];
-    case 'results':
-      return ['empirical'];
-    case 'overall':
-      return ['conceptual'];
-    default:
-      return ['conceptual'];
-  }
-}
-
-/**
  * Handler for pub.chive.endorsement.listForEprint query.
  *
  * @param c - Hono context with Chive environment
@@ -72,7 +52,7 @@ export async function listForEprintHandler(
   // Get summary for this eprint
   const summary = await reviewService.getEndorsementSummary(params.eprintUri as AtUri);
 
-  // Map service results to API format
+  // Map service results to API format (contributions now comes directly from service)
   let endorsements = result.items.map((item) => ({
     uri: item.uri,
     eprintUri: item.eprintUri,
@@ -80,7 +60,7 @@ export async function listForEprintHandler(
       did: item.endorser,
       handle: 'unknown', // Handle would need to be resolved via DID
     },
-    contributions: mapEndorsementTypeToContributions(item.endorsementType),
+    contributions: item.contributions as string[],
     comment: item.comment,
     createdAt: item.createdAt.toISOString(),
   }));

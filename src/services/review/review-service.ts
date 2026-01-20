@@ -109,13 +109,24 @@ function extractDidFromUri(uri: AtUri): DID {
 /**
  * Endorsement view for display.
  *
+ * @remarks
+ * Aligned with pub.chive.review.endorsement lexicon.
+ * Uses `contributions` array instead of legacy `endorsementType`.
+ *
  * @public
  */
 export interface EndorsementView {
   readonly uri: AtUri;
   readonly endorser: DID;
   readonly eprintUri: AtUri;
-  readonly endorsementType: 'methods' | 'results' | 'overall';
+  /**
+   * Array of contribution slugs being endorsed.
+   *
+   * @remarks
+   * Values from endorsement-contribution nodes in knowledge graph.
+   * Examples: 'methodological', 'empirical', 'reproducibility'
+   */
+  readonly contributions: readonly string[];
   readonly comment?: string;
   readonly createdAt: Date;
 }
@@ -609,11 +620,11 @@ export class ReviewService {
         uri: string;
         endorser_did: string;
         eprint_uri: string;
-        endorsement_type: 'methods' | 'results' | 'overall';
+        contributions: string[];
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
+        `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND endorser_did = $2
          LIMIT 1`,
@@ -629,7 +640,7 @@ export class ReviewService {
         uri: row.uri as AtUri,
         endorser: row.endorser_did as DID,
         eprintUri: row.eprint_uri as AtUri,
-        endorsementType: row.endorsement_type,
+        contributions: row.contributions ?? [],
         comment: row.comment ?? undefined,
         createdAt: new Date(row.created_at),
       };
@@ -669,7 +680,7 @@ export class ReviewService {
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
-      let query = `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
+      let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1`;
       const params: unknown[] = [eprintUri];
@@ -690,7 +701,7 @@ export class ReviewService {
         uri: string;
         endorser_did: string;
         eprint_uri: string;
-        endorsement_type: 'methods' | 'results' | 'overall';
+        contributions: string[];
         comment: string | null;
         created_at: Date;
       }>(query, params);
@@ -710,7 +721,7 @@ export class ReviewService {
           uri: row.uri as AtUri,
           endorser: row.endorser_did as DID,
           eprintUri: row.eprint_uri as AtUri,
-          endorsementType: row.endorsement_type,
+          contributions: row.contributions ?? [],
           comment: row.comment ?? undefined,
           createdAt: new Date(row.created_at),
         })),
