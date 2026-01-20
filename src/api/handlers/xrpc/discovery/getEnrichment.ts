@@ -61,7 +61,20 @@ export async function getEnrichmentHandler(
   }
 
   // Get enrichment data from discovery service
-  const enrichment = await discovery.getEnrichment(params.uri as AtUri);
+  let enrichment;
+  try {
+    enrichment = await discovery.getEnrichment(params.uri as AtUri);
+  } catch (error) {
+    // Log but don't fail - return unavailable response
+    logger.warn('Failed to get enrichment data', {
+      uri: params.uri,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return {
+      enrichment: null,
+      available: false,
+    };
+  }
 
   if (!enrichment) {
     logger.debug('No enrichment data available', { uri: params.uri });
