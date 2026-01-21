@@ -17,8 +17,6 @@ import neo4j from 'neo4j-driver';
 
 const PDS_URL = process.env.GOVERNANCE_PDS_URL ?? 'https://governance.chive.pub';
 const GOVERNANCE_DID = process.env.GOVERNANCE_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd';
-const GOVERNANCE_HANDLE = process.env.GOVERNANCE_HANDLE ?? 'chive-governance.governance.chive.pub';
-const GOVERNANCE_PASSWORD = process.env.GOVERNANCE_PASSWORD;
 
 const NEO4J_URI = process.env.NEO4J_URI ?? 'bolt://localhost:7687';
 const NEO4J_USER = process.env.NEO4J_USER ?? 'neo4j';
@@ -92,10 +90,6 @@ function subkindToLabel(slug: string): string {
 }
 
 async function main(): Promise<void> {
-  if (!GOVERNANCE_PASSWORD) {
-    throw new Error('GOVERNANCE_PASSWORD environment variable required');
-  }
-
   console.log('===========================================');
   console.log('Governance PDS → Neo4j Reindex Script');
   console.log('===========================================');
@@ -103,11 +97,8 @@ async function main(): Promise<void> {
   console.log(`Neo4j URI: ${NEO4J_URI}`);
   console.log();
 
-  // Connect to PDS
+  // Connect to PDS (no auth needed - public records are readable without authentication)
   const agent = new AtpAgent({ service: PDS_URL });
-  console.log('Authenticating with Governance PDS...');
-  await agent.login({ identifier: GOVERNANCE_HANDLE, password: GOVERNANCE_PASSWORD });
-  console.log('Authenticated.\n');
 
   // Connect to Neo4j
   console.log('Connecting to Neo4j...');

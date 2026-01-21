@@ -151,12 +151,12 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
           orcid: a.orcid,
           email: a.email,
           order: a.order,
-          affiliations: a.affiliations.map((af) => ({
+          affiliations: (a.affiliations ?? []).map((af) => ({
             name: af.name,
             rorId: af.rorId,
             department: af.department,
           })),
-          contributions: a.contributions.map((contrib) => ({
+          contributions: (a.contributions ?? []).map((contrib) => ({
             typeUri: contrib.typeUri as string,
             typeId: contrib.typeId ?? '',
             typeLabel: contrib.typeLabel ?? '',

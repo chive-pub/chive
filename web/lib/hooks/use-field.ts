@@ -398,17 +398,19 @@ interface FieldEprintsResponse {
  * The searchSubmissions API returns SearchHit objects containing only URI and score.
  * This hook returns minimal eprint references. Callers should use useEprint to
  * fetch full eprint details for display if needed.
+ *
+ * @param fieldUri - The full AT-URI of the field node (e.g., at://did:plc:.../pub.chive.graph.node/...)
  */
-export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions = {}) {
+export function useFieldEprints(fieldUri: string, options: UseFieldEprintsOptions = {}) {
   const { limit = 10, enabled = true } = options;
 
   return useInfiniteQuery({
-    queryKey: fieldKeys.eprints(fieldId),
+    queryKey: fieldKeys.eprints(fieldUri),
     queryFn: async ({ pageParam }): Promise<FieldEprintsResponse> => {
       try {
         const response = await api.pub.chive.eprint.searchSubmissions({
           q: '*', // Required parameter - search all eprints
-          fieldUris: [fieldId],
+          fieldUris: [fieldUri],
           limit,
           cursor: pageParam as string | undefined,
         });
@@ -435,7 +437,7 @@ export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
-    enabled: !!fieldId && enabled,
+    enabled: !!fieldUri && enabled,
     staleTime: 5 * 60 * 1000,
   });
 }

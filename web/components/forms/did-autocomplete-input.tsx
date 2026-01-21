@@ -126,7 +126,7 @@ function useActorSearch() {
 
       try {
         const chiveResponse = await fetch(
-          `${baseUrl}/xrpc/pub.chive.author.searchAuthors?query=${encodeURIComponent(cleanQuery)}&limit=8`,
+          `${baseUrl}/xrpc/pub.chive.author.searchAuthors?q=${encodeURIComponent(cleanQuery)}&limit=8`,
           { signal: controller.signal }
         );
 

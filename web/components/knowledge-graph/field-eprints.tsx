@@ -11,8 +11,8 @@ import type { EprintSummary } from '@/lib/api/schema';
  * Props for the FieldEprints component.
  */
 export interface FieldEprintsProps {
-  /** Field ID */
-  fieldId: string;
+  /** Field AT-URI (e.g., at://did:plc:.../pub.chive.graph.node/...) */
+  fieldUri: string;
   /** Display layout */
   layout?: 'list' | 'grid';
   /** Card variant */
@@ -32,21 +32,21 @@ export interface FieldEprintsProps {
  *
  * @example
  * ```tsx
- * <FieldEprints fieldId="computer-science" layout="list" />
+ * <FieldEprints fieldUri="at://did:plc:.../pub.chive.graph.node/..." layout="list" />
  * ```
  *
  * @param props - Component props
  * @returns React element displaying the field's eprints
  */
 export function FieldEprints({
-  fieldId,
+  fieldUri,
   layout = 'list',
   cardVariant = 'default',
   limit = 10,
   className,
 }: FieldEprintsProps) {
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
-    useFieldEprints(fieldId, { limit });
+    useFieldEprints(fieldUri, { limit });
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {

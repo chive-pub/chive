@@ -130,7 +130,7 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
           {/* Eprints section */}
           <section>
             <h2 className="mb-6 text-2xl font-semibold">Eprints in {field.label}</h2>
-            <FieldEprints fieldId={fieldId} layout="list" />
+            <FieldEprints fieldUri={field.uri} layout="list" />
           </section>
         </div>
 
