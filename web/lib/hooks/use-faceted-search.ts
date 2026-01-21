@@ -151,7 +151,7 @@ export function useFacetCounts(currentFilters: DynamicFacetFilters = {}) {
     queryFn: async (): Promise<FacetDefinition[]> => {
       const response = await api.pub.chive.graph.browseFaceted({
         facets: Object.keys(currentFilters).length > 0 ? JSON.stringify(currentFilters) : undefined,
-        limit: 0, // Don't return results, just facets
+        limit: 1, // Minimum limit - we only care about facets
       });
       return (response.data as FacetedSearchResponse).facets;
     },

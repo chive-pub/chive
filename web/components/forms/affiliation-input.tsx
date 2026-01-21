@@ -163,7 +163,7 @@ function useDualSourceSearch() {
       const [chiveResponse, rorResponse] = await Promise.allSettled([
         // Chive knowledge graph - using unified node search
         fetch(
-          `/xrpc/pub.chive.graph.searchNodes?q=${encodeURIComponent(searchQuery)}&subkind=institution&kind=object&limit=5`,
+          `/xrpc/pub.chive.graph.searchNodes?query=${encodeURIComponent(searchQuery)}&subkind=institution&kind=object&limit=5`,
           { signal: controller.signal }
         ),
         // ROR API (only if query is 3+ chars)
