@@ -20,6 +20,7 @@
   "dependencies": {
     "@atproto/api": "^0.18.3",
     "@atproto/common-web": "^0.4.9",
+    "@atproto/lexicon": "^0.5.2",
     "@atproto/oauth-client-browser": "^0.3.37",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
