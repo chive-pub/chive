@@ -61,19 +61,20 @@ Use this for:
 
 ### TypeScript
 
+The frontend uses lexicon-generated types for full type safety:
+
 ```typescript
-import createClient from 'openapi-fetch';
-import type { paths } from './schema.generated';
+// Import types from schema re-exports
+import type { GetSubmissionResponse, EprintRecord } from '@/lib/api/schema';
 
-const api = createClient<paths>({
-  baseUrl: 'https://api.chive.pub',
-});
+// Types are generated from ATProto lexicons
+// Source: lexicons/pub/chive/* -> src/lexicons/generated/types/*
+// Re-exported: web/lib/api/schema.ts
 
-const { data: eprint } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
-  params: {
-    query: { uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...' },
-  },
-});
+// Example: Fetching an eprint with SWR
+const { data, error } = useSWR<GetSubmissionResponse>(
+  `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
+);
 ```
 
 ## Rate limits

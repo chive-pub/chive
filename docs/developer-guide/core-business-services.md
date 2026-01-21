@@ -378,8 +378,8 @@ await service.indexReview(review, metadata);
 // Index an endorsement
 const endorsement: Endorsement = {
   $type: 'pub.chive.review.endorsement',
-  subject: { uri: eprintUri, cid: eprintCid },
-  endorsementType: 'reproducibility',
+  eprintUri: eprintUri,
+  contributions: ['reproducibility', 'methodological'],
   createdAt: new Date().toISOString(),
 };
 

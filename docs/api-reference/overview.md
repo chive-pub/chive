@@ -221,47 +221,55 @@ Use this for:
 
 ### TypeScript/JavaScript
 
-The frontend uses `openapi-fetch` with auto-generated types from the OpenAPI specification:
+The frontend uses lexicon-generated types for full type safety:
 
 ```typescript
-// web/lib/api/client.ts
-import createClient from 'openapi-fetch';
-import type { paths } from './schema.generated';
+// Import types from schema re-exports
+import type { GetSubmissionResponse, EprintRecord, SearchResultsResponse } from '@/lib/api/schema';
 
-// Public API client (unauthenticated)
-export const api = createClient<paths>({
-  baseUrl: 'https://api.chive.pub',
-});
-
-// Usage
-const { data, error } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
-  params: {
-    query: { uri: 'at://did:plc:abc123.../pub.chive.eprint.submission/3k5...' },
-  },
-});
-
-// Authenticated API client (uses ATProto service auth)
-import { authApi } from '@/lib/api/client';
-
-const { data } = await authApi.POST('/xrpc/pub.chive.claiming.startClaim', {
-  body: { externalId: '2401.00001', source: 'arxiv' },
-});
+// Types are generated from ATProto lexicons
+// Source: lexicons/pub/chive/* -> src/lexicons/generated/types/*
+// Re-exported: web/lib/api/schema.ts
 ```
 
-### Generated types
+### Type structure
 
-Frontend types are auto-generated from the OpenAPI spec:
+Frontend types flow from lexicons:
+
+```
+lexicons/pub/chive/*.json          # Lexicon definitions
+    ↓ (pnpm lexicon:generate)
+src/lexicons/generated/types/*     # Generated TypeScript types
+    ↓ (re-export)
+web/lib/api/schema.ts              # Convenient type aliases
+    ↓ (import)
+web/components/*                   # React components
+```
+
+### Example usage in hooks
+
+```typescript
+// web/lib/hooks/use-eprint.ts
+import type { GetSubmissionResponse } from '@/lib/api/schema';
+
+export function useEprint(uri: string) {
+  const { data, error } = useSWR<GetSubmissionResponse>(
+    `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri)}`
+  );
+  return { eprint: data, error };
+}
+```
+
+### Regenerating types
+
+After lexicon changes:
 
 ```bash
-# Regenerate types after API changes
-pnpm openapi:generate
+# Generate lexicon types (backend)
+pnpm lexicon:generate
+
+# Types are re-exported in web/lib/api/schema.ts
 ```
-
-Generated files:
-
-- `web/lib/api/schema.generated.ts`: Path types (auto-generated)
-- `web/lib/api/schema.d.ts`: Domain types (manually maintained)
-- `web/lib/api/client.ts`: Typed API client
 
 ## Quick examples
 

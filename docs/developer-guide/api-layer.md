@@ -22,8 +22,9 @@ Both interfaces share the same middleware stack and return equivalent data with 
 ### Technology Stack
 
 - **Framework**: [Hono](https://hono.dev/), a fast, lightweight web framework
-- **Validation**: [Zod](https://zod.dev/), TypeScript-first schema validation
-- **Documentation**: [@hono/zod-openapi](https://github.com/honojs/middleware/tree/main/packages/zod-openapi), OpenAPI 3.1 generation
+- **Validation**: ATProto Lexicon validation (`@atproto/lexicon`)
+- **Type Generation**: Lexicon-to-TypeScript via `@atproto/lex-cli`
+- **Documentation**: OpenAPI 3.1 generation for REST endpoints
 
 ### Directory Structure
 
@@ -36,24 +37,21 @@ src/api/
 │   ├── auth.ts            # DID-based authentication
 │   ├── error-handler.ts   # ChiveError → HTTP mapping
 │   ├── rate-limit.ts      # 4-tier Redis rate limiting
-│   ├── request-context.ts # Request ID, timing, logging
-│   └── validation.ts      # Zod schema validation
+│   └── request-context.ts # Request ID, timing, logging
 ├── handlers/
-│   ├── xrpc/
-│   │   ├── eprint/      # Eprint XRPC handlers
-│   │   ├── graph/         # Knowledge graph handlers
-│   │   └── metrics/       # Metrics handlers
-│   └── rest/
-│       ├── health.ts      # Health check endpoints
-│       └── v1/            # REST v1 endpoints
-├── schemas/
-│   ├── common.ts          # Shared schemas
-│   ├── error.ts           # Error response schemas
-│   ├── eprint.ts        # Eprint schemas
-│   └── graph.ts           # Graph schemas
+│   └── xrpc/
+│       ├── eprint/        # Eprint XRPC handlers
+│       ├── graph/         # Knowledge graph handlers
+│       ├── review/        # Review handlers
+│       ├── endorsement/   # Endorsement handlers
+│       ├── metrics/       # Metrics handlers
+│       └── ...            # Other namespaces
+├── xrpc/
+│   ├── types.ts           # XRPCMethod interface definitions
+│   ├── validation.ts      # Lexicon-based validation utilities
+│   └── hono-adapter.ts    # Hono integration
 └── types/
-    ├── context.ts         # Hono context extensions
-    └── handlers.ts        # Handler type definitions
+    └── context.ts         # Hono context extensions
 ```
 
 ---
@@ -405,72 +403,137 @@ The middleware executes in order:
 
 ## Adding New Handlers
 
-### 1. Create Schema
+### 1. Define Lexicon Schema
 
-```typescript
-// src/api/schemas/my-feature.ts
-import { z } from 'zod';
+Create the lexicon definition in `lexicons/pub/chive/{namespace}/{method}.json`:
 
-export const myFeatureQuerySchema = z.object({
-  id: z.string().min(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-});
-
-export type MyFeatureQuery = z.infer<typeof myFeatureQuerySchema>;
-```
-
-### 2. Create Handler
-
-```typescript
-// src/api/handlers/xrpc/my-feature/getItem.ts
-import type { Context } from 'hono';
-import { NotFoundError } from '@/types/errors.js';
-import type { ChiveEnv } from '@/api/types/context.js';
-import type { MyFeatureQuery } from '@/api/schemas/my-feature.js';
-
-export async function getItemHandler(
-  c: Context<ChiveEnv>,
-  params: MyFeatureQuery
-): Promise<MyItemResponse> {
-  const services = c.get('services');
-  const logger = c.get('logger');
-
-  logger.debug('Getting item', { id: params.id });
-
-  const item = await services.myFeature.getItem(params.id);
-
-  if (!item) {
-    throw new NotFoundError('Item', params.id);
+```json
+{
+  "lexicon": 1,
+  "id": "pub.chive.myFeature.getItem",
+  "defs": {
+    "main": {
+      "type": "query",
+      "parameters": {
+        "type": "params",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["id", "uri", "data"],
+          "properties": {
+            "id": { "type": "string" },
+            "uri": { "type": "string", "format": "at-uri" },
+            "data": { "type": "object" }
+          }
+        }
+      }
+    }
   }
-
-  // Always include source for ATProto compliance
-  return {
-    id: item.id,
-    data: item.data,
-    source: {
-      pdsEndpoint: item.pdsUrl,
-      recordUrl: buildRecordUrl(item),
-      lastVerifiedAt: item.indexedAt.toISOString(),
-      stale: isStale(item.indexedAt),
-    },
-  };
 }
 ```
 
-### 3. Register Route
+### 2. Generate Types
+
+Run lexicon generation to create TypeScript types:
+
+```bash
+pnpm lexicon:generate
+```
+
+This generates types at `src/lexicons/generated/types/pub/chive/myFeature/getItem.ts`.
+
+### 3. Create Handler
 
 ```typescript
-// src/api/routes.ts
-import { validateQuery } from './middleware/validation.js';
-import { myFeatureQuerySchema } from './schemas/my-feature.js';
-import { getItemHandler } from './handlers/xrpc/my-feature/getItem.js';
+// src/api/handlers/xrpc/my-feature/getItem.ts
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/myFeature/getItem.js';
+import { NotFoundError } from '../../../../types/errors.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-// In registerXRPCRoutes():
-app.get('/xrpc/pub.chive.myFeature.getItem', validateQuery(myFeatureQuerySchema), async (c) => {
-  const params = c.get('validatedInput') as MyFeatureQuery;
-  const result = await getItemHandler(c, params);
-  return c.json(result);
-});
+export const getItem: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const services = c.get('services');
+    const logger = c.get('logger');
+
+    logger.debug('Getting item', { id: params.id });
+
+    const item = await services.myFeature.getItem(params.id);
+
+    if (!item) {
+      throw new NotFoundError('Item', params.id);
+    }
+
+    return {
+      encoding: 'application/json',
+      body: {
+        id: item.id,
+        uri: item.uri,
+        data: item.data,
+      },
+    };
+  },
+};
+```
+
+### 4. Register Handler
+
+Export the handler from the namespace index:
+
+```typescript
+// src/api/handlers/xrpc/my-feature/index.ts
+import { getItem } from './getItem.js';
+
+export const myFeatureHandlers = {
+  'pub.chive.myFeature.getItem': getItem,
+};
+```
+
+Then register in the main handlers index:
+
+```typescript
+// src/api/handlers/xrpc/index.ts
+import { myFeatureHandlers } from './my-feature/index.js';
+
+export const allHandlers = {
+  ...myFeatureHandlers,
+  // ... other handlers
+};
+```
+
+### XRPCMethod Interface
+
+The `XRPCMethod` interface defines handler structure:
+
+```typescript
+interface XRPCMethod<TParams, TInput, TOutput> {
+  type?: 'query' | 'procedure'; // Default: 'query'
+  auth?: boolean | 'optional'; // Default: false
+  handler: (ctx: XRPCContext<TParams, TInput>) => Promise<XRPCResponse<TOutput>>;
+}
+
+interface XRPCContext<TParams, TInput> {
+  params: TParams; // Validated query parameters
+  input: TInput | undefined; // Request body (procedures only)
+  auth: AuthContext | null; // Authentication context
+  c: Context<ChiveEnv>; // Hono context
+}
+
+interface XRPCResponse<T> {
+  encoding: string; // 'application/json'
+  body: T; // Response body
+  headers?: Record<string, string>;
+}
 ```
 
 ---

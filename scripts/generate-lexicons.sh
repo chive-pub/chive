@@ -66,10 +66,12 @@ mkdir -p "$WEB_OUTPUT_DIR"
 
 npx @atproto/lex-cli gen-api --yes "$WEB_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" | xargs)
 
-# Post-process web client files for NodeNext module resolution
-echo "Fixing web client import paths for NodeNext module resolution..."
+# Remove .js extensions from web client imports.
+# Next.js/webpack resolves .ts imports without extensions, but the
+# @atproto/lex-cli generates with .js for ESM compatibility.
+echo "Removing .js extensions from web client imports..."
 find "$WEB_OUTPUT_DIR" -name "*.ts" -type f | while read -r file; do
-  sed -i.bak -E "s/from '(\\.\\.\\/[^']+)'/from '\\1.js'/g; s/from '(\\.\\.\\/[^']+)\\.js\\.js'/from '\\1.js'/g" "$file"
+  sed -i.bak -E "s/from '([^']+)\\.js'/from '\\1'/g" "$file"
   rm -f "$file.bak"
 done
 

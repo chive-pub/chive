@@ -10165,10 +10165,29 @@
                             "pattern": "^at:\\/\\/did:[a-z]+:[a-zA-Z0-9._:%-]+\\/[a-zA-Z0-9.]+\\/[a-zA-Z0-9._~-]+$"
                           },
                           "eprintTitle": { "description": "Eprint title", "type": "string" },
-                          "endorsementType": {
-                            "description": "Endorsement type",
-                            "type": "string",
-                            "enum": ["methods", "results", "overall"]
+                          "contributions": {
+                            "description": "Contribution types endorsed",
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "methodological",
+                                "analytical",
+                                "theoretical",
+                                "empirical",
+                                "conceptual",
+                                "technical",
+                                "data",
+                                "replication",
+                                "reproducibility",
+                                "synthesis",
+                                "interdisciplinary",
+                                "pedagogical",
+                                "visualization",
+                                "societal-impact",
+                                "clinical"
+                              ]
+                            }
                           },
                           "comment": { "description": "Optional comment", "type": "string" },
                           "createdAt": {
@@ -10183,7 +10202,7 @@
                           "endorserDid",
                           "eprintUri",
                           "eprintTitle",
-                          "endorsementType",
+                          "contributions",
                           "createdAt"
                         ],
                         "additionalProperties": false

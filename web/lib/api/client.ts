@@ -8,13 +8,13 @@
  * @packageDocumentation
  */
 
-import { AtpBaseClient } from './generated/index.js';
+import { AtpBaseClient } from './generated/index';
 import { APIError } from '@/lib/errors';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 
 // Re-export types from generated client
-export * from './generated/index.js';
+export * from './generated/index';
 
 // =============================================================================
 // CONFIGURATION
