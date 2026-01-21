@@ -40,13 +40,18 @@ import { cn } from '@/lib/utils';
 
 /**
  * Governance role type.
+ *
+ * @remarks
+ * Includes open union `(string & {})` for forward compatibility with
+ * new roles that may be added to the lexicon.
  */
 export type GovernanceRole =
   | 'community-member'
   | 'trusted-editor'
   | 'graph-editor'
   | 'domain-expert'
-  | 'administrator';
+  | 'administrator'
+  | (string & {});
 
 /**
  * Reputation metrics from API.
@@ -71,6 +76,10 @@ export interface ReputationMetrics {
 
 /**
  * Editor status from API.
+ *
+ * @remarks
+ * Aligned with lexicon-generated EditorStatus type. Properties marked
+ * optional to match the API contract.
  */
 export interface EditorStatus {
   did: string;
@@ -81,8 +90,8 @@ export interface EditorStatus {
   hasDelegation: boolean;
   delegationExpiresAt?: number;
   delegationCollections?: string[];
-  recordsCreatedToday: number;
-  dailyRateLimit: number;
+  recordsCreatedToday?: number;
+  dailyRateLimit?: number;
   metrics: ReputationMetrics;
 }
 
@@ -106,9 +115,12 @@ export interface TrustedEditorStatusProps {
 
 /**
  * Role display configuration.
+ *
+ * @remarks
+ * Uses string index for compatibility with lexicon's open union types.
  */
 const ROLE_CONFIG: Record<
-  GovernanceRole,
+  string,
   { label: string; icon: typeof Shield; color: string; description: string }
 > = {
   'community-member': {
@@ -194,7 +206,13 @@ export function TrustedEditorStatus({
     return null;
   }
 
-  const roleConfig = ROLE_CONFIG[status.role];
+  // Fallback for unknown roles (forward compatibility with lexicon open unions)
+  const roleConfig = ROLE_CONFIG[status.role] ?? {
+    label: status.role,
+    icon: Shield,
+    color: 'text-muted-foreground',
+    description: 'Role with custom permissions',
+  };
   const RoleIcon = roleConfig.icon;
   const metrics = status.metrics;
 
@@ -268,7 +286,7 @@ export function TrustedEditorStatus({
                 <div className="flex justify-between">
                   <span>Records today</span>
                   <span>
-                    {status.recordsCreatedToday} / {status.dailyRateLimit}
+                    {status.recordsCreatedToday ?? 0} / {status.dailyRateLimit ?? 100}
                   </span>
                 </div>
                 {status.delegationExpiresAt && (

@@ -9,16 +9,12 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import {
-  autocompleteParamsSchema,
-  autocompleteResponseSchema,
-  type AutocompleteParams,
-  type AutocompleteResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/autocomplete.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
  * Highlights the query portion in a title.
@@ -49,11 +45,7 @@ function highlightMatch(title: string, query: string): string {
 }
 
 /**
- * Handler for pub.chive.claiming.autocomplete.
- *
- * @param c - Hono context
- * @param params - Autocomplete parameters
- * @returns Autocomplete suggestions
+ * XRPC method for pub.chive.claiming.autocomplete.
  *
  * @remarks
  * Provides fast suggestions while the user types.
@@ -64,87 +56,74 @@ function highlightMatch(title: string, query: string): string {
  *
  * @public
  */
-export async function autocompleteHandler(
-  c: Context<ChiveEnv>,
-  params: AutocompleteParams
-): Promise<AutocompleteResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming, ranking } = c.get('services');
+export const autocomplete: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: 'optional',
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming, ranking } = c.get('services');
 
-  logger.debug('Autocomplete request', {
-    query: params.query,
-    limit: params.limit,
-    userDid: user?.did,
-  });
+    logger.debug('Autocomplete request', {
+      query: params.query,
+      limit: params.limit,
+      userDid: user?.did,
+    });
 
-  const limit = Math.min(params.limit ?? 8, 10);
+    const limit = Math.min(params.limit ?? 8, 10);
 
-  // Get external search results with short timeout
-  const results = await claiming.autocompleteExternal(params.query, {
-    limit: limit + 2, // Fetch a few extra for ranking
-    timeoutMs: 500,
-  });
+    // Get external search results with short timeout
+    const results = await claiming.autocompleteExternal(params.query, {
+      limit: limit + 2, // Fetch a few extra for ranking
+      timeoutMs: 500,
+    });
 
-  // Rank results by user's research fields if authenticated
-  let rankedResults = results;
-  if (user && ranking) {
-    try {
-      const ranked = await ranking.rank([...results], {
-        userDid: user.did,
-        query: params.query,
-      });
-      rankedResults = ranked.map((r) => ({
-        ...r.item,
-        fieldMatchScore: r.fieldMatchScore,
-      }));
-    } catch (err) {
-      logger.warn('Ranking failed, using unranked results', {
-        error: err instanceof Error ? err.message : String(err),
-      });
+    // Rank results by user's research fields if authenticated
+    let rankedResults = results;
+    if (user && ranking) {
+      try {
+        const ranked = await ranking.rank([...results], {
+          userDid: user.did,
+          query: params.query,
+        });
+        rankedResults = ranked.map((r) => ({
+          ...r.item,
+          fieldMatchScore: r.fieldMatchScore,
+        }));
+      } catch (err) {
+        logger.warn('Ranking failed, using unranked results', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
-  }
 
-  // Map to response format
-  const suggestions = rankedResults.slice(0, limit).map((p) => {
-    // Format authors: "Author1, Author2"
-    const authorNames = p.authors
-      .slice(0, 2)
-      .map((a) => a.name)
-      .join(', ');
+    // Map to response format
+    const suggestions = rankedResults.slice(0, limit).map((p) => {
+      // Format authors: "Author1, Author2"
+      const authorNames = p.authors
+        .slice(0, 2)
+        .map((a) => a.name)
+        .join(', ');
+
+      return {
+        title: p.title,
+        authors: authorNames + (p.authors.length > 2 ? ' et al.' : ''),
+        source: p.source,
+        externalId: p.externalId,
+        highlightedTitle: highlightMatch(p.title, params.query),
+        fieldMatchScore: 'fieldMatchScore' in p ? (p.fieldMatchScore as number) : undefined,
+      };
+    });
+
+    logger.debug('Autocomplete completed', {
+      query: params.query,
+      suggestionCount: suggestions.length,
+    });
 
     return {
-      title: p.title,
-      authors: authorNames + (p.authors.length > 2 ? ' et al.' : ''),
-      source: p.source,
-      externalId: p.externalId,
-      highlightedTitle: highlightMatch(p.title, params.query),
-      fieldMatchScore: 'fieldMatchScore' in p ? (p.fieldMatchScore as number) : undefined,
+      encoding: 'application/json',
+      body: {
+        suggestions,
+      },
     };
-  });
-
-  logger.debug('Autocomplete completed', {
-    query: params.query,
-    suggestionCount: suggestions.length,
-  });
-
-  return {
-    suggestions,
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.claiming.autocomplete.
- *
- * @public
- */
-export const autocompleteEndpoint: XRPCEndpoint<AutocompleteParams, AutocompleteResponse> = {
-  method: 'pub.chive.claiming.autocomplete' as never,
-  type: 'query',
-  description: 'Get autocomplete suggestions for claiming search',
-  inputSchema: autocompleteParamsSchema,
-  outputSchema: autocompleteResponseSchema,
-  handler: autocompleteHandler,
-  auth: 'optional',
-  rateLimit: 'anonymous',
+  },
 };

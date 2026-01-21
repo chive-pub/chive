@@ -1,0 +1,31 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.getSubkinds",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List available subkind type nodes (nodes with subkind=subkind)",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["subkinds"],
+          "properties": {
+            "subkinds": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.graph.listNodes#graphNode"
+              },
+              "description": "Available subkind type nodes"
+            }
+          }
+        }
+      }
+    }
+  }
+}

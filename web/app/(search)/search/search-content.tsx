@@ -187,7 +187,7 @@ export function SearchPageContent({
             {/* Pagination */}
             {searchResults && (
               <SearchPagination
-                hasMore={searchResults.hasMore}
+                hasMore={!!searchResults.cursor}
                 cursor={searchResults.cursor}
                 total={searchResults.total}
                 isLoading={isLoading}

@@ -72,6 +72,7 @@ export function FieldBreadcrumb({ field, className }: FieldBreadcrumbProps) {
  */
 interface FieldChild {
   id: string;
+  uri: string;
   label: string;
   eprintCount?: number;
   childCount?: number;

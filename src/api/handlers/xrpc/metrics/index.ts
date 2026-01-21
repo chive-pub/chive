@@ -1,52 +1,40 @@
 /**
- * XRPC metrics handler exports.
+ * Metrics XRPC method exports.
  *
  * @packageDocumentation
  * @public
  */
 
-import { getMetricsEndpoint } from './getMetrics.js';
-import { getTrendingEndpoint } from './getTrending.js';
-import { getViewCountEndpoint } from './getViewCount.js';
-import { recordDownloadEndpoint } from './recordDownload.js';
-import { recordDwellTimeEndpoint } from './recordDwellTime.js';
-import { recordSearchClickEndpoint } from './recordSearchClick.js';
-import { recordSearchDownloadEndpoint } from './recordSearchDownload.js';
-import { recordViewEndpoint } from './recordView.js';
+import { getMetrics } from './getMetrics.js';
+import { getTrending } from './getTrending.js';
+import { getViewCount } from './getViewCount.js';
+import { recordDownload } from './recordDownload.js';
+import { recordDwellTime } from './recordDwellTime.js';
+import { recordSearchClick } from './recordSearchClick.js';
+import { recordSearchDownload } from './recordSearchDownload.js';
+import { recordView } from './recordView.js';
 
-export {
-  getTrendingHandler,
-  getTrendingEndpoint,
-  getTrendingParamsSchema,
-  getTrendingResponseSchema,
-  type GetTrendingParams,
-  type GetTrendingResponse,
-} from './getTrending.js';
-
-export { recordViewHandler, recordViewEndpoint } from './recordView.js';
-export { recordDownloadHandler, recordDownloadEndpoint } from './recordDownload.js';
-export { getMetricsHandler, getMetricsEndpoint } from './getMetrics.js';
-export { getViewCountHandler, getViewCountEndpoint } from './getViewCount.js';
-
-// LTR training data endpoints
-export { recordSearchClickHandler, recordSearchClickEndpoint } from './recordSearchClick.js';
-export { recordDwellTimeHandler, recordDwellTimeEndpoint } from './recordDwellTime.js';
-export {
-  recordSearchDownloadHandler,
-  recordSearchDownloadEndpoint,
-} from './recordSearchDownload.js';
+export { getMetrics as metricsGetMetrics } from './getMetrics.js';
+export { getTrending as metricsGetTrending } from './getTrending.js';
+export { getViewCount as metricsGetViewCount } from './getViewCount.js';
+export { recordView as metricsRecordView } from './recordView.js';
+export { recordDownload as metricsRecordDownload } from './recordDownload.js';
+export { recordSearchClick as metricsRecordSearchClick } from './recordSearchClick.js';
+export { recordSearchDownload as metricsRecordSearchDownload } from './recordSearchDownload.js';
+export { recordDwellTime as metricsRecordDwellTime } from './recordDwellTime.js';
 
 /**
- * All metrics XRPC endpoints.
+ * Metrics XRPC methods keyed by NSID.
+ *
+ * @public
  */
-export const metricsEndpoints = [
-  getTrendingEndpoint,
-  recordViewEndpoint,
-  recordDownloadEndpoint,
-  getMetricsEndpoint,
-  getViewCountEndpoint,
-  // LTR training data endpoints
-  recordSearchClickEndpoint,
-  recordDwellTimeEndpoint,
-  recordSearchDownloadEndpoint,
-] as const;
+export const metricsMethods = {
+  'pub.chive.metrics.getMetrics': getMetrics,
+  'pub.chive.metrics.getTrending': getTrending,
+  'pub.chive.metrics.getViewCount': getViewCount,
+  'pub.chive.metrics.recordView': recordView,
+  'pub.chive.metrics.recordDownload': recordDownload,
+  'pub.chive.metrics.recordSearchClick': recordSearchClick,
+  'pub.chive.metrics.recordSearchDownload': recordSearchDownload,
+  'pub.chive.metrics.recordDwellTime': recordDwellTime,
+} as const;

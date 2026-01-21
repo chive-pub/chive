@@ -1,41 +1,31 @@
 /**
- * Tag XRPC endpoint exports.
+ * Tag XRPC method exports.
  *
  * @packageDocumentation
  * @public
  */
 
-export {
-  listForEprintEndpoint as listTagsForEprintEndpoint,
-  listForEprintHandler as listTagsForEprintHandler,
-} from './listForEprint.js';
-export { getSuggestionsEndpoint, getSuggestionsHandler } from './getSuggestions.js';
-export {
-  getTrendingEndpoint as getTrendingTagsEndpoint,
-  getTrendingHandler as getTrendingTagsHandler,
-} from './getTrending.js';
-export {
-  searchEndpoint as searchTagsEndpoint,
-  searchHandler as searchTagsHandler,
-} from './search.js';
-export {
-  getDetailEndpoint as getTagDetailEndpoint,
-  getDetailHandler as getTagDetailHandler,
-} from './getDetail.js';
+import { getDetail } from './getDetail.js';
+import { getSuggestions } from './getSuggestions.js';
+import { getTrending } from './getTrending.js';
+import { listForEprint } from './listForEprint.js';
+import { search } from './search.js';
 
-import { getDetailEndpoint } from './getDetail.js';
-import { getSuggestionsEndpoint } from './getSuggestions.js';
-import { getTrendingEndpoint } from './getTrending.js';
-import { listForEprintEndpoint } from './listForEprint.js';
-import { searchEndpoint } from './search.js';
+export { getDetail as tagGetDetail } from './getDetail.js';
+export { getSuggestions as tagGetSuggestions } from './getSuggestions.js';
+export { getTrending as tagGetTrending } from './getTrending.js';
+export { listForEprint as tagListForEprint } from './listForEprint.js';
+export { search as tagSearch } from './search.js';
 
 /**
- * All tag XRPC endpoints.
+ * Tag XRPC methods keyed by NSID.
+ *
+ * @public
  */
-export const tagEndpoints = [
-  listForEprintEndpoint,
-  getSuggestionsEndpoint,
-  getTrendingEndpoint,
-  searchEndpoint,
-  getDetailEndpoint,
-] as const;
+export const tagMethods = {
+  'pub.chive.tag.getDetail': getDetail,
+  'pub.chive.tag.getSuggestions': getSuggestions,
+  'pub.chive.tag.getTrending': getTrending,
+  'pub.chive.tag.listForEprint': listForEprint,
+  'pub.chive.tag.search': search,
+} as const;

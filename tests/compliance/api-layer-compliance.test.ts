@@ -3,10 +3,10 @@
  *
  * @remarks
  * Validates that the API layer adheres to ATProto compliance principles:
- * - All responses include `source` field with PDS information
+ * - All responses include `pdsUrl` field with PDS endpoint
  * - No write operations exposed to user PDSes
- * - BlobRefs only, never inline blob data
- * - PDS source tracking for staleness detection
+ * - BlobRefs only (in value.document), never inline blob data
+ * - PDS source tracking via indexedAt timestamp
  * - Indexes rebuildable from firehose
  *
  * These tests are mandatory for CI/CD and must pass at 100%.
@@ -70,8 +70,13 @@ function createTestUri(suffix: string): AtUri {
   return `at://${TEST_AUTHOR}/pub.chive.eprint.submission/compliance${timestamp}${suffix}` as AtUri;
 }
 
-function createTestCid(suffix: string): CID {
-  return `bafyreib${suffix}${Date.now().toString(36)}` as CID;
+// Valid CID base for tests - this is a valid CIDv1 format
+const VALID_CID_BASE = 'bafyreigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi';
+const VALID_BLOB_CID = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku';
+
+function createTestCid(_suffix: string): CID {
+  // Return a valid CIDv1 - the suffix is ignored but keeps function signature compatible
+  return VALID_CID_BASE as CID;
 }
 
 /**
@@ -460,7 +465,7 @@ function createTestEprint(uri: AtUri, overrides: Partial<Eprint> = {}): Eprint {
     license: overrides.license ?? 'CC-BY-4.0',
     documentBlobRef: overrides.documentBlobRef ?? {
       $type: 'blob',
-      ref: 'bafyreibcompliance123' as CID,
+      ref: VALID_BLOB_CID as CID,
       mimeType: 'application/pdf',
       size: 1024000,
     },
@@ -624,7 +629,7 @@ describe('API Layer ATProto Compliance', () => {
   };
 
   describe('CRITICAL: All responses include PDS source information', () => {
-    it('getSubmission response includes source.pdsEndpoint', async () => {
+    it('getSubmission response includes pdsUrl', async () => {
       const uri = createTestUri('pds1');
       const cid = createTestCid('pds1');
       const eprint = createTestEprint(uri);
@@ -644,12 +649,12 @@ describe('API Layer ATProto Compliance', () => {
       }
       const body = (await res.json()) as EprintResponse;
 
-      // CRITICAL: source field MUST be present
-      expect(body.source).toBeDefined();
-      expect(body.source.pdsEndpoint).toBe(TEST_PDS_URL);
+      // CRITICAL: pdsUrl field MUST be present for ATProto compliance
+      expect(body.pdsUrl).toBeDefined();
+      expect(body.pdsUrl).toBe(TEST_PDS_URL);
     });
 
-    it('getSubmission response includes source.recordUrl for direct PDS access', async () => {
+    it('getSubmission response includes uri for direct PDS access', async () => {
       const uri = createTestUri('pds2');
       const cid = createTestCid('pds2');
       const eprint = createTestEprint(uri);
@@ -662,12 +667,12 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // CRITICAL: recordUrl MUST point to source PDS
-      expect(body.source.recordUrl).toBeDefined();
-      expect(body.source.recordUrl).toContain('com.atproto.repo.getRecord');
+      // CRITICAL: uri and pdsUrl allow reconstructing PDS fetch URL
+      expect(body.uri).toBeDefined();
+      expect(body.pdsUrl).toBeDefined();
     });
 
-    it('getSubmission response includes source.lastVerifiedAt timestamp', async () => {
+    it('getSubmission response includes indexedAt timestamp', async () => {
       const uri = createTestUri('pds3');
       const cid = createTestCid('pds3');
       const eprint = createTestEprint(uri);
@@ -680,19 +685,19 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // CRITICAL: lastVerifiedAt MUST be present for staleness tracking
-      expect(body.source.lastVerifiedAt).toBeDefined();
-      expect(typeof body.source.lastVerifiedAt).toBe('string');
+      // CRITICAL: indexedAt MUST be present for tracking when record was indexed
+      expect(body.indexedAt).toBeDefined();
+      expect(typeof body.indexedAt).toBe('string');
 
       // Should be a valid ISO 8601 date
-      const lastVerifiedAt = body.source.lastVerifiedAt;
-      if (lastVerifiedAt) {
-        const date = new Date(lastVerifiedAt);
+      const indexedAt = body.indexedAt;
+      if (indexedAt) {
+        const date = new Date(indexedAt);
         expect(date.getTime()).not.toBeNaN();
       }
     });
 
-    it('getSubmission response includes source.stale boolean', async () => {
+    it('getSubmission response has value containing eprint data', async () => {
       const uri = createTestUri('pds4');
       const cid = createTestCid('pds4');
       const eprint = createTestEprint(uri);
@@ -705,12 +710,12 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // CRITICAL: stale indicator MUST be present
-      expect(body.source.stale).toBeDefined();
-      expect(typeof body.source.stale).toBe('boolean');
+      // CRITICAL: value field contains the actual eprint record data
+      expect(body.value).toBeDefined();
+      expect(body.value.title).toBeDefined();
     });
 
-    it('listByAuthor response includes source for each eprint', async () => {
+    it('listByAuthor response includes eprints with uri and title', async () => {
       // Index multiple eprints
       for (let i = 0; i < 3; i++) {
         const uri = createTestUri(`list${i}`);
@@ -726,11 +731,11 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintListResponse;
 
-      // CRITICAL: Each eprint MUST have source field
+      // CRITICAL: Each eprint summary MUST have uri and title
       expect(body.eprints.length).toBeGreaterThan(0);
       for (const eprint of body.eprints) {
-        expect(eprint.source).toBeDefined();
-        expect(eprint.source.pdsEndpoint).toBeDefined();
+        expect(eprint.uri).toBeDefined();
+        expect(eprint.title).toBeDefined();
       }
     });
   });
@@ -803,13 +808,13 @@ describe('API Layer ATProto Compliance', () => {
   });
 
   describe('CRITICAL: BlobRefs only, never inline blob data', () => {
-    it('getSubmission returns document as BlobRef structure', async () => {
+    it('getSubmission returns document as BlobRef structure in value', async () => {
       const uri = createTestUri('blobref1');
       const cid = createTestCid('blobref1');
       const eprint = createTestEprint(uri, {
         documentBlobRef: {
           $type: 'blob',
-          ref: 'bafyreiblobreftest' as CID,
+          ref: VALID_BLOB_CID as CID,
           mimeType: 'application/pdf',
           size: 2097152,
         },
@@ -823,13 +828,14 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // CRITICAL: Document MUST be BlobRef structure
-      expect(body.document).toBeDefined();
-      expect(body.document.$type).toBe('blob');
-      expect(body.document.ref).toBeDefined();
-      expect(body.document.mimeType).toBe('application/pdf');
+      // CRITICAL: Document MUST be BlobRef structure in value.document
+      expect(body.value.document).toBeDefined();
+      const document = body.value.document as unknown as Record<string, unknown>;
+      expect(document.$type).toBe('blob');
+      expect(document.ref).toBeDefined();
+      expect(document.mimeType).toBe('application/pdf');
       // BlobRef size may be serialized as string; compare numerically
-      expect(Number(body.document.size)).toBe(2097152);
+      expect(Number(document.size)).toBe(2097152);
     });
 
     it('getSubmission does NOT include inline blob data', async () => {
@@ -846,7 +852,7 @@ describe('API Layer ATProto Compliance', () => {
       const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: No inline blob data fields (these properties should not exist on BlobRef)
-      const document = body.document as unknown as Record<string, unknown>;
+      const document = body.value.document as unknown as Record<string, unknown>;
       expect(document.data).toBeUndefined();
       expect(document.content).toBeUndefined();
       expect(document.buffer).toBeUndefined();
@@ -854,7 +860,7 @@ describe('API Layer ATProto Compliance', () => {
       expect(document.bytes).toBeUndefined();
     });
 
-    it('listByAuthor returns documents as BlobRefs', async () => {
+    it('listByAuthor returns summaries without inline document data', async () => {
       const uri = createTestUri('listblob1');
       const cid = createTestCid('listblob1');
       const eprint = createTestEprint(uri);
@@ -867,22 +873,18 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintListResponse;
 
-      // CRITICAL: List summaries should not include inline document data
+      // CRITICAL: List summaries should not include document data at all (summaries only)
       for (const eprint of body.eprints) {
         // Cast to unknown to check for forbidden fields
         const rawEprint = eprint as unknown as Record<string, unknown>;
-        // If document field exists, verify it's a BlobRef (not inline data)
-        if (rawEprint.document) {
-          const doc = rawEprint.document as Record<string, unknown>;
-          expect(doc.$type).toBe('blob');
-          expect(doc.ref).toBeDefined();
-          expect(doc.data).toBeUndefined();
-          expect(doc.content).toBeUndefined();
-        }
+        // EprintSummary does not include document field - verify no inline data
+        expect(rawEprint.data).toBeUndefined();
+        expect(rawEprint.content).toBeUndefined();
+        expect(rawEprint.buffer).toBeUndefined();
       }
     });
 
-    it('source.blobUrl points to PDS, not Chive storage', async () => {
+    it('pdsUrl points to PDS for blob fetching', async () => {
       const uri = createTestUri('bloburl1');
       const cid = createTestCid('bloburl1');
       const eprint = createTestEprint(uri);
@@ -895,18 +897,16 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // If blobUrl is present, it MUST point to PDS
-      if (body.source.blobUrl) {
-        expect(body.source.blobUrl).toContain('com.atproto.sync.getBlob');
-        // Should NOT point to Chive storage
-        expect(body.source.blobUrl).not.toContain('storage.chive');
-        expect(body.source.blobUrl).not.toContain('cdn.chive');
-      }
+      // pdsUrl allows constructing blob fetch URL
+      expect(body.pdsUrl).toBeDefined();
+      // Should NOT point to Chive storage
+      expect(body.pdsUrl).not.toContain('storage.chive');
+      expect(body.pdsUrl).not.toContain('cdn.chive');
     });
   });
 
-  describe('CRITICAL: PDS source tracking for staleness', () => {
-    it('recently indexed eprint has stale=false', async () => {
+  describe('CRITICAL: PDS source tracking via indexedAt', () => {
+    it('recently indexed eprint has recent indexedAt', async () => {
       const uri = createTestUri('fresh1');
       const cid = createTestCid('fresh1');
       const eprint = createTestEprint(uri);
@@ -921,11 +921,15 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // Fresh eprint (indexed now) should NOT be stale
-      expect(body.source.stale).toBe(false);
+      // Fresh eprint (indexed now) should have recent indexedAt
+      expect(body.indexedAt).toBeDefined();
+      const indexedDate = new Date(body.indexedAt);
+      const now = Date.now();
+      // Should be indexed within the last minute
+      expect(now - indexedDate.getTime()).toBeLessThan(60 * 1000);
     });
 
-    it('old indexed eprint has stale=true', async () => {
+    it('old indexed eprint has old indexedAt', async () => {
       const uri = createTestUri('old1');
       const cid = createTestCid('old1');
       const eprint = createTestEprint(uri);
@@ -947,50 +951,62 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // Old eprint (>7 days) should be stale
-      expect(body.source.stale).toBe(true);
+      // Old eprint (>7 days) should have old indexedAt
+      expect(body.indexedAt).toBeDefined();
+      const indexedDate = new Date(body.indexedAt);
+      const now = Date.now();
+      // Should be indexed more than 7 days ago
+      expect(now - indexedDate.getTime()).toBeGreaterThan(7 * 24 * 60 * 60 * 1000);
     });
 
-    it('staleness threshold is 7 days', async () => {
-      // Test boundary: exactly 7 days ago should be fresh
+    it('indexedAt reflects actual indexing time', async () => {
+      // Test boundary: exactly 6 days ago should be reflected
       const uri6days = createTestUri('6days');
       const cid6days = createTestCid('6days');
 
-      const sixDaysAgo: RecordMetadata = {
+      const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+      const sixDaysMetadata: RecordMetadata = {
         uri: uri6days,
         cid: cid6days,
         pdsUrl: TEST_PDS_URL,
-        indexedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        indexedAt: sixDaysAgo,
       };
 
-      await eprintService.indexEprint(createTestEprint(uri6days), sixDaysAgo);
+      await eprintService.indexEprint(createTestEprint(uri6days), sixDaysMetadata);
 
       const res6 = await makeRequest(
         `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri6days)}`
       );
       const body6 = (await res6.json()) as EprintResponse;
 
-      expect(body6.source.stale).toBe(false);
+      const indexedDate6 = new Date(body6.indexedAt);
+      // Should be approximately 6 days ago (within 1 hour tolerance)
+      expect(Math.abs(indexedDate6.getTime() - sixDaysAgo.getTime())).toBeLessThan(60 * 60 * 1000);
 
-      // Test boundary: 8 days ago should be stale
+      // Test boundary: 8 days ago
       const uri8days = createTestUri('8days');
       const cid8days = createTestCid('8days');
 
-      const eightDaysAgo: RecordMetadata = {
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+      const eightDaysMetadata: RecordMetadata = {
         uri: uri8days,
         cid: cid8days,
         pdsUrl: TEST_PDS_URL,
-        indexedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        indexedAt: eightDaysAgo,
       };
 
-      await eprintService.indexEprint(createTestEprint(uri8days), eightDaysAgo);
+      await eprintService.indexEprint(createTestEprint(uri8days), eightDaysMetadata);
 
       const res8 = await makeRequest(
         `/xrpc/pub.chive.eprint.getSubmission?uri=${encodeURIComponent(uri8days)}`
       );
       const body8 = (await res8.json()) as EprintResponse;
 
-      expect(body8.source.stale).toBe(true);
+      const indexedDate8 = new Date(body8.indexedAt);
+      // Should be approximately 8 days ago (within 1 hour tolerance)
+      expect(Math.abs(indexedDate8.getTime() - eightDaysAgo.getTime())).toBeLessThan(
+        60 * 60 * 1000
+      );
     });
   });
 
@@ -1049,10 +1065,9 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // User should be able to reconstruct PDS fetch URL
+      // User should be able to reconstruct PDS fetch URL from uri and pdsUrl
       expect(body.uri).toBeDefined(); // AT URI
-      expect(body.source.pdsEndpoint).toBeDefined(); // PDS base URL
-      expect(body.source.recordUrl).toBeDefined(); // Full URL to fetch record
+      expect(body.pdsUrl).toBeDefined(); // PDS base URL
 
       // Parse AT URI to verify components
       const uriParts = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/.exec(body.uri);
@@ -1067,7 +1082,7 @@ describe('API Layer ATProto Compliance', () => {
       const eprint = createTestEprint(uri, {
         documentBlobRef: {
           $type: 'blob',
-          ref: 'bafyreiexit123' as CID,
+          ref: VALID_BLOB_CID as CID,
           mimeType: 'application/pdf',
           size: 1024000,
         },
@@ -1081,23 +1096,28 @@ describe('API Layer ATProto Compliance', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as EprintResponse;
 
-      // User should be able to fetch blob from PDS using CID
-      expect(body.document.ref).toBeDefined();
-      expect(typeof body.document.ref).toBe('string');
+      // User should be able to fetch blob from PDS using CID in value.document
+      // ATProto BlobRef format: { $type: 'blob', ref: { $link: string }, mimeType, size }
+      const document = body.value.document as unknown as Record<string, unknown>;
+      expect(document.ref).toBeDefined();
+      // ref is a $link object in ATProto format
+      const refObj = document.ref as { $link?: string } | string;
+      const blobCid = typeof refObj === 'string' ? refObj : refObj.$link;
+      expect(blobCid).toBeDefined();
+      expect(typeof blobCid).toBe('string');
       // CID should be valid format
-      expect(body.document.ref).toMatch(/^baf[a-z0-9]+$/);
+      expect(blobCid).toMatch(/^baf[a-z0-9]+$/);
     });
   });
 
   describe('Response format consistency', () => {
-    it('all error responses follow standardized format', async () => {
+    it('all error responses follow ATProto-compliant format', async () => {
       // Validation error
       const validationRes = await makeRequest('/xrpc/pub.chive.eprint.getSubmission');
       expect(validationRes.status).toBe(400);
       const validationBody = (await validationRes.json()) as ErrorResponse;
-      expect(validationBody.error.code).toBeDefined();
-      expect(validationBody.error.message).toBeDefined();
-      expect(validationBody.error.requestId).toBeDefined();
+      expect(validationBody.error).toBe('InvalidRequest');
+      expect(validationBody.message).toBeDefined();
 
       // Not found error
       const notFoundRes = await makeRequest(
@@ -1105,9 +1125,8 @@ describe('API Layer ATProto Compliance', () => {
       );
       expect(notFoundRes.status).toBe(404);
       const notFoundBody = (await notFoundRes.json()) as ErrorResponse;
-      expect(notFoundBody.error.code).toBe('NOT_FOUND');
-      expect(notFoundBody.error.message).toBeDefined();
-      expect(notFoundBody.error.requestId).toBeDefined();
+      expect(notFoundBody.error).toBe('NotFound');
+      expect(notFoundBody.message).toBeDefined();
     });
 
     it('all successful responses include requestId header', async () => {

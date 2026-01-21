@@ -9,24 +9,16 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/getSuggestions.js';
 import { AuthenticationError } from '../../../../types/errors.js';
-import {
-  getSuggestionsParamsSchema,
-  getSuggestionsResponseSchema,
-  type GetSuggestionsParams,
-  type GetSuggestionsResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.claiming.getSuggestions.
- *
- * @param c - Hono context
- * @param params - Request parameters
- * @returns Suggested papers with match scores
+ * XRPC method for pub.chive.claiming.getSuggestions.
  *
  * @remarks
  * Uses the authenticated user's Chive profile to find papers they may have
@@ -40,78 +32,65 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @public
  */
-export async function getSuggestionsHandler(
-  c: Context<ChiveEnv>,
-  params: GetSuggestionsParams
-): Promise<GetSuggestionsResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming } = c.get('services');
+export const getSuggestions: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: true,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming } = c.get('services');
 
-  if (!user?.did) {
-    throw new AuthenticationError('Authentication required to get suggestions');
-  }
+    if (!user?.did) {
+      throw new AuthenticationError('Authentication required to get suggestions');
+    }
 
-  const did = user.did;
-  logger.debug('Getting paper suggestions', { did, limit: params.limit });
+    const did = user.did;
+    logger.debug('Getting paper suggestions', { did, limit: params.limit });
 
-  // Get suggested papers from claiming service
-  const suggestions = await claiming.getSuggestedPapers(did, {
-    limit: params.limit,
-    timeoutMs: 10000, // 10 second timeout for suggestions
-  });
+    // Get suggested papers from claiming service
+    const suggestions = await claiming.getSuggestedPapers(did, {
+      limit: params.limit,
+      timeoutMs: 10000, // 10 second timeout for suggestions
+    });
 
-  // Map to response format
-  const papers = suggestions.papers.map((p) => ({
-    externalId: p.externalId,
-    url: p.url,
-    title: p.title,
-    abstract: p.abstract,
-    authors: p.authors.map((a) => ({
-      name: a.name,
-      orcid: a.orcid,
-      affiliation: a.affiliation,
-      email: a.email,
-    })),
-    publicationDate: p.publicationDate?.toISOString(),
-    doi: p.doi,
-    pdfUrl: p.pdfUrl,
-    categories: p.categories ? [...p.categories] : undefined,
-    source: p.source,
-    matchScore: p.matchScore,
-    matchReason: p.matchReason,
-  }));
+    // Map to response format
+    const papers = suggestions.papers.map((p) => ({
+      externalId: p.externalId,
+      url: p.url,
+      title: p.title,
+      abstract: p.abstract,
+      authors: p.authors.map((a) => ({
+        name: a.name,
+        orcid: a.orcid,
+        affiliation: a.affiliation,
+        email: a.email,
+      })),
+      publicationDate: p.publicationDate?.toISOString(),
+      doi: p.doi,
+      pdfUrl: p.pdfUrl,
+      categories: p.categories ? [...p.categories] : undefined,
+      source: p.source,
+      matchScore: p.matchScore,
+      matchReason: p.matchReason,
+    }));
 
-  logger.info('Paper suggestions returned', {
-    did,
-    count: papers.length,
-    hasOrcid: suggestions.profileUsed.hasOrcid,
-    nameVariantCount: suggestions.profileUsed.nameVariants.length,
-  });
-
-  return {
-    papers,
-    profileUsed: {
-      displayName: suggestions.profileUsed.displayName,
-      nameVariants: [...suggestions.profileUsed.nameVariants],
+    logger.info('Paper suggestions returned', {
+      did,
+      count: papers.length,
       hasOrcid: suggestions.profileUsed.hasOrcid,
-      hasExternalIds: suggestions.profileUsed.hasExternalIds,
-    },
-  };
-}
+      nameVariantCount: suggestions.profileUsed.nameVariants.length,
+    });
 
-/**
- * Endpoint definition for pub.chive.claiming.getSuggestions.
- *
- * @public
- */
-export const getSuggestionsEndpoint: XRPCEndpoint<GetSuggestionsParams, GetSuggestionsResponse> = {
-  method: 'pub.chive.claiming.getSuggestions' as never,
-  type: 'query',
-  description: 'Get suggested papers to claim based on user profile',
-  inputSchema: getSuggestionsParamsSchema,
-  outputSchema: getSuggestionsResponseSchema,
-  handler: getSuggestionsHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return {
+      encoding: 'application/json',
+      body: {
+        papers,
+        profileUsed: {
+          displayName: suggestions.profileUsed.displayName,
+          nameVariants: [...suggestions.profileUsed.nameVariants],
+          hasOrcid: suggestions.profileUsed.hasOrcid,
+          hasExternalIds: suggestions.profileUsed.hasExternalIds,
+        },
+      },
+    };
+  },
 };

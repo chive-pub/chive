@@ -17,272 +17,15 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/eprint/searchSubmissions.js';
 import { TaxonomyCategoryMatcher } from '../../../../services/search/category-matcher.js';
 import type { LTRFeatureVector } from '../../../../services/search/relevance-logger.js';
 import { AcademicTextScorer } from '../../../../services/search/text-scorer.js';
 import type { DID } from '../../../../types/atproto.js';
-import { extractPlainText } from '../../../../utils/rich-text.js';
-import { STALENESS_THRESHOLD_MS } from '../../../config.js';
-import {
-  searchEprintsParamsSchema,
-  searchResultsResponseSchema,
-  type SearchEprintsParams,
-  type SearchResultsResponse,
-} from '../../../schemas/eprint.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
-
-/**
- * Handler for pub.chive.eprint.searchSubmissions query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated search parameters
- * @returns Search results with facets and pagination
- *
- * @example
- * ```http
- * GET /xrpc/pub.chive.eprint.searchSubmissions?q=quantum+computing&limit=20
- *
- * Response:
- * {
- *   "hits": [...],
- *   "total": 150,
- *   "hasMore": true,
- *   "cursor": "...",
- *   "facets": { "field": [...], "license": [...] }
- * }
- * ```
- *
- * @public
- */
-export async function searchSubmissionsHandler(
-  c: Context<ChiveEnv>,
-  params: SearchEprintsParams
-): Promise<SearchResultsResponse> {
-  const { search, eprint, relevanceLogger, ranking } = c.get('services');
-  const logger = c.get('logger');
-  const user = c.get('user');
-
-  // Get user's research fields for personalized ranking (if available)
-  let userFields: readonly string[] = [];
-  if (user?.did && ranking) {
-    try {
-      userFields = await ranking.getUserFields(user.did);
-    } catch (error) {
-      logger.warn('Failed to get user fields for ranking', {
-        userDid: user.did,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  // When no query provided, use match-all for filter-based browsing
-  const queryString = params.q ?? '*';
-
-  logger.debug('Searching eprints', {
-    query: queryString,
-    limit: params.limit,
-    fieldId: params.fieldId,
-    author: params.author,
-  });
-
-  // Build search query
-  const searchQuery = {
-    q: queryString,
-    limit: params.limit ?? 20,
-    offset: params.cursor ? parseInt(params.cursor, 10) : 0,
-    filters: {
-      author: params.author as DID | undefined,
-      subjects: params.fieldId ? [params.fieldId] : undefined,
-      dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,
-      dateTo: params.dateTo ? new Date(params.dateTo) : undefined,
-    },
-  };
-
-  const searchResults = await search.search(searchQuery);
-
-  // Calculate staleness using configured threshold
-  const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
-
-  // Fetch full eprint details for each hit
-  const enrichedHits = await Promise.all(
-    searchResults.hits.map(async (hit) => {
-      const eprintData = await eprint.getEprint(hit.uri);
-
-      if (!eprintData) {
-        // Eprint may have been deleted, skip it
-        return null;
-      }
-
-      // Extract rkey for record URL
-      const rkey = eprintData.uri.split('/').pop() ?? '';
-      // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
-      const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
-      const recordUrl = `${eprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
-
-      const plainAbstract = eprintData.abstractPlainText ?? extractPlainText(eprintData.abstract);
-      return {
-        uri: eprintData.uri,
-        cid: eprintData.cid,
-        title: eprintData.title,
-        abstract: plainAbstract.substring(0, 500), // Truncate for list view
-        authors: eprintData.authors.map((author) => ({
-          did: author.did,
-          name: author.name,
-          orcid: author.orcid,
-          email: author.email,
-          order: author.order,
-          affiliations: author.affiliations.map((aff) => ({
-            name: aff.name,
-            rorId: aff.rorId,
-            department: aff.department,
-          })),
-          contributions: author.contributions.map((contrib) => ({
-            typeUri: contrib.typeUri,
-            typeId: contrib.typeId,
-            typeLabel: contrib.typeLabel,
-            degree: contrib.degree,
-          })),
-          isCorrespondingAuthor: author.isCorrespondingAuthor,
-          isHighlighted: author.isHighlighted,
-          handle: undefined as string | undefined,
-          avatarUrl: undefined as string | undefined,
-        })),
-        submittedBy: eprintData.submittedBy,
-        paperDid: eprintData.paperDid,
-        fields: eprintData.fields?.map((f) => ({
-          id: f.id,
-          uri: f.uri,
-          label: f.label,
-          parentUri: f.parentUri,
-        })),
-        license: eprintData.license,
-        createdAt: eprintData.createdAt.toISOString(),
-        indexedAt: eprintData.indexedAt.toISOString(),
-        source: {
-          pdsEndpoint: eprintData.pdsUrl,
-          recordUrl,
-          blobUrl: undefined as string | undefined,
-          lastVerifiedAt: eprintData.indexedAt.toISOString(),
-          stale: eprintData.indexedAt.getTime() < stalenessThreshold,
-        },
-        metrics: eprintData.metrics
-          ? {
-              views: eprintData.metrics.views,
-              downloads: eprintData.metrics.downloads,
-              endorsements: eprintData.metrics.endorsements,
-            }
-          : undefined,
-        score: hit.score,
-        highlights: hit.highlight
-          ? Object.fromEntries(
-              Object.entries({
-                title: hit.highlight.title,
-                abstract: hit.highlight.abstract,
-              })
-                .filter(([, v]) => v !== undefined)
-                .map(([k, v]) => [k, [...(v ?? [])]])
-            )
-          : undefined,
-      };
-    })
-  );
-
-  // Filter out null results (deleted eprints)
-  const validHits = enrichedHits.filter((hit): hit is NonNullable<typeof hit> => hit !== null);
-
-  const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
-  const hasMore = offset + validHits.length < searchResults.total;
-
-  // Generate impression ID and log impression for LTR training (only for actual queries, not filter-only)
-  let impressionId: string | undefined;
-  const userQuery = params.q;
-  const hasTextQuery = userQuery !== undefined && userQuery !== '*';
-  if (hasTextQuery && validHits.length > 0) {
-    impressionId = relevanceLogger.createImpressionId();
-    const queryId = relevanceLogger.computeQueryId(userQuery);
-
-    // Create text scorer and category matcher for computing feature scores
-    const textScorer = new AcademicTextScorer();
-    const categoryMatcher = new TaxonomyCategoryMatcher();
-
-    // Extract features for each result
-    const impressionResults = validHits.map((hit, index) => {
-      // Compute text relevance features using academic text scorer
-      const titleMatchScore = textScorer.score(userQuery, hit.title);
-      const abstractMatchScore = hit.abstract ? textScorer.score(userQuery, hit.abstract) : 0;
-
-      // Combined text relevance with field weights
-      const textRelevance = textScorer.scoreMultiField(
-        userQuery,
-        { title: hit.title, abstract: hit.abstract },
-        { title: 1.0, abstract: 0.5 }
-      );
-
-      // Compute field match score if user has research fields
-      // Note: hit.fields contains field URIs, we need to extract category names
-      const itemCategories = hit.fields?.map((f) => f.label) ?? [];
-      const fieldMatchScore =
-        userFields.length > 0 && itemCategories.length > 0
-          ? categoryMatcher.computeFieldScore(itemCategories, userFields)
-          : 0;
-
-      const features: LTRFeatureVector = {
-        textRelevance,
-        fieldMatchScore,
-        titleMatchScore,
-        abstractMatchScore,
-        recencyScore: computeRecencyScore(hit.createdAt),
-        bm25Score: hit.score ?? 0,
-        originalPosition: index,
-      };
-
-      return {
-        uri: hit.uri,
-        position: index,
-        features,
-      };
-    });
-
-    // Log impression asynchronously (don't block response)
-    relevanceLogger
-      .logImpression({
-        impressionId,
-        queryId,
-        query: userQuery,
-        userDid: user?.did,
-        sessionId: c.get('requestId'),
-        timestamp: new Date(),
-        results: impressionResults,
-      })
-      .catch((error) => {
-        logger.warn('Failed to log search impression', {
-          impressionId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-  }
-
-  const response: SearchResultsResponse = {
-    hits: validHits,
-    cursor: hasMore ? String(offset + validHits.length) : undefined,
-    hasMore,
-    total: searchResults.total,
-    facets: undefined, // Faceted search not in basic interface
-    impressionId,
-  };
-
-  logger.info('Search completed', {
-    query: queryString,
-    totalHits: searchResults.total,
-    returnedHits: response.hits.length,
-    impressionId,
-  });
-
-  return response;
-}
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Computes recency score from publication date.
@@ -294,22 +37,153 @@ function computeRecencyScore(dateStr: string): number {
   const date = new Date(dateStr);
   const ageMs = Date.now() - date.getTime();
   const ageDays = ageMs / (1000 * 60 * 60 * 24);
-  // Decay function: 1.0 for today, 0.5 at 365 days, asymptotic to 0
   return Math.exp(-ageDays / 365);
 }
 
 /**
- * Endpoint definition for pub.chive.eprint.searchSubmissions.
+ * XRPC method for pub.chive.eprint.searchSubmissions.
  *
  * @public
  */
-export const searchSubmissionsEndpoint: XRPCEndpoint<SearchEprintsParams, SearchResultsResponse> = {
-  method: 'pub.chive.eprint.searchSubmissions' as never,
-  type: 'query',
-  description: 'Search eprint submissions with full-text and faceted filtering',
-  inputSchema: searchEprintsParamsSchema,
-  outputSchema: searchResultsResponseSchema,
-  handler: searchSubmissionsHandler,
+export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  rateLimit: 'authenticated',
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { search, eprint, relevanceLogger, ranking } = c.get('services');
+    const logger = c.get('logger');
+    const user = c.get('user');
+
+    let userFields: readonly string[] = [];
+    if (user?.did && ranking) {
+      try {
+        userFields = await ranking.getUserFields(user.did);
+      } catch (error) {
+        logger.warn('Failed to get user fields for ranking', {
+          userDid: user.did,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Use '*' as the query string for browsing mode (returns all documents)
+    const queryString = params.q ?? '*';
+
+    logger.debug('Searching eprints', {
+      query: queryString,
+      limit: params.limit,
+      fieldUris: params.fieldUris,
+      author: params.author,
+      browsingMode: !params.q,
+    });
+
+    const searchQuery = {
+      q: queryString,
+      limit: params.limit ?? 20,
+      offset: params.cursor ? parseInt(params.cursor, 10) : 0,
+      filters: {
+        author: params.author as DID | undefined,
+        subjects: params.fieldUris,
+        dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,
+        dateTo: params.dateTo ? new Date(params.dateTo) : undefined,
+      },
+    };
+
+    const searchResults = await search.search(searchQuery);
+
+    // For LTR logging, we still need to fetch eprint data
+    const eprintDataMap = new Map<string, Awaited<ReturnType<typeof eprint.getEprint>>>();
+    const userQuery = params.q;
+    const hasTextQuery = userQuery !== undefined && userQuery !== '*';
+
+    if (hasTextQuery && searchResults.hits.length > 0) {
+      const eprintPromises = searchResults.hits.map(async (hit) => {
+        const data = await eprint.getEprint(hit.uri);
+        if (data) {
+          eprintDataMap.set(hit.uri, data);
+        }
+      });
+      await Promise.all(eprintPromises);
+
+      const impressionId = relevanceLogger.createImpressionId();
+      const queryId = relevanceLogger.computeQueryId(userQuery);
+
+      const textScorer = new AcademicTextScorer();
+      const categoryMatcher = new TaxonomyCategoryMatcher();
+
+      const impressionResults = searchResults.hits.map((hit, index) => {
+        const eprintData = eprintDataMap.get(hit.uri);
+        const title = eprintData?.title ?? '';
+        const abstract = eprintData?.abstractPlainText ?? '';
+        const titleMatchScore = textScorer.score(userQuery, title);
+        const abstractMatchScore = abstract ? textScorer.score(userQuery, abstract) : 0;
+        const textRelevance = textScorer.scoreMultiField(
+          userQuery,
+          { title, abstract },
+          { title: 1.0, abstract: 0.5 }
+        );
+
+        const itemCategories = eprintData?.fields?.map((f) => f.label) ?? [];
+        const fieldMatchScore =
+          userFields.length > 0 && itemCategories.length > 0
+            ? categoryMatcher.computeFieldScore(itemCategories, userFields)
+            : 0;
+
+        const createdAt = eprintData?.createdAt?.toISOString() ?? new Date().toISOString();
+        const features: LTRFeatureVector = {
+          textRelevance,
+          fieldMatchScore,
+          titleMatchScore,
+          abstractMatchScore,
+          recencyScore: computeRecencyScore(createdAt),
+          bm25Score: hit.score ?? 0,
+          originalPosition: index,
+        };
+
+        return { uri: hit.uri, position: index, features };
+      });
+
+      relevanceLogger
+        .logImpression({
+          impressionId,
+          queryId,
+          query: userQuery,
+          userDid: user?.did,
+          sessionId: c.get('requestId'),
+          timestamp: new Date(),
+          results: impressionResults,
+        })
+        .catch((error) => {
+          logger.warn('Failed to log search impression', {
+            impressionId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }
+
+    const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
+    const hasMore = offset + searchResults.hits.length < searchResults.total;
+
+    const response: OutputSchema = {
+      hits: searchResults.hits.map((hit) => ({
+        uri: hit.uri,
+        score: hit.score ?? 0,
+        highlight: hit.highlight
+          ? {
+              title: hit.highlight.title ? [...hit.highlight.title] : undefined,
+              abstract: hit.highlight.abstract ? [...hit.highlight.abstract] : undefined,
+            }
+          : undefined,
+      })),
+      cursor: hasMore ? String(offset + searchResults.hits.length) : undefined,
+      total: searchResults.total,
+      facetAggregations: undefined,
+    };
+
+    logger.info('Search completed', {
+      query: queryString,
+      totalHits: searchResults.total,
+      returnedHits: response.hits.length,
+    });
+
+    return { encoding: 'application/json', body: response };
+  },
 };

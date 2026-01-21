@@ -1,5 +1,5 @@
 /**
- * Handler for pub.chive.sync.refreshRecord.
+ * XRPC handler for pub.chive.sync.refreshRecord.
  *
  * @remarks
  * Refreshes a record from PDS, re-indexing if changed.
@@ -9,8 +9,10 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/sync/refreshRecord.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import {
   AuthenticationError,
@@ -18,75 +20,56 @@ import {
   NotFoundError,
   DatabaseError,
 } from '../../../../types/errors.js';
-import {
-  refreshRecordInputSchema,
-  refreshResultSchema,
-  type RefreshRecordInput,
-  type RefreshResult,
-} from '../../../schemas/sync.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import { isErr, isOk } from '../../../../types/result.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.sync.refreshRecord.
- *
- * @param c - Hono context
- * @param input - Request input
- * @returns Refresh result
- *
- * @throws {NotFoundError} When record is not found
- * @throws {DatabaseError} When refresh fails
+ * XRPC method for pub.chive.sync.refreshRecord.
  *
  * @public
  */
-export async function refreshRecordHandler(
-  c: Context<ChiveEnv>,
-  input: RefreshRecordInput
-): Promise<RefreshResult> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { pdsSync } = c.get('services');
+export const refreshRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
+  auth: true,
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { pdsSync } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
-
-  if (!user.isAdmin) {
-    throw new AuthorizationError('Admin access required', 'admin');
-  }
-
-  logger.info('Refreshing record from PDS', { uri: input.uri });
-
-  const result = await pdsSync.refreshRecord(input.uri as AtUri);
-
-  if (!result.ok) {
-    if (result.error instanceof NotFoundError) {
-      throw result.error;
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
     }
-    throw new DatabaseError('QUERY', result.error.message);
-  }
 
-  return {
-    refreshed: result.value.refreshed,
-    changed: result.value.changed,
-    previousCID: result.value.previousCID,
-    currentCID: result.value.currentCID,
-    error: result.value.error?.message,
-  };
-}
+    if (!user.isAdmin) {
+      throw new AuthorizationError('Admin access required', 'admin');
+    }
 
-/**
- * Endpoint definition for pub.chive.sync.refreshRecord.
- *
- * @public
- */
-export const refreshRecordEndpoint: XRPCEndpoint<RefreshRecordInput, RefreshResult> = {
-  method: 'pub.chive.sync.refreshRecord' as never,
-  type: 'procedure',
-  description: 'Refresh a record from PDS (admin only)',
-  inputSchema: refreshRecordInputSchema,
-  outputSchema: refreshResultSchema,
-  handler: refreshRecordHandler,
-  auth: 'required',
-  rateLimit: 'admin',
+    if (!input) {
+      throw new AuthenticationError('Input required');
+    }
+
+    logger.info('Refreshing record from PDS', { uri: input.uri });
+
+    const result = await pdsSync.refreshRecord(input.uri as AtUri);
+
+    if (isErr(result)) {
+      const refreshError = result.error;
+      if (refreshError instanceof NotFoundError) {
+        throw refreshError;
+      }
+      throw new DatabaseError('QUERY', refreshError.message);
+    }
+
+    if (!isOk(result)) {
+      throw new DatabaseError('QUERY', 'Unexpected result state');
+    }
+
+    const body: OutputSchema = {
+      uri: input.uri,
+      refreshed: result.value.refreshed,
+      newCid: result.value.currentCID,
+      error: result.value.error?.message,
+    };
+
+    return { encoding: 'application/json', body };
+  },
 };

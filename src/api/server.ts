@@ -363,16 +363,12 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
   // Register all routes
   registerRoutes(app);
 
-  // 404 handler
+  // 404 handler (ATProto flat format)
   app.notFound((c) => {
-    const requestId = c.get('requestId') ?? 'unknown';
     return c.json(
       {
-        error: {
-          code: 'NOT_FOUND',
-          message: `Route not found: ${c.req.method} ${c.req.path}`,
-          requestId,
-        },
+        error: 'NotFound',
+        message: `Route not found: ${c.req.method} ${c.req.path}`,
       },
       404
     );

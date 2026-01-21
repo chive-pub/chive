@@ -34,7 +34,7 @@ describe('OAuth Handle Resolution Configuration', () => {
     const source = fs.readFileSync(sourcePath, 'utf-8');
 
     // Count occurrences of bsky.social
-    const matches = source.match(/bsky\.social/g) || [];
+    const _matches = source.match(/bsky\.social/g) || [];
 
     // Should have zero hardcoded bsky.social references
     // (comments don't count as they're documentation)

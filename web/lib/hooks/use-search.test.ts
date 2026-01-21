@@ -7,13 +7,19 @@ import { createMockSearchResults } from '@/tests/mock-data';
 import { searchKeys, useSearch, useInstantSearch } from './use-search';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet } = vi.hoisted(() => ({
-  mockApiGet: vi.fn(),
+const { mockSearchSubmissions } = vi.hoisted(() => ({
+  mockSearchSubmissions: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
+    pub: {
+      chive: {
+        eprint: {
+          searchSubmissions: mockSearchSubmissions,
+        },
+      },
+    },
   },
 }));
 
@@ -39,9 +45,8 @@ describe('useSearch', () => {
 
   it('searches eprints by query', async () => {
     const mockResults = createMockSearchResults();
-    mockApiGet.mockResolvedValueOnce({
+    mockSearchSubmissions.mockResolvedValueOnce({
       data: mockResults,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -52,13 +57,11 @@ describe('useSearch', () => {
     });
 
     expect(result.current.data).toEqual(mockResults);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.searchSubmissions', {
-      params: {
-        query: expect.objectContaining({
-          q: 'machine learning',
-        }),
-      },
-    });
+    expect(mockSearchSubmissions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: 'machine learning',
+      })
+    );
   });
 
   it('is disabled when query is less than 2 characters', () => {
@@ -69,9 +72,8 @@ describe('useSearch', () => {
   });
 
   it('is enabled when query is exactly 2 characters', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockSearchSubmissions.mockResolvedValueOnce({
       data: createMockSearchResults({ total: 0, hits: [] }),
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -81,13 +83,12 @@ describe('useSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalled();
+    expect(mockSearchSubmissions).toHaveBeenCalled();
   });
 
   it('passes additional parameters', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockSearchSubmissions.mockResolvedValueOnce({
       data: createMockSearchResults(),
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -108,26 +109,18 @@ describe('useSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.searchSubmissions', {
-      params: {
-        query: expect.objectContaining({
-          q: 'physics',
-          limit: 20,
-          cursor: 'next',
-          field: 'physics',
-          author: 'did:plc:author',
-          dateFrom: '2024-01-01',
-          dateTo: '2024-12-31',
-        }),
-      },
+    expect(mockSearchSubmissions).toHaveBeenCalledWith({
+      q: 'physics',
+      limit: 20,
+      cursor: 'next',
+      author: 'did:plc:author',
+      dateFrom: '2024-01-01',
+      dateTo: '2024-12-31',
     });
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Search service unavailable' },
-    });
+    mockSearchSubmissions.mockRejectedValueOnce(new Error('Search service unavailable'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useSearch('test query'), { wrapper: Wrapper });
@@ -141,9 +134,8 @@ describe('useSearch', () => {
 
   it('returns empty results for no matches', async () => {
     const emptyResults = createMockSearchResults({ hits: [], total: 0, hasMore: false });
-    mockApiGet.mockResolvedValueOnce({
+    mockSearchSubmissions.mockResolvedValueOnce({
       data: emptyResults,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -165,9 +157,8 @@ describe('useInstantSearch', () => {
 
   it('performs instant search with limited results', async () => {
     const mockResults = createMockSearchResults();
-    mockApiGet.mockResolvedValueOnce({
+    mockSearchSubmissions.mockResolvedValueOnce({
       data: mockResults,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -177,13 +168,9 @@ describe('useInstantSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.searchSubmissions', {
-      params: {
-        query: expect.objectContaining({
-          q: 'quick search',
-          limit: 5,
-        }),
-      },
+    expect(mockSearchSubmissions).toHaveBeenCalledWith({
+      q: 'quick search',
+      limit: 5,
     });
   });
 
@@ -195,10 +182,7 @@ describe('useInstantSearch', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Search failed' },
-    });
+    mockSearchSubmissions.mockRejectedValueOnce(new Error('Search failed'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useInstantSearch('failing query'), { wrapper: Wrapper });

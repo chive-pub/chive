@@ -9,10 +9,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { autocompleteAffiliationHandler } from '@/api/handlers/xrpc/actor/autocompleteAffiliation.js';
-import { autocompleteKeywordHandler } from '@/api/handlers/xrpc/actor/autocompleteKeyword.js';
-import { autocompleteOrcidHandler } from '@/api/handlers/xrpc/actor/autocompleteOrcid.js';
-import { discoverAuthorIdsHandler } from '@/api/handlers/xrpc/actor/discoverAuthorIds.js';
+import { autocompleteAffiliation } from '@/api/handlers/xrpc/actor/autocompleteAffiliation.js';
+import { autocompleteKeyword } from '@/api/handlers/xrpc/actor/autocompleteKeyword.js';
+import { autocompleteOrcid } from '@/api/handlers/xrpc/actor/autocompleteOrcid.js';
+import { discoverAuthorIds } from '@/api/handlers/xrpc/actor/discoverAuthorIds.js';
+import type { AuthContext } from '@/api/xrpc/types.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 // Mock fetch globally
@@ -28,8 +29,8 @@ const createMockLogger = (): ILogger => ({
 });
 
 interface MockContext {
-  get: ReturnType<typeof vi.fn>;
-  set: ReturnType<typeof vi.fn>;
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown) => void;
 }
 
 describe('XRPC Actor Autocomplete Handlers', () => {
@@ -59,6 +60,14 @@ describe('XRPC Actor Autocomplete Handlers', () => {
     vi.clearAllMocks();
   });
 
+  /**
+   * Helper to create auth context from mock context.
+   */
+  function getAuthFromContext(ctx: MockContext): AuthContext | null {
+    const user = ctx.get('user') as { did: string } | null;
+    return user ? { did: user.did, iss: user.did } : null;
+  }
+
   describe('autocompleteOrcidHandler', () => {
     it('returns ORCID suggestions for a valid query', async () => {
       const mockOrcidResponse = {
@@ -83,22 +92,27 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         json: () => Promise.resolve(mockOrcidResponse),
       });
 
-      const result = await autocompleteOrcidHandler(mockContext as never, {
-        query: 'John Smith',
+      const params = { query: 'John Smith', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteOrcid.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(2);
-      expect(result.suggestions[0]).toEqual({
+      expect(result.body.suggestions).toHaveLength(2);
+      expect(result.body.suggestions[0]).toEqual({
         orcid: '0000-0002-1825-0097',
         givenNames: 'John',
         familyName: 'Smith',
         affiliation: 'Stanford University',
       });
-      expect(result.suggestions[1]).toEqual({
+      expect(result.body.suggestions[1]).toEqual({
         orcid: '0000-0001-2345-6789',
         givenNames: 'Jane',
         familyName: 'Doe',
-        affiliation: null,
+        affiliation: undefined,
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
@@ -117,11 +131,16 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         status: 500,
       });
 
-      const result = await autocompleteOrcidHandler(mockContext as never, {
-        query: 'Test User',
+      const params = { query: 'Test User', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteOrcid.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(0);
+      expect(result.body.suggestions).toHaveLength(0);
       expect(mockLogger.warn).toHaveBeenCalled();
     });
 
@@ -140,22 +159,31 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         json: () => Promise.resolve(mockOrcidResponse),
       });
 
-      const result = await autocompleteOrcidHandler(mockContext as never, {
-        query: 'Test',
-        limit: 3,
+      const params = { query: 'Test', limit: 3 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteOrcid.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(3);
+      expect(result.body.suggestions).toHaveLength(3);
     });
 
     it('handles network errors gracefully', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await autocompleteOrcidHandler(mockContext as never, {
-        query: 'Test User',
+      const params = { query: 'Test User', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteOrcid.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(0);
+      expect(result.body.suggestions).toHaveLength(0);
       expect(mockLogger.warn).toHaveBeenCalledWith(
         'ORCID autocomplete error',
         expect.objectContaining({ error: 'Network error' })
@@ -195,24 +223,29 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         json: () => Promise.resolve(mockRorResponse),
       });
 
-      const result = await autocompleteAffiliationHandler(mockContext as never, {
-        query: 'University',
+      const params = { query: 'University', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteAffiliation.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(2);
-      expect(result.suggestions[0]).toEqual({
+      expect(result.body.suggestions).toHaveLength(2);
+      expect(result.body.suggestions[0]).toEqual({
         rorId: 'https://ror.org/02mhbdp94',
         name: 'Stanford University',
         country: 'United States',
         types: ['education'],
         acronym: 'Stanford',
       });
-      expect(result.suggestions[1]).toEqual({
+      expect(result.body.suggestions[1]).toEqual({
         rorId: 'https://ror.org/03vek6s52',
         name: 'Harvard University',
         country: 'United States',
         types: ['education'],
-        acronym: null,
+        acronym: undefined,
       });
     });
 
@@ -234,12 +267,17 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         json: () => Promise.resolve(mockRorResponse),
       });
 
-      const result = await autocompleteAffiliationHandler(mockContext as never, {
-        query: 'Test',
+      const params = { query: 'Test', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteAffiliation.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(1);
-      expect(result.suggestions[0]?.country).toBe('Unknown');
+      expect(result.body.suggestions).toHaveLength(1);
+      expect(result.body.suggestions[0]?.country).toBe('Unknown');
     });
 
     it('returns empty array on API failure', async () => {
@@ -248,11 +286,16 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         status: 503,
       });
 
-      const result = await autocompleteAffiliationHandler(mockContext as never, {
-        query: 'Test',
+      const params = { query: 'Test', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteAffiliation.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(0);
+      expect(result.body.suggestions).toHaveLength(0);
     });
   });
 
@@ -292,13 +335,18 @@ describe('XRPC Actor Autocomplete Handlers', () => {
           json: () => Promise.resolve(mockWikidataResponse),
         });
 
-      const result = await autocompleteKeywordHandler(mockContext as never, {
-        query: 'machine learning',
+      const params = { query: 'machine learning', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteKeyword.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions.length).toBeGreaterThan(0);
+      expect(result.body.suggestions.length).toBeGreaterThan(0);
       // Should have suggestions from both sources interleaved
-      const sources = result.suggestions.map((s) => s.source);
+      const sources = result.body.suggestions.map((s) => s.source);
       expect(sources).toContain('fast');
       expect(sources).toContain('wikidata');
     });
@@ -323,13 +371,17 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         json: () => Promise.resolve(mockFastResponse),
       });
 
-      const result = await autocompleteKeywordHandler(mockContext as never, {
-        query: 'neural',
-        sources: ['fast'],
+      const params = { query: 'neural', limit: 10, sources: ['fast' as const] };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteKeyword.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions.length).toBeGreaterThan(0);
-      expect(result.suggestions.every((s) => s.source === 'fast')).toBe(true);
+      expect(result.body.suggestions.length).toBeGreaterThan(0);
+      expect(result.body.suggestions.every((s) => s.source === 'fast')).toBe(true);
     });
 
     it('handles FAST API failure gracefully', async () => {
@@ -348,13 +400,18 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         json: () => Promise.resolve(mockWikidataResponse),
       });
 
-      const result = await autocompleteKeywordHandler(mockContext as never, {
-        query: 'test',
+      const params = { query: 'test', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteKeyword.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
       // Should still return Wikidata results even if FAST fails
-      expect(result.suggestions.length).toBeGreaterThan(0);
-      expect(result.suggestions.every((s) => s.source === 'wikidata')).toBe(true);
+      expect(result.body.suggestions.length).toBeGreaterThan(0);
+      expect(result.body.suggestions.every((s) => s.source === 'wikidata')).toBe(true);
     });
 
     it('handles empty results from both sources', async () => {
@@ -368,11 +425,16 @@ describe('XRPC Actor Autocomplete Handlers', () => {
           json: () => Promise.resolve({ search: [] }),
         });
 
-      const result = await autocompleteKeywordHandler(mockContext as never, {
-        query: 'xyznonexistent',
+      const params = { query: 'xyznonexistent', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await autocompleteKeyword.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.suggestions).toHaveLength(0);
+      expect(result.body.suggestions).toHaveLength(0);
     });
   });
 
@@ -383,11 +445,10 @@ describe('XRPC Actor Autocomplete Handlers', () => {
           {
             id: 'https://openalex.org/A5023888391',
             display_name: 'John Smith',
-            last_known_institution: { display_name: 'Stanford University' },
+            hint: 'Stanford University',
             works_count: 150,
             cited_by_count: 5000,
-            ids: {
-              openalex: 'A5023888391',
+            external_ids: {
               orcid: '0000-0002-1825-0097',
             },
           },
@@ -398,8 +459,8 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         data: [
           {
             authorId: '123456789',
-            name: 'John Smith',
-            affiliations: [{ name: 'MIT' }],
+            name: 'John Smith Jr',
+            affiliations: ['MIT'],
             paperCount: 100,
             citationCount: 3000,
             externalIds: { DBLP: ['pid/123'] },
@@ -417,14 +478,19 @@ describe('XRPC Actor Autocomplete Handlers', () => {
           json: () => Promise.resolve(mockS2Response),
         });
 
-      const result = await discoverAuthorIdsHandler(mockContext as never, {
-        name: 'John Smith',
+      const params = { name: 'John Smith', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await discoverAuthorIds.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.searchedName).toBe('John Smith');
-      expect(result.matches.length).toBeGreaterThan(0);
+      expect(result.body.searchedName).toBe('John Smith');
+      expect(result.body.matches.length).toBeGreaterThan(0);
 
-      const firstMatch = result.matches[0];
+      const firstMatch = result.body.matches[0];
       expect(firstMatch).toBeDefined();
       expect(firstMatch).toHaveProperty('displayName');
       expect(firstMatch).toHaveProperty('ids');
@@ -432,7 +498,7 @@ describe('XRPC Actor Autocomplete Handlers', () => {
     });
 
     it('requires authentication', async () => {
-      const unauthContext = {
+      const unauthContext: MockContext = {
         get: vi.fn((key: string) => {
           switch (key) {
             case 'logger':
@@ -447,9 +513,17 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         set: vi.fn(),
       };
 
+      const params = { name: 'Test', limit: 10 };
+      const auth = getAuthFromContext(unauthContext);
+
       // The handler should throw an authentication error
       await expect(
-        discoverAuthorIdsHandler(unauthContext as never, { name: 'Test' })
+        discoverAuthorIds.handler({
+          params,
+          input: undefined,
+          auth,
+          c: unauthContext as never,
+        })
       ).rejects.toThrow('Authentication required');
     });
 
@@ -472,12 +546,17 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         json: () => Promise.resolve(mockS2Response),
       });
 
-      const result = await discoverAuthorIdsHandler(mockContext as never, {
-        name: 'Test User',
+      const params = { name: 'Test User', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await discoverAuthorIds.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
       // Should still return S2 results
-      expect(result.matches.length).toBeGreaterThan(0);
+      expect(result.body.matches.length).toBeGreaterThan(0);
     });
 
     it('deduplicates results by ORCID', async () => {
@@ -486,10 +565,10 @@ describe('XRPC Actor Autocomplete Handlers', () => {
           {
             id: 'https://openalex.org/A123',
             display_name: 'Jane Doe',
-            last_known_institution: null,
+            hint: null,
             works_count: 100,
             cited_by_count: 500,
-            ids: { openalex: 'A123', orcid: '0000-0001-1111-1111' },
+            external_ids: { orcid: '0000-0001-1111-1111' },
           },
         ],
       };
@@ -517,13 +596,18 @@ describe('XRPC Actor Autocomplete Handlers', () => {
           json: () => Promise.resolve(mockS2Response),
         });
 
-      const result = await discoverAuthorIdsHandler(mockContext as never, {
-        name: 'Jane Doe',
+      const params = { name: 'Jane Doe', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await discoverAuthorIds.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
       // Should deduplicate by ORCID and merge IDs
       const uniqueOrcids = new Set(
-        result.matches.filter((m) => m.ids.orcid).map((m) => m.ids.orcid)
+        result.body.matches.filter((m) => m.ids.orcid).map((m) => m.ids.orcid)
       );
       expect(uniqueOrcids.size).toBeLessThanOrEqual(1);
     });
@@ -533,11 +617,16 @@ describe('XRPC Actor Autocomplete Handlers', () => {
         .mockResolvedValueOnce({ ok: false, status: 500 })
         .mockResolvedValueOnce({ ok: false, status: 500 });
 
-      const result = await discoverAuthorIdsHandler(mockContext as never, {
-        name: 'Test',
+      const params = { name: 'Test', limit: 10 };
+      const auth = getAuthFromContext(mockContext);
+      const result = await discoverAuthorIds.handler({
+        params,
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
 
-      expect(result.matches).toHaveLength(0);
+      expect(result.body.matches).toHaveLength(0);
       expect(mockLogger.warn).toHaveBeenCalled();
     });
   });

@@ -61,4 +61,13 @@ export {
   type EprintVersion,
   type UserTag,
 } from './eprint.js';
-export * from './review.js';
+// Export all from review except TextSpanTarget (re-exported from annotation.js)
+export {
+  type TextItem,
+  type NodeRefItem,
+  type EprintRefItem,
+  type RichTextItem,
+  type MotivationType,
+  type Review,
+  type Endorsement,
+} from './review.js';

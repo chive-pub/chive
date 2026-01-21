@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 import { FieldDetailContent } from './field-content';
 import { FieldDetailSkeleton } from './loading';
-import { api } from '@/lib/api/client';
+import { createServerClient } from '@/lib/api/client';
 
 /**
  * Field detail page route parameters.
@@ -22,18 +22,12 @@ export async function generateMetadata({ params }: FieldPageProps): Promise<Meta
   const decodedId = decodeURIComponent(id);
 
   try {
-    const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-      params: {
-        query: {
-          id: decodedId,
-          includeEdges: false,
-        },
-      },
+    const serverApi = createServerClient();
+    const response = await serverApi.pub.chive.graph.getNode({
+      id: decodedId,
+      includeEdges: false,
     });
-
-    if (!data) {
-      return { title: 'Field Not Found' };
-    }
+    const data = response.data;
 
     return {
       title: data.label,

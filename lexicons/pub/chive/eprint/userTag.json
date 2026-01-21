@@ -4,7 +4,7 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "User-generated tag on eprint (TaxoFolk)",
+      "description": "User-generated tag on eprint (TaxoFolk) with optional knowledge graph linking",
       "key": "tid",
       "record": {
         "type": "object",
@@ -13,12 +13,27 @@
           "eprintUri": {
             "type": "string",
             "format": "at-uri",
-            "description": "Tagged eprint URI"
+            "description": "AT-URI of the tagged eprint"
           },
           "tag": {
             "type": "string",
-            "description": "Tag label",
+            "description": "Tag label (user-provided text)",
             "maxLength": 100
+          },
+          "nodeUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Optional AT-URI to linked knowledge graph node (subkind=topic, concept, field, etc.)"
+          },
+          "nodeSlug": {
+            "type": "string",
+            "description": "Node slug for display fallback when nodeUri is present",
+            "maxLength": 100
+          },
+          "nodeSubkind": {
+            "type": "string",
+            "description": "Subkind of the linked node for styling (e.g., 'topic', 'concept', 'field')",
+            "maxLength": 50
           },
           "createdAt": {
             "type": "string",

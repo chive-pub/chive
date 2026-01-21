@@ -1,0 +1,184 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.getSubmissionData",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get prefilled form data for claiming a paper from an external source",
+      "parameters": {
+        "type": "params",
+        "required": ["source", "externalId"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "description": "External source (e.g., arxiv, semanticscholar)"
+          },
+          "externalId": {
+            "type": "string",
+            "description": "Source-specific identifier"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "title",
+            "abstract",
+            "authors",
+            "keywords",
+            "source",
+            "externalId",
+            "externalUrl"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Prefilled title"
+            },
+            "abstract": {
+              "type": "string",
+              "description": "Prefilled abstract"
+            },
+            "authors": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#submissionAuthor"
+              },
+              "description": "Prefilled authors"
+            },
+            "keywords": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Prefilled keywords/categories"
+            },
+            "doi": {
+              "type": "string",
+              "description": "DOI if available"
+            },
+            "pdfUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "PDF URL if available"
+            },
+            "source": {
+              "type": "string",
+              "description": "Source system"
+            },
+            "externalId": {
+              "type": "string",
+              "description": "Source-specific external ID"
+            },
+            "externalUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "External URL to the paper"
+            },
+            "publicationDate": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Publication date"
+            },
+            "externalIds": {
+              "type": "ref",
+              "ref": "#externalIds"
+            },
+            "existingChivePaper": {
+              "type": "ref",
+              "ref": "#existingChivePaper"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "NotFound" }]
+    },
+    "submissionAuthor": {
+      "type": "object",
+      "required": ["order", "name"],
+      "properties": {
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Author order (1-indexed)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address"
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Institution affiliation"
+        }
+      }
+    },
+    "externalIds": {
+      "type": "object",
+      "properties": {
+        "arxivId": {
+          "type": "string",
+          "description": "arXiv identifier"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI"
+        }
+      }
+    },
+    "existingChivePaper": {
+      "type": "object",
+      "required": ["uri", "title", "authors", "createdAt"],
+      "description": "Existing Chive paper if this is a duplicate",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the existing paper"
+        },
+        "title": {
+          "type": "string",
+          "description": "Paper title"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#existingAuthor"
+          },
+          "description": "Author list"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the paper was indexed"
+        }
+      }
+    },
+    "existingAuthor": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID if claimed"
+        },
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        }
+      }
+    }
+  }
+}

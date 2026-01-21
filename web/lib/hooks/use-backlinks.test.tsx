@@ -6,13 +6,21 @@ import type { ReactNode } from 'react';
 import { useBacklinks, useBacklinkCounts, backlinkKeys, type Backlink } from './use-backlinks';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockGet } = vi.hoisted(() => ({
-  mockGet: vi.fn(),
+const { mockList, mockGetCounts } = vi.hoisted(() => ({
+  mockList: vi.fn(),
+  mockGetCounts: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockGet,
+    pub: {
+      chive: {
+        backlink: {
+          list: mockList,
+          getCounts: mockGetCounts,
+        },
+      },
+    },
   },
 }));
 
@@ -66,13 +74,13 @@ const mockCounts = {
 describe('useBacklinks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGet.mockReset();
+    mockList.mockReset();
+    mockGetCounts.mockReset();
   });
 
   it('should fetch backlinks for an eprint', async () => {
-    mockGet.mockResolvedValueOnce({
+    mockList.mockResolvedValueOnce({
       data: { backlinks: mockBacklinks, hasMore: false },
-      error: undefined,
     });
 
     const { result } = renderHook(
@@ -83,19 +91,16 @@ describe('useBacklinks', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.pages[0].backlinks).toEqual(mockBacklinks);
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.backlink.list', {
-      params: {
-        query: expect.objectContaining({
-          targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
-        }),
-      },
-    });
+    expect(mockList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
+      })
+    );
   });
 
   it('should filter by source type', async () => {
-    mockGet.mockResolvedValueOnce({
+    mockList.mockResolvedValueOnce({
       data: { backlinks: [mockBacklinks[0]], hasMore: false },
-      error: undefined,
     });
 
     const { result } = renderHook(
@@ -108,13 +113,11 @@ describe('useBacklinks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.backlink.list', {
-      params: {
-        query: expect.objectContaining({
-          sourceType: 'semble.collection',
-        }),
-      },
-    });
+    expect(mockList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: 'semble.collection',
+      })
+    );
   });
 
   it('should not fetch when disabled', () => {
@@ -126,18 +129,16 @@ describe('useBacklinks', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockList).not.toHaveBeenCalled();
   });
 
   it('should handle pagination', async () => {
-    mockGet
+    mockList
       .mockResolvedValueOnce({
         data: { backlinks: [mockBacklinks[0]], cursor: 'cursor1', hasMore: true },
-        error: undefined,
       })
       .mockResolvedValueOnce({
         data: { backlinks: [mockBacklinks[1]], hasMore: false },
-        error: undefined,
       });
 
     const { result } = renderHook(
@@ -160,13 +161,13 @@ describe('useBacklinks', () => {
 describe('useBacklinkCounts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGet.mockReset();
+    mockList.mockReset();
+    mockGetCounts.mockReset();
   });
 
   it('should fetch backlink counts', async () => {
-    mockGet.mockResolvedValueOnce({
+    mockGetCounts.mockResolvedValueOnce({
       data: mockCounts,
-      error: undefined,
     });
 
     const { result } = renderHook(
@@ -178,10 +179,8 @@ describe('useBacklinkCounts', () => {
 
     expect(result.current.data).toEqual(mockCounts);
     expect(result.current.data?.total).toBe(11);
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.backlink.getCounts', {
-      params: {
-        query: { targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1' },
-      },
+    expect(mockGetCounts).toHaveBeenCalledWith({
+      targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     });
   });
 
@@ -194,7 +193,7 @@ describe('useBacklinkCounts', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockGetCounts).not.toHaveBeenCalled();
   });
 });
 

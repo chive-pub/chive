@@ -186,22 +186,25 @@ function createTestEprint(overrides: TestEprintOverrides = {}): Eprint {
     isHighlighted: false,
   };
 
+  // Destructure abstract from overrides to prevent re-spreading after conversion
+  const { abstract: rawAbstract, ...restOverrides } = overrides;
+
   return {
     $type: 'pub.chive.eprint.submission',
-    uri: overrides.uri ?? createTestUri('default'),
-    cid: overrides.cid ?? createTestCid('default'),
-    authors: overrides.authors ?? [testAuthor],
+    uri: restOverrides.uri ?? createTestUri('default'),
+    cid: restOverrides.cid ?? createTestCid('default'),
+    authors: restOverrides.authors ?? [testAuthor],
     submittedBy: TEST_AUTHOR,
-    title: overrides.title ?? 'Test Eprint Title',
+    title: restOverrides.title ?? 'Test Eprint Title',
     abstract:
-      typeof overrides.abstract === 'string'
-        ? createMockAbstract(overrides.abstract)
-        : (overrides.abstract ?? createMockAbstract('This is a test abstract for the eprint.')),
-    keywords: overrides.keywords ?? ['test', 'integration'],
-    facets: overrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
-    version: overrides.version ?? 1,
-    license: overrides.license ?? 'CC-BY-4.0',
-    documentBlobRef: overrides.documentBlobRef ?? {
+      typeof rawAbstract === 'string'
+        ? createMockAbstract(rawAbstract)
+        : (rawAbstract ?? createMockAbstract('This is a test abstract for the eprint.')),
+    keywords: restOverrides.keywords ?? ['test', 'integration'],
+    facets: restOverrides.facets ?? [{ dimension: 'matter', value: 'Computer Science' }],
+    version: restOverrides.version ?? 1,
+    license: restOverrides.license ?? 'CC-BY-4.0',
+    documentBlobRef: restOverrides.documentBlobRef ?? {
       $type: 'blob',
       ref: 'bafyreibtest123' as CID,
       mimeType: 'application/pdf',
@@ -209,8 +212,8 @@ function createTestEprint(overrides: TestEprintOverrides = {}): Eprint {
     },
     documentFormat: 'pdf',
     publicationStatus: 'eprint',
-    createdAt: overrides.createdAt ?? (Date.now() as Timestamp),
-    ...overrides,
+    createdAt: restOverrides.createdAt ?? (Date.now() as Timestamp),
+    ...restOverrides,
   } as Eprint;
 }
 

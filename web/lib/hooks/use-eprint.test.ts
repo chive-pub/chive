@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createWrapper } from '@/tests/test-utils';
-import { createMockEprint, createMockEprintSummary } from '@/tests/mock-data';
+import { createMockBlobRef, createMockEprintSummary } from '@/tests/mock-data';
 
 import {
   eprintKeys,
@@ -13,13 +13,23 @@ import {
 } from './use-eprint';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet } = vi.hoisted(() => ({
-  mockApiGet: vi.fn(),
+const { mockGetSubmission, mockSearchSubmissions, mockListByAuthor } = vi.hoisted(() => ({
+  mockGetSubmission: vi.fn(),
+  mockSearchSubmissions: vi.fn(),
+  mockListByAuthor: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
+    pub: {
+      chive: {
+        eprint: {
+          getSubmission: mockGetSubmission,
+          searchSubmissions: mockSearchSubmissions,
+          listByAuthor: mockListByAuthor,
+        },
+      },
+    },
   },
 }));
 
@@ -58,10 +68,41 @@ describe('useEprint', () => {
   });
 
   it('fetches an eprint by URI', async () => {
-    const mockEprint = createMockEprint();
-    mockApiGet.mockResolvedValueOnce({
-      data: mockEprint,
-      error: undefined,
+    // Mock the raw API response structure (uri, cid, value, indexedAt, pdsUrl)
+    const mockSubmissionResponse = {
+      uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+      cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+      value: {
+        $type: 'pub.chive.eprint.submission',
+        title: 'A Novel Approach to Machine Learning',
+        abstract: [{ type: 'text', content: 'This paper presents a novel approach.' }],
+        abstractPlainText: 'This paper presents a novel approach.',
+        document: createMockBlobRef(),
+        authors: [
+          {
+            $type: 'pub.chive.eprint.authorContribution',
+            did: 'did:plc:test123',
+            name: 'Test User',
+            order: 1,
+            affiliations: [],
+            contributions: [],
+            isCorrespondingAuthor: true,
+            isHighlighted: false,
+          },
+        ],
+        submittedBy: 'did:plc:test123',
+        keywords: ['machine learning'],
+        fieldUris: ['at://did:plc:chive-governance/pub.chive.graph.field/computer-science'],
+        licenseSlug: 'CC-BY-4.0',
+        publicationStatusSlug: 'preprint',
+        createdAt: '2024-01-15T10:30:00Z',
+      },
+      indexedAt: '2024-01-15T10:35:00Z',
+      pdsUrl: 'https://bsky.social',
+    };
+
+    mockGetSubmission.mockResolvedValueOnce({
+      data: mockSubmissionResponse,
     });
 
     const { Wrapper } = createWrapper();
@@ -74,9 +115,8 @@ describe('useEprint', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toEqual(mockEprint);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.getSubmission', {
-      params: { query: { uri: 'at://did:plc:test/pub.chive.eprint.submission/123' } },
+    expect(mockGetSubmission).toHaveBeenCalledWith({
+      uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
     });
   });
 
@@ -98,10 +138,7 @@ describe('useEprint', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Not found' },
-    });
+    mockGetSubmission.mockRejectedValueOnce(new Error('Not found'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(
@@ -129,9 +166,8 @@ describe('useEprints', () => {
       hasMore: true,
       total: 10,
     };
-    mockApiGet.mockResolvedValueOnce({
+    mockSearchSubmissions.mockResolvedValueOnce({
       data: mockData,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -144,15 +180,14 @@ describe('useEprints', () => {
     });
 
     expect(result.current.data).toEqual(mockData);
-    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/eprints', {
-      params: { query: expect.objectContaining({ q: 'machine learning' }) },
-    });
+    expect(mockSearchSubmissions).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'machine learning' })
+    );
   });
 
   it('passes parameters to the query', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockSearchSubmissions.mockResolvedValueOnce({
       data: { eprints: [], cursor: undefined, hasMore: false, total: 0 },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -165,22 +200,17 @@ describe('useEprints', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/api/v1/eprints', {
-      params: {
-        query: expect.objectContaining({
-          q: 'physics research',
-          limit: 10,
-          cursor: 'abc',
-        }),
-      },
-    });
+    expect(mockSearchSubmissions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: 'physics research',
+        limit: 10,
+        cursor: 'abc',
+      })
+    );
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Server error' },
-    });
+    mockSearchSubmissions.mockRejectedValueOnce(new Error('Server error'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useEprints({ q: 'test query' }), { wrapper: Wrapper });
@@ -209,11 +239,9 @@ describe('useEprintsByAuthor', () => {
     const mockData = {
       eprints: [createMockEprintSummary()],
       cursor: undefined,
-      hasMore: false,
     };
-    mockApiGet.mockResolvedValueOnce({
+    mockListByAuthor.mockResolvedValueOnce({
       data: mockData,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -225,10 +253,10 @@ describe('useEprintsByAuthor', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toEqual(mockData);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.listByAuthor', {
-      params: { query: expect.objectContaining({ did: 'did:plc:author123' }) },
-    });
+    expect(result.current.data?.eprints).toEqual(mockData.eprints);
+    expect(mockListByAuthor).toHaveBeenCalledWith(
+      expect.objectContaining({ did: 'did:plc:author123' })
+    );
   });
 
   it('is disabled when did is empty', () => {
@@ -239,10 +267,7 @@ describe('useEprintsByAuthor', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Author not found' },
-    });
+    mockListByAuthor.mockRejectedValueOnce(new Error('Author not found'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useEprintsByAuthor({ did: 'did:plc:invalid' }), {
@@ -270,10 +295,38 @@ describe('usePrefetchEprint', () => {
   });
 
   it('calls prefetchQuery when invoked', () => {
-    const mockEprint = createMockEprint();
-    mockApiGet.mockResolvedValueOnce({
-      data: mockEprint,
-      error: undefined,
+    // Mock the raw API response structure
+    const mockSubmissionResponse = {
+      uri: 'at://did:plc:test/pub.chive.eprint.submission/123',
+      cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+      value: {
+        $type: 'pub.chive.eprint.submission',
+        title: 'A Novel Approach to Machine Learning',
+        abstract: [{ type: 'text', content: 'Test abstract.' }],
+        abstractPlainText: 'Test abstract.',
+        document: createMockBlobRef(),
+        authors: [
+          {
+            did: 'did:plc:test123',
+            name: 'Test User',
+            order: 1,
+            affiliations: [],
+            contributions: [],
+            isCorrespondingAuthor: true,
+            isHighlighted: false,
+          },
+        ],
+        submittedBy: 'did:plc:test123',
+        licenseSlug: 'CC-BY-4.0',
+        publicationStatusSlug: 'preprint',
+        createdAt: '2024-01-15T10:30:00Z',
+      },
+      indexedAt: '2024-01-15T10:35:00Z',
+      pdsUrl: 'https://bsky.social',
+    };
+
+    mockGetSubmission.mockResolvedValueOnce({
+      data: mockSubmissionResponse,
     });
 
     const { Wrapper } = createWrapper();
@@ -283,6 +336,6 @@ describe('usePrefetchEprint', () => {
     result.current('at://did:plc:test/pub.chive.eprint.submission/123');
 
     // The API should have been called
-    expect(mockApiGet).toHaveBeenCalled();
+    expect(mockGetSubmission).toHaveBeenCalled();
   });
 });

@@ -1,0 +1,126 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.listVotes",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List votes for a specific governance proposal",
+      "parameters": {
+        "type": "params",
+        "required": ["proposalId"],
+        "properties": {
+          "proposalId": {
+            "type": "string",
+            "description": "Proposal identifier"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["votes", "total"],
+          "properties": {
+            "votes": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#voteView"
+              },
+              "description": "List of votes"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of votes"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "voteView": {
+      "type": "object",
+      "description": "View of a vote on a proposal",
+      "required": [
+        "id",
+        "uri",
+        "cid",
+        "proposalUri",
+        "voterDid",
+        "voterRole",
+        "vote",
+        "weight",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Vote identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Vote AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "proposalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Proposal AT-URI"
+        },
+        "voterDid": {
+          "type": "string",
+          "format": "did",
+          "description": "Voter DID"
+        },
+        "voterName": {
+          "type": "string",
+          "description": "Voter display name"
+        },
+        "voterRole": {
+          "type": "string",
+          "knownValues": ["community-member", "reviewer", "domain-expert", "administrator"],
+          "description": "Voter governance role"
+        },
+        "vote": {
+          "type": "string",
+          "knownValues": ["approve", "reject", "abstain", "request-changes"],
+          "description": "Vote value"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Weighted vote value (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Vote rationale"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Vote timestamp"
+        }
+      }
+    }
+  }
+}

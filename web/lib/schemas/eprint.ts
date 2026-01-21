@@ -100,20 +100,8 @@ export const EXTERNAL_LINK_TYPES = [
   'other',
 ] as const;
 
-/**
- * PMEST facet dimensions (Ranganathan's Colon Classification).
- */
-export const PMEST_DIMENSIONS = ['personality', 'matter', 'energy', 'space', 'time'] as const;
-
-/**
- * FAST entity facet types.
- */
-export const FAST_FACET_TYPES = ['person', 'organization', 'event', 'work', 'form-genre'] as const;
-
-/**
- * All facet types (PMEST + FAST).
- */
-export const ALL_FACET_TYPES = [...PMEST_DIMENSIONS, ...FAST_FACET_TYPES] as const;
+// NOTE: Facets are dynamic knowledge graph nodes with subkind 'facet'.
+// No hard-coded facet types - they are fetched from the API via useFacetCounts().
 
 // =============================================================================
 // AUTHOR SCHEMAS
@@ -236,13 +224,14 @@ export type FieldNodeRef = z.infer<typeof fieldNodeRefSchema>;
  * Facet value for multi-dimensional classification.
  *
  * @remarks
- * Supports both PMEST and FAST facet dimensions.
+ * Facets are dynamic knowledge graph nodes. The slug identifies
+ * the facet dimension (fetched from API via useFacetCounts).
  */
 export const facetValueSchema = z.object({
-  /** Facet dimension type */
-  type: z.enum(ALL_FACET_TYPES),
+  /** Facet dimension slug (dynamic from knowledge graph) */
+  slug: z.string(),
 
-  /** AT-URI of the facet value */
+  /** Value within the facet dimension */
   value: z.string(),
 
   /** Human-readable label */

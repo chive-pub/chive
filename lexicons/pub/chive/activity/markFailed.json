@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.activity.markFailed",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Mark a pending activity as failed when PDS write fails",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["collection", "rkey", "errorCode", "errorMessage"],
+          "properties": {
+            "collection": {
+              "type": "string",
+              "description": "NSID of the record collection"
+            },
+            "rkey": {
+              "type": "string",
+              "description": "Record key (TID)"
+            },
+            "errorCode": {
+              "type": "string",
+              "maxLength": 50,
+              "description": "Error code identifying the failure type"
+            },
+            "errorMessage": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Human-readable error message"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the activity was successfully marked as failed"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "NotFound" }]
+    }
+  }
+}

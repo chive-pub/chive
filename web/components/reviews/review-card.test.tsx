@@ -1,7 +1,11 @@
 import { render, screen } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { ReviewCard, ReviewCardSkeleton } from './review-card';
-import { createMockReview, createMockInlineReview, createMockAuthor } from '@/tests/mock-data';
+import {
+  createMockReview,
+  createMockInlineReview,
+  createMockReviewAuthor,
+} from '@/tests/mock-data';
 
 // Mock next/link
 vi.mock('next/link', () => ({
@@ -13,7 +17,7 @@ vi.mock('next/link', () => ({
 describe('ReviewCard', () => {
   // Plain text review (no rich body)
   const plainTextReview = createMockReview({
-    author: createMockAuthor({
+    author: createMockReviewAuthor({
       did: 'did:plc:reviewer1',
       displayName: 'Dr. Reviewer',
       handle: 'reviewer.bsky.social',
@@ -27,7 +31,7 @@ describe('ReviewCard', () => {
 
   // Rich text review (default mock includes rich body)
   const richTextReview = createMockReview({
-    author: createMockAuthor({
+    author: createMockReviewAuthor({
       did: 'did:plc:reviewer1',
       displayName: 'Dr. Reviewer',
       handle: 'reviewer.bsky.social',
@@ -269,7 +273,7 @@ describe('ReviewCard', () => {
     it('falls back to handle when displayName is empty', () => {
       const noNameReview = createMockReview({
         body: undefined,
-        author: createMockAuthor({
+        author: createMockReviewAuthor({
           displayName: '',
           handle: 'user.bsky.social',
         }),
@@ -283,7 +287,7 @@ describe('ReviewCard', () => {
     it('shows Anonymous when no name or handle', () => {
       const anonReview = createMockReview({
         body: undefined,
-        author: createMockAuthor({
+        author: createMockReviewAuthor({
           displayName: '',
           handle: '',
         }),
@@ -297,22 +301,8 @@ describe('ReviewCard', () => {
 
   describe('rich text body', () => {
     it('renders rich text body when present', () => {
-      const richReview = createMockReview({
-        body: {
-          text: 'See Machine Learning',
-          facets: [
-            {
-              index: { byteStart: 4, byteEnd: 20 },
-              features: [
-                {
-                  $type: 'app.bsky.richtext.facet#link',
-                  uri: 'https://www.wikidata.org/wiki/Q2539',
-                },
-              ],
-            },
-          ],
-        },
-      });
+      // createMockReview includes a rich text body with facets by default
+      const richReview = createMockReview();
 
       render(<ReviewCard review={richReview} />);
 

@@ -1,0 +1,106 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.tag.getTrending",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get trending tags within a specified time window",
+      "parameters": {
+        "type": "params",
+        "required": [],
+        "properties": {
+          "timeWindow": {
+            "type": "string",
+            "knownValues": ["day", "week", "month"],
+            "default": "week",
+            "description": "Time window for trending calculation"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Maximum number of trending tags to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["tags", "timeWindow"],
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#tagSummary"
+              },
+              "description": "List of trending tags"
+            },
+            "timeWindow": {
+              "type": "string",
+              "knownValues": ["day", "week", "month"],
+              "description": "Time window used for this response"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "tagSummary": {
+      "type": "object",
+      "description": "Summary information for a tag",
+      "required": ["normalizedForm", "displayForms", "usageCount", "qualityScore", "isPromoted"],
+      "properties": {
+        "normalizedForm": {
+          "type": "string",
+          "description": "Normalized tag form (lowercase, hyphenated)"
+        },
+        "displayForms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "All display forms used for this tag"
+        },
+        "usageCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of eprints tagged with this tag"
+        },
+        "qualityScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Tag quality score (0-100, scaled from 0-1)"
+        },
+        "isPromoted": {
+          "type": "boolean",
+          "description": "Whether the tag has been promoted to a facet or authority"
+        },
+        "promotedTo": {
+          "type": "ref",
+          "ref": "#promotionTarget",
+          "description": "Promotion target if promoted"
+        }
+      }
+    },
+    "promotionTarget": {
+      "type": "object",
+      "description": "Target of tag promotion",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "knownValues": ["facet", "authority"],
+          "description": "Type of promotion target"
+        },
+        "uri": {
+          "type": "string",
+          "description": "URI of the promotion target"
+        }
+      }
+    }
+  }
+}

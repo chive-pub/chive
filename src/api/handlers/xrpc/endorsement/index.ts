@@ -1,26 +1,25 @@
 /**
- * Endorsement XRPC endpoint exports.
+ * Endorsement XRPC method exports.
  *
  * @packageDocumentation
  * @public
  */
 
-export {
-  listForEprintEndpoint as listEndorsementsForEprintEndpoint,
-  listForEprintHandler as listEndorsementsForEprintHandler,
-} from './listForEprint.js';
-export { getSummaryEndpoint, getSummaryHandler } from './getSummary.js';
-export { getUserEndorsementEndpoint, getUserEndorsementHandler } from './getUserEndorsement.js';
+import { getSummary } from './getSummary.js';
+import { getUserEndorsement } from './getUserEndorsement.js';
+import { listForEprint } from './listForEprint.js';
 
-import { getSummaryEndpoint } from './getSummary.js';
-import { getUserEndorsementEndpoint } from './getUserEndorsement.js';
-import { listForEprintEndpoint } from './listForEprint.js';
+export { getSummary as endorsementGetSummary } from './getSummary.js';
+export { getUserEndorsement as endorsementGetUserEndorsement } from './getUserEndorsement.js';
+export { listForEprint as endorsementListForEprint } from './listForEprint.js';
 
 /**
- * All endorsement XRPC endpoints.
+ * Endorsement XRPC methods keyed by NSID.
+ *
+ * @public
  */
-export const endorsementEndpoints = [
-  listForEprintEndpoint,
-  getSummaryEndpoint,
-  getUserEndorsementEndpoint,
-] as const;
+export const endorsementMethods = {
+  'pub.chive.endorsement.getSummary': getSummary,
+  'pub.chive.endorsement.getUserEndorsement': getUserEndorsement,
+  'pub.chive.endorsement.listForEprint': listForEprint,
+} as const;

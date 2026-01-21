@@ -15,20 +15,32 @@ import {
 } from './use-review';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet, mockApiPost, mockGetCurrentAgent, mockCreateReviewRecord, mockDeleteRecord } =
-  vi.hoisted(() => ({
-    mockApiGet: vi.fn(),
-    mockApiPost: vi.fn(),
-    mockGetCurrentAgent: vi.fn(),
-    mockCreateReviewRecord: vi.fn(),
-    mockDeleteRecord: vi.fn(),
-  }));
+const {
+  mockListForEprint,
+  mockGetThread,
+  mockGetCurrentAgent,
+  mockCreateReviewRecord,
+  mockDeleteRecord,
+} = vi.hoisted(() => ({
+  mockListForEprint: vi.fn(),
+  mockGetThread: vi.fn(),
+  mockGetCurrentAgent: vi.fn(),
+  mockCreateReviewRecord: vi.fn(),
+  mockDeleteRecord: vi.fn(),
+}));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
-    POST: mockApiPost,
+    pub: {
+      chive: {
+        review: {
+          listForEprint: mockListForEprint,
+          getThread: mockGetThread,
+        },
+      },
+    },
   },
+  getApiBaseUrl: () => 'http://localhost:3001',
 }));
 
 vi.mock('@/lib/auth/oauth-client', () => ({
@@ -90,9 +102,8 @@ describe('useReviews', () => {
 
   it('fetches reviews for an eprint', async () => {
     const mockResponse = createMockReviewsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -103,13 +114,11 @@ describe('useReviews', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
-      params: {
-        query: expect.objectContaining({
-          eprintUri,
-        }),
-      },
-    });
+    expect(mockListForEprint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eprintUri,
+      })
+    );
   });
 
   it('is disabled when eprintUri is empty', () => {
@@ -120,9 +129,8 @@ describe('useReviews', () => {
   });
 
   it('passes additional parameters', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: createMockReviewsResponse(),
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -141,24 +149,17 @@ describe('useReviews', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
-      params: {
-        query: {
-          eprintUri,
-          limit: 20,
-          cursor: 'next',
-          motivation: 'commenting',
-          inlineOnly: false,
-        },
-      },
+    expect(mockListForEprint).toHaveBeenCalledWith({
+      eprintUri,
+      limit: 20,
+      cursor: 'next',
+      motivation: 'commenting',
+      inlineOnly: false,
     });
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Reviews service unavailable' },
-    });
+    mockListForEprint.mockRejectedValueOnce(new Error('Reviews service unavailable'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useReviews(eprintUri), { wrapper: Wrapper });
@@ -172,9 +173,8 @@ describe('useReviews', () => {
 
   it('returns empty results when no reviews', async () => {
     const emptyResponse = createMockReviewsResponse({ reviews: [], total: 0, hasMore: false });
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: emptyResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -195,7 +195,7 @@ describe('useReviews', () => {
     });
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockListForEprint).not.toHaveBeenCalled();
   });
 });
 
@@ -208,9 +208,8 @@ describe('useInlineReviews', () => {
 
   it('fetches inline reviews with inlineOnly flag', async () => {
     const mockResponse = createMockReviewsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -220,14 +219,12 @@ describe('useInlineReviews', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
-      params: {
-        query: expect.objectContaining({
-          eprintUri,
-          inlineOnly: true,
-        }),
-      },
-    });
+    expect(mockListForEprint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eprintUri,
+        inlineOnly: true,
+      })
+    );
   });
 
   it('is disabled when eprintUri is empty', () => {
@@ -238,10 +235,7 @@ describe('useInlineReviews', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Failed to fetch' },
-    });
+    mockListForEprint.mockRejectedValueOnce(new Error('Failed to fetch'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useInlineReviews(eprintUri), { wrapper: Wrapper });
@@ -263,9 +257,8 @@ describe('useReviewThread', () => {
 
   it('fetches review thread', async () => {
     const mockThread = createMockReviewThread();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetThread.mockResolvedValueOnce({
       data: mockThread,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -276,9 +269,7 @@ describe('useReviewThread', () => {
     });
 
     expect(result.current.data).toEqual(mockThread);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.getThread', {
-      params: { query: { uri: reviewUri } },
-    });
+    expect(mockGetThread).toHaveBeenCalledWith({ uri: reviewUri });
   });
 
   it('is disabled when reviewUri is empty', () => {
@@ -289,10 +280,7 @@ describe('useReviewThread', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Thread not found' },
-    });
+    mockGetThread.mockRejectedValueOnce(new Error('Thread not found'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useReviewThread(reviewUri), { wrapper: Wrapper });
@@ -484,9 +472,8 @@ describe('usePrefetchReviews', () => {
 
   it('prefetches reviews for an eprint', async () => {
     const mockResponse = createMockReviewsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper, queryClient } = createWrapper();
@@ -495,9 +482,7 @@ describe('usePrefetchReviews', () => {
     result.current(eprintUri);
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.review.listForEprint', {
-        params: { query: expect.objectContaining({ eprintUri }) },
-      });
+      expect(mockListForEprint).toHaveBeenCalledWith(expect.objectContaining({ eprintUri }));
     });
 
     // Check that data is in cache

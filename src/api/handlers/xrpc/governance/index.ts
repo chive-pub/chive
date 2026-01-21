@@ -1,70 +1,71 @@
 /**
- * Governance XRPC endpoint exports.
+ * Governance XRPC method exports.
  *
  * @packageDocumentation
  * @public
  */
 
-// Proposal endpoints
-export { listProposalsEndpoint, listProposalsHandler } from './listProposals.js';
-export { getProposalEndpoint, getProposalHandler } from './getProposal.js';
-export { listVotesEndpoint, listVotesHandler } from './listVotes.js';
-export { getUserVoteEndpoint, getUserVoteHandler } from './getUserVote.js';
-export { getPendingCountEndpoint, getPendingCountHandler } from './getPendingCount.js';
+import type { XRPCMethod } from '../../../xrpc/types.js';
 
-// Trusted editor endpoints
-export { getEditorStatusEndpoint, getEditorStatusHandler } from './getEditorStatus.js';
-export { listTrustedEditorsEndpoint, listTrustedEditorsHandler } from './listTrustedEditors.js';
-export { requestElevationEndpoint, requestElevationHandler } from './requestElevation.js';
-export { grantDelegationEndpoint, grantDelegationHandler } from './grantDelegation.js';
-export { revokeDelegationEndpoint, revokeDelegationHandler } from './revokeDelegation.js';
-export { revokeRoleEndpoint, revokeRoleHandler } from './revokeRole.js';
+import { approveElevation } from './approveElevation.js';
+import { getEditorStatus } from './getEditorStatus.js';
+import { getPendingCount } from './getPendingCount.js';
+import { getProposal } from './getProposal.js';
+import { getUserVote } from './getUserVote.js';
+import { grantDelegation } from './grantDelegation.js';
+import { listDelegations } from './listDelegations.js';
+import { listElevationRequests } from './listElevationRequests.js';
+import { listProposals } from './listProposals.js';
+import { listTrustedEditors } from './listTrustedEditors.js';
+import { listVotes } from './listVotes.js';
+import { rejectElevation } from './rejectElevation.js';
+import { requestElevation } from './requestElevation.js';
+import { revokeDelegation } from './revokeDelegation.js';
+import { revokeRole } from './revokeRole.js';
 
-// Admin endpoints
-export {
-  listElevationRequestsEndpoint,
-  listElevationRequestsHandler,
-} from './listElevationRequests.js';
-export { approveElevationEndpoint, approveElevationHandler } from './approveElevation.js';
-export { rejectElevationEndpoint, rejectElevationHandler } from './rejectElevation.js';
-export { listDelegationsEndpoint, listDelegationsHandler } from './listDelegations.js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyXRPCMethod = XRPCMethod<any, any, any>;
 
-import { approveElevationEndpoint } from './approveElevation.js';
-import { getEditorStatusEndpoint } from './getEditorStatus.js';
-import { getPendingCountEndpoint } from './getPendingCount.js';
-import { getProposalEndpoint } from './getProposal.js';
-import { getUserVoteEndpoint } from './getUserVote.js';
-import { grantDelegationEndpoint } from './grantDelegation.js';
-import { listDelegationsEndpoint } from './listDelegations.js';
-import { listElevationRequestsEndpoint } from './listElevationRequests.js';
-import { listProposalsEndpoint } from './listProposals.js';
-import { listTrustedEditorsEndpoint } from './listTrustedEditors.js';
-import { listVotesEndpoint } from './listVotes.js';
-import { rejectElevationEndpoint } from './rejectElevation.js';
-import { requestElevationEndpoint } from './requestElevation.js';
-import { revokeDelegationEndpoint } from './revokeDelegation.js';
-import { revokeRoleEndpoint } from './revokeRole.js';
+// Re-export individual methods
+export { approveElevation } from './approveElevation.js';
+export { getEditorStatus } from './getEditorStatus.js';
+export { getPendingCount } from './getPendingCount.js';
+export { getProposal } from './getProposal.js';
+export { getUserVote } from './getUserVote.js';
+export { grantDelegation } from './grantDelegation.js';
+export { listDelegations } from './listDelegations.js';
+export { listElevationRequests } from './listElevationRequests.js';
+export { listProposals } from './listProposals.js';
+export { listTrustedEditors } from './listTrustedEditors.js';
+export { listVotes } from './listVotes.js';
+export { rejectElevation } from './rejectElevation.js';
+export { requestElevation } from './requestElevation.js';
+export { revokeDelegation } from './revokeDelegation.js';
+export { revokeRole } from './revokeRole.js';
+
+// Re-export consensus utilities
+export { calculateConsensus } from './consensus.js';
 
 /**
- * All governance XRPC endpoints.
+ * All governance XRPC methods keyed by NSID.
  */
-export const governanceEndpoints = [
+export const governanceMethods: Record<string, AnyXRPCMethod> = {
   // Proposal endpoints
-  listProposalsEndpoint,
-  getProposalEndpoint,
-  listVotesEndpoint,
-  getUserVoteEndpoint,
-  getPendingCountEndpoint,
+  'pub.chive.governance.listProposals': listProposals,
+  'pub.chive.governance.getProposal': getProposal,
+  'pub.chive.governance.listVotes': listVotes,
+  'pub.chive.governance.getUserVote': getUserVote,
+  'pub.chive.governance.getPendingCount': getPendingCount,
   // Trusted editor endpoints
-  getEditorStatusEndpoint,
-  listTrustedEditorsEndpoint,
-  requestElevationEndpoint,
-  grantDelegationEndpoint,
-  revokeDelegationEndpoint,
-  revokeRoleEndpoint,
+  'pub.chive.governance.getEditorStatus': getEditorStatus,
+  'pub.chive.governance.listTrustedEditors': listTrustedEditors,
+  'pub.chive.governance.requestElevation': requestElevation,
+  'pub.chive.governance.grantDelegation': grantDelegation,
+  'pub.chive.governance.revokeDelegation': revokeDelegation,
+  'pub.chive.governance.revokeRole': revokeRole,
   // Admin endpoints
-  listElevationRequestsEndpoint,
-  approveElevationEndpoint,
-  rejectElevationEndpoint,
-  listDelegationsEndpoint,
-] as const;
+  'pub.chive.governance.listElevationRequests': listElevationRequests,
+  'pub.chive.governance.approveElevation': approveElevation,
+  'pub.chive.governance.rejectElevation': rejectElevation,
+  'pub.chive.governance.listDelegations': listDelegations,
+};

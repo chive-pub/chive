@@ -1,31 +1,28 @@
 /**
- * Backlink XRPC endpoints.
- *
- * @remarks
- * Exports all backlink-related XRPC endpoint definitions.
+ * Backlink XRPC method exports.
  *
  * @packageDocumentation
  * @public
  */
 
-import { createBacklinkEndpoint } from './create.js';
-import { deleteBacklinkEndpoint } from './delete.js';
-import { getBacklinkCountsEndpoint } from './getCounts.js';
-import { listBacklinksEndpoint } from './list.js';
+import { create } from './create.js';
+import { deleteBacklink } from './delete.js';
+import { getCounts } from './getCounts.js';
+import { list } from './list.js';
 
-export { listBacklinksEndpoint, listBacklinksHandler } from './list.js';
-export { getBacklinkCountsEndpoint, getBacklinkCountsHandler } from './getCounts.js';
-export { createBacklinkEndpoint, createBacklinkHandler } from './create.js';
-export { deleteBacklinkEndpoint, deleteBacklinkHandler } from './delete.js';
+export { create as backlinkCreate } from './create.js';
+export { deleteBacklink as backlinkDelete } from './delete.js';
+export { getCounts as backlinkGetCounts } from './getCounts.js';
+export { list as backlinkList } from './list.js';
 
 /**
- * All backlink endpoints.
+ * Backlink XRPC methods keyed by NSID.
  *
  * @public
  */
-export const backlinkEndpoints = [
-  listBacklinksEndpoint,
-  getBacklinkCountsEndpoint,
-  createBacklinkEndpoint,
-  deleteBacklinkEndpoint,
-] as const;
+export const backlinkMethods = {
+  'pub.chive.backlink.list': list,
+  'pub.chive.backlink.getCounts': getCounts,
+  'pub.chive.backlink.create': create,
+  'pub.chive.backlink.delete': deleteBacklink,
+} as const;

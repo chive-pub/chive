@@ -17,9 +17,6 @@ export {
   SUPPORTED_LICENSES,
   SUPPLEMENTARY_CATEGORIES,
   EXTERNAL_LINK_TYPES,
-  PMEST_DIMENSIONS,
-  FAST_FACET_TYPES,
-  ALL_FACET_TYPES,
   // Schemas
   reconciliationStatusSchema,
   externalProfileSchema,

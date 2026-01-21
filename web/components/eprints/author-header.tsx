@@ -150,15 +150,17 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
               </a>
             )}
 
-            <a
-              href={profile.pdsEndpoint}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-            >
-              PDS: {formatPdsHost(profile.pdsEndpoint)}
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            {profile.pdsEndpoint && (
+              <a
+                href={profile.pdsEndpoint}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                PDS: {formatPdsHost(profile.pdsEndpoint)}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
           </div>
         </div>
       </div>

@@ -37,7 +37,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
-import { api } from '@/lib/api/client';
+import { api, authApi } from '@/lib/api/client';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
   createEndorsementRecord,
@@ -48,9 +48,9 @@ import {
 } from '@/lib/atproto/record-creator';
 import type {
   Endorsement,
-  EndorsementsResponse,
-  EndorsementSummary,
   ContributionType,
+  ListEndorsementsResponse,
+  EndorsementSummaryResponse,
 } from '@/lib/api/schema';
 
 // =============================================================================
@@ -186,25 +186,22 @@ export function useEndorsements(
 ) {
   return useQuery({
     queryKey: endorsementKeys.list(eprintUri, params),
-    queryFn: async (): Promise<EndorsementsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.listForEprint', {
-        params: {
-          query: {
-            eprintUri,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-            contributionType: params.contributionType,
-          },
-        },
-      });
-      if (error) {
+    queryFn: async (): Promise<ListEndorsementsResponse> => {
+      try {
+        const response = await api.pub.chive.endorsement.listForEprint({
+          eprintUri,
+          limit: params.limit ?? 20,
+          cursor: params.cursor,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch endorsements',
+          error instanceof Error ? error.message : 'Failed to fetch endorsements',
           undefined,
-          '/xrpc/pub.chive.endorsement.listForEprint'
+          'pub.chive.endorsement.listForEprint'
         );
       }
-      return data!;
     },
     enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -239,18 +236,18 @@ export function useEndorsements(
 export function useEndorsementSummary(eprintUri: string, options: UseEndorsementsOptions = {}) {
   return useQuery({
     queryKey: endorsementKeys.summary(eprintUri),
-    queryFn: async (): Promise<EndorsementSummary> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.getSummary', {
-        params: { query: { eprintUri } },
-      });
-      if (error) {
+    queryFn: async (): Promise<EndorsementSummaryResponse> => {
+      try {
+        const response = await api.pub.chive.endorsement.getSummary({ eprintUri });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch endorsement summary',
+          error instanceof Error ? error.message : 'Failed to fetch endorsement summary',
           undefined,
-          '/xrpc/pub.chive.endorsement.getSummary'
+          'pub.chive.endorsement.getSummary'
         );
       }
-      return data!;
     },
     enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -291,24 +288,26 @@ export function useUserEndorsement(
   return useQuery({
     queryKey: endorsementKeys.userEndorsement(eprintUri, userDid),
     queryFn: async (): Promise<Endorsement | null> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.endorsement.getUserEndorsement', {
-        params: { query: { eprintUri, userDid } },
-      });
-
-      if (error) {
+      try {
+        const response = await authApi.pub.chive.endorsement.getUserEndorsement({
+          eprintUri,
+          userDid,
+        });
+        // Cast needed because getUserEndorsement and listForEprint use different $type discriminators
+        // for the same underlying EndorsementView structure (ATProto pattern)
+        return (response.data ?? null) as Endorsement | null;
+      } catch (error) {
         // Return null for 404 (user has not endorsed) - this is expected behavior
-        const errorObj = error as { status?: number; message?: string };
-        if (errorObj.status === 404) {
+        if (error instanceof APIError && error.statusCode === 404) {
           return null;
         }
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          errorObj.message ?? 'Failed to fetch user endorsement',
-          errorObj.status,
-          '/xrpc/pub.chive.endorsement.getUserEndorsement'
+          error instanceof Error ? error.message : 'Failed to fetch user endorsement',
+          undefined,
+          'pub.chive.endorsement.getUserEndorsement'
         );
       }
-
-      return data!;
     },
     enabled: !!eprintUri && !!userDid && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -355,6 +354,7 @@ export function useCreateEndorsement() {
       // Return an Endorsement-like object for cache management
       return {
         uri: result.uri,
+        cid: result.cid,
         eprintUri: input.eprintUri,
         endorser: {
           did: '',
@@ -416,6 +416,7 @@ export function useUpdateEndorsement() {
       // Return an Endorsement-like object for cache management
       return {
         uri: result.uri,
+        cid: result.cid,
         eprintUri: input.eprintUri,
         endorser: {
           did: '',
@@ -501,11 +502,13 @@ export function usePrefetchEndorsements() {
   return (eprintUri: string) => {
     queryClient.prefetchQuery({
       queryKey: endorsementKeys.summary(eprintUri),
-      queryFn: async (): Promise<EndorsementSummary | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.endorsement.getSummary', {
-          params: { query: { eprintUri } },
-        });
-        return data;
+      queryFn: async (): Promise<EndorsementSummaryResponse | undefined> => {
+        try {
+          const response = await api.pub.chive.endorsement.getSummary({ eprintUri });
+          return response.data;
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 2 * 60 * 1000,
     });
@@ -551,8 +554,12 @@ export const CONTRIBUTION_TYPE_CATEGORIES = {
 
 /**
  * Human-readable labels for contribution types.
+ *
+ * @remarks
+ * Uses `Record<string, string>` to allow safe indexing with open union types
+ * from the lexicon (`ContributionType | (string & {})`).
  */
-export const CONTRIBUTION_TYPE_LABELS: Record<ContributionType, string> = {
+export const CONTRIBUTION_TYPE_LABELS: Record<string, string> = {
   methodological: 'Methodological',
   analytical: 'Analytical',
   theoretical: 'Theoretical',
@@ -572,8 +579,12 @@ export const CONTRIBUTION_TYPE_LABELS: Record<ContributionType, string> = {
 
 /**
  * Descriptions for each contribution type.
+ *
+ * @remarks
+ * Uses `Record<string, string>` to allow safe indexing with open union types
+ * from the lexicon (`ContributionType | (string & {})`).
  */
-export const CONTRIBUTION_TYPE_DESCRIPTIONS: Record<ContributionType, string> = {
+export const CONTRIBUTION_TYPE_DESCRIPTIONS: Record<string, string> = {
   methodological: 'Novel methods, techniques, approaches, protocols',
   analytical: 'Statistical, computational, or mathematical analysis',
   theoretical: 'Theoretical framework, conceptual model, theory development',

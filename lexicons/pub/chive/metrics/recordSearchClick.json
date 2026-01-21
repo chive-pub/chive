@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.metrics.recordSearchClick",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Record a click event on a search result for LTR training data",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["impressionId", "uri", "position"],
+          "properties": {
+            "impressionId": {
+              "type": "string",
+              "description": "UUID of the search impression"
+            },
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the clicked eprint"
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Position of the result in the search results list"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the click was recorded"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidRequest" }]
+    }
+  }
+}

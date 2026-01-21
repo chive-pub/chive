@@ -1,5 +1,5 @@
 /**
- * Author search handler.
+ * XRPC handler for pub.chive.author.searchAuthors.
  *
  * @remarks
  * Searches for authors who have eprints on Chive or have Chive profiles.
@@ -12,16 +12,14 @@
 import type { Context } from 'hono';
 
 import { DIDResolver } from '../../../../auth/did/did-resolver.js';
+import type {
+  QueryParams,
+  OutputSchema,
+  AuthorSearchResult,
+} from '../../../../lexicons/generated/types/pub/chive/author/searchAuthors.js';
 import type { DID } from '../../../../types/atproto.js';
-import {
-  searchAuthorsParamsSchema,
-  searchAuthorsResponseSchema,
-  type SearchAuthorsParams,
-  type SearchAuthorsResponse,
-  type SearchAuthorResult,
-} from '../../../schemas/author.js';
 import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Searches for authors by querying Elasticsearch for eprints with matching author names.
@@ -30,7 +28,7 @@ async function searchAuthorsInIndex(
   c: Context<ChiveEnv>,
   query: string,
   limit: number
-): Promise<{ did: string; name?: string; hasEprints: boolean; hasProfile: boolean }[]> {
+): Promise<{ did: string; name?: string; eprintCount?: number }[]> {
   const logger = c.get('logger');
   const search = c.get('services').search;
 
@@ -41,10 +39,7 @@ async function searchAuthorsInIndex(
       limit: limit * 3, // Get more to dedupe authors
     });
 
-    const authorMap = new Map<
-      string,
-      { did: string; name?: string; hasEprints: boolean; hasProfile: boolean }
-    >();
+    const authorMap = new Map<string, { did: string; name?: string; eprintCount: number }>();
 
     // Extract unique authors from search results
     for (const hit of searchResults.hits) {
@@ -53,17 +48,21 @@ async function searchAuthorsInIndex(
       if (!eprint) continue;
 
       for (const author of eprint.authors) {
-        if (author.did && !authorMap.has(author.did)) {
+        if (author.did) {
           // Check if the author name matches the query
           const authorNameLower = author.name?.toLowerCase() ?? '';
           const queryLower = query.toLowerCase();
           if (authorNameLower.includes(queryLower) || author.did.includes(queryLower)) {
-            authorMap.set(author.did, {
-              did: author.did,
-              name: author.name,
-              hasEprints: true,
-              hasProfile: false, // We don't check profiles in this implementation
-            });
+            const existing = authorMap.get(author.did);
+            if (existing) {
+              existing.eprintCount += 1;
+            } else {
+              authorMap.set(author.did, {
+                did: author.did,
+                name: author.name,
+                eprintCount: 1,
+              });
+            }
           }
         }
       }
@@ -85,14 +84,14 @@ async function searchAuthorsInIndex(
  */
 async function enrichAuthorsWithProfiles(
   c: Context<ChiveEnv>,
-  authors: { did: string; name?: string; hasEprints: boolean; hasProfile: boolean }[]
-): Promise<SearchAuthorResult[]> {
+  authors: { did: string; name?: string; eprintCount?: number }[]
+): Promise<AuthorSearchResult[]> {
   const redis = c.get('redis');
   const logger = c.get('logger');
   const didResolver = new DIDResolver({ redis, logger });
 
   const enrichedResults = await Promise.all(
-    authors.map(async (author): Promise<SearchAuthorResult> => {
+    authors.map(async (author): Promise<AuthorSearchResult> => {
       try {
         const [didDoc, pdsEndpoint] = await Promise.all([
           didResolver.resolveDID(author.did as DID),
@@ -148,16 +147,14 @@ async function enrichAuthorsWithProfiles(
           handle,
           displayName,
           avatar,
-          hasEprints: author.hasEprints,
-          hasProfile: author.hasProfile,
+          eprintCount: author.eprintCount,
         };
       } catch {
         // DID resolution failed, return basic info
         return {
           did: author.did,
           displayName: author.name,
-          hasEprints: author.hasEprints,
-          hasProfile: author.hasProfile,
+          eprintCount: author.eprintCount,
         };
       }
     })
@@ -167,11 +164,7 @@ async function enrichAuthorsWithProfiles(
 }
 
 /**
- * Handler for pub.chive.author.searchAuthors.
- *
- * @param c - Hono context
- * @param params - Request parameters
- * @returns Matching authors with Chive presence
+ * XRPC method for pub.chive.author.searchAuthors.
  *
  * @remarks
  * Searches for authors who have eprints on Chive or have Chive profiles.
@@ -179,45 +172,29 @@ async function enrichAuthorsWithProfiles(
  *
  * @public
  */
-export async function searchAuthorsHandler(
-  c: Context<ChiveEnv>,
-  params: SearchAuthorsParams
-): Promise<SearchAuthorsResponse> {
-  const logger = c.get('logger');
-  const { query, limit } = params;
+export const searchAuthors: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const { q, limit } = params;
 
-  logger.debug('Searching authors', { query, limit });
+    logger.debug('Searching authors', { q, limit });
 
-  // Search for authors in the index
-  const dbResults = await searchAuthorsInIndex(c, query, limit);
+    // Search for authors in the index
+    const dbResults = await searchAuthorsInIndex(c, q, limit);
 
-  if (dbResults.length === 0) {
-    return { authors: [] };
-  }
+    if (dbResults.length === 0) {
+      return { encoding: 'application/json', body: { authors: [] } };
+    }
 
-  // Enrich results with profile data
-  const enrichedAuthors = await enrichAuthorsWithProfiles(c, dbResults);
+    // Enrich results with profile data
+    const enrichedAuthors = await enrichAuthorsWithProfiles(c, dbResults);
 
-  logger.info('Author search completed', {
-    query,
-    resultCount: enrichedAuthors.length,
-  });
+    logger.info('Author search completed', {
+      q,
+      resultCount: enrichedAuthors.length,
+    });
 
-  return { authors: enrichedAuthors };
-}
-
-/**
- * XRPC endpoint definition for pub.chive.author.searchAuthors.
- *
- * @public
- */
-export const searchAuthorsEndpoint: XRPCEndpoint<SearchAuthorsParams, SearchAuthorsResponse> = {
-  method: 'pub.chive.author.searchAuthors' as never,
-  type: 'query',
-  description: 'Search for authors with Chive presence (eprints or profiles)',
-  inputSchema: searchAuthorsParamsSchema,
-  outputSchema: searchAuthorsResponseSchema,
-  handler: searchAuthorsHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: { authors: enrichedAuthors } };
+  },
 };

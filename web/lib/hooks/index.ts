@@ -107,6 +107,7 @@ export {
   useRejectCoauthor,
   claimingKeys,
   type SuggestedPaper,
+  type SuggestedPaperAuthor,
   type SuggestionsProfileMetadata,
 } from './use-claiming';
 

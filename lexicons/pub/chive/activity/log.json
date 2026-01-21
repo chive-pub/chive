@@ -1,0 +1,97 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.activity.log",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Log a user-initiated write action before performing PDS write. The activity is stored with status='pending' until the firehose event is received and correlated.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["collection", "rkey", "action", "category"],
+          "properties": {
+            "collection": {
+              "type": "string",
+              "description": "NSID of the record collection"
+            },
+            "rkey": {
+              "type": "string",
+              "description": "Record key (TID)"
+            },
+            "action": {
+              "type": "string",
+              "knownValues": ["create", "update", "delete"],
+              "description": "Action type"
+            },
+            "category": {
+              "type": "string",
+              "knownValues": [
+                "eprint_submit",
+                "eprint_update",
+                "eprint_delete",
+                "review_create",
+                "review_update",
+                "review_delete",
+                "endorsement_create",
+                "endorsement_delete",
+                "tag_create",
+                "tag_delete",
+                "profile_update",
+                "proposal_create",
+                "vote_create"
+              ],
+              "description": "Semantic activity category"
+            },
+            "targetUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "Target record URI (e.g., the eprint being reviewed)"
+            },
+            "targetTitle": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Target record title for display"
+            },
+            "traceId": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "description": "OpenTelemetry trace ID"
+            },
+            "spanId": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 16,
+              "description": "OpenTelemetry span ID"
+            },
+            "uiContext": {
+              "type": "string",
+              "maxLength": 10000,
+              "description": "UI context metadata as JSON string"
+            },
+            "recordSnapshot": {
+              "type": "string",
+              "maxLength": 50000,
+              "description": "Snapshot of record data being written as JSON string"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["activityId"],
+          "properties": {
+            "activityId": {
+              "type": "string",
+              "description": "Created activity ID (UUID)"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "InvalidRequest" }]
+    }
+  }
+}

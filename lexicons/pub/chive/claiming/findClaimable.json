@@ -1,0 +1,139 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.findClaimable",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Find claimable eprints matching the user's identity or search criteria. Requires authentication.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search query (title, author name, DOI)"
+          },
+          "source": {
+            "type": "string",
+            "knownValues": [
+              "arxiv",
+              "biorxiv",
+              "medrxiv",
+              "osf",
+              "lingbuzz",
+              "zenodo",
+              "ssrn",
+              "philpapers"
+            ],
+            "description": "Filter by external source"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprints", "hasMore"],
+          "properties": {
+            "eprints": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#claimableEprint"
+              },
+              "description": "List of claimable eprints"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page of results"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to find claimable eprints"
+        }
+      ]
+    },
+    "claimableEprint": {
+      "type": "object",
+      "description": "An eprint that can be claimed by the user",
+      "required": ["id", "source", "externalId", "url", "title", "authors"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Internal import ID"
+        },
+        "source": {
+          "type": "string",
+          "description": "External source identifier"
+        },
+        "externalId": {
+          "type": "string",
+          "description": "Source-specific identifier"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the eprint on the external source"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#eprintAuthor"
+          },
+          "description": "List of authors"
+        },
+        "publicationDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Publication or submission date"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI if assigned"
+        }
+      }
+    },
+    "eprintAuthor": {
+      "type": "object",
+      "description": "Author information from external source",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author display name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier if available"
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Institutional affiliation if available"
+        }
+      }
+    }
+  }
+}

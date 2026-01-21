@@ -1,0 +1,193 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.getEditorStatus",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the trusted editor status and reputation metrics for a user",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "did": {
+            "type": "string",
+            "format": "did",
+            "description": "User DID (defaults to authenticated user)"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#editorStatus"
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "NotFound" }]
+    },
+    "editorStatus": {
+      "type": "object",
+      "description": "Editor status and metrics",
+      "required": ["did", "role", "hasDelegation", "metrics"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "User DID"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "role": {
+          "type": "string",
+          "knownValues": [
+            "community-member",
+            "trusted-editor",
+            "graph-editor",
+            "domain-expert",
+            "administrator"
+          ],
+          "description": "Current governance role"
+        },
+        "roleGrantedAt": {
+          "type": "integer",
+          "description": "Timestamp when role was granted"
+        },
+        "roleGrantedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of admin who granted the role"
+        },
+        "hasDelegation": {
+          "type": "boolean",
+          "description": "Whether user has an active PDS delegation"
+        },
+        "delegationExpiresAt": {
+          "type": "integer",
+          "description": "Delegation expiration timestamp"
+        },
+        "delegationCollections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Collections the delegation covers"
+        },
+        "recordsCreatedToday": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Records created today under delegation"
+        },
+        "dailyRateLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Daily rate limit for delegation"
+        },
+        "metrics": {
+          "type": "ref",
+          "ref": "#reputationMetrics"
+        }
+      }
+    },
+    "reputationMetrics": {
+      "type": "object",
+      "description": "User reputation metrics for governance",
+      "required": [
+        "did",
+        "accountCreatedAt",
+        "accountAgeDays",
+        "eprintCount",
+        "wellEndorsedEprintCount",
+        "totalEndorsements",
+        "proposalCount",
+        "voteCount",
+        "successfulProposals",
+        "warningCount",
+        "violationCount",
+        "reputationScore",
+        "role",
+        "eligibleForTrustedEditor",
+        "missingCriteria"
+      ],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "User DID"
+        },
+        "accountCreatedAt": {
+          "type": "integer",
+          "description": "Account creation timestamp"
+        },
+        "accountAgeDays": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Account age in days"
+        },
+        "eprintCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total eprints authored"
+        },
+        "wellEndorsedEprintCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Eprints with substantial endorsements"
+        },
+        "totalEndorsements": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total endorsements received"
+        },
+        "proposalCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Governance proposals submitted"
+        },
+        "voteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Votes cast"
+        },
+        "successfulProposals": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposals that were approved"
+        },
+        "warningCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Moderation warnings received"
+        },
+        "violationCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy violations recorded"
+        },
+        "reputationScore": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Computed reputation score"
+        },
+        "role": {
+          "type": "string",
+          "knownValues": [
+            "community-member",
+            "trusted-editor",
+            "graph-editor",
+            "domain-expert",
+            "administrator"
+          ],
+          "description": "Current governance role"
+        },
+        "eligibleForTrustedEditor": {
+          "type": "boolean",
+          "description": "Whether user meets trusted editor criteria"
+        },
+        "missingCriteria": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of missing eligibility criteria"
+        }
+      }
+    }
+  }
+}

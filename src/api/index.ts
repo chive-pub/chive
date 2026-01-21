@@ -22,14 +22,13 @@ export type {
   ChiveServices,
   AuthenticatedUser,
   RateLimitTier,
-  XRPCType,
-  AuthRequirement,
-  XRPCHandler,
-  XRPCEndpoint,
-  RESTHandler,
-  RESTEndpoint,
-  ExtractInput,
-  ExtractOutput,
+  AuthContext,
+  XRPCContext,
+  XRPCResponse,
+  XRPCMethod,
+  XRPCMethodWithMeta,
+  XRPCErrorResponse,
+  XRPCStatusCode,
 } from './types/index.js';
 
 // Middleware
@@ -71,61 +70,13 @@ export {
 export {
   // XRPC handlers
   registerXRPCRoutes,
-  allXRPCEndpoints,
-  eprintEndpoints,
-  graphEndpoints,
-  metricsEndpoints,
-  getSubmissionHandler,
-  getSubmissionEndpoint,
-  searchSubmissionsHandler,
-  searchSubmissionsEndpoint,
-  listByAuthorHandler,
-  listByAuthorEndpoint,
-  getNodeHandler,
-  getNodeEndpoint,
-  listNodesHandler,
-  listNodesEndpoint,
-  searchNodesHandler,
-  searchNodesEndpoint,
-  browseFacetedHandler,
-  browseFacetedEndpoint,
-  getTrendingHandler,
-  getTrendingEndpoint,
+  allXRPCMethods,
+  eprintMethods,
+  graphMethods,
+  metricsMethods,
   // REST handlers
   registerRESTRoutes,
   registerHealthRoutes,
   livenessHandler,
   readinessHandler,
 } from './handlers/index.js';
-
-// Schemas
-export {
-  // Common
-  atUriSchema,
-  didSchema,
-  cidSchema,
-  paginationQuerySchema,
-  paginatedResponse,
-  pdsSourceSchema,
-  authorRefSchema,
-  searchQuerySchema,
-  // Error
-  errorResponseSchema,
-  commonErrorResponses,
-  // Eprint
-  eprintSummarySchema,
-  eprintResponseSchema,
-  getSubmissionParamsSchema,
-  listByAuthorParamsSchema,
-  searchEprintsParamsSchema,
-  eprintListResponseSchema,
-  searchResultsResponseSchema,
-  // Graph
-  graphNodeSchema,
-  graphEdgeSchema,
-  getNodeParamsSchema,
-  listNodesParamsSchema,
-  searchNodesParamsSchema,
-  browseFacetedParamsSchema,
-  facetedBrowseResponseSchema,
-} from './schemas/index.js';

@@ -73,17 +73,21 @@ export function useTrending(params: UseTrendingParams = {}) {
   return useQuery({
     queryKey: trendingKeys.window(window),
     queryFn: async (): Promise<GetTrendingResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.metrics.getTrending', {
-        params: { query: { ...params, window, limit: params.limit ?? 20 } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.metrics.getTrending({
+          ...params,
+          window,
+          limit: params.limit ?? 20,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch trending eprints',
+          error instanceof Error ? error.message : 'Failed to fetch trending eprints',
           undefined,
-          '/xrpc/pub.chive.metrics.getTrending'
+          'pub.chive.metrics.getTrending'
         );
       }
-      return data!;
     },
     staleTime: 60 * 1000, // 1 minute for trending data
   });

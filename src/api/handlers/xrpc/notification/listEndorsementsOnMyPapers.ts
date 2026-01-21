@@ -9,89 +9,66 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import {
-  listEndorsementNotificationsParamsSchema,
-  endorsementNotificationsResponseSchema,
-  type ListEndorsementNotificationsParams,
-  type EndorsementNotificationsResponse,
-} from '../../../schemas/notification.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/notification/listEndorsementsOnMyPapers.js';
+import { AuthenticationError } from '../../../../types/errors.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.notification.listEndorsementsOnMyPapers query.
+ * XRPC method for pub.chive.notification.listEndorsementsOnMyPapers.
  *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Paginated list of endorsement notifications
+ * @remarks
+ * Returns paginated list of endorsement notifications for the authenticated user's papers.
  *
  * @public
  */
-export async function listEndorsementsOnMyPapersHandler(
-  c: Context<ChiveEnv>,
-  params: ListEndorsementNotificationsParams
-): Promise<EndorsementNotificationsResponse> {
-  const logger = c.get('logger');
-  const reviewService = c.get('services').review;
-  const user = c.get('user');
+export const listEndorsementsOnMyPapers: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: true,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const reviewService = c.get('services').review;
+    const user = c.get('user');
 
-  if (!user?.did) {
-    throw new Error('Authentication required');
-  }
+    if (!user?.did) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  logger.debug('Listing endorsement notifications for author', {
-    authorDid: user.did,
-    limit: params.limit,
-    cursor: params.cursor,
-  });
+    logger.debug('Listing endorsement notifications for author', {
+      authorDid: user.did,
+      limit: params.limit,
+      cursor: params.cursor,
+    });
 
-  const result = await reviewService.listEndorsementsOnAuthorPapers(user.did, {
-    limit: params.limit,
-    cursor: params.cursor,
-  });
+    const result = await reviewService.listEndorsementsOnAuthorPapers(user.did, {
+      limit: params.limit,
+      cursor: params.cursor,
+    });
 
-  const response: EndorsementNotificationsResponse = {
-    notifications: result.items.map((item) => ({
-      uri: item.uri,
-      endorserDid: item.endorserDid,
-      endorserHandle: item.endorserHandle,
-      endorserDisplayName: item.endorserDisplayName,
-      eprintUri: item.eprintUri,
-      eprintTitle: item.eprintTitle,
-      endorsementType: item.endorsementType,
-      comment: item.comment,
-      createdAt: item.createdAt.toISOString(),
-    })),
-    cursor: result.cursor,
-    hasMore: result.hasMore,
-    total: result.total,
-  };
+    const response: OutputSchema = {
+      notifications: result.items.map((item) => ({
+        uri: item.uri,
+        eprintUri: item.eprintUri,
+        eprintTitle: item.eprintTitle,
+        endorser: {
+          did: item.endorserDid,
+          handle: item.endorserHandle,
+          displayName: item.endorserDisplayName,
+        },
+        contributions: [...item.contributions],
+        comment: item.comment,
+        createdAt: item.createdAt.toISOString(),
+      })),
+      cursor: result.cursor,
+      unreadCount: result.total,
+    };
 
-  logger.info('Endorsement notifications listed', {
-    authorDid: user.did,
-    count: response.notifications.length,
-  });
+    logger.info('Endorsement notifications listed', {
+      authorDid: user.did,
+      count: response.notifications.length,
+    });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.notification.listEndorsementsOnMyPapers.
- *
- * @public
- */
-export const listEndorsementsOnMyPapersEndpoint: XRPCEndpoint<
-  ListEndorsementNotificationsParams,
-  EndorsementNotificationsResponse
-> = {
-  method: 'pub.chive.notification.listEndorsementsOnMyPapers' as never,
-  type: 'query',
-  description: 'List endorsements on papers where authenticated user is an author',
-  inputSchema: listEndorsementNotificationsParamsSchema,
-  outputSchema: endorsementNotificationsResponseSchema,
-  handler: listEndorsementsOnMyPapersHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return { encoding: 'application/json', body: response };
+  },
 };

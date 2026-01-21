@@ -1,0 +1,94 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.startClaim",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Initiate a claim request for an imported eprint",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["importId"],
+          "properties": {
+            "importId": {
+              "type": "integer",
+              "description": "ID of the imported eprint to claim"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["claim"],
+          "properties": {
+            "claim": {
+              "type": "ref",
+              "ref": "#claimRequest"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "NotFound" },
+        { "name": "InvalidRequest" }
+      ]
+    },
+    "claimRequest": {
+      "type": "object",
+      "required": ["id", "importId", "claimantDid", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Claim request ID"
+        },
+        "importId": {
+          "type": "integer",
+          "description": "ID of the imported eprint"
+        },
+        "claimantDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the claimant"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "approved", "rejected", "expired"],
+          "description": "Claim status"
+        },
+        "canonicalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the canonical record in user PDS"
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason for rejection if rejected"
+        },
+        "reviewedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the admin who reviewed"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was reviewed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was created"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim expires"
+        }
+      }
+    }
+  }
+}

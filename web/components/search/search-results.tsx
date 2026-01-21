@@ -5,7 +5,7 @@ import { HighlightedSnippet } from './search-highlight';
 import { SearchEmpty, SearchError } from './search-empty';
 import { cn } from '@/lib/utils';
 import { formatCompactNumber } from '@/lib/utils/format-number';
-import type { SearchHit, SearchResultsResponse } from '@/lib/api/schema';
+import type { EnrichedSearchHit, SearchResultsResponse } from '@/lib/api/schema';
 
 /**
  * Props for the SearchResults component.
@@ -95,11 +95,11 @@ export function SearchResults({
   return (
     <div className={cn('space-y-4', className)}>
       {/* Results header */}
-      <SearchResultsHeader total={data.total} query={query} />
+      <SearchResultsHeader total={data.total ?? 0} query={query} />
 
       {/* Results list */}
       <div className={layoutClasses}>
-        {data.hits.map((eprint) => (
+        {(data.hits as EnrichedSearchHit[]).map((eprint) => (
           <SearchResultCard
             key={eprint.uri}
             eprint={eprint}
@@ -142,7 +142,7 @@ export function SearchResultsHeader({ total, query, className }: SearchResultsHe
  * Props for the SearchResultCard component.
  */
 interface SearchResultCardProps {
-  eprint: SearchHit;
+  eprint: EnrichedSearchHit;
   onPrefetch?: (uri: string) => void;
   layout?: 'list' | 'grid';
 }
@@ -151,19 +151,25 @@ interface SearchResultCardProps {
  * Individual search result card with highlights.
  */
 function SearchResultCard({ eprint, onPrefetch, layout }: SearchResultCardProps) {
-  // API returns highlights as { [field: string]: string[] }
-  const highlightEntries = eprint.highlights ? Object.entries(eprint.highlights) : [];
+  // API returns highlight as { title?: string[], abstract?: string[] }
+  const highlight = eprint.highlight;
+  const highlightEntries = highlight
+    ? Object.entries(highlight).filter(([, v]) => v && v.length > 0)
+    : [];
   const hasHighlights = highlightEntries.length > 0;
+
+  // Cast to EprintCardData for EprintCard - the enriched search hit has the required fields
+  const eprintCardData = eprint as unknown as import('@/lib/api/schema').EprintCardData;
 
   // In grid layout or if no highlights, use standard card
   if (layout === 'grid' || !hasHighlights) {
-    return <EprintCard eprint={eprint} onPrefetch={onPrefetch} variant="default" />;
+    return <EprintCard eprint={eprintCardData} onPrefetch={onPrefetch} variant="default" />;
   }
 
   // In list layout with highlights, show expanded card with snippets
   return (
     <div className="rounded-lg border bg-card p-4 transition-shadow hover:shadow-md">
-      <EprintCard eprint={eprint} onPrefetch={onPrefetch} variant="compact" />
+      <EprintCard eprint={eprintCardData} onPrefetch={onPrefetch} variant="compact" />
 
       {/* Highlighted snippets */}
       {hasHighlights && (
@@ -171,7 +177,7 @@ function SearchResultCard({ eprint, onPrefetch, layout }: SearchResultCardProps)
           {highlightEntries.map(([field, snippets]) => (
             <div key={field} className="mb-2 last:mb-0">
               <span className="text-xs font-medium uppercase text-muted-foreground">{field}:</span>
-              <HighlightedSnippet snippets={snippets} max={2} className="mt-1" />
+              <HighlightedSnippet snippets={snippets as string[]} max={2} className="mt-1" />
             </div>
           ))}
         </div>
@@ -260,7 +266,7 @@ export function SearchResultsWithSort({
       {/* Sort controls */}
       {props.data && props.data.hits.length > 0 && (
         <div className="flex items-center justify-between">
-          <SearchResultsHeader total={props.data.total} query={props.query} />
+          <SearchResultsHeader total={props.data.total ?? 0} query={props.query} />
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Sort by:</span>
             <select

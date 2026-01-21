@@ -4,7 +4,7 @@ import { AuthorReviews, AuthorReviewsSkeleton } from './author-reviews';
 import {
   createMockReview,
   createMockInlineReview,
-  createMockAuthor,
+  createMockReviewAuthor,
   createMockTextSpanTarget,
 } from '@/tests/mock-data';
 
@@ -27,14 +27,14 @@ const testDid = 'did:plc:testauthor';
 const mockReviews = [
   createMockReview({
     uri: 'at://did:plc:testauthor/pub.chive.review.comment/review1',
-    author: createMockAuthor({ did: testDid, displayName: 'Test Author' }),
+    author: createMockReviewAuthor({ did: testDid, displayName: 'Test Author' }),
     content: 'This is an excellent paper with solid methodology.',
     eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint1',
     createdAt: '2024-06-15T10:00:00Z',
   }),
   createMockInlineReview({
     uri: 'at://did:plc:testauthor/pub.chive.review.comment/review2',
-    author: createMockAuthor({ did: testDid, displayName: 'Test Author' }),
+    author: createMockReviewAuthor({ did: testDid, displayName: 'Test Author' }),
     content: 'The statistical analysis here needs more explanation.',
     eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint2',
     target: createMockTextSpanTarget({
@@ -47,7 +47,7 @@ const mockReviews = [
   }),
   createMockReview({
     uri: 'at://did:plc:testauthor/pub.chive.review.comment/review3',
-    author: createMockAuthor({ did: testDid, displayName: 'Test Author' }),
+    author: createMockReviewAuthor({ did: testDid, displayName: 'Test Author' }),
     content: 'A very long review content that exceeds 200 characters to test truncation. '.repeat(
       3
     ),

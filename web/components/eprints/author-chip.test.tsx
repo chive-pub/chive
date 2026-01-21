@@ -49,26 +49,26 @@ describe('AuthorChip', () => {
   });
 
   it('shows avatar by default', () => {
-    const author = createMockEprintAuthor({ avatarUrl: 'https://example.com/avatar.jpg' });
+    const author = createMockEprintAuthor({ avatar: 'https://example.com/avatar.jpg' });
     const { container } = render(<AuthorChip author={author} />);
     const avatarContainer = container.querySelector('[class*="rounded-full"]');
     expect(avatarContainer).toBeInTheDocument();
   });
 
   it('hides avatar when showAvatar is false', () => {
-    const author = createMockEprintAuthor({ avatarUrl: 'https://example.com/avatar.jpg' });
+    const author = createMockEprintAuthor({ avatar: 'https://example.com/avatar.jpg' });
     render(<AuthorChip author={author} showAvatar={false} />);
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('shows initials when no avatar', () => {
-    const author = createMockEprintAuthor({ avatarUrl: undefined, name: 'Jane Smith' });
+    const author = createMockEprintAuthor({ avatar: undefined, name: 'Jane Smith' });
     render(<AuthorChip author={author} />);
     expect(screen.getByText('JS')).toBeInTheDocument();
   });
 
   it('shows single initial for single name', () => {
-    const author = createMockEprintAuthor({ avatarUrl: undefined, name: 'Jane' });
+    const author = createMockEprintAuthor({ avatar: undefined, name: 'Jane' });
     render(<AuthorChip author={author} />);
     expect(screen.getByText('J')).toBeInTheDocument();
   });

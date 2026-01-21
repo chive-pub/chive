@@ -1,0 +1,127 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.getCoauthorRequests",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get pending co-author requests for the authenticated user's eprints. Returns requests where the user is the eprint owner.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["requests"],
+          "properties": {
+            "requests": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#coauthorRequest"
+              },
+              "description": "List of co-author requests"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page of results"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to get co-author requests"
+        }
+      ]
+    },
+    "coauthorRequest": {
+      "type": "object",
+      "description": "A co-author claim request",
+      "required": [
+        "id",
+        "eprintUri",
+        "eprintOwnerDid",
+        "claimantDid",
+        "claimantName",
+        "authorIndex",
+        "authorName",
+        "status",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique request ID"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the eprint record"
+        },
+        "eprintOwnerDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the eprint owner (PDS owner)"
+        },
+        "claimantDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the user requesting co-authorship"
+        },
+        "claimantName": {
+          "type": "string",
+          "description": "Display name of the claimant at time of request"
+        },
+        "authorIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Index of the author entry being claimed (0-based)"
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Name of the author entry being claimed"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "approved", "rejected"],
+          "description": "Current status of the request"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional message from the claimant"
+        },
+        "rejectionReason": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Reason for rejection if rejected"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the request was created"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the request was reviewed"
+        }
+      }
+    }
+  }
+}

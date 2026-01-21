@@ -6,8 +6,8 @@
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useMentionTrigger, type MentionTriggerType } from './use-mention-trigger';
-import { createRef, type RefObject } from 'react';
+import { useMentionTrigger } from './use-mention-trigger';
+import type { RefObject } from 'react';
 
 // =============================================================================
 // MOCKS

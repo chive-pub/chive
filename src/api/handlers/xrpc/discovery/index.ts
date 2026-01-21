@@ -1,9 +1,10 @@
 /**
- * Discovery XRPC handlers.
+ * XRPC discovery handler exports.
  *
  * @remarks
- * Exports all discovery-related XRPC endpoint handlers:
+ * Exports all discovery-related XRPC methods:
  * - getRecommendations: Personalized paper recommendations
+ * - getForYou: Main feed experience with all signals
  * - getSimilar: Related papers for an eprint
  * - getCitations: Citation network data
  * - getEnrichment: External API enrichment data
@@ -13,30 +14,28 @@
  * @public
  */
 
-export { getRecommendationsHandler, getRecommendationsEndpoint } from './getRecommendations.js';
-export { getForYouHandler, getForYouEndpoint } from './getForYou.js';
-export { getSimilarHandler, getSimilarEndpoint } from './getSimilar.js';
-export { getCitationsHandler, getCitationsEndpoint } from './getCitations.js';
-export { getEnrichmentHandler, getEnrichmentEndpoint } from './getEnrichment.js';
-export { recordInteractionHandler, recordInteractionEndpoint } from './recordInteraction.js';
+export { getCitations } from './getCitations.js';
+export { getEnrichment } from './getEnrichment.js';
+export { getForYou } from './getForYou.js';
+export { getRecommendations } from './getRecommendations.js';
+export { getSimilar } from './getSimilar.js';
+export { recordInteraction } from './recordInteraction.js';
 
-import { getCitationsEndpoint } from './getCitations.js';
-import { getEnrichmentEndpoint } from './getEnrichment.js';
-import { getForYouEndpoint } from './getForYou.js';
-import { getRecommendationsEndpoint } from './getRecommendations.js';
-import { getSimilarEndpoint } from './getSimilar.js';
-import { recordInteractionEndpoint } from './recordInteraction.js';
+import { getCitations } from './getCitations.js';
+import { getEnrichment } from './getEnrichment.js';
+import { getForYou } from './getForYou.js';
+import { getRecommendations } from './getRecommendations.js';
+import { getSimilar } from './getSimilar.js';
+import { recordInteraction } from './recordInteraction.js';
 
 /**
- * All discovery XRPC endpoints.
- *
- * @public
+ * All discovery XRPC methods keyed by NSID.
  */
-export const discoveryEndpoints = [
-  getRecommendationsEndpoint,
-  getForYouEndpoint,
-  getSimilarEndpoint,
-  getCitationsEndpoint,
-  getEnrichmentEndpoint,
-  recordInteractionEndpoint,
-] as const;
+export const discoveryMethods = {
+  'pub.chive.discovery.getRecommendations': getRecommendations,
+  'pub.chive.discovery.getForYou': getForYou,
+  'pub.chive.discovery.getSimilar': getSimilar,
+  'pub.chive.discovery.getCitations': getCitations,
+  'pub.chive.discovery.getEnrichment': getEnrichment,
+  'pub.chive.discovery.recordInteraction': recordInteraction,
+} as const;

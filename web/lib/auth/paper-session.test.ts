@@ -19,7 +19,6 @@ import {
   isPaperSessionValid,
   getPaperAgent,
   getAllPaperSessions,
-  type PaperSession,
 } from './paper-session';
 
 // Mock @atproto/api Agent

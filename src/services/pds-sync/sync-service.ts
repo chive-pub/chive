@@ -326,6 +326,7 @@ export class PDSSyncService {
           documentFormat: indexed.documentFormat,
           supplementaryMaterials: indexed.supplementaryMaterials,
           previousVersionUri: indexed.previousVersionUri,
+          version: indexed.version,
           versionNotes: indexed.versionNotes,
           keywords: indexed.keywords,
           license: indexed.license,

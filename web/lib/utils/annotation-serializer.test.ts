@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import {
   serializeToBody,
   renderBodyToHTML,
@@ -14,25 +14,25 @@ import {
   hasContent,
   escapeHTML,
 } from './annotation-serializer';
-import type { RichAnnotationBody } from '@/lib/api/schema';
+import type { RichAnnotationBodyObject } from '@/lib/api/schema';
 
 // =============================================================================
 // TEST DATA
 // =============================================================================
 
-const EMPTY_BODY: RichAnnotationBody = {
+const EMPTY_BODY: RichAnnotationBodyObject = {
   type: 'RichText',
   items: [],
   format: 'application/x-chive-gloss+json',
 };
 
-const TEXT_ONLY_BODY: RichAnnotationBody = {
+const TEXT_ONLY_BODY: RichAnnotationBodyObject = {
   type: 'RichText',
   items: [{ type: 'text', content: 'Hello, world!' }],
   format: 'application/x-chive-gloss+json',
 };
 
-const RICH_BODY: RichAnnotationBody = {
+const RICH_BODY: RichAnnotationBodyObject = {
   type: 'RichText',
   items: [
     { type: 'text', content: 'This is about ' },
@@ -76,7 +76,7 @@ describe('extractPlainText', () => {
   });
 
   it('handles wikidataRef items', () => {
-    const body: RichAnnotationBody = {
+    const body: RichAnnotationBodyObject = {
       type: 'RichText',
       items: [
         { type: 'text', content: 'Founded by ' },
@@ -88,7 +88,7 @@ describe('extractPlainText', () => {
   });
 
   it('handles fieldRef items', () => {
-    const body: RichAnnotationBody = {
+    const body: RichAnnotationBodyObject = {
       type: 'RichText',
       items: [
         { type: 'text', content: 'In the field of ' },
@@ -154,7 +154,7 @@ describe('hasContent', () => {
   });
 
   it('returns false for whitespace-only text', () => {
-    const body: RichAnnotationBody = {
+    const body: RichAnnotationBodyObject = {
       type: 'RichText',
       items: [{ type: 'text', content: '   \n\t  ' }],
       format: 'application/x-chive-gloss+json',
@@ -167,7 +167,7 @@ describe('hasContent', () => {
   });
 
   it('returns true for node reference content', () => {
-    const body: RichAnnotationBody = {
+    const body: RichAnnotationBodyObject = {
       type: 'RichText',
       items: [
         {
@@ -238,7 +238,7 @@ describe('renderBodyToHTML', () => {
   });
 
   it('escapes HTML in text items', () => {
-    const body: RichAnnotationBody = {
+    const body: RichAnnotationBodyObject = {
       type: 'RichText',
       items: [{ type: 'text', content: '<script>alert("XSS")</script>' }],
       format: 'application/x-chive-gloss+json',
@@ -249,7 +249,7 @@ describe('renderBodyToHTML', () => {
   });
 
   it('renders nodeRef items as chips', () => {
-    const body: RichAnnotationBody = {
+    const body: RichAnnotationBodyObject = {
       type: 'RichText',
       items: [
         { type: 'nodeRef', uri: 'at://did:plc:abc/node/123', label: 'MIT', subkind: 'institution' },
@@ -265,7 +265,7 @@ describe('renderBodyToHTML', () => {
   });
 
   it('converts newlines to br tags', () => {
-    const body: RichAnnotationBody = {
+    const body: RichAnnotationBodyObject = {
       type: 'RichText',
       items: [{ type: 'text', content: 'Line 1\nLine 2' }],
       format: 'application/x-chive-gloss+json',
@@ -323,7 +323,7 @@ describe('serializeToBody', () => {
     expect(body.items.length).toBeGreaterThanOrEqual(2);
 
     // Should have text items and a nodeRef
-    const textItems = body.items.filter((i) => i.type === 'text');
+    const _textItems = body.items.filter((i) => i.type === 'text');
     const nodeRefs = body.items.filter((i) => i.type === 'nodeRef');
     expect(nodeRefs).toHaveLength(1);
     expect(nodeRefs[0]).toMatchObject({

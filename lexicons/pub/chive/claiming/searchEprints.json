@@ -1,0 +1,188 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.searchEprints",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Search external eprint sources for papers to claim",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Title or keyword search query"
+          },
+          "author": {
+            "type": "string",
+            "description": "Author name to search for"
+          },
+          "sources": {
+            "type": "string",
+            "description": "Comma-separated list of sources to search"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Maximum number of results"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprints"],
+          "properties": {
+            "eprints": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#externalEprint"
+              }
+            },
+            "facets": {
+              "type": "ref",
+              "ref": "#searchFacets"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidRequest" }]
+    },
+    "externalEprint": {
+      "type": "object",
+      "required": ["externalId", "url", "title", "authors", "source"],
+      "properties": {
+        "externalId": {
+          "type": "string",
+          "description": "Source-specific identifier"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URL to the eprint"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Abstract text"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#externalAuthor"
+          },
+          "description": "Author list"
+        },
+        "publicationDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Publication date"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI if assigned"
+        },
+        "pdfUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to PDF"
+        },
+        "categories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subject categories"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source system"
+        },
+        "existingChivePaper": {
+          "type": "ref",
+          "ref": "#existingChivePaper"
+        }
+      }
+    },
+    "externalAuthor": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Institution affiliation"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address"
+        }
+      }
+    },
+    "existingChivePaper": {
+      "type": "object",
+      "required": ["uri", "title", "authors", "createdAt"],
+      "description": "Existing Chive paper if this is a duplicate",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the existing paper"
+        },
+        "title": {
+          "type": "string",
+          "description": "Paper title"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#existingAuthor"
+          },
+          "description": "Author list"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the paper was indexed"
+        }
+      }
+    },
+    "existingAuthor": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID if claimed"
+        },
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        }
+      }
+    },
+    "searchFacets": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "unknown",
+          "description": "Result counts by source (key: source name, value: count)"
+        }
+      }
+    }
+  }
+}

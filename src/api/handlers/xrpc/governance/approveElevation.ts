@@ -9,97 +9,82 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/governance/approveElevation.js';
 import { AuthenticationError, AuthorizationError } from '../../../../types/errors.js';
-import {
-  approveElevationInputSchema,
-  elevationResultSchema,
-  type ApproveElevationInput,
-  type ElevationResult,
-} from '../../../schemas/governance.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.governance.approveElevation procedure.
- *
- * @param c - Hono context with Chive environment
- * @param input - Validated input
- * @returns Result of the approval
+ * XRPC method for pub.chive.governance.approveElevation.
  *
  * @public
  */
-export async function approveElevationHandler(
-  c: Context<ChiveEnv>,
-  input: ApproveElevationInput
-): Promise<ElevationResult> {
-  const logger = c.get('logger');
-  const user = c.get('user');
+export const approveElevation: XRPCMethod<void, InputSchema, OutputSchema> = {
+  auth: true,
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
 
-  if (!user?.did) {
-    throw new AuthenticationError('Authentication required');
-  }
+    if (!user?.did) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  // Check if user is admin
-  const trustedEditorService = c.get('services').trustedEditor;
-  if (!trustedEditorService) {
-    throw new Error('Trusted editor service not configured');
-  }
+    if (!input) {
+      throw new Error('Input required');
+    }
 
-  const statusResult = await trustedEditorService.getEditorStatus(user.did);
-  if (!statusResult.ok || statusResult.value.role !== 'administrator') {
-    throw new AuthorizationError('Administrator access required');
-  }
+    // Check if user is admin
+    const trustedEditorService = c.get('services').trustedEditor;
+    if (!trustedEditorService) {
+      throw new Error('Trusted editor service not configured');
+    }
 
-  logger.debug('Processing elevation approval', {
-    requestId: input.requestId,
-    adminDid: user.did,
-  });
+    const statusResult = await trustedEditorService.getEditorStatus(user.did);
+    if (!statusResult.ok || statusResult.value.role !== 'administrator') {
+      throw new AuthorizationError('Administrator access required');
+    }
 
-  // Use service method to approve the request
-  const result = await trustedEditorService.approveElevationRequest(
-    input.requestId,
-    user.did,
-    input.verificationNotes
-  );
-
-  if (!result.ok) {
-    logger.warn('Failed to approve elevation request', {
+    logger.debug('Processing elevation approval', {
       requestId: input.requestId,
-      error: result.error.message,
+      adminDid: user.did,
+    });
+
+    // Use service method to approve the request
+    const result = await trustedEditorService.approveElevationRequest(
+      input.requestId,
+      user.did,
+      input.verificationNotes
+    );
+
+    if (!result.ok) {
+      logger.warn('Failed to approve elevation request', {
+        requestId: input.requestId,
+        error: result.error.message,
+      });
+
+      return {
+        encoding: 'application/json',
+        body: {
+          success: false,
+          message: result.error.message,
+        },
+      };
+    }
+
+    logger.info('Elevation request approved', {
+      requestId: input.requestId,
+      adminDid: user.did,
     });
 
     return {
-      success: false,
-      message: result.error.message,
+      encoding: 'application/json',
+      body: {
+        success: true,
+        requestId: result.value.requestId,
+        message: result.value.message,
+      },
     };
-  }
-
-  logger.info('Elevation request approved', {
-    requestId: input.requestId,
-    adminDid: user.did,
-  });
-
-  return {
-    success: true,
-    requestId: result.value.requestId,
-    message: result.value.message,
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.governance.approveElevation.
- *
- * @public
- */
-export const approveElevationEndpoint: XRPCEndpoint<ApproveElevationInput, ElevationResult> = {
-  method: 'pub.chive.governance.approveElevation' as never,
-  type: 'procedure',
-  description: 'Approve a pending elevation request (admin only)',
-  inputSchema: approveElevationInputSchema,
-  outputSchema: elevationResultSchema,
-  handler: approveElevationHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+  },
 };

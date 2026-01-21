@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { EprintDetailContent } from './eprint-content';
 import { EprintDetailSkeleton } from './loading';
-import { api } from '@/lib/api/client';
+import { createServerClient } from '@/lib/api/client';
 
 /**
  * Eprint detail page route parameters.
@@ -23,60 +23,55 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
   const fullUri = decodeURIComponent(uri.join('/'));
 
   try {
-    const { data } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
-      params: { query: { uri: fullUri } },
-    });
+    const serverApi = createServerClient();
+    const response = await serverApi.pub.chive.eprint.getSubmission({ uri: fullUri });
+    const data = response.data;
 
-    if (!data) {
-      return { title: 'Eprint Not Found' };
-    }
-
-    // API returns the eprint directly (not wrapped in { eprint: ... })
-    const eprint = data as unknown as {
-      title: string;
-      abstract: string;
-      authors: Array<{ name: string; handle?: string; did?: string }>;
-      createdAt: string;
-      fields?: Array<{ label: string }>;
-    };
-    const firstAuthor = eprint.authors[0];
+    // Access the record value - the actual eprint content
+    const value = data.value;
+    const firstAuthor = value.authors[0];
     const authorName = firstAuthor?.name ?? 'Unknown';
-    const authorHandle = firstAuthor?.handle ?? '';
-    const fieldLabels = eprint.fields?.map((f) => f.label).slice(0, 3) ?? [];
+
+    // Extract plain text abstract from rich content items
+    let abstractText = value.abstractPlainText ?? '';
+    if (!abstractText && Array.isArray(value.abstract)) {
+      abstractText = value.abstract
+        .filter((item) => typeof item === 'object' && 'type' in item && item.type === 'text')
+        .map((item) => (item as { type: 'text'; content: string }).content)
+        .join(' ');
+    }
 
     // Build OG image URL with query params for the eprint template
     const ogImageParams = new URLSearchParams({
       type: 'eprint',
       uri: fullUri,
-      title: eprint.title.slice(0, 200),
+      title: value.title.slice(0, 200),
       author: authorName,
-      handle: authorHandle,
-      fields: fieldLabels.join(','),
     });
     const ogImageUrl = `/api/og?${ogImageParams.toString()}`;
 
     return {
-      title: eprint.title,
-      description: eprint.abstract.slice(0, 200),
+      title: value.title,
+      description: abstractText.slice(0, 200),
       openGraph: {
-        title: eprint.title,
-        description: eprint.abstract.slice(0, 200),
+        title: value.title,
+        description: abstractText.slice(0, 200),
         type: 'article',
         authors: [authorName],
-        publishedTime: eprint.createdAt,
+        publishedTime: value.createdAt,
         images: [
           {
             url: ogImageUrl,
             width: 1200,
             height: 630,
-            alt: eprint.title,
+            alt: value.title,
           },
         ],
       },
       twitter: {
         card: 'summary_large_image',
-        title: eprint.title,
-        description: eprint.abstract.slice(0, 200),
+        title: value.title,
+        description: abstractText.slice(0, 200),
         images: [ogImageUrl],
       },
     };

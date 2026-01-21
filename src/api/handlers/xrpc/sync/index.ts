@@ -1,34 +1,29 @@
 /**
- * Sync XRPC endpoints.
- *
- * @remarks
- * Exports all PDS sync-related XRPC endpoint definitions.
+ * Sync XRPC method exports.
  *
  * @packageDocumentation
  * @public
  */
 
-import { checkStalenessEndpoint } from './checkStaleness.js';
-import { indexRecordEndpoint } from './indexRecord.js';
-import { refreshRecordEndpoint } from './refreshRecord.js';
-import { registerPDSEndpoint } from './registerPDS.js';
-import { verifySyncEndpoint } from './verify.js';
+export { checkStaleness } from './checkStaleness.js';
+export { indexRecord } from './indexRecord.js';
+export { refreshRecord } from './refreshRecord.js';
+export { registerPDS } from './registerPDS.js';
+export { verify } from './verify.js';
 
-export { checkStalenessEndpoint, checkStalenessHandler } from './checkStaleness.js';
-export { indexRecordEndpoint, indexRecordHandler } from './indexRecord.js';
-export { refreshRecordEndpoint, refreshRecordHandler } from './refreshRecord.js';
-export { registerPDSEndpoint, registerPDSHandler } from './registerPDS.js';
-export { verifySyncEndpoint, verifySyncHandler } from './verify.js';
+import { checkStaleness } from './checkStaleness.js';
+import { indexRecord } from './indexRecord.js';
+import { refreshRecord } from './refreshRecord.js';
+import { registerPDS } from './registerPDS.js';
+import { verify } from './verify.js';
 
 /**
- * All sync endpoints.
- *
- * @public
+ * All sync XRPC methods keyed by NSID.
  */
-export const syncEndpoints = [
-  checkStalenessEndpoint,
-  indexRecordEndpoint,
-  refreshRecordEndpoint,
-  registerPDSEndpoint,
-  verifySyncEndpoint,
-] as const;
+export const syncMethods = {
+  'pub.chive.sync.checkStaleness': checkStaleness,
+  'pub.chive.sync.indexRecord': indexRecord,
+  'pub.chive.sync.refreshRecord': refreshRecord,
+  'pub.chive.sync.registerPDS': registerPDS,
+  'pub.chive.sync.verify': verify,
+} as const;

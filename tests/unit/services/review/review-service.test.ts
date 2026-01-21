@@ -70,11 +70,8 @@ const createMockReviewComment = (overrides?: Partial<ReviewComment>): ReviewComm
 
 const createMockEndorsement = (overrides?: Partial<Endorsement>): Endorsement => ({
   $type: 'pub.chive.review.endorsement',
-  subject: {
-    uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
-    cid: 'bafyreicid123',
-  },
-  endorsementType: 'methods',
+  eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
+  contributions: ['methodological'],
   createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
   ...overrides,
 });
@@ -178,20 +175,20 @@ describe('ReviewService', () => {
       expect(result.ok).toBe(true);
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO endorsements_index'),
-        expect.arrayContaining([metadata.uri, endorsement.endorsementType])
+        expect.arrayContaining([metadata.uri, endorsement.contributions])
       );
       expect(logger.infoMock).toHaveBeenCalledWith('Indexed endorsement', expect.any(Object));
     });
 
-    it('handles different endorsement types', async () => {
-      const types: ('methods' | 'results' | 'overall')[] = ['methods', 'results', 'overall'];
+    it('handles different contribution types', async () => {
+      const contributionLists = [['methodological'], ['empirical'], ['reproducibility']];
 
-      for (const endorsementType of types) {
+      for (const contributions of contributionLists) {
         pool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
-        const endorsement = createMockEndorsement({ endorsementType });
+        const endorsement = createMockEndorsement({ contributions });
         const metadata = createMockMetadata({
-          uri: `at://did:plc:e/pub.chive.review.endorsement/${endorsementType}` as AtUri,
+          uri: `at://did:plc:e/pub.chive.review.endorsement/${contributions.join('-')}` as AtUri,
         });
 
         const result = await service.indexEndorsement(endorsement, metadata);
@@ -248,22 +245,22 @@ describe('ReviewService', () => {
           {
             uri: 'at://did:plc:r1/pub.chive.review.comment/root',
             reviewer_did: 'did:plc:r1',
-            content: 'Root comment',
-            parent_review_uri: null,
+            text: 'Root comment',
+            parent_comment: null,
             created_at: new Date('2024-01-01'),
           },
           {
             uri: 'at://did:plc:r2/pub.chive.review.comment/reply1',
             reviewer_did: 'did:plc:r2',
-            content: 'Reply to root',
-            parent_review_uri: 'at://did:plc:r1/pub.chive.review.comment/root',
+            text: 'Reply to root',
+            parent_comment: 'at://did:plc:r1/pub.chive.review.comment/root',
             created_at: new Date('2024-01-02'),
           },
           {
             uri: 'at://did:plc:r3/pub.chive.review.comment/reply2',
             reviewer_did: 'did:plc:r3',
-            content: 'Another reply',
-            parent_review_uri: 'at://did:plc:r1/pub.chive.review.comment/root',
+            text: 'Another reply',
+            parent_comment: 'at://did:plc:r1/pub.chive.review.comment/root',
             created_at: new Date('2024-01-03'),
           },
         ],
@@ -285,22 +282,22 @@ describe('ReviewService', () => {
           {
             uri: 'at://did:plc:r/c/root',
             reviewer_did: 'did:plc:r1',
-            content: 'Root',
-            parent_review_uri: null,
+            text: 'Root',
+            parent_comment: null,
             created_at: new Date('2024-01-01'),
           },
           {
             uri: 'at://did:plc:r/c/level1',
             reviewer_did: 'did:plc:r2',
-            content: 'Level 1',
-            parent_review_uri: 'at://did:plc:r/c/root',
+            text: 'Level 1',
+            parent_comment: 'at://did:plc:r/c/root',
             created_at: new Date('2024-01-02'),
           },
           {
             uri: 'at://did:plc:r/c/level2',
             reviewer_did: 'did:plc:r3',
-            content: 'Level 2',
-            parent_review_uri: 'at://did:plc:r/c/level1',
+            text: 'Level 2',
+            parent_comment: 'at://did:plc:r/c/level1',
             created_at: new Date('2024-01-03'),
           },
         ],
@@ -373,7 +370,7 @@ describe('ReviewService', () => {
             uri: 'at://did:plc:e1/e/1',
             endorser_did: 'did:plc:e1',
             eprint_uri: eprintUri,
-            endorsement_type: 'methods',
+            contributions: ['methodological'],
             comment: 'Good methods',
             created_at: new Date('2024-01-01'),
           },
@@ -381,7 +378,7 @@ describe('ReviewService', () => {
             uri: 'at://did:plc:e2/e/2',
             endorser_did: 'did:plc:e2',
             eprint_uri: eprintUri,
-            endorsement_type: 'results',
+            contributions: ['empirical'],
             comment: null,
             created_at: new Date('2024-01-02'),
           },
@@ -391,9 +388,9 @@ describe('ReviewService', () => {
       const endorsements = await service.getEndorsements(eprintUri);
 
       expect(endorsements).toHaveLength(2);
-      expect(endorsements[0]?.endorsementType).toBe('methods');
+      expect(endorsements[0]?.contributions).toEqual(['methodological']);
       expect(endorsements[0]?.comment).toBe('Good methods');
-      expect(endorsements[1]?.endorsementType).toBe('results');
+      expect(endorsements[1]?.contributions).toEqual(['empirical']);
       expect(endorsements[1]?.comment).toBeUndefined();
     });
 
@@ -437,8 +434,8 @@ describe('ReviewService', () => {
             uri: 'at://did:plc:reviewer1/pub.chive.review.comment/r1',
             reviewer_did: 'did:plc:reviewer1',
             eprint_uri: 'at://did:plc:author123/pub.chive.eprint.submission/paper1',
-            content: 'Great paper!',
-            parent_review_uri: null,
+            text: 'Great paper!',
+            parent_comment: null,
             created_at: new Date('2024-01-01'),
             eprint_title: 'My Paper Title',
             reviewer_handle: 'reviewer1.bsky.social',
@@ -448,8 +445,8 @@ describe('ReviewService', () => {
             uri: 'at://did:plc:reviewer2/pub.chive.review.comment/r2',
             reviewer_did: 'did:plc:reviewer2',
             eprint_uri: 'at://did:plc:author123/pub.chive.eprint.submission/paper1',
-            content: 'Interesting methods',
-            parent_review_uri: 'at://did:plc:reviewer1/pub.chive.review.comment/r1',
+            text: 'Interesting methods',
+            parent_comment: 'at://did:plc:reviewer1/pub.chive.review.comment/r1',
             created_at: new Date('2024-01-02'),
             eprint_title: 'My Paper Title',
             reviewer_handle: null,
@@ -519,7 +516,7 @@ describe('ReviewService', () => {
             uri: 'at://did:plc:endorser1/pub.chive.review.endorsement/e1',
             endorser_did: 'did:plc:endorser1',
             eprint_uri: 'at://did:plc:author123/pub.chive.eprint.submission/paper1',
-            endorsement_type: 'methods',
+            contributions: ['methodological'],
             comment: 'Excellent methodology',
             created_at: new Date('2024-01-01'),
             eprint_title: 'My Paper Title',
@@ -530,7 +527,7 @@ describe('ReviewService', () => {
             uri: 'at://did:plc:endorser2/pub.chive.review.endorsement/e2',
             endorser_did: 'did:plc:endorser2',
             eprint_uri: 'at://did:plc:author123/pub.chive.eprint.submission/paper1',
-            endorsement_type: 'overall',
+            contributions: ['conceptual'],
             comment: null,
             created_at: new Date('2024-01-02'),
             eprint_title: 'My Paper Title',
@@ -545,9 +542,9 @@ describe('ReviewService', () => {
       expect(result.items).toHaveLength(2);
       expect(result.total).toBe(2);
       expect(result.items[0]?.endorserDisplayName).toBe('Endorser One');
-      expect(result.items[0]?.endorsementType).toBe('methods');
+      expect(result.items[0]?.contributions).toEqual(['methodological']);
       expect(result.items[0]?.comment).toBe('Excellent methodology');
-      expect(result.items[1]?.endorsementType).toBe('overall');
+      expect(result.items[1]?.contributions).toEqual(['conceptual']);
       expect(result.items[1]?.comment).toBeUndefined();
     });
 

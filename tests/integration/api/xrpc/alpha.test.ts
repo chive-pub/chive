@@ -86,15 +86,11 @@ interface AlphaStatusResponse {
 }
 
 /**
- * Error response type.
+ * ATProto-compliant error response type.
  */
 interface ErrorResponse {
-  error: {
-    code: string;
-    message: string;
-    field?: string;
-    requestId: string;
-  };
+  error: string;
+  message: string;
 }
 
 describe('XRPC Alpha Application Endpoints Integration', () => {
@@ -251,7 +247,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
 
       expect(response.status).toBe(400);
       const body = (await response.json()) as ErrorResponse;
-      expect(body.error.message).toMatch(/already submitted/i);
+      expect(body.message).toMatch(/already submitted/i);
     });
 
     it('validates required fields', async () => {

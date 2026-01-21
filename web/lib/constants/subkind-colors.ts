@@ -23,8 +23,6 @@ import {
   Lightbulb,
   Building2,
   User,
-  BookOpen,
-  Globe,
   Calendar,
   Network,
   Sparkles,

@@ -1,0 +1,101 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.getDiscoverySettings",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the authenticated user's discovery settings from their PDS",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "enablePersonalization",
+            "enableForYouFeed",
+            "forYouSignals",
+            "relatedPapersSignals",
+            "citationNetworkDisplay",
+            "showRecommendationReasons"
+          ],
+          "properties": {
+            "enablePersonalization": {
+              "type": "boolean",
+              "description": "Enable personalized recommendations based on profile"
+            },
+            "enableForYouFeed": {
+              "type": "boolean",
+              "description": "Show the For You personalized feed"
+            },
+            "forYouSignals": {
+              "type": "ref",
+              "ref": "#forYouSignals",
+              "description": "Signals to use for For You recommendations"
+            },
+            "relatedPapersSignals": {
+              "type": "ref",
+              "ref": "#relatedPapersSignals",
+              "description": "Signals to use for related papers"
+            },
+            "citationNetworkDisplay": {
+              "type": "string",
+              "knownValues": ["hidden", "preview", "expanded"],
+              "description": "How to display citation network"
+            },
+            "showRecommendationReasons": {
+              "type": "boolean",
+              "description": "Show explanations for why papers are recommended"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "PDSNotFound"
+        }
+      ]
+    },
+    "forYouSignals": {
+      "type": "object",
+      "description": "Configuration for For You feed signals",
+      "properties": {
+        "fields": {
+          "type": "boolean",
+          "description": "Show papers from user's research fields"
+        },
+        "citations": {
+          "type": "boolean",
+          "description": "Show papers citing user's work"
+        },
+        "collaborators": {
+          "type": "boolean",
+          "description": "Show papers from collaborators"
+        },
+        "trending": {
+          "type": "boolean",
+          "description": "Show trending papers in user's fields"
+        }
+      }
+    },
+    "relatedPapersSignals": {
+      "type": "object",
+      "description": "Configuration for related papers panel signals",
+      "properties": {
+        "citations": {
+          "type": "boolean",
+          "description": "Show citation-based relationships"
+        },
+        "topics": {
+          "type": "boolean",
+          "description": "Show topic/concept-based relationships"
+        }
+      }
+    }
+  }
+}

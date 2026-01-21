@@ -8,8 +8,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getThreadHandler } from '@/api/handlers/xrpc/review/getThread.js';
-import { listForEprintHandler } from '@/api/handlers/xrpc/review/listForEprint.js';
+import { getThread } from '@/api/handlers/xrpc/review/getThread.js';
+import { listForEprint } from '@/api/handlers/xrpc/review/listForEprint.js';
 import type { AtUri } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -99,7 +99,7 @@ describe('XRPC Review Handlers', () => {
     };
   });
 
-  describe('listForEprintHandler', () => {
+  describe('listForEprint', () => {
     it('returns reviews for an eprint', async () => {
       const rootView = createMockReviewView();
       const replyView = createMockReviewView({
@@ -115,25 +115,37 @@ describe('XRPC Review Handlers', () => {
 
       mockReviewService.getReviews.mockResolvedValue([rootThread]);
 
-      const result = await listForEprintHandler(
-        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
-        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
-      );
+      const result = await listForEprint.handler({
+        params: {
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
+          limit: 20,
+          inlineOnly: false,
+        },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.reviews).toBeDefined();
-      expect(result.reviews.length).toBeGreaterThan(0);
+      expect(result.body.reviews).toBeDefined();
+      expect(result.body.reviews.length).toBeGreaterThan(0);
       expect(mockReviewService.getReviews).toHaveBeenCalled();
     });
 
     it('returns empty array when no reviews exist', async () => {
       mockReviewService.getReviews.mockResolvedValue([]);
 
-      const result = await listForEprintHandler(
-        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
-        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
-      );
+      const result = await listForEprint.handler({
+        params: {
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
+          limit: 20,
+          inlineOnly: false,
+        },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.reviews).toHaveLength(0);
+      expect(result.body.reviews).toHaveLength(0);
     });
 
     it('includes reply information', async () => {
@@ -155,17 +167,23 @@ describe('XRPC Review Handlers', () => {
 
       mockReviewService.getReviews.mockResolvedValue([root1Thread, root2Thread]);
 
-      const result = await listForEprintHandler(
-        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
-        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
-      );
+      const result = await listForEprint.handler({
+        params: {
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
+          limit: 20,
+          inlineOnly: false,
+        },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
       // Should have reviews returned (flattened from threads)
-      expect(result.reviews.length).toBeGreaterThanOrEqual(2);
+      expect(result.body.reviews.length).toBeGreaterThanOrEqual(2);
     });
   });
 
-  describe('getThreadHandler', () => {
+  describe('getThread', () => {
     it('returns full thread starting from root', async () => {
       const rootView = createMockReviewView();
       const replies = [
@@ -182,23 +200,28 @@ describe('XRPC Review Handlers', () => {
       mockReviewService.getReviewByUri.mockResolvedValue(rootView);
       mockReviewService.getReviewThread.mockResolvedValue([rootView, ...replies]);
 
-      const result = await getThreadHandler(
-        mockContext as unknown as Parameters<typeof getThreadHandler>[0],
-        { uri: rootView.uri }
-      );
+      const result = await getThread.handler({
+        params: { uri: rootView.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
       // Response is ReviewThread directly with parent, replies, totalReplies
-      expect(result.parent).toBeDefined();
-      expect(result.parent.uri).toBe(rootView.uri);
-      expect(result.replies).toBeDefined();
+      expect(result.body.parent).toBeDefined();
+      expect(result.body.parent.uri).toBe(rootView.uri);
+      expect(result.body.replies).toBeDefined();
     });
 
     it('throws NotFoundError when review does not exist', async () => {
       mockReviewService.getReviewByUri.mockResolvedValue(null);
 
       await expect(
-        getThreadHandler(mockContext as unknown as Parameters<typeof getThreadHandler>[0], {
-          uri: 'at://did:plc:notfound/pub.chive.review.comment/xyz' as AtUri,
+        getThread.handler({
+          params: { uri: 'at://did:plc:notfound/pub.chive.review.comment/xyz' as AtUri },
+          input: undefined,
+          auth: null,
+          c: mockContext as never,
         })
       ).rejects.toThrow();
     });
@@ -217,14 +240,16 @@ describe('XRPC Review Handlers', () => {
       mockReviewService.getReviewByUri.mockResolvedValue(rootView);
       mockReviewService.getReviewThread.mockResolvedValue([rootView, reply1View, nestedReplyView]);
 
-      const result = await getThreadHandler(
-        mockContext as unknown as Parameters<typeof getThreadHandler>[0],
-        { uri: rootView.uri }
-      );
+      const result = await getThread.handler({
+        params: { uri: rootView.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.parent).toBeDefined();
+      expect(result.body.parent).toBeDefined();
       // The thread should contain replies
-      expect(result.replies.length).toBeGreaterThanOrEqual(0);
+      expect(result.body.replies.length).toBeGreaterThanOrEqual(0);
     });
 
     it('maps reviews to API format with default motivation', async () => {
@@ -234,12 +259,14 @@ describe('XRPC Review Handlers', () => {
       mockReviewService.getReviewByUri.mockResolvedValue(reviewView);
       mockReviewService.getReviewThread.mockResolvedValue([reviewView]);
 
-      const result = await getThreadHandler(
-        mockContext as unknown as Parameters<typeof getThreadHandler>[0],
-        { uri: reviewView.uri }
-      );
+      const result = await getThread.handler({
+        params: { uri: reviewView.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.parent.motivation).toBe('commenting');
+      expect(result.body.parent.motivation).toBe('commenting');
     });
   });
 });

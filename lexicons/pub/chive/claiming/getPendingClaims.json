@@ -1,0 +1,116 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.getPendingClaims",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get pending claims for admin review. Admin only.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "minScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Minimum match score filter (0-100)"
+          },
+          "maxScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Maximum match score filter (0-100)"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of claims to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["claims", "hasMore"],
+          "properties": {
+            "claims": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#claimRequest"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "Forbidden" }]
+    },
+    "claimRequest": {
+      "type": "object",
+      "required": ["id", "importId", "claimantDid", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Claim request ID"
+        },
+        "importId": {
+          "type": "integer",
+          "description": "ID of the imported eprint"
+        },
+        "claimantDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the claimant"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "approved", "rejected", "expired"],
+          "description": "Claim status"
+        },
+        "canonicalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the canonical record in user PDS"
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason for rejection if rejected"
+        },
+        "reviewedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the admin who reviewed"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was reviewed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was created"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim expires"
+        }
+      }
+    }
+  }
+}

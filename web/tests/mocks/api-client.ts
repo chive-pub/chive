@@ -2,308 +2,235 @@
  * Type-safe API client mocks for testing.
  *
  * @remarks
- * Provides properly typed mock implementations of the openapi-fetch client.
- * Uses `openapi-typescript-helpers` to extract exact response types from
- * the generated OpenAPI schema, ensuring test mocks match the API contract.
+ * Provides mock implementations for the XRPC-based API client.
+ * The XRPC client uses namespace-based calls like `api.pub.chive.author.getProfile()`.
  *
  * @packageDocumentation
  */
 
 import { vi } from 'vitest';
-import type { paths, operations } from '@/lib/api/schema.generated';
-import type { SuccessResponseJSON } from 'openapi-typescript-helpers';
+import type {
+  AuthorProfileResponse,
+  ListReviewsResponse,
+  ListEndorsementsResponse,
+  EndorsementSummaryResponse,
+  SearchResultsResponse,
+  BrowseFacetedResponse,
+  GetNodeResponse,
+  ListNodesResponse,
+  SearchNodesResponse,
+  EprintTagsResponse,
+  TrendingTagsResponse,
+  GetForYouResponse,
+  GetSimilarResponse,
+  GetCitationsResponse,
+  GetEnrichmentResponse,
+  GetTrendingResponse,
+  ListByAuthorResponse,
+} from '@/lib/api/schema';
 
 // =============================================================================
 // TYPE UTILITIES
 // =============================================================================
 
 /**
- * Extract the HTTP method key from a path's operations.
+ * XRPC response structure.
  */
-type HttpMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
-
-/**
- * Extract operation from path and method.
- */
-type PathOperation<P extends keyof paths, M extends HttpMethod> = paths[P] extends {
-  [K in M]: infer Op;
+interface XRPCResponse<T> {
+  success: boolean;
+  headers: Record<string, string>;
+  data: T;
 }
-  ? Op
-  : never;
 
 /**
- * Extract success response type for an operation.
+ * Error response structure matching XRPC error format.
  */
-type OperationResponse<Op> = Op extends {
-  responses: { 200: { content: { 'application/json': infer R } } };
+interface XRPCErrorResponse {
+  success: false;
+  error: string;
+  message: string;
 }
-  ? R
-  : never;
-
-/**
- * Get the success response type for a path and method.
- */
-export type ApiSuccessResponse<
-  P extends keyof paths,
-  M extends HttpMethod = 'get',
-> = OperationResponse<PathOperation<P, M>>;
 
 // =============================================================================
 // MOCK RESPONSE FACTORIES
 // =============================================================================
 
 /**
- * Error response structure matching API error format.
- */
-interface MockErrorResponse {
-  error: string;
-  message: string;
-}
-
-/**
- * Full mock response structure matching openapi-fetch return type.
- */
-interface MockFetchResponse<T> {
-  data: T;
-  error: undefined;
-  response: Response;
-}
-
-/**
- * Full mock error response structure.
- */
-interface MockFetchErrorResponse {
-  data: undefined;
-  error: MockErrorResponse;
-  response: Response;
-}
-
-/**
- * Creates a type-safe successful mock response for a specific API path.
+ * Creates a successful XRPC mock response.
  *
- * @typeParam P - The API path (e.g., '/xrpc/pub.chive.author.getProfile')
- * @typeParam M - The HTTP method (defaults to 'get')
- * @param data - Response data matching the API schema
- * @returns Mock response object compatible with openapi-fetch
- *
- * @example
- * ```typescript
- * // Type-safe: data must match GetProfileResponse
- * mockGet.mockResolvedValueOnce(
- *   mockApiSuccess<'/xrpc/pub.chive.author.getProfile'>({
- *     profile: createMockAuthorProfile(),
- *     metrics: createMockAuthorMetrics(),
- *   })
- * );
- * ```
+ * @param data - Response data
+ * @returns Mock response object
  */
-export function mockApiSuccess<P extends keyof paths, M extends HttpMethod = 'get'>(
-  data: ApiSuccessResponse<P, M>
-): MockFetchResponse<ApiSuccessResponse<P, M>> {
+export function mockXRPCSuccess<T>(data: T): XRPCResponse<T> {
   return {
+    success: true,
+    headers: { 'content-type': 'application/json' },
     data,
-    error: undefined,
-    response: new Response(JSON.stringify(data), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }),
   };
 }
 
 /**
- * Creates a mock error response.
+ * Creates an XRPC error response.
  *
- * @param status - HTTP status code
- * @param error - Error type code
+ * @param error - Error code
  * @param message - Error message
- * @returns Mock error response object
- *
- * @example
- * ```typescript
- * mockGet.mockResolvedValueOnce(
- *   mockApiError(404, 'NotFound', 'Author not found')
- * );
- * ```
+ * @returns Mock error response
  */
-export function mockApiError(
-  status: number,
-  error: string,
-  message: string
-): MockFetchErrorResponse {
+export function mockXRPCError(error: string, message: string): XRPCErrorResponse {
   return {
-    data: undefined,
-    error: { error, message },
-    response: new Response(JSON.stringify({ error, message }), {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    }),
+    success: false,
+    error,
+    message,
   };
 }
 
 // =============================================================================
-// OPERATION-SPECIFIC TYPE-SAFE FACTORIES
+// OPERATION-SPECIFIC FACTORIES
 // =============================================================================
 
 /**
  * Type-safe factory for author profile responses.
  */
 export function mockAuthorProfileResponse(
-  data: SuccessResponseJSON<operations['pub_chive_author_getProfile']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_author_getProfile']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.author.getProfile'>(data);
+  data: AuthorProfileResponse
+): XRPCResponse<AuthorProfileResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for eprint list responses.
  */
 export function mockEprintListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_eprint_listByAuthor']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_eprint_listByAuthor']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.eprint.listByAuthor'>(data);
+  data: ListByAuthorResponse
+): XRPCResponse<ListByAuthorResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for review list responses.
  */
 export function mockReviewListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_review_listForEprint']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_review_listForEprint']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.review.listForEprint'>(data);
+  data: ListReviewsResponse
+): XRPCResponse<ListReviewsResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for endorsement list responses.
  */
 export function mockEndorsementListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_endorsement_listForEprint']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_endorsement_listForEprint']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.endorsement.listForEprint'>(data);
+  data: ListEndorsementsResponse
+): XRPCResponse<ListEndorsementsResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for endorsement summary responses.
  */
 export function mockEndorsementSummaryResponse(
-  data: SuccessResponseJSON<operations['pub_chive_endorsement_getSummary']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_endorsement_getSummary']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.endorsement.getSummary'>(data);
+  data: EndorsementSummaryResponse
+): XRPCResponse<EndorsementSummaryResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for search responses.
  */
 export function mockSearchResponse(
-  data: SuccessResponseJSON<operations['pub_chive_eprint_searchSubmissions']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_eprint_searchSubmissions']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.eprint.searchSubmissions'>(data);
+  data: SearchResultsResponse
+): XRPCResponse<SearchResultsResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for faceted search responses.
  */
 export function mockFacetedSearchResponse(
-  data: SuccessResponseJSON<operations['pub_chive_graph_browseFaceted']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_browseFaceted']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.graph.browseFaceted'>(data);
+  data: BrowseFacetedResponse
+): XRPCResponse<BrowseFacetedResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for node responses.
  */
-export function mockNodeResponse(
-  data: SuccessResponseJSON<operations['pub_chive_graph_getNode']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_getNode']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.graph.getNode'>(data);
+export function mockNodeResponse(data: GetNodeResponse): XRPCResponse<GetNodeResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for node list responses.
  */
-export function mockNodeListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_graph_listNodes']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_listNodes']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.graph.listNodes'>(data);
+export function mockNodeListResponse(data: ListNodesResponse): XRPCResponse<ListNodesResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for node search responses.
  */
 export function mockNodeSearchResponse(
-  data: SuccessResponseJSON<operations['pub_chive_graph_searchNodes']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_graph_searchNodes']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.graph.searchNodes'>(data);
+  data: SearchNodesResponse
+): XRPCResponse<SearchNodesResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for tag list responses.
  */
-export function mockTagListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_tag_listForEprint']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_tag_listForEprint']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.tag.listForEprint'>(data);
+export function mockTagListResponse(data: EprintTagsResponse): XRPCResponse<EprintTagsResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for trending tags responses.
  */
 export function mockTrendingTagsResponse(
-  data: SuccessResponseJSON<operations['pub_chive_tag_getTrending']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_tag_getTrending']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.tag.getTrending'>(data);
+  data: TrendingTagsResponse
+): XRPCResponse<TrendingTagsResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for discovery recommendations responses.
  */
 export function mockDiscoveryForYouResponse(
-  data: SuccessResponseJSON<operations['pub_chive_discovery_getForYou']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_discovery_getForYou']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.discovery.getForYou'>(data);
+  data: GetForYouResponse
+): XRPCResponse<GetForYouResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for similar papers responses.
  */
 export function mockSimilarPapersResponse(
-  data: SuccessResponseJSON<operations['pub_chive_discovery_getSimilar']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_discovery_getSimilar']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.discovery.getSimilar'>(data);
+  data: GetSimilarResponse
+): XRPCResponse<GetSimilarResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for citations responses.
  */
 export function mockCitationsResponse(
-  data: SuccessResponseJSON<operations['pub_chive_discovery_getCitations']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_discovery_getCitations']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.discovery.getCitations'>(data);
+  data: GetCitationsResponse
+): XRPCResponse<GetCitationsResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
  * Type-safe factory for enrichment responses.
  */
 export function mockEnrichmentResponse(
-  data: SuccessResponseJSON<operations['pub_chive_discovery_getEnrichment']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_discovery_getEnrichment']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.discovery.getEnrichment'>(data);
+  data: GetEnrichmentResponse
+): XRPCResponse<GetEnrichmentResponse> {
+  return mockXRPCSuccess(data);
 }
 
 /**
- * Type-safe factory for backlink list responses.
+ * Type-safe factory for trending eprints responses.
  */
-export function mockBacklinkListResponse(
-  data: SuccessResponseJSON<operations['pub_chive_backlink_list']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_backlink_list']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.backlink.list'>(data);
-}
-
-/**
- * Type-safe factory for backlink counts responses.
- */
-export function mockBacklinkCountsResponse(
-  data: SuccessResponseJSON<operations['pub_chive_backlink_getCounts']>
-): MockFetchResponse<SuccessResponseJSON<operations['pub_chive_backlink_getCounts']>> {
-  return mockApiSuccess<'/xrpc/pub.chive.backlink.getCounts'>(data);
+export function mockTrendingResponse(data: GetTrendingResponse): XRPCResponse<GetTrendingResponse> {
+  return mockXRPCSuccess(data);
 }
 
 // =============================================================================
@@ -311,18 +238,26 @@ export function mockBacklinkCountsResponse(
 // =============================================================================
 
 /**
- * Creates a mock API client with properly typed methods.
+ * Creates a namespace method mock.
+ * Each namespace method is a vi.fn() that can be configured per-test.
+ */
+function createNamespaceMocks() {
+  return vi.fn().mockResolvedValue({ success: true, headers: {}, data: {} });
+}
+
+/**
+ * Creates a mock XRPC API client.
  *
  * @remarks
- * The mock client uses vi.fn() which allows flexible response mocking
- * in tests. Use the type-safe factory functions to create responses.
+ * The mock client mirrors the namespace structure of the real XRPC client.
+ * Use vi.fn() mocking to configure responses per test.
  *
  * @example
  * ```typescript
  * const mockApi = createMockApiClient();
  *
- * // Use type-safe response factory
- * mockApi.GET.mockResolvedValueOnce(
+ * // Configure a specific method
+ * mockApi.pub.chive.author.getProfile.mockResolvedValueOnce(
  *   mockAuthorProfileResponse({
  *     profile: createMockAuthorProfile(),
  *     metrics: createMockAuthorMetrics(),
@@ -336,11 +271,107 @@ export function mockBacklinkCountsResponse(
  */
 export function createMockApiClient() {
   return {
-    GET: vi.fn(),
-    POST: vi.fn(),
-    PUT: vi.fn(),
-    DELETE: vi.fn(),
-    PATCH: vi.fn(),
+    pub: {
+      chive: {
+        author: {
+          getProfile: createNamespaceMocks(),
+          searchAuthors: createNamespaceMocks(),
+          getMetrics: createNamespaceMocks(),
+        },
+        eprint: {
+          getSubmission: createNamespaceMocks(),
+          listByAuthor: createNamespaceMocks(),
+          searchSubmissions: createNamespaceMocks(),
+        },
+        review: {
+          listForEprint: createNamespaceMocks(),
+          listForAuthor: createNamespaceMocks(),
+          getThread: createNamespaceMocks(),
+        },
+        endorsement: {
+          listForEprint: createNamespaceMocks(),
+          getSummary: createNamespaceMocks(),
+          getUserEndorsement: createNamespaceMocks(),
+        },
+        graph: {
+          getNode: createNamespaceMocks(),
+          listNodes: createNamespaceMocks(),
+          searchNodes: createNamespaceMocks(),
+          browseFaceted: createNamespaceMocks(),
+          listEdges: createNamespaceMocks(),
+          getRelations: createNamespaceMocks(),
+        },
+        tag: {
+          listForEprint: createNamespaceMocks(),
+          getTrending: createNamespaceMocks(),
+          getDetail: createNamespaceMocks(),
+          search: createNamespaceMocks(),
+        },
+        discovery: {
+          getForYou: createNamespaceMocks(),
+          getSimilar: createNamespaceMocks(),
+          getCitations: createNamespaceMocks(),
+          getEnrichment: createNamespaceMocks(),
+          getRecommendations: createNamespaceMocks(),
+        },
+        metrics: {
+          getTrending: createNamespaceMocks(),
+          getMetrics: createNamespaceMocks(),
+          getViewCount: createNamespaceMocks(),
+        },
+        backlink: {
+          list: createNamespaceMocks(),
+          getCounts: createNamespaceMocks(),
+        },
+        governance: {
+          getProposal: createNamespaceMocks(),
+          listProposals: createNamespaceMocks(),
+          listVotes: createNamespaceMocks(),
+          getEditorStatus: createNamespaceMocks(),
+          listTrustedEditors: createNamespaceMocks(),
+        },
+        claiming: {
+          getClaim: createNamespaceMocks(),
+          getSuggestions: createNamespaceMocks(),
+          findClaimable: createNamespaceMocks(),
+          getCoauthorRequests: createNamespaceMocks(),
+        },
+        alpha: {
+          checkStatus: createNamespaceMocks(),
+          apply: createNamespaceMocks(),
+        },
+        activity: {
+          log: createNamespaceMocks(),
+          markFailed: createNamespaceMocks(),
+          getFeed: createNamespaceMocks(),
+        },
+        notification: {
+          listReviewsOnMyPapers: createNamespaceMocks(),
+          listEndorsementsOnMyPapers: createNamespaceMocks(),
+        },
+        actor: {
+          getMyProfile: createNamespaceMocks(),
+          getDiscoverySettings: createNamespaceMocks(),
+        },
+        search: {
+          track: createNamespaceMocks(),
+        },
+        contributionType: {
+          list: createNamespaceMocks(),
+        },
+      },
+    },
+    com: {
+      atproto: {
+        repo: {
+          listRecords: createNamespaceMocks(),
+          getRecord: createNamespaceMocks(),
+          createRecord: createNamespaceMocks(),
+          putRecord: createNamespaceMocks(),
+          deleteRecord: createNamespaceMocks(),
+        },
+      },
+    },
   };
 }
 
@@ -363,6 +394,6 @@ export function createApiClientMock() {
   return {
     api: createMockApiClient(),
     authApi: createMockAuthApiClient(),
-    getBaseUrl: () => 'http://localhost:3001',
+    getApiBaseUrl: () => 'http://localhost:3001',
   };
 }

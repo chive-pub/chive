@@ -20,7 +20,7 @@ import { LoginPrompt } from '@/components/auth';
 export default function GovernancePage() {
   const isAuthenticated = useIsAuthenticated();
   const { data: pendingData, isLoading: pendingLoading } = useProposals({
-    status: 'pending',
+    status: 'open',
     limit: 5,
   });
   const { data: approvedData, isLoading: approvedLoading } = useProposals({
@@ -66,7 +66,7 @@ export default function GovernancePage() {
           title="Pending"
           value={countLoading ? null : (pendingCount ?? 0)}
           icon={Clock}
-          href="/governance/proposals?status=pending"
+          href="/governance/proposals?status=open"
         />
         <StatsCard
           title="Approved"
@@ -119,7 +119,7 @@ export default function GovernancePage() {
             <CardDescription>Proposals awaiting community review</CardDescription>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/governance/proposals?status=pending">View all</Link>
+            <Link href="/governance/proposals?status=open">View all</Link>
           </Button>
         </CardHeader>
         <CardContent>

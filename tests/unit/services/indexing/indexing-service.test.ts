@@ -113,9 +113,9 @@ describe('IndexingService', () => {
   });
 
   describe('constructor', () => {
-    it('accepts single relay URL for backward compatibility', () => {
+    it('accepts single relay URL in array', () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -135,35 +135,22 @@ describe('IndexingService', () => {
       expect(service).toBeDefined();
     });
 
-    it('throws when no relay is provided', () => {
+    it('throws when relays array is empty', () => {
       expect(() => {
         new IndexingService({
+          relays: [],
           db: mockPool as unknown as IndexingServiceOptions['db'],
           redis: mockRedis as unknown as IndexingServiceOptions['redis'],
           processor: mockProcessor,
         });
       }).toThrow('At least one relay URL must be provided');
     });
-
-    it('prefers relays array over single relay', () => {
-      const service = new IndexingService({
-        relay: 'wss://single.bsky.network',
-        relays: ['wss://relay1.bsky.network', 'wss://relay2.bsky.network'],
-        db: mockPool as unknown as IndexingServiceOptions['db'],
-        redis: mockRedis as unknown as IndexingServiceOptions['redis'],
-        processor: mockProcessor,
-      });
-
-      const status = service.getStatus();
-      // Should have 2 relay statuses when multi-relay
-      expect(status.relayStatuses?.length).toBe(2);
-    });
   });
 
   describe('getStatus', () => {
     it('returns basic status for single relay', () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -218,7 +205,7 @@ describe('IndexingService', () => {
   describe('start', () => {
     it('throws when already running', async () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -237,7 +224,7 @@ describe('IndexingService', () => {
   describe('stop', () => {
     it('does nothing when not running', async () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -251,7 +238,7 @@ describe('IndexingService', () => {
   describe('configuration', () => {
     it('uses default concurrency', () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -262,7 +249,7 @@ describe('IndexingService', () => {
 
     it('accepts custom concurrency', () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -274,7 +261,7 @@ describe('IndexingService', () => {
 
     it('accepts collection filter', () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -286,7 +273,7 @@ describe('IndexingService', () => {
 
     it('uses default service name for cursor', () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
@@ -297,7 +284,7 @@ describe('IndexingService', () => {
 
     it('uses custom service name for cursor', () => {
       const service = new IndexingService({
-        relay: 'wss://bsky.network',
+        relays: ['wss://bsky.network'],
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,

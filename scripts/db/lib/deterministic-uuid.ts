@@ -100,39 +100,3 @@ export function nodeUuid(subkind: string, id: string): string {
 export function edgeUuid(sourceUri: string, targetUri: string, relationSlug: string): string {
   return uuidv5(CHIVE_NAMESPACE, `edge:${relationSlug}:${sourceUri}:${targetUri}`);
 }
-
-// =============================================================================
-// Legacy functions (kept for backward compatibility during migration)
-// =============================================================================
-
-/**
- * Generates a deterministic UUID for a contribution type.
- * @deprecated Use nodeUuid('contribution-type', slug) instead
- */
-export function contributionTypeUuid(slug: string): string {
-  return nodeUuid('contribution-type', slug);
-}
-
-/**
- * Generates a deterministic UUID for an academic field.
- * @deprecated Use nodeUuid('field', slug) instead
- */
-export function fieldUuid(slug: string): string {
-  return nodeUuid('field', slug);
-}
-
-/**
- * Generates a deterministic UUID for a facet.
- * @deprecated Use nodeUuid('facet', slug) instead
- */
-export function facetUuid(slug: string): string {
-  return nodeUuid('facet', slug);
-}
-
-/**
- * Generates a deterministic UUID for a concept.
- * @deprecated Use nodeUuid(subkind, slug) instead
- */
-export function conceptUuid(slug: string): string {
-  return uuidv5(CHIVE_NAMESPACE, `concept:${slug}`);
-}

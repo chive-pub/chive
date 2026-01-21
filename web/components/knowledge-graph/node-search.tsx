@@ -164,8 +164,10 @@ async function searchNodes(
   // Handle status filter
   if (statusFilter) {
     const statuses = Array.isArray(statusFilter) ? statusFilter : [statusFilter];
-    // API might support comma-separated statuses or just one
-    params.set('status', statuses[0]);
+    // Only set status if we have at least one value
+    if (statuses.length > 0 && statuses[0]) {
+      params.set('status', statuses[0]);
+    }
   }
 
   const response = await fetch(`/xrpc/pub.chive.graph.searchNodes?${params.toString()}`);

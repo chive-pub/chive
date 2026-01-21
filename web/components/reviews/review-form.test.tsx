@@ -7,7 +7,11 @@ import {
   ParentReviewPreview,
   type ReviewFormData,
 } from './review-form';
-import { createMockReview, createMockTextSpanTarget, createMockAuthor } from '@/tests/mock-data';
+import {
+  createMockReview,
+  createMockTextSpanTarget,
+  createMockReviewAuthor,
+} from '@/tests/mock-data';
 
 describe('ReviewForm', () => {
   const defaultProps = {
@@ -369,7 +373,7 @@ describe('ParentReviewPreview', () => {
   it('renders parent review content', () => {
     const review = createMockReview({
       content: 'This is the parent review',
-      author: createMockAuthor({ displayName: 'Dr. Parent' }),
+      author: createMockReviewAuthor({ displayName: 'Dr. Parent' }),
     });
 
     render(<ParentReviewPreview review={review} />);
@@ -391,7 +395,7 @@ describe('ParentReviewPreview', () => {
 
 describe('InlineReplyForm', () => {
   const parentReview = createMockReview({
-    author: createMockAuthor({ displayName: 'Dr. Parent' }),
+    author: createMockReviewAuthor({ displayName: 'Dr. Parent' }),
   });
 
   const defaultProps = {

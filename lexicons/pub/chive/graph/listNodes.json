@@ -1,0 +1,161 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.listNodes",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List knowledge graph nodes with optional filtering by kind, subkind, and status",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "knownValues": ["type", "object"],
+            "description": "Filter by node kind"
+          },
+          "subkind": {
+            "type": "string",
+            "description": "Filter by subkind slug"
+          },
+          "status": {
+            "type": "string",
+            "knownValues": ["proposed", "provisional", "established", "deprecated"],
+            "description": "Filter by lifecycle status"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["nodes", "hasMore", "total"],
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#graphNode"
+              },
+              "description": "List of nodes"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results exist"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total count of matching nodes"
+            }
+          }
+        }
+      }
+    },
+    "graphNode": {
+      "type": "object",
+      "description": "Graph node response",
+      "required": ["id", "uri", "kind", "label", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Node UUID identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the node"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "kind": {
+          "type": "string",
+          "knownValues": ["type", "object"],
+          "description": "Node kind: type or object"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Subkind slug (e.g., field, institution)"
+        },
+        "subkindUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the subkind type node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Primary display label"
+        },
+        "alternateLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternate labels/synonyms"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description"
+        },
+        "externalIds": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "pub.chive.graph.node#externalId"
+          },
+          "description": "External identifier mappings"
+        },
+        "metadata": {
+          "type": "ref",
+          "ref": "pub.chive.graph.node#nodeMetadata",
+          "description": "Subkind-specific metadata"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["proposed", "provisional", "established", "deprecated"],
+          "description": "Lifecycle status"
+        },
+        "deprecatedBy": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of superseding node"
+        },
+        "proposalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of creating proposal"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "createdBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of creator"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        }
+      }
+    }
+  }
+}

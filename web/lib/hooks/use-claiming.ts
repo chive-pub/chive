@@ -4,34 +4,44 @@ import { authApi, getApiBaseUrl } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
-import type { paths } from '@/lib/api/schema.generated';
+/**
+ * Claim status type derived from the lexicon.
+ */
+export type ClaimStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+/**
+ * Co-author claim status type derived from the lexicon.
+ */
+export type CoauthorClaimStatus = 'pending' | 'approved' | 'rejected';
+
+// Import generated types
+import type { OutputSchema as GetClaimResponse } from '@/lib/api/generated/types/pub/chive/claiming/getClaim.js';
+import type { OutputSchema as GetUserClaimsResponse } from '@/lib/api/generated/types/pub/chive/claiming/getUserClaims.js';
+import type { OutputSchema as FindClaimableResponse } from '@/lib/api/generated/types/pub/chive/claiming/findClaimable.js';
+import type { OutputSchema as GetPendingClaimsResponse } from '@/lib/api/generated/types/pub/chive/claiming/getPendingClaims.js';
+import type { OutputSchema as GetSubmissionDataResponse } from '@/lib/api/generated/types/pub/chive/claiming/getSubmissionData.js';
+import type { OutputSchema as GetSuggestionsResponse } from '@/lib/api/generated/types/pub/chive/claiming/getSuggestions.js';
+import type { OutputSchema as GetMyCoauthorRequestsResponse } from '@/lib/api/generated/types/pub/chive/claiming/getMyCoauthorRequests.js';
 import type {
-  ClaimRequest,
-  ClaimRequestWithPaper,
-  ClaimPaperDetails,
-  ClaimableEprint,
-  ClaimStatus,
-  SuggestedPaper,
-  SuggestedPaperAuthor,
-  SuggestionsProfileMetadata,
-  CoauthorClaimRequest,
-  CoauthorClaimStatus,
-} from '@/lib/api/schema';
+  OutputSchema as GetCoauthorRequestsResponse,
+  CoauthorRequest,
+} from '@/lib/api/generated/types/pub/chive/claiming/getCoauthorRequests.js';
+import type { OutputSchema as StartClaimResponse } from '@/lib/api/generated/types/pub/chive/claiming/startClaim.js';
 
 /**
  * Submission data for claiming a paper (prefilled form data).
- *
- * @remarks
- * Type extracted from generated OpenAPI schema for type safety.
  */
-export type SubmissionData =
-  paths['/xrpc/pub.chive.claiming.getSubmissionData']['get']['responses']['200']['content']['application/json'];
+export type SubmissionData = GetSubmissionDataResponse;
 
-// Re-export the new types for consumer convenience
-export type { ClaimRequestWithPaper, ClaimPaperDetails };
-
-// Re-export suggestion types for consumer convenience
-export type { SuggestedPaper, SuggestedPaperAuthor, SuggestionsProfileMetadata };
+// Re-export types for consumer convenience
+export type { CoauthorRequest as CoauthorClaimRequest };
+export type ClaimRequest = GetClaimResponse['claim'];
+export type ClaimRequestWithPaper = GetUserClaimsResponse['claims'][number];
+export type ClaimPaperDetails = ClaimRequestWithPaper['paper'];
+export type SuggestedPaper = GetSuggestionsResponse['papers'][number];
+export type SuggestedPaperAuthor = SuggestedPaper['authors'][number];
+export type SuggestionsProfileMetadata = GetSuggestionsResponse['profileUsed'];
+export type ClaimableEprint = FindClaimableResponse['eprints'][number];
 
 /**
  * Query key factory for claiming-related queries.
@@ -90,17 +100,22 @@ export function useUserClaims(options: UseUserClaimsOptions = {}) {
 
   return useInfiniteQuery({
     queryKey: claimingKeys.userClaims({ status }),
-    queryFn: async ({ pageParam }) => {
-      const { data } = await authApi.GET('/xrpc/pub.chive.claiming.getUserClaims', {
-        params: {
-          query: {
-            status,
-            limit,
-            cursor: pageParam,
-          },
-        },
-      });
-      return data!;
+    queryFn: async ({ pageParam }): Promise<GetUserClaimsResponse> => {
+      try {
+        const response = await authApi.pub.chive.claiming.getUserClaims({
+          status,
+          limit,
+          cursor: pageParam,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch user claims',
+          undefined,
+          'pub.chive.claiming.getUserClaims'
+        );
+      }
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
@@ -119,17 +134,17 @@ export function useClaim(id: number) {
   return useQuery({
     queryKey: claimingKeys.claim(id),
     queryFn: async (): Promise<ClaimRequest | null> => {
-      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.getClaim', {
-        params: { query: { claimId: id } },
-      });
-      if (error) {
+      try {
+        const response = await authApi.pub.chive.claiming.getClaim({ claimId: id });
+        return response.data.claim;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch claim',
+          error instanceof Error ? error.message : 'Failed to fetch claim',
           undefined,
-          '/xrpc/pub.chive.claiming.getClaim'
+          'pub.chive.claiming.getClaim'
         );
       }
-      return data!.claim;
     },
     enabled: !!id,
     staleTime: 30 * 1000,
@@ -158,30 +173,23 @@ export function useClaimableEprints(options: UseClaimableEprintsOptions = {}) {
 
   return useInfiniteQuery({
     queryKey: claimingKeys.claimable({ q, source }),
-    queryFn: async ({
-      pageParam,
-    }): Promise<{
-      eprints: ClaimableEprint[];
-      cursor?: string;
-    }> => {
-      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.findClaimable', {
-        params: {
-          query: {
-            q,
-            source,
-            limit,
-            cursor: pageParam as string | undefined,
-          },
-        },
-      });
-      if (error) {
+    queryFn: async ({ pageParam }): Promise<FindClaimableResponse> => {
+      try {
+        const response = await authApi.pub.chive.claiming.findClaimable({
+          q,
+          source,
+          limit,
+          cursor: pageParam as string | undefined,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search claimable eprints',
+          error instanceof Error ? error.message : 'Failed to search claimable eprints',
           undefined,
-          '/xrpc/pub.chive.claiming.findClaimable'
+          'pub.chive.claiming.findClaimable'
         );
       }
-      return data!;
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.cursor,
@@ -215,31 +223,23 @@ export function usePendingClaims(options: UsePendingClaimsOptions = {}) {
 
   return useInfiniteQuery({
     queryKey: claimingKeys.pending({ minScore, maxScore }),
-    queryFn: async ({
-      pageParam,
-    }): Promise<{
-      claims: ClaimRequest[];
-      cursor?: string;
-      hasMore: boolean;
-    }> => {
-      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.getPendingClaims', {
-        params: {
-          query: {
-            minScore,
-            maxScore,
-            limit,
-            cursor: pageParam as string | undefined,
-          },
-        },
-      });
-      if (error) {
+    queryFn: async ({ pageParam }): Promise<GetPendingClaimsResponse> => {
+      try {
+        const response = await authApi.pub.chive.claiming.getPendingClaims({
+          minScore,
+          maxScore,
+          limit,
+          cursor: pageParam as string | undefined,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch pending claims',
+          error instanceof Error ? error.message : 'Failed to fetch pending claims',
           undefined,
-          '/xrpc/pub.chive.claiming.getPendingClaims'
+          'pub.chive.claiming.getPendingClaims'
         );
       }
-      return data!;
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
@@ -258,13 +258,21 @@ export function usePendingClaims(options: UsePendingClaimsOptions = {}) {
 export function useSubmissionData(source: string, externalId: string) {
   return useQuery({
     queryKey: claimingKeys.submissionData(source, externalId),
-    queryFn: async () => {
-      const { data } = await authApi.GET('/xrpc/pub.chive.claiming.getSubmissionData', {
-        params: {
-          query: { source, externalId },
-        },
-      });
-      return data!;
+    queryFn: async (): Promise<GetSubmissionDataResponse> => {
+      try {
+        const response = await authApi.pub.chive.claiming.getSubmissionData({
+          source,
+          externalId,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch submission data',
+          undefined,
+          'pub.chive.claiming.getSubmissionData'
+        );
+      }
     },
     enabled: !!source && !!externalId,
     staleTime: 5 * 60 * 1000, // 5 minutes - external data doesn't change often
@@ -284,18 +292,22 @@ export function useStartClaim() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ importId }: { importId: number }): Promise<ClaimRequest> => {
-      const { data, error } = await authApi.POST('/xrpc/pub.chive.claiming.startClaim', {
-        body: { importId },
-      });
-      if (error) {
+    mutationFn: async ({
+      importId,
+    }: {
+      importId: number;
+    }): Promise<StartClaimResponse['claim']> => {
+      try {
+        const response = await authApi.pub.chive.claiming.startClaim({ importId });
+        return response.data.claim;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to start claim',
+          error instanceof Error ? error.message : 'Failed to start claim',
           undefined,
-          '/xrpc/pub.chive.claiming.startClaim'
+          'pub.chive.claiming.startClaim'
         );
       }
-      return data!.claim;
     },
     onSuccess: (claim) => {
       // Update claims cache
@@ -322,17 +334,19 @@ export function useCompleteClaim() {
       claimId: number;
       canonicalUri: string;
     }): Promise<{ success: boolean; claimId: number }> => {
-      const { data, error } = await authApi.POST('/xrpc/pub.chive.claiming.completeClaim', {
-        body: { claimId, canonicalUri },
-      });
-      if (error) {
+      try {
+        const response = await authApi.pub.chive.claiming.completeClaim(undefined, {
+          qp: { claimId, canonicalUri },
+        });
+        return { success: response.data.success, claimId };
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to complete claim',
+          error instanceof Error ? error.message : 'Failed to complete claim',
           undefined,
-          '/xrpc/pub.chive.claiming.completeClaim'
+          'pub.chive.claiming.completeClaim'
         );
       }
-      return { success: data!.success, claimId };
     },
     onSuccess: (result) => {
       // Invalidate the specific claim to refetch updated data
@@ -355,14 +369,14 @@ export function useApproveClaim() {
 
   return useMutation({
     mutationFn: async ({ claimId }: { claimId: number }): Promise<void> => {
-      const { error } = await authApi.POST('/xrpc/pub.chive.claiming.approveClaim', {
-        body: { claimId },
-      });
-      if (error) {
+      try {
+        await authApi.pub.chive.claiming.approveClaim(undefined, { qp: { claimId } });
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to approve claim',
+          error instanceof Error ? error.message : 'Failed to approve claim',
           undefined,
-          '/xrpc/pub.chive.claiming.approveClaim'
+          'pub.chive.claiming.approveClaim'
         );
       }
     },
@@ -385,14 +399,14 @@ export function useRejectClaim() {
 
   return useMutation({
     mutationFn: async ({ claimId, reason }: { claimId: number; reason: string }): Promise<void> => {
-      const { error } = await authApi.POST('/xrpc/pub.chive.claiming.rejectClaim', {
-        body: { claimId, reason },
-      });
-      if (error) {
+      try {
+        await authApi.pub.chive.claiming.rejectClaim({ claimId, reason });
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to reject claim',
+          error instanceof Error ? error.message : 'Failed to reject claim',
           undefined,
-          '/xrpc/pub.chive.claiming.rejectClaim'
+          'pub.chive.claiming.rejectClaim'
         );
       }
     },
@@ -434,12 +448,18 @@ export function usePaperSuggestions(options: UsePaperSuggestionsOptions = {}) {
 
   return useQuery({
     queryKey: claimingKeys.suggestions({ limit }),
-    queryFn: async () => {
-      // authApi throws APIError on non-2xx via error middleware
-      const { data } = await authApi.GET('/xrpc/pub.chive.claiming.getSuggestions', {
-        params: { query: { limit } },
-      });
-      return data;
+    queryFn: async (): Promise<GetSuggestionsResponse> => {
+      try {
+        const response = await authApi.pub.chive.claiming.getSuggestions({ limit });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch suggestions',
+          undefined,
+          'pub.chive.claiming.getSuggestions'
+        );
+      }
     },
     enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -473,18 +493,18 @@ export function useMyCoauthorRequests(options: UseMyCoauthorRequestsOptions = {}
 
   return useQuery({
     queryKey: claimingKeys.myCoauthorRequests({ status }),
-    queryFn: async () => {
-      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.getMyCoauthorRequests', {
-        params: { query: { status, limit } },
-      });
-      if (error) {
+    queryFn: async (): Promise<GetMyCoauthorRequestsResponse> => {
+      try {
+        const response = await authApi.pub.chive.claiming.getMyCoauthorRequests({ status, limit });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch co-author requests',
+          error instanceof Error ? error.message : 'Failed to fetch co-author requests',
           undefined,
-          '/xrpc/pub.chive.claiming.getMyCoauthorRequests'
+          'pub.chive.claiming.getMyCoauthorRequests'
         );
       }
-      return data!;
     },
     enabled,
     staleTime: 30 * 1000, // 30 seconds
@@ -513,18 +533,18 @@ export function useCoauthorRequests(options: UseCoauthorRequestsOptions = {}) {
 
   return useQuery({
     queryKey: claimingKeys.coauthorRequests(),
-    queryFn: async () => {
-      const { data, error } = await authApi.GET('/xrpc/pub.chive.claiming.getCoauthorRequests', {
-        params: { query: { limit } },
-      });
-      if (error) {
+    queryFn: async (): Promise<GetCoauthorRequestsResponse> => {
+      try {
+        const response = await authApi.pub.chive.claiming.getCoauthorRequests({ limit });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch co-author requests',
+          error instanceof Error ? error.message : 'Failed to fetch co-author requests',
           undefined,
-          '/xrpc/pub.chive.claiming.getCoauthorRequests'
+          'pub.chive.claiming.getCoauthorRequests'
         );
       }
-      return data!;
     },
     enabled,
     staleTime: 30 * 1000, // 30 seconds
@@ -554,18 +574,25 @@ export function useRequestCoauthorship() {
       authorIndex: number;
       authorName: string;
       message?: string;
-    }): Promise<CoauthorClaimRequest> => {
-      const { data, error } = await authApi.POST('/xrpc/pub.chive.claiming.requestCoauthorship', {
-        body: { eprintUri, eprintOwnerDid, claimantName, authorIndex, authorName, message },
-      });
-      if (error) {
+    }): Promise<CoauthorRequest> => {
+      try {
+        const response = await authApi.pub.chive.claiming.requestCoauthorship({
+          eprintUri,
+          eprintOwnerDid,
+          claimantName,
+          authorIndex,
+          authorName,
+          message,
+        });
+        return response.data.request as CoauthorRequest;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to request co-authorship',
+          error instanceof Error ? error.message : 'Failed to request co-authorship',
           undefined,
-          '/xrpc/pub.chive.claiming.requestCoauthorship'
+          'pub.chive.claiming.requestCoauthorship'
         );
       }
-      return data!.request as CoauthorClaimRequest;
     },
     onSuccess: () => {
       // Invalidate my co-author requests cache
@@ -584,14 +611,14 @@ export function useApproveCoauthor() {
 
   return useMutation({
     mutationFn: async ({ requestId }: { requestId: number }): Promise<void> => {
-      const { error } = await authApi.POST('/xrpc/pub.chive.claiming.approveCoauthor', {
-        body: { requestId },
-      });
-      if (error) {
+      try {
+        await authApi.pub.chive.claiming.approveCoauthor(undefined, { qp: { requestId } });
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to approve co-author',
+          error instanceof Error ? error.message : 'Failed to approve co-author',
           undefined,
-          '/xrpc/pub.chive.claiming.approveCoauthor'
+          'pub.chive.claiming.approveCoauthor'
         );
       }
     },
@@ -618,14 +645,14 @@ export function useRejectCoauthor() {
       requestId: number;
       reason?: string;
     }): Promise<void> => {
-      const { error } = await authApi.POST('/xrpc/pub.chive.claiming.rejectCoauthor', {
-        body: { requestId, reason },
-      });
-      if (error) {
+      try {
+        await authApi.pub.chive.claiming.rejectCoauthor({ requestId, reason });
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to reject co-author',
+          error instanceof Error ? error.message : 'Failed to reject co-author',
           undefined,
-          '/xrpc/pub.chive.claiming.rejectCoauthor'
+          'pub.chive.claiming.rejectCoauthor'
         );
       }
     },

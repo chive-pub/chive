@@ -1,0 +1,119 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.endorsement.getUserEndorsement",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get a user's endorsement for a specific eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri", "userDid"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          },
+          "userDid": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the user"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#endorsementView"
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    },
+    "endorsementView": {
+      "type": "object",
+      "description": "View of an endorsement",
+      "required": ["uri", "cid", "eprintUri", "endorser", "contributions", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Endorsement AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Endorsed eprint AT-URI"
+        },
+        "endorser": {
+          "type": "ref",
+          "ref": "#authorRef"
+        },
+        "contributions": {
+          "type": "array",
+          "minLength": 1,
+          "items": {
+            "type": "string",
+            "knownValues": [
+              "methodological",
+              "analytical",
+              "theoretical",
+              "empirical",
+              "conceptual",
+              "technical",
+              "data",
+              "replication",
+              "reproducibility",
+              "synthesis",
+              "interdisciplinary",
+              "pedagogical",
+              "visualization",
+              "societal-impact",
+              "clinical"
+            ]
+          },
+          "description": "Contribution types being endorsed"
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional comment"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

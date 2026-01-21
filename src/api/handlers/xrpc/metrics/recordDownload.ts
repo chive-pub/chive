@@ -1,5 +1,5 @@
 /**
- * Handler for pub.chive.metrics.recordDownload.
+ * XRPC handler for pub.chive.metrics.recordDownload.
  *
  * @remarks
  * Records a download event for an eprint.
@@ -8,68 +8,41 @@
  * @public
  */
 
-import type { Context } from 'hono';
-import { z } from 'zod';
-
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/metrics/recordDownload.js';
 import type { AtUri, DID } from '../../../../types/atproto.js';
 import { DatabaseError } from '../../../../types/errors.js';
-import { recordDownloadInputSchema, type RecordDownloadInput } from '../../../schemas/metrics.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Response schema for record download.
- */
-const recordDownloadResponseSchema = z.object({
-  success: z.boolean(),
-});
-
-type RecordDownloadResponse = z.infer<typeof recordDownloadResponseSchema>;
-
-/**
- * Handler for pub.chive.metrics.recordDownload.
- *
- * @param c - Hono context
- * @param input - Download event data
- * @returns Success indicator
- *
- * @throws {DatabaseError} When recording fails
+ * XRPC method for pub.chive.metrics.recordDownload.
  *
  * @public
  */
-export async function recordDownloadHandler(
-  c: Context<ChiveEnv>,
-  input: RecordDownloadInput
-): Promise<RecordDownloadResponse> {
-  const logger = c.get('logger');
-  const { metrics } = c.get('services');
-
-  logger.debug('Recording download', { uri: input.uri, viewerDid: input.viewerDid });
-
-  const result = await metrics.recordDownload(
-    input.uri as AtUri,
-    input.viewerDid as DID | undefined
-  );
-
-  if (!result.ok) {
-    throw new DatabaseError('WRITE', result.error.message);
-  }
-
-  return { success: true };
-}
-
-/**
- * Endpoint definition for pub.chive.metrics.recordDownload.
- *
- * @public
- */
-export const recordDownloadEndpoint: XRPCEndpoint<RecordDownloadInput, RecordDownloadResponse> = {
-  method: 'pub.chive.metrics.recordDownload' as never,
-  type: 'procedure',
-  description: 'Record a download event for an eprint',
-  inputSchema: recordDownloadInputSchema,
-  outputSchema: recordDownloadResponseSchema,
-  handler: recordDownloadHandler,
+export const recordDownload: XRPCMethod<void, InputSchema, OutputSchema> = {
   auth: 'optional',
-  rateLimit: 'anonymous',
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const { metrics } = c.get('services');
+
+    if (!input) {
+      throw new DatabaseError('WRITE', 'Missing input');
+    }
+
+    logger.debug('Recording download', { uri: input.uri, viewerDid: input.viewerDid });
+
+    const result = await metrics.recordDownload(
+      input.uri as AtUri,
+      input.viewerDid as DID | undefined
+    );
+
+    if (!result.ok) {
+      const error = result.error;
+      throw new DatabaseError('WRITE', error.message);
+    }
+
+    return { encoding: 'application/json', body: { success: true } };
+  },
 };

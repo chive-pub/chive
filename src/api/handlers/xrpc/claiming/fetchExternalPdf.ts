@@ -14,7 +14,20 @@ import type { Context } from 'hono';
 
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
 import type { ChiveEnv } from '../../../types/context.js';
-import type { RESTEndpoint } from '../../../types/handlers.js';
+
+/**
+ * REST endpoint definition for non-XRPC handlers.
+ *
+ * @public
+ */
+export interface RESTEndpoint {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  path: string;
+  description: string;
+  handler: (c: Context<ChiveEnv>) => Promise<Response>;
+  auth: 'required' | 'optional' | 'none';
+  rateLimit: 'anonymous' | 'authenticated' | 'admin';
+}
 
 /**
  * Allowed external domains for PDF fetching.

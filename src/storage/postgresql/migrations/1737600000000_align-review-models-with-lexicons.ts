@@ -116,11 +116,10 @@ export function up(pgm: MigrationBuilder): void {
   // Make body not null after migration
   pgm.alterColumn('reviews_index', 'body', {
     notNull: true,
-    default: "'[]'::jsonb",
+    default: pgm.func("'[]'::jsonb"),
   });
 
-  // Drop the old content column (keeping line_number for backward compatibility)
-  // Note: line_number is deprecated but kept for existing data
+  // Drop the content column (replaced by body JSONB)
   pgm.dropColumn('reviews_index', 'content');
 
   // Add index on motivation_uri for lookups

@@ -1,0 +1,105 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.getUserVote",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get a user's vote on a specific proposal, if they have voted",
+      "parameters": {
+        "type": "params",
+        "required": ["proposalId", "userDid"],
+        "properties": {
+          "proposalId": {
+            "type": "string",
+            "description": "Proposal identifier"
+          },
+          "userDid": {
+            "type": "string",
+            "format": "did",
+            "description": "User DID"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["vote"],
+          "properties": {
+            "vote": {
+              "type": "union",
+              "refs": ["#voteView"],
+              "description": "Vote if found, or null"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    },
+    "voteView": {
+      "type": "object",
+      "description": "View of a vote on a proposal",
+      "required": [
+        "id",
+        "uri",
+        "cid",
+        "proposalUri",
+        "voterDid",
+        "voterRole",
+        "vote",
+        "weight",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Vote identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Vote AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "proposalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Proposal AT-URI"
+        },
+        "voterDid": {
+          "type": "string",
+          "format": "did",
+          "description": "Voter DID"
+        },
+        "voterRole": {
+          "type": "string",
+          "knownValues": ["community-member", "reviewer", "domain-expert", "administrator"],
+          "description": "Voter governance role"
+        },
+        "vote": {
+          "type": "string",
+          "knownValues": ["approve", "reject", "abstain", "request-changes"],
+          "description": "Vote value"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Weighted vote value (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Vote rationale"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Vote timestamp"
+        }
+      }
+    }
+  }
+}

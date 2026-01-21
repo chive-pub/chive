@@ -246,17 +246,27 @@ Extended user profile.
 }
 ```
 
-### pub.chive.actor.discoverySettings
+### pub.chive.discovery.settings
 
-Discovery preferences.
+Discovery preferences for personalized recommendations.
 
 ```typescript
 {
-  "$type": "pub.chive.actor.discoverySettings",
-  "recommendationDiversity": "low" | "medium" | "high",
-  "excludeSources": string[],
-  "languages": string[],
-  "emailDigestFrequency": "never" | "daily" | "weekly"
+  "$type": "pub.chive.discovery.settings",
+  "enablePersonalization": boolean,
+  "enableForYouFeed": boolean,
+  "forYouSignals": {
+    "fields": boolean,
+    "citations": boolean,
+    "collaborators": boolean,
+    "trending": boolean
+  },
+  "relatedPapersSignals": {
+    "citations": boolean,
+    "topics": boolean
+  },
+  "citationNetworkDisplay": "hidden" | "preview" | "expanded",
+  "showRecommendationReasons": boolean
 }
 ```
 

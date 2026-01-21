@@ -21,15 +21,15 @@
             "description": "Text span being linked to an entity"
           },
           "linkedEntity": {
-            "type": "ref",
-            "ref": "#entityLinkType",
+            "type": "union",
+            "refs": ["#graphNodeLink", "#externalIdLink", "#authorLink", "#eprintLink"],
             "description": "The entity being linked to"
           },
           "confidence": {
-            "type": "number",
+            "type": "integer",
             "minimum": 0,
-            "maximum": 1,
-            "description": "Confidence score for the link (0.0-1.0)"
+            "maximum": 1000,
+            "description": "Confidence score for the link (scaled by 1000 for 0.0-1.0 range)"
           },
           "createdAt": {
             "type": "string",
@@ -111,78 +111,99 @@
         }
       }
     },
-    "entityLinkType": {
-      "type": "union",
-      "description": "Union of all entity link types",
-      "refs": ["#wikidataLink", "#authorityLink", "#fieldLink", "#authorLink", "#preprintLink"]
-    },
-    "wikidataLink": {
+    "graphNodeLink": {
       "type": "object",
-      "description": "Link to a Wikidata entity",
-      "required": ["type", "qid", "label"],
+      "description": "Link to a knowledge graph node (type or object, with optional subkind)",
+      "required": ["type", "uri", "label", "kind"],
       "properties": {
         "type": {
           "type": "string",
-          "const": "wikidata"
+          "const": "graphNode"
         },
-        "qid": {
+        "uri": {
           "type": "string",
-          "description": "Wikidata QID (e.g., Q42)"
+          "format": "at-uri",
+          "description": "AT-URI of the graph node"
+        },
+        "id": {
+          "type": "string",
+          "description": "Node UUID identifier"
+        },
+        "slug": {
+          "type": "string",
+          "description": "Human-readable slug (e.g., 'computer-science')"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the node"
+        },
+        "kind": {
+          "type": "string",
+          "knownValues": ["type", "object"],
+          "description": "Node kind: 'type' for classifications, 'object' for instances"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Subkind slug (e.g., 'field', 'facet', 'institution', 'contribution-type')"
+        },
+        "subkindUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the subkind type node"
+        }
+      }
+    },
+    "externalIdLink": {
+      "type": "object",
+      "description": "Link to an external identifier (Wikidata, ROR, ORCID, etc.)",
+      "required": ["type", "system", "identifier", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "externalId"
+        },
+        "system": {
+          "type": "string",
+          "knownValues": [
+            "wikidata",
+            "ror",
+            "orcid",
+            "isni",
+            "viaf",
+            "lcsh",
+            "fast",
+            "credit",
+            "spdx",
+            "fundref",
+            "mesh",
+            "aat",
+            "gnd",
+            "anzsrc",
+            "arxiv",
+            "doi",
+            "pmid",
+            "pmcid"
+          ],
+          "description": "External identifier system"
+        },
+        "identifier": {
+          "type": "string",
+          "description": "Identifier value (e.g., Q42 for Wikidata)"
         },
         "label": {
           "type": "string",
           "description": "Display label for the entity"
         },
-        "url": {
+        "uri": {
           "type": "string",
           "format": "uri",
-          "description": "URL to the Wikidata page"
-        }
-      }
-    },
-    "authorityLink": {
-      "type": "object",
-      "description": "Link to an authority record",
-      "required": ["type", "uri", "label"],
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "authority"
-        },
-        "uri": {
-          "type": "string",
-          "format": "at-uri",
-          "description": "AT-URI of the authority record"
-        },
-        "label": {
-          "type": "string",
-          "description": "Authorized form of the name"
-        }
-      }
-    },
-    "fieldLink": {
-      "type": "object",
-      "description": "Link to a knowledge graph field",
-      "required": ["type", "uri", "label"],
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "field"
-        },
-        "uri": {
-          "type": "string",
-          "format": "at-uri",
-          "description": "AT-URI of the field node"
-        },
-        "label": {
-          "type": "string",
-          "description": "Field name"
+          "description": "Full URI for the external entity"
         }
       }
     },
     "authorLink": {
       "type": "object",
-      "description": "Link to an author",
+      "description": "Link to an ATProto author",
       "required": ["type", "did", "displayName"],
       "properties": {
         "type": {
@@ -194,6 +215,11 @@
           "format": "did",
           "description": "Author's DID"
         },
+        "handle": {
+          "type": "string",
+          "format": "handle",
+          "description": "Author's handle"
+        },
         "displayName": {
           "type": "string",
           "description": "Author's display name"
@@ -204,14 +230,14 @@
         }
       }
     },
-    "preprintLink": {
+    "eprintLink": {
       "type": "object",
-      "description": "Link to another preprint",
+      "description": "Link to another eprint/preprint",
       "required": ["type", "uri", "title"],
       "properties": {
         "type": {
           "type": "string",
-          "const": "preprint"
+          "const": "eprint"
         },
         "uri": {
           "type": "string",
@@ -220,7 +246,11 @@
         },
         "title": {
           "type": "string",
-          "description": "Preprint title"
+          "description": "Eprint title"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI if available"
         }
       }
     }

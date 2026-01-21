@@ -8,16 +8,12 @@
  * @public
  */
 
-import type { Context } from 'hono';
-import { z } from 'zod';
-
-import {
-  subkindsResponseSchema,
-  type SubkindsResponse,
-  type GraphNodeResponse,
-} from '../../../schemas/graph.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/graph/getSubkinds.js';
+import type { GraphNode } from '../../../../lexicons/generated/types/pub/chive/graph/listNodes.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Maps a GraphNode to API response format.
@@ -25,6 +21,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
 function mapNodeToResponse(node: {
   id: string;
   uri: string;
+  cid?: string;
   kind: string;
   subkind?: string;
   subkindUri?: string;
@@ -44,45 +41,25 @@ function mapNodeToResponse(node: {
   createdAt: Date;
   createdBy?: string;
   updatedAt?: Date;
-}): GraphNodeResponse {
+}): GraphNode {
   return {
     id: node.id,
     uri: node.uri,
-    kind: node.kind as 'type' | 'object',
+    cid: node.cid,
+    kind: node.kind,
     subkind: node.subkind,
     subkindUri: node.subkindUri,
     label: node.label,
     alternateLabels: node.alternateLabels,
     description: node.description,
     externalIds: node.externalIds?.map((ext) => ({
-      system: ext.system as
-        | 'wikidata'
-        | 'ror'
-        | 'orcid'
-        | 'isni'
-        | 'viaf'
-        | 'lcsh'
-        | 'fast'
-        | 'credit'
-        | 'spdx'
-        | 'fundref'
-        | 'mesh'
-        | 'aat'
-        | 'gnd'
-        | 'anzsrc'
-        | 'arxiv',
+      system: ext.system,
       identifier: ext.identifier,
       uri: ext.uri,
-      matchType: ext.matchType as
-        | 'exact'
-        | 'close'
-        | 'broader'
-        | 'narrower'
-        | 'related'
-        | undefined,
+      matchType: ext.matchType,
     })),
-    metadata: node.metadata as GraphNodeResponse['metadata'],
-    status: node.status as 'proposed' | 'provisional' | 'established' | 'deprecated',
+    metadata: node.metadata as GraphNode['metadata'],
+    status: node.status,
     deprecatedBy: node.deprecatedBy,
     proposalUri: node.proposalUri,
     createdAt: node.createdAt.toISOString(),
@@ -92,42 +69,26 @@ function mapNodeToResponse(node: {
 }
 
 /**
- * Handler for pub.chive.graph.getSubkinds query.
- *
- * @param c - Hono context with Chive environment
- * @returns Available subkind type nodes
+ * XRPC method for pub.chive.graph.getSubkinds query.
  *
  * @public
  */
-export async function getSubkindsHandler(c: Context<ChiveEnv>): Promise<SubkindsResponse> {
-  const { nodeService } = c.get('services');
-  const logger = c.get('logger');
+export const getSubkinds: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { nodeService } = c.get('services');
+    const logger = c.get('logger');
 
-  logger.debug('Getting subkinds');
+    logger.debug('Getting subkinds');
 
-  const subkinds = await nodeService.getSubkinds();
+    const subkinds = await nodeService.getSubkinds();
 
-  const response: SubkindsResponse = {
-    subkinds: subkinds.map(mapNodeToResponse),
-  };
+    const response: OutputSchema = {
+      subkinds: subkinds.map(mapNodeToResponse),
+    };
 
-  logger.info('Subkinds retrieved', { count: subkinds.length });
+    logger.info('Subkinds retrieved', { count: subkinds.length });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.graph.getSubkinds.
- *
- * @public
- */
-export const getSubkindsEndpoint: XRPCEndpoint<Record<string, never>, SubkindsResponse> = {
-  method: 'pub.chive.graph.getSubkinds' as never,
-  type: 'query',
-  description: 'Get available subkind type nodes',
-  inputSchema: z.object({}),
-  outputSchema: subkindsResponseSchema,
-  handler: getSubkindsHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: response };
+  },
 };

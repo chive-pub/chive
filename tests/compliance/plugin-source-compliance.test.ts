@@ -18,7 +18,42 @@ import { join } from 'path';
 
 import { describe, it, expect } from 'vitest';
 
-import { importSourceSchema } from '@/api/schemas/claiming.js';
+/**
+ * Validates import source identifiers match the lexicon requirements.
+ *
+ * @remarks
+ * Source identifiers must be:
+ * - Lowercase alphanumeric only (a-z, 0-9)
+ * - 2-50 characters
+ *
+ * This replaces the deleted Zod schema with a simple regex validation.
+ */
+const importSourceSchema = {
+  safeParse: (value: string): { success: boolean; error?: { issues: { message: string }[] } } => {
+    if (typeof value !== 'string') {
+      return { success: false, error: { issues: [{ message: 'Expected string' }] } };
+    }
+    if (value.length < 2) {
+      return {
+        success: false,
+        error: { issues: [{ message: 'Source must be at least 2 characters' }] },
+      };
+    }
+    if (value.length > 50) {
+      return {
+        success: false,
+        error: { issues: [{ message: 'Source must be at most 50 characters' }] },
+      };
+    }
+    if (!/^[a-z0-9]+$/.test(value)) {
+      return {
+        success: false,
+        error: { issues: [{ message: 'Source must be lowercase alphanumeric only' }] },
+      };
+    }
+    return { success: true };
+  },
+};
 
 /**
  * Extract source values from plugin TypeScript files.
@@ -75,7 +110,9 @@ describe('Plugin Source Identifier Compliance', () => {
 
           if (!result.success) {
             // Provide helpful error message
-            const errors = result.error.issues.map((i) => i.message).join(', ');
+            const errors = result
+              .error!.issues.map((i: { message: string }) => i.message)
+              .join(', ');
             throw new Error(
               `Plugin "${file}" uses source "${source}" which fails schema validation: ${errors}\n` +
                 `Source identifiers must be lowercase alphanumeric (a-z, 0-9), 2-50 characters.`

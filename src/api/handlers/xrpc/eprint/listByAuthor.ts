@@ -13,157 +13,85 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/eprint/listByAuthor.js';
 import type { DID } from '../../../../types/atproto.js';
-import { extractPlainText } from '../../../../utils/rich-text.js';
-import { STALENESS_THRESHOLD_MS } from '../../../config.js';
-import {
-  listByAuthorParamsSchema,
-  eprintListResponseSchema,
-  type ListByAuthorParams,
-  type EprintListResponse,
-} from '../../../schemas/eprint.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import { ValidationError } from '../../../../types/errors.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.eprint.listByAuthor query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters with author DID
- * @returns Paginated list of author's eprints
- *
- * @example
- * ```http
- * GET /xrpc/pub.chive.eprint.listByAuthor?did=did:plc:abc&limit=20&sort=date
- *
- * Response:
- * {
- *   "eprints": [...],
- *   "hasMore": true,
- *   "cursor": "...",
- *   "total": 45
- * }
- * ```
+ * XRPC method for pub.chive.eprint.listByAuthor.
  *
  * @public
  */
-export async function listByAuthorHandler(
-  c: Context<ChiveEnv>,
-  params: ListByAuthorParams
-): Promise<EprintListResponse> {
-  const { eprint } = c.get('services');
-  const logger = c.get('logger');
+export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: 'optional',
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { eprint } = c.get('services');
+    const logger = c.get('logger');
 
-  logger.debug('Listing eprints by author', {
-    did: params.did,
-    limit: params.limit,
-    sort: params.sort,
-  });
+    // Validate required parameter
+    if (!params.did) {
+      throw new ValidationError('Missing required parameter: did', 'did');
+    }
 
-  const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
-  const limit = params.limit ?? 50;
+    logger.debug('Listing eprints by author', {
+      did: params.did,
+      limit: params.limit,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder,
+    });
 
-  const results = await eprint.getEprintsByAuthor(params.did as DID, {
-    limit,
-    offset,
-    sortBy: params.sort === 'date' ? 'createdAt' : 'createdAt',
-    sortOrder: 'desc',
-  });
+    const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
+    const limit = params.limit ?? 50;
 
-  const hasMore = offset + results.eprints.length < results.total;
+    // Map lexicon sortBy values to storage interface values
+    const sortByMap: Record<string, 'createdAt' | 'indexedAt' | 'title'> = {
+      indexedAt: 'indexedAt',
+      publishedAt: 'createdAt',
+      updatedAt: 'createdAt',
+    };
+    const mappedSortBy = sortByMap[params.sortBy] ?? 'createdAt';
+    const mappedSortOrder: 'asc' | 'desc' = params.sortOrder === 'asc' ? 'asc' : 'desc';
 
-  // Calculate staleness using configured threshold
-  const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
+    const results = await eprint.getEprintsByAuthor(params.did as DID, {
+      limit,
+      offset,
+      sortBy: mappedSortBy,
+      sortOrder: mappedSortOrder,
+    });
 
-  // Map to response format
-  const response: EprintListResponse = {
-    eprints: results.eprints.map((p) => {
-      // Extract rkey for record URL
-      const rkey = p.uri.split('/').pop() ?? '';
-      // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
-      const recordOwner = p.paperDid ?? p.submittedBy;
-      const recordUrl = `${p.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
+    const hasMore = offset + results.eprints.length < results.total;
 
-      const plainAbstract = p.abstractPlainText ?? extractPlainText(p.abstract);
-      return {
+    const response: OutputSchema = {
+      eprints: results.eprints.map((p) => ({
         uri: p.uri,
         cid: p.cid,
         title: p.title,
-        abstract: plainAbstract.substring(0, 500), // Truncate for list view
-        authors: (p.authors ?? []).map((author) => ({
-          did: author.did,
-          name: author.name,
-          orcid: author.orcid,
-          email: author.email,
-          order: author.order,
-          affiliations: (author.affiliations ?? []).map((aff) => ({
-            name: aff.name,
-            rorId: aff.rorId,
-            department: aff.department,
+        abstract: p.abstractPlainText?.substring(0, 500),
+        authors: (p.authors ?? [])
+          .filter((author) => author.did !== undefined)
+          .map((author) => ({
+            did: author.did as string,
+            handle: undefined,
+            displayName: author.name,
           })),
-          contributions: (author.contributions ?? []).map((contrib) => ({
-            typeUri: contrib.typeUri,
-            typeId: contrib.typeId,
-            typeLabel: contrib.typeLabel,
-            degree: contrib.degree,
-          })),
-          isCorrespondingAuthor: author.isCorrespondingAuthor,
-          isHighlighted: author.isHighlighted,
-          handle: undefined as string | undefined,
-          avatarUrl: undefined as string | undefined,
-        })),
-        submittedBy: p.submittedBy,
-        paperDid: p.paperDid,
-        fields: undefined as
-          | { id?: string; uri: string; label: string; parentUri?: string }[]
-          | undefined,
-        license: p.license,
-        createdAt: p.createdAt.toISOString(),
+        fields: p.fields?.map((f) => f.uri),
         indexedAt: p.indexedAt.toISOString(),
-        source: {
-          pdsEndpoint: p.pdsUrl,
-          recordUrl,
-          blobUrl: undefined as string | undefined,
-          lastVerifiedAt: p.indexedAt.toISOString(),
-          stale: p.indexedAt.getTime() < stalenessThreshold,
-        },
-        metrics: p.metrics
-          ? {
-              views: p.metrics.views,
-              downloads: p.metrics.downloads,
-              endorsements: p.metrics.endorsements,
-            }
-          : undefined,
-      };
-    }),
-    cursor: hasMore ? String(offset + results.eprints.length) : undefined,
-    hasMore,
-    total: results.total,
-  };
+        publishedAt: p.createdAt.toISOString(),
+      })),
+      cursor: hasMore ? String(offset + results.eprints.length) : undefined,
+      total: results.total,
+    };
 
-  logger.info('Author eprints listed', {
-    did: params.did,
-    count: response.eprints.length,
-    total: results.total,
-  });
+    logger.info('Author eprints listed', {
+      did: params.did,
+      count: response.eprints.length,
+      total: results.total,
+    });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.eprint.listByAuthor.
- *
- * @public
- */
-export const listByAuthorEndpoint: XRPCEndpoint<ListByAuthorParams, EprintListResponse> = {
-  method: 'pub.chive.eprint.listByAuthor' as never,
-  type: 'query',
-  description: 'List eprint submissions by author DID',
-  inputSchema: listByAuthorParamsSchema,
-  outputSchema: eprintListResponseSchema,
-  handler: listByAuthorHandler,
-  auth: 'optional',
-  rateLimit: 'authenticated',
+    return { encoding: 'application/json', body: response };
+  },
 };

@@ -5,7 +5,7 @@
  *
  * @remarks
  * Captures text selection from react-pdf's text layer and converts it
- * to W3C Web Annotation format (TextQuoteSelector + TextPositionSelector).
+ * to W3C Web Annotation format (TextQuoteSelector + UnifiedTextPositionSelector).
  *
  * @example
  * ```tsx
@@ -22,7 +22,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-import type { TextSpanTarget, TextPositionSelector } from '@/lib/api/schema';
+import type { UnifiedTextSpanTarget, UnifiedTextPositionSelector } from '@/lib/api/schema';
 
 /**
  * W3C Text Quote Selector for annotations.
@@ -49,7 +49,7 @@ export interface PDFTextSelectionHandlerProps {
   eprintUri: string;
 
   /** Callback when text is selected */
-  onSelect: (target: TextSpanTarget, selectedText: string) => void;
+  onSelect: (target: UnifiedTextSpanTarget, selectedText: string) => void;
 
   /** Children (typically a Page component) */
   children: React.ReactNode;
@@ -123,13 +123,13 @@ function createQuoteSelector(text: string, prefix: string, suffix: string): Text
 }
 
 /**
- * Create W3C TextPositionSelector.
+ * Create W3C UnifiedTextPositionSelector.
  */
 function createPositionSelector(
   start: number,
   end: number,
   pageNumber: number
-): TextPositionSelector {
+): UnifiedTextPositionSelector {
   return {
     type: 'TextPositionSelector',
     start,
@@ -185,7 +185,7 @@ export function PDFTextSelectionHandler({
     const positionSelector = createPositionSelector(start, end, pageNumber);
 
     // Create target
-    const target: TextSpanTarget = {
+    const target: UnifiedTextSpanTarget = {
       source: eprintUri,
       selector: quoteSelector,
       refinedBy: positionSelector,

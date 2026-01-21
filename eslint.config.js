@@ -13,6 +13,7 @@ export default tseslint.config(
       'coverage/**',
       '.next/**',
       'scripts/**',
+      'src/lexicons/generated/**', // Auto-generated lexicon types
       'src/lexicons/validators/**',
       'tests/performance/k6/**', // k6 uses its own JavaScript runtime
       'tests/e2e/**', // E2E tests have their own tsconfig

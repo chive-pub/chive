@@ -8,17 +8,12 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import {
-  searchNodesParamsSchema,
-  nodeSearchResponseSchema,
-  type SearchNodesParams,
-  type NodeSearchResponse,
-  type GraphNodeResponse,
-} from '../../../schemas/graph.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { GraphNode } from '../../../../lexicons/generated/types/pub/chive/graph/listNodes.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/graph/searchNodes.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Maps a GraphNode to API response format.
@@ -26,6 +21,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
 function mapNodeToResponse(node: {
   id: string;
   uri: string;
+  cid?: string;
   kind: string;
   subkind?: string;
   subkindUri?: string;
@@ -45,45 +41,25 @@ function mapNodeToResponse(node: {
   createdAt: Date;
   createdBy?: string;
   updatedAt?: Date;
-}): GraphNodeResponse {
+}): GraphNode {
   return {
     id: node.id,
     uri: node.uri,
-    kind: node.kind as 'type' | 'object',
+    cid: node.cid,
+    kind: node.kind,
     subkind: node.subkind,
     subkindUri: node.subkindUri,
     label: node.label,
     alternateLabels: node.alternateLabels,
     description: node.description,
     externalIds: node.externalIds?.map((ext) => ({
-      system: ext.system as
-        | 'wikidata'
-        | 'ror'
-        | 'orcid'
-        | 'isni'
-        | 'viaf'
-        | 'lcsh'
-        | 'fast'
-        | 'credit'
-        | 'spdx'
-        | 'fundref'
-        | 'mesh'
-        | 'aat'
-        | 'gnd'
-        | 'anzsrc'
-        | 'arxiv',
+      system: ext.system,
       identifier: ext.identifier,
       uri: ext.uri,
-      matchType: ext.matchType as
-        | 'exact'
-        | 'close'
-        | 'broader'
-        | 'narrower'
-        | 'related'
-        | undefined,
+      matchType: ext.matchType,
     })),
-    metadata: node.metadata as GraphNodeResponse['metadata'],
-    status: node.status as 'proposed' | 'provisional' | 'established' | 'deprecated',
+    metadata: node.metadata as GraphNode['metadata'],
+    status: node.status,
     deprecatedBy: node.deprecatedBy,
     proposalUri: node.proposalUri,
     createdAt: node.createdAt.toISOString(),
@@ -93,69 +69,54 @@ function mapNodeToResponse(node: {
 }
 
 /**
- * Handler for pub.chive.graph.searchNodes query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated search parameters
- * @returns Nodes matching search criteria
+ * XRPC method for pub.chive.graph.searchNodes query.
  *
  * @public
  */
-export async function searchNodesHandler(
-  c: Context<ChiveEnv>,
-  params: SearchNodesParams
-): Promise<NodeSearchResponse> {
-  const { nodeService } = c.get('services');
-  const logger = c.get('logger');
+export const searchNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { nodeService } = c.get('services');
+    const logger = c.get('logger');
 
-  const limit = params.limit ?? 20;
+    const limit = params.limit ?? 20;
 
-  logger.debug('Searching nodes', {
-    query: params.query,
-    kind: params.kind,
-    subkind: params.subkind,
-    status: params.status,
-    limit,
-    cursor: params.cursor,
-  });
+    logger.debug('Searching nodes', {
+      query: params.query,
+      kind: params.kind,
+      subkind: params.subkind,
+      status: params.status,
+      limit,
+      cursor: params.cursor,
+    });
 
-  const result = await nodeService.searchNodes(params.query, {
-    kind: params.kind,
-    subkind: params.subkind,
-    status: params.status,
-    limit,
-    cursor: params.cursor,
-  });
+    const result = await nodeService.searchNodes(params.query, {
+      kind: params.kind as 'type' | 'object' | undefined,
+      subkind: params.subkind,
+      status: params.status as
+        | 'proposed'
+        | 'provisional'
+        | 'established'
+        | 'deprecated'
+        | undefined,
+      limit,
+      cursor: params.cursor,
+    });
 
-  const response: NodeSearchResponse = {
-    nodes: result.nodes.map(mapNodeToResponse),
-    cursor: result.cursor,
-    hasMore: result.hasMore ?? result.nodes.length >= limit,
-    total: result.total,
-  };
+    const response: OutputSchema = {
+      nodes: result.nodes.map(mapNodeToResponse),
+      cursor: result.cursor,
+      hasMore: result.hasMore ?? result.nodes.length >= limit,
+      total: result.total,
+    };
 
-  logger.info('Node search completed', {
-    query: params.query,
-    total: result.total,
-    returned: response.nodes.length,
-    hasMore: response.hasMore,
-  });
+    logger.info('Node search completed', {
+      query: params.query,
+      total: result.total,
+      returned: response.nodes.length,
+      hasMore: response.hasMore,
+    });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.graph.searchNodes.
- *
- * @public
- */
-export const searchNodesEndpoint: XRPCEndpoint<SearchNodesParams, NodeSearchResponse> = {
-  method: 'pub.chive.graph.searchNodes' as never,
-  type: 'query',
-  description: 'Search knowledge graph nodes',
-  inputSchema: searchNodesParamsSchema,
-  outputSchema: nodeSearchResponseSchema,
-  handler: searchNodesHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: response };
+  },
 };

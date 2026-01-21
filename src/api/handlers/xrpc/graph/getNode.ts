@@ -8,17 +8,12 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import { NotFoundError } from '../../../../types/errors.js';
-import {
-  getNodeParamsSchema,
-  nodeWithEdgesSchema,
-  type GetNodeParams,
-  type NodeWithEdges,
-} from '../../../schemas/graph.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/graph/getNode.js';
+import { NotFoundError, ValidationError } from '../../../../types/errors.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Convert a value to ISO string, handling both Date objects and strings.
@@ -38,6 +33,7 @@ function toISOString(value: Date | string): string {
 function mapNodeToResponse(node: {
   id: string;
   uri: string;
+  cid?: string;
   kind: string;
   subkind?: string;
   subkindUri?: string;
@@ -57,45 +53,25 @@ function mapNodeToResponse(node: {
   createdAt: Date | string;
   createdBy?: string;
   updatedAt?: Date | string;
-}): NodeWithEdges {
+}): OutputSchema {
   return {
     id: node.id,
     uri: node.uri,
-    kind: node.kind as 'type' | 'object',
+    cid: node.cid,
+    kind: node.kind,
     subkind: node.subkind,
     subkindUri: node.subkindUri,
     label: node.label,
     alternateLabels: node.alternateLabels,
     description: node.description,
     externalIds: node.externalIds?.map((ext) => ({
-      system: ext.system as
-        | 'wikidata'
-        | 'ror'
-        | 'orcid'
-        | 'isni'
-        | 'viaf'
-        | 'lcsh'
-        | 'fast'
-        | 'credit'
-        | 'spdx'
-        | 'fundref'
-        | 'mesh'
-        | 'aat'
-        | 'gnd'
-        | 'anzsrc'
-        | 'arxiv',
+      system: ext.system,
       identifier: ext.identifier,
       uri: ext.uri,
-      matchType: ext.matchType as
-        | 'exact'
-        | 'close'
-        | 'broader'
-        | 'narrower'
-        | 'related'
-        | undefined,
+      matchType: ext.matchType,
     })),
-    metadata: node.metadata as NodeWithEdges['metadata'],
-    status: node.status as 'proposed' | 'provisional' | 'established' | 'deprecated',
+    metadata: node.metadata as OutputSchema['metadata'],
+    status: node.status,
     deprecatedBy: node.deprecatedBy,
     proposalUri: node.proposalUri,
     createdAt: toISOString(node.createdAt),
@@ -105,75 +81,60 @@ function mapNodeToResponse(node: {
 }
 
 /**
- * Handler for pub.chive.graph.getNode query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Node details with optional edges
- * @throws NotFoundError if node not found
+ * XRPC method for pub.chive.graph.getNode query.
  *
  * @public
  */
-export async function getNodeHandler(
-  c: Context<ChiveEnv>,
-  params: GetNodeParams
-): Promise<NodeWithEdges> {
-  const { nodeService, edgeService } = c.get('services');
-  const logger = c.get('logger');
+export const getNode: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { nodeService, edgeService } = c.get('services');
+    const logger = c.get('logger');
 
-  logger.debug('Getting node', { id: params.id, includeEdges: params.includeEdges });
+    // Validate required parameter
+    if (!params.id) {
+      throw new ValidationError('Missing required parameter: id', 'id');
+    }
 
-  const node = await nodeService.getNodeById(params.id);
+    logger.debug('Getting node', { id: params.id, includeEdges: params.includeEdges });
 
-  if (!node) {
-    throw new NotFoundError('Node', params.id);
-  }
+    const node = await nodeService.getNodeById(params.id);
 
-  const response = mapNodeToResponse(node);
+    if (!node) {
+      throw new NotFoundError('Node', params.id);
+    }
 
-  if (params.includeEdges) {
-    const edgeResult = await edgeService.listEdges({ sourceUri: node.uri });
-    response.edges = edgeResult.edges.map((edge) => ({
-      id: edge.id,
-      uri: edge.uri,
-      sourceUri: edge.sourceUri,
-      targetUri: edge.targetUri,
-      relationUri: edge.relationUri,
-      relationSlug: edge.relationSlug,
-      weight: edge.weight,
-      metadata: edge.metadata
-        ? {
-            confidence: edge.metadata.confidence,
-            startDate: edge.metadata.startDate?.toISOString(),
-            endDate: edge.metadata.endDate?.toISOString(),
-            source: edge.metadata.source,
-          }
-        : undefined,
-      status: edge.status as 'proposed' | 'established' | 'deprecated',
-      proposalUri: edge.proposalUri,
-      createdAt: edge.createdAt.toISOString(),
-      createdBy: edge.createdBy,
-      updatedAt: edge.updatedAt?.toISOString(),
-    }));
-  }
+    const response = mapNodeToResponse(node);
 
-  logger.info('Node retrieved', { id: params.id, hasEdges: !!response.edges?.length });
+    if (params.includeEdges) {
+      const edgeResult = await edgeService.listEdges({ sourceUri: node.uri });
+      response.edges = edgeResult.edges.map((edge) => ({
+        id: edge.id,
+        uri: edge.uri,
+        cid: edge.cid,
+        sourceUri: edge.sourceUri,
+        targetUri: edge.targetUri,
+        relationUri: edge.relationUri,
+        relationSlug: edge.relationSlug,
+        weight: edge.weight,
+        metadata: edge.metadata
+          ? {
+              confidence: edge.metadata.confidence,
+              startDate: edge.metadata.startDate?.toISOString(),
+              endDate: edge.metadata.endDate?.toISOString(),
+              source: edge.metadata.source,
+            }
+          : undefined,
+        status: edge.status,
+        proposalUri: edge.proposalUri,
+        createdAt: edge.createdAt.toISOString(),
+        createdBy: edge.createdBy,
+        updatedAt: edge.updatedAt?.toISOString(),
+      }));
+    }
 
-  return response;
-}
+    logger.info('Node retrieved', { id: params.id, hasEdges: !!response.edges?.length });
 
-/**
- * Endpoint definition for pub.chive.graph.getNode.
- *
- * @public
- */
-export const getNodeEndpoint: XRPCEndpoint<GetNodeParams, NodeWithEdges> = {
-  method: 'pub.chive.graph.getNode' as never,
-  type: 'query',
-  description: 'Get a knowledge graph node by ID',
-  inputSchema: getNodeParamsSchema,
-  outputSchema: nodeWithEdgesSchema,
-  handler: getNodeHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: response };
+  },
 };

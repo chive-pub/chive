@@ -8,18 +8,13 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/graph/getEdge.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError } from '../../../../types/errors.js';
-import {
-  getEdgeParamsSchema,
-  graphEdgeSchema,
-  type GetEdgeParams,
-  type GraphEdgeResponse,
-} from '../../../schemas/graph.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Maps a GraphEdge to API response format.
@@ -27,6 +22,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
 function mapEdgeToResponse(edge: {
   id: string;
   uri: string;
+  cid?: string;
   sourceUri: string;
   targetUri: string;
   relationUri?: string;
@@ -43,10 +39,11 @@ function mapEdgeToResponse(edge: {
   createdAt: Date;
   createdBy?: string;
   updatedAt?: Date;
-}): GraphEdgeResponse {
+}): OutputSchema {
   return {
     id: edge.id,
     uri: edge.uri,
+    cid: edge.cid,
     sourceUri: edge.sourceUri,
     targetUri: edge.targetUri,
     relationUri: edge.relationUri,
@@ -60,7 +57,7 @@ function mapEdgeToResponse(edge: {
           source: edge.metadata.source,
         }
       : undefined,
-    status: edge.status as 'proposed' | 'established' | 'deprecated',
+    status: edge.status,
     proposalUri: edge.proposalUri,
     createdAt: edge.createdAt.toISOString(),
     createdBy: edge.createdBy,
@@ -69,49 +66,28 @@ function mapEdgeToResponse(edge: {
 }
 
 /**
- * Handler for pub.chive.graph.getEdge query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Edge details
- * @throws NotFoundError if edge not found
+ * XRPC method for pub.chive.graph.getEdge query.
  *
  * @public
  */
-export async function getEdgeHandler(
-  c: Context<ChiveEnv>,
-  params: GetEdgeParams
-): Promise<GraphEdgeResponse> {
-  const { edgeService } = c.get('services');
-  const logger = c.get('logger');
+export const getEdge: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { edgeService } = c.get('services');
+    const logger = c.get('logger');
 
-  logger.debug('Getting edge', { uri: params.uri });
+    logger.debug('Getting edge', { uri: params.uri });
 
-  const edge = await edgeService.getEdge(params.uri as AtUri);
+    const edge = await edgeService.getEdge(params.uri as AtUri);
 
-  if (!edge) {
-    throw new NotFoundError('Edge', params.uri);
-  }
+    if (!edge) {
+      throw new NotFoundError('Edge', params.uri);
+    }
 
-  const response = mapEdgeToResponse(edge);
+    const response = mapEdgeToResponse(edge);
 
-  logger.info('Edge retrieved', { uri: params.uri, relationSlug: edge.relationSlug });
+    logger.info('Edge retrieved', { uri: params.uri, relationSlug: edge.relationSlug });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.graph.getEdge.
- *
- * @public
- */
-export const getEdgeEndpoint: XRPCEndpoint<GetEdgeParams, GraphEdgeResponse> = {
-  method: 'pub.chive.graph.getEdge' as never,
-  type: 'query',
-  description: 'Get a knowledge graph edge by AT-URI',
-  inputSchema: getEdgeParamsSchema,
-  outputSchema: graphEdgeSchema,
-  handler: getEdgeHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: response };
+  },
 };

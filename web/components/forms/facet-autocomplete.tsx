@@ -36,11 +36,31 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/lib/hooks/use-eprint-search';
-import type { FacetDimension } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
 // =============================================================================
+
+/**
+ * Facet dimension slug - PMEST and FAST dimensions.
+ *
+ * @remarks
+ * These are string identifiers for facet dimensions used in the knowledge graph.
+ * PMEST: Personality (discipline), Matter (subject), Energy (methodology),
+ *        Space (geographic), Time (temporal)
+ * FAST: Person, Organization, Event, Work, Form/Genre
+ */
+export type FacetDimensionSlug =
+  | 'personality'
+  | 'matter'
+  | 'energy'
+  | 'space'
+  | 'time'
+  | 'person'
+  | 'organization'
+  | 'event'
+  | 'work'
+  | 'form-genre';
 
 /**
  * Facet value suggestion.
@@ -56,8 +76,8 @@ export interface FacetSuggestion {
   label: string;
   /** Description */
   description: string | null;
-  /** Facet dimension (PMEST or FAST) */
-  dimension: FacetDimension;
+  /** Facet dimension slug (PMEST or FAST) */
+  dimension: FacetDimensionSlug;
   /** Number of eprints tagged with this facet */
   usageCount: number;
 }
@@ -67,7 +87,7 @@ export interface FacetSuggestion {
  */
 export interface FacetAutocompleteProps {
   /** Filter to specific dimension (required for value search) */
-  dimension: FacetDimension;
+  dimension: FacetDimensionSlug;
   /** Current selected facet value slug */
   value?: string;
   /** Called when a facet value is selected */
@@ -88,7 +108,7 @@ export interface FacetAutocompleteProps {
 // DIMENSION CONFIGURATION
 // =============================================================================
 
-const DIMENSION_LABELS: Record<FacetDimension, string> = {
+const DIMENSION_LABELS: Record<FacetDimensionSlug, string> = {
   personality: 'Discipline',
   matter: 'Subject Matter',
   energy: 'Methodology',
@@ -104,7 +124,7 @@ const DIMENSION_LABELS: Record<FacetDimension, string> = {
 /**
  * Maps dimensions to their search strategy.
  */
-const DIMENSION_SUBKINDS: Partial<Record<FacetDimension, string>> = {
+const DIMENSION_SUBKINDS: Partial<Record<FacetDimensionSlug, string>> = {
   'form-genre': 'paper-type',
   personality: 'field',
 };
@@ -112,7 +132,7 @@ const DIMENSION_SUBKINDS: Partial<Record<FacetDimension, string>> = {
 /**
  * Fallback options when API has no data.
  */
-const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
+const FALLBACK_OPTIONS: Record<FacetDimensionSlug, FacetSuggestion[]> = {
   'form-genre': [
     {
       id: 'original-research',
@@ -459,7 +479,7 @@ const FALLBACK_OPTIONS: Record<FacetDimension, FacetSuggestion[]> = {
  */
 async function searchFacetValues(
   query: string,
-  dimension: FacetDimension
+  dimension: FacetDimensionSlug
 ): Promise<FacetSuggestion[]> {
   if (query.length < 2) return [];
 

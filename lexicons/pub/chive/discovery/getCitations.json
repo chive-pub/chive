@@ -1,0 +1,139 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.discovery.getCitations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get citation network data for an eprint, including papers that cite it and papers it references (within the Chive index)",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          },
+          "direction": {
+            "type": "string",
+            "knownValues": ["citing", "cited-by", "both"],
+            "default": "both",
+            "description": "Citation direction: citing (papers this cites), cited-by (papers citing this), or both"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum number of citations to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "onlyInfluential": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only return influential citations"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprint", "counts", "citations", "hasMore"],
+          "properties": {
+            "eprint": {
+              "type": "ref",
+              "ref": "#eprintRef"
+            },
+            "counts": {
+              "type": "ref",
+              "ref": "#citationCounts"
+            },
+            "citations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#citation"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }, { "name": "ServiceUnavailable" }]
+    },
+    "eprintRef": {
+      "type": "object",
+      "required": ["uri", "title"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "citationCounts": {
+      "type": "object",
+      "required": ["citedByCount", "referencesCount", "influentialCitedByCount"],
+      "properties": {
+        "citedByCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of papers citing this eprint"
+        },
+        "referencesCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of papers this eprint references"
+        },
+        "influentialCitedByCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of influential citations"
+        }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "required": ["citingUri", "citedUri", "source"],
+      "properties": {
+        "citingUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the citing paper"
+        },
+        "citedUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the cited paper"
+        },
+        "isInfluential": {
+          "type": "boolean",
+          "description": "Whether this is an influential citation"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source of citation data (e.g., semantic-scholar, openalex)"
+        },
+        "discoveredAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When this citation was discovered"
+        }
+      }
+    }
+  }
+}

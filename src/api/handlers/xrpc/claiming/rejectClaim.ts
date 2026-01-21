@@ -8,68 +8,51 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/rejectClaim.js';
 import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
-import {
-  rejectClaimParamsSchema,
-  rejectClaimResponseSchema,
-  type RejectClaimParams,
-  type RejectClaimResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.claiming.rejectClaim.
- *
- * @param c - Hono context
- * @param params - Parameters
- * @returns Success status
+ * XRPC method for pub.chive.claiming.rejectClaim.
  *
  * @public
  */
-export async function rejectClaimHandler(
-  c: Context<ChiveEnv>,
-  params: RejectClaimParams
-): Promise<RejectClaimResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming } = c.get('services');
+export const rejectClaim: XRPCMethod<void, InputSchema, OutputSchema> = {
+  auth: true,
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    if (!input) {
+      throw new ValidationError('Input is required', 'input');
+    }
+    const params = input;
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  if (!user.isAdmin) {
-    throw new ValidationError('Admin access required', 'authorization', 'forbidden');
-  }
+    if (!user.isAdmin) {
+      throw new ValidationError('Admin access required', 'authorization', 'forbidden');
+    }
 
-  logger.debug('Rejecting claim', {
-    claimId: params.claimId,
-    reason: params.reason,
-    reviewerDid: user.did,
-  });
+    logger.debug('Rejecting claim', {
+      claimId: params.claimId,
+      reason: params.reason,
+      reviewerDid: user.did,
+    });
 
-  await claiming.rejectClaim(params.claimId, params.reason, user.did);
+    await claiming.rejectClaim(params.claimId, params.reason, user.did);
 
-  return {
-    success: true,
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.claiming.rejectClaim.
- *
- * @public
- */
-export const rejectClaimEndpoint: XRPCEndpoint<RejectClaimParams, RejectClaimResponse> = {
-  method: 'pub.chive.claiming.rejectClaim' as never,
-  type: 'procedure',
-  description: 'Reject a pending claim with reason (admin only)',
-  inputSchema: rejectClaimParamsSchema,
-  outputSchema: rejectClaimResponseSchema,
-  handler: rejectClaimHandler,
-  auth: 'required',
-  rateLimit: 'admin',
+    return {
+      encoding: 'application/json',
+      body: {
+        success: true,
+      },
+    };
+  },
 };

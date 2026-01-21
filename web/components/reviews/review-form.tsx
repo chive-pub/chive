@@ -30,7 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import type { Review, TextSpanTarget, AnnotationMotivation } from '@/lib/api/schema';
+import type { Review, UnifiedTextSpanTarget, AnnotationMotivation } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
@@ -50,7 +50,7 @@ export interface ReviewFormProps {
   parentReview?: Review;
 
   /** Target span (for inline annotations) */
-  target?: TextSpanTarget;
+  target?: UnifiedTextSpanTarget;
 
   /** Callback when form is submitted */
   onSubmit: (data: ReviewFormData) => void | Promise<void>;
@@ -88,7 +88,7 @@ export interface ReviewFormData {
   eprintUri: string;
 
   /** Target span (for inline annotations) */
-  target?: TextSpanTarget;
+  target?: UnifiedTextSpanTarget;
 
   /** Parent review URI (for replies) */
   parentReviewUri?: string;
@@ -102,7 +102,7 @@ export interface ReviewFormData {
  */
 export interface TargetSpanPreviewProps {
   /** The target span to preview */
-  target: TextSpanTarget;
+  target: UnifiedTextSpanTarget;
 
   /** Callback to remove the target */
   onRemove?: () => void;
@@ -244,7 +244,7 @@ export function ReviewForm({
 }: ReviewFormProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [content, setContent] = useState(editingReview?.content || '');
-  const [currentTarget, setCurrentTarget] = useState<TextSpanTarget | undefined>(target);
+  const [currentTarget, setCurrentTarget] = useState<UnifiedTextSpanTarget | undefined>(target);
 
   // Focus textarea on mount
   useEffect(() => {

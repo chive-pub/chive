@@ -1,5 +1,5 @@
 /**
- * Handler for pub.chive.sync.verify.
+ * XRPC handler for pub.chive.sync.verify.
  *
  * @remarks
  * Verifies the sync state of a record.
@@ -8,85 +8,63 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/sync/verify.js';
 import type { AtUri } from '../../../../types/atproto.js';
-import {
-  verifySyncParamsSchema,
-  verifySyncResponseSchema,
-  type VerifySyncParams,
-  type VerifySyncResponse,
-} from '../../../schemas/sync.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.sync.verify.
- *
- * @param c - Hono context
- * @param params - Request parameters
- * @returns Sync verification result
+ * XRPC method for pub.chive.sync.verify.
  *
  * @public
  */
-export async function verifySyncHandler(
-  c: Context<ChiveEnv>,
-  params: VerifySyncParams
-): Promise<VerifySyncResponse> {
-  const logger = c.get('logger');
-  const { pdsSync, eprint } = c.get('services');
+export const verify: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const { pdsSync, eprint } = c.get('services');
 
-  logger.debug('Verifying sync state', { uri: params.uri });
+    logger.debug('Verifying sync state', { uri: params.uri });
 
-  // Get the indexed eprint
-  const indexed = await eprint.getEprint(params.uri as AtUri);
+    // Get the indexed eprint
+    const indexed = await eprint.getEprint(params.uri as AtUri);
 
-  if (!indexed) {
-    return {
-      uri: params.uri,
-      indexed: false,
-      inSync: false,
-    };
-  }
-
-  // Check staleness
-  const stalenessResult = await pdsSync.checkStaleness(params.uri as AtUri);
-
-  // Calculate stale days if applicable
-  let staleDays: number | undefined;
-  if (indexed.indexedAt) {
-    const now = Date.now();
-    const indexedTime = new Date(indexed.indexedAt).getTime();
-    const daysSinceIndexed = Math.floor((now - indexedTime) / (1000 * 60 * 60 * 24));
-    if (daysSinceIndexed > 7) {
-      staleDays = daysSinceIndexed;
+    if (!indexed) {
+      const body: OutputSchema = {
+        uri: params.uri,
+        indexed: false,
+        inSync: false,
+      };
+      return { encoding: 'application/json', body };
     }
-  }
 
-  return {
-    uri: params.uri,
-    indexed: true,
-    inSync: !stalenessResult.isStale,
-    indexedAt:
-      indexed.indexedAt instanceof Date ? indexed.indexedAt.toISOString() : indexed.indexedAt,
-    lastSyncedAt:
-      indexed.indexedAt instanceof Date ? indexed.indexedAt.toISOString() : indexed.indexedAt,
-    staleDays,
-  };
-}
+    // Check staleness
+    const stalenessResult = await pdsSync.checkStaleness(params.uri as AtUri);
 
-/**
- * Endpoint definition for pub.chive.sync.verify.
- *
- * @public
- */
-export const verifySyncEndpoint: XRPCEndpoint<VerifySyncParams, VerifySyncResponse> = {
-  method: 'pub.chive.sync.verify' as never,
-  type: 'query',
-  description: 'Verify sync state of a record',
-  inputSchema: verifySyncParamsSchema,
-  outputSchema: verifySyncResponseSchema,
-  handler: verifySyncHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    // Calculate stale days if applicable
+    let staleDays: number | undefined;
+    if (indexed.indexedAt) {
+      const now = Date.now();
+      const indexedTime = new Date(indexed.indexedAt).getTime();
+      const daysSinceIndexed = Math.floor((now - indexedTime) / (1000 * 60 * 60 * 24));
+      if (daysSinceIndexed > 7) {
+        staleDays = daysSinceIndexed;
+      }
+    }
+
+    const body: OutputSchema = {
+      uri: params.uri,
+      indexed: true,
+      inSync: !stalenessResult.isStale,
+      indexedAt:
+        indexed.indexedAt instanceof Date ? indexed.indexedAt.toISOString() : indexed.indexedAt,
+      lastSyncedAt:
+        indexed.indexedAt instanceof Date ? indexed.indexedAt.toISOString() : indexed.indexedAt,
+      staleDays,
+    };
+
+    return { encoding: 'application/json', body };
+  },
 };

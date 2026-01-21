@@ -8,17 +8,12 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import {
-  listNodesParamsSchema,
-  nodeListResponseSchema,
-  type ListNodesParams,
-  type NodeListResponse,
-  type GraphNodeResponse,
-} from '../../../schemas/graph.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  QueryParams,
+  OutputSchema,
+  GraphNode,
+} from '../../../../lexicons/generated/types/pub/chive/graph/listNodes.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Maps a GraphNode to API response format.
@@ -26,6 +21,7 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
 function mapNodeToResponse(node: {
   id: string;
   uri: string;
+  cid?: string;
   kind: string;
   subkind?: string;
   subkindUri?: string;
@@ -45,45 +41,25 @@ function mapNodeToResponse(node: {
   createdAt: Date;
   createdBy?: string;
   updatedAt?: Date;
-}): GraphNodeResponse {
+}): GraphNode {
   return {
     id: node.id,
     uri: node.uri,
-    kind: node.kind as 'type' | 'object',
+    cid: node.cid,
+    kind: node.kind,
     subkind: node.subkind,
     subkindUri: node.subkindUri,
     label: node.label,
     alternateLabels: node.alternateLabels,
     description: node.description,
     externalIds: node.externalIds?.map((ext) => ({
-      system: ext.system as
-        | 'wikidata'
-        | 'ror'
-        | 'orcid'
-        | 'isni'
-        | 'viaf'
-        | 'lcsh'
-        | 'fast'
-        | 'credit'
-        | 'spdx'
-        | 'fundref'
-        | 'mesh'
-        | 'aat'
-        | 'gnd'
-        | 'anzsrc'
-        | 'arxiv',
+      system: ext.system,
       identifier: ext.identifier,
       uri: ext.uri,
-      matchType: ext.matchType as
-        | 'exact'
-        | 'close'
-        | 'broader'
-        | 'narrower'
-        | 'related'
-        | undefined,
+      matchType: ext.matchType,
     })),
-    metadata: node.metadata as GraphNodeResponse['metadata'],
-    status: node.status as 'proposed' | 'provisional' | 'established' | 'deprecated',
+    metadata: node.metadata as GraphNode['metadata'],
+    status: node.status,
     deprecatedBy: node.deprecatedBy,
     proposalUri: node.proposalUri,
     createdAt: node.createdAt.toISOString(),
@@ -93,65 +69,50 @@ function mapNodeToResponse(node: {
 }
 
 /**
- * Handler for pub.chive.graph.listNodes query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Node list with pagination
+ * XRPC method for pub.chive.graph.listNodes query.
  *
  * @public
  */
-export async function listNodesHandler(
-  c: Context<ChiveEnv>,
-  params: ListNodesParams
-): Promise<NodeListResponse> {
-  const { nodeService } = c.get('services');
-  const logger = c.get('logger');
+export const listNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { nodeService } = c.get('services');
+    const logger = c.get('logger');
 
-  logger.debug('Listing nodes', {
-    kind: params.kind,
-    subkind: params.subkind,
-    status: params.status,
-    limit: params.limit,
-  });
+    logger.debug('Listing nodes', {
+      kind: params.kind,
+      subkind: params.subkind,
+      status: params.status,
+      limit: params.limit,
+    });
 
-  const result = await nodeService.listNodes({
-    kind: params.kind,
-    subkind: params.subkind,
-    status: params.status,
-    limit: params.limit,
-    cursor: params.cursor,
-  });
+    const result = await nodeService.listNodes({
+      kind: params.kind as 'type' | 'object' | undefined,
+      subkind: params.subkind,
+      status: params.status as
+        | 'proposed'
+        | 'provisional'
+        | 'established'
+        | 'deprecated'
+        | undefined,
+      limit: params.limit,
+      cursor: params.cursor,
+    });
 
-  const response: NodeListResponse = {
-    nodes: result.nodes.map(mapNodeToResponse),
-    cursor: result.cursor,
-    hasMore: result.hasMore,
-    total: result.total,
-  };
+    const response: OutputSchema = {
+      nodes: result.nodes.map(mapNodeToResponse),
+      cursor: result.cursor,
+      hasMore: result.hasMore,
+      total: result.total,
+    };
 
-  logger.info('Nodes listed', {
-    kind: params.kind,
-    subkind: params.subkind,
-    total: result.total,
-    returned: response.nodes.length,
-  });
+    logger.info('Nodes listed', {
+      kind: params.kind,
+      subkind: params.subkind,
+      total: result.total,
+      returned: response.nodes.length,
+    });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.graph.listNodes.
- *
- * @public
- */
-export const listNodesEndpoint: XRPCEndpoint<ListNodesParams, NodeListResponse> = {
-  method: 'pub.chive.graph.listNodes' as never,
-  type: 'query',
-  description: 'List knowledge graph nodes with optional filtering',
-  inputSchema: listNodesParamsSchema,
-  outputSchema: nodeListResponseSchema,
-  handler: listNodesHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: response };
+  },
 };

@@ -51,6 +51,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
 import { RichTextRenderer } from './rich-text-renderer';
+import { convertRichTextFacetsToFacets as convertFacets } from '@/lib/api/schema';
 import type { Review, AnnotationMotivation } from '@/lib/api/schema';
 
 // =============================================================================
@@ -97,9 +98,37 @@ export interface ReviewCardProps {
 // =============================================================================
 
 /**
+ * Known motivation values - used to narrow the open union.
+ */
+const KNOWN_MOTIVATIONS: readonly AnnotationMotivation[] = [
+  'commenting',
+  'highlighting',
+  'questioning',
+  'replying',
+  'assessing',
+  'bookmarking',
+  'classifying',
+  'describing',
+  'editing',
+  'linking',
+  'moderating',
+  'tagging',
+] as const;
+
+/**
+ * Type guard to check if a string is a known motivation.
+ */
+function isKnownMotivation(motivation: string): motivation is AnnotationMotivation {
+  return KNOWN_MOTIVATIONS.includes(motivation as AnnotationMotivation);
+}
+
+/**
  * Gets the icon for a motivation type.
  */
-function getMotivationIcon(motivation?: AnnotationMotivation) {
+function getMotivationIcon(motivation?: string) {
+  if (!motivation || !isKnownMotivation(motivation)) {
+    return <MessageSquare className="h-3 w-3" />;
+  }
   switch (motivation) {
     case 'questioning':
       return <HelpCircle className="h-3 w-3" />;
@@ -113,7 +142,9 @@ function getMotivationIcon(motivation?: AnnotationMotivation) {
 /**
  * Gets the label for a motivation type.
  */
-function getMotivationLabel(motivation?: AnnotationMotivation): string {
+function getMotivationLabel(motivation?: string): string {
+  if (!motivation) return 'Comment';
+  if (!isKnownMotivation(motivation)) return motivation; // Return unknown value as-is
   switch (motivation) {
     case 'commenting':
       return 'Comment';
@@ -283,8 +314,8 @@ export function ReviewCard({
       {/* Content */}
       <div className={cn('mt-3', isCompact ? 'text-sm' : 'text-base')}>
         {review.body ? (
-          /* Rich text body with facets */
-          <RichTextRenderer text={review.body.text} facets={review.body.facets} />
+          /* Rich text body with facets - convert to ATProto format */
+          <RichTextRenderer text={review.body.text} facets={convertFacets(review.body.facets)} />
         ) : (
           /* Plain text content fallback */
           <p className="whitespace-pre-wrap">{displayContent}</p>

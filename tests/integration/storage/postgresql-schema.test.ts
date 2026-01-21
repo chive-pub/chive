@@ -249,8 +249,10 @@ describe('PostgreSQL Schema', () => {
       `);
 
       for (const row of result.rows) {
-        // Foreign key columns should end with '_uri' (AT URIs)
-        expect(row.column_name).toMatch(/_uri$/);
+        // Foreign key columns should end with '_uri' (AT URIs) or be 'parent_comment' (threading column for reviews)
+        const validColumn =
+          row.column_name.endsWith('_uri') || row.column_name === 'parent_comment';
+        expect(validColumn).toBe(true);
         expect(row.foreign_column_name).toBe('uri');
       }
     });
@@ -322,16 +324,18 @@ describe('PostgreSQL Schema', () => {
       }
     });
 
-    it('endorsement_type has CHECK constraint', async () => {
-      const result = await pool.query<{ constraint_name: string }>(`
-        SELECT constraint_name
-        FROM information_schema.table_constraints
+    it('contributions array column exists on endorsements_index', async () => {
+      // endorsement_type was replaced with contributions array in migration 1737600000000
+      const result = await pool.query<{ column_name: string; data_type: string }>(`
+        SELECT column_name, data_type
+        FROM information_schema.columns
         WHERE table_schema = 'public'
           AND table_name = 'endorsements_index'
-          AND constraint_type = 'CHECK'
+          AND column_name = 'contributions'
       `);
 
-      expect(result.rows.length).toBeGreaterThan(0);
+      expect(result.rows.length).toBe(1);
+      expect(result.rows[0]?.data_type).toBe('ARRAY');
     });
   });
 

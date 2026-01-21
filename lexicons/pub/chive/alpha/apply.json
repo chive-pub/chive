@@ -1,0 +1,157 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.alpha.apply",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Submit an alpha tester application. Requires authentication.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["email", "sector", "careerStage", "researchKeywords"],
+          "properties": {
+            "email": {
+              "type": "string",
+              "description": "Contact email for notifications"
+            },
+            "sector": {
+              "type": "string",
+              "knownValues": [
+                "academia",
+                "industry",
+                "government",
+                "nonprofit",
+                "healthcare",
+                "independent",
+                "other"
+              ],
+              "description": "Organization type"
+            },
+            "sectorOther": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Custom sector if 'other' selected"
+            },
+            "careerStage": {
+              "type": "string",
+              "knownValues": [
+                "undergraduate",
+                "graduate-masters",
+                "graduate-phd",
+                "postdoc",
+                "research-staff",
+                "junior-faculty",
+                "senior-faculty",
+                "research-admin",
+                "librarian",
+                "science-communicator",
+                "policy-professional",
+                "retired",
+                "other"
+              ],
+              "description": "Career stage/position"
+            },
+            "careerStageOther": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Custom career stage if 'other' selected"
+            },
+            "affiliations": {
+              "type": "array",
+              "maxLength": 10,
+              "items": {
+                "type": "ref",
+                "ref": "#affiliation"
+              },
+              "description": "Institutional affiliations (optional)"
+            },
+            "researchKeywords": {
+              "type": "array",
+              "maxLength": 10,
+              "items": {
+                "type": "ref",
+                "ref": "#researchKeyword"
+              },
+              "description": "Research keywords"
+            },
+            "motivation": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Optional motivation statement"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["applicationId", "status", "createdAt"],
+          "properties": {
+            "applicationId": {
+              "type": "string",
+              "description": "UUID of the created application"
+            },
+            "status": {
+              "type": "string",
+              "knownValues": ["none", "pending", "approved", "rejected"],
+              "description": "Application status"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Application creation timestamp"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "InvalidEmail" },
+        { "name": "InvalidRequest" }
+      ]
+    },
+    "affiliation": {
+      "type": "object",
+      "description": "Institutional affiliation",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Institution name"
+        },
+        "rorId": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "ROR ID"
+        }
+      }
+    },
+    "researchKeyword": {
+      "type": "object",
+      "description": "Research keyword with optional authority identifiers",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Keyword label"
+        },
+        "fastId": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "FAST authority ID"
+        },
+        "wikidataId": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Wikidata ID"
+        }
+      }
+    }
+  }
+}

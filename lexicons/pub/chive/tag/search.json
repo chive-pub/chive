@@ -1,0 +1,129 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.tag.search",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Search for tags matching a query",
+      "parameters": {
+        "type": "params",
+        "required": ["q"],
+        "properties": {
+          "q": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "description": "Search query"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          },
+          "minQuality": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Minimum quality score (0-100, scaled from 0-1)"
+          },
+          "includeSpam": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include tags flagged as potential spam"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["tags", "hasMore"],
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#tagSummary"
+              },
+              "description": "Search results"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total count of matching tags"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "tagSummary": {
+      "type": "object",
+      "description": "Summary information for a tag",
+      "required": ["normalizedForm", "displayForms", "usageCount", "qualityScore", "isPromoted"],
+      "properties": {
+        "normalizedForm": {
+          "type": "string",
+          "description": "Normalized tag form (lowercase, hyphenated)"
+        },
+        "displayForms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "All display forms used for this tag"
+        },
+        "usageCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of eprints tagged with this tag"
+        },
+        "qualityScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Tag quality score (0-100, scaled from 0-1)"
+        },
+        "isPromoted": {
+          "type": "boolean",
+          "description": "Whether the tag has been promoted to a facet or authority"
+        },
+        "promotedTo": {
+          "type": "ref",
+          "ref": "#promotionTarget",
+          "description": "Promotion target if promoted"
+        }
+      }
+    },
+    "promotionTarget": {
+      "type": "object",
+      "description": "Target of tag promotion",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "knownValues": ["facet", "authority"],
+          "description": "Type of promotion target"
+        },
+        "uri": {
+          "type": "string",
+          "description": "URI of the promotion target"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.backlink.delete",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Delete (mark as deleted) a backlink record. Internal/plugin use only. Requires authentication.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["sourceUri"],
+          "properties": {
+            "sourceUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the source record to delete"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the deletion was successful"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "NotFound" }]
+    }
+  }
+}

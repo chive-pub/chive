@@ -1,0 +1,139 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.requestCoauthorship",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Request co-authorship on an existing eprint in another user's PDS",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprintUri", "eprintOwnerDid", "claimantName", "authorIndex", "authorName"],
+          "properties": {
+            "eprintUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the eprint record"
+            },
+            "eprintOwnerDid": {
+              "type": "string",
+              "format": "did",
+              "description": "DID of the PDS owner"
+            },
+            "claimantName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Display name for the request"
+            },
+            "authorIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Index of the author entry being claimed (0-based)"
+            },
+            "authorName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Name of the author entry being claimed"
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 1000,
+              "description": "Optional message to PDS owner"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["request"],
+          "properties": {
+            "request": {
+              "type": "ref",
+              "ref": "#coauthorRequest"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "NotFound" },
+        { "name": "InvalidRequest" }
+      ]
+    },
+    "coauthorRequest": {
+      "type": "object",
+      "required": [
+        "id",
+        "eprintUri",
+        "eprintOwnerDid",
+        "claimantDid",
+        "claimantName",
+        "authorIndex",
+        "authorName",
+        "status",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Request ID"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the eprint record"
+        },
+        "eprintOwnerDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the PDS owner"
+        },
+        "claimantDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the claimant"
+        },
+        "claimantName": {
+          "type": "string",
+          "description": "Display name at time of request"
+        },
+        "authorIndex": {
+          "type": "integer",
+          "description": "Index of the author entry being claimed (0-based)"
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Name of the author entry being claimed"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "approved", "rejected"],
+          "description": "Request status"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message from claimant"
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Rejection reason if rejected"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the request was created"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the request was reviewed"
+        }
+      }
+    }
+  }
+}

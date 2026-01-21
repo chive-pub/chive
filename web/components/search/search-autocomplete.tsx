@@ -108,7 +108,7 @@ export function SearchAutocomplete({
                     type: 'eprint',
                     id: eprint.uri,
                     label: eprint.title,
-                    sublabel: eprint.authors[0]?.name,
+                    sublabel: eprint.authors?.[0]?.displayName ?? eprint.authors?.[0]?.handle,
                     href: `/eprints/${encodeURIComponent(eprint.uri)}`,
                   }}
                   onSelect={onSelect}

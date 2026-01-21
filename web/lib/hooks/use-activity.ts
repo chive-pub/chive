@@ -26,11 +26,17 @@ import { TID } from '@atproto/common-web';
 
 /**
  * Activity action types.
+ *
+ * @remarks
+ * Open union to match lexicon definition, allowing for future extensions.
  */
-export type ActivityAction = 'create' | 'update' | 'delete';
+export type ActivityAction = 'create' | 'update' | 'delete' | (string & {});
 
 /**
  * Activity categories (semantic action types).
+ *
+ * @remarks
+ * Open union to match lexicon definition, allowing for future extensions.
  */
 export type ActivityCategory =
   | 'eprint_submit'
@@ -45,15 +51,22 @@ export type ActivityCategory =
   | 'tag_delete'
   | 'profile_update'
   | 'proposal_create'
-  | 'vote_create';
+  | 'vote_create'
+  | (string & {});
 
 /**
  * Activity status.
+ *
+ * @remarks
+ * Open union to match lexicon definition, allowing for future extensions.
  */
-export type ActivityStatus = 'pending' | 'confirmed' | 'failed' | 'timeout';
+export type ActivityStatus = 'pending' | 'confirmed' | 'failed' | 'timeout' | (string & {});
 
 /**
  * Activity record.
+ *
+ * @remarks
+ * Aligned with lexicon's `ActivityView` type from `pub.chive.activity.getFeed`.
  */
 export interface Activity {
   readonly id: string;
@@ -64,18 +77,22 @@ export interface Activity {
   readonly category: ActivityCategory;
   readonly status: ActivityStatus;
   readonly initiatedAt: string;
-  readonly confirmedAt: string | null;
-  readonly firehoseUri: string | null;
-  readonly firehoseCid: string | null;
-  readonly targetUri: string | null;
-  readonly targetTitle: string | null;
-  readonly latencyMs: number | null;
-  readonly errorCode: string | null;
-  readonly errorMessage: string | null;
+  readonly confirmedAt?: string;
+  readonly firehoseUri?: string;
+  readonly firehoseCid?: string;
+  readonly targetUri?: string;
+  readonly targetTitle?: string;
+  readonly latencyMs?: number;
+  readonly errorCode?: string;
+  readonly errorMessage?: string;
 }
 
 /**
  * Log activity input.
+ *
+ * @remarks
+ * Aligned with lexicon's `InputSchema` for `pub.chive.activity.log`.
+ * `uiContext` and `recordSnapshot` are JSON strings per the lexicon.
  */
 export interface LogActivityInput {
   readonly collection: string;
@@ -84,8 +101,8 @@ export interface LogActivityInput {
   readonly category: ActivityCategory;
   readonly targetUri?: string;
   readonly targetTitle?: string;
-  readonly uiContext?: Record<string, unknown>;
-  readonly recordSnapshot?: Record<string, unknown>;
+  readonly uiContext?: string;
+  readonly recordSnapshot?: string;
 }
 
 /**
@@ -186,15 +203,8 @@ export function useLogActivity(): UseMutationResult<
 
   return useMutation({
     mutationFn: async (input: LogActivityInput) => {
-      const response = await authApi.POST('/xrpc/pub.chive.activity.log', {
-        body: input,
-      });
-
-      if (!response.data) {
-        throw new Error('Failed to log activity');
-      }
-
-      return response.data;
+      const response = await authApi.pub.chive.activity.log(input);
+      return { activityId: response.data.activityId };
     },
     onSuccess: () => {
       // Invalidate activity feed queries
@@ -238,15 +248,8 @@ export function useMarkActivityFailed(): UseMutationResult<
 
   return useMutation({
     mutationFn: async (input: MarkFailedInput) => {
-      const response = await authApi.POST('/xrpc/pub.chive.activity.markFailed', {
-        body: input,
-      });
-
-      if (!response.data) {
-        throw new Error('Failed to mark activity as failed');
-      }
-
-      return response.data;
+      const response = await authApi.pub.chive.activity.markFailed(input);
+      return { success: response.data.success };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
@@ -274,21 +277,16 @@ export function useActivityFeed(
   return useQuery({
     queryKey: activityKeys.feed(options),
     queryFn: async () => {
-      const response = await authApi.GET('/xrpc/pub.chive.activity.getFeed', {
-        params: {
-          query: {
-            category: options?.category,
-            status: options?.status,
-            limit: options?.limit,
-          },
-        },
+      const response = await authApi.pub.chive.activity.getFeed({
+        category: options?.category,
+        status: options?.status,
+        limit: options?.limit,
       });
-
-      if (!response.data) {
-        throw new Error('Failed to get activity feed');
-      }
-
-      return response.data;
+      return {
+        activities: response.data.activities,
+        cursor: response.data.cursor ?? null,
+        hasMore: response.data.hasMore,
+      };
     },
   });
 }
@@ -339,7 +337,9 @@ export function useActivityLogging() {
     action: ActivityAction;
     targetUri?: string;
     targetTitle?: string;
+    /** UI context metadata; will be serialized to JSON string for the API */
     uiContext?: Record<string, unknown>;
+    /** Record snapshot; will be serialized to JSON string for the API */
     recordSnapshot?: Record<string, unknown>;
     perform: (collection: string, rkey: string) => Promise<T>;
   }): Promise<T> {
@@ -354,8 +354,9 @@ export function useActivityLogging() {
         category: params.category,
         targetUri: params.targetUri,
         targetTitle: params.targetTitle,
-        uiContext: params.uiContext,
-        recordSnapshot: params.recordSnapshot,
+        // Serialize objects to JSON strings per lexicon spec
+        uiContext: params.uiContext ? JSON.stringify(params.uiContext) : undefined,
+        recordSnapshot: params.recordSnapshot ? JSON.stringify(params.recordSnapshot) : undefined,
       });
     } catch (error) {
       // Log activity failed; still attempt the PDS write.

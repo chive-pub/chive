@@ -1,0 +1,152 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.discovery.getSimilar",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get related papers for an eprint based on citation patterns, semantic similarity, and topic overlap. Supports graph-based analysis including co-citation and bibliographic coupling.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 5,
+            "description": "Maximum number of similar papers"
+          },
+          "includeTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "knownValues": [
+                "semantic",
+                "citation",
+                "topic",
+                "author",
+                "co-citation",
+                "bibliographic-coupling"
+              ]
+            },
+            "description": "Types of relationships to include. 'co-citation' and 'bibliographic-coupling' use graph analysis."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprint", "related"],
+          "properties": {
+            "eprint": {
+              "type": "ref",
+              "ref": "#eprintRef"
+            },
+            "related": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#relatedEprint"
+              }
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }, { "name": "ServiceUnavailable" }]
+    },
+    "eprintRef": {
+      "type": "object",
+      "required": ["uri", "title"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "relatedEprint": {
+      "type": "object",
+      "required": ["uri", "title", "score", "relationshipType", "explanation"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "title": {
+          "type": "string"
+        },
+        "abstract": {
+          "type": "string"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#author"
+          }
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "publicationDate": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Similarity score (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "relationshipType": {
+          "type": "string",
+          "knownValues": [
+            "cites",
+            "cited-by",
+            "co-cited",
+            "semantically-similar",
+            "same-author",
+            "same-topic",
+            "bibliographic-coupling"
+          ],
+          "description": "Type of relationship to the source eprint"
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Human-readable explanation of the relationship"
+        },
+        "sharedReferences": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of shared references (for bibliographic coupling)"
+        },
+        "sharedCiters": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of papers that cite both (for co-citation)"
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

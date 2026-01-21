@@ -5,14 +5,9 @@ import type {
   AuthorProfileResponse,
   BlobRef,
   Endorsement,
-  EndorsementsResponse,
+  ListEndorsementsResponse,
   EndorsementSummary,
   ExternalId,
-  ExternalMapping,
-  FacetDimension,
-  FacetedEprintSummary,
-  FacetedSearchResponse,
-  FacetProposalChanges,
   FacetValue,
   SearchFacetValue,
   FieldDetail,
@@ -20,42 +15,175 @@ import type {
   FieldRelationship,
   FieldSummary,
   GetTrendingResponse,
-  Organization,
-  OrganizationProposalChanges,
-  OrganizationType,
   Eprint,
-  EprintAuthor,
-  AuthorAffiliation,
-  AuthorContribution,
   EprintMetrics,
   EprintSource,
   EprintSummary,
   EprintTagsResponse,
-  Reconciliation,
-  ReconciliationMatchType,
-  ReconciliationProposalChanges,
-  ReconciliationSystem,
-  ReconcilableEntityType,
   Review,
-  ReviewsResponse,
+  ReviewAuthorRef,
+  ListReviewsResponse,
   ReviewThread,
   RichAnnotationBody,
-  SearchResultsResponse,
+  TagAuthorRef,
   TagSuggestion,
   TagSummary,
-  TextSpanTarget,
+  UnifiedTextSpanTarget,
   TrendingEprint,
   TrendingTagsResponse,
   UserTag,
+  EprintMetricsView,
+  EprintVersionView,
+  ProposalChanges,
+  EndorsementAuthorRef,
+  EprintAuthorView,
 } from '@/lib/api/schema';
 import type {
   ContributionTypeProposal,
   CreditContributionType,
 } from '@/lib/hooks/use-contribution-types';
 
+// =============================================================================
+// LOCAL TYPE DEFINITIONS
+// =============================================================================
+
 /**
- * Creates a mock Author (authenticated user, e.g., for reviews).
- * Uses required `did` since reviewers must be authenticated.
+ * FacetDimension - the PMEST facet dimensions.
+ */
+export type FacetDimension = 'personality' | 'matter' | 'energy' | 'space' | 'time';
+
+/**
+ * ExternalMapping for knowledge graph reconciliation.
+ */
+export interface ExternalMapping {
+  system: string;
+  identifier: string;
+  uri: string;
+  matchType?: string;
+}
+
+/**
+ * OrganizationType for organization nodes.
+ */
+export type OrganizationType =
+  | 'university'
+  | 'research-lab'
+  | 'company'
+  | 'government'
+  | 'nonprofit'
+  | 'funding-body'
+  | 'publisher';
+
+/**
+ * Organization for mock data.
+ */
+export interface Organization {
+  id: string;
+  uri: string;
+  name: string;
+  type: OrganizationType;
+  rorId?: string;
+  wikidataId?: string;
+  country?: string;
+  city?: string;
+  website?: string;
+  aliases?: string[];
+  parentId?: string;
+  status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+}
+
+/**
+ * ReconciliationSystem for external identifier systems.
+ */
+export type ReconciliationSystem = 'wikidata' | 'ror' | 'lcsh' | 'fast' | 'openalex';
+
+/**
+ * ReconcilableEntityType for entity types that can be reconciled.
+ */
+export type ReconcilableEntityType = 'field' | 'organization' | 'facet' | 'author';
+
+/**
+ * ReconciliationMatchType for match confidence.
+ */
+export type ReconciliationMatchType =
+  | 'exact-match'
+  | 'close-match'
+  | 'related-match'
+  | 'broader-match'
+  | 'narrower-match';
+
+/**
+ * Reconciliation for external identifier mappings.
+ */
+export interface Reconciliation {
+  id: string;
+  uri: string;
+  sourceType: ReconcilableEntityType;
+  sourceUri: string;
+  sourceLabel: string;
+  targetSystem: ReconciliationSystem;
+  targetId: string;
+  targetUri: string;
+  targetLabel: string;
+  matchType: ReconciliationMatchType;
+  method: string;
+  confidence: number;
+  validatedBy?: string;
+  status: 'proposed' | 'provisional' | 'established' | 'deprecated';
+  createdAt: string;
+}
+
+/**
+ * AuthorAffiliation for eprint authors.
+ */
+export interface AuthorAffiliation {
+  name: string;
+  rorId?: string;
+  department?: string;
+}
+
+/**
+ * FacetedEprintSummary for browse results.
+ */
+export interface FacetedEprintSummary {
+  uri: string;
+  cid: string;
+  title: string;
+  abstract: string;
+  authors: Array<{
+    did?: string;
+    name: string;
+    handle?: string;
+    avatarUrl?: string;
+    order: number;
+    affiliations: AuthorAffiliation[];
+    contributions: Array<{
+      typeUri: string;
+      typeId: string;
+      typeLabel: string;
+      degree?: string;
+    }>;
+    isCorrespondingAuthor?: boolean;
+    isHighlighted?: boolean;
+  }>;
+  submittedBy: string;
+  fields?: Array<{ id: string; uri: string; label: string }>;
+  keywords?: string[];
+  license: string;
+  createdAt: string;
+  indexedAt: string;
+  source: {
+    pdsEndpoint: string;
+    recordUrl?: string;
+    blobUrl?: string;
+    lastVerifiedAt?: string;
+    stale?: boolean;
+  };
+}
+
+/**
+ * Creates a mock Author (AuthorSearchResult type, for author search results).
+ * Uses required `did` since authors must be authenticated.
  */
 export function createMockAuthor(overrides: Partial<Author> = {}): Author {
   return {
@@ -68,17 +196,52 @@ export function createMockAuthor(overrides: Partial<Author> = {}): Author {
 }
 
 /**
- * Creates a mock EprintAuthor (for eprint contributor lists).
+ * Creates a mock TagAuthorRef (for UserTag.author field).
+ *
+ * @remarks
+ * This is specifically for the `author` field on UserTag objects.
+ * Uses the TagAuthorRef type from pub.chive.tag.listForEprint.
+ */
+export function createMockTagAuthor(overrides: Partial<TagAuthorRef> = {}): TagAuthorRef {
+  return {
+    did: 'did:plc:test123',
+    handle: 'testuser.bsky.social',
+    displayName: 'Test User',
+    avatar: 'https://example.com/avatar.jpg',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock ReviewAuthorRef (for review/comment authors).
+ *
+ * @remarks
+ * This is specifically for the `author` field on Review objects.
+ * The $type is automatically set to the correct review author ref type.
+ */
+export function createMockReviewAuthor(overrides: Partial<ReviewAuthorRef> = {}): ReviewAuthorRef {
+  return {
+    did: 'did:plc:test123',
+    handle: 'testuser.bsky.social',
+    displayName: 'Test User',
+    avatar: 'https://example.com/avatar.jpg',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock EprintAuthorView (for eprint contributor lists).
  * Uses optional `did` to support external collaborators.
  */
-export function createMockEprintAuthor(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
+export function createMockEprintAuthor(
+  overrides: Partial<EprintAuthorView> = {}
+): EprintAuthorView {
   return {
     did: 'did:plc:test123',
     name: 'Test User',
     handle: 'testuser.bsky.social',
-    avatarUrl: 'https://example.com/avatar.jpg',
+    avatar: 'https://example.com/avatar.jpg',
     orcid: undefined,
-    email: undefined,
     order: 1,
     isCorrespondingAuthor: false,
     isHighlighted: false,
@@ -93,12 +256,13 @@ export function createMockEprintAuthor(overrides: Partial<EprintAuthor> = {}): E
  */
 export function createMockBlobRef(overrides: Partial<BlobRef> = {}): BlobRef {
   return {
-    $type: 'blob',
-    ref: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+    ref: {
+      $link: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+    } as unknown as BlobRef['ref'],
     mimeType: 'application/pdf',
     size: 1024000,
     ...overrides,
-  };
+  } as BlobRef;
 }
 
 /**
@@ -109,6 +273,9 @@ export function createMockFieldRef(overrides: Partial<FieldRef> = {}): FieldRef 
     id: 'computer-science',
     uri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
     label: 'Computer Science',
+    kind: 'object' as const,
+    status: 'established' as const,
+    createdAt: '2024-01-01T00:00:00Z',
     ...overrides,
   };
 }
@@ -120,7 +287,6 @@ export function createMockEprintSource(overrides: Partial<EprintSource> = {}): E
   return {
     pdsEndpoint: 'https://bsky.social',
     recordUrl: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
-    blobUrl: 'https://bsky.social/xrpc/com.atproto.sync.getBlob',
     lastVerifiedAt: '2024-01-15T10:35:00Z',
     stale: false,
     ...overrides,
@@ -128,9 +294,27 @@ export function createMockEprintSource(overrides: Partial<EprintSource> = {}): E
 }
 
 /**
- * Creates a mock EprintMetrics.
+ * Creates a mock EprintMetrics (from metrics/getMetrics).
+ * Note: The actual API returns totalViews, views7d, etc., not simple 'views'.
  */
 export function createMockEprintMetrics(overrides: Partial<EprintMetrics> = {}): EprintMetrics {
+  return {
+    totalViews: 150,
+    uniqueViews: 100,
+    totalDownloads: 42,
+    views24h: 10,
+    views7d: 50,
+    views30d: 120,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock EprintMetricsView (view-layer metrics).
+ */
+export function createMockEprintMetricsView(
+  overrides: Partial<EprintMetricsView> = {}
+): EprintMetricsView {
   return {
     views: 150,
     downloads: 42,
@@ -146,32 +330,38 @@ export function createMockEprint(overrides: Partial<Eprint> = {}): Eprint {
   return {
     uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+    $type: 'pub.chive.eprint.submission',
     title: 'A Novel Approach to Machine Learning',
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
     submittedBy: 'did:plc:test123',
     authors: [
-      createMockEprintAuthor({ order: 1, isCorrespondingAuthor: true }),
+      createMockEprintAuthor({
+        order: 1,
+        isCorrespondingAuthor: true,
+      }) as unknown as Eprint['authors'][0],
       createMockEprintAuthor({
         did: 'did:plc:coauthor1',
         name: 'Co-Author One',
         order: 2,
         isHighlighted: true,
-      }),
+      }) as unknown as Eprint['authors'][0],
     ],
     document: createMockBlobRef(),
     supplementaryMaterials: [],
-    fields: [createMockFieldRef()],
+    fields: [createMockFieldRef() as Eprint['fields'] extends (infer T)[] ? T : never],
     keywords: ['machine learning', 'artificial intelligence', 'deep learning'],
     license: 'CC-BY-4.0',
     doi: '10.1234/chive.2024.001',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-16T14:20:00Z',
-    source: createMockEprintSource(),
-    metrics: createMockEprintMetrics(),
+    indexedAt: '2024-01-15T10:35:00Z',
+    pdsUrl: 'https://bsky.social',
+    metrics: createMockEprintMetricsView(),
     versions: [
       {
         version: 1,
+        uri: 'at://did:plc:test123/pub.chive.eprint.version/v1',
         cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
         createdAt: '2024-01-15T10:30:00Z',
       },
@@ -182,6 +372,11 @@ export function createMockEprint(overrides: Partial<Eprint> = {}): Eprint {
 
 /**
  * Creates a mock EprintSummary.
+ *
+ * @remarks
+ * EprintSummary (from listByAuthor) uses lean data:
+ * - `fields` is `string[]` (field URIs), not full FieldRef objects
+ * - `authors` is `AuthorRef[]` with only did, handle, displayName
  */
 export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}): EprintSummary {
   return {
@@ -190,11 +385,9 @@ export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}):
     title: 'A Novel Approach to Machine Learning',
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
-    submittedBy: 'did:plc:test123',
-    authors: [createMockEprintAuthor({ order: 1, isCorrespondingAuthor: true })],
-    fields: [createMockFieldRef()],
-    createdAt: '2024-01-15T10:30:00Z',
-    source: createMockEprintSource(),
+    authors: [{ did: 'did:plc:test123', handle: 'testuser.bsky.social', displayName: 'Test User' }],
+    fields: ['at://did:plc:chive-governance/pub.chive.graph.field/computer-science'],
+    indexedAt: '2024-01-15T10:35:00Z',
     ...overrides,
   };
 }
@@ -204,7 +397,31 @@ export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}):
  */
 export function createMockTrendingEprint(overrides: Partial<TrendingEprint> = {}): TrendingEprint {
   return {
-    ...createMockEprintSummary(),
+    $type: 'pub.chive.metrics.getTrending#trendingEntry',
+    uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
+    cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+    title: 'A Novel Approach to Machine Learning',
+    abstract:
+      'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+    authors: [
+      {
+        did: 'did:plc:test123',
+        name: 'Test User',
+        order: 1,
+        affiliations: [],
+        contributions: [],
+      },
+    ],
+    submittedBy: 'did:plc:test123',
+    license: 'CC-BY-4.0',
+    createdAt: '2024-01-15T10:30:00Z',
+    indexedAt: '2024-01-15T10:35:00Z',
+    source: {
+      pdsEndpoint: 'https://bsky.social',
+      recordUrl: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
+      lastVerifiedAt: '2024-01-15T10:35:00Z',
+      stale: false,
+    },
     viewsInWindow: 500,
     rank: 1,
     ...overrides,
@@ -258,6 +475,7 @@ export function createMockFacetedEprintSummary(
 
 /**
  * Creates a mock SearchResultsResponse.
+ * Note: SearchFacetValue uses 'uri' not 'value', different from browseFaceted FacetValue.
  */
 export function createMockSearchResults(
   overrides: Partial<{
@@ -299,8 +517,18 @@ export function createMockSearchResults(
         slug: 'personality',
         label: 'Personality',
         values: [
-          { value: 'computer-science', label: 'Computer Science', count: 15 },
-          { value: 'physics', label: 'Physics', count: 10 },
+          {
+            uri: 'at://gov/pub.chive.graph.node/computer-science',
+            slug: 'computer-science',
+            label: 'Computer Science',
+            count: 15,
+          },
+          {
+            uri: 'at://gov/pub.chive.graph.node/physics',
+            slug: 'physics',
+            label: 'Physics',
+            count: 10,
+          },
         ],
       },
     ],
@@ -378,7 +606,6 @@ export function createMockAuthorMetrics(overrides: Partial<AuthorMetrics> = {}):
     totalViews: 5000,
     totalDownloads: 1200,
     totalEndorsements: 42,
-    hIndex: 8,
     ...overrides,
   };
 }
@@ -524,11 +751,26 @@ export function createMockFieldList(count: number = 3): FieldSummary[] {
 // ============================================================================
 
 /**
- * Creates a mock search facet value (for browseFaceted).
+ * Creates a mock SearchFacetValue (from searchSubmissions endpoint).
+ * Note: SearchFacetValue uses 'uri' and 'slug', not 'value'.
  */
 export function createMockSearchFacetValue(
   overrides: Partial<SearchFacetValue> = {}
 ): SearchFacetValue {
+  return {
+    uri: 'at://gov/pub.chive.graph.node/computer-science',
+    slug: 'computer-science',
+    count: 42,
+    label: 'Computer Science',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a mock FacetValue (from browseFaceted endpoint).
+ * Note: FacetValue uses 'value', different from SearchFacetValue which uses 'uri'.
+ */
+export function createMockBrowseFacetValue(overrides: Partial<FacetValue> = {}): FacetValue {
   return {
     value: 'computer-science',
     count: 42,
@@ -578,17 +820,33 @@ export function createMockFacetedSearchResponse(
         slug: 'personality',
         label: 'Personality',
         values: [
-          createMockSearchFacetValue({ value: 'research', count: 50, label: 'Research' }),
-          createMockSearchFacetValue({ value: 'review', count: 30, label: 'Review' }),
+          createMockSearchFacetValue({
+            uri: 'at://gov/pub.chive.graph.node/research',
+            slug: 'research',
+            count: 50,
+            label: 'Research',
+          }),
+          createMockSearchFacetValue({
+            uri: 'at://gov/pub.chive.graph.node/review',
+            slug: 'review',
+            count: 30,
+            label: 'Review',
+          }),
         ],
       },
       {
         slug: 'matter',
         label: 'Matter',
         values: [
-          createMockSearchFacetValue({ value: 'physics', count: 40, label: 'Physics' }),
           createMockSearchFacetValue({
-            value: 'computer-science',
+            uri: 'at://gov/pub.chive.graph.node/physics',
+            slug: 'physics',
+            count: 40,
+            label: 'Physics',
+          }),
+          createMockSearchFacetValue({
+            uri: 'at://gov/pub.chive.graph.node/computer-science',
+            slug: 'computer-science',
             count: 35,
             label: 'Computer Science',
           }),
@@ -599,7 +857,8 @@ export function createMockFacetedSearchResponse(
         label: 'Energy',
         values: [
           createMockSearchFacetValue({
-            value: 'classification',
+            uri: 'at://gov/pub.chive.graph.node/classification',
+            slug: 'classification',
             count: 25,
             label: 'Classification',
           }),
@@ -610,7 +869,8 @@ export function createMockFacetedSearchResponse(
         label: 'Space',
         values: [
           createMockSearchFacetValue({
-            value: 'north-america',
+            uri: 'at://gov/pub.chive.graph.node/north-america',
+            slug: 'north-america',
             count: 45,
             label: 'North America',
           }),
@@ -619,7 +879,14 @@ export function createMockFacetedSearchResponse(
       {
         slug: 'time',
         label: 'Time',
-        values: [createMockSearchFacetValue({ value: '2024', count: 60, label: '2024' })],
+        values: [
+          createMockSearchFacetValue({
+            uri: 'at://gov/pub.chive.graph.node/2024',
+            slug: '2024',
+            count: 60,
+            label: '2024',
+          }),
+        ],
       },
     ],
     ...overrides,
@@ -633,7 +900,9 @@ export function createMockFacetedSearchResponse(
 /**
  * Creates a mock TextSpanTarget.
  */
-export function createMockTextSpanTarget(overrides: Partial<TextSpanTarget> = {}): TextSpanTarget {
+export function createMockTextSpanTarget(
+  overrides: Partial<UnifiedTextSpanTarget> = {}
+): UnifiedTextSpanTarget {
   return {
     source: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
     selector: {
@@ -658,27 +927,28 @@ export function createMockTextSpanTarget(overrides: Partial<TextSpanTarget> = {}
 export function createMockRichAnnotationBody(
   overrides: Partial<RichAnnotationBody> = {}
 ): RichAnnotationBody {
-  return {
-    type: 'RichText',
+  const base = {
+    type: 'RichText' as const,
     items: [
-      { type: 'text', content: 'This is an excellent methodology. See also ' },
-      { type: 'wikidataRef', qid: 'Q2539', label: 'Machine Learning' },
-      { type: 'text', content: ' for background.' },
+      { type: 'text' as const, content: 'This is an excellent methodology. See also ' },
+      { type: 'wikidataRef' as const, qid: 'Q2539', label: 'Machine Learning' },
+      { type: 'text' as const, content: ' for background.' },
     ],
     format: 'application/x-chive-gloss+json',
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 /**
  * Creates a mock Review.
+ * Note: Review is a union of ReviewView types with different $type discriminators.
  */
 export function createMockReview(overrides: Partial<Review> = {}): Review {
   return {
     uri: 'at://did:plc:reviewer/pub.chive.review.comment/review123',
     cid: 'bafyreireview123',
     eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
-    author: createMockAuthor({ did: 'did:plc:reviewer', displayName: 'Dr. Reviewer' }),
+    author: createMockReviewAuthor({ did: 'did:plc:reviewer', displayName: 'Dr. Reviewer' }),
     content: 'This is an excellent methodology. See also Machine Learning for background.',
     body: {
       text: 'This is an excellent methodology. See also Machine Learning for background.',
@@ -687,9 +957,9 @@ export function createMockReview(overrides: Partial<Review> = {}): Review {
           index: { byteStart: 43, byteEnd: 59 }, // "Machine Learning"
           features: [
             {
-              $type: 'app.bsky.richtext.facet#link',
+              $type: 'app.bsky.richtext.facet#link' as const,
               uri: 'https://www.wikidata.org/wiki/Q2539',
-            },
+            } as const,
           ],
         },
       ],
@@ -699,49 +969,44 @@ export function createMockReview(overrides: Partial<Review> = {}): Review {
     createdAt: '2024-06-15T10:30:00Z',
     indexedAt: '2024-06-15T10:35:00Z',
     ...overrides,
-  };
+  } as Review;
 }
 
 /**
  * Creates a mock Review with target (inline annotation).
+ * Note: TextSpanTarget type differs between listForEprint and listForAuthor.
  */
 export function createMockInlineReview(overrides: Partial<Review> = {}): Review {
-  return createMockReview({
-    target: createMockTextSpanTarget(),
-    ...overrides,
-  });
+  const base = createMockReview(overrides);
+  return {
+    ...base,
+    // Use provided target from overrides, or fall back to default
+    target: overrides.target ?? createMockTextSpanTarget(),
+  } as Review;
 }
 
 /**
  * Creates a mock ReviewThread.
- * Note: ReviewThread has flat replies array, not nested thread objects.
+ * Note: ReviewThread.parent and replies are ReviewView from getThread endpoint.
  */
 export function createMockReviewThread(overrides: Partial<ReviewThread> = {}): ReviewThread {
   const parent = createMockReview();
   return {
-    parent,
+    parent: parent as ReviewThread['parent'],
     replies: [
-      {
-        parent: createMockReview({
-          uri: 'at://did:plc:replier1/pub.chive.review.comment/reply1',
-          author: createMockAuthor({ did: 'did:plc:replier1', displayName: 'Replier One' }),
-          content: 'I agree with this assessment.',
-          parentReviewUri: parent.uri,
-        }),
-        replies: [],
-        totalReplies: 0,
-      },
-      {
-        parent: createMockReview({
-          uri: 'at://did:plc:replier2/pub.chive.review.comment/reply2',
-          author: createMockAuthor({ did: 'did:plc:replier2', displayName: 'Replier Two' }),
-          content: 'Could you elaborate on the methodology section?',
-          motivation: 'questioning',
-          parentReviewUri: parent.uri,
-        }),
-        replies: [],
-        totalReplies: 0,
-      },
+      createMockReview({
+        uri: 'at://did:plc:replier1/pub.chive.review.comment/reply1',
+        author: createMockReviewAuthor({ did: 'did:plc:replier1', displayName: 'Replier One' }),
+        content: 'I agree with this assessment.',
+        parentReviewUri: parent.uri,
+      }) as ReviewThread['replies'][0],
+      createMockReview({
+        uri: 'at://did:plc:replier2/pub.chive.review.comment/reply2',
+        author: createMockReviewAuthor({ did: 'did:plc:replier2', displayName: 'Replier Two' }),
+        content: 'Could you elaborate on the methodology section?',
+        motivation: 'questioning',
+        parentReviewUri: parent.uri,
+      }) as ReviewThread['replies'][0],
     ],
     totalReplies: 2,
     ...overrides,
@@ -750,19 +1015,24 @@ export function createMockReviewThread(overrides: Partial<ReviewThread> = {}): R
 
 /**
  * Creates a mock ReviewsResponse.
+ * Note: ListReviewsResponse.reviews is ReviewView[] from listForEprint endpoint.
  */
 export function createMockReviewsResponse(
-  overrides: Partial<ReviewsResponse> = {}
-): ReviewsResponse {
+  overrides: Partial<ListReviewsResponse> = {}
+): ListReviewsResponse {
   return {
     reviews: [
-      createMockReview({ uri: 'at://did:plc:r1/pub.chive.review.comment/1' }),
+      createMockReview({
+        uri: 'at://did:plc:r1/pub.chive.review.comment/1',
+      }) as ListReviewsResponse['reviews'][0],
       createMockReview({
         uri: 'at://did:plc:r2/pub.chive.review.comment/2',
         motivation: 'questioning',
         content: 'How does this compare to previous approaches?',
-      }),
-      createMockInlineReview({ uri: 'at://did:plc:r3/pub.chive.review.comment/3' }),
+      }) as ListReviewsResponse['reviews'][0],
+      createMockInlineReview({
+        uri: 'at://did:plc:r3/pub.chive.review.comment/3',
+      }) as ListReviewsResponse['reviews'][0],
     ],
     cursor: 'review-cursor-123',
     hasMore: true,
@@ -776,7 +1046,23 @@ export function createMockReviewsResponse(
 // ============================================================================
 
 /**
+ * Creates a mock EndorsementAuthorRef (for endorser field).
+ */
+export function createMockEndorsementAuthor(
+  overrides: Partial<EndorsementAuthorRef> = {}
+): EndorsementAuthorRef {
+  return {
+    did: 'did:plc:endorser',
+    handle: 'endorser.bsky.social',
+    displayName: 'Prof. Endorser',
+    avatar: 'https://example.com/avatar.jpg',
+    ...overrides,
+  };
+}
+
+/**
  * Creates a mock Endorsement.
+ * Note: Endorsement is actually EndorsementView from listForEprint.
  */
 export function createMockEndorsement(
   overrides: Partial<Endorsement> & { endorserDid?: string } = {}
@@ -784,8 +1070,9 @@ export function createMockEndorsement(
   const { endorserDid, ...rest } = overrides;
   return {
     uri: 'at://did:plc:endorser/pub.chive.review.endorsement/endorsement123',
+    cid: 'bafyreiendorsement123',
     eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
-    endorser: createMockAuthor({
+    endorser: createMockEndorsementAuthor({
       did: endorserDid ?? 'did:plc:endorser',
       displayName: 'Prof. Endorser',
     }),
@@ -798,6 +1085,11 @@ export function createMockEndorsement(
 
 /**
  * Creates a mock EndorsementSummary.
+ *
+ * @remarks
+ * The `byType` property uses a type assertion because the generated
+ * `EndorsementCountByType` is an open object that doesn't explicitly
+ * define contribution type keys.
  */
 export function createMockEndorsementSummary(
   overrides: Partial<EndorsementSummary> = {}
@@ -807,7 +1099,7 @@ export function createMockEndorsementSummary(
       methodological: 5,
       empirical: 3,
       analytical: 2,
-    },
+    } as EndorsementSummary['byType'],
     total: 10,
     endorserCount: 8,
     ...overrides,
@@ -818,8 +1110,8 @@ export function createMockEndorsementSummary(
  * Creates a mock EndorsementsResponse.
  */
 export function createMockEndorsementsResponse(
-  overrides: Partial<EndorsementsResponse> = {}
-): EndorsementsResponse {
+  overrides: Partial<ListEndorsementsResponse> = {}
+): ListEndorsementsResponse {
   return {
     endorsements: [
       createMockEndorsement({ contributions: ['methodological', 'analytical'] }),
@@ -851,8 +1143,9 @@ export function createMockEndorsementsResponse(
 export function createMockUserTag(overrides: Partial<UserTag> = {}): UserTag {
   return {
     uri: 'at://did:plc:tagger/pub.chive.eprint.userTag/tag123',
+    cid: 'bafyreib4pff766vhpbxj6p7oysgqjaj4',
     eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
-    author: createMockAuthor({ did: 'did:plc:tagger', displayName: 'Tagger User' }),
+    author: createMockTagAuthor({ did: 'did:plc:tagger', displayName: 'Tagger User' }),
     normalizedForm: 'machine-learning',
     displayForm: 'Machine Learning',
     createdAt: '2024-06-10T09:00:00Z',
@@ -924,6 +1217,7 @@ export function createMockEprintTagsResponse(
 
 /**
  * Creates a mock TrendingTagsResponse.
+ * Note: TrendingTagsResponse.tags expects TagSummary from getTrending endpoint.
  */
 export function createMockTrendingTagsResponse(
   overrides: Partial<TrendingTagsResponse> = {}
@@ -934,17 +1228,17 @@ export function createMockTrendingTagsResponse(
         normalizedForm: 'large-language-models',
         displayForms: ['Large Language Models'],
         usageCount: 500,
-      }),
+      }) as TrendingTagsResponse['tags'][0],
       createMockTagSummary({
         normalizedForm: 'generative-ai',
         displayForms: ['Generative AI'],
         usageCount: 350,
-      }),
+      }) as TrendingTagsResponse['tags'][0],
       createMockTagSummary({
         normalizedForm: 'transformer-architecture',
         displayForms: ['Transformer Architecture'],
         usageCount: 200,
-      }),
+      }) as TrendingTagsResponse['tags'][0],
     ],
     timeWindow: 'week',
     ...overrides,
@@ -971,42 +1265,44 @@ export function createMockAuthorAffiliation(
 
 /**
  * Creates a mock AuthorContribution.
+ * Note: AuthorContribution is the Main type from authorContribution.ts,
+ * which is the full author entry with contributions array inside.
+ * For individual contribution items, use the Contribution interface.
  */
 export function createMockAuthorContribution(
-  overrides: Partial<AuthorContribution> = {}
-): AuthorContribution {
+  overrides: Partial<
+    EprintAuthorView['contributions'] extends (infer T)[] | undefined ? T : never
+  > = {}
+): EprintAuthorView['contributions'] extends (infer T)[] | undefined ? T : never {
   return {
     typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization',
-    typeId: 'conceptualization',
-    typeLabel: 'Conceptualization',
-    degree: 'lead',
+    degreeSlug: 'lead',
     ...overrides,
-  };
+  } as EprintAuthorView['contributions'] extends (infer T)[] | undefined ? T : never;
 }
 
 /**
- * Creates a mock EprintAuthor with DID (authenticated ATProto user).
+ * Creates a mock EprintAuthorView with DID (authenticated ATProto user).
  *
  * @remarks
  * Use this for authors who have an ATProto account.
  */
-export function createMockEprintAuthorWithDid(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
+export function createMockEprintAuthorWithDid(
+  overrides: Partial<EprintAuthorView> = {}
+): EprintAuthorView {
   return {
     did: 'did:plc:test123',
     name: 'Dr. Jane Smith',
     handle: 'janesmith.bsky.social',
-    avatarUrl: 'https://example.com/avatar.jpg',
+    avatar: 'https://example.com/avatar.jpg',
     orcid: '0000-0001-2345-6789',
-    email: undefined,
     order: 1,
     affiliations: [createMockAuthorAffiliation()],
     contributions: [
       createMockAuthorContribution(),
       createMockAuthorContribution({
         typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/writing-original-draft',
-        typeId: 'writing-original-draft',
-        typeLabel: 'Writing - Original Draft',
-        degree: 'lead',
+        degreeSlug: 'lead',
       }),
     ],
     isCorrespondingAuthor: true,
@@ -1022,14 +1318,15 @@ export function createMockEprintAuthorWithDid(overrides: Partial<EprintAuthor> =
  * Use this for external collaborators who don't have ATProto DIDs.
  * They are identified by name, ORCID, or email instead.
  */
-export function createMockExternalAuthor(overrides: Partial<EprintAuthor> = {}): EprintAuthor {
+export function createMockExternalAuthor(
+  overrides: Partial<EprintAuthorView> = {}
+): EprintAuthorView {
   return {
     did: undefined,
     name: 'John External',
     handle: undefined,
-    avatarUrl: undefined,
+    avatar: undefined,
     orcid: '0000-0002-3456-7890',
-    email: 'john@external.edu',
     order: 2,
     affiliations: [
       createMockAuthorAffiliation({
@@ -1041,9 +1338,7 @@ export function createMockExternalAuthor(overrides: Partial<EprintAuthor> = {}):
     contributions: [
       createMockAuthorContribution({
         typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/investigation',
-        typeId: 'investigation',
-        typeLabel: 'Investigation',
-        degree: 'equal',
+        degreeSlug: 'equal',
       }),
     ],
     isCorrespondingAuthor: false,
@@ -1119,26 +1414,30 @@ export function createMockTraditionalEprint(overrides: Partial<Eprint> = {}): Ep
   return {
     uri: 'at://did:plc:user123/pub.chive.eprint.submission/xyz',
     cid: 'bafyreib2a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7',
+    $type: 'pub.chive.eprint.submission',
     title: 'A Traditional Eprint',
     abstract:
       'This eprint uses the traditional submission model where the paper lives in the submitter PDS.',
     submittedBy: 'did:plc:user123',
     paperDid: undefined, // Traditional model - no paper DID
-    authors: [createMockEprintAuthorWithDid(), createMockExternalAuthor()],
+    authors: [
+      createMockEprintAuthorWithDid() as unknown as Eprint['authors'][0],
+      createMockExternalAuthor() as unknown as Eprint['authors'][0],
+    ],
     document: createMockBlobRef(),
     supplementaryMaterials: [],
-    fields: [createMockFieldRef()],
+    fields: [createMockFieldRef() as Eprint['fields'] extends (infer T)[] ? T : never],
     keywords: ['traditional', 'submission', 'eprint'],
     license: 'CC-BY-4.0',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-16T14:20:00Z',
-    source: createMockEprintSource({
-      recordUrl: 'at://did:plc:user123/pub.chive.eprint.submission/xyz',
-    }),
-    metrics: createMockEprintMetrics(),
+    indexedAt: '2024-01-15T10:35:00Z',
+    pdsUrl: 'https://bsky.social',
+    metrics: createMockEprintMetricsView(),
     versions: [
       {
         version: 1,
+        uri: 'at://did:plc:user123/pub.chive.eprint.version/v1',
         cid: 'bafyreib2a3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7',
         createdAt: '2024-01-15T10:30:00Z',
       },
@@ -1159,26 +1458,29 @@ export function createMockPaperCentricEprint(overrides: Partial<Eprint> = {}): E
   return {
     uri: 'at://did:plc:paper-abc123/pub.chive.eprint.submission/xyz',
     cid: 'bafyreic3b4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z8',
+    $type: 'pub.chive.eprint.submission',
     title: 'A Paper-Centric Eprint',
     abstract: 'This eprint uses the paper-centric model where the paper has its own PDS and DID.',
     submittedBy: 'did:plc:user123', // Human who submitted (same person)
     paperDid: 'did:plc:paper-abc123', // Paper's own DID
-    authors: [createMockEprintAuthorWithDid(), createMockExternalAuthor()],
+    authors: [
+      createMockEprintAuthorWithDid() as unknown as Eprint['authors'][0],
+      createMockExternalAuthor() as unknown as Eprint['authors'][0],
+    ],
     document: createMockBlobRef(),
     supplementaryMaterials: [],
-    fields: [createMockFieldRef()],
+    fields: [createMockFieldRef() as Eprint['fields'] extends (infer T)[] ? T : never],
     keywords: ['paper-centric', 'submission', 'eprint'],
     license: 'CC-BY-4.0',
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-01-16T14:20:00Z',
-    source: createMockEprintSource({
-      pdsEndpoint: 'https://paper-abc123.pds.example.com',
-      recordUrl: 'at://did:plc:paper-abc123/pub.chive.eprint.submission/xyz',
-    }),
-    metrics: createMockEprintMetrics(),
+    indexedAt: '2024-01-15T10:35:00Z',
+    pdsUrl: 'https://paper-abc123.pds.example.com',
+    metrics: createMockEprintMetricsView(),
     versions: [
       {
         version: 1,
+        uri: 'at://did:plc:paper-abc123/pub.chive.eprint.version/v1',
         cid: 'bafyreic3b4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z8',
         createdAt: '2024-01-15T10:30:00Z',
       },
@@ -1319,20 +1621,9 @@ export interface MockFacetProposal {
  */
 export function createMockGovernanceFacetValue(overrides: Partial<FacetValue> = {}): FacetValue {
   return {
-    id: 'machine-learning',
+    value: 'machine-learning',
     label: 'Machine Learning',
-    dimension: 'personality',
-    description:
-      'A branch of artificial intelligence focused on building systems that learn from data',
-    externalMappings: [
-      {
-        system: 'lcsh',
-        identifier: 'sh85079324',
-        uri: 'http://id.loc.gov/authorities/subjects/sh85079324',
-      },
-    ],
-    parentId: 'artificial-intelligence',
-    status: 'established',
+    count: 42,
     ...overrides,
   };
 }
@@ -1382,34 +1673,29 @@ export function createMockFacetProposal(
 export function createMockPMESTFacetValues(): FacetValue[] {
   return [
     createMockGovernanceFacetValue({
-      id: 'machine-learning',
+      value: 'machine-learning',
       label: 'Machine Learning',
-      dimension: 'personality',
-      description: 'What the subject is fundamentally about',
+      count: 100,
     }),
     createMockGovernanceFacetValue({
-      id: 'neural-networks',
+      value: 'neural-networks',
       label: 'Neural Networks',
-      dimension: 'matter',
-      description: 'Materials or constituents used',
+      count: 80,
     }),
     createMockGovernanceFacetValue({
-      id: 'training',
+      value: 'training',
       label: 'Training',
-      dimension: 'energy',
-      description: 'Processes or operations performed',
+      count: 60,
     }),
     createMockGovernanceFacetValue({
-      id: 'europe',
+      value: 'europe',
       label: 'Europe',
-      dimension: 'space',
-      description: 'Geographic location',
+      count: 40,
     }),
     createMockGovernanceFacetValue({
-      id: '21st-century',
+      value: '21st-century',
       label: '21st Century',
-      dimension: 'time',
-      description: 'Temporal period',
+      count: 200,
     }),
   ];
 }

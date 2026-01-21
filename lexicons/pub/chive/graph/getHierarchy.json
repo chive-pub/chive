@@ -1,0 +1,74 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.getHierarchy",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get hierarchical tree structure for nodes of a specific subkind",
+      "parameters": {
+        "type": "params",
+        "required": ["subkind"],
+        "properties": {
+          "subkind": {
+            "type": "string",
+            "description": "Subkind to get hierarchy for (e.g., field)"
+          },
+          "relationSlug": {
+            "type": "string",
+            "default": "broader",
+            "description": "Relation slug for hierarchy traversal"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["roots", "subkind", "relationSlug"],
+          "properties": {
+            "roots": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#hierarchyItem"
+              },
+              "description": "Root nodes with children"
+            },
+            "subkind": {
+              "type": "string",
+              "description": "Subkind of hierarchy"
+            },
+            "relationSlug": {
+              "type": "string",
+              "description": "Relation used for hierarchy"
+            }
+          }
+        }
+      }
+    },
+    "hierarchyItem": {
+      "type": "object",
+      "description": "Hierarchy node with recursive children",
+      "required": ["node", "children", "depth"],
+      "properties": {
+        "node": {
+          "type": "ref",
+          "ref": "pub.chive.graph.listNodes#graphNode",
+          "description": "Node data"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#hierarchyItem"
+          },
+          "description": "Child hierarchy items"
+        },
+        "depth": {
+          "type": "integer",
+          "description": "Depth in hierarchy (0 = root)"
+        }
+      }
+    }
+  }
+}

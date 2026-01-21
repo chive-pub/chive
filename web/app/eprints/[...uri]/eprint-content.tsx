@@ -18,6 +18,7 @@ import {
   SupplementaryPanel,
   FundingPanel,
   RepositoriesPanel,
+  type SupplementaryCategory,
 } from '@/components/eprints';
 
 // Dynamic import to prevent SSR issues with pdfjs-dist browser globals
@@ -29,7 +30,11 @@ const AnnotatedPDFViewer = dynamic(
   }
 );
 import { AnnotationSidebar, EntityLinkDialog } from '@/components/annotations';
-import type { TextSpanTarget } from '@/lib/api/schema';
+import type {
+  UnifiedTextSpanTarget,
+  EprintSource as EprintSourceType,
+  LinkFacet,
+} from '@/lib/api/schema';
 import {
   ReviewList,
   ReviewListSkeleton,
@@ -62,6 +67,32 @@ import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
 import type { Review, Endorsement } from '@/lib/api/schema';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
+
+/**
+ * Valid supplementary material categories.
+ * Used for type narrowing from lexicon's open union to component's strict union.
+ */
+const VALID_SUPPLEMENTARY_CATEGORIES: readonly SupplementaryCategory[] = [
+  'appendix',
+  'figure',
+  'table',
+  'dataset',
+  'code',
+  'notebook',
+  'video',
+  'audio',
+  'presentation',
+  'protocol',
+  'questionnaire',
+  'other',
+] as const;
+
+/**
+ * Type guard for supplementary category.
+ */
+function isValidSupplementaryCategory(value: string | undefined): value is SupplementaryCategory {
+  return VALID_SUPPLEMENTARY_CATEGORIES.includes(value as SupplementaryCategory);
+}
 
 /**
  * Props for the EprintDetailContent component.
@@ -98,11 +129,11 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const [selectedAnnotationUri, setSelectedAnnotationUri] = useState<string | null>(null);
   const [entityLinkDialogOpen, setEntityLinkDialogOpen] = useState(false);
   const [entityLinkSelection, setEntityLinkSelection] = useState<{
-    target: TextSpanTarget;
+    target: UnifiedTextSpanTarget;
     selectedText: string;
   } | null>(null);
   const [inlineReviewTarget, setInlineReviewTarget] = useState<{
-    target: TextSpanTarget;
+    target: UnifiedTextSpanTarget;
     selectedText: string;
   } | null>(null);
 
@@ -122,6 +153,14 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
   // Get the selected version or latest
   const displayVersion = currentVersion ?? eprint?.versions?.length ?? 1;
+
+  // Construct source object for ATProto transparency display
+  const eprintSource: EprintSourceType | undefined = eprint
+    ? {
+        pdsEndpoint: eprint.pdsUrl,
+        recordUrl: eprint.uri,
+      }
+    : undefined;
 
   /**
    * Handle version change by updating state and triggering refetch.
@@ -169,12 +208,15 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     setSelectedAnnotationUri(annotationUri);
   }, []);
 
-  const handleAddInlineReview = useCallback((target: TextSpanTarget, selectedText: string) => {
-    setInlineReviewTarget({ target, selectedText });
-    setShowReviewForm(true);
-  }, []);
+  const handleAddInlineReview = useCallback(
+    (target: UnifiedTextSpanTarget, selectedText: string) => {
+      setInlineReviewTarget({ target, selectedText });
+      setShowReviewForm(true);
+    },
+    []
+  );
 
-  const handleLinkEntity = useCallback((target: TextSpanTarget, selectedText: string) => {
+  const handleLinkEntity = useCallback((target: UnifiedTextSpanTarget, selectedText: string) => {
     setEntityLinkSelection({ target, selectedText });
     setEntityLinkDialogOpen(true);
   }, []);
@@ -345,13 +387,23 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
       <EprintHeader eprint={eprint} />
 
       {/* Publication status badge */}
-      {eprint.publicationStatus && eprint.publicationStatus !== 'eprint' && (
-        <PublicationBadge
-          status={eprint.publicationStatus}
-          publishedVersion={eprint.publishedVersion}
-          variant="card"
-        />
-      )}
+      {eprint.publicationStatus &&
+        eprint.publicationStatus !== 'preprint' &&
+        eprint.publicationStatus !== 'eprint' && (
+          <PublicationBadge
+            status={
+              eprint.publicationStatus as
+                | 'under_review'
+                | 'revision_requested'
+                | 'accepted'
+                | 'in_press'
+                | 'published'
+                | 'retracted'
+            }
+            publishedVersion={eprint.publishedVersion}
+            variant="card"
+          />
+        )}
 
       {/* Version selector (if multiple versions) */}
       {eprint.versions && eprint.versions.length > 1 && (
@@ -404,7 +456,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             {eprint.document && (
               <PDFDownloadButton
                 blobRef={eprint.document}
-                pdsEndpoint={eprint.source?.pdsEndpoint}
+                pdsEndpoint={eprint.pdsUrl}
                 did={eprint.paperDid ?? eprint.submittedBy}
                 filename={`${eprint.title}.pdf`}
               />
@@ -513,7 +565,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   {eprint.document && (
                     <PDFDownloadButton
                       blobRef={eprint.document}
-                      pdsEndpoint={eprint.source?.pdsEndpoint}
+                      pdsEndpoint={eprint.pdsUrl}
                       did={eprint.paperDid ?? eprint.submittedBy}
                       filename={`${eprint.title}.pdf`}
                       className="h-8 text-xs"
@@ -537,7 +589,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               {eprint.document ? (
                 <AnnotatedPDFViewer
                   blobRef={eprint.document}
-                  pdsEndpoint={eprint.source?.pdsEndpoint}
+                  pdsEndpoint={eprint.pdsUrl}
                   did={eprint.paperDid ?? eprint.submittedBy}
                   eprintUri={uri}
                   onAnnotationSelect={handleAnnotationSelect}
@@ -664,9 +716,9 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                         },
                         features: [
                           {
-                            $type: 'app.bsky.richtext.facet#link' as const,
+                            $type: 'pub.chive.review.listForEprint#linkFacet',
                             uri: entityUrl,
-                          },
+                          } satisfies LinkFacet,
                         ],
                       },
                     ],
@@ -825,16 +877,19 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               <SupplementaryPanel
                 items={eprint.supplementaryMaterials.map((item, index) => {
                   const did = eprint.paperDid ?? eprint.submittedBy;
-                  const blobCid = item.blobRef?.ref;
+                  const blobCid = item.blob?.ref?.toString();
                   const downloadUrl =
-                    blobCid && eprint.source?.pdsEndpoint
-                      ? `${eprint.source.pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobCid)}`
+                    blobCid && eprint.pdsUrl
+                      ? `${eprint.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobCid)}`
                       : undefined;
+                  const category = isValidSupplementaryCategory(item.categorySlug)
+                    ? item.categorySlug
+                    : 'other';
                   return {
                     id: blobCid ?? `supp-${index}`,
                     label: item.label,
                     description: item.description,
-                    category: item.category ?? 'other',
+                    category,
                     format: item.detectedFormat,
                     downloadUrl,
                   };
@@ -858,7 +913,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           <Separator />
 
           {/* ATProto source information */}
-          <EprintSource source={eprint.source} variant="card" />
+          {eprintSource && <EprintSource source={eprintSource} variant="card" />}
         </TabsContent>
 
         {/* Versions tab */}

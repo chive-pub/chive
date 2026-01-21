@@ -221,7 +221,7 @@ describe('XRPC Graph Endpoints Integration', () => {
 
       expect(res.status).toBe(404);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.code).toBe('NOT_FOUND');
+      expect(body.error).toBe('NotFound');
     });
 
     it('includes external IDs when available', async () => {
@@ -414,24 +414,22 @@ describe('XRPC Graph Endpoints Integration', () => {
 
   describe('Error Handling', () => {
     it('returns validation error for missing required parameters', async () => {
-      // getNode requires uri parameter
+      // getNode requires id parameter
       const res = await testRequest(app, '/xrpc/pub.chive.graph.getNode');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;
-      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expect(body.error).toBe('InvalidRequest');
     });
 
-    it('returns proper error format with requestId', async () => {
+    it('returns ATProto-compliant error format', async () => {
       const res = await testRequest(app, '/xrpc/pub.chive.graph.getNode');
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as ErrorResponse;
 
-      expect(body.error).toBeDefined();
-      expect(body.error.code).toBeDefined();
-      expect(body.error.message).toBeDefined();
-      expect(body.error.requestId).toBeDefined();
+      expect(body.error).toBe('InvalidRequest');
+      expect(body.message).toBeDefined();
     });
   });
 });

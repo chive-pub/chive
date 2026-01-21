@@ -1,0 +1,340 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.metrics.getTrending",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get trending eprints based on view counts within a time window",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "window": {
+            "type": "string",
+            "description": "Time window for trending calculation",
+            "enum": ["24h", "7d", "30d"],
+            "default": "7d"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["trending", "window", "hasMore"],
+          "properties": {
+            "trending": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#trendingEntry"
+              }
+            },
+            "window": {
+              "type": "string",
+              "description": "Time window used",
+              "enum": ["24h", "7d", "30d"]
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "trendingEntry": {
+      "type": "object",
+      "description": "A trending eprint entry with full metadata",
+      "required": [
+        "uri",
+        "cid",
+        "title",
+        "abstract",
+        "authors",
+        "submittedBy",
+        "license",
+        "createdAt",
+        "indexedAt",
+        "source",
+        "viewsInWindow",
+        "rank"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the eprint"
+        },
+        "cid": {
+          "type": "string",
+          "format": "cid",
+          "description": "CID of the eprint record"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Truncated abstract (max 500 chars)"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#authorRef"
+          }
+        },
+        "submittedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the submitter"
+        },
+        "paperDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the paper identity (if using paper-centric model)"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#fieldRef"
+          },
+          "description": "Knowledge graph field classifications"
+        },
+        "license": {
+          "type": "string",
+          "description": "License identifier"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Original creation timestamp"
+        },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When Chive indexed this record"
+        },
+        "source": {
+          "type": "ref",
+          "ref": "#sourceInfo",
+          "description": "PDS source information for transparency"
+        },
+        "metrics": {
+          "type": "ref",
+          "ref": "#eprintMetrics",
+          "description": "Current metrics snapshot"
+        },
+        "viewsInWindow": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Views within the trending window"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Position in trending list"
+        },
+        "velocity": {
+          "type": "integer",
+          "description": "Rate of view increase (optional)"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "description": "Reference to an author with optional ATProto identity",
+      "required": ["name", "order", "affiliations", "contributions"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID (if linked to ATProto identity)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "email": {
+          "type": "string",
+          "description": "Contact email"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Author order position"
+        },
+        "affiliations": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#affiliation"
+          }
+        },
+        "contributions": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#contribution"
+          }
+        },
+        "isCorrespondingAuthor": {
+          "type": "boolean",
+          "description": "Whether this is the corresponding author"
+        },
+        "isHighlighted": {
+          "type": "boolean",
+          "description": "Whether to highlight this author"
+        },
+        "handle": {
+          "type": "string",
+          "description": "ATProto handle (if resolved)"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Avatar URL (if available)"
+        }
+      }
+    },
+    "affiliation": {
+      "type": "object",
+      "description": "Author affiliation",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Institution name"
+        },
+        "rorId": {
+          "type": "string",
+          "description": "ROR identifier"
+        },
+        "department": {
+          "type": "string",
+          "description": "Department name"
+        }
+      }
+    },
+    "contribution": {
+      "type": "object",
+      "description": "CRediT contribution role",
+      "required": ["typeUri", "typeId", "typeLabel"],
+      "properties": {
+        "typeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the contribution type node"
+        },
+        "typeId": {
+          "type": "string",
+          "description": "Contribution type slug"
+        },
+        "typeLabel": {
+          "type": "string",
+          "description": "Human-readable contribution label"
+        },
+        "degree": {
+          "type": "string",
+          "description": "Degree of contribution (lead, supporting, equal)"
+        }
+      }
+    },
+    "fieldRef": {
+      "type": "object",
+      "description": "Reference to a knowledge graph field node",
+      "required": ["uri", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Field ID"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the field node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label"
+        },
+        "parentUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Parent field URI"
+        }
+      }
+    },
+    "sourceInfo": {
+      "type": "object",
+      "description": "PDS source information for data transparency",
+      "required": ["pdsEndpoint", "recordUrl", "lastVerifiedAt", "stale"],
+      "properties": {
+        "pdsEndpoint": {
+          "type": "string",
+          "description": "URL of the source PDS"
+        },
+        "recordUrl": {
+          "type": "string",
+          "description": "Direct URL to fetch the record"
+        },
+        "blobUrl": {
+          "type": "string",
+          "description": "URL to fetch associated blob"
+        },
+        "lastVerifiedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the record was last verified"
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "Whether the indexed data may be stale"
+        }
+      }
+    },
+    "eprintMetrics": {
+      "type": "object",
+      "description": "Current metrics for the eprint",
+      "required": ["views", "downloads"],
+      "properties": {
+        "views": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total view count"
+        },
+        "downloads": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total download count"
+        },
+        "endorsements": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Endorsement count"
+        }
+      }
+    }
+  }
+}

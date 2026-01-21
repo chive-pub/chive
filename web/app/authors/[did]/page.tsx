@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { AuthorPageContent } from './author-content';
 import { AuthorPageSkeleton } from './loading';
-import { api } from '@/lib/api/client';
+import { createServerClient } from '@/lib/api/client';
 
 /**
  * Author page route parameters.
@@ -23,18 +23,14 @@ export async function generateMetadata({ params }: AuthorPageProps): Promise<Met
   const decodedDid = decodeURIComponent(did);
 
   try {
-    const { data } = await api.GET('/xrpc/pub.chive.author.getProfile', {
-      params: { query: { did: decodedDid } },
-    });
-
-    if (!data) {
-      return { title: 'Author Not Found' };
-    }
+    const serverApi = createServerClient();
+    const response = await serverApi.pub.chive.author.getProfile({ did: decodedDid });
+    const data = response.data;
 
     const name = data.profile.displayName ?? data.profile.handle ?? decodedDid;
     const handle = data.profile.handle ?? '';
     const bio = data.profile.bio ?? '';
-    const affiliation = (data.profile as { affiliation?: string }).affiliation ?? '';
+    const affiliation = data.profile.affiliation ?? '';
     const avatar = data.profile.avatar;
 
     // Build OG image URL with query params for the author template

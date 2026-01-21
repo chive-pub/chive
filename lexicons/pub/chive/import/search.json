@@ -1,0 +1,208 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.import.search",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Search imported eprints in the AppView cache",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query for title, abstract, or author"
+          },
+          "source": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "description": "Filter by external source identifier"
+          },
+          "claimStatus": {
+            "type": "string",
+            "knownValues": ["unclaimed", "pending", "claimed"],
+            "description": "Filter by claim status"
+          },
+          "authorName": {
+            "type": "string",
+            "description": "Filter by author name"
+          },
+          "authorOrcid": {
+            "type": "string",
+            "description": "Filter by author ORCID"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprints", "hasMore"],
+          "properties": {
+            "eprints": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#importedEprint"
+              },
+              "description": "List of matching imported eprints"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      }
+    },
+    "importedEprint": {
+      "type": "object",
+      "description": "An eprint imported from an external source",
+      "required": [
+        "id",
+        "source",
+        "externalId",
+        "url",
+        "title",
+        "authors",
+        "importedByPlugin",
+        "importedAt",
+        "syncStatus",
+        "claimStatus"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Internal import ID"
+        },
+        "source": {
+          "type": "string",
+          "description": "External source identifier"
+        },
+        "externalId": {
+          "type": "string",
+          "description": "Source-specific identifier"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the eprint on the external source"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Abstract text"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#externalAuthor"
+          },
+          "description": "Author list"
+        },
+        "publicationDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Publication date"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Subject categories"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI if assigned"
+        },
+        "pdfUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to PDF"
+        },
+        "importedByPlugin": {
+          "type": "string",
+          "description": "Plugin that imported this eprint"
+        },
+        "importedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was imported"
+        },
+        "lastSyncedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was last synced"
+        },
+        "syncStatus": {
+          "type": "string",
+          "knownValues": ["active", "stale", "unavailable"],
+          "description": "Current sync status"
+        },
+        "claimStatus": {
+          "type": "string",
+          "knownValues": ["unclaimed", "pending", "claimed"],
+          "description": "Current claim status"
+        },
+        "canonicalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the canonical record if claimed"
+        },
+        "claimedByDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the user who claimed this eprint"
+        },
+        "claimedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was claimed"
+        }
+      }
+    },
+    "externalAuthor": {
+      "type": "object",
+      "description": "An author from an external source",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Institutional affiliation"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address"
+        }
+      }
+    }
+  }
+}

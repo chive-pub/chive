@@ -1,0 +1,52 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.sync.registerPDS",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Register a PDS for scanning to ensure records from non-relay PDSes can be discovered and indexed",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["pdsUrl"],
+          "properties": {
+            "pdsUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "PDS endpoint URL to register"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["pdsUrl", "registered", "status"],
+          "properties": {
+            "pdsUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "The registered PDS URL"
+            },
+            "registered": {
+              "type": "boolean",
+              "description": "Whether the PDS was registered"
+            },
+            "status": {
+              "type": "string",
+              "knownValues": ["pending", "already_exists", "scanned"],
+              "description": "Registration status"
+            },
+            "message": {
+              "type": "string",
+              "description": "Human-readable status message"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidRequest" }, { "name": "ServiceUnavailable" }]
+    }
+  }
+}

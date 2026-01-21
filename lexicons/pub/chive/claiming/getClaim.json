@@ -1,0 +1,94 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.getClaim",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get a claim request by ID. Users can only view their own claims unless they are admins.",
+      "parameters": {
+        "type": "params",
+        "required": ["claimId"],
+        "properties": {
+          "claimId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "ID of the claim request"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "claim": {
+              "type": "ref",
+              "ref": "#claimRequest",
+              "description": "The claim request, or null if not found or not authorized"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to get claims"
+        }
+      ]
+    },
+    "claimRequest": {
+      "type": "object",
+      "description": "A claim request for an imported eprint",
+      "required": ["id", "importId", "claimantDid", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique claim request ID"
+        },
+        "importId": {
+          "type": "integer",
+          "description": "ID of the imported eprint being claimed"
+        },
+        "claimantDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the user making the claim"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "approved", "rejected", "expired"],
+          "description": "Current status of the claim"
+        },
+        "canonicalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the canonical record once created"
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason for rejection if rejected"
+        },
+        "reviewedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the admin who reviewed the claim"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was reviewed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was created"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim expires if not completed"
+        }
+      }
+    }
+  }
+}

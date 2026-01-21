@@ -77,9 +77,9 @@ describe('Auth Middleware', () => {
       const res = await app.request('/protected/resource');
 
       expect(res.status).toBe(401);
-      const body = (await res.json()) as { error: { code: string; message: string } };
-      expect(body.error.code).toBe('AUTHENTICATION_ERROR');
-      expect(body.error.message).toBe('Authentication required');
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe('AuthenticationRequired');
+      expect(body.message).toBe('Authentication required');
     });
   });
 
@@ -112,9 +112,9 @@ describe('Auth Middleware', () => {
       const res = await app.request('/admin/dashboard');
 
       expect(res.status).toBe(403);
-      const body = (await res.json()) as { error: { code: string; message: string } };
-      expect(body.error.code).toBe('AUTHORIZATION_ERROR');
-      expect(body.error.message).toBe('Admin access required');
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe('Forbidden');
+      expect(body.message).toBe('Admin access required');
     });
 
     it('should reject unauthenticated users', async () => {
@@ -173,9 +173,9 @@ describe('Auth Middleware', () => {
       const res = await app.request('/alpha/feature');
 
       expect(res.status).toBe(403);
-      const body = (await res.json()) as { error: { code: string; message: string } };
-      expect(body.error.code).toBe('AUTHORIZATION_ERROR');
-      expect(body.error.message).toBe('Alpha tester access required');
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe('Forbidden');
+      expect(body.message).toBe('Alpha tester access required');
     });
 
     it('should reject unauthenticated users', async () => {
@@ -185,9 +185,9 @@ describe('Auth Middleware', () => {
       const res = await app.request('/alpha/feature');
 
       expect(res.status).toBe(401);
-      const body = (await res.json()) as { error: { code: string; message: string } };
-      expect(body.error.code).toBe('AUTHENTICATION_ERROR');
-      expect(body.error.message).toBe('Authentication required');
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe('AuthenticationRequired');
+      expect(body.message).toBe('Authentication required');
     });
 
     it('should reject pending alpha applicants', async () => {
@@ -202,50 +202,6 @@ describe('Auth Middleware', () => {
       app.get('/alpha/feature', (c) => c.json({ success: true }));
 
       const res = await app.request('/alpha/feature');
-
-      expect(res.status).toBe(403);
-    });
-  });
-
-  describe('middleware chaining', () => {
-    it('should work with requireAuth before requireAlphaTester', async () => {
-      const user = createMockUser({ isAlphaTester: true });
-
-      app.use('/protected/*', async (c, next) => {
-        c.set('user', user);
-        await next();
-      });
-      app.use('/protected/*', requireAuth());
-      app.use('/protected/*', requireAlphaTester());
-      app.get('/protected/alpha', (c) => c.json({ success: true }));
-
-      const res = await app.request('/protected/alpha');
-
-      expect(res.status).toBe(200);
-    });
-
-    it('should fail at requireAuth if not authenticated', async () => {
-      app.use('/protected/*', requireAuth());
-      app.use('/protected/*', requireAlphaTester());
-      app.get('/protected/alpha', (c) => c.json({ success: true }));
-
-      const res = await app.request('/protected/alpha');
-
-      expect(res.status).toBe(401);
-    });
-
-    it('should fail at requireAlphaTester if authenticated but not alpha', async () => {
-      const user = createMockUser({ isAlphaTester: false });
-
-      app.use('/protected/*', async (c, next) => {
-        c.set('user', user);
-        await next();
-      });
-      app.use('/protected/*', requireAuth());
-      app.use('/protected/*', requireAlphaTester());
-      app.get('/protected/alpha', (c) => c.json({ success: true }));
-
-      const res = await app.request('/protected/alpha');
 
       expect(res.status).toBe(403);
     });

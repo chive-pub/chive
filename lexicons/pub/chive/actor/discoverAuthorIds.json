@@ -1,0 +1,103 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.discoverAuthorIds",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Discover external author IDs (OpenAlex, Semantic Scholar, etc.) by searching for a name across academic databases",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Author name to search for"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 5,
+            "description": "Maximum number of matches to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["searchedName", "matches"],
+          "properties": {
+            "searchedName": {
+              "type": "string",
+              "description": "The name that was searched"
+            },
+            "matches": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#authorMatch"
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        }
+      ]
+    },
+    "authorMatch": {
+      "type": "object",
+      "description": "A potential author match from academic databases",
+      "required": ["displayName", "worksCount", "citedByCount", "ids"],
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "Display name from the database"
+        },
+        "institution": {
+          "type": "string",
+          "description": "Current institutional affiliation"
+        },
+        "worksCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of works attributed to this author"
+        },
+        "citedByCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total citation count"
+        },
+        "ids": {
+          "type": "ref",
+          "ref": "#externalIds"
+        }
+      }
+    },
+    "externalIds": {
+      "type": "object",
+      "description": "External author identifiers from various databases",
+      "properties": {
+        "openalex": {
+          "type": "string",
+          "description": "OpenAlex author ID (e.g., A5023888391)"
+        },
+        "semanticScholar": {
+          "type": "string",
+          "description": "Semantic Scholar author ID"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "dblp": {
+          "type": "string",
+          "description": "DBLP author identifier"
+        }
+      }
+    }
+  }
+}

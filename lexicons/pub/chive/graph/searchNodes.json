@@ -1,0 +1,75 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.searchNodes",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Full-text search for knowledge graph nodes with optional filtering",
+      "parameters": {
+        "type": "params",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Search query"
+          },
+          "kind": {
+            "type": "string",
+            "knownValues": ["type", "object"],
+            "description": "Filter by node kind"
+          },
+          "subkind": {
+            "type": "string",
+            "description": "Filter by subkind slug"
+          },
+          "status": {
+            "type": "string",
+            "knownValues": ["proposed", "provisional", "established", "deprecated"],
+            "description": "Filter by lifecycle status"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["nodes", "hasMore", "total"],
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.graph.listNodes#graphNode"
+              },
+              "description": "Search results"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results exist"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total count of matching nodes"
+            }
+          }
+        }
+      }
+    }
+  }
+}

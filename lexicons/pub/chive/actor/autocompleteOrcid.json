@@ -1,0 +1,68 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.autocompleteOrcid",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Autocomplete ORCID profiles for author verification",
+      "parameters": {
+        "type": "params",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Search query for researcher name or ORCID"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 8,
+            "description": "Maximum number of suggestions to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["suggestions"],
+          "properties": {
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#orcidSuggestion"
+              }
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "orcidSuggestion": {
+      "type": "object",
+      "description": "An ORCID profile suggestion",
+      "required": ["orcid"],
+      "properties": {
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier (e.g., 0000-0002-1825-0097)"
+        },
+        "givenNames": {
+          "type": "string",
+          "description": "Given (first) names"
+        },
+        "familyName": {
+          "type": "string",
+          "description": "Family (last) name"
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Current institutional affiliation"
+        }
+      }
+    }
+  }
+}

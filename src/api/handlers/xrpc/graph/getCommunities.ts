@@ -9,23 +9,14 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import {
-  getCommunitiesParamsSchema,
-  communitiesResponseSchema,
-  type GetCommunitiesParams,
-  type CommunitiesResponse,
-} from '../../../schemas/graph.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/graph/getCommunities.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.graph.getCommunities query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Detected communities
+ * XRPC method for pub.chive.graph.getCommunities query.
  *
  * @example
  * ```http
@@ -48,62 +39,48 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @public
  */
-export async function getCommunitiesHandler(
-  c: Context<ChiveEnv>,
-  params: GetCommunitiesParams
-): Promise<CommunitiesResponse> {
-  const { graphAlgorithmCache } = c.get('services');
-  const logger = c.get('logger');
+export const getCommunities: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const { graphAlgorithmCache } = c.get('services');
+    const logger = c.get('logger');
 
-  const algorithm = params.algorithm ?? 'louvain';
-  const limit = params.limit ?? 20;
-  const minSize = params.minSize ?? 2;
+    const algorithm = params.algorithm ?? 'louvain';
+    const limit = params.limit ?? 20;
+    const minSize = params.minSize ?? 2;
 
-  logger.debug('Fetching communities', { algorithm, limit, minSize });
+    logger.debug('Fetching communities', { algorithm, limit, minSize });
 
-  // Try to get cached communities
-  let communities = await graphAlgorithmCache?.getCommunities(algorithm);
+    // Try to get cached communities
+    let communities = await graphAlgorithmCache?.getCommunities(
+      algorithm as 'louvain' | 'label-propagation'
+    );
 
-  if (!communities) {
-    logger.info('No cached communities available', { algorithm });
-    communities = [];
-  }
+    if (!communities) {
+      logger.info('No cached communities available', { algorithm });
+      communities = [];
+    }
 
-  // Filter by minSize and limit
-  const filtered = communities.filter((c) => c.size >= minSize).slice(0, limit);
+    // Filter by minSize and limit
+    const filtered = communities.filter((c) => c.size >= minSize).slice(0, limit);
 
-  const response: CommunitiesResponse = {
-    communities: filtered.map((community) => ({
-      communityId: community.communityId,
-      members: community.members,
-      size: community.size,
-    })),
-    algorithm,
-    total: filtered.length,
-    generatedAt: new Date().toISOString(),
-  };
+    const response: OutputSchema = {
+      communities: filtered.map((community) => ({
+        communityId: community.communityId,
+        members: community.members,
+        size: community.size,
+      })),
+      algorithm,
+      total: filtered.length,
+      generatedAt: new Date().toISOString(),
+    };
 
-  logger.info('Community detection completed', {
-    algorithm,
-    totalCommunities: response.total,
-    limit,
-  });
+    logger.info('Community detection completed', {
+      algorithm,
+      totalCommunities: response.total,
+      limit,
+    });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.graph.getCommunities.
- *
- * @public
- */
-export const getCommunitiesEndpoint: XRPCEndpoint<GetCommunitiesParams, CommunitiesResponse> = {
-  method: 'pub.chive.graph.getCommunities' as never,
-  type: 'query',
-  description: 'Detect communities in the knowledge graph',
-  inputSchema: getCommunitiesParamsSchema,
-  outputSchema: communitiesResponseSchema,
-  handler: getCommunitiesHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: response };
+  },
 };

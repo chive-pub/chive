@@ -21,6 +21,7 @@ import type {
   CodeRepository,
   DataRepository,
   Preregistration,
+  Protocol,
 } from '@/lib/api/schema';
 
 // =============================================================================
@@ -218,6 +219,21 @@ const PREREG_PLATFORM_CONFIG: Record<string, PlatformConfig> = {
 };
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Normalizes a platform slug for icon/color lookup.
+ *
+ * @param platformSlug - Platform slug from lexicon (e.g., "github", "huggingface")
+ * @returns Normalized slug matching config keys
+ */
+function normalizePlatformSlug(platformSlug?: string): string {
+  if (!platformSlug) return 'other';
+  return platformSlug;
+}
+
+// =============================================================================
 // COMPONENTS
 // =============================================================================
 
@@ -227,27 +243,25 @@ const PREREG_PLATFORM_CONFIG: Record<string, PlatformConfig> = {
 function RepositoryCard({
   url,
   label,
-  platform,
-  platformName,
+  platformSlug,
   config,
   doi,
 }: {
   url?: string;
   label?: string;
-  /** @deprecated Use platformName for display, platform for icon lookup */
-  platform?: string;
-  /** Display name from knowledge graph concept */
-  platformName?: string;
+  /** Platform slug from lexicon (e.g., "github", "huggingface") */
+  platformSlug?: string;
   config: Record<string, PlatformConfig>;
   doi?: string;
 }) {
   if (!url) return null;
 
-  // Use platform slug for icon/color lookup, platformName for display
-  const platformConfig = config[platform ?? 'other'] ?? config.other;
+  // Normalize platform slug for icon/color lookup
+  const normalizedSlug = normalizePlatformSlug(platformSlug);
+  const platformConfig = config[normalizedSlug] ?? config.other;
   const Icon = platformConfig.icon;
-  // Prefer platformName (from knowledge graph) over config label
-  const displayLabel = label || platformName || platformConfig.label;
+  // Use label if provided, otherwise platform config label
+  const displayLabel = label || platformConfig.label;
 
   return (
     <a
@@ -279,11 +293,12 @@ function RepositoryCard({
 function PreregistrationCard({ prereg }: { prereg: Preregistration }) {
   if (!prereg.url) return null;
 
-  const platformConfig =
-    PREREG_PLATFORM_CONFIG[prereg.platform ?? 'other'] ?? PREREG_PLATFORM_CONFIG.other;
+  // Normalize platform slug for icon/color lookup
+  const normalizedSlug = normalizePlatformSlug(prereg.platformSlug);
+  const platformConfig = PREREG_PLATFORM_CONFIG[normalizedSlug] ?? PREREG_PLATFORM_CONFIG.other;
   const Icon = platformConfig.icon;
-  // Prefer platformName from knowledge graph over config label
-  const displayPlatform = prereg.platformName || platformConfig.label;
+  // Use platform config label for display
+  const displayPlatform = platformConfig.label;
 
   return (
     <a
@@ -367,8 +382,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   key={`code-${index}`}
                   url={repo.url}
                   label={repo.label}
-                  platform={repo.platform}
-                  platformName={repo.platformName}
+                  platformSlug={repo.platformSlug}
                   config={CODE_PLATFORM_CONFIG}
                 />
               ))}
@@ -389,8 +403,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   key={`data-${index}`}
                   url={repo.url}
                   label={repo.label}
-                  platform={repo.platform}
-                  platformName={repo.platformName}
+                  platformSlug={repo.platformSlug}
                   config={DATA_PLATFORM_CONFIG}
                   doi={repo.doi}
                 />
@@ -423,8 +436,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   key={`protocol-${index}`}
                   url={protocol.url}
                   label="Protocol"
-                  platform={protocol.platform}
-                  platformName={protocol.platformName}
+                  platformSlug={protocol.platformSlug}
                   config={{
                     protocols_io: {
                       label: 'protocols.io',

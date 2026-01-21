@@ -2,10 +2,10 @@ import { render, screen } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { PDFSelectionPopover } from './pdf-selection-popover';
 import { createMockTextSpanTarget } from '@/tests/mock-data';
-import type { TextSpanTarget } from '@/lib/api/schema';
+import type { UnifiedTextSpanTarget } from '@/lib/api/schema';
 
 describe('PDFSelectionPopover', () => {
-  const mockTarget: TextSpanTarget = createMockTextSpanTarget({
+  const mockTarget: UnifiedTextSpanTarget = createMockTextSpanTarget({
     selector: { type: 'TextQuoteSelector', exact: 'selected text' },
     refinedBy: { type: 'TextPositionSelector', start: 10, end: 25, pageNumber: 1 },
   });

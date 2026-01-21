@@ -1,0 +1,39 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.getPendingCount",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the count of pending governance proposals, used for notification badges",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "knownValues": ["type", "object"],
+            "description": "Filter by node kind"
+          },
+          "subkind": {
+            "type": "string",
+            "description": "Filter by subkind (field, institution, etc.)"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["count"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of pending proposals"
+            }
+          }
+        }
+      },
+      "errors": []
+    }
+  }
+}

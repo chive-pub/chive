@@ -5,7 +5,7 @@
  * @public
  */
 
-import type { ConsensusProgress } from '../../../schemas/governance.js';
+import type { ConsensusProgress } from '../../../../lexicons/generated/types/pub/chive/governance/getProposal.js';
 
 /**
  * Consensus calculation constants.

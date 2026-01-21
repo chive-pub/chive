@@ -1,0 +1,107 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.activity.getCorrelationMetrics",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get activity correlation metrics showing confirmation rates, latencies, and error counts by category (admin only)",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["metrics", "pendingCount"],
+          "properties": {
+            "metrics": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#metricsEntry"
+              }
+            },
+            "pendingCount": {
+              "type": "integer",
+              "description": "Current count of pending activities"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AuthorizationRequired" }]
+    },
+    "metricsEntry": {
+      "type": "object",
+      "description": "Correlation metrics for a time bucket and category",
+      "required": [
+        "hour",
+        "category",
+        "total",
+        "confirmed",
+        "failed",
+        "timeout",
+        "pending",
+        "confirmationRatePct"
+      ],
+      "properties": {
+        "hour": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Hour bucket timestamp"
+        },
+        "category": {
+          "type": "string",
+          "knownValues": [
+            "eprint_submit",
+            "eprint_update",
+            "eprint_delete",
+            "review_create",
+            "review_update",
+            "review_delete",
+            "endorsement_create",
+            "endorsement_delete",
+            "tag_create",
+            "tag_delete",
+            "profile_update",
+            "proposal_create",
+            "vote_create"
+          ],
+          "description": "Activity category"
+        },
+        "total": {
+          "type": "integer",
+          "description": "Total activities in this bucket"
+        },
+        "confirmed": {
+          "type": "integer",
+          "description": "Number of confirmed activities"
+        },
+        "failed": {
+          "type": "integer",
+          "description": "Number of failed activities"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Number of timed out activities"
+        },
+        "pending": {
+          "type": "integer",
+          "description": "Number of pending activities"
+        },
+        "confirmationRatePct": {
+          "type": "integer",
+          "description": "Confirmation rate as percentage (0-100)"
+        },
+        "avgLatencyMs": {
+          "type": "integer",
+          "description": "Average latency in milliseconds"
+        },
+        "p95LatencyMs": {
+          "type": "integer",
+          "description": "95th percentile latency in milliseconds"
+        }
+      }
+    }
+  }
+}

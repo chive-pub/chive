@@ -1,0 +1,61 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.revokeRole",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Revoke a user's governance role. Only accessible to administrators. Also revokes any active delegation.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did", "reason"],
+          "properties": {
+            "did": {
+              "type": "string",
+              "format": "did",
+              "description": "DID of the user whose role to revoke"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 1000,
+              "description": "Reason for revoking the role"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#elevationResult"
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "Unauthorized" },
+        { "name": "InvalidRequest" }
+      ]
+    },
+    "elevationResult": {
+      "type": "object",
+      "description": "Result of role operation",
+      "required": ["success", "message"],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the operation succeeded"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Request ID (if applicable)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable result message"
+        }
+      }
+    }
+  }
+}

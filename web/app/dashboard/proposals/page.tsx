@@ -10,16 +10,24 @@ import { cn } from '@/lib/utils';
 import type { ProposalStatus } from '@/lib/api/schema';
 
 /**
+ * Type guard for ProposalStatus.
+ */
+function isProposalStatus(status: string): status is ProposalStatus {
+  return ['open', 'approved', 'rejected', 'withdrawn', 'pending', 'expired'].includes(status);
+}
+
+/**
  * Status icon component.
  */
-function StatusIcon({ status }: { status: ProposalStatus }) {
+function StatusIcon({ status }: { status: string }) {
   switch (status) {
     case 'approved':
       return <CheckCircle className="h-4 w-4 text-green-500" />;
     case 'rejected':
       return <XCircle className="h-4 w-4 text-red-500" />;
-    case 'expired':
+    case 'withdrawn':
       return <Timer className="h-4 w-4 text-muted-foreground" />;
+    case 'open':
     default:
       return <Clock className="h-4 w-4 text-amber-500" />;
   }
@@ -28,16 +36,15 @@ function StatusIcon({ status }: { status: ProposalStatus }) {
 /**
  * Status badge variant.
  */
-function getStatusVariant(
-  status: ProposalStatus
-): 'default' | 'secondary' | 'destructive' | 'outline' {
+function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (status) {
     case 'approved':
       return 'default';
     case 'rejected':
       return 'destructive';
-    case 'expired':
+    case 'withdrawn':
       return 'secondary';
+    case 'open':
     default:
       return 'outline';
   }

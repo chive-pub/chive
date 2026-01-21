@@ -1,20 +1,30 @@
 import { render, screen, waitFor } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
   EndorsementPanel,
   EndorsementSummaryCompact,
   EndorsementIndicator,
 } from './endorsement-panel';
 import { createMockEndorsementSummary, createMockEndorsementsResponse } from '@/tests/mock-data';
+import type { EndorsementSummary } from '@/lib/api/schema';
 
 // Mock functions must be hoisted along with vi.mock
-const { mockGet } = vi.hoisted(() => ({
-  mockGet: vi.fn(),
+const { mockListForEprint, mockGetSummary } = vi.hoisted(() => ({
+  mockListForEprint: vi.fn(),
+  mockGetSummary: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockGet,
+    pub: {
+      chive: {
+        endorsement: {
+          listForEprint: mockListForEprint,
+          getSummary: mockGetSummary,
+        },
+      },
+    },
   },
 }));
 
@@ -27,7 +37,8 @@ describe('EndorsementPanel', () => {
 
   describe('loading state', () => {
     it('shows skeletons while loading', () => {
-      mockGet.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockGetSummary.mockImplementation(() => new Promise(() => {})); // Never resolves
+      mockListForEprint.mockImplementation(() => new Promise(() => {})); // Never resolves
 
       render(<EndorsementPanel eprintUri={eprintUri} />);
 
@@ -38,10 +49,8 @@ describe('EndorsementPanel', () => {
 
   describe('error state', () => {
     it('shows error message when summary fetch fails', async () => {
-      mockGet.mockResolvedValue({
-        data: null,
-        error: { message: 'Failed to fetch' },
-      });
+      mockGetSummary.mockRejectedValue(new Error('Failed to fetch'));
+      mockListForEprint.mockRejectedValue(new Error('Failed to fetch'));
 
       render(<EndorsementPanel eprintUri={eprintUri} />);
 
@@ -58,22 +67,15 @@ describe('EndorsementPanel', () => {
           methodological: 5,
           analytical: 3,
           empirical: 2,
-        },
+        } as EndorsementSummary['byType'],
         total: 10,
         endorserCount: 8,
       });
 
       const mockEndorsements = createMockEndorsementsResponse();
 
-      mockGet.mockImplementation(async (url: string) => {
-        if (url.includes('getSummary')) {
-          return { data: mockSummary, error: null };
-        }
-        if (url.includes('listForEprint')) {
-          return { data: mockEndorsements, error: null };
-        }
-        return { data: null, error: null };
-      });
+      mockGetSummary.mockResolvedValue({ data: mockSummary });
+      mockListForEprint.mockResolvedValue({ data: mockEndorsements });
     });
 
     it('renders panel with title', async () => {
@@ -146,22 +148,15 @@ describe('EndorsementPanel', () => {
         byType: {
           methodological: 5,
           analytical: 3,
-        },
+        } as EndorsementSummary['byType'],
         total: 8,
         endorserCount: 6,
       });
 
       const mockEndorsements = createMockEndorsementsResponse();
 
-      mockGet.mockImplementation(async (url: string) => {
-        if (url.includes('getSummary')) {
-          return { data: mockSummary, error: null };
-        }
-        if (url.includes('listForEprint')) {
-          return { data: mockEndorsements, error: null };
-        }
-        return { data: null, error: null };
-      });
+      mockGetSummary.mockResolvedValue({ data: mockSummary });
+      mockListForEprint.mockResolvedValue({ data: mockEndorsements });
     });
 
     it('renders filter dropdown', async () => {
@@ -246,7 +241,7 @@ describe('EndorsementSummaryCompact', () => {
   });
 
   it('shows skeleton while loading', () => {
-    mockGet.mockImplementation(() => new Promise(() => {}));
+    mockGetSummary.mockImplementation(() => new Promise(() => {}));
 
     render(<EndorsementSummaryCompact eprintUri={eprintUri} />);
 
@@ -255,12 +250,12 @@ describe('EndorsementSummaryCompact', () => {
 
   it('renders badge group when data loaded', async () => {
     const mockSummary = createMockEndorsementSummary({
-      byType: { methodological: 3, analytical: 2 },
+      byType: { methodological: 3, analytical: 2 } as EndorsementSummary['byType'],
       total: 5,
       endorserCount: 4,
     });
 
-    mockGet.mockResolvedValue({ data: mockSummary, error: null });
+    mockGetSummary.mockResolvedValue({ data: mockSummary });
 
     render(<EndorsementSummaryCompact eprintUri={eprintUri} />);
 
@@ -271,12 +266,12 @@ describe('EndorsementSummaryCompact', () => {
 
   it('returns null when no endorsements', async () => {
     const mockSummary = createMockEndorsementSummary({
-      byType: {},
+      byType: {} as EndorsementSummary['byType'],
       total: 0,
       endorserCount: 0,
     });
 
-    mockGet.mockResolvedValue({ data: mockSummary, error: null });
+    mockGetSummary.mockResolvedValue({ data: mockSummary });
 
     const { container } = render(<EndorsementSummaryCompact eprintUri={eprintUri} />);
 
@@ -294,7 +289,7 @@ describe('EndorsementIndicator', () => {
   });
 
   it('shows skeleton while loading', () => {
-    mockGet.mockImplementation(() => new Promise(() => {}));
+    mockGetSummary.mockImplementation(() => new Promise(() => {}));
 
     render(<EndorsementIndicator eprintUri={eprintUri} />);
 
@@ -307,7 +302,7 @@ describe('EndorsementIndicator', () => {
       endorserCount: 8,
     });
 
-    mockGet.mockResolvedValue({ data: mockSummary, error: null });
+    mockGetSummary.mockResolvedValue({ data: mockSummary });
 
     render(<EndorsementIndicator eprintUri={eprintUri} />);
 
@@ -322,7 +317,7 @@ describe('EndorsementIndicator', () => {
       endorserCount: 0,
     });
 
-    mockGet.mockResolvedValue({ data: mockSummary, error: null });
+    mockGetSummary.mockResolvedValue({ data: mockSummary });
 
     const { container } = render(<EndorsementIndicator eprintUri={eprintUri} />);
 

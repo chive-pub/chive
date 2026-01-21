@@ -141,7 +141,7 @@ Key settings:
 Located in `fixtures/page-objects.ts`:
 
 - `HeaderComponent` - Navigation header
-- `HomePage` - Home page elements
+- `AlphaLandingPage` - Alpha landing page elements
 - `SearchPage` - Search functionality
 - `EprintPage` - Eprint details
 - `AuthorPage` - Author profiles

@@ -1,0 +1,43 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.metrics.recordDownload",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Record a download event for an eprint",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the eprint being downloaded"
+            },
+            "viewerDid": {
+              "type": "string",
+              "format": "did",
+              "description": "DID of the downloader (optional for anonymous downloads)"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the download was recorded"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidRequest" }, { "name": "NotFound" }]
+    }
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.activity.getFeed",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the authenticated user's activity feed with pagination",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by activity category",
+            "knownValues": [
+              "eprint_submit",
+              "eprint_update",
+              "eprint_delete",
+              "review_create",
+              "review_update",
+              "review_delete",
+              "endorsement_create",
+              "endorsement_delete",
+              "tag_create",
+              "tag_delete",
+              "profile_update",
+              "proposal_create",
+              "vote_create"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by activity status",
+            "knownValues": ["pending", "confirmed", "failed", "timeout"]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["activities", "hasMore"],
+          "properties": {
+            "activities": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#activityView"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    },
+    "activityView": {
+      "type": "object",
+      "description": "View of an activity log entry",
+      "required": [
+        "id",
+        "actorDid",
+        "collection",
+        "rkey",
+        "action",
+        "category",
+        "status",
+        "initiatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique activity identifier (UUID)"
+        },
+        "actorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of user who initiated the action"
+        },
+        "collection": {
+          "type": "string",
+          "description": "NSID of the record collection"
+        },
+        "rkey": {
+          "type": "string",
+          "description": "Record key"
+        },
+        "action": {
+          "type": "string",
+          "knownValues": ["create", "update", "delete"],
+          "description": "Action type"
+        },
+        "category": {
+          "type": "string",
+          "knownValues": [
+            "eprint_submit",
+            "eprint_update",
+            "eprint_delete",
+            "review_create",
+            "review_update",
+            "review_delete",
+            "endorsement_create",
+            "endorsement_delete",
+            "tag_create",
+            "tag_delete",
+            "profile_update",
+            "proposal_create",
+            "vote_create"
+          ],
+          "description": "Semantic activity category"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "confirmed", "failed", "timeout"],
+          "description": "Activity status"
+        },
+        "initiatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When user initiated the action"
+        },
+        "confirmedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When firehose confirmed the action"
+        },
+        "firehoseUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI from firehose confirmation"
+        },
+        "firehoseCid": {
+          "type": "string",
+          "description": "CID from firehose confirmation"
+        },
+        "targetUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Target record URI"
+        },
+        "targetTitle": {
+          "type": "string",
+          "description": "Target record title for display"
+        },
+        "latencyMs": {
+          "type": "integer",
+          "description": "Latency from UI initiation to firehose confirmation (milliseconds)"
+        },
+        "errorCode": {
+          "type": "string",
+          "description": "Error code if activity failed"
+        },
+        "errorMessage": {
+          "type": "string",
+          "description": "Error message if activity failed"
+        }
+      }
+    }
+  }
+}

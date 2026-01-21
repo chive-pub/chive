@@ -4,7 +4,10 @@ import { cn } from '@/lib/utils';
 import { ArrowUpRight, ArrowDownRight, Users, Sparkles, BookOpen, Link2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-type RelationshipType =
+/**
+ * Known relationship types with defined display configurations.
+ */
+type KnownRelationshipType =
   | 'cites'
   | 'cited-by'
   | 'co-cited'
@@ -12,6 +15,18 @@ type RelationshipType =
   | 'semantically-similar'
   | 'same-author'
   | 'same-topic';
+
+/**
+ * RelationshipType accepts known types plus any string for forward compatibility.
+ */
+export type RelationshipType = KnownRelationshipType | (string & {});
+
+/**
+ * Type guard for known relationship types.
+ */
+function isKnownRelationshipType(type: string): type is KnownRelationshipType {
+  return type in relationshipConfig;
+}
 
 /**
  * Props for RelationshipBadge component.
@@ -26,7 +41,7 @@ export interface RelationshipBadgeProps {
 }
 
 const relationshipConfig: Record<
-  RelationshipType,
+  KnownRelationshipType,
   { label: string; description: string; icon: React.ElementType; color: string }
 > = {
   cites: {
@@ -74,6 +89,16 @@ const relationshipConfig: Record<
 };
 
 /**
+ * Default configuration for unknown relationship types.
+ */
+const defaultConfig = {
+  label: 'Related',
+  description: 'Related paper',
+  icon: Link2,
+  color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
+};
+
+/**
  * Badge showing the relationship type between papers.
  *
  * @example
@@ -83,7 +108,7 @@ const relationshipConfig: Record<
  * ```
  */
 export function RelationshipBadge({ type, score, className }: RelationshipBadgeProps) {
-  const config = relationshipConfig[type];
+  const config = isKnownRelationshipType(type) ? relationshipConfig[type] : defaultConfig;
   const Icon = config.icon;
 
   return (

@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.metrics.getViewCount",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get simple view count for an eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["count"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total view count"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    }
+  }
+}

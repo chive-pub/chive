@@ -1,0 +1,39 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.alpha.checkStatus",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Check the authenticated user's alpha tester application status. Requires authentication.",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "knownValues": ["none", "pending", "approved", "rejected"],
+              "description": "Application status"
+            },
+            "appliedAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Application submission timestamp"
+            },
+            "reviewedAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Application review timestamp"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    }
+  }
+}

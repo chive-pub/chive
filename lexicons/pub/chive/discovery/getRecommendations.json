@@ -1,0 +1,156 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.discovery.getRecommendations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get personalized paper recommendations based on research profile, claimed papers, and interaction history. Supports graph-based recommendations via the 'graph' signal.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Maximum number of recommendations"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "knownValues": ["fields", "citations", "collaborators", "trending", "graph"]
+            },
+            "description": "Signal types to include. 'graph' adds co-citation and PageRank-based recommendations."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["recommendations", "hasMore"],
+          "properties": {
+            "recommendations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#recommendedEprint"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "ServiceUnavailable" }]
+    },
+    "recommendedEprint": {
+      "type": "object",
+      "required": ["uri", "title", "score", "explanation"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "title": {
+          "type": "string"
+        },
+        "abstract": {
+          "type": "string"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#author"
+          }
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "publicationDate": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Relevance score (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "explanation": {
+          "type": "ref",
+          "ref": "#recommendationExplanation"
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "recommendationExplanation": {
+      "type": "object",
+      "required": ["type", "text", "weight"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "knownValues": ["semantic", "citation", "concept", "collaborator", "fields", "trending"],
+          "description": "Type of recommendation signal"
+        },
+        "text": {
+          "type": "string",
+          "description": "Human-readable explanation"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Signal weight (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "data": {
+          "type": "ref",
+          "ref": "#explanationData"
+        }
+      }
+    },
+    "explanationData": {
+      "type": "object",
+      "properties": {
+        "similarPaperTitle": {
+          "type": "string",
+          "description": "Title of paper that triggered similarity match"
+        },
+        "sharedCitations": {
+          "type": "integer",
+          "description": "Number of shared citations"
+        },
+        "matchingConcepts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Concepts that matched user interests"
+        }
+      }
+    }
+  }
+}

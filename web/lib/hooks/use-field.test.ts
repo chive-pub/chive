@@ -2,22 +2,26 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createWrapper } from '@/tests/test-utils';
-import {
-  createMockFieldDetail,
-  createMockFieldList,
-  createMockFieldSummary,
-} from '@/tests/mock-data';
+import { createMockFieldDetail, createMockFieldList } from '@/tests/mock-data';
 
 import { fieldKeys, useField, useFields, useFieldWithRelations } from './use-field';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet } = vi.hoisted(() => ({
-  mockApiGet: vi.fn(),
+const { mockGetNode, mockListNodes } = vi.hoisted(() => ({
+  mockGetNode: vi.fn(),
+  mockListNodes: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
+    pub: {
+      chive: {
+        graph: {
+          getNode: mockGetNode,
+          listNodes: mockListNodes,
+        },
+      },
+    },
   },
 }));
 
@@ -73,9 +77,8 @@ describe('useField', () => {
 
   it('fetches field by ID', async () => {
     const mockField = createMockFieldDetail();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetNode.mockResolvedValueOnce({
       data: mockField,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -86,21 +89,16 @@ describe('useField', () => {
     });
 
     expect(result.current.data?.id).toBe(mockField.id);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getNode', {
-      params: {
-        query: expect.objectContaining({
-          id: 'machine-learning',
-          includeEdges: false,
-        }),
-      },
+    expect(mockGetNode).toHaveBeenCalledWith({
+      id: 'machine-learning',
+      includeEdges: false,
     });
   });
 
   it('fetches field with edges', async () => {
     const mockField = createMockFieldDetail();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetNode.mockResolvedValueOnce({
       data: mockField,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -116,13 +114,9 @@ describe('useField', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.getNode', {
-      params: {
-        query: expect.objectContaining({
-          id: 'machine-learning',
-          includeEdges: true,
-        }),
-      },
+    expect(mockGetNode).toHaveBeenCalledWith({
+      id: 'machine-learning',
+      includeEdges: true,
     });
   });
 
@@ -134,10 +128,7 @@ describe('useField', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Field not found' },
-    });
+    mockGetNode.mockRejectedValueOnce(new Error('Field not found'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useField('invalid-field'), { wrapper: Wrapper });
@@ -166,9 +157,8 @@ describe('useFields', () => {
       hasMore: false,
       total: 3,
     };
-    mockApiGet.mockResolvedValueOnce({
+    mockListNodes.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -179,13 +169,11 @@ describe('useFields', () => {
     });
 
     expect(result.current.data?.fields).toHaveLength(3);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.listNodes', {
-      params: {
-        query: expect.objectContaining({
-          subkind: 'field',
-        }),
-      },
-    });
+    expect(mockListNodes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subkind: 'field',
+      })
+    );
   });
 
   it('fetches fields with status filter', async () => {
@@ -200,9 +188,8 @@ describe('useFields', () => {
       hasMore: false,
       total: 2,
     };
-    mockApiGet.mockResolvedValueOnce({
+    mockListNodes.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -219,14 +206,11 @@ describe('useFields', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.listNodes', {
-      params: {
-        query: expect.objectContaining({
-          subkind: 'field',
-          status: 'established',
-          limit: 20,
-        }),
-      },
+    expect(mockListNodes).toHaveBeenCalledWith({
+      subkind: 'field',
+      status: 'established',
+      limit: 20,
+      cursor: undefined,
     });
   });
 });
@@ -238,7 +222,7 @@ describe('useFieldWithRelations', () => {
 
   it('fetches field with resolved relations', async () => {
     const mockField = createMockFieldDetail();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetNode.mockResolvedValueOnce({
       data: {
         ...mockField,
         edges: [
@@ -252,25 +236,16 @@ describe('useFieldWithRelations', () => {
           },
         ],
       },
-      error: undefined,
     });
 
     // Mock the related node lookup
-    mockApiGet.mockResolvedValueOnce({
+    mockGetNode.mockResolvedValueOnce({
       data: {
-        nodes: [
-          {
-            id: 'cs',
-            uri: 'at://did:plc:gov/pub.chive.graph.node/cs',
-            label: 'Computer Science',
-            status: 'established',
-          },
-        ],
-        cursor: undefined,
-        hasMore: false,
-        total: 1,
+        id: 'cs',
+        uri: 'at://did:plc:gov/pub.chive.graph.node/cs',
+        label: 'Computer Science',
+        status: 'established',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();

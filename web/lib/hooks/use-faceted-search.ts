@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
-import { APIError } from '@/lib/errors';
 
 /**
  * Facet value with count.
@@ -124,24 +123,13 @@ export function useFacetedSearch(params: UseFacetedSearchParams) {
   return useQuery({
     queryKey: facetedSearchKeys.search(params),
     queryFn: async (): Promise<FacetedSearchResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.browseFaceted', {
-        params: {
-          query: {
-            q: params.q,
-            facets: params.facets ? params.facets : undefined,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-          },
-        },
+      const response = await api.pub.chive.graph.browseFaceted({
+        q: params.q,
+        facets: params.facets ? JSON.stringify(params.facets) : undefined,
+        limit: params.limit ?? 20,
+        cursor: params.cursor,
       });
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search with facets',
-          undefined,
-          '/xrpc/pub.chive.graph.browseFaceted'
-        );
-      }
-      return data as FacetedSearchResponse;
+      return response.data as FacetedSearchResponse;
     },
     enabled: hasFilters || params.limit !== undefined,
     staleTime: 30 * 1000, // 30 seconds
@@ -161,22 +149,11 @@ export function useFacetCounts(currentFilters: DynamicFacetFilters = {}) {
   return useQuery({
     queryKey: facetedSearchKeys.counts(currentFilters),
     queryFn: async (): Promise<FacetDefinition[]> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.browseFaceted', {
-        params: {
-          query: {
-            facets: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
-            limit: 0, // Don't return results, just facets
-          },
-        },
+      const response = await api.pub.chive.graph.browseFaceted({
+        facets: Object.keys(currentFilters).length > 0 ? JSON.stringify(currentFilters) : undefined,
+        limit: 0, // Don't return results, just facets
       });
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch facet counts',
-          undefined,
-          '/xrpc/pub.chive.graph.browseFaceted'
-        );
-      }
-      return (data as FacetedSearchResponse).facets;
+      return (response.data as FacetedSearchResponse).facets;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -192,24 +169,13 @@ export function useLiveFacetedSearch(params: UseFacetedSearchParams) {
   return useQuery({
     queryKey: ['live-faceted-search', params],
     queryFn: async (): Promise<FacetedSearchResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.browseFaceted', {
-        params: {
-          query: {
-            q: params.q,
-            facets: params.facets ? params.facets : undefined,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-          },
-        },
+      const response = await api.pub.chive.graph.browseFaceted({
+        q: params.q,
+        facets: params.facets ? JSON.stringify(params.facets) : undefined,
+        limit: params.limit ?? 20,
+        cursor: params.cursor,
       });
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search with facets',
-          undefined,
-          '/xrpc/pub.chive.graph.browseFaceted'
-        );
-      }
-      return data as FacetedSearchResponse;
+      return response.data as FacetedSearchResponse;
     },
     enabled: hasFilters,
     staleTime: 10 * 1000, // 10 seconds

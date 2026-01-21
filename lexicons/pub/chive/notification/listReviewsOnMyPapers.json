@@ -1,0 +1,107 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.notification.listReviewsOnMyPapers",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List reviews/comments on papers authored by the current user",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "unreadOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only return unread notifications"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["notifications"],
+          "properties": {
+            "notifications": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#reviewNotification"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "unreadCount": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    },
+    "reviewNotification": {
+      "type": "object",
+      "required": ["uri", "eprintUri", "reviewer", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Review AT-URI"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "eprintTitle": {
+          "type": "string"
+        },
+        "reviewer": {
+          "type": "ref",
+          "ref": "#authorRef"
+        },
+        "preview": {
+          "type": "string",
+          "description": "Preview of review content"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "isRead": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

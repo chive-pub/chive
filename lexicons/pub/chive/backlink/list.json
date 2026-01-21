@@ -1,0 +1,117 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.backlink.list",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List backlinks to an eprint from ATProto ecosystem sources including Semble collections, Leaflet lists, Whitewind blogs, and Bluesky shares",
+      "parameters": {
+        "type": "params",
+        "required": ["targetUri"],
+        "properties": {
+          "targetUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the target eprint"
+          },
+          "sourceType": {
+            "type": "string",
+            "knownValues": [
+              "semble.collection",
+              "leaflet.list",
+              "whitewind.blog",
+              "bluesky.post",
+              "bluesky.embed",
+              "other"
+            ],
+            "description": "Filter by source type"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of backlinks to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["backlinks", "hasMore"],
+          "properties": {
+            "backlinks": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#backlink"
+              },
+              "description": "List of backlinks"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    },
+    "backlink": {
+      "type": "object",
+      "description": "Backlink record",
+      "required": ["id", "sourceUri", "sourceType", "targetUri", "indexedAt", "deleted"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Backlink ID"
+        },
+        "sourceUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the source record"
+        },
+        "sourceType": {
+          "type": "string",
+          "knownValues": [
+            "semble.collection",
+            "leaflet.list",
+            "whitewind.blog",
+            "bluesky.post",
+            "bluesky.embed",
+            "other"
+          ],
+          "description": "Type of the source record"
+        },
+        "targetUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the target eprint"
+        },
+        "context": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional context about the backlink"
+        },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Timestamp when the backlink was indexed"
+        },
+        "deleted": {
+          "type": "boolean",
+          "description": "Whether the backlink has been deleted"
+        }
+      }
+    }
+  }
+}

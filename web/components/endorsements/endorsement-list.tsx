@@ -30,7 +30,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
 import type { Endorsement, ContributionType } from '@/lib/api/schema';
-import { CONTRIBUTION_CONFIG } from './endorsement-badge';
+import { getContributionConfig } from './endorsement-badge';
 
 // =============================================================================
 // TYPES
@@ -150,7 +150,7 @@ export function EndorsementItem({
 
           {/* Contribution type badges */}
           {visibleContributions.map((type) => {
-            const config = CONTRIBUTION_CONFIG[type];
+            const config = getContributionConfig(type);
             const Icon = config.icon;
             return (
               <Badge
@@ -174,7 +174,7 @@ export function EndorsementItem({
                 </TooltipTrigger>
                 <TooltipContent>
                   {contributions.slice(maxBadges).map((type) => (
-                    <p key={type}>{CONTRIBUTION_CONFIG[type].label}</p>
+                    <p key={type}>{getContributionConfig(type).label}</p>
                   ))}
                 </TooltipContent>
               </Tooltip>

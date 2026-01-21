@@ -77,32 +77,40 @@ import type { GovernanceRole, EditorStatus, ReputationMetrics } from './trusted-
 
 /**
  * Trusted editor record.
+ *
+ * @remarks
+ * Uses open union for role to be compatible with lexicon-generated types.
  */
 export interface TrustedEditorRecord {
   did: string;
   handle?: string;
   displayName?: string;
-  role: GovernanceRole;
+  role: GovernanceRole | (string & {});
   roleGrantedAt: number;
   roleGrantedBy?: string;
   hasDelegation: boolean;
   delegationExpiresAt?: number;
-  recordsCreatedToday: number;
-  dailyRateLimit: number;
+  recordsCreatedToday?: number;
+  dailyRateLimit?: number;
   metrics: ReputationMetrics;
 }
 
 /**
  * Pending elevation request.
+ *
+ * @remarks
+ * Uses open union for roles and string for requestedAt to be compatible
+ * with lexicon-generated types.
  */
 export interface ElevationRequest {
   id: string;
   did: string;
   handle?: string;
   displayName?: string;
-  requestedRole: GovernanceRole;
-  currentRole: GovernanceRole;
-  requestedAt: number;
+  requestedRole: GovernanceRole | (string & {});
+  currentRole: GovernanceRole | (string & {});
+  /** Request timestamp (ISO string or Unix timestamp) */
+  requestedAt: string | number;
   metrics: ReputationMetrics;
   verificationNotes?: string;
 }
@@ -158,8 +166,11 @@ export interface GovernanceAdminDashboardProps {
 
 /**
  * Role display configuration.
+ *
+ * @remarks
+ * Uses string index for compatibility with lexicon's open union types.
  */
-const ROLE_CONFIG: Record<GovernanceRole, { label: string; icon: typeof Shield; color: string }> = {
+const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield; color: string }> = {
   'community-member': {
     label: 'Community',
     icon: Shield,
@@ -436,7 +447,12 @@ export function GovernanceAdminDashboard({
                   </TableRow>
                 ) : (
                   filteredEditors.map((editor) => {
-                    const roleConfig = ROLE_CONFIG[editor.role];
+                    // Fallback for unknown roles (forward compatibility)
+                    const roleConfig = ROLE_CONFIG[editor.role] ?? {
+                      label: editor.role,
+                      icon: Shield,
+                      color: 'text-muted-foreground',
+                    };
                     const RoleIcon = roleConfig.icon;
                     return (
                       <TableRow key={editor.did}>
@@ -549,8 +565,18 @@ export function GovernanceAdminDashboard({
               ) : (
                 <div className="space-y-4">
                   {elevationRequests.map((request) => {
-                    const requestedConfig = ROLE_CONFIG[request.requestedRole];
+                    // Fallback for unknown roles (forward compatibility)
+                    const requestedConfig = ROLE_CONFIG[request.requestedRole] ?? {
+                      label: request.requestedRole,
+                      icon: Shield,
+                      color: 'text-muted-foreground',
+                    };
                     const RequestedIcon = requestedConfig.icon;
+                    // Handle both ISO string and Unix timestamp formats
+                    const requestDate =
+                      typeof request.requestedAt === 'string'
+                        ? new Date(request.requestedAt)
+                        : new Date(request.requestedAt);
                     return (
                       <div
                         key={request.id}
@@ -570,9 +596,7 @@ export function GovernanceAdminDashboard({
                             <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                               <span>Reputation: {request.metrics.reputationScore.toFixed(2)}</span>
                               <span>|</span>
-                              <span>
-                                Requested: {new Date(request.requestedAt).toLocaleDateString()}
-                              </span>
+                              <span>Requested: {requestDate.toLocaleDateString()}</span>
                             </div>
                           </div>
                         </div>
@@ -724,7 +748,10 @@ export function GovernanceAdminDashboard({
             <DialogTitle>Review Elevation Request</DialogTitle>
             <DialogDescription>
               {elevationDialog?.displayName || elevationDialog?.handle} is requesting elevation to{' '}
-              {elevationDialog && ROLE_CONFIG[elevationDialog.requestedRole].label}.
+              {elevationDialog &&
+                (ROLE_CONFIG[elevationDialog.requestedRole]?.label ??
+                  elevationDialog.requestedRole)}
+              .
             </DialogDescription>
           </DialogHeader>
           {elevationDialog && (

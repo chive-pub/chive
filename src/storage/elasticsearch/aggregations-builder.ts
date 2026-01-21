@@ -89,7 +89,7 @@ export const DEFAULT_AGGREGATION_CONFIG: Required<FacetAggregationConfig> = {
  * - form_genre: Document types
  *
  * **Common Facets:**
- * - subjects: Field nodes (legacy)
+ * - subjects: Field nodes
  * - author: Author names (nested aggregation)
  * - year: Publication year (date histogram)
  * - language: Document language

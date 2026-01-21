@@ -1,0 +1,58 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.sync.verify",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Verify the sync state of a record",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the record to verify"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "indexed", "inSync"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the record"
+            },
+            "indexed": {
+              "type": "boolean",
+              "description": "Whether the record is indexed"
+            },
+            "inSync": {
+              "type": "boolean",
+              "description": "Whether the indexed record is in sync with the PDS"
+            },
+            "indexedAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "When the record was indexed"
+            },
+            "lastSyncedAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "When the record was last synced"
+            },
+            "staleDays": {
+              "type": "integer",
+              "description": "Number of days since last sync if stale"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidRequest" }]
+    }
+  }
+}

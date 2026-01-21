@@ -15,10 +15,9 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 
 import {
-  contributionTypeUuid,
-  fieldUuid,
-  facetUuid,
-  conceptUuid,
+  nodeUuid,
+  uuidv5,
+  CHIVE_NAMESPACE,
 } from '../../../../scripts/db/lib/deterministic-uuid.js';
 
 // =============================================================================
@@ -53,6 +52,30 @@ function createMockRecord(data: Record<string, unknown>): { get: (key: string) =
   return {
     get: (key: string) => data[key],
   };
+}
+
+// =============================================================================
+// Helper functions to generate UUIDs using new API
+// =============================================================================
+
+/** Generate UUID for contribution type using nodeUuid */
+function contributionTypeUuid(slug: string): string {
+  return nodeUuid('contribution-type', slug);
+}
+
+/** Generate UUID for field using nodeUuid */
+function fieldUuid(slug: string): string {
+  return nodeUuid('field', slug);
+}
+
+/** Generate UUID for facet using nodeUuid */
+function facetUuid(slug: string): string {
+  return nodeUuid('facet', slug);
+}
+
+/** Generate UUID for concept using concept-specific format */
+function conceptUuid(slug: string): string {
+  return uuidv5(CHIVE_NAMESPACE, `concept:${slug}`);
 }
 
 // =============================================================================

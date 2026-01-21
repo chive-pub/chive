@@ -1,5 +1,5 @@
 /**
- * Handler for pub.chive.sync.checkStaleness.
+ * XRPC handler for pub.chive.sync.checkStaleness.
  *
  * @remarks
  * Checks if a record's index is stale compared to PDS.
@@ -8,59 +8,35 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/sync/checkStaleness.js';
 import type { AtUri } from '../../../../types/atproto.js';
-import {
-  checkStalenessParamsSchema,
-  stalenessCheckResultSchema,
-  type CheckStalenessParams,
-  type StalenessCheckResult,
-} from '../../../schemas/sync.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.sync.checkStaleness.
- *
- * @param c - Hono context
- * @param params - Request parameters
- * @returns Staleness check result
+ * XRPC method for pub.chive.sync.checkStaleness.
  *
  * @public
  */
-export async function checkStalenessHandler(
-  c: Context<ChiveEnv>,
-  params: CheckStalenessParams
-): Promise<StalenessCheckResult> {
-  const logger = c.get('logger');
-  const { pdsSync } = c.get('services');
+export const checkStaleness: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const { pdsSync } = c.get('services');
 
-  logger.debug('Checking staleness', { uri: params.uri });
+    logger.debug('Checking staleness', { uri: params.uri });
 
-  const result = await pdsSync.checkStaleness(params.uri as AtUri);
+    const result = await pdsSync.checkStaleness(params.uri as AtUri);
 
-  return {
-    uri: result.uri,
-    isStale: result.isStale,
-    indexedCID: result.indexedCID,
-    pdsCID: result.pdsCID,
-    error: result.error?.message,
-  };
-}
+    const body: OutputSchema = {
+      uri: result.uri,
+      isStale: result.isStale,
+      indexedCid: result.indexedCID,
+      pdsCid: result.pdsCID,
+    };
 
-/**
- * Endpoint definition for pub.chive.sync.checkStaleness.
- *
- * @public
- */
-export const checkStalenessEndpoint: XRPCEndpoint<CheckStalenessParams, StalenessCheckResult> = {
-  method: 'pub.chive.sync.checkStaleness' as never,
-  type: 'query',
-  description: 'Check if a record is stale',
-  inputSchema: checkStalenessParamsSchema,
-  outputSchema: stalenessCheckResultSchema,
-  handler: checkStalenessHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body };
+  },
 };

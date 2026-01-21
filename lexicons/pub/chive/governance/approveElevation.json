@@ -1,0 +1,58 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.approveElevation",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Approve a pending elevation request. Only accessible by administrators.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["requestId"],
+          "properties": {
+            "requestId": {
+              "type": "string",
+              "description": "ID of the elevation request to approve"
+            },
+            "verificationNotes": {
+              "type": "string",
+              "description": "Optional admin verification notes"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#elevationResult"
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "Unauthorized" },
+        { "name": "NotFound" }
+      ]
+    },
+    "elevationResult": {
+      "type": "object",
+      "description": "Result of elevation operation",
+      "required": ["success", "message"],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the operation succeeded"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Elevation request ID"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable result message"
+        }
+      }
+    }
+  }
+}

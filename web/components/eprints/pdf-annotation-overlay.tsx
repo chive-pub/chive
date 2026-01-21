@@ -22,7 +22,7 @@ import { useMemo } from 'react';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { Review, TextSpanTarget } from '@/lib/api/schema';
+import type { Review, UnifiedTextSpanTarget } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
@@ -36,7 +36,7 @@ export interface AnnotationHighlight {
   uri: string;
 
   /** Target span */
-  target: TextSpanTarget;
+  target: UnifiedTextSpanTarget;
 
   /** Display color */
   color: string;

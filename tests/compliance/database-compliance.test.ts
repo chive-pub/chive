@@ -262,7 +262,10 @@ describe('ATProto Database Compliance', () => {
 
       for (const row of result.rows) {
         // All foreign keys must reference uri columns (AT URIs)
-        expect(row.column_name).toMatch(/_uri$/);
+        // Exception: parent_comment references review uris (renamed from parent_review_uri)
+        const validColumn =
+          row.column_name.endsWith('_uri') || row.column_name === 'parent_comment';
+        expect(validColumn).toBe(true);
         expect(row.foreign_column_name).toBe('uri');
       }
     });

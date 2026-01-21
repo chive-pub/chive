@@ -1,0 +1,174 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.getUserClaims",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get claims for the authenticated user",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "status": {
+            "type": "string",
+            "knownValues": ["pending", "approved", "rejected", "expired"],
+            "description": "Filter by claim status"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of claims to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["claims", "hasMore"],
+          "properties": {
+            "claims": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#claimWithPaper"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    },
+    "claimWithPaper": {
+      "type": "object",
+      "required": ["id", "importId", "claimantDid", "status", "createdAt", "paper"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Claim request ID"
+        },
+        "importId": {
+          "type": "integer",
+          "description": "ID of the imported eprint"
+        },
+        "claimantDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the claimant"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "approved", "rejected", "expired"],
+          "description": "Claim status"
+        },
+        "canonicalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the canonical record in user PDS"
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason for rejection if rejected"
+        },
+        "reviewedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the admin who reviewed"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was reviewed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim was created"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the claim expires"
+        },
+        "paper": {
+          "type": "ref",
+          "ref": "#paperDetails"
+        }
+      }
+    },
+    "paperDetails": {
+      "type": "object",
+      "required": ["source", "externalId", "externalUrl", "title", "authors"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source system"
+        },
+        "externalId": {
+          "type": "string",
+          "description": "Source-specific identifier"
+        },
+        "externalUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the eprint"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#externalAuthor"
+          },
+          "description": "Author list"
+        },
+        "publicationDate": {
+          "type": "string",
+          "description": "Publication date"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI if assigned"
+        }
+      }
+    },
+    "externalAuthor": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Institution affiliation"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.revokeDelegation",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Revoke an active PDS delegation. Only accessible to administrators.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["delegationId"],
+          "properties": {
+            "delegationId": {
+              "type": "string",
+              "description": "ID of the delegation to revoke"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#delegationResult"
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "Unauthorized" },
+        { "name": "NotFound" }
+      ]
+    },
+    "delegationResult": {
+      "type": "object",
+      "description": "Result of delegation operation",
+      "required": ["success", "message"],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the operation succeeded"
+        },
+        "delegationId": {
+          "type": "string",
+          "description": "Delegation ID"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable result message"
+        }
+      }
+    }
+  }
+}

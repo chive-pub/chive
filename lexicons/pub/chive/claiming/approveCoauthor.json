@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.approveCoauthor",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Approve a pending co-author request. Only the eprint owner can approve.",
+      "parameters": {
+        "type": "params",
+        "required": ["requestId"],
+        "properties": {
+          "requestId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "ID of the co-author request to approve"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the approval was successful"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to approve co-author requests"
+        },
+        {
+          "name": "Forbidden",
+          "description": "Only the eprint owner can approve co-author requests"
+        },
+        {
+          "name": "RequestNotFound",
+          "description": "The specified co-author request does not exist"
+        }
+      ]
+    }
+  }
+}

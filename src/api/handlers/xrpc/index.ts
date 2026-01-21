@@ -3,7 +3,7 @@
  *
  * @remarks
  * Aggregates all XRPC endpoints and provides route registration
- * for the Hono application.
+ * for the Hono application using ATProto-compliant XRPC conventions.
  *
  * @packageDocumentation
  * @public
@@ -11,9 +11,12 @@
 
 import type { Hono } from 'hono';
 
+import type { ValidationError as _ValidationError } from '../../../types/errors.js';
 import { XRPC_PATH_PREFIX } from '../../config.js';
-import { validateQuery, validateBody } from '../../middleware/validation.js';
 import type { ChiveEnv } from '../../types/context.js';
+import { xrpcErrorHandler } from '../../xrpc/error-handler.js';
+import { createXRPCRouter } from '../../xrpc/index.js';
+import { lexicons, getMethodType } from '../../xrpc/validation.js';
 
 // Re-export all endpoint modules
 export * from './activity/index.js';
@@ -34,47 +37,47 @@ export * from './sync/index.js';
 export * from './tag/index.js';
 export * from './notification/index.js';
 
-// Import endpoints for registration
-import { activityEndpoints } from './activity/index.js';
-import { actorEndpoints } from './actor/index.js';
-import { alphaEndpoints } from './alpha/index.js';
-import { authorEndpoints } from './author/index.js';
-import { backlinkEndpoints } from './backlink/index.js';
-import { claimingEndpoints, claimingRestEndpoints } from './claiming/index.js';
-import { discoveryEndpoints } from './discovery/index.js';
-import { endorsementEndpoints } from './endorsement/index.js';
-import { eprintEndpoints } from './eprint/index.js';
-import { governanceEndpoints } from './governance/index.js';
-import { graphEndpoints } from './graph/index.js';
-import { importEndpoints } from './import/index.js';
-import { metricsEndpoints } from './metrics/index.js';
-import { notificationEndpoints } from './notification/index.js';
-import { reviewEndpoints } from './review/index.js';
-import { syncEndpoints } from './sync/index.js';
-import { tagEndpoints } from './tag/index.js';
+// Import methods for registration
+import { activityMethods } from './activity/index.js';
+import { actorMethods } from './actor/index.js';
+import { alphaMethods } from './alpha/index.js';
+import { authorMethods } from './author/index.js';
+import { backlinkMethods } from './backlink/index.js';
+import { claimingMethods, claimingRestEndpoints } from './claiming/index.js';
+import { discoveryMethods } from './discovery/index.js';
+import { endorsementMethods } from './endorsement/index.js';
+import { eprintMethods } from './eprint/index.js';
+import { governanceMethods } from './governance/index.js';
+import { graphMethods } from './graph/index.js';
+import { importMethods } from './import/index.js';
+import { metricsMethods } from './metrics/index.js';
+import { notificationMethods } from './notification/index.js';
+import { reviewMethods } from './review/index.js';
+import { syncMethods } from './sync/index.js';
+import { tagMethods } from './tag/index.js';
 
 /**
- * All XRPC endpoints.
+ * All XRPC methods keyed by NSID.
  */
-export const allXRPCEndpoints = [
-  ...activityEndpoints,
-  ...actorEndpoints,
-  ...alphaEndpoints,
-  ...authorEndpoints,
-  ...backlinkEndpoints,
-  ...claimingEndpoints,
-  ...discoveryEndpoints,
-  ...endorsementEndpoints,
-  ...governanceEndpoints,
-  ...graphEndpoints,
-  ...importEndpoints,
-  ...metricsEndpoints,
-  ...notificationEndpoints,
-  ...eprintEndpoints,
-  ...reviewEndpoints,
-  ...syncEndpoints,
-  ...tagEndpoints,
-] as const;
+export const allXRPCMethods = {
+  ...activityMethods,
+  ...actorMethods,
+  ...alphaMethods,
+  ...authorMethods,
+  ...backlinkMethods,
+  ...claimingMethods,
+  ...discoveryMethods,
+  ...endorsementMethods,
+  ...eprintMethods,
+  ...governanceMethods,
+  ...graphMethods,
+  ...importMethods,
+  ...metricsMethods,
+  ...notificationMethods,
+  ...reviewMethods,
+  ...syncMethods,
+  ...tagMethods,
+} as const;
 
 /**
  * Registers all XRPC routes on a Hono app.
@@ -82,8 +85,10 @@ export const allXRPCEndpoints = [
  * @param app - Hono application instance
  *
  * @remarks
- * Routes are registered at `/xrpc/{nsid}` following ATProto conventions.
- * Query endpoints use GET, procedure endpoints use POST.
+ * Routes are registered at `/xrpc/{nsid}` following ATProto conventions:
+ * - Query endpoints use GET
+ * - Procedure endpoints use POST
+ * - Errors use flat ATProto format: `{ error: "Type", message: "..." }`
  *
  * @example
  * ```typescript
@@ -98,31 +103,29 @@ export const allXRPCEndpoints = [
  * @public
  */
 export function registerXRPCRoutes(app: Hono<ChiveEnv>): void {
-  // Register standard XRPC endpoints (JSON responses)
-  for (const endpoint of allXRPCEndpoints) {
-    const path = `${XRPC_PATH_PREFIX}/${endpoint.method}`;
-    // Cast schema to any to allow dynamic endpoint registration
-    // Type safety is maintained by individual endpoint definitions
-    const schema = endpoint.inputSchema as Parameters<typeof validateQuery>[0];
-    const handler = endpoint.handler as (c: unknown, params: unknown) => Promise<unknown>;
+  // Create XRPC router with lexicon validation
+  const xrpc = createXRPCRouter(lexicons, { validateOutput: false });
 
-    if (endpoint.type === 'query') {
-      app.get(path, validateQuery(schema), async (c) => {
-        const input = c.get('validatedInput');
-        const result = await handler(c, input);
-        return c.json(result);
-      });
-    } else {
-      // Procedure (POST)
-      app.post(path, validateBody(schema), async (c) => {
-        const input = c.get('validatedInput');
-        const result = await handler(c, input);
-        return c.json(result);
-      });
-    }
+  // Apply XRPC error handler to the router for ATProto-compliant error responses
+  xrpc.router.onError(xrpcErrorHandler);
+
+  // Register all XRPC methods using the router's method() function
+  for (const [nsid, method] of Object.entries(allXRPCMethods)) {
+    // Determine method type from lexicon or fallback to handler's type property
+    const methodType = getMethodType(nsid) ?? method.type ?? 'query';
+
+    // Register method with the XRPC router (adds lexicon validation)
+    // Type assertion needed due to generic type variance in XRPCMethod
+    xrpc.method(nsid, {
+      ...method,
+      type: methodType,
+    } as Parameters<typeof xrpc.method>[1]);
   }
 
-  // Register REST-style endpoints (binary/non-JSON responses)
+  // Mount XRPC router at /xrpc prefix
+  app.route(XRPC_PATH_PREFIX, xrpc.router);
+
+  // Register REST-style endpoints (binary/non-JSON responses) directly on app
   for (const endpoint of claimingRestEndpoints) {
     if (endpoint.method === 'GET') {
       app.get(endpoint.path, endpoint.handler);

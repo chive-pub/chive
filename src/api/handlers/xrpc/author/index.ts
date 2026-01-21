@@ -1,22 +1,20 @@
 /**
- * Author XRPC endpoints.
- *
- * @remarks
- * Exports all author-related XRPC endpoint definitions.
+ * Author XRPC method exports.
  *
  * @packageDocumentation
  * @public
  */
 
-import { getProfileEndpoint } from './getProfile.js';
-import { searchAuthorsEndpoint } from './searchAuthors.js';
+export { getProfile } from './getProfile.js';
+export { searchAuthors } from './searchAuthors.js';
 
-export { getProfileEndpoint, getProfileHandler } from './getProfile.js';
-export { searchAuthorsEndpoint, searchAuthorsHandler } from './searchAuthors.js';
+import { getProfile } from './getProfile.js';
+import { searchAuthors } from './searchAuthors.js';
 
 /**
- * All author endpoints.
- *
- * @public
+ * All author XRPC methods keyed by NSID.
  */
-export const authorEndpoints = [getProfileEndpoint, searchAuthorsEndpoint] as const;
+export const authorMethods = {
+  'pub.chive.author.getProfile': getProfile,
+  'pub.chive.author.searchAuthors': searchAuthors,
+} as const;

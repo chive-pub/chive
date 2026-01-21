@@ -2,18 +2,13 @@
  * Centralized error handling middleware.
  *
  * @remarks
- * Maps ChiveError types to HTTP responses with consistent JSON structure
- * following industry-standard API patterns (Stripe, GitHub).
+ * Maps ChiveError types to HTTP responses with ATProto-compliant flat format.
  *
  * Response format:
  * ```json
  * {
- *   "error": {
- *     "code": "NOT_FOUND",
- *     "message": "Eprint not found: at://did:plc:abc/...",
- *     "field": "uri",
- *     "requestId": "req_abc123"
- *   }
+ *   "error": "NotFound",
+ *   "message": "Eprint not found: at://did:plc:abc/..."
  * }
  * ```
  *
@@ -40,37 +35,20 @@ import type { ChiveEnv } from '../types/context.js';
  * Error response structure.
  *
  * @remarks
- * Matches Stripe/GitHub API error response patterns for client consistency.
+ * ATProto-compliant flat error format.
  *
  * @public
  */
 export interface ErrorResponse {
-  readonly error: {
-    /**
-     * Machine-readable error code.
-     */
-    readonly code: string;
+  /**
+   * Machine-readable error type.
+   */
+  readonly error: string;
 
-    /**
-     * Human-readable error message.
-     */
-    readonly message: string;
-
-    /**
-     * Field that caused the error (validation errors only).
-     */
-    readonly field?: string;
-
-    /**
-     * Seconds to wait before retrying (rate limit errors only).
-     */
-    readonly retryAfter?: number;
-
-    /**
-     * Request ID for correlation.
-     */
-    readonly requestId: string;
-  };
+  /**
+   * Human-readable error message.
+   */
+  readonly message: string;
 }
 
 /**
@@ -99,14 +77,40 @@ function getStatusCode(error: Error): HTTPStatusCode {
 }
 
 /**
+ * Maps ChiveError to ATProto error name.
+ *
+ * @param error - Error instance
+ * @returns ATProto error name
+ */
+function getErrorName(error: Error): string {
+  if (error instanceof ValidationError) {
+    return 'InvalidRequest';
+  }
+  if (error instanceof AuthenticationError) {
+    return 'AuthenticationRequired';
+  }
+  if (error instanceof AuthorizationError) {
+    return 'Forbidden';
+  }
+  if (error instanceof NotFoundError) {
+    return 'NotFound';
+  }
+  if (error instanceof RateLimitError) {
+    return 'RateLimitExceeded';
+  }
+  if (error instanceof ChiveError) {
+    return error.code;
+  }
+  return 'InternalServerError';
+}
+
+/**
  * Error handler for Hono application.
  *
  * @remarks
  * Handles all errors thrown in route handlers and middleware:
  * - ChiveError subclasses are mapped to appropriate HTTP status codes
- * - Error details are logged with request context
- * - Response includes request ID for support correlation
- * - Internal error details are not exposed in production
+ * - Returns ATProto-compliant flat error format
  *
  * @example
  * ```typescript
@@ -118,7 +122,6 @@ function getStatusCode(error: Error): HTTPStatusCode {
  */
 export const errorHandler: ErrorHandler<ChiveEnv> = (err, c) => {
   const logger = c.get('logger');
-  const requestId = c.get('requestId') ?? 'unknown';
 
   // Log error with appropriate severity
   if (err instanceof ChiveError) {
@@ -159,30 +162,21 @@ export const errorHandler: ErrorHandler<ChiveEnv> = (err, c) => {
 
   const statusCode = getStatusCode(err);
 
-  // Build error response
-  let response: ErrorResponse = {
-    error: {
-      code: err instanceof ChiveError ? err.code : 'INTERNAL_ERROR',
-      message:
-        err instanceof ChiveError
-          ? err.message
-          : statusCode === 500
-            ? 'An unexpected error occurred'
-            : err instanceof Error
-              ? err.message
-              : 'Unknown error',
-      requestId,
-    },
+  // Build ATProto-compliant flat error response
+  const response: ErrorResponse = {
+    error: getErrorName(err),
+    message:
+      err instanceof ChiveError
+        ? err.message
+        : statusCode === 500
+          ? 'An unexpected error occurred'
+          : err instanceof Error
+            ? err.message
+            : 'Unknown error',
   };
-
-  // Add field for validation errors
-  if (err instanceof ValidationError && err.field) {
-    response = { error: { ...response.error, field: err.field } };
-  }
 
   // Add retry-after for rate limit errors
   if (err instanceof RateLimitError) {
-    response = { error: { ...response.error, retryAfter: err.retryAfter } };
     c.header('Retry-After', String(err.retryAfter));
   }
 
@@ -190,31 +184,17 @@ export const errorHandler: ErrorHandler<ChiveEnv> = (err, c) => {
 };
 
 /**
- * Creates an error response object.
+ * Creates an ATProto-compliant error response object.
  *
  * @remarks
- * Utility function for creating standardized error responses in handlers.
+ * Utility function for creating standardized flat error responses.
  *
- * @param code - Error code
+ * @param error - Error type
  * @param message - Error message
- * @param requestId - Request ID for correlation
- * @param options - Additional error fields
  * @returns Error response object
  *
  * @public
  */
-export function createErrorResponse(
-  code: string,
-  message: string,
-  requestId: string,
-  options?: { field?: string; retryAfter?: number }
-): ErrorResponse {
-  return {
-    error: {
-      code,
-      message,
-      requestId,
-      ...options,
-    },
-  };
+export function createErrorResponse(error: string, message: string): ErrorResponse {
+  return { error, message };
 }

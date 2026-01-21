@@ -18,6 +18,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { APIError } from '@/lib/errors';
 import { api } from '@/lib/api/client';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import type {
+  PubChiveGraphListNodes,
+  PubChiveGovernanceListProposals,
+  PubChiveGovernanceGetProposal,
+  PubChiveGovernanceListVotes,
+  PubChiveGovernanceGetUserVote,
+} from '@/lib/api/client';
 
 // =============================================================================
 // TYPES
@@ -456,44 +463,38 @@ export function useContributionTypes(
   return useQuery({
     queryKey: contributionTypeKeys.typesList(params),
     queryFn: async (): Promise<{ types: CreditContributionType[]; cursor?: string }> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listNodes', {
-        params: {
-          query: {
-            subkind: 'contribution-type',
-            status: params.status as 'established' | 'provisional' | 'deprecated' | undefined,
-            limit: params.limit ?? 50,
-          },
-        },
+      const response = await api.pub.chive.graph.listNodes({
+        subkind: 'contribution-type',
+        status: params.status as 'established' | 'provisional' | 'deprecated' | undefined,
+        limit: params.limit ?? 50,
       });
 
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch contribution types',
-          undefined,
-          '/xrpc/pub.chive.graph.listNodes'
-        );
-      }
+      const data = response.data;
 
       // Map API response to our CreditContributionType interface
-      const types: CreditContributionType[] = (data.nodes ?? []).map((n) => ({
-        uri: n.uri,
-        id: n.id,
-        label: n.label,
-        description: n.description ?? '',
-        externalMappings: (n.externalIds ?? []).map((ext) => ({
-          system: ext.system,
-          identifier: ext.identifier,
-          uri: ext.uri ?? '',
-          matchType:
-            ext.matchType === 'exact'
-              ? 'exact-match'
-              : ext.matchType === 'close'
-                ? 'close-match'
-                : 'related-match',
-        })),
-        status: n.status as 'established' | 'provisional' | 'deprecated',
-        createdAt: n.createdAt,
-      }));
+      const types: CreditContributionType[] = (data.nodes ?? []).map(
+        (n: PubChiveGraphListNodes.GraphNode) => ({
+          uri: n.uri,
+          id: n.id,
+          label: n.label,
+          description: n.description ?? '',
+          externalMappings: (n.externalIds ?? []).map(
+            (ext: { system: string; identifier: string; uri?: string; matchType?: string }) => ({
+              system: ext.system,
+              identifier: ext.identifier,
+              uri: ext.uri ?? '',
+              matchType:
+                ext.matchType === 'exact'
+                  ? 'exact-match'
+                  : ext.matchType === 'close'
+                    ? 'close-match'
+                    : 'related-match',
+            })
+          ),
+          status: n.status as 'established' | 'provisional' | 'deprecated',
+          createdAt: n.createdAt,
+        })
+      );
 
       return { types, cursor: data.cursor };
     },
@@ -514,36 +515,28 @@ export function useContributionType(typeId: string, options: UseContributionType
   return useQuery({
     queryKey: contributionTypeKeys.type(typeId),
     queryFn: async (): Promise<CreditContributionType> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-        params: {
-          query: { id: typeId, includeEdges: false },
-        },
-      });
+      const response = await api.pub.chive.graph.getNode({ id: typeId, includeEdges: false });
 
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? `Contribution type "${typeId}" not found`,
-          404,
-          '/xrpc/pub.chive.graph.getNode'
-        );
-      }
+      const data = response.data;
 
       return {
         uri: data.uri,
         id: data.id,
         label: data.label,
         description: data.description ?? '',
-        externalMappings: (data.externalIds ?? []).map((m) => ({
-          system: m.system,
-          identifier: m.identifier,
-          uri: m.uri ?? '',
-          matchType:
-            m.matchType === 'exact'
-              ? 'exact-match'
-              : m.matchType === 'close'
-                ? 'close-match'
-                : 'related-match',
-        })),
+        externalMappings: (data.externalIds ?? []).map(
+          (m: { system: string; identifier: string; uri?: string; matchType?: string }) => ({
+            system: m.system,
+            identifier: m.identifier,
+            uri: m.uri ?? '',
+            matchType:
+              m.matchType === 'exact'
+                ? 'exact-match'
+                : m.matchType === 'close'
+                  ? 'close-match'
+                  : 'related-match',
+          })
+        ),
         status: data.status as 'established' | 'provisional' | 'deprecated',
         createdAt: data.createdAt,
       };
@@ -576,45 +569,37 @@ export function useContributionTypeProposals(
     }> => {
       // Note: 'contribution-type' is not a valid API category, use 'concept' instead
       // Contribution types are specialized concept nodes
-      const { data, error } = await api.GET('/xrpc/pub.chive.governance.listProposals', {
-        params: {
-          query: {
-            category: 'concept',
-            status: params.status,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-          },
-        },
+      const response = await api.pub.chive.governance.listProposals({
+        subkind: 'contribution-type',
+        status: params.status,
+        limit: params.limit ?? 20,
+        cursor: params.cursor,
       });
 
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch proposals',
-          undefined,
-          '/xrpc/pub.chive.governance.listProposals'
-        );
-      }
+      const data = response.data;
 
-      const proposals: ContributionTypeProposal[] = data.proposals.map((p) => ({
-        uri: p.uri,
-        proposalType: (p.type as 'create' | 'update' | 'deprecate') ?? 'create',
-        proposedId: p.id ?? '',
-        proposedLabel: p.label ?? '',
-        proposedDescription: p.changes?.description,
-        rationale: p.rationale ?? '',
-        proposerDid: p.proposedBy,
-        proposerName: p.proposerName,
-        status: p.status,
-        votes: {
-          approve: p.votes?.approve ?? 0,
-          reject: p.votes?.reject ?? 0,
-          abstain: p.votes?.abstain ?? 0,
-          weightedApprove: 0,
-          weightedReject: 0,
-          total: (p.votes?.approve ?? 0) + (p.votes?.reject ?? 0) + (p.votes?.abstain ?? 0),
-        },
-        createdAt: p.createdAt,
-      }));
+      const proposals: ContributionTypeProposal[] = data.proposals.map(
+        (p: PubChiveGovernanceListProposals.ProposalView) => ({
+          uri: p.uri,
+          proposalType: (p.type as 'create' | 'update' | 'deprecate') ?? 'create',
+          proposedId: p.id ?? '',
+          proposedLabel: p.label ?? '',
+          proposedDescription: p.changes?.description,
+          rationale: p.rationale ?? '',
+          proposerDid: p.proposedBy,
+          proposerName: p.proposerName,
+          status: p.status as 'pending' | 'approved' | 'rejected' | 'expired',
+          votes: {
+            approve: p.votes?.approve ?? 0,
+            reject: p.votes?.reject ?? 0,
+            abstain: p.votes?.abstain ?? 0,
+            weightedApprove: 0,
+            weightedReject: 0,
+            total: (p.votes?.approve ?? 0) + (p.votes?.reject ?? 0) + (p.votes?.abstain ?? 0),
+          },
+          createdAt: p.createdAt,
+        })
+      );
 
       return { proposals, cursor: data.cursor };
     },
@@ -638,21 +623,10 @@ export function useContributionTypeProposal(
   return useQuery({
     queryKey: contributionTypeKeys.proposal(proposalUri),
     queryFn: async (): Promise<ContributionTypeProposal> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.governance.getProposal', {
-        params: {
-          query: { proposalId: proposalUri },
-        },
-      });
+      const response = await api.pub.chive.governance.getProposal({ proposalId: proposalUri });
 
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Proposal not found',
-          404,
-          '/xrpc/pub.chive.governance.getProposal'
-        );
-      }
+      const p: PubChiveGovernanceGetProposal.ProposalView = response.data;
 
-      const p = data;
       return {
         uri: p.uri,
         proposalType: (p.type as 'create' | 'update' | 'deprecate') ?? 'create',
@@ -662,7 +636,7 @@ export function useContributionTypeProposal(
         rationale: p.rationale ?? '',
         proposerDid: p.proposedBy,
         proposerName: p.proposerName,
-        status: p.status,
+        status: p.status as 'pending' | 'approved' | 'rejected' | 'expired',
         votes: {
           approve: p.votes?.approve ?? 0,
           reject: p.votes?.reject ?? 0,
@@ -694,30 +668,25 @@ export function useContributionTypeProposalVotes(
   return useQuery({
     queryKey: contributionTypeKeys.proposalVotes(proposalUri),
     queryFn: async (): Promise<{ votes: ContributionTypeVote[] }> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.governance.listVotes', {
-        params: {
-          query: { proposalId: proposalUri, limit: 50 },
-        },
+      const response = await api.pub.chive.governance.listVotes({
+        proposalId: proposalUri,
+        limit: 50,
       });
 
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch votes',
-          undefined,
-          '/xrpc/pub.chive.governance.listVotes'
-        );
-      }
+      const data = response.data;
 
-      const votes: ContributionTypeVote[] = data.votes.map((v) => ({
-        uri: v.uri,
-        proposalUri: v.proposalUri,
-        voterDid: v.voterDid,
-        voterName: v.voterName,
-        value: v.vote as 'approve' | 'reject' | 'abstain',
-        weight: v.weight,
-        rationale: v.rationale,
-        createdAt: v.createdAt,
-      }));
+      const votes: ContributionTypeVote[] = data.votes.map(
+        (v: PubChiveGovernanceListVotes.VoteView) => ({
+          uri: v.uri,
+          proposalUri: v.proposalUri,
+          voterDid: v.voterDid,
+          voterName: v.voterName,
+          value: v.vote as 'approve' | 'reject' | 'abstain',
+          weight: v.weight,
+          rationale: v.rationale,
+          createdAt: v.createdAt,
+        })
+      );
 
       return { votes };
     },
@@ -742,32 +711,21 @@ export function useMyContributionTypeVote(
   return useQuery({
     queryKey: contributionTypeKeys.userVote(proposalUri, userDid),
     queryFn: async (): Promise<ContributionTypeVote | null> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.governance.getUserVote', {
-        params: {
-          query: { proposalId: proposalUri, userDid },
-        },
+      const response = await api.pub.chive.governance.getUserVote({
+        proposalId: proposalUri,
+        userDid,
       });
 
-      if (error) {
-        // Not found means no vote
-        if ((error as { status?: number }).status === 404) {
-          return null;
-        }
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch vote',
-          undefined,
-          '/xrpc/pub.chive.governance.getUserVote'
-        );
-      }
+      const data = response.data;
 
-      const v = data.vote;
+      const v = data.vote as PubChiveGovernanceGetUserVote.VoteView | undefined;
       if (!v) return null;
 
       return {
         uri: v.uri,
         proposalUri: v.proposalUri,
         voterDid: v.voterDid,
-        voterName: v.voterName,
+        voterName: undefined,
         value: v.vote as 'approve' | 'reject' | 'abstain',
         weight: v.weight,
         rationale: v.rationale,
@@ -789,17 +747,9 @@ export function usePendingContributionTypeProposalsCount(options: UseContributio
   return useQuery({
     queryKey: contributionTypeKeys.pendingCount(),
     queryFn: async (): Promise<number> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.governance.getPendingCount');
+      const response = await api.pub.chive.governance.getPendingCount({});
 
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch pending count',
-          undefined,
-          '/xrpc/pub.chive.governance.getPendingCount'
-        );
-      }
-
-      return data.count;
+      return response.data.count;
     },
     enabled: options.enabled ?? true,
     staleTime: 60 * 1000, // 1 minute

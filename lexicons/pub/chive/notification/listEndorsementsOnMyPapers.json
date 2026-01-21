@@ -1,0 +1,106 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.notification.listEndorsementsOnMyPapers",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List endorsements on papers authored by the current user",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "unreadOnly": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["notifications"],
+          "properties": {
+            "notifications": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#endorsementNotification"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "unreadCount": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    },
+    "endorsementNotification": {
+      "type": "object",
+      "required": ["uri", "eprintUri", "endorser", "contributions", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "eprintTitle": {
+          "type": "string"
+        },
+        "endorser": {
+          "type": "ref",
+          "ref": "#authorRef"
+        },
+        "contributions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "comment": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "isRead": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.getSuggestions",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get suggested papers for the authenticated user to claim based on their profile",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Maximum number of suggestions to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["papers", "profileUsed"],
+          "properties": {
+            "papers": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#suggestedPaper"
+              },
+              "description": "Suggested papers sorted by match score"
+            },
+            "profileUsed": {
+              "type": "ref",
+              "ref": "#profileMetadata"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    },
+    "suggestedPaper": {
+      "type": "object",
+      "required": ["externalId", "url", "title", "authors", "source", "matchScore", "matchReason"],
+      "properties": {
+        "externalId": {
+          "type": "string",
+          "description": "Source-specific identifier"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URL to the eprint"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Abstract text"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#externalAuthor"
+          },
+          "description": "Author list"
+        },
+        "publicationDate": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Publication date"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI if assigned"
+        },
+        "pdfUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to PDF"
+        },
+        "categories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subject categories"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source system"
+        },
+        "matchScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Match confidence score (0-100)"
+        },
+        "matchReason": {
+          "type": "string",
+          "description": "Human-readable match reason"
+        }
+      }
+    },
+    "externalAuthor": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Institution affiliation"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address"
+        }
+      }
+    },
+    "profileMetadata": {
+      "type": "object",
+      "required": ["nameVariants", "hasOrcid", "hasExternalIds"],
+      "description": "Profile data used for matching",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "nameVariants": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Name variants used for matching"
+        },
+        "hasOrcid": {
+          "type": "boolean",
+          "description": "Whether user has ORCID linked"
+        },
+        "hasExternalIds": {
+          "type": "boolean",
+          "description": "Whether user has external authority IDs"
+        }
+      }
+    }
+  }
+}

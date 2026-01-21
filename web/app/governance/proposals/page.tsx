@@ -84,27 +84,34 @@ function ProposalsContent() {
     limit: 50,
   });
 
-  const getStatusIcon = (status: ProposalStatus) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'open':
+      case 'pending': // Legacy
         return Clock;
       case 'approved':
         return CheckCircle;
       case 'rejected':
         return XCircle;
+      case 'withdrawn':
+      case 'expired': // Legacy
       default:
         return FileText;
     }
   };
 
-  const getStatusColor = (status: ProposalStatus) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'open':
+      case 'pending': // Legacy
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
       case 'approved':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       case 'rejected':
         return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      case 'withdrawn':
+      case 'expired': // Legacy
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
       default:
         return '';
     }

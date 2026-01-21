@@ -9,9 +9,47 @@ import type {
   GetEnrichmentResponse,
   RecommendedEprint,
   RelatedEprint,
-  DiscoverySettings,
-  UpdateDiscoverySettingsInput,
+  ForYouSignals,
+  RelatedPapersSignals,
+  CitationNetworkDisplay,
 } from '@/lib/api/schema';
+
+/**
+ * Discovery settings for personalization features.
+ *
+ * @remarks
+ * This is a frontend-friendly interface that matches the discovery.settings
+ * lexicon record but with required nested objects for easier use.
+ */
+export interface DiscoverySettings {
+  /** Enable personalized recommendations based on profile */
+  enablePersonalization: boolean;
+  /** Show the For You personalized feed */
+  enableForYouFeed: boolean;
+  /** Configuration for For You feed signals */
+  forYouSignals: Omit<ForYouSignals, '$type'>;
+  /** Configuration for related papers panel signals */
+  relatedPapersSignals: Omit<RelatedPapersSignals, '$type'>;
+  /** How to display citation network */
+  citationNetworkDisplay: CitationNetworkDisplay;
+  /** Show explanations for why papers are recommended */
+  showRecommendationReasons: boolean;
+}
+
+/**
+ * Input for updating discovery settings.
+ *
+ * @remarks
+ * All properties are optional - only provided properties will be updated.
+ */
+export interface UpdateDiscoverySettingsInput {
+  enablePersonalization?: boolean;
+  enableForYouFeed?: boolean;
+  forYouSignals?: Partial<Omit<ForYouSignals, '$type'>>;
+  relatedPapersSignals?: Partial<Omit<RelatedPapersSignals, '$type'>>;
+  citationNetworkDisplay?: CitationNetworkDisplay;
+  showRecommendationReasons?: boolean;
+}
 
 /**
  * Query key factory for discovery-related queries.
@@ -73,22 +111,20 @@ export function useForYouFeed(options: UseForYouFeedOptions = {}) {
   return useInfiniteQuery({
     queryKey: discoveryKeys.forYou({ limit }),
     queryFn: async ({ pageParam }): Promise<GetRecommendationsResponse> => {
-      const { data, error } = await authApi.GET('/xrpc/pub.chive.discovery.getRecommendations', {
-        params: {
-          query: {
-            limit,
-            cursor: pageParam as string | undefined,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await authApi.pub.chive.discovery.getRecommendations({
+          limit,
+          cursor: pageParam as string | undefined,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch recommendations',
+          error instanceof Error ? error.message : 'Failed to fetch recommendations',
           undefined,
-          '/xrpc/pub.chive.discovery.getRecommendations'
+          'pub.chive.discovery.getRecommendations'
         );
       }
-      return data!;
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
@@ -130,19 +166,17 @@ export function useSimilarPapers(uri: string, options: UseSimilarPapersOptions =
   return useQuery({
     queryKey: discoveryKeys.similar(uri, { limit }),
     queryFn: async (): Promise<GetSimilarResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.discovery.getSimilar', {
-        params: {
-          query: { uri, limit },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.discovery.getSimilar({ uri, limit });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch similar papers',
+          error instanceof Error ? error.message : 'Failed to fetch similar papers',
           undefined,
-          '/xrpc/pub.chive.discovery.getSimilar'
+          'pub.chive.discovery.getSimilar'
         );
       }
-      return data as GetSimilarResponse;
     },
     enabled: !!uri && enabled,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -186,19 +220,22 @@ export function useCitations(uri: string, options: UseCitationsOptions = {}) {
   return useQuery({
     queryKey: discoveryKeys.citations(uri, { direction, limit }),
     queryFn: async (): Promise<GetCitationsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.discovery.getCitations', {
-        params: {
-          query: { uri, direction, limit, onlyInfluential },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.discovery.getCitations({
+          uri,
+          direction,
+          limit,
+          onlyInfluential,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch citations',
+          error instanceof Error ? error.message : 'Failed to fetch citations',
           undefined,
-          '/xrpc/pub.chive.discovery.getCitations'
+          'pub.chive.discovery.getCitations'
         );
       }
-      return data as GetCitationsResponse;
     },
     enabled: !!uri && enabled,
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -236,19 +273,17 @@ export function useEnrichment(uri: string, options: UseEnrichmentOptions = {}) {
   return useQuery({
     queryKey: discoveryKeys.enrichment(uri),
     queryFn: async (): Promise<GetEnrichmentResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.discovery.getEnrichment', {
-        params: {
-          query: { uri },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.discovery.getEnrichment({ uri });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch enrichment',
+          error instanceof Error ? error.message : 'Failed to fetch enrichment',
           undefined,
-          '/xrpc/pub.chive.discovery.getEnrichment'
+          'pub.chive.discovery.getEnrichment'
         );
       }
-      return data as GetEnrichmentResponse;
     },
     enabled: !!uri && enabled,
     staleTime: 30 * 60 * 1000, // 30 minutes (enrichment changes less frequently)
@@ -285,14 +320,18 @@ export function useRecordInteraction() {
 
   return useMutation({
     mutationFn: async (input: RecordInteractionInput) => {
-      const { error } = await authApi.POST('/xrpc/pub.chive.discovery.recordInteraction', {
-        body: input,
-      });
-      if (error) {
+      try {
+        await authApi.pub.chive.discovery.recordInteraction({
+          eprintUri: input.eprintUri,
+          type: input.type,
+          recommendationId: input.recommendationId,
+        });
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to record interaction',
+          error instanceof Error ? error.message : 'Failed to record interaction',
           undefined,
-          '/xrpc/pub.chive.discovery.recordInteraction'
+          'pub.chive.discovery.recordInteraction'
         );
       }
     },
@@ -332,10 +371,12 @@ export function usePrefetchSimilarPapers() {
     queryClient.prefetchQuery({
       queryKey: discoveryKeys.similar(uri, { limit: 5 }),
       queryFn: async (): Promise<GetSimilarResponse | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.discovery.getSimilar', {
-          params: { query: { uri, limit: 5 } },
-        });
-        return data;
+        try {
+          const response = await api.pub.chive.discovery.getSimilar({ uri, limit: 5 });
+          return response.data;
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 10 * 60 * 1000,
     });
@@ -422,7 +463,7 @@ function saveStoredSettings(settings: DiscoverySettings): void {
  *
  * @remarks
  * Returns default settings if user has no saved preferences.
- * Currently uses localStorage; will use PDS (pub.chive.actor.discoverySettings)
+ * Currently uses localStorage; will use PDS (pub.chive.discovery.settings)
  * once backend endpoints are available.
  *
  * @example
@@ -441,7 +482,7 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
     queryKey: discoveryKeys.settings(),
     queryFn: async (): Promise<DiscoverySettings> => {
       // TODO: Replace with API call when endpoint is available
-      // const { data, error } = await authApi.GET('/xrpc/pub.chive.discovery.getSettings');
+      // const response = await authApi.pub.chive.discovery.getSettings();
       return getStoredSettings();
     },
     enabled,
@@ -491,16 +532,7 @@ export function useUpdateDiscoverySettings() {
       saveStoredSettings(newSettings);
 
       // TODO: Replace with API call when endpoint is available
-      // const { error } = await authApi.POST('/xrpc/pub.chive.discovery.updateSettings', {
-      //   body: input,
-      // });
-      // if (error) {
-      //   throw new APIError(
-      //     (error as { message?: string }).message ?? 'Failed to update discovery settings',
-      //     undefined,
-      //     '/xrpc/pub.chive.discovery.updateSettings'
-      //   );
-      // }
+      // await authApi.pub.chive.discovery.updateSettings(input);
 
       return newSettings;
     },
@@ -622,4 +654,4 @@ export function useUserProfileState(options: { enabled?: boolean } = {}) {
 }
 
 // Re-export types for convenience
-export type { RecommendedEprint, RelatedEprint, DiscoverySettings, UpdateDiscoverySettingsInput };
+export type { RecommendedEprint, RelatedEprint };

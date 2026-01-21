@@ -4,26 +4,62 @@
   "defs": {
     "main": {
       "type": "query",
-      "description": "Search preprints with faceted filters",
+      "description": "Search preprints with faceted filters using knowledge graph dimensions",
       "parameters": {
         "type": "params",
-        "required": ["q"],
         "properties": {
           "q": {
             "type": "string",
-            "description": "Search query"
+            "description": "Search query. If omitted, returns recent eprints (browsing mode)"
           },
           "author": {
             "type": "string",
             "format": "did",
             "description": "Filter by author DID"
           },
-          "facets": {
+          "fieldUris": {
             "type": "array",
-            "description": "Facet dimension filters (JSON-encoded)",
+            "description": "Filter by field node URIs (subkind=field)",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "at-uri"
             }
+          },
+          "topicUris": {
+            "type": "array",
+            "description": "Filter by topic node URIs (subkind=topic)",
+            "items": {
+              "type": "string",
+              "format": "at-uri"
+            }
+          },
+          "facetUris": {
+            "type": "array",
+            "description": "Filter by facet node URIs (subkind=facet)",
+            "items": {
+              "type": "string",
+              "format": "at-uri"
+            }
+          },
+          "paperTypeUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Filter by paper type node URI (subkind=paper-type)"
+          },
+          "publicationStatusUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Filter by publication status node URI (subkind=publication-status)"
+          },
+          "dateFrom": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Filter by submission date (from)"
+          },
+          "dateTo": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Filter by submission date (to)"
           },
           "limit": {
             "type": "integer",
@@ -52,6 +88,10 @@
             "cursor": {
               "type": "string"
             },
+            "total": {
+              "type": "integer",
+              "description": "Total number of matching documents"
+            },
             "facetAggregations": {
               "type": "array",
               "items": {
@@ -65,55 +105,92 @@
     },
     "searchHit": {
       "type": "object",
+      "description": "A search result hit",
       "required": ["uri", "score"],
       "properties": {
         "uri": {
           "type": "string",
-          "format": "at-uri"
+          "format": "at-uri",
+          "description": "AT-URI of the matched eprint"
         },
         "score": {
-          "type": "number"
+          "type": "integer",
+          "minimum": 0,
+          "description": "Relevance score (scaled by 1000 for precision)"
         },
         "highlight": {
-          "type": "object",
-          "properties": {
-            "title": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "abstract": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
+          "type": "ref",
+          "ref": "#highlightResult"
+        }
+      }
+    },
+    "highlightResult": {
+      "type": "object",
+      "description": "Highlighted text fragments with search matches",
+      "properties": {
+        "title": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Title fragments with <em> highlighting"
+        },
+        "abstract": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Abstract fragments with <em> highlighting"
         }
       }
     },
     "facetAggregation": {
       "type": "object",
-      "required": ["dimension", "values"],
+      "description": "Aggregation for a facet dimension",
+      "required": ["dimension", "subkind", "values"],
       "properties": {
         "dimension": {
-          "type": "string"
+          "type": "string",
+          "description": "Dimension identifier (e.g., 'field', 'topic', 'paperType')"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Subkind slug for the dimension's nodes"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the dimension"
         },
         "values": {
           "type": "array",
           "items": {
-            "type": "object",
-            "required": ["value", "count"],
-            "properties": {
-              "value": {
-                "type": "string"
-              },
-              "count": {
-                "type": "integer"
-              }
-            }
+            "type": "ref",
+            "ref": "#facetValue"
           }
+        }
+      }
+    },
+    "facetValue": {
+      "type": "object",
+      "description": "A facet value with node reference",
+      "required": ["uri", "label", "count"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the knowledge graph node"
+        },
+        "slug": {
+          "type": "string",
+          "description": "Node slug for URL generation"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of documents with this facet value"
         }
       }
     }

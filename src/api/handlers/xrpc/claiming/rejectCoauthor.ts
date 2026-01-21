@@ -8,63 +8,46 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import { AuthenticationError } from '../../../../types/errors.js';
-import {
-  rejectCoauthorParamsSchema,
-  rejectCoauthorResponseSchema,
-  type RejectCoauthorParams,
-  type RejectCoauthorResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/rejectCoauthor.js';
+import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.claiming.rejectCoauthor.
- *
- * @param c - Hono context
- * @param params - Parameters
- * @returns Success status
+ * XRPC method for pub.chive.claiming.rejectCoauthor.
  *
  * @public
  */
-export async function rejectCoauthorHandler(
-  c: Context<ChiveEnv>,
-  params: RejectCoauthorParams
-): Promise<RejectCoauthorResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming } = c.get('services');
+export const rejectCoauthor: XRPCMethod<void, InputSchema, OutputSchema> = {
+  auth: true,
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    if (!input) {
+      throw new ValidationError('Input is required', 'input');
+    }
+    const params = input;
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  logger.debug('Rejecting co-author request', {
-    requestId: params.requestId,
-    ownerDid: user.did,
-  });
+    logger.debug('Rejecting co-author request', {
+      requestId: params.requestId,
+      ownerDid: user.did,
+    });
 
-  await claiming.rejectCoauthorRequest(params.requestId, user.did, params.reason);
+    await claiming.rejectCoauthorRequest(params.requestId, user.did, params.reason);
 
-  return {
-    success: true,
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.claiming.rejectCoauthor.
- *
- * @public
- */
-export const rejectCoauthorEndpoint: XRPCEndpoint<RejectCoauthorParams, RejectCoauthorResponse> = {
-  method: 'pub.chive.claiming.rejectCoauthor' as never,
-  type: 'procedure',
-  description: 'Reject a co-author request on your eprint',
-  inputSchema: rejectCoauthorParamsSchema,
-  outputSchema: rejectCoauthorResponseSchema,
-  handler: rejectCoauthorHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return {
+      encoding: 'application/json',
+      body: {
+        success: true,
+      },
+    };
+  },
 };

@@ -15,6 +15,11 @@
 
 import type { AtUri, CID, DID, Timestamp } from '../atproto.js';
 
+import type { TextSpanTarget } from './annotation.js';
+
+// Re-export for convenience
+export type { TextSpanTarget };
+
 // =============================================================================
 // RICH TEXT TYPES
 // =============================================================================
@@ -49,16 +54,6 @@ export interface EprintRefItem {
  * Rich text item (union type).
  */
 export type RichTextItem = TextItem | NodeRefItem | EprintRefItem;
-
-/**
- * Target span in PDF for inline comments.
- */
-export interface TextSpanTarget {
-  readonly page?: number;
-  readonly startOffset?: number;
-  readonly endOffset?: number;
-  readonly selectedText?: string;
-}
 
 /**
  * Known motivation types (fallback when URI not available).
@@ -136,13 +131,6 @@ export interface Review {
   readonly parentComment?: AtUri;
 
   /**
-   * Line number for inline comments (deprecated).
-   *
-   * @deprecated Use `target` instead. Kept for backward compatibility.
-   */
-  readonly lineNumber?: number;
-
-  /**
    * Review creation timestamp.
    */
   readonly createdAt: Timestamp;
@@ -211,51 +199,3 @@ export interface Endorsement {
    */
   readonly createdAt: Timestamp;
 }
-
-// =============================================================================
-// LEGACY COMPATIBILITY
-// =============================================================================
-
-/**
- * Legacy endorsement type (deprecated).
- *
- * @deprecated Use `contributions` array instead.
- */
-export type LegacyEndorsementType = 'methods' | 'results' | 'overall';
-
-/**
- * Maps legacy endorsement types to contribution slugs.
- *
- * @remarks
- * Used during migration and for backward compatibility.
- */
-export const LEGACY_TYPE_TO_CONTRIBUTION: Record<LegacyEndorsementType, string> = {
-  methods: 'methodological',
-  results: 'empirical',
-  overall: 'conceptual',
-};
-
-/**
- * Maps contribution slugs back to legacy types (for API compatibility).
- *
- * @remarks
- * Takes the first matching contribution if multiple are present.
- */
-export const CONTRIBUTION_TO_LEGACY_TYPE: Record<string, LegacyEndorsementType> = {
-  methodological: 'methods',
-  analytical: 'methods',
-  technical: 'methods',
-  data: 'results',
-  empirical: 'results',
-  reproducibility: 'results',
-  replication: 'results',
-  validation: 'results',
-  conceptual: 'overall',
-  theoretical: 'overall',
-  synthesis: 'overall',
-  interdisciplinary: 'overall',
-  pedagogical: 'overall',
-  visualization: 'overall',
-  'societal-impact': 'overall',
-  clinical: 'overall',
-};

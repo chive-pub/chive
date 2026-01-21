@@ -2,7 +2,66 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
-import type { Eprint, EprintSummary } from '@/lib/api/schema';
+import type { Eprint, EprintSummary, EprintAuthorView } from '@/lib/api/schema';
+
+/**
+ * Extracts plain text from a rich abstract array.
+ */
+function extractPlainTextAbstract(
+  abstractItems: Array<{ type?: string; content?: string; label?: string }>
+): string {
+  return abstractItems
+    .map((item) => {
+      if (item.type === 'text' && item.content) {
+        return item.content;
+      }
+      if (item.type === 'nodeRef' && item.label) {
+        return item.label;
+      }
+      return '';
+    })
+    .join('')
+    .trim();
+}
+
+/**
+ * Transforms raw author contribution record to enriched author view.
+ */
+function transformAuthor(author: {
+  did?: string;
+  name: string;
+  orcid?: string;
+  email?: string;
+  order: number;
+  affiliations?: Array<{
+    name: string;
+    institutionUri?: string;
+    rorId?: string;
+    department?: string;
+  }>;
+  contributions?: Array<{
+    typeUri: string;
+    typeSlug?: string;
+    degreeUri?: string;
+    degreeSlug: string;
+  }>;
+  isCorrespondingAuthor: boolean;
+  isHighlighted: boolean;
+}): EprintAuthorView {
+  return {
+    did: author.did,
+    name: author.name,
+    handle: undefined, // Would need profile resolution
+    avatar: undefined, // Would need profile resolution
+    displayName: author.name,
+    orcid: author.orcid,
+    order: author.order,
+    affiliations: author.affiliations,
+    contributions: author.contributions,
+    isCorrespondingAuthor: author.isCorrespondingAuthor,
+    isHighlighted: author.isHighlighted,
+  };
+}
 
 /**
  * Response from the listByAuthor endpoint.
@@ -85,18 +144,50 @@ export function useEprint(uri: string, options: UseEprintOptions = {}) {
   return useQuery({
     queryKey: eprintKeys.detail(uri),
     queryFn: async (): Promise<Eprint> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
-        params: { query: { uri } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.eprint.getSubmission({ uri });
+        const { value, ...metadata } = response.data;
+
+        // Transform raw record to enriched Eprint view
+        const abstractItems = value.abstract as Array<{
+          type?: string;
+          content?: string;
+          label?: string;
+        }>;
+        const plainTextAbstract =
+          value.abstractPlainText ?? extractPlainTextAbstract(abstractItems);
+
+        // Transform authors to enriched view
+        const authors = value.authors.map(transformAuthor);
+
+        // Extract license from slug or URI
+        const license = value.licenseSlug;
+
+        // Extract DOI from external IDs or published version
+        const doi = value.externalIds?.zenodoDoi ?? value.publishedVersion?.doi;
+
+        // Map publication status slug to display value
+        const publicationStatus = value.publicationStatusSlug as Eprint['publicationStatus'];
+
+        return {
+          ...value,
+          ...metadata,
+          abstract: plainTextAbstract,
+          abstractItems,
+          authors,
+          license,
+          doi,
+          publicationStatus,
+          // fields, metrics, versions would need additional API calls or backend enrichment
+        };
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch eprint',
+          error instanceof Error ? error.message : 'Failed to fetch eprint',
           undefined,
-          '/xrpc/pub.chive.eprint.getSubmission'
+          'pub.chive.eprint.getSubmission'
         );
       }
-      // API returns the eprint directly (not wrapped in { eprint: ... })
-      return data as unknown as Eprint;
     },
     enabled: !!uri && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000, // 5 minutes; eprints rarely change.
@@ -145,27 +236,32 @@ interface UseEprintsParams {
  * @throws {Error} When the eprints API request fails
  */
 export function useEprints(params: UseEprintsParams = {}) {
-  const { q, limit, cursor } = params;
+  const { q, limit, cursor, field } = params;
 
   return useQuery({
     queryKey: eprintKeys.list(params),
     queryFn: async () => {
       // API requires q to be a non-empty string
       if (!q) {
-        throw new APIError('Search query is required', undefined, '/api/v1/eprints');
+        throw new APIError('Search query is required', undefined, 'searchSubmissions');
       }
 
-      const { data, error } = await api.GET('/api/v1/eprints', {
-        params: { query: { q, limit, cursor } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.eprint.searchSubmissions({
+          q,
+          limit,
+          cursor,
+          fieldUris: field ? [field] : undefined,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch eprints',
+          error instanceof Error ? error.message : 'Failed to fetch eprints',
           undefined,
-          '/api/v1/eprints'
+          'pub.chive.eprint.searchSubmissions'
         );
       }
-      return data!;
     },
     // Only enable query when q is provided
     enabled: !!q,
@@ -215,18 +311,29 @@ export function useEprintsByAuthor(params: UseEprintsByAuthorParams) {
   return useQuery<EprintsByAuthorResponse>({
     queryKey: eprintKeys.byAuthor(params.did),
     queryFn: async (): Promise<EprintsByAuthorResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.listByAuthor', {
-        params: { query: { ...params, limit: params.limit ?? 20, sort: 'date' as const } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.eprint.listByAuthor({
+          did: params.did,
+          limit: params.limit ?? 20,
+          sortBy: 'indexedAt',
+          sortOrder: 'desc',
+          cursor: params.cursor,
+        });
+        // listByAuthor doesn't return hasMore, derive from cursor presence
+        const data = response.data;
+        return {
+          eprints: data.eprints,
+          cursor: data.cursor,
+          hasMore: !!data.cursor,
+        };
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch eprints by author',
+          error instanceof Error ? error.message : 'Failed to fetch eprints by author',
           undefined,
-          '/xrpc/pub.chive.eprint.listByAuthor'
+          'pub.chive.eprint.listByAuthor'
         );
       }
-      // Cast to our local types - backend returns the new author format
-      return data as unknown as EprintsByAuthorResponse;
     },
     enabled: !!params.did,
   });
@@ -261,11 +368,36 @@ export function usePrefetchEprint() {
     queryClient.prefetchQuery({
       queryKey: eprintKeys.detail(uri),
       queryFn: async (): Promise<Eprint | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.eprint.getSubmission', {
-          params: { query: { uri } },
-        });
-        // API returns the eprint directly (not wrapped in { eprint: ... })
-        return data as unknown as Eprint | undefined;
+        try {
+          const response = await api.pub.chive.eprint.getSubmission({ uri });
+          const { value, ...metadata } = response.data;
+
+          // Transform raw record to enriched Eprint view
+          const abstractItems = value.abstract as Array<{
+            type?: string;
+            content?: string;
+            label?: string;
+          }>;
+          const plainTextAbstract =
+            value.abstractPlainText ?? extractPlainTextAbstract(abstractItems);
+          const authors = value.authors.map(transformAuthor);
+          const license = value.licenseSlug;
+          const doi = value.externalIds?.zenodoDoi ?? value.publishedVersion?.doi;
+          const publicationStatus = value.publicationStatusSlug as Eprint['publicationStatus'];
+
+          return {
+            ...value,
+            ...metadata,
+            abstract: plainTextAbstract,
+            abstractItems,
+            authors,
+            license,
+            doi,
+            publicationStatus,
+          };
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 5 * 60 * 1000,
     });

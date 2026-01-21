@@ -8,68 +8,45 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/endorsement/getSummary.js';
 import type { AtUri } from '../../../../types/atproto.js';
-import {
-  getEndorsementSummaryParamsSchema,
-  endorsementSummarySchema,
-  type GetEndorsementSummaryParams,
-  type EndorsementSummary,
-} from '../../../schemas/endorsement.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.endorsement.getSummary query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Endorsement summary
+ * XRPC method for pub.chive.endorsement.getSummary.
  *
  * @public
  */
-export async function getSummaryHandler(
-  c: Context<ChiveEnv>,
-  params: GetEndorsementSummaryParams
-): Promise<EndorsementSummary> {
-  const logger = c.get('logger');
-  const reviewService = c.get('services').review;
+export const getSummary: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const reviewService = c.get('services').review;
 
-  logger.debug('Getting endorsement summary', {
-    eprintUri: params.eprintUri,
-  });
+    logger.debug('Getting endorsement summary', {
+      eprintUri: params.eprintUri,
+    });
 
-  // Get summary from ReviewService
-  const summary = await reviewService.getEndorsementSummary(params.eprintUri as AtUri);
+    // Get summary from ReviewService
+    const summary = await reviewService.getEndorsementSummary(params.eprintUri as AtUri);
 
-  // Map to API format
-  const response: EndorsementSummary = {
-    total: summary.total,
-    endorserCount: summary.endorserCount,
-    byType: summary.byType,
-  };
+    // Map to API format
+    const response: OutputSchema = {
+      total: summary.total,
+      endorserCount: summary.endorserCount,
+      byType: summary.byType,
+    };
 
-  logger.info('Endorsement summary returned', {
-    eprintUri: params.eprintUri,
-    total: response.total,
-  });
+    logger.info('Endorsement summary returned', {
+      eprintUri: params.eprintUri,
+      total: response.total,
+    });
 
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.endorsement.getSummary.
- *
- * @public
- */
-export const getSummaryEndpoint: XRPCEndpoint<GetEndorsementSummaryParams, EndorsementSummary> = {
-  method: 'pub.chive.endorsement.getSummary' as never,
-  type: 'query',
-  description: 'Get endorsement summary for an eprint',
-  inputSchema: getEndorsementSummaryParamsSchema,
-  outputSchema: endorsementSummarySchema,
-  handler: getSummaryHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: response };
+  },
 };

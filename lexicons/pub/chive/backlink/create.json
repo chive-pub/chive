@@ -1,0 +1,101 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.backlink.create",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Create a backlink record. Internal/plugin use only. Requires authentication.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["sourceUri", "sourceType", "targetUri"],
+          "properties": {
+            "sourceUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the source record"
+            },
+            "sourceType": {
+              "type": "string",
+              "knownValues": [
+                "semble.collection",
+                "leaflet.list",
+                "whitewind.blog",
+                "bluesky.post",
+                "bluesky.embed",
+                "other"
+              ],
+              "description": "Type of the source record"
+            },
+            "targetUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the target eprint"
+            },
+            "context": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Optional context about the backlink"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#backlink"
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "InvalidRequest" }]
+    },
+    "backlink": {
+      "type": "object",
+      "description": "Backlink record",
+      "required": ["id", "sourceUri", "sourceType", "targetUri", "indexedAt", "deleted"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Backlink ID"
+        },
+        "sourceUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the source record"
+        },
+        "sourceType": {
+          "type": "string",
+          "knownValues": [
+            "semble.collection",
+            "leaflet.list",
+            "whitewind.blog",
+            "bluesky.post",
+            "bluesky.embed",
+            "other"
+          ],
+          "description": "Type of the source record"
+        },
+        "targetUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the target eprint"
+        },
+        "context": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional context about the backlink"
+        },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Timestamp when the backlink was indexed"
+        },
+        "deleted": {
+          "type": "boolean",
+          "description": "Whether the backlink has been deleted"
+        }
+      }
+    }
+  }
+}

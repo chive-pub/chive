@@ -68,7 +68,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
 import { useInlineReviews } from '@/lib/hooks/use-review';
 import { useIsAuthenticated } from '@/lib/auth';
-import type { BlobRef, TextSpanTarget, Review } from '@/lib/api/schema';
+import type { BlobRef, UnifiedTextSpanTarget, Review } from '@/lib/api/schema';
 
 // Configure PDF.js worker to match the pdfjs-dist version used by react-pdf-highlighter-extended
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -92,7 +92,7 @@ export interface ChiveHighlight extends Highlight {
   /** Highlight color class */
   colorClass: string;
   /** Original review target for W3C format */
-  w3cTarget?: TextSpanTarget;
+  w3cTarget?: UnifiedTextSpanTarget;
 }
 
 /**
@@ -110,9 +110,9 @@ export interface AnnotatedPDFViewerProps {
   /** Callback when annotation is clicked */
   onAnnotationSelect?: (uri: string) => void;
   /** Callback to add a new review */
-  onAddReview?: (target: TextSpanTarget, selectedText: string) => void;
+  onAddReview?: (target: UnifiedTextSpanTarget, selectedText: string) => void;
   /** Callback to link entity */
-  onLinkEntity?: (target: TextSpanTarget, selectedText: string) => void;
+  onLinkEntity?: (target: UnifiedTextSpanTarget, selectedText: string) => void;
   /** Callback for scroll-to-annotation requests from external components */
   scrollToAnnotationUri?: string;
   /** Additional CSS classes */
@@ -191,7 +191,7 @@ function extractSelectionContext(): { prefix: string; suffix: string } {
 }
 
 /**
- * Convert react-pdf-highlighter ScaledPosition to W3C TextSpanTarget.
+ * Convert react-pdf-highlighter ScaledPosition to W3C UnifiedTextSpanTarget.
  *
  * Implements W3C Web Annotation Data Model with:
  * - TextQuoteSelector (exact + prefix + suffix) for robust text anchoring
@@ -202,12 +202,30 @@ function scaledPositionToW3CTarget(
   selectedText: string,
   eprintUri: string,
   context?: { prefix: string; suffix: string }
-): TextSpanTarget {
+): UnifiedTextSpanTarget {
   // Estimate character offset based on vertical position on page.
   // This is approximate but useful for sorting annotations by position.
   const estimatedCharsPerPage = 5000;
   const approximateStart = Math.round(position.boundingRect.y1 * estimatedCharsPerPage);
   const approximateEnd = approximateStart + selectedText.length;
+
+  // Build refinedBy with optional boundingRect for visual positioning.
+  // The boundingRect is stored for internal use but is not part of the W3C spec.
+  const refinedBy = {
+    type: 'TextPositionSelector' as const,
+    start: approximateStart,
+    end: approximateEnd,
+    pageNumber: position.boundingRect.pageNumber,
+    // Store scaled coordinates for precise visual positioning (internal extension)
+    boundingRect: {
+      x1: position.boundingRect.x1,
+      y1: position.boundingRect.y1,
+      x2: position.boundingRect.x2,
+      y2: position.boundingRect.y2,
+      width: position.boundingRect.width,
+      height: position.boundingRect.height,
+    },
+  };
 
   return {
     source: eprintUri,
@@ -218,26 +236,13 @@ function scaledPositionToW3CTarget(
       ...(context?.prefix && { prefix: context.prefix }),
       ...(context?.suffix && { suffix: context.suffix }),
     },
-    refinedBy: {
-      type: 'TextPositionSelector',
-      start: approximateStart,
-      end: approximateEnd,
-      pageNumber: position.boundingRect.pageNumber,
-      // Store scaled coordinates for precise visual positioning
-      boundingRect: {
-        x1: position.boundingRect.x1,
-        y1: position.boundingRect.y1,
-        x2: position.boundingRect.x2,
-        y2: position.boundingRect.y2,
-        width: position.boundingRect.width,
-        height: position.boundingRect.height,
-      },
-    },
+    // Type assertion needed: boundingRect is an internal extension not in the lexicon
+    refinedBy: refinedBy as UnifiedTextSpanTarget['refinedBy'],
   };
 }
 
 /**
- * Convert W3C TextSpanTarget to react-pdf-highlighter ScaledPosition.
+ * Convert W3C UnifiedTextSpanTarget to react-pdf-highlighter ScaledPosition.
  *
  * The W3C Web Annotation model uses TextQuoteSelector for robust anchoring:
  * - selector.exact: the selected text
@@ -250,7 +255,7 @@ function scaledPositionToW3CTarget(
  * For optimal accuracy, stored annotations include boundingRect.
  * External annotations without boundingRect fall back to position estimation.
  */
-function w3cTargetToScaledPosition(target: TextSpanTarget): ScaledPosition | null {
+function w3cTargetToScaledPosition(target: UnifiedTextSpanTarget): ScaledPosition | null {
   const refinedBy = target.refinedBy;
   if (!refinedBy?.pageNumber) return null;
 
@@ -506,7 +511,22 @@ export function AnnotatedPDFViewer({
   }, [showAnnotations, inlineReviewsData?.reviews]);
 
   // Construct PDF URL
-  const pdfUrl = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobRef.ref)}`;
+  // blobRef.ref can be a string, { $link: string }, or a CID object with toString()
+  const getCidString = (): string => {
+    if (typeof blobRef.ref === 'string') {
+      return blobRef.ref;
+    }
+    if (typeof blobRef.ref === 'object' && blobRef.ref !== null) {
+      if ('$link' in blobRef.ref) {
+        return (blobRef.ref as { $link: string }).$link;
+      }
+      // CID object from multiformats
+      return blobRef.ref.toString();
+    }
+    return String(blobRef.ref);
+  };
+  const cid = getCidString();
+  const pdfUrl = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 
   // Handle scroll to annotation
   useEffect(() => {

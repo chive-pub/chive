@@ -8,10 +8,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { approveElevationHandler } from '@/api/handlers/xrpc/governance/approveElevation.js';
-import { listDelegationsHandler } from '@/api/handlers/xrpc/governance/listDelegations.js';
-import { listElevationRequestsHandler } from '@/api/handlers/xrpc/governance/listElevationRequests.js';
-import { rejectElevationHandler } from '@/api/handlers/xrpc/governance/rejectElevation.js';
+import { approveElevation } from '@/api/handlers/xrpc/governance/approveElevation.js';
+import { listDelegations } from '@/api/handlers/xrpc/governance/listDelegations.js';
+import { listElevationRequests } from '@/api/handlers/xrpc/governance/listElevationRequests.js';
+import { rejectElevation } from '@/api/handlers/xrpc/governance/rejectElevation.js';
 import type { DID } from '@/types/atproto.js';
 import { AuthenticationError, AuthorizationError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
@@ -89,7 +89,7 @@ describe('XRPC Governance Admin Handlers', () => {
     });
   };
 
-  describe('listElevationRequestsHandler', () => {
+  describe('listElevationRequests.handler', () => {
     it('returns list of pending elevation requests for admin', async () => {
       setupAdminAuth();
 
@@ -134,15 +134,17 @@ describe('XRPC Governance Admin Handlers', () => {
         },
       });
 
-      const result = await listElevationRequestsHandler(
-        mockContext as unknown as Parameters<typeof listElevationRequestsHandler>[0],
-        { limit: 20 }
-      );
+      const result = await listElevationRequests.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof listElevationRequests.handler>[0]['c'],
+      });
 
-      expect(result.requests).toHaveLength(1);
-      expect(result.requests[0]?.did).toBe('did:plc:user1');
-      expect(result.requests[0]?.metrics).toBeDefined();
-      expect(result.total).toBe(1);
+      expect(result.body.requests).toHaveLength(1);
+      expect(result.body.requests[0]?.did).toBe('did:plc:user1');
+      expect(result.body.requests[0]?.metrics).toBeDefined();
+      expect(result.body.total).toBe(1);
     });
 
     it('throws AuthenticationError when not authenticated', async () => {
@@ -154,10 +156,12 @@ describe('XRPC Governance Admin Handlers', () => {
       });
 
       await expect(
-        listElevationRequestsHandler(
-          mockContext as unknown as Parameters<typeof listElevationRequestsHandler>[0],
-          { limit: 20 }
-        )
+        listElevationRequests.handler({
+          params: { limit: 20 },
+          input: undefined,
+          auth: null,
+          c: mockContext as unknown as Parameters<typeof listElevationRequests.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthenticationError);
     });
 
@@ -165,10 +169,12 @@ describe('XRPC Governance Admin Handlers', () => {
       setupNonAdminAuth();
 
       await expect(
-        listElevationRequestsHandler(
-          mockContext as unknown as Parameters<typeof listElevationRequestsHandler>[0],
-          { limit: 20 }
-        )
+        listElevationRequests.handler({
+          params: { limit: 20 },
+          input: undefined,
+          auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof listElevationRequests.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthorizationError);
     });
 
@@ -181,10 +187,12 @@ describe('XRPC Governance Admin Handlers', () => {
       });
 
       await expect(
-        listElevationRequestsHandler(
-          mockContext as unknown as Parameters<typeof listElevationRequestsHandler>[0],
-          { limit: 20 }
-        )
+        listElevationRequests.handler({
+          params: { limit: 20 },
+          input: undefined,
+          auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof listElevationRequests.handler>[0]['c'],
+        })
       ).rejects.toThrow('Trusted editor service not configured');
     });
 
@@ -199,17 +207,19 @@ describe('XRPC Governance Admin Handlers', () => {
         },
       });
 
-      const result = await listElevationRequestsHandler(
-        mockContext as unknown as Parameters<typeof listElevationRequestsHandler>[0],
-        { limit: 20 }
-      );
+      const result = await listElevationRequests.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof listElevationRequests.handler>[0]['c'],
+      });
 
-      expect(result.requests).toHaveLength(0);
-      expect(result.total).toBe(0);
+      expect(result.body.requests).toHaveLength(0);
+      expect(result.body.total).toBe(0);
     });
   });
 
-  describe('approveElevationHandler', () => {
+  describe('approveElevation.handler', () => {
     it('approves elevation request successfully', async () => {
       setupAdminAuth();
 
@@ -221,14 +231,16 @@ describe('XRPC Governance Admin Handlers', () => {
         },
       });
 
-      const result = await approveElevationHandler(
-        mockContext as unknown as Parameters<typeof approveElevationHandler>[0],
-        { requestId: 'req-1', verificationNotes: 'Verified ORCID' }
-      );
+      const result = await approveElevation.handler({
+        params: undefined as unknown as void,
+        input: { requestId: 'req-1', verificationNotes: 'Verified ORCID' },
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof approveElevation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(true);
-      expect(result.requestId).toBe('req-1');
-      expect(result.message).toContain('trusted-editor');
+      expect(result.body.success).toBe(true);
+      expect(result.body.requestId).toBe('req-1');
+      expect(result.body.message).toContain('trusted-editor');
     });
 
     it('returns failure when service returns error', async () => {
@@ -239,13 +251,15 @@ describe('XRPC Governance Admin Handlers', () => {
         error: { code: 'VALIDATION_ERROR', message: 'Request not found' },
       });
 
-      const result = await approveElevationHandler(
-        mockContext as unknown as Parameters<typeof approveElevationHandler>[0],
-        { requestId: 'nonexistent' }
-      );
+      const result = await approveElevation.handler({
+        params: undefined as unknown as void,
+        input: { requestId: 'nonexistent' },
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof approveElevation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('Request not found');
+      expect(result.body.success).toBe(false);
+      expect(result.body.message).toContain('Request not found');
     });
 
     it('throws AuthenticationError when not authenticated', async () => {
@@ -257,10 +271,12 @@ describe('XRPC Governance Admin Handlers', () => {
       });
 
       await expect(
-        approveElevationHandler(
-          mockContext as unknown as Parameters<typeof approveElevationHandler>[0],
-          { requestId: 'req-1' }
-        )
+        approveElevation.handler({
+          params: undefined as unknown as void,
+          input: { requestId: 'req-1' },
+          auth: null,
+          c: mockContext as unknown as Parameters<typeof approveElevation.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthenticationError);
     });
 
@@ -268,15 +284,17 @@ describe('XRPC Governance Admin Handlers', () => {
       setupNonAdminAuth();
 
       await expect(
-        approveElevationHandler(
-          mockContext as unknown as Parameters<typeof approveElevationHandler>[0],
-          { requestId: 'req-1' }
-        )
+        approveElevation.handler({
+          params: undefined as unknown as void,
+          input: { requestId: 'req-1' },
+          auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof approveElevation.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthorizationError);
     });
   });
 
-  describe('rejectElevationHandler', () => {
+  describe('rejectElevation.handler', () => {
     it('rejects elevation request with reason', async () => {
       setupAdminAuth();
 
@@ -288,14 +306,16 @@ describe('XRPC Governance Admin Handlers', () => {
         },
       });
 
-      const result = await rejectElevationHandler(
-        mockContext as unknown as Parameters<typeof rejectElevationHandler>[0],
-        { requestId: 'req-1', reason: 'Insufficient contribution history' }
-      );
+      const result = await rejectElevation.handler({
+        params: undefined as unknown as void,
+        input: { requestId: 'req-1', reason: 'Insufficient contribution history' },
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof rejectElevation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(true);
-      expect(result.requestId).toBe('req-1');
-      expect(result.message).toBe('Elevation request rejected');
+      expect(result.body.success).toBe(true);
+      expect(result.body.requestId).toBe('req-1');
+      expect(result.body.message).toBe('Elevation request rejected');
     });
 
     it('returns failure when service returns error', async () => {
@@ -306,13 +326,15 @@ describe('XRPC Governance Admin Handlers', () => {
         error: { code: 'VALIDATION_ERROR', message: 'Request already processed' },
       });
 
-      const result = await rejectElevationHandler(
-        mockContext as unknown as Parameters<typeof rejectElevationHandler>[0],
-        { requestId: 'req-1', reason: 'Reason' }
-      );
+      const result = await rejectElevation.handler({
+        params: undefined as unknown as void,
+        input: { requestId: 'req-1', reason: 'Reason' },
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof rejectElevation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('already processed');
+      expect(result.body.success).toBe(false);
+      expect(result.body.message).toContain('already processed');
     });
 
     it('throws AuthenticationError when not authenticated', async () => {
@@ -324,10 +346,12 @@ describe('XRPC Governance Admin Handlers', () => {
       });
 
       await expect(
-        rejectElevationHandler(
-          mockContext as unknown as Parameters<typeof rejectElevationHandler>[0],
-          { requestId: 'req-1', reason: 'Reason' }
-        )
+        rejectElevation.handler({
+          params: undefined as unknown as void,
+          input: { requestId: 'req-1', reason: 'Reason' },
+          auth: null,
+          c: mockContext as unknown as Parameters<typeof rejectElevation.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthenticationError);
     });
 
@@ -335,15 +359,17 @@ describe('XRPC Governance Admin Handlers', () => {
       setupNonAdminAuth();
 
       await expect(
-        rejectElevationHandler(
-          mockContext as unknown as Parameters<typeof rejectElevationHandler>[0],
-          { requestId: 'req-1', reason: 'Reason' }
-        )
+        rejectElevation.handler({
+          params: undefined as unknown as void,
+          input: { requestId: 'req-1', reason: 'Reason' },
+          auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof rejectElevation.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthorizationError);
     });
   });
 
-  describe('listDelegationsHandler', () => {
+  describe('listDelegations.handler', () => {
     it('returns list of active delegations for admin', async () => {
       setupAdminAuth();
 
@@ -371,15 +397,17 @@ describe('XRPC Governance Admin Handlers', () => {
         },
       });
 
-      const result = await listDelegationsHandler(
-        mockContext as unknown as Parameters<typeof listDelegationsHandler>[0],
-        { limit: 20 }
-      );
+      const result = await listDelegations.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof listDelegations.handler>[0]['c'],
+      });
 
-      expect(result.delegations).toHaveLength(1);
-      expect(result.delegations[0]?.delegateDid).toBe('did:plc:delegate1');
-      expect(result.delegations[0]?.collections).toContain('pub.chive.graph.fieldProposal');
-      expect(result.total).toBe(1);
+      expect(result.body.delegations).toHaveLength(1);
+      expect(result.body.delegations[0]?.delegateDid).toBe('did:plc:delegate1');
+      expect(result.body.delegations[0]?.collections).toContain('pub.chive.graph.fieldProposal');
+      expect(result.body.total).toBe(1);
     });
 
     it('throws AuthenticationError when not authenticated', async () => {
@@ -391,10 +419,12 @@ describe('XRPC Governance Admin Handlers', () => {
       });
 
       await expect(
-        listDelegationsHandler(
-          mockContext as unknown as Parameters<typeof listDelegationsHandler>[0],
-          { limit: 20 }
-        )
+        listDelegations.handler({
+          params: { limit: 20 },
+          input: undefined,
+          auth: null,
+          c: mockContext as unknown as Parameters<typeof listDelegations.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthenticationError);
     });
 
@@ -402,10 +432,12 @@ describe('XRPC Governance Admin Handlers', () => {
       setupNonAdminAuth();
 
       await expect(
-        listDelegationsHandler(
-          mockContext as unknown as Parameters<typeof listDelegationsHandler>[0],
-          { limit: 20 }
-        )
+        listDelegations.handler({
+          params: { limit: 20 },
+          input: undefined,
+          auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof listDelegations.handler>[0]['c'],
+        })
       ).rejects.toThrow(AuthorizationError);
     });
 
@@ -420,13 +452,15 @@ describe('XRPC Governance Admin Handlers', () => {
         },
       });
 
-      const result = await listDelegationsHandler(
-        mockContext as unknown as Parameters<typeof listDelegationsHandler>[0],
-        { limit: 20 }
-      );
+      const result = await listDelegations.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof listDelegations.handler>[0]['c'],
+      });
 
-      expect(result.delegations).toHaveLength(0);
-      expect(result.total).toBe(0);
+      expect(result.body.delegations).toHaveLength(0);
+      expect(result.body.total).toBe(0);
     });
 
     it('handles pagination with cursor', async () => {
@@ -441,13 +475,15 @@ describe('XRPC Governance Admin Handlers', () => {
         },
       });
 
-      const result = await listDelegationsHandler(
-        mockContext as unknown as Parameters<typeof listDelegationsHandler>[0],
-        { limit: 20, cursor: '0' }
-      );
+      const result = await listDelegations.handler({
+        params: { limit: 20, cursor: '0' },
+        input: undefined,
+        auth: { did: makeDID('did:plc:admin'), iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof listDelegations.handler>[0]['c'],
+      });
 
-      expect(result.cursor).toBe('20');
-      expect(result.total).toBe(100);
+      expect(result.body.cursor).toBe('20');
+      expect(result.body.total).toBe(100);
     });
   });
 });

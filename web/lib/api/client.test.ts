@@ -1,17 +1,37 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { api, createServerClient } from './client';
+import { api, authApi, createServerClient } from './client';
 
 describe('api client', () => {
-  it('is exported and has GET method', () => {
+  it('is exported and has pub.chive namespace', () => {
     expect(api).toBeDefined();
-    expect(api.GET).toBeDefined();
-    expect(typeof api.GET).toBe('function');
+    expect(api.pub).toBeDefined();
+    expect(api.pub.chive).toBeDefined();
   });
 
-  it('is exported and has POST method', () => {
-    expect(api.POST).toBeDefined();
-    expect(typeof api.POST).toBe('function');
+  it('has eprint methods', () => {
+    expect(api.pub.chive.eprint).toBeDefined();
+    expect(typeof api.pub.chive.eprint.getSubmission).toBe('function');
+    expect(typeof api.pub.chive.eprint.searchSubmissions).toBe('function');
+  });
+
+  it('has author methods', () => {
+    expect(api.pub.chive.author).toBeDefined();
+    expect(typeof api.pub.chive.author.getProfile).toBe('function');
+    expect(typeof api.pub.chive.author.searchAuthors).toBe('function');
+  });
+});
+
+describe('authApi client', () => {
+  it('is exported and has pub.chive namespace', () => {
+    expect(authApi).toBeDefined();
+    expect(authApi.pub).toBeDefined();
+    expect(authApi.pub.chive).toBeDefined();
+  });
+
+  it('has claiming methods', () => {
+    expect(authApi.pub.chive.claiming).toBeDefined();
+    expect(typeof authApi.pub.chive.claiming.startClaim).toBe('function');
   });
 });
 
@@ -35,7 +55,7 @@ describe('createServerClient', () => {
   it('creates a client with default revalidate of 60', () => {
     const client = createServerClient();
     expect(client).toBeDefined();
-    expect(client.GET).toBeDefined();
+    expect(client.pub.chive).toBeDefined();
   });
 
   it('creates a client with custom revalidate', () => {

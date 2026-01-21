@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { useInstantSearch } from '@/lib/hooks/use-search';
 import { useDebounce } from '@/lib/hooks/use-eprint-search';
+import type { EnrichedSearchHit } from '@/lib/api/schema';
 
 /**
  * Props for the SearchBar component.
@@ -53,7 +54,8 @@ export function SearchBar({ className }: SearchBarProps) {
   const debouncedQuery = useDebounce(query, 200);
   const { data, isLoading } = useInstantSearch(debouncedQuery);
 
-  const suggestions = data?.hits ?? [];
+  // Cast to EnrichedSearchHit as the API returns enriched data
+  const suggestions = (data?.hits ?? []) as EnrichedSearchHit[];
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -172,10 +174,12 @@ export function SearchBar({ className }: SearchBarProps) {
                     <div className="flex items-start gap-2 w-full">
                       <FileText className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
                       <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                        <span className="font-medium line-clamp-1">{hit.title}</span>
+                        <span className="font-medium line-clamp-1">{hit.title ?? 'Untitled'}</span>
                         {hit.authors && hit.authors.length > 0 && (
                           <span className="text-xs text-muted-foreground line-clamp-1">
-                            {hit.authors.map((a) => a.name).join(', ')}
+                            {hit.authors
+                              .map((a: { name?: string }) => a.name ?? 'Unknown')
+                              .join(', ')}
                           </span>
                         )}
                       </div>

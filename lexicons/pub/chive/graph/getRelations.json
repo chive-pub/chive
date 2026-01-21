@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.getRelations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List available relation types (nodes with subkind=relation)",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["relations"],
+          "properties": {
+            "relations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#relationType"
+              },
+              "description": "Available relation types"
+            }
+          }
+        }
+      }
+    },
+    "relationType": {
+      "type": "object",
+      "description": "Relation type definition",
+      "required": ["slug", "label"],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Relation slug identifier"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label"
+        },
+        "description": {
+          "type": "string",
+          "description": "Relation description"
+        },
+        "inverseSlug": {
+          "type": "string",
+          "description": "Slug of inverse relation"
+        }
+      }
+    }
+  }
+}

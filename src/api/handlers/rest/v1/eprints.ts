@@ -10,32 +10,14 @@
  */
 
 import type { Hono } from 'hono';
-import { z } from 'zod';
+import { HTTPException } from 'hono/http-exception';
 
+import type { QueryParams as GetSubmissionParams } from '../../../../lexicons/generated/types/pub/chive/eprint/getSubmission.js';
+import type { QueryParams as ListByAuthorParams } from '../../../../lexicons/generated/types/pub/chive/eprint/listByAuthor.js';
+import type { QueryParams as SearchSubmissionsParams } from '../../../../lexicons/generated/types/pub/chive/eprint/searchSubmissions.js';
 import { REST_PATH_PREFIX } from '../../../config.js';
-import { validateQuery, validateParams } from '../../../middleware/validation.js';
-import { getSubmissionParamsSchema, listByAuthorParamsSchema } from '../../../schemas/eprint.js';
-import { searchEprintsParamsSchema } from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
-import {
-  getSubmissionHandler,
-  listByAuthorHandler,
-  searchSubmissionsHandler,
-} from '../../xrpc/eprint/index.js';
-
-/**
- * URI path parameter schema.
- */
-const uriPathParamSchema = z.object({
-  uri: z.string().describe('URL-encoded AT URI'),
-});
-
-/**
- * DID path parameter schema.
- */
-const didPathParamSchema = z.object({
-  did: z.string().startsWith('did:').describe('Author DID'),
-});
+import { getSubmission, listByAuthor, searchSubmissions } from '../../xrpc/eprint/index.js';
 
 /**
  * Registers REST v1 eprint routes.
@@ -62,44 +44,128 @@ export function registerEprintRoutes(app: Hono<ChiveEnv>): void {
   const authorsPath = `${REST_PATH_PREFIX}/authors`;
 
   // GET /api/v1/eprints: Search eprints
-  app.get(basePath, validateQuery(searchEprintsParamsSchema), async (c) => {
-    const params = c.get('validatedInput') as z.infer<typeof searchEprintsParamsSchema>;
-    const result = await searchSubmissionsHandler(c, params);
-    return c.json(result);
+  // Supports browsing mode when q is omitted
+  app.get(basePath, async (c) => {
+    const query = c.req.query();
+
+    // Parse limit with default
+    const limit = query.limit ? parseInt(query.limit, 10) : 20;
+    if (isNaN(limit) || limit < 1 || limit > 100) {
+      throw new HTTPException(400, { message: 'Invalid limit: must be 1-100' });
+    }
+
+    // Parse fieldUris from comma-separated string or array
+    const fieldUris = query.fieldUris
+      ? Array.isArray(query.fieldUris)
+        ? query.fieldUris
+        : query.fieldUris.split(',')
+      : undefined;
+
+    const params: SearchSubmissionsParams = {
+      q: query.q,
+      limit,
+      cursor: query.cursor,
+      author: query.author,
+      fieldUris,
+      topicUris: query.topicUris
+        ? Array.isArray(query.topicUris)
+          ? query.topicUris
+          : query.topicUris.split(',')
+        : undefined,
+      facetUris: query.facetUris
+        ? Array.isArray(query.facetUris)
+          ? query.facetUris
+          : query.facetUris.split(',')
+        : undefined,
+      paperTypeUri: query.paperTypeUri,
+      publicationStatusUri: query.publicationStatusUri,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+    };
+
+    const user = c.get('user');
+    const auth = user ? { did: user.did, iss: user.did } : null;
+    const result = await searchSubmissions.handler({ params, input: undefined, auth, c });
+    return c.json(result.body);
   });
 
   // GET /api/v1/eprints/:uri: Get eprint by URI
-  app.get(`${basePath}/:uri`, validateParams(uriPathParamSchema), async (c) => {
-    const pathParams = c.get('validatedInput') as z.infer<typeof uriPathParamSchema>;
+  app.get(`${basePath}/:uri`, async (c) => {
+    const uriParam = c.req.param('uri');
+
+    if (!uriParam) {
+      throw new HTTPException(400, { message: 'Missing required parameter: uri' });
+    }
+
     // Decode URL-encoded URI
-    const decodedUri = decodeURIComponent(pathParams.uri);
-    const params = getSubmissionParamsSchema.parse({ uri: decodedUri });
-    const result = await getSubmissionHandler(c, params);
-    return c.json(result);
+    const decodedUri = decodeURIComponent(uriParam);
+
+    // Validate AT URI format
+    if (!decodedUri.startsWith('at://')) {
+      throw new HTTPException(400, { message: 'Invalid uri: must be an AT URI (at://...)' });
+    }
+
+    const params: GetSubmissionParams = {
+      uri: decodedUri,
+      cid: c.req.query('cid'),
+    };
+
+    const user = c.get('user');
+    const auth = user ? { did: user.did, iss: user.did } : null;
+    const result = await getSubmission.handler({ params, input: undefined, auth, c });
+    return c.json(result.body);
   });
 
   // GET /api/v1/authors/:did/eprints: List eprints by author
-  app.get(
-    `${authorsPath}/:did/eprints`,
-    validateParams(didPathParamSchema),
-    validateQuery(listByAuthorParamsSchema.omit({ did: true })),
-    async (c) => {
-      const pathParams = c.req.param() as { did: string };
-      const queryParams = c.get('validatedInput') as Omit<
-        z.infer<typeof listByAuthorParamsSchema>,
-        'did'
-      >;
+  app.get(`${authorsPath}/:did/eprints`, async (c) => {
+    const didParam = c.req.param('did');
 
-      const params = {
-        ...queryParams,
-        did: pathParams.did,
-      };
-
-      const result = await listByAuthorHandler(
-        c,
-        params as z.infer<typeof listByAuthorParamsSchema>
-      );
-      return c.json(result);
+    // Validate DID parameter
+    if (!didParam) {
+      throw new HTTPException(400, { message: 'Missing required parameter: did' });
     }
-  );
+
+    if (!didParam.startsWith('did:')) {
+      throw new HTTPException(400, { message: 'Invalid did: must start with did:' });
+    }
+
+    const query = c.req.query();
+
+    // Parse limit with default
+    const limit = query.limit ? parseInt(query.limit, 10) : 50;
+    if (isNaN(limit) || limit < 1 || limit > 100) {
+      throw new HTTPException(400, { message: 'Invalid limit: must be 1-100' });
+    }
+
+    // Validate sortBy
+    const validSortBy = ['indexedAt', 'publishedAt', 'updatedAt'];
+    const sortBy = query.sortBy ?? 'publishedAt';
+    if (!validSortBy.includes(sortBy)) {
+      throw new HTTPException(400, {
+        message: `Invalid sortBy: must be one of ${validSortBy.join(', ')}`,
+      });
+    }
+
+    // Validate sortOrder
+    const validSortOrder = ['asc', 'desc'];
+    const sortOrder = query.sortOrder ?? 'desc';
+    if (!validSortOrder.includes(sortOrder)) {
+      throw new HTTPException(400, {
+        message: `Invalid sortOrder: must be one of ${validSortOrder.join(', ')}`,
+      });
+    }
+
+    const params: ListByAuthorParams = {
+      did: didParam,
+      limit,
+      cursor: query.cursor,
+      sortBy: sortBy as ListByAuthorParams['sortBy'],
+      sortOrder: sortOrder as ListByAuthorParams['sortOrder'],
+    };
+
+    const user = c.get('user');
+    const auth = user ? { did: user.did, iss: user.did } : null;
+    const result = await listByAuthor.handler({ params, input: undefined, auth, c });
+    return c.json(result.body);
+  });
 }

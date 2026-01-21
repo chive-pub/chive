@@ -41,7 +41,6 @@ import { StepPublication } from './step-publication';
 import { StepReview } from './step-review';
 import { getActivePaperSession, clearAllPaperSessions } from '@/lib/auth/paper-session';
 import type { EprintAuthorFormData } from '@/components/forms/eprint-author-editor';
-import type { FacetDimension } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
@@ -162,7 +161,7 @@ export interface EprintFormValues {
 
   // Step 6: Facets (optional)
   facets?: Array<{
-    type: FacetDimension;
+    slug: string;
     value: string;
     label?: string;
   }>;
@@ -463,7 +462,7 @@ const stepSchemas = {
     facets: z
       .array(
         z.object({
-          type: z.string(),
+          slug: z.string(),
           value: z.string(),
           label: z.string().optional(),
         })
@@ -731,7 +730,7 @@ export function SubmissionWizard({
 
       // Transform facets for submission
       const transformedFacets = (values.facets ?? []).map((f) => ({
-        type: f.type,
+        slug: f.slug,
         value: f.value,
         label: f.label,
       }));
@@ -771,12 +770,10 @@ export function SubmissionWizard({
       // The Bluesky relay doesn't broadcast pub.chive.* records,
       // so we need to manually trigger indexing after PDS write
       try {
-        const indexResult = await authApi.POST('/xrpc/pub.chive.sync.indexRecord', {
-          body: { uri: result.uri },
-        });
+        const indexResult = await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
 
         // Check if indexing succeeded (API returns { indexed: false, error: "..." } on failure)
-        if (indexResult.data && !indexResult.data.indexed) {
+        if (!indexResult.data.indexed) {
           console.warn('Indexing failed but record saved to PDS:', indexResult.data.error);
           toast.info('Your paper was saved to your PDS.', {
             description: 'It may take a moment to appear in search results.',
