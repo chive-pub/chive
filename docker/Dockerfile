@@ -40,6 +40,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # -----------------------------------------------------------------------------
 FROM base AS builder
 
+# Install bash for scripts that require it
+RUN apk add --no-cache bash
+
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
