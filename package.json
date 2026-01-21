@@ -51,7 +51,6 @@
     "typecheck": "tsc --noEmit",
     "prepare": "husky install",
     "lexicons:generate": "./scripts/generate-lexicons.sh",
-    "lexicons:validate": "tsx scripts/validate-lexicon-schemas.ts",
     "openapi:generate": "./scripts/generate-api-types.sh",
     "test:stack:start": "./scripts/start-test-stack.sh",
     "test:stack:stop": "docker-compose -f docker/docker-compose.yml down",

@@ -72,9 +72,10 @@
           "description": "Relation slug (broader, narrower, related, etc.)"
         },
         "weight": {
-          "type": "number",
+          "type": "integer",
           "minimum": 0,
-          "maximum": 1
+          "maximum": 1000,
+          "description": "Edge weight (scaled by 1000 for 0.0-1.0 range)"
         },
         "metadata": {
           "type": "ref",

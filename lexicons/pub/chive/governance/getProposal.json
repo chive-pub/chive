@@ -1,0 +1,258 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.getProposal",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get a single governance proposal by ID with full enrichment",
+      "parameters": {
+        "type": "params",
+        "required": ["proposalId"],
+        "properties": {
+          "proposalId": {
+            "type": "string",
+            "description": "Proposal identifier"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#proposalView"
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    },
+    "proposalView": {
+      "type": "object",
+      "description": "View of a governance proposal",
+      "required": [
+        "id",
+        "uri",
+        "cid",
+        "type",
+        "changes",
+        "status",
+        "proposedBy",
+        "votes",
+        "consensus",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Proposal identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Proposal AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "nodeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Target node URI (for update/merge/deprecate)"
+        },
+        "label": {
+          "type": "string",
+          "description": "Node label (from target node or proposed changes)"
+        },
+        "type": {
+          "type": "string",
+          "knownValues": ["create", "update", "merge", "deprecate"],
+          "description": "Proposal type"
+        },
+        "changes": {
+          "type": "ref",
+          "ref": "#proposalChanges",
+          "description": "Proposed changes"
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Rationale for the proposal"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["pending", "approved", "rejected", "expired"],
+          "description": "Current proposal status"
+        },
+        "proposedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the proposer"
+        },
+        "proposerName": {
+          "type": "string",
+          "description": "Display name of the proposer"
+        },
+        "votes": {
+          "type": "ref",
+          "ref": "#voteCounts"
+        },
+        "consensus": {
+          "type": "ref",
+          "ref": "#consensusProgress"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Expiration timestamp"
+        }
+      }
+    },
+    "proposalChanges": {
+      "type": "object",
+      "description": "Proposed changes to a node",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Node label"
+        },
+        "alternateLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Alternate labels"
+        },
+        "description": {
+          "type": "string",
+          "description": "Node description"
+        },
+        "externalIds": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#externalId"
+          },
+          "description": "External identifiers"
+        },
+        "metadata": {
+          "type": "unknown",
+          "description": "Additional metadata"
+        },
+        "kind": {
+          "type": "string",
+          "knownValues": ["type", "object"],
+          "description": "Node kind"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Node subkind"
+        },
+        "targetUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Target URI for update/deprecate"
+        },
+        "mergeIntoUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Merge target URI"
+        }
+      }
+    },
+    "externalId": {
+      "type": "object",
+      "required": ["system", "identifier"],
+      "properties": {
+        "system": {
+          "type": "string",
+          "description": "External system name"
+        },
+        "identifier": {
+          "type": "string",
+          "description": "Identifier in external system"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI in external system"
+        },
+        "matchType": {
+          "type": "string",
+          "knownValues": ["exact", "close", "broader", "narrower", "related"],
+          "description": "Match type"
+        }
+      }
+    },
+    "voteCounts": {
+      "type": "object",
+      "required": ["approve", "reject", "abstain"],
+      "properties": {
+        "approve": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of approve votes"
+        },
+        "reject": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of reject votes"
+        },
+        "abstain": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of abstain votes"
+        }
+      }
+    },
+    "consensusProgress": {
+      "type": "object",
+      "required": [
+        "approvalPercentage",
+        "threshold",
+        "voterCount",
+        "minimumVotes",
+        "consensusReached",
+        "recommendedStatus"
+      ],
+      "properties": {
+        "approvalPercentage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Current approval percentage (0-100)"
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Required threshold for approval (0-100)"
+        },
+        "voterCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of voters"
+        },
+        "minimumVotes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum votes required"
+        },
+        "consensusReached": {
+          "type": "boolean",
+          "description": "Whether consensus has been reached"
+        },
+        "recommendedStatus": {
+          "type": "string",
+          "knownValues": ["approved", "rejected", "pending"],
+          "description": "Recommended status based on votes"
+        }
+      }
+    }
+  }
+}

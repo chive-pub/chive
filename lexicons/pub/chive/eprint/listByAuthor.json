@@ -1,0 +1,119 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.listByAuthor",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List eprints by author DID",
+      "parameters": {
+        "type": "params",
+        "required": ["did"],
+        "properties": {
+          "did": {
+            "type": "string",
+            "format": "did",
+            "description": "Author DID"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "sortBy": {
+            "type": "string",
+            "knownValues": ["indexedAt", "publishedAt", "updatedAt"],
+            "default": "indexedAt"
+          },
+          "sortOrder": {
+            "type": "string",
+            "knownValues": ["asc", "desc"],
+            "default": "desc"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprints"],
+          "properties": {
+            "eprints": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#eprintSummary"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "total": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    },
+    "eprintSummary": {
+      "type": "object",
+      "required": ["uri", "title", "indexedAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "cid": {
+          "type": "string",
+          "format": "cid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#authorRef"
+          }
+        },
+        "abstract": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

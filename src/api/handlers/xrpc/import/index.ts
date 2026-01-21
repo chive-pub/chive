@@ -1,28 +1,28 @@
 /**
- * Import XRPC endpoints.
+ * Import XRPC methods.
  *
  * @remarks
- * Exports all import-related XRPC endpoint definitions.
+ * Exports all import-related XRPC method definitions keyed by NSID.
  *
  * @packageDocumentation
  * @public
  */
 
-import { importExistsEndpoint } from './exists.js';
-import { getImportEndpoint } from './get.js';
-import { searchImportsEndpoint } from './search.js';
+import { exists } from './exists.js';
+import { get } from './get.js';
+import { search } from './search.js';
 
-export { searchImportsEndpoint, searchImportsHandler } from './search.js';
-export { getImportEndpoint, getImportHandler } from './get.js';
-export { importExistsEndpoint, importExistsHandler } from './exists.js';
+export { get } from './get.js';
+export { search } from './search.js';
+export { exists } from './exists.js';
 
 /**
- * All import endpoints.
+ * Import methods map keyed by NSID.
  *
  * @public
  */
-export const importEndpoints = [
-  searchImportsEndpoint,
-  getImportEndpoint,
-  importExistsEndpoint,
-] as const;
+export const importMethods = {
+  'pub.chive.import.get': get,
+  'pub.chive.import.search': search,
+  'pub.chive.import.exists': exists,
+} as const;

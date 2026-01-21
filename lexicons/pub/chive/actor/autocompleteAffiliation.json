@@ -1,0 +1,75 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.autocompleteAffiliation",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Autocomplete institutional affiliations using the Research Organization Registry (ROR) API",
+      "parameters": {
+        "type": "params",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Search query for institution name"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 8,
+            "description": "Maximum number of suggestions to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["suggestions"],
+          "properties": {
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#affiliationSuggestion"
+              }
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "affiliationSuggestion": {
+      "type": "object",
+      "description": "An affiliation suggestion from the ROR database",
+      "required": ["rorId", "name", "country", "types"],
+      "properties": {
+        "rorId": {
+          "type": "string",
+          "description": "ROR identifier URL (e.g., https://ror.org/02mhbdp94)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the institution"
+        },
+        "country": {
+          "type": "string",
+          "description": "Country where the institution is located"
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Organization types (e.g., Education, Nonprofit)"
+        },
+        "acronym": {
+          "type": "string",
+          "description": "Institution acronym if available"
+        }
+      }
+    }
+  }
+}

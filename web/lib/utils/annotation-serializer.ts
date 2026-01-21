@@ -9,8 +9,28 @@
  * @packageDocumentation
  */
 
-import type { RichAnnotationBody, RichAnnotationItem } from '@/lib/api/schema';
+import type {
+  RichAnnotationBody,
+  RichAnnotationBodyObject,
+  RichAnnotationItem,
+} from '@/lib/api/schema';
 import { getSubkindChipClasses } from '@/lib/constants/subkind-colors';
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Get items array from RichAnnotationBody, handling both object and array forms.
+ *
+ * @param body - The annotation body (object with items or array directly)
+ * @returns The items array, or empty array if null/undefined
+ */
+function getBodyItems(body: RichAnnotationBody | null): RichAnnotationItem[] {
+  if (!body) return [];
+  // If it's an array, return it directly; otherwise get .items from the object
+  return Array.isArray(body) ? body : (body.items ?? []);
+}
 
 // =============================================================================
 // TYPES
@@ -54,7 +74,7 @@ const CHIP_CLASS = 'mention-chip';
  * // { type: 'RichText', items: [...], format: '...' }
  * ```
  */
-export function serializeToBody(element: HTMLElement): RichAnnotationBody {
+export function serializeToBody(element: HTMLElement): RichAnnotationBodyObject {
   const items: RichAnnotationItem[] = [];
   let currentText = '';
 
@@ -129,7 +149,7 @@ export function serializeToBody(element: HTMLElement): RichAnnotationBody {
   for (const item of items) {
     if (item.type === 'text' && mergedItems.length > 0) {
       const last = mergedItems[mergedItems.length - 1];
-      if (last.type === 'text') {
+      if (last.type === 'text' && last.content !== undefined && item.content !== undefined) {
         last.content += item.content;
         continue;
       }
@@ -140,7 +160,7 @@ export function serializeToBody(element: HTMLElement): RichAnnotationBody {
   // Trim leading/trailing whitespace from first/last text items
   if (mergedItems.length > 0) {
     const first = mergedItems[0];
-    if (first.type === 'text') {
+    if (first.type === 'text' && first.content !== undefined) {
       first.content = first.content.replace(/^[\s\n]+/, '');
       if (!first.content) {
         mergedItems.shift();
@@ -149,7 +169,7 @@ export function serializeToBody(element: HTMLElement): RichAnnotationBody {
   }
   if (mergedItems.length > 0) {
     const last = mergedItems[mergedItems.length - 1];
-    if (last.type === 'text') {
+    if (last.type === 'text' && last.content !== undefined) {
       last.content = last.content.replace(/[\s\n]+$/, '');
       if (!last.content) {
         mergedItems.pop();
@@ -200,20 +220,21 @@ function textToHTML(text: string): string {
  * ```
  */
 export function renderBodyToHTML(body: RichAnnotationBody | null): string {
-  if (!body?.items || body.items.length === 0) {
+  const items = getBodyItems(body);
+  if (items.length === 0) {
     return '';
   }
 
-  return body.items
-    .map((item) => {
+  return items
+    .map((item: RichAnnotationItem) => {
       switch (item.type) {
         case 'text':
-          return textToHTML(item.content);
+          return textToHTML(item.content ?? '');
 
         case 'nodeRef': {
           const colorClasses = getSubkindChipClasses(item.subkind ?? 'default');
           const trigger = item.kind === 'object' ? '@' : '#';
-          return `<span contenteditable="false" class="${CHIP_CLASS}" data-node-uri="${escapeHTML(item.uri)}" data-node-label="${escapeHTML(item.label)}" data-kind="${escapeHTML(item.kind ?? '')}" data-subkind="${escapeHTML(item.subkind ?? '')}" data-trigger="${trigger}"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-sm font-medium mx-0.5 ${colorClasses}">${escapeHTML(item.label)}</span></span>`;
+          return `<span contenteditable="false" class="${CHIP_CLASS}" data-node-uri="${escapeHTML(item.uri ?? '')}" data-node-label="${escapeHTML(item.label ?? '')}" data-kind="${escapeHTML(item.kind ?? '')}" data-subkind="${escapeHTML(item.subkind ?? '')}" data-trigger="${trigger}"><span class="inline-flex items-center rounded px-1.5 py-0.5 text-sm font-medium mx-0.5 ${colorClasses}">${escapeHTML(item.label ?? '')}</span></span>`;
         }
 
         default:
@@ -300,29 +321,30 @@ export function createChipElement(
  * @returns Plain text representation
  */
 export function extractPlainText(body: RichAnnotationBody | null): string {
-  if (!body?.items || body.items.length === 0) {
+  const items = getBodyItems(body);
+  if (items.length === 0) {
     return '';
   }
 
-  return body.items
-    .map((item) => {
+  return items
+    .map((item: RichAnnotationItem) => {
       switch (item.type) {
         case 'text':
-          return item.content;
+          return item.content ?? '';
         case 'nodeRef':
-          return item.label;
+          return item.label ?? '';
         case 'wikidataRef':
-          return item.label;
+          return item.label ?? '';
         case 'fieldRef':
-          return item.label;
+          return item.label ?? '';
         case 'eprintRef':
-          return item.title;
+          return item.title ?? '';
         case 'facetRef':
-          return `${item.dimension}: ${item.value}`;
+          return `${item.dimension ?? ''}: ${item.value ?? ''}`;
         case 'annotationRef':
-          return item.excerpt;
+          return item.excerpt ?? '';
         case 'authorRef':
-          return item.displayName;
+          return item.displayName ?? '';
         default:
           return '';
       }
@@ -362,13 +384,14 @@ export function isWithinMaxLength(body: RichAnnotationBody | null, maxLength: nu
  * @returns Whether the body has content
  */
 export function hasContent(body: RichAnnotationBody | null): boolean {
-  if (!body?.items || body.items.length === 0) {
+  const items = getBodyItems(body);
+  if (items.length === 0) {
     return false;
   }
 
-  return body.items.some((item) => {
+  return items.some((item: RichAnnotationItem) => {
     if (item.type === 'text') {
-      return item.content.trim().length > 0;
+      return (item.content ?? '').trim().length > 0;
     }
     return true; // Non-text items count as content
   });

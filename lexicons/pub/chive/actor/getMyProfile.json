@@ -1,0 +1,142 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.getMyProfile",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the authenticated user's Chive profile from their PDS",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "displayName": {
+              "type": "string",
+              "description": "Display name"
+            },
+            "bio": {
+              "type": "string",
+              "description": "Biography text"
+            },
+            "orcid": {
+              "type": "string",
+              "description": "ORCID identifier"
+            },
+            "affiliations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#affiliation"
+              },
+              "description": "Current institutional affiliations"
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Research field identifiers"
+            },
+            "nameVariants": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Alternative name forms for paper matching"
+            },
+            "previousAffiliations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#affiliation"
+              },
+              "description": "Past institutional affiliations"
+            },
+            "researchKeywords": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#researchKeyword"
+              },
+              "description": "Research topics and keywords"
+            },
+            "semanticScholarId": {
+              "type": "string",
+              "description": "Semantic Scholar author ID"
+            },
+            "openAlexId": {
+              "type": "string",
+              "description": "OpenAlex author ID"
+            },
+            "googleScholarId": {
+              "type": "string",
+              "description": "Google Scholar profile ID"
+            },
+            "arxivAuthorId": {
+              "type": "string",
+              "description": "arXiv author identifier"
+            },
+            "openReviewId": {
+              "type": "string",
+              "description": "OpenReview profile ID"
+            },
+            "dblpId": {
+              "type": "string",
+              "description": "DBLP author identifier"
+            },
+            "scopusAuthorId": {
+              "type": "string",
+              "description": "Scopus author ID"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "PDSNotFound"
+        }
+      ]
+    },
+    "affiliation": {
+      "type": "object",
+      "description": "Institutional affiliation",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Organization name"
+        },
+        "rorId": {
+          "type": "string",
+          "description": "ROR ID for the institution"
+        }
+      }
+    },
+    "researchKeyword": {
+      "type": "object",
+      "description": "Research keyword with optional authority IDs",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Keyword label"
+        },
+        "fastId": {
+          "type": "string",
+          "description": "FAST subject heading ID"
+        },
+        "wikidataId": {
+          "type": "string",
+          "description": "Wikidata entity ID"
+        }
+      }
+    }
+  }
+}

@@ -69,7 +69,7 @@ export function AuthorChip({
     >
       {showAvatar && (
         <Avatar className={avatarSize}>
-          {author.avatarUrl && <AvatarImage src={author.avatarUrl} alt={displayName} />}
+          {author.avatar && <AvatarImage src={author.avatar} alt={displayName} />}
           <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
         </Avatar>
       )}
@@ -130,7 +130,7 @@ export function AuthorChip({
             {author.contributions && author.contributions.length > 0 && (
               <div className="text-muted-foreground">
                 {author.contributions
-                  .map((c) => c.typeLabel ?? c.typeId ?? 'Contribution')
+                  .map((c) => c.typeSlug ?? c.typeUri.split('/').pop() ?? 'Contribution')
                   .join(', ')}
               </div>
             )}

@@ -36,10 +36,10 @@
             "description": "Identifier in the external system"
           },
           "confidence": {
-            "type": "number",
+            "type": "integer",
             "minimum": 0,
-            "maximum": 1,
-            "description": "Match confidence score (0-1)"
+            "maximum": 1000,
+            "description": "Match confidence score (scaled by 1000 for 0.0-1.0 range)"
           },
           "matchType": {
             "type": "string",

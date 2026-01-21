@@ -1,5 +1,5 @@
 /**
- * Handler for pub.chive.discovery.recordInteraction.
+ * XRPC method for pub.chive.discovery.recordInteraction.
  *
  * @remarks
  * Records user interactions with recommendations for the feedback loop.
@@ -9,25 +9,18 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/discovery/recordInteraction.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { AuthenticationError } from '../../../../types/errors.js';
-import {
-  recordInteractionParamsSchema,
-  recordInteractionResponseSchema,
-  type RecordInteractionParams,
-  type RecordInteractionResponse,
-} from '../../../schemas/discovery.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { UserInteractionType } from '../../../../types/interfaces/discovery.interface.js';
+// Use generated types from lexicons
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.discovery.recordInteraction.
- *
- * @param c - Hono context
- * @param params - Request parameters
- * @returns Recording confirmation
+ * XRPC method for pub.chive.discovery.recordInteraction.
  *
  * @remarks
  * Records user interactions to improve recommendations:
@@ -41,62 +34,47 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @public
  */
-export async function recordInteractionHandler(
-  c: Context<ChiveEnv>,
-  params: RecordInteractionParams
-): Promise<RecordInteractionResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { discovery } = c.get('services');
+export const recordInteraction: XRPCMethod<InputSchema, void, OutputSchema> = {
+  auth: true,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { discovery } = c.get('services');
 
-  // Require authentication
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
+    // Require authentication
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  const userDid = user.did;
+    const userDid = user.did;
 
-  logger.debug('Recording interaction', {
-    userDid,
-    eprintUri: params.eprintUri,
-    type: params.type,
-    recommendationId: params.recommendationId,
-  });
-
-  // Record the interaction if discovery service is available
-  if (discovery) {
-    await discovery.recordInteraction(userDid, {
-      eprintUri: params.eprintUri as AtUri,
+    logger.debug('Recording interaction', {
+      userDid,
+      eprintUri: params.eprintUri,
       type: params.type,
       recommendationId: params.recommendationId,
-      timestamp: new Date(),
     });
-  }
 
-  logger.info('Interaction recorded', {
-    userDid,
-    eprintUri: params.eprintUri,
-    type: params.type,
-  });
+    // Record the interaction if discovery service is available
+    if (discovery) {
+      await discovery.recordInteraction(userDid, {
+        eprintUri: params.eprintUri as AtUri,
+        // Cast to UserInteractionType - lexicon type is extensible
+        type: params.type as UserInteractionType,
+        recommendationId: params.recommendationId,
+        timestamp: new Date(),
+      });
+    }
 
-  return { recorded: true };
-}
+    logger.info('Interaction recorded', {
+      userDid,
+      eprintUri: params.eprintUri,
+      type: params.type,
+    });
 
-/**
- * Endpoint definition for pub.chive.discovery.recordInteraction.
- *
- * @public
- */
-export const recordInteractionEndpoint: XRPCEndpoint<
-  RecordInteractionParams,
-  RecordInteractionResponse
-> = {
-  method: 'pub.chive.discovery.recordInteraction' as never,
-  type: 'procedure',
-  description: 'Record user interaction with a recommendation',
-  inputSchema: recordInteractionParamsSchema,
-  outputSchema: recordInteractionResponseSchema,
-  handler: recordInteractionHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return {
+      encoding: 'application/json',
+      body: { recorded: true },
+    };
+  },
 };

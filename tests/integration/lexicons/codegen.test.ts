@@ -16,7 +16,10 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-describe('Lexicon Code Generation Pipeline', () => {
+// Skipped: Zod validators have been replaced by ATProto lexicon validation from @atproto/lexicon.
+// The validation now uses lexicons.assertValidXrpcParams(), assertValidXrpcInput(), etc.
+// See src/api/xrpc/validation.ts for the new validation approach.
+describe.skip('Lexicon Code Generation Pipeline', () => {
   it('generates validators successfully', async () => {
     const { stderr } = await execAsync('node scripts/generate-zod-validators.js', {
       cwd: path.join(__dirname, '../../..'),

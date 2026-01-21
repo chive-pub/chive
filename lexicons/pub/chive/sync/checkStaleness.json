@@ -1,0 +1,58 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.sync.checkStaleness",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Check if indexed data is stale compared to PDS",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the record to check"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "isStale"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri"
+            },
+            "isStale": {
+              "type": "boolean",
+              "description": "Whether indexed data is stale"
+            },
+            "indexedAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "When the record was indexed"
+            },
+            "indexedCid": {
+              "type": "string",
+              "format": "cid",
+              "description": "CID in our index"
+            },
+            "pdsCid": {
+              "type": "string",
+              "format": "cid",
+              "description": "Current CID on PDS"
+            },
+            "pdsUrl": {
+              "type": "string",
+              "description": "Source PDS URL"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    }
+  }
+}

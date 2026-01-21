@@ -24,8 +24,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api/client';
-import type { paths, operations } from '@/lib/api/schema.generated';
+import {
+  api,
+  PubChiveGraphGetEdge,
+  PubChiveGraphGetHierarchy,
+  PubChiveGraphGetNode,
+  PubChiveGraphListNodes,
+} from '@/lib/api/client';
 
 // =============================================================================
 // TYPES - Derived from API Schema
@@ -49,20 +54,22 @@ export type NodeKind = 'type' | 'object';
 /**
  * Edge from API response.
  */
-export type GraphEdge =
-  operations['pub_chive_graph_listEdges']['responses']['200']['content']['application/json']['edges'][number];
+export type GraphEdge = PubChiveGraphGetEdge.GraphEdge;
 
 /**
- * Node from API response (used in hierarchy).
+ * Hierarchy item from API response.
  */
-export type ApiGraphNode =
-  operations['pub_chive_graph_getNode']['responses']['200']['content']['application/json'];
+export type ApiHierarchyNode = PubChiveGraphGetHierarchy.HierarchyItem;
 
 /**
- * Hierarchy node from API response.
+ * API graph node from listNodes response.
  */
-export type ApiHierarchyNode =
-  operations['pub_chive_graph_getHierarchy']['responses']['200']['content']['application/json']['roots'][number];
+export type ApiGraphNode = PubChiveGraphListNodes.GraphNode;
+
+/**
+ * API node with edges from getNode response.
+ */
+export type ApiNodeWithEdges = PubChiveGraphGetNode.NodeWithEdges;
 
 /**
  * Simplified graph node for UI consumption.
@@ -229,42 +236,34 @@ export interface UseEdgeOptions {
 // =============================================================================
 
 /**
- * Converts an API hierarchy node to our simplified HierarchyNode type.
+ * Converts an API graph node to our simplified GraphNode type.
+ * Accepts both GraphNode from listNodes and NodeWithEdges from getNode.
  */
-function mapApiHierarchyNode(apiNode: ApiHierarchyNode): HierarchyNode {
+function mapApiNode(apiNode: ApiGraphNode | ApiNodeWithEdges): GraphNode {
   return {
-    node: {
-      id: apiNode.node.id,
-      uri: apiNode.node.uri,
-      kind: apiNode.node.kind,
-      subkind: apiNode.node.subkind,
-      subkindUri: apiNode.node.subkindUri,
-      label: apiNode.node.label,
-      alternateLabels: apiNode.node.alternateLabels,
-      description: apiNode.node.description,
-      status: apiNode.node.status,
-      createdAt: apiNode.node.createdAt,
-      updatedAt: apiNode.node.updatedAt,
-    },
-    depth: apiNode.depth,
-    children: apiNode.children.map(mapApiHierarchyNode),
+    id: apiNode.id,
+    uri: apiNode.uri,
+    kind: apiNode.kind as NodeKind,
+    subkind: apiNode.subkind,
+    subkindUri: apiNode.subkindUri,
+    label: apiNode.label,
+    alternateLabels: apiNode.alternateLabels,
+    description: apiNode.description,
+    status: apiNode.status as NodeStatus,
+    createdAt: apiNode.createdAt,
+    updatedAt: apiNode.updatedAt,
   };
 }
 
 /**
- * Finds a node in a hierarchy tree by URI.
+ * Converts an API hierarchy node to our simplified HierarchyNode type.
  */
-function findNodeInHierarchy(roots: HierarchyNode[], targetUri: string): HierarchyNode | null {
-  for (const root of roots) {
-    if (root.node.uri === targetUri) {
-      return root;
-    }
-    const found = findNodeInHierarchy(root.children, targetUri);
-    if (found) {
-      return found;
-    }
-  }
-  return null;
+function mapApiHierarchyNode(apiNode: ApiHierarchyNode): HierarchyNode {
+  return {
+    node: mapApiNode(apiNode.node),
+    depth: apiNode.depth,
+    children: apiNode.children.map(mapApiHierarchyNode),
+  };
 }
 
 /**
@@ -319,30 +318,20 @@ export function useEdges(params: EdgeListParams = {}, options: UseEdgeOptions = 
   return useQuery({
     queryKey: edgeKeys.list(params),
     queryFn: async (): Promise<EdgesResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listEdges', {
-        params: {
-          query: {
-            limit: params.limit ?? 50,
-            cursor: params.cursor,
-            sourceUri: params.sourceUri,
-            targetUri: params.targetUri,
-            relationSlug: params.relationSlug,
-            status: params.status ?? 'established',
-          },
-        },
+      const response = await api.pub.chive.graph.listEdges({
+        limit: params.limit ?? 50,
+        cursor: params.cursor,
+        sourceUri: params.sourceUri,
+        targetUri: params.targetUri,
+        relationSlug: params.relationSlug,
+        status: params.status ?? 'established',
       });
 
-      if (error) {
-        throw new Error(
-          (error as { error?: { message?: string } }).error?.message ?? 'Failed to fetch edges'
-        );
-      }
-
       return {
-        edges: data.edges,
-        cursor: data.cursor,
-        hasMore: data.hasMore,
-        total: data.total,
+        edges: response.data.edges,
+        cursor: response.data.cursor,
+        hasMore: response.data.hasMore,
+        total: response.data.total,
       };
     },
     enabled: hasFilter && (options.enabled ?? true),
@@ -361,19 +350,8 @@ export function useEdge(uri: string, options: UseEdgeOptions = {}) {
   return useQuery({
     queryKey: edgeKeys.detail(uri),
     queryFn: async (): Promise<GraphEdge> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getEdge', {
-        params: {
-          query: { uri },
-        },
-      });
-
-      if (error) {
-        throw new Error(
-          (error as { error?: { message?: string } }).error?.message ?? 'Failed to fetch edge'
-        );
-      }
-
-      return data;
+      const response = await api.pub.chive.graph.getEdge({ uri });
+      return response.data;
     },
     enabled: !!uri && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000,
@@ -397,25 +375,15 @@ export function useHierarchy(params: HierarchyParams, options: UseEdgeOptions = 
   return useQuery({
     queryKey: edgeKeys.hierarchy(params.subkind, params.relationSlug),
     queryFn: async (): Promise<HierarchyResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getHierarchy', {
-        params: {
-          query: {
-            subkind: params.subkind,
-            relationSlug: params.relationSlug,
-          },
-        },
+      const response = await api.pub.chive.graph.getHierarchy({
+        subkind: params.subkind,
+        relationSlug: params.relationSlug,
       });
 
-      if (error) {
-        throw new Error(
-          (error as { error?: { message?: string } }).error?.message ?? 'Failed to fetch hierarchy'
-        );
-      }
-
       return {
-        roots: data.roots.map(mapApiHierarchyNode),
-        subkind: data.subkind,
-        relationSlug: data.relationSlug,
+        roots: response.data.roots.map(mapApiHierarchyNode),
+        subkind: response.data.subkind,
+        relationSlug: response.data.relationSlug,
       };
     },
     enabled: !!params.subkind && !!params.relationSlug && (options.enabled ?? true),
@@ -438,52 +406,29 @@ export function useNodeChildren(nodeUri: string, options: UseEdgeOptions = {}) {
   return useQuery({
     queryKey: edgeKeys.children(nodeUri),
     queryFn: async (): Promise<ConnectedNodesResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listEdges', {
-        params: {
-          query: {
-            limit: 100,
-            sourceUri: nodeUri,
-            relationSlug: 'narrower',
-            status: 'established',
-          },
-        },
+      const response = await api.pub.chive.graph.listEdges({
+        limit: 100,
+        sourceUri: nodeUri,
+        relationSlug: 'narrower',
+        status: 'established',
       });
 
-      if (error) {
-        throw new Error(
-          (error as { error?: { message?: string } }).error?.message ?? 'Failed to fetch children'
-        );
-      }
-
       // Extract unique target URIs and fetch nodes
-      const targetUris = [...new Set(data.edges.map((e) => e.targetUri))];
+      const targetUris = [...new Set(response.data.edges.map((e: GraphEdge) => e.targetUri))];
 
       // Fetch each node (could be optimized with batch endpoint)
       const nodes: GraphNode[] = [];
       for (const targetUri of targetUris) {
-        const { data: nodeData } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-          params: {
-            query: { id: targetUri, includeEdges: false },
-          },
+        const nodeResponse = await api.pub.chive.graph.getNode({
+          id: targetUri,
+          includeEdges: false,
         });
-        if (nodeData) {
-          nodes.push({
-            id: nodeData.id,
-            uri: nodeData.uri,
-            kind: nodeData.kind,
-            subkind: nodeData.subkind,
-            subkindUri: nodeData.subkindUri,
-            label: nodeData.label,
-            alternateLabels: nodeData.alternateLabels,
-            description: nodeData.description,
-            status: nodeData.status,
-            createdAt: nodeData.createdAt,
-            updatedAt: nodeData.updatedAt,
-          });
+        if (nodeResponse.data) {
+          nodes.push(mapApiNode(nodeResponse.data));
         }
       }
 
-      return { nodes, edges: data.edges };
+      return { nodes, edges: response.data.edges };
     },
     enabled: !!nodeUri && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000,
@@ -505,52 +450,29 @@ export function useNodeParents(nodeUri: string, options: UseEdgeOptions = {}) {
   return useQuery({
     queryKey: edgeKeys.parents(nodeUri),
     queryFn: async (): Promise<ConnectedNodesResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listEdges', {
-        params: {
-          query: {
-            limit: 50,
-            sourceUri: nodeUri,
-            relationSlug: 'broader',
-            status: 'established',
-          },
-        },
+      const response = await api.pub.chive.graph.listEdges({
+        limit: 50,
+        sourceUri: nodeUri,
+        relationSlug: 'broader',
+        status: 'established',
       });
 
-      if (error) {
-        throw new Error(
-          (error as { error?: { message?: string } }).error?.message ?? 'Failed to fetch parents'
-        );
-      }
-
       // Extract unique target URIs and fetch nodes
-      const targetUris = [...new Set(data.edges.map((e) => e.targetUri))];
+      const targetUris = [...new Set(response.data.edges.map((e: GraphEdge) => e.targetUri))];
 
       // Fetch each node
       const nodes: GraphNode[] = [];
       for (const targetUri of targetUris) {
-        const { data: nodeData } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-          params: {
-            query: { id: targetUri, includeEdges: false },
-          },
+        const nodeResponse = await api.pub.chive.graph.getNode({
+          id: targetUri,
+          includeEdges: false,
         });
-        if (nodeData) {
-          nodes.push({
-            id: nodeData.id,
-            uri: nodeData.uri,
-            kind: nodeData.kind,
-            subkind: nodeData.subkind,
-            subkindUri: nodeData.subkindUri,
-            label: nodeData.label,
-            alternateLabels: nodeData.alternateLabels,
-            description: nodeData.description,
-            status: nodeData.status,
-            createdAt: nodeData.createdAt,
-            updatedAt: nodeData.updatedAt,
-          });
+        if (nodeResponse.data) {
+          nodes.push(mapApiNode(nodeResponse.data));
         }
       }
 
-      return { nodes, edges: data.edges };
+      return { nodes, edges: response.data.edges };
     },
     enabled: !!nodeUri && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000,
@@ -578,23 +500,13 @@ export function useNodeAncestors(
     queryKey: edgeKeys.ancestors(nodeUri),
     queryFn: async (): Promise<{ ancestors: AncestorPathItem[] }> => {
       // Fetch the full hierarchy
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getHierarchy', {
-        params: {
-          query: {
-            subkind,
-            relationSlug: 'narrower',
-          },
-        },
+      const response = await api.pub.chive.graph.getHierarchy({
+        subkind,
+        relationSlug: 'narrower',
       });
 
-      if (error) {
-        throw new Error(
-          (error as { error?: { message?: string } }).error?.message ?? 'Failed to fetch hierarchy'
-        );
-      }
-
       // Map to our hierarchy format
-      const roots = data.roots.map(mapApiHierarchyNode);
+      const roots = response.data.roots.map(mapApiHierarchyNode);
 
       // Find path to target node
       const path = findPathToNode(roots, nodeUri);
@@ -672,11 +584,3 @@ export const RELATION_LABELS: Record<string, string> = {
   'applies-to': 'Applies To',
   'applied-in': 'Applied In',
 };
-
-// =============================================================================
-// RE-EXPORTS FOR BACKWARD COMPATIBILITY
-// =============================================================================
-
-// Legacy type aliases - prefer using the new types
-/** @deprecated Use GraphNode instead */
-export type { GraphNode as NodeType };

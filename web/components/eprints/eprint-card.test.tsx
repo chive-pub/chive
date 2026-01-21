@@ -55,15 +55,14 @@ describe('EprintCard', () => {
   });
 
   it('shows fields when available', () => {
+    // EprintSummary has fields as string[] (URIs), the component extracts the label from the URI
     const eprint = createMockEprintSummary({
-      fields: [
-        { uri: 'physics', label: 'Physics' },
-        { uri: 'chemistry', label: 'Chemistry' },
-      ],
+      fields: ['physics', 'chemistry'],
     });
     render(<EprintCard eprint={eprint} />);
-    expect(screen.getByText('Physics')).toBeInTheDocument();
-    expect(screen.getByText('Chemistry')).toBeInTheDocument();
+    // The component extracts label from URI's last segment
+    expect(screen.getByText('physics')).toBeInTheDocument();
+    expect(screen.getByText('chemistry')).toBeInTheDocument();
   });
 
   it('hides fields section when no fields', () => {
@@ -72,10 +71,12 @@ describe('EprintCard', () => {
     expect(screen.queryByText('Physics')).not.toBeInTheDocument();
   });
 
-  it('shows source information', () => {
+  it('does not show source information for EprintSummary (only TrendingEntry has source)', () => {
+    // EprintSummary is a lean type without source info
+    // Source is only shown for TrendingEntry type data
     const eprint = createMockEprintSummary();
     render(<EprintCard eprint={eprint} />);
-    expect(screen.getByText(/Source:/)).toBeInTheDocument();
+    expect(screen.queryByText(/Source:/)).not.toBeInTheDocument();
   });
 
   it('calls onPrefetch on mouse enter', () => {

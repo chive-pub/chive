@@ -35,10 +35,10 @@
             "description": "Relation slug for queries (broader, narrower, related, etc.)"
           },
           "weight": {
-            "type": "number",
+            "type": "integer",
             "minimum": 0,
-            "maximum": 1,
-            "description": "Optional edge weight for ranking"
+            "maximum": 1000,
+            "description": "Optional edge weight for ranking (scaled by 1000 for 0.0-1.0 range)"
           },
           "metadata": {
             "type": "ref",
@@ -76,10 +76,10 @@
       "description": "Edge-specific metadata",
       "properties": {
         "confidence": {
-          "type": "number",
+          "type": "integer",
           "minimum": 0,
-          "maximum": 1,
-          "description": "Confidence score for automatically inferred edges"
+          "maximum": 1000,
+          "description": "Confidence score for automatically inferred edges (scaled by 1000 for 0.0-1.0 range)"
         },
         "startDate": {
           "type": "string",

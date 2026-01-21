@@ -179,7 +179,8 @@ export function EndorsementPanel({
               <SelectItem value="all">All endorsements</SelectItem>
               {availableTypes.map((type) => (
                 <SelectItem key={type} value={type}>
-                  {CONTRIBUTION_TYPE_LABELS[type]} ({summary?.byType?.[type] ?? 0})
+                  {CONTRIBUTION_TYPE_LABELS[type]} (
+                  {(summary?.byType as Record<string, number | undefined>)?.[type] ?? 0})
                 </SelectItem>
               ))}
             </SelectContent>

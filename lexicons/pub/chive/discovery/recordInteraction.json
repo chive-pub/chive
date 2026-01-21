@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.discovery.recordInteraction",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Record a user interaction with a recommendation for the feedback loop. Used to improve personalization over time.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprintUri", "type"],
+          "properties": {
+            "eprintUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the eprint"
+            },
+            "type": {
+              "type": "string",
+              "knownValues": ["view", "click", "endorse", "dismiss", "claim"],
+              "description": "Type of interaction: view (viewed detail page), click (clicked recommendation), endorse (endorsed paper), dismiss (dismissed recommendation), claim (claimed authorship)"
+            },
+            "recommendationId": {
+              "type": "string",
+              "description": "ID of the recommendation that led to this interaction"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["recorded"],
+          "properties": {
+            "recorded": {
+              "type": "boolean",
+              "description": "Whether the interaction was successfully recorded"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    }
+  }
+}

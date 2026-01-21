@@ -93,6 +93,7 @@ interface EprintRow extends Record<string, unknown> {
   readonly document_blob_mime_type: string;
   readonly document_blob_size: number;
   readonly document_format: string;
+  readonly version: number;
   readonly keywords: string[] | null;
   readonly license: string;
   readonly publication_status: string;
@@ -201,6 +202,7 @@ export class EprintsRepository {
           document_blob_mime_type: eprint.documentBlobRef.mimeType,
           document_blob_size: eprint.documentBlobRef.size,
           document_format: eprint.documentFormat,
+          version: eprint.version,
           keywords: eprint.keywords ? [...eprint.keywords] : null,
           license: eprint.license,
           publication_status: eprint.publicationStatus,
@@ -275,6 +277,7 @@ export class EprintsRepository {
           'document_blob_mime_type',
           'document_blob_size',
           'document_format',
+          'version',
           'keywords',
           'license',
           'publication_status',
@@ -357,7 +360,7 @@ export class EprintsRepository {
         SELECT
           uri, cid, authors, submitted_by, paper_did, title, abstract,
           abstract_plain_text, document_blob_cid, document_blob_mime_type,
-          document_blob_size, document_format, keywords, license,
+          document_blob_size, document_format, version, keywords, license,
           publication_status, published_version, external_ids, related_works,
           repositories, funding, conference_presentation, supplementary_materials,
           fields, pds_url, indexed_at, created_at
@@ -627,19 +630,10 @@ export class EprintsRepository {
       : undefined;
 
     // Parse abstract from JSONB - PostgreSQL returns objects directly
-    // Handle legacy plain text abstracts by wrapping them in rich text format
+    // All abstracts are expected to be in rich text format
     let abstract: AnnotationBody;
     if (typeof row.abstract === 'string') {
-      try {
-        abstract = JSON.parse(row.abstract) as AnnotationBody;
-      } catch {
-        // Legacy plain text abstract - wrap in rich text format
-        abstract = {
-          type: 'RichText',
-          items: [{ type: 'text', content: row.abstract }],
-          format: 'application/x-chive-gloss+json',
-        };
-      }
+      abstract = JSON.parse(row.abstract) as AnnotationBody;
     } else if (row.abstract && typeof row.abstract === 'object') {
       abstract = row.abstract as AnnotationBody;
     } else {
@@ -663,6 +657,7 @@ export class EprintsRepository {
         size: row.document_blob_size,
       },
       documentFormat: row.document_format as DocumentFormat,
+      version: row.version ?? 1,
       keywords: row.keywords ?? undefined,
       license: row.license,
       publicationStatus: row.publication_status as PublicationStatus,
@@ -773,7 +768,7 @@ export class EprintsRepository {
       SELECT
         uri, cid, authors, submitted_by, paper_did, title, abstract,
         document_blob_cid, document_blob_mime_type, document_blob_size,
-        document_format, keywords, license, publication_status,
+        document_format, version, keywords, license, publication_status,
         previous_version_uri, version_notes, supplementary_materials,
         published_version, external_ids, related_works, repositories,
         funding, conference_presentation, fields, pds_url, indexed_at, created_at

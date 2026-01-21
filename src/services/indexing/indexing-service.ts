@@ -23,7 +23,7 @@
  * @example
  * ```typescript
  * const service = new IndexingService({
- *   relay: 'wss://bsky.network',
+ *   relays: ['wss://bsky.network'],
  *   db,
  *   redis
  * });
@@ -69,15 +69,7 @@ import { ReconnectionManager } from './reconnection-manager.js';
  */
 export interface IndexingServiceOptions {
   /**
-   * Relay WebSocket URL (single relay, for backward compatibility).
-   *
-   * @example "wss://bsky.network"
-   * @deprecated Use `relays` array instead for multi-relay support
-   */
-  readonly relay?: string;
-
-  /**
-   * Multiple relay WebSocket URLs for redundancy.
+   * Relay WebSocket URLs.
    *
    * @remarks
    * Subscribes to all relays simultaneously and deduplicates events.
@@ -86,7 +78,7 @@ export interface IndexingServiceOptions {
    *
    * @example ["wss://bsky.network", "wss://relay1.us-east.bsky.network"]
    */
-  readonly relays?: readonly string[];
+  readonly relays: readonly string[];
 
   /**
    * PostgreSQL connection pool.
@@ -269,7 +261,7 @@ export interface IndexingStatus {
   readonly running: boolean;
 
   /**
-   * Current cursor position (primary relay for backward compat).
+   * Current cursor position (from primary relay).
    */
   readonly currentCursor: number | null;
 
@@ -384,18 +376,11 @@ export class IndexingService {
    * @param options - Configuration options
    */
   constructor(options: IndexingServiceOptions) {
-    // Support both single relay (backward compat) and multi-relay
-    if (options.relays && options.relays.length > 0) {
-      this.relays = options.relays;
-    } else if (options.relay) {
-      this.relays = [options.relay];
-    } else {
-      throw new ValidationError(
-        'At least one relay URL must be provided (relay or relays)',
-        'relay',
-        'required'
-      );
+    if (options.relays.length === 0) {
+      throw new ValidationError('At least one relay URL must be provided', 'relays', 'required');
     }
+
+    this.relays = options.relays;
 
     this.collections = options.collections;
     this.processor = options.processor;
@@ -729,7 +714,7 @@ export class IndexingService {
    * ```
    */
   getStatus(): IndexingStatus {
-    // Get cursor from first/primary relay for backward compatibility
+    // Get cursor from first/primary relay
     let currentCursor: number | null = null;
     const firstState = this.relayStates.values().next().value;
     if (firstState) {

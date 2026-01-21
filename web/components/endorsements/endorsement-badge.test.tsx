@@ -118,7 +118,7 @@ describe('EndorsementBadgeGroup', () => {
       analytical: 3,
       empirical: 2,
       theoretical: 1,
-    },
+    } as EndorsementSummary['byType'],
     total: 11,
     endorserCount: 8,
   });
@@ -157,11 +157,11 @@ describe('EndorsementBadgeGroup', () => {
     });
 
     it('returns null when no endorsements', () => {
-      const emptySummary: EndorsementSummary = {
-        byType: {},
+      const emptySummary = createMockEndorsementSummary({
+        byType: {} as EndorsementSummary['byType'],
         total: 0,
         endorserCount: 0,
-      };
+      });
 
       const { container } = render(<EndorsementBadgeGroup summary={emptySummary} />);
       expect(container).toBeEmptyDOMElement();

@@ -7,7 +7,6 @@ import type {
   GetSimilarResponse,
   GetCitationsResponse,
   GetEnrichmentResponse,
-  DiscoverySettings,
 } from '@/lib/api/schema';
 
 import {
@@ -19,22 +18,39 @@ import {
   useDiscoverySettings,
   useUpdateDiscoverySettings,
   DEFAULT_DISCOVERY_SETTINGS,
+  type DiscoverySettings,
 } from './use-discovery';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet, mockAuthApiGet, mockAuthApiPost } = vi.hoisted(() => ({
-  mockApiGet: vi.fn(),
-  mockAuthApiGet: vi.fn(),
-  mockAuthApiPost: vi.fn(),
-}));
+const { mockGetRecommendations, mockGetSimilar, mockGetCitations, mockGetEnrichment } = vi.hoisted(
+  () => ({
+    mockGetRecommendations: vi.fn(),
+    mockGetSimilar: vi.fn(),
+    mockGetCitations: vi.fn(),
+    mockGetEnrichment: vi.fn(),
+  })
+);
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
+    pub: {
+      chive: {
+        discovery: {
+          getSimilar: mockGetSimilar,
+          getCitations: mockGetCitations,
+          getEnrichment: mockGetEnrichment,
+        },
+      },
+    },
   },
   authApi: {
-    GET: mockAuthApiGet,
-    POST: mockAuthApiPost,
+    pub: {
+      chive: {
+        discovery: {
+          getRecommendations: mockGetRecommendations,
+        },
+      },
+    },
   },
 }));
 
@@ -186,9 +202,8 @@ describe('useForYouFeed', () => {
 
   it('fetches personalized recommendations', async () => {
     const mockResponse = createMockRecommendationsResponse();
-    mockAuthApiGet.mockResolvedValueOnce({
+    mockGetRecommendations.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -199,16 +214,16 @@ describe('useForYouFeed', () => {
     });
 
     expect(result.current.data?.pages[0]).toEqual(mockResponse);
-    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getRecommendations', {
-      params: { query: { limit: 10, cursor: undefined } },
+    expect(mockGetRecommendations).toHaveBeenCalledWith({
+      limit: 10,
+      cursor: undefined,
     });
   });
 
   it('respects limit option', async () => {
     const mockResponse = createMockRecommendationsResponse();
-    mockAuthApiGet.mockResolvedValueOnce({
+    mockGetRecommendations.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -218,8 +233,9 @@ describe('useForYouFeed', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getRecommendations', {
-      params: { query: { limit: 20, cursor: undefined } },
+    expect(mockGetRecommendations).toHaveBeenCalledWith({
+      limit: 20,
+      cursor: undefined,
     });
   });
 
@@ -228,7 +244,7 @@ describe('useForYouFeed', () => {
     const { result } = renderHook(() => useForYouFeed({ enabled: false }), { wrapper: Wrapper });
 
     expect(result.current.isFetching).toBe(false);
-    expect(mockAuthApiGet).not.toHaveBeenCalled();
+    expect(mockGetRecommendations).not.toHaveBeenCalled();
   });
 });
 
@@ -241,9 +257,8 @@ describe('useSimilarPapers', () => {
 
   it('fetches similar papers for an eprint', async () => {
     const mockResponse = createMockSimilarResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetSimilar.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -254,27 +269,28 @@ describe('useSimilarPapers', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getSimilar', {
-      params: { query: { uri: testUri, limit: 5 } },
+    expect(mockGetSimilar).toHaveBeenCalledWith({
+      uri: testUri,
+      limit: 5,
     });
   });
 
   it('respects limit option', async () => {
     const mockResponse = createMockSimilarResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetSimilar.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
     renderHook(() => useSimilarPapers(testUri, { limit: 10 }), { wrapper: Wrapper });
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalled();
+      expect(mockGetSimilar).toHaveBeenCalled();
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getSimilar', {
-      params: { query: { uri: testUri, limit: 10 } },
+    expect(mockGetSimilar).toHaveBeenCalledWith({
+      uri: testUri,
+      limit: 10,
     });
   });
 
@@ -283,7 +299,7 @@ describe('useSimilarPapers', () => {
     const { result } = renderHook(() => useSimilarPapers(''), { wrapper: Wrapper });
 
     expect(result.current.isFetching).toBe(false);
-    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockGetSimilar).not.toHaveBeenCalled();
   });
 });
 
@@ -296,9 +312,8 @@ describe('useCitations', () => {
 
   it('fetches citations for an eprint', async () => {
     const mockResponse = createMockCitationsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetCitations.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -309,46 +324,53 @@ describe('useCitations', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getCitations', {
-      params: { query: { uri: testUri, direction: 'both', limit: 20, onlyInfluential: false } },
+    expect(mockGetCitations).toHaveBeenCalledWith({
+      uri: testUri,
+      direction: 'both',
+      limit: 20,
+      onlyInfluential: false,
     });
   });
 
   it('respects direction option', async () => {
     const mockResponse = createMockCitationsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetCitations.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
     renderHook(() => useCitations(testUri, { direction: 'citing' }), { wrapper: Wrapper });
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalled();
+      expect(mockGetCitations).toHaveBeenCalled();
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getCitations', {
-      params: { query: { uri: testUri, direction: 'citing', limit: 20, onlyInfluential: false } },
+    expect(mockGetCitations).toHaveBeenCalledWith({
+      uri: testUri,
+      direction: 'citing',
+      limit: 20,
+      onlyInfluential: false,
     });
   });
 
   it('can request only influential citations', async () => {
     const mockResponse = createMockCitationsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetCitations.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
     renderHook(() => useCitations(testUri, { onlyInfluential: true }), { wrapper: Wrapper });
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalled();
+      expect(mockGetCitations).toHaveBeenCalled();
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getCitations', {
-      params: { query: { uri: testUri, direction: 'both', limit: 20, onlyInfluential: true } },
+    expect(mockGetCitations).toHaveBeenCalledWith({
+      uri: testUri,
+      direction: 'both',
+      limit: 20,
+      onlyInfluential: true,
     });
   });
 });
@@ -362,9 +384,8 @@ describe('useEnrichment', () => {
 
   it('fetches enrichment data for an eprint', async () => {
     const mockResponse = createMockEnrichmentResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetEnrichment.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -375,9 +396,7 @@ describe('useEnrichment', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.discovery.getEnrichment', {
-      params: { query: { uri: testUri } },
-    });
+    expect(mockGetEnrichment).toHaveBeenCalledWith({ uri: testUri });
   });
 
   it('does not fetch when uri is empty', () => {
@@ -385,7 +404,7 @@ describe('useEnrichment', () => {
     const { result } = renderHook(() => useEnrichment(''), { wrapper: Wrapper });
 
     expect(result.current.isFetching).toBe(false);
-    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockGetEnrichment).not.toHaveBeenCalled();
   });
 });
 

@@ -78,8 +78,8 @@ function createTestReviewComment(overrides: Partial<ReviewComment> = {}): Review
 function createTestEndorsement(overrides: Partial<Endorsement> = {}): Endorsement {
   return {
     $type: 'pub.chive.review.endorsement',
-    subject: { uri: TEST_EPRINT_URI, cid: 'bafysubject' },
-    endorsementType: 'methods',
+    eprintUri: TEST_EPRINT_URI,
+    contributions: ['methodological'],
     createdAt: new Date().toISOString(),
     ...overrides,
   };
@@ -229,17 +229,18 @@ describe('ReviewService Integration', () => {
       expect(result.ok).toBe(true);
     });
 
-    it('indexes endorsement with different types', async () => {
-      const endorsementTypes: ('methods' | 'results' | 'overall')[] = [
-        'methods',
-        'results',
-        'overall',
+    it('indexes endorsement with different contribution types', async () => {
+      const contributionTypes = [
+        ['methodological'],
+        ['empirical'],
+        ['reproducibility'],
+        ['methodological', 'empirical'],
       ];
 
-      for (const endorsementType of endorsementTypes) {
-        const uri = createReviewUri(`endorse-${endorsementType}`);
-        const cid = createTestCid(`endorse-${endorsementType}`);
-        const endorsement = createTestEndorsement({ endorsementType });
+      for (const contributions of contributionTypes) {
+        const uri = createReviewUri(`endorse-${contributions.join('-')}`);
+        const cid = createTestCid(`endorse-${contributions.join('-')}`);
+        const endorsement = createTestEndorsement({ contributions });
         const metadata = createTestMetadata(uri, cid);
 
         const result = await service.indexEndorsement(endorsement, metadata);
@@ -348,15 +349,17 @@ describe('ReviewService Notification Integration', () => {
       `at://${NOTIFICATION_TEST_REVIEWER_DID}/pub.chive.review.comment/testreview1` as AtUri;
     await pool.query(
       `INSERT INTO reviews_index (
-        uri, cid, eprint_uri, reviewer_did, content, created_at, pds_url, indexed_at, last_synced_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '1 hour', $6, NOW(), NOW())
+        uri, cid, eprint_uri, reviewer_did, body, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5::jsonb, NOW() - INTERVAL '1 hour', $6, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
         reviewUri,
         'bafyreviewnew1',
         NOTIFICATION_TEST_EPRINT_URI,
         NOTIFICATION_TEST_REVIEWER_DID,
-        'This is a test review for notification tests.',
+        JSON.stringify([
+          { type: 'text', content: 'This is a test review for notification tests.' },
+        ]),
         NOTIFICATION_TEST_PDS_URL,
       ]
     );
@@ -366,15 +369,17 @@ describe('ReviewService Notification Integration', () => {
       `at://${NOTIFICATION_TEST_AUTHOR_DID}/pub.chive.review.comment/selfReview` as AtUri;
     await pool.query(
       `INSERT INTO reviews_index (
-        uri, cid, eprint_uri, reviewer_did, content, created_at, pds_url, indexed_at, last_synced_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '30 minutes', $6, NOW(), NOW())
+        uri, cid, eprint_uri, reviewer_did, body, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5::jsonb, NOW() - INTERVAL '30 minutes', $6, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
         selfReviewUri,
         'bafyreviewself1',
         NOTIFICATION_TEST_EPRINT_URI,
         NOTIFICATION_TEST_AUTHOR_DID,
-        'This is a self-review that should be excluded.',
+        JSON.stringify([
+          { type: 'text', content: 'This is a self-review that should be excluded.' },
+        ]),
         NOTIFICATION_TEST_PDS_URL,
       ]
     );
@@ -384,7 +389,7 @@ describe('ReviewService Notification Integration', () => {
       `at://${NOTIFICATION_TEST_REVIEWER_DID}/pub.chive.review.endorsement/testendo1` as AtUri;
     await pool.query(
       `INSERT INTO endorsements_index (
-        uri, cid, eprint_uri, endorser_did, endorsement_type, comment, created_at, pds_url, indexed_at, last_synced_at
+        uri, cid, eprint_uri, endorser_did, contributions, comment, created_at, pds_url, indexed_at, last_synced_at
       ) VALUES ($1, $2, $3, $4, $5, $6, NOW() - INTERVAL '2 hours', $7, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
@@ -392,7 +397,7 @@ describe('ReviewService Notification Integration', () => {
         'bafyendonew1',
         NOTIFICATION_TEST_EPRINT_URI,
         NOTIFICATION_TEST_REVIEWER_DID,
-        'methods',
+        ['methodological'],
         'Great methodology!',
         NOTIFICATION_TEST_PDS_URL,
       ]
@@ -403,7 +408,7 @@ describe('ReviewService Notification Integration', () => {
       `at://${NOTIFICATION_TEST_AUTHOR_DID}/pub.chive.review.endorsement/selfEndo` as AtUri;
     await pool.query(
       `INSERT INTO endorsements_index (
-        uri, cid, eprint_uri, endorser_did, endorsement_type, comment, created_at, pds_url, indexed_at, last_synced_at
+        uri, cid, eprint_uri, endorser_did, contributions, comment, created_at, pds_url, indexed_at, last_synced_at
       ) VALUES ($1, $2, $3, $4, $5, $6, NOW() - INTERVAL '1 hour', $7, NOW(), NOW())
       ON CONFLICT (uri) DO NOTHING`,
       [
@@ -411,7 +416,7 @@ describe('ReviewService Notification Integration', () => {
         'bafyendoself1',
         NOTIFICATION_TEST_EPRINT_URI,
         NOTIFICATION_TEST_AUTHOR_DID,
-        'overall',
+        ['conceptual'],
         'Self endorsement should be excluded.',
         NOTIFICATION_TEST_PDS_URL,
       ]
@@ -492,7 +497,7 @@ describe('ReviewService Notification Integration', () => {
       expect(endorsement?.endorserDid).toBe(NOTIFICATION_TEST_REVIEWER_DID);
       expect(endorsement?.eprintUri).toBe(NOTIFICATION_TEST_EPRINT_URI);
       expect(endorsement?.eprintTitle).toBe('Test Paper for Notification Tests');
-      expect(endorsement?.endorsementType).toBe('methods');
+      expect(endorsement?.contributions).toEqual(['methodological']);
       expect(endorsement?.comment).toBe('Great methodology!');
     });
 

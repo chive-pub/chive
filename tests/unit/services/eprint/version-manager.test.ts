@@ -81,6 +81,7 @@ const createMockStoredEprint = (overrides?: Partial<StoredEprint>): StoredEprint
   pdsUrl: 'https://pds.host',
   indexedAt: new Date('2020-01-01T00:00:00Z'),
   createdAt: new Date('2020-01-01T00:00:00Z'),
+  version: 1,
   ...overrides,
 });
 

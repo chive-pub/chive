@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.sync.refreshRecord",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Refresh a stale record from PDS",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the record to refresh"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "refreshed"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri"
+            },
+            "refreshed": {
+              "type": "boolean",
+              "description": "Whether refresh succeeded"
+            },
+            "newCid": {
+              "type": "string",
+              "format": "cid",
+              "description": "New CID after refresh"
+            },
+            "error": {
+              "type": "string",
+              "description": "Error message if refresh failed"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }, { "name": "AuthenticationRequired" }]
+    }
+  }
+}

@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { searchAuthorsHandler } from '@/api/handlers/xrpc/author/searchAuthors.js';
+import { searchAuthors } from '@/api/handlers/xrpc/author/searchAuthors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 // =============================================================================
@@ -34,7 +34,7 @@ interface MockEprint {
 // Tests
 // =============================================================================
 
-describe('searchAuthorsHandler', () => {
+describe('searchAuthors', () => {
   let mockLogger: ILogger;
   let mockSearch: MockSearch;
   let mockEprint: MockEprint;
@@ -88,19 +88,23 @@ describe('searchAuthorsHandler', () => {
     it('returns empty array when no results found', async () => {
       mockSearch.search.mockResolvedValue({ hits: [], total: 0 });
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'nonexistent', limit: 10 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'nonexistent', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors).toEqual([]);
+      expect(result.body.authors).toEqual([]);
     });
 
     it('searches for authors by query', async () => {
-      await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'john', limit: 10 }
-      );
+      await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
       expect(mockSearch.search).toHaveBeenCalledWith({
         q: 'john',
@@ -119,13 +123,15 @@ describe('searchAuthorsHandler', () => {
         authors: [{ did: 'did:plc:author1', name: 'John Doe' }],
       });
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'john', limit: 10 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors).toHaveLength(1);
-      const firstAuthor = result.authors[0];
+      expect(result.body.authors).toHaveLength(1);
+      const firstAuthor = result.body.authors[0];
       expect(firstAuthor).toBeDefined();
       if (firstAuthor) {
         expect(firstAuthor.did).toBe('did:plc:author1');
@@ -151,12 +157,14 @@ describe('searchAuthorsHandler', () => {
           authors: [{ did: 'did:plc:author1', name: 'John Doe' }], // Same author
         });
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'john', limit: 10 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors).toHaveLength(1);
+      expect(result.body.authors).toHaveLength(1);
     });
 
     it('respects limit parameter', async () => {
@@ -178,24 +186,28 @@ describe('searchAuthorsHandler', () => {
         };
       });
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'john', limit: 3 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'john', limit: 3 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors.length).toBeLessThanOrEqual(3);
+      expect(result.body.authors.length).toBeLessThanOrEqual(3);
     });
 
     it('logs search completion', async () => {
       mockSearch.search.mockResolvedValue({ hits: [], total: 0 });
 
-      await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'test', limit: 10 }
-      );
+      await searchAuthors.handler({
+        params: { q: 'test', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
       expect(mockLogger.debug).toHaveBeenCalledWith('Searching authors', {
-        query: 'test',
+        q: 'test',
         limit: 10,
       });
     });
@@ -205,12 +217,14 @@ describe('searchAuthorsHandler', () => {
     it('returns empty array on search error', async () => {
       mockSearch.search.mockRejectedValue(new Error('Search failed'));
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'test', limit: 10 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'test', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors).toEqual([]);
+      expect(result.body.authors).toEqual([]);
       expect(mockLogger.error).toHaveBeenCalled();
     });
 
@@ -221,12 +235,14 @@ describe('searchAuthorsHandler', () => {
       });
       mockEprint.getEprint.mockResolvedValue(null);
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'test', limit: 10 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'test', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors).toEqual([]);
+      expect(result.body.authors).toEqual([]);
     });
   });
 
@@ -245,13 +261,15 @@ describe('searchAuthorsHandler', () => {
         ],
       });
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'john', limit: 10 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors).toHaveLength(1);
-      const matchedAuthor = result.authors[0];
+      expect(result.body.authors).toHaveLength(1);
+      const matchedAuthor = result.body.authors[0];
       expect(matchedAuthor).toBeDefined();
       if (matchedAuthor) {
         expect(matchedAuthor.did).toBe('did:plc:author1');
@@ -269,17 +287,25 @@ describe('searchAuthorsHandler', () => {
         authors: [{ did: 'did:plc:john123', name: 'Some Author' }],
       });
 
-      const result = await searchAuthorsHandler(
-        mockContext as unknown as Parameters<typeof searchAuthorsHandler>[0],
-        { query: 'john', limit: 10 }
-      );
+      const result = await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
 
-      expect(result.authors).toHaveLength(1);
-      const didMatchAuthor = result.authors[0];
+      expect(result.body.authors).toHaveLength(1);
+      const didMatchAuthor = result.body.authors[0];
       expect(didMatchAuthor).toBeDefined();
       if (didMatchAuthor) {
         expect(didMatchAuthor.did).toBe('did:plc:john123');
       }
+    });
+  });
+
+  describe('XRPCMethod configuration', () => {
+    it('has auth set to false', () => {
+      expect(searchAuthors.auth).toBe(false);
     });
   });
 });

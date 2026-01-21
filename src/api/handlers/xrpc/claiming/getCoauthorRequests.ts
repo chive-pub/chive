@@ -8,79 +8,55 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/getCoauthorRequests.js';
 import { AuthenticationError } from '../../../../types/errors.js';
-import {
-  getCoauthorRequestsParamsSchema,
-  getCoauthorRequestsResponseSchema,
-  type GetCoauthorRequestsParams,
-  type GetCoauthorRequestsResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.claiming.getCoauthorRequests.
- *
- * @param c - Hono context
- * @param _params - Parameters (unused for now)
- * @returns Pending co-author requests
+ * XRPC method for pub.chive.claiming.getCoauthorRequests.
  *
  * @public
  */
-export async function getCoauthorRequestsHandler(
-  c: Context<ChiveEnv>,
-  _params: GetCoauthorRequestsParams
-): Promise<GetCoauthorRequestsResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming } = c.get('services');
+export const getCoauthorRequests: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: true,
+  handler: async ({ params: _params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  logger.debug('Getting co-author requests for owner', {
-    ownerDid: user.did,
-  });
+    logger.debug('Getting co-author requests for owner', {
+      ownerDid: user.did,
+    });
 
-  const requests = await claiming.getCoauthorRequestsForOwner(user.did);
+    const requests = await claiming.getCoauthorRequestsForOwner(user.did);
 
-  return {
-    requests: requests.map((r) => ({
-      id: r.id,
-      eprintUri: r.eprintUri,
-      eprintOwnerDid: r.eprintOwnerDid,
-      claimantDid: r.claimantDid,
-      claimantName: r.claimantName,
-      authorIndex: r.authorIndex,
-      authorName: r.authorName,
-      status: r.status,
-      message: r.message,
-      rejectionReason: r.rejectionReason,
-      createdAt: r.createdAt.toISOString(),
-      reviewedAt: r.reviewedAt?.toISOString(),
-    })),
-    cursor: undefined,
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.claiming.getCoauthorRequests.
- *
- * @public
- */
-export const getCoauthorRequestsEndpoint: XRPCEndpoint<
-  GetCoauthorRequestsParams,
-  GetCoauthorRequestsResponse
-> = {
-  method: 'pub.chive.claiming.getCoauthorRequests' as never,
-  type: 'query',
-  description: 'Get pending co-author requests on your eprints',
-  inputSchema: getCoauthorRequestsParamsSchema,
-  outputSchema: getCoauthorRequestsResponseSchema,
-  handler: getCoauthorRequestsHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return {
+      encoding: 'application/json',
+      body: {
+        requests: requests.map((r) => ({
+          id: r.id,
+          eprintUri: r.eprintUri,
+          eprintOwnerDid: r.eprintOwnerDid,
+          claimantDid: r.claimantDid,
+          claimantName: r.claimantName,
+          authorIndex: r.authorIndex,
+          authorName: r.authorName,
+          status: r.status,
+          message: r.message,
+          rejectionReason: r.rejectionReason,
+          createdAt: r.createdAt.toISOString(),
+          reviewedAt: r.reviewedAt?.toISOString(),
+        })),
+        cursor: undefined,
+      },
+    };
+  },
 };

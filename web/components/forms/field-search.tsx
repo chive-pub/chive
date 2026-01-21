@@ -42,9 +42,13 @@ import { useNodeSearch } from '@/lib/hooks/use-nodes';
 
 /**
  * Field reference for form state.
+ *
+ * @remarks
+ * The `id` field contains the AT-URI of the knowledge graph node.
+ * This is used for referencing in eprint submissions.
  */
 export interface FieldSelection {
-  /** Field ID */
+  /** AT-URI of the field node (used for references in eprint submissions) */
   id: string;
   /** Field name for display */
   name: string;
@@ -120,14 +124,15 @@ export function FieldSearch({
     { enabled: query.length >= 2 }
   );
 
+  // selectedIds now contains AT-URIs (since FieldSelection.id is now the URI)
   const selectedIds = useMemo(() => new Set(selectedFields.map((f) => f.id)), [selectedFields]);
   const canAddMore = selectedFields.length < maxFields;
 
-  // Map search results to field format and exclude already selected
+  // Map search results to field format and exclude already selected (by URI)
   const filteredFields = useMemo(() => {
     if (!searchData?.nodes) return [];
     return searchData.nodes
-      .filter((node) => !selectedIds.has(node.id))
+      .filter((node) => !selectedIds.has(node.uri))
       .map((node) => ({
         id: node.id,
         uri: node.uri,
@@ -139,10 +144,12 @@ export function FieldSearch({
   const handleAddField = useCallback(
     (field: { id: string; uri: string; name: string; description?: string }) => {
       if (!canAddMore) return;
-      if (selectedIds.has(field.id)) return;
+      // Check by URI since that's now the stable identifier in FieldSelection
+      if (selectedIds.has(field.uri)) return;
 
+      // Use AT-URI as the id (not the UUID) - this is what eprint submissions expect
       onFieldAdd({
-        id: field.id,
+        id: field.uri,
         name: field.name,
         description: field.description,
       });

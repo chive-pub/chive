@@ -1,0 +1,212 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.getNode",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Retrieve a unified knowledge graph node by ID",
+      "parameters": {
+        "type": "params",
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Node ID (UUID or rkey)"
+          },
+          "includeEdges": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include connected edges in the response"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#nodeWithEdges"
+        }
+      },
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
+    },
+    "nodeWithEdges": {
+      "type": "object",
+      "description": "Graph node with optional connected edges",
+      "required": ["id", "uri", "kind", "label", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Node UUID identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the node"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "kind": {
+          "type": "string",
+          "knownValues": ["type", "object"],
+          "description": "Node kind: type or object"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Subkind slug (e.g., field, institution)"
+        },
+        "subkindUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the subkind type node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Primary display label"
+        },
+        "alternateLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternate labels/synonyms"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description"
+        },
+        "externalIds": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "pub.chive.graph.node#externalId"
+          },
+          "description": "External identifier mappings"
+        },
+        "metadata": {
+          "type": "ref",
+          "ref": "pub.chive.graph.node#nodeMetadata",
+          "description": "Subkind-specific metadata"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["proposed", "provisional", "established", "deprecated"],
+          "description": "Lifecycle status"
+        },
+        "deprecatedBy": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of superseding node"
+        },
+        "proposalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of creating proposal"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "createdBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of creator"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#graphEdge"
+          },
+          "description": "Connected edges (when includeEdges=true)"
+        }
+      }
+    },
+    "graphEdge": {
+      "type": "object",
+      "description": "Graph edge response",
+      "required": ["id", "uri", "sourceUri", "targetUri", "relationSlug", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Edge UUID identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the edge"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "sourceUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of source node"
+        },
+        "targetUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of target node"
+        },
+        "relationUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of relation type node"
+        },
+        "relationSlug": {
+          "type": "string",
+          "description": "Relation slug (broader, narrower, related, etc.)"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Edge weight (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "metadata": {
+          "type": "ref",
+          "ref": "pub.chive.graph.edge#edgeMetadata",
+          "description": "Edge-specific metadata"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["proposed", "established", "deprecated"],
+          "description": "Edge lifecycle status"
+        },
+        "proposalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of creating proposal"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "createdBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of creator"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        }
+      }
+    }
+  }
+}

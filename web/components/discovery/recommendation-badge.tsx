@@ -22,40 +22,65 @@ export interface RecommendationBadgeProps {
 }
 
 /**
+ * Known recommendation types.
+ */
+type KnownRecommendationType =
+  | 'semantic'
+  | 'citation'
+  | 'concept'
+  | 'collaborator'
+  | 'fields'
+  | 'trending';
+
+/**
+ * Type guard for known recommendation types.
+ */
+function isKnownType(type: string): type is KnownRecommendationType {
+  return type in typeIcons;
+}
+
+/**
  * Icon mapping for recommendation types.
  */
-const typeIcons = {
+const typeIcons: Record<KnownRecommendationType, typeof Sparkles> = {
   semantic: Sparkles,
   citation: Quote,
   concept: BookOpen,
   collaborator: Users,
   fields: Lightbulb,
   trending: TrendingUp,
-} as const;
+};
 
 /**
  * Label mapping for recommendation types.
  */
-const typeLabels = {
+const typeLabels: Record<KnownRecommendationType, string> = {
   semantic: 'Similar content',
   citation: 'Citation overlap',
   concept: 'Related concepts',
   collaborator: 'From collaborator',
   fields: 'In your field',
   trending: 'Trending',
-} as const;
+};
 
 /**
  * Color mapping for recommendation types.
  */
-const typeColors = {
+const typeColors: Record<KnownRecommendationType, string> = {
   semantic: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   citation: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   concept: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   collaborator: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   fields: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
   trending: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
-} as const;
+};
+
+/**
+ * Default values for unknown recommendation types.
+ */
+const defaultIcon = Lightbulb;
+const defaultLabel = 'Recommended';
+const defaultColor = 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
 
 /**
  * Displays a badge indicating why a paper was recommended.
@@ -82,9 +107,10 @@ export function RecommendationBadge({
   showTooltip = true,
   className,
 }: RecommendationBadgeProps) {
-  const Icon = typeIcons[explanation.type];
-  const label = typeLabels[explanation.type];
-  const colorClass = typeColors[explanation.type];
+  const type = explanation.type;
+  const Icon = isKnownType(type) ? typeIcons[type] : defaultIcon;
+  const label = isKnownType(type) ? typeLabels[type] : defaultLabel;
+  const colorClass = isKnownType(type) ? typeColors[type] : defaultColor;
 
   const badge = (
     <Badge

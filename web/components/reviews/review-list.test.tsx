@@ -1,7 +1,7 @@
 import { render, screen } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { ReviewList, ReviewListSkeleton } from './review-list';
-import { createMockReview, createMockAuthor } from '@/tests/mock-data';
+import { createMockReview, createMockReviewAuthor } from '@/tests/mock-data';
 
 // Mock next/link
 vi.mock('next/link', () => ({
@@ -17,19 +17,19 @@ describe('ReviewList', () => {
       uri: 'at://review1',
       content: 'First review content',
       body: undefined,
-      author: createMockAuthor({ did: 'did:plc:r1', displayName: 'Reviewer 1' }),
+      author: createMockReviewAuthor({ did: 'did:plc:r1', displayName: 'Reviewer 1' }),
     }),
     createMockReview({
       uri: 'at://review2',
       content: 'Second review content',
       body: undefined,
-      author: createMockAuthor({ did: 'did:plc:r2', displayName: 'Reviewer 2' }),
+      author: createMockReviewAuthor({ did: 'did:plc:r2', displayName: 'Reviewer 2' }),
     }),
     createMockReview({
       uri: 'at://review3',
       content: 'Third review content',
       body: undefined,
-      author: createMockAuthor({ did: 'did:plc:r3', displayName: 'Reviewer 3' }),
+      author: createMockReviewAuthor({ did: 'did:plc:r3', displayName: 'Reviewer 3' }),
     }),
   ];
 
@@ -75,21 +75,21 @@ describe('ReviewList', () => {
         uri: 'at://review1',
         content: 'Parent review',
         body: undefined,
-        author: createMockAuthor({ displayName: 'Parent Author' }),
+        author: createMockReviewAuthor({ displayName: 'Parent Author' }),
       }),
       createMockReview({
         uri: 'at://reply1',
         content: 'Reply to parent',
         body: undefined,
         parentReviewUri: 'at://review1',
-        author: createMockAuthor({ displayName: 'Reply Author' }),
+        author: createMockReviewAuthor({ displayName: 'Reply Author' }),
       }),
       createMockReview({
         uri: 'at://reply2',
         content: 'Another reply',
         body: undefined,
         parentReviewUri: 'at://review1',
-        author: createMockAuthor({ displayName: 'Another Author' }),
+        author: createMockReviewAuthor({ displayName: 'Another Author' }),
       }),
     ];
 

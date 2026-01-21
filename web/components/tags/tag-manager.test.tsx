@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { TagManager } from './tag-manager';
-import { createMockUserTag, createMockAuthor } from '@/tests/mock-data';
+import { createMockUserTag, createMockTagAuthor } from '@/tests/mock-data';
 
 // Mock next/link
 vi.mock('next/link', () => ({
@@ -106,12 +106,12 @@ describe('TagManager', () => {
         createMockUserTag({
           normalizedForm: 'ai',
           displayForm: 'AI',
-          author: createMockAuthor({ did: 'did:plc:user1' }),
+          author: createMockTagAuthor({ did: 'did:plc:user1' }),
         }),
         createMockUserTag({
           normalizedForm: 'ml',
           displayForm: 'ML',
-          author: createMockAuthor({ did: 'did:plc:user2' }),
+          author: createMockTagAuthor({ did: 'did:plc:user2' }),
         }),
       ];
 
@@ -132,12 +132,12 @@ describe('TagManager', () => {
         createMockUserTag({
           normalizedForm: 'my-tag',
           displayForm: 'My Tag',
-          author: createMockAuthor({ did: currentUserDid }),
+          author: createMockTagAuthor({ did: currentUserDid }),
         }),
         createMockUserTag({
           normalizedForm: 'other-tag',
           displayForm: 'Other Tag',
-          author: createMockAuthor({ did: 'did:plc:other' }),
+          author: createMockTagAuthor({ did: 'did:plc:other' }),
         }),
       ];
 
@@ -158,7 +158,7 @@ describe('TagManager', () => {
         createMockUserTag({
           normalizedForm: 'my-tag',
           displayForm: 'My Tag',
-          author: createMockAuthor({ did: currentUserDid }),
+          author: createMockTagAuthor({ did: currentUserDid }),
         }),
       ];
 
@@ -293,7 +293,7 @@ describe('TagManager', () => {
         createMockUserTag({
           normalizedForm: 'my-tag',
           displayForm: 'My Tag',
-          author: createMockAuthor({ did: currentUserDid }),
+          author: createMockTagAuthor({ did: currentUserDid }),
         }),
       ];
 
@@ -313,7 +313,7 @@ describe('TagManager', () => {
         createMockUserTag({
           normalizedForm: 'my-tag',
           displayForm: 'My Tag',
-          author: createMockAuthor({ did: currentUserDid }),
+          author: createMockTagAuthor({ did: currentUserDid }),
         }),
       ];
 
@@ -340,7 +340,7 @@ describe('TagManager', () => {
         createMockUserTag({
           normalizedForm: 'removable',
           displayForm: 'Removable',
-          author: createMockAuthor({ did: currentUserDid }),
+          author: createMockTagAuthor({ did: currentUserDid }),
         }),
       ];
 
@@ -390,7 +390,7 @@ describe('TagManager', () => {
         createMockUserTag({
           normalizedForm: 'linked-tag',
           displayForm: 'Linked Tag',
-          author: createMockAuthor({ did: 'did:plc:other' }),
+          author: createMockTagAuthor({ did: 'did:plc:other' }),
         }),
       ];
 

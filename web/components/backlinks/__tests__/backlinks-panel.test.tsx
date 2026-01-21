@@ -7,13 +7,21 @@ import type { ReactNode } from 'react';
 import { BacklinksPanel, BacklinksPanelSkeleton } from '../backlinks-panel';
 
 // Mock functions must be hoisted along with vi.mock
-const { mockGet } = vi.hoisted(() => ({
-  mockGet: vi.fn(),
+const { mockList, mockGetCounts } = vi.hoisted(() => ({
+  mockList: vi.fn(),
+  mockGetCounts: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockGet,
+    pub: {
+      chive: {
+        backlink: {
+          list: mockList,
+          getCounts: mockGetCounts,
+        },
+      },
+    },
   },
 }));
 
@@ -83,11 +91,12 @@ describe('BacklinksPanelSkeleton', () => {
 describe('BacklinksPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGet.mockReset();
+    mockList.mockReset();
+    mockGetCounts.mockReset();
   });
 
   it('should render loading state initially', () => {
-    mockGet.mockImplementation(() => new Promise(() => {})); // Never resolves
+    mockGetCounts.mockImplementation(() => new Promise(() => {})); // Never resolves
 
     render(<BacklinksPanel eprintUri="at://did:plc:user1/pub.chive.eprint/paper1" />, {
       wrapper: createWrapper(),
@@ -97,7 +106,7 @@ describe('BacklinksPanel', () => {
   });
 
   it('should render nothing when no backlinks', async () => {
-    mockGet.mockResolvedValueOnce({
+    mockGetCounts.mockResolvedValueOnce({
       data: {
         sembleCollections: 0,
         blueskyPosts: 0,
@@ -107,7 +116,6 @@ describe('BacklinksPanel', () => {
         other: 0,
         total: 0,
       },
-      error: undefined,
     });
 
     const { container } = render(
@@ -117,7 +125,7 @@ describe('BacklinksPanel', () => {
 
     // Wait for the query to complete
     await vi.waitFor(() => {
-      expect(mockGet).toHaveBeenCalled();
+      expect(mockGetCounts).toHaveBeenCalled();
     });
 
     // Should render nothing when total is 0
@@ -127,9 +135,8 @@ describe('BacklinksPanel', () => {
   });
 
   it('should render backlinks panel with counts', async () => {
-    mockGet.mockResolvedValueOnce({
+    mockGetCounts.mockResolvedValueOnce({
       data: mockCounts,
-      error: undefined,
     });
 
     render(<BacklinksPanel eprintUri="at://did:plc:user1/pub.chive.eprint/paper1" />, {
@@ -150,9 +157,8 @@ describe('BacklinksPanel', () => {
     const user = userEvent.setup();
 
     // First call returns counts
-    mockGet.mockResolvedValueOnce({
+    mockGetCounts.mockResolvedValueOnce({
       data: mockCounts,
-      error: undefined,
     });
 
     render(<BacklinksPanel eprintUri="at://did:plc:user1/pub.chive.eprint/paper1" />, {
@@ -165,7 +171,7 @@ describe('BacklinksPanel', () => {
 
     // First section is expanded by default, let's check for Bluesky which is not
     // Click to expand Bluesky Posts section
-    mockGet.mockResolvedValueOnce({
+    mockList.mockResolvedValueOnce({
       data: {
         backlinks: [
           {
@@ -180,7 +186,6 @@ describe('BacklinksPanel', () => {
         ],
         hasMore: false,
       },
-      error: undefined,
     });
 
     const blueskyButton = screen.getByText('Bluesky Posts');

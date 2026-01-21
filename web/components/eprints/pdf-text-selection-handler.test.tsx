@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@/tests/test-utils';
 import { PDFTextSelectionHandler } from './pdf-text-selection-handler';
-import type { TextSpanTarget } from '@/lib/api/schema';
+import type { UnifiedTextSpanTarget } from '@/lib/api/schema';
 
 // Mock window.getSelection
 const mockGetSelection = vi.fn();
@@ -190,7 +190,7 @@ describe('PDFTextSelectionHandler', () => {
 
       fireEvent.mouseUp(screen.getByTestId('pdf-text-selection-handler'));
 
-      const callArgs = onSelect.mock.calls[0][0] as TextSpanTarget;
+      const callArgs = onSelect.mock.calls[0][0] as UnifiedTextSpanTarget;
       expect(callArgs.selector).toBeDefined();
       expect(callArgs.selector!.prefix).toBeDefined();
     });
@@ -214,7 +214,7 @@ describe('PDFTextSelectionHandler', () => {
 
       fireEvent.mouseUp(screen.getByTestId('pdf-text-selection-handler'));
 
-      const callArgs = onSelect.mock.calls[0][0] as TextSpanTarget;
+      const callArgs = onSelect.mock.calls[0][0] as UnifiedTextSpanTarget;
       expect(callArgs.selector).toBeDefined();
       expect(callArgs.selector!.suffix).toBeDefined();
     });
@@ -236,7 +236,7 @@ describe('PDFTextSelectionHandler', () => {
 
       fireEvent.mouseUp(screen.getByTestId('pdf-text-selection-handler'));
 
-      const callArgs = onSelect.mock.calls[0][0] as TextSpanTarget;
+      const callArgs = onSelect.mock.calls[0][0] as UnifiedTextSpanTarget;
       expect(callArgs.refinedBy).toMatchObject({
         type: 'TextPositionSelector',
         pageNumber: 3,

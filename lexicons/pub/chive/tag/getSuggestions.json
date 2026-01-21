@@ -1,0 +1,77 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.tag.getSuggestions",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get tag suggestions based on a query using the TaxoFolk system",
+      "parameters": {
+        "type": "params",
+        "required": ["q"],
+        "properties": {
+          "q": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "description": "Query string to get suggestions for"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 10,
+            "description": "Maximum number of suggestions to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["suggestions"],
+          "properties": {
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#tagSuggestion"
+              },
+              "description": "List of tag suggestions"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "tagSuggestion": {
+      "type": "object",
+      "description": "A tag suggestion from the TaxoFolk system",
+      "required": ["displayForm", "normalizedForm", "confidence", "source"],
+      "properties": {
+        "displayForm": {
+          "type": "string",
+          "description": "Suggested display form"
+        },
+        "normalizedForm": {
+          "type": "string",
+          "description": "Normalized form of the suggestion"
+        },
+        "confidence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Suggestion confidence (0-100, scaled from 0-1)"
+        },
+        "source": {
+          "type": "string",
+          "knownValues": ["cooccurrence", "authority", "facet"],
+          "description": "Source of the suggestion"
+        },
+        "matchedTerm": {
+          "type": "string",
+          "description": "Term that triggered this suggestion"
+        }
+      }
+    }
+  }
+}

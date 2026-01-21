@@ -43,7 +43,8 @@ describe('Lexicon ATProto Compliance', () => {
   let schemas: LexiconSchema[] = [];
 
   beforeAll(async () => {
-    const lexiconsDir = path.join(__dirname, '../../lexicons');
+    // Only load Chive lexicons (pub.chive.*), not ATProto lexicons (com.atproto.*)
+    const lexiconsDir = path.join(__dirname, '../../lexicons/pub/chive');
     schemas = await loadAllSchemas(lexiconsDir);
   });
 

@@ -34,7 +34,7 @@ import {
   renderBodyToHTML,
   extractPlainText,
 } from '@/lib/utils/annotation-serializer';
-import type { RichAnnotationBody } from '@/lib/api/schema';
+import type { RichAnnotationBody, RichAnnotationItem } from '@/lib/api/schema';
 import type { NodeResult } from '@/components/knowledge-graph/node-search';
 
 // =============================================================================
@@ -342,13 +342,16 @@ export function AnnotationPreview({
   body: RichAnnotationBody | null;
   className?: string;
 }) {
-  if (!body?.items || body.items.length === 0) {
+  // Handle both array and object forms of RichAnnotationBody
+  const items: RichAnnotationItem[] = body ? (Array.isArray(body) ? body : body.items) : [];
+
+  if (items.length === 0) {
     return <div className={cn('text-muted-foreground italic', className)}>No content</div>;
   }
 
   return (
     <div className={cn('whitespace-pre-wrap', className)}>
-      {body.items.map((item, index) => {
+      {items.map((item, index) => {
         switch (item.type) {
           case 'text':
             return <span key={index}>{item.content}</span>;

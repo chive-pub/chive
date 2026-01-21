@@ -1,0 +1,110 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.getCommunities",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Detect communities in the knowledge graph using graph clustering algorithms",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "knownValues": ["louvain", "label-propagation"],
+            "default": "louvain",
+            "description": "Community detection algorithm"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum communities to return"
+          },
+          "minSize": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 2,
+            "description": "Minimum community size"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["communities", "algorithm", "total", "generatedAt"],
+          "properties": {
+            "communities": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#communityResult"
+              },
+              "description": "Detected communities"
+            },
+            "algorithm": {
+              "type": "string",
+              "knownValues": ["louvain", "label-propagation"],
+              "description": "Algorithm used"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total communities found"
+            },
+            "generatedAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Timestamp when generated"
+            }
+          }
+        }
+      }
+    },
+    "communityResult": {
+      "type": "object",
+      "description": "Community detection result",
+      "required": ["communityId", "members", "size"],
+      "properties": {
+        "communityId": {
+          "type": "integer",
+          "description": "Community identifier"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Member URIs"
+        },
+        "size": {
+          "type": "integer",
+          "description": "Number of members"
+        },
+        "representativeMembers": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#representativeMember"
+          },
+          "description": "Representative members with labels"
+        }
+      }
+    },
+    "representativeMember": {
+      "type": "object",
+      "description": "Representative community member",
+      "required": ["uri", "label"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "Member AT-URI"
+        },
+        "label": {
+          "type": "string",
+          "description": "Member label"
+        }
+      }
+    }
+  }
+}

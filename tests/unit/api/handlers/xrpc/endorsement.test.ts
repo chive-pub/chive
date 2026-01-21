@@ -4,9 +4,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getSummaryHandler } from '@/api/handlers/xrpc/endorsement/getSummary.js';
-import { getUserEndorsementHandler } from '@/api/handlers/xrpc/endorsement/getUserEndorsement.js';
-import { listForEprintHandler } from '@/api/handlers/xrpc/endorsement/listForEprint.js';
+import { getSummary } from '@/api/handlers/xrpc/endorsement/getSummary.js';
+import { getUserEndorsement } from '@/api/handlers/xrpc/endorsement/getUserEndorsement.js';
+import { listForEprint } from '@/api/handlers/xrpc/endorsement/listForEprint.js';
 import type { AtUri, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -22,7 +22,7 @@ interface MockEndorsement {
   uri: AtUri;
   eprintUri: AtUri;
   endorser: DID;
-  endorsementType: 'methods' | 'results' | 'overall';
+  contributions: readonly string[];
   comment?: string;
   createdAt: Date;
 }
@@ -81,14 +81,14 @@ describe('XRPC Endorsement Handlers', () => {
     };
   });
 
-  describe('listForEprintHandler', () => {
+  describe('listForEprint', () => {
     it('returns paginated endorsements for an eprint', async () => {
       const endorsements: MockEndorsement[] = [
         {
           uri: 'at://did:plc:user1/pub.chive.review.endorsement/abc' as AtUri,
           eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' as AtUri,
           endorser: 'did:plc:user1' as DID,
-          endorsementType: 'methods',
+          contributions: ['methodological'],
           createdAt: new Date(),
         },
       ];
@@ -106,17 +106,19 @@ describe('XRPC Endorsement Handlers', () => {
       });
       mockReviewService.getEndorsementSummary.mockResolvedValue(summary);
 
-      const result = await listForEprintHandler(
-        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
-        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 }
-      );
+      const result = await listForEprint.handler({
+        params: { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.endorsements).toHaveLength(1);
-      expect(result.summary).toMatchObject({
+      expect(result.body.endorsements).toHaveLength(1);
+      expect(result.body.summary).toMatchObject({
         total: 1,
         endorserCount: 1,
       });
-      expect(result.hasMore).toBe(false);
+      expect(result.body.hasMore).toBe(false);
     });
 
     it('handles pagination with cursor', async () => {
@@ -132,17 +134,19 @@ describe('XRPC Endorsement Handlers', () => {
         byType: {},
       });
 
-      const result = await listForEprintHandler(
-        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
-        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 10 }
-      );
+      const result = await listForEprint.handler({
+        params: { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.hasMore).toBe(true);
-      expect(result.cursor).toBeDefined();
+      expect(result.body.hasMore).toBe(true);
+      expect(result.body.cursor).toBeDefined();
     });
   });
 
-  describe('getSummaryHandler', () => {
+  describe('getSummary', () => {
     it('returns aggregated endorsement summary', async () => {
       const summary: MockEndorsementSummary = {
         total: 25,
@@ -155,52 +159,58 @@ describe('XRPC Endorsement Handlers', () => {
       };
       mockReviewService.getEndorsementSummary.mockResolvedValue(summary);
 
-      const result = await getSummaryHandler(
-        mockContext as unknown as Parameters<typeof getSummaryHandler>[0],
-        { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' }
-      );
+      const result = await getSummary.handler({
+        params: { eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.total).toBe(25);
-      expect(result.endorserCount).toBe(20);
-      expect(result.byType.methodological).toBe(15);
+      expect(result.body.total).toBe(25);
+      expect(result.body.endorserCount).toBe(20);
+      expect((result.body.byType as Record<string, number>).methodological).toBe(15);
     });
   });
 
-  describe('getUserEndorsementHandler', () => {
+  describe('getUserEndorsement', () => {
     it('returns user endorsement when exists', async () => {
       const endorsement: MockEndorsement = {
         uri: 'at://did:plc:user123/pub.chive.review.endorsement/abc' as AtUri,
         eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz' as AtUri,
         endorser: 'did:plc:user123' as DID,
-        endorsementType: 'methods',
+        contributions: ['methodological'],
         comment: 'Excellent methodology',
         createdAt: new Date(),
       };
       mockReviewService.getEndorsementByUser.mockResolvedValue(endorsement);
 
-      const result = await getUserEndorsementHandler(
-        mockContext as unknown as Parameters<typeof getUserEndorsementHandler>[0],
-        {
+      const result = await getUserEndorsement.handler({
+        params: {
           eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           userDid: 'did:plc:user123',
-        }
-      );
+        },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result).toBeDefined();
-      expect(result.contributions).toContain('methodological');
+      expect(result.body).toBeDefined();
+      expect(result.body.contributions).toContain('methodological');
     });
 
     it('throws NotFoundError when user has not endorsed', async () => {
       mockReviewService.getEndorsementByUser.mockResolvedValue(null);
 
       await expect(
-        getUserEndorsementHandler(
-          mockContext as unknown as Parameters<typeof getUserEndorsementHandler>[0],
-          {
+        getUserEndorsement.handler({
+          params: {
             eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
             userDid: 'did:plc:nonendorser',
-          }
-        )
+          },
+          input: undefined,
+          auth: null,
+          c: mockContext as never,
+        })
       ).rejects.toThrow();
     });
   });

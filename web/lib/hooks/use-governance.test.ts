@@ -24,21 +24,47 @@ import {
 } from './use-governance';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet, mockApiPost, mockAuthApiGet, mockAuthApiPost } = vi.hoisted(() => ({
-  mockApiGet: vi.fn(),
-  mockApiPost: vi.fn(),
-  mockAuthApiGet: vi.fn(),
-  mockAuthApiPost: vi.fn(),
+const {
+  mockGetEditorStatus,
+  mockAuthGetEditorStatus,
+  mockListTrustedEditors,
+  mockRequestElevation,
+  mockGrantDelegation,
+  mockRevokeDelegation,
+  mockRevokeRole,
+} = vi.hoisted(() => ({
+  mockGetEditorStatus: vi.fn(),
+  mockAuthGetEditorStatus: vi.fn(),
+  mockListTrustedEditors: vi.fn(),
+  mockRequestElevation: vi.fn(),
+  mockGrantDelegation: vi.fn(),
+  mockRevokeDelegation: vi.fn(),
+  mockRevokeRole: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
-    POST: mockApiPost,
+    pub: {
+      chive: {
+        governance: {
+          getEditorStatus: mockGetEditorStatus,
+          requestElevation: mockRequestElevation,
+          grantDelegation: mockGrantDelegation,
+          revokeDelegation: mockRevokeDelegation,
+          revokeRole: mockRevokeRole,
+        },
+      },
+    },
   },
   authApi: {
-    GET: mockAuthApiGet,
-    POST: mockAuthApiPost,
+    pub: {
+      chive: {
+        governance: {
+          getEditorStatus: mockAuthGetEditorStatus,
+          listTrustedEditors: mockListTrustedEditors,
+        },
+      },
+    },
   },
 }));
 
@@ -125,9 +151,8 @@ describe('useMyEditorStatus', () => {
 
   it('fetches current user editor status', async () => {
     const mockStatus = createMockEditorStatus();
-    mockAuthApiGet.mockResolvedValueOnce({
+    mockAuthGetEditorStatus.mockResolvedValueOnce({
       data: mockStatus,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -138,7 +163,7 @@ describe('useMyEditorStatus', () => {
     });
 
     expect(result.current.data).toEqual(mockStatus);
-    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.getEditorStatus', {});
+    expect(mockAuthGetEditorStatus).toHaveBeenCalledWith({});
   });
 
   it('can be disabled via options', () => {
@@ -148,7 +173,7 @@ describe('useMyEditorStatus', () => {
     });
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(mockAuthApiGet).not.toHaveBeenCalled();
+    expect(mockAuthGetEditorStatus).not.toHaveBeenCalled();
   });
 
   it('includes metrics in response', async () => {
@@ -171,9 +196,8 @@ describe('useMyEditorStatus', () => {
         role: 'community-member' as const,
       },
     });
-    mockAuthApiGet.mockResolvedValueOnce({
+    mockAuthGetEditorStatus.mockResolvedValueOnce({
       data: mockStatus,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -196,9 +220,8 @@ describe('useEditorStatus', () => {
   it('fetches editor status for specific DID', async () => {
     const targetDid = 'did:plc:target';
     const mockStatus = createMockEditorStatus({ did: targetDid });
-    mockApiGet.mockResolvedValueOnce({
+    mockGetEditorStatus.mockResolvedValueOnce({
       data: mockStatus,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -209,10 +232,8 @@ describe('useEditorStatus', () => {
     });
 
     expect(result.current.data).toEqual(mockStatus);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.getEditorStatus', {
-      params: {
-        query: { did: targetDid },
-      },
+    expect(mockGetEditorStatus).toHaveBeenCalledWith({
+      did: targetDid,
     });
   });
 
@@ -221,7 +242,7 @@ describe('useEditorStatus', () => {
     const { result } = renderHook(() => useEditorStatus(''), { wrapper: Wrapper });
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockGetEditorStatus).not.toHaveBeenCalled();
   });
 });
 
@@ -235,9 +256,8 @@ describe('useTrustedEditors', () => {
       createMockEditorStatus({ role: 'trusted-editor' }),
       createMockEditorStatus({ did: 'did:plc:admin', role: 'administrator' }),
     ]);
-    mockAuthApiGet.mockResolvedValueOnce({
+    mockListTrustedEditors.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -249,14 +269,10 @@ describe('useTrustedEditors', () => {
 
     expect(result.current.data?.editors).toHaveLength(2);
     expect(result.current.data?.total).toBe(2);
-    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
-      params: {
-        query: {
-          limit: 20,
-          cursor: undefined,
-          role: undefined,
-        },
-      },
+    expect(mockListTrustedEditors).toHaveBeenCalledWith({
+      limit: 20,
+      cursor: undefined,
+      role: undefined,
     });
   });
 
@@ -264,9 +280,8 @@ describe('useTrustedEditors', () => {
     const mockResponse = createMockTrustedEditorsResponse([
       createMockEditorStatus({ role: 'trusted-editor' }),
     ]);
-    mockAuthApiGet.mockResolvedValueOnce({
+    mockListTrustedEditors.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -278,21 +293,16 @@ describe('useTrustedEditors', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
-      params: {
-        query: {
-          limit: 20,
-          cursor: undefined,
-          role: 'trusted-editor',
-        },
-      },
+    expect(mockListTrustedEditors).toHaveBeenCalledWith({
+      limit: 20,
+      cursor: undefined,
+      role: 'trusted-editor',
     });
   });
 
   it('passes pagination params', async () => {
-    mockAuthApiGet.mockResolvedValueOnce({
+    mockListTrustedEditors.mockResolvedValueOnce({
       data: createMockTrustedEditorsResponse(),
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -304,14 +314,10 @@ describe('useTrustedEditors', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockAuthApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.governance.listTrustedEditors', {
-      params: {
-        query: {
-          limit: 50,
-          cursor: 'next-page',
-          role: undefined,
-        },
-      },
+    expect(mockListTrustedEditors).toHaveBeenCalledWith({
+      limit: 50,
+      cursor: 'next-page',
+      role: undefined,
     });
   });
 });
@@ -322,12 +328,11 @@ describe('useRequestElevation', () => {
   });
 
   it('requests elevation successfully', async () => {
-    mockApiPost.mockResolvedValueOnce({
+    mockRequestElevation.mockResolvedValueOnce({
       data: {
         success: true,
         message: 'Successfully elevated to trusted editor',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -337,20 +342,17 @@ describe('useRequestElevation', () => {
 
     expect(response.success).toBe(true);
     expect(response.message).toContain('elevated');
-    expect(mockApiPost).toHaveBeenCalledWith('/xrpc/pub.chive.governance.requestElevation', {
-      body: {
-        targetRole: 'trusted-editor',
-      },
+    expect(mockRequestElevation).toHaveBeenCalledWith({
+      targetRole: 'trusted-editor',
     });
   });
 
   it('handles rejection', async () => {
-    mockApiPost.mockResolvedValueOnce({
+    mockRequestElevation.mockResolvedValueOnce({
       data: {
         success: false,
         message: 'Not yet eligible. Missing criteria: Need 10+ well-endorsed eprints',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -369,13 +371,12 @@ describe('useGrantDelegation', () => {
   });
 
   it('grants delegation successfully', async () => {
-    mockApiPost.mockResolvedValueOnce({
+    mockGrantDelegation.mockResolvedValueOnce({
       data: {
         success: true,
         delegationId: 'delegation-123',
         message: 'Delegation granted successfully',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -390,24 +391,21 @@ describe('useGrantDelegation', () => {
 
     expect(response.success).toBe(true);
     expect(response.delegationId).toBe('delegation-123');
-    expect(mockApiPost).toHaveBeenCalledWith('/xrpc/pub.chive.governance.grantDelegation', {
-      body: {
-        delegateDid: 'did:plc:delegate',
-        collections: ['pub.chive.graph.authority'],
-        daysValid: 365,
-        maxRecordsPerDay: 100,
-      },
+    expect(mockGrantDelegation).toHaveBeenCalledWith({
+      delegateDid: 'did:plc:delegate',
+      collections: ['pub.chive.graph.authority'],
+      daysValid: 365,
+      maxRecordsPerDay: 100,
     });
   });
 
   it('uses default values for optional parameters', async () => {
-    mockApiPost.mockResolvedValueOnce({
+    mockGrantDelegation.mockResolvedValueOnce({
       data: {
         success: true,
         delegationId: 'delegation-456',
         message: 'Delegation granted successfully',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -418,13 +416,11 @@ describe('useGrantDelegation', () => {
       collections: ['pub.chive.graph.authority'],
     });
 
-    expect(mockApiPost).toHaveBeenCalledWith('/xrpc/pub.chive.governance.grantDelegation', {
-      body: {
-        delegateDid: 'did:plc:delegate',
-        collections: ['pub.chive.graph.authority'],
-        daysValid: 365,
-        maxRecordsPerDay: 100,
-      },
+    expect(mockGrantDelegation).toHaveBeenCalledWith({
+      delegateDid: 'did:plc:delegate',
+      collections: ['pub.chive.graph.authority'],
+      daysValid: 365,
+      maxRecordsPerDay: 100,
     });
   });
 });
@@ -435,13 +431,12 @@ describe('useRevokeDelegation', () => {
   });
 
   it('revokes delegation successfully', async () => {
-    mockApiPost.mockResolvedValueOnce({
+    mockRevokeDelegation.mockResolvedValueOnce({
       data: {
         success: true,
         delegationId: 'delegation-123',
         message: 'Delegation revoked successfully',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -453,10 +448,8 @@ describe('useRevokeDelegation', () => {
 
     expect(response.success).toBe(true);
     expect(response.delegationId).toBe('delegation-123');
-    expect(mockApiPost).toHaveBeenCalledWith('/xrpc/pub.chive.governance.revokeDelegation', {
-      body: {
-        delegationId: 'delegation-123',
-      },
+    expect(mockRevokeDelegation).toHaveBeenCalledWith({
+      delegationId: 'delegation-123',
     });
   });
 });
@@ -467,12 +460,11 @@ describe('useRevokeRole', () => {
   });
 
   it('revokes role successfully', async () => {
-    mockApiPost.mockResolvedValueOnce({
+    mockRevokeRole.mockResolvedValueOnce({
       data: {
         success: true,
         message: 'Role revoked successfully. User is now a community member.',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -485,21 +477,18 @@ describe('useRevokeRole', () => {
 
     expect(response.success).toBe(true);
     expect(response.message).toContain('Role revoked');
-    expect(mockApiPost).toHaveBeenCalledWith('/xrpc/pub.chive.governance.revokeRole', {
-      body: {
-        did: 'did:plc:target',
-        reason: 'Violation of community guidelines',
-      },
+    expect(mockRevokeRole).toHaveBeenCalledWith({
+      did: 'did:plc:target',
+      reason: 'Violation of community guidelines',
     });
   });
 
   it('handles failure', async () => {
-    mockApiPost.mockResolvedValueOnce({
+    mockRevokeRole.mockResolvedValueOnce({
       data: {
         success: false,
         message: 'User does not have a special role to revoke',
       },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();

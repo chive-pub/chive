@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.metrics.recordDwellTime",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Record dwell time for a clicked search result (called via beacon API)",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["impressionId", "uri", "dwellTimeMs"],
+          "properties": {
+            "impressionId": {
+              "type": "string",
+              "description": "UUID of the search impression"
+            },
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the viewed eprint"
+            },
+            "dwellTimeMs": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Time spent on the page in milliseconds"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the dwell time was recorded"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidRequest" }]
+    }
+  }
+}

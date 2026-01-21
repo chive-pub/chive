@@ -31,11 +31,6 @@ export type {
 };
 
 /**
- * Alias for backwards compatibility.
- */
-export type RichTextBody = AnnotationBody;
-
-/**
  * Flexible input type for functions that accept rich text bodies.
  * Accepts both strict AnnotationBody and looser structures.
  */
@@ -67,7 +62,7 @@ export interface RichTextInput {
  * await searchIndex.index({ abstractPlainText: plainText });
  * ```
  */
-export function extractPlainText(richBody: RichTextBody | null | undefined): string {
+export function extractPlainText(richBody: AnnotationBody | null | undefined): string {
   if (!richBody?.items) {
     return '';
   }
@@ -94,7 +89,7 @@ export function extractPlainText(richBody: RichTextBody | null | undefined): str
  * @param plainText - The plain text to wrap
  * @returns Rich text body with a single text item
  */
-export function createRichTextFromPlain(plainText: string): RichTextBody {
+export function createRichTextFromPlain(plainText: string): AnnotationBody {
   return {
     type: 'RichText',
     items: [{ type: 'text', content: plainText }],
@@ -108,7 +103,7 @@ export function createRichTextFromPlain(plainText: string): RichTextBody {
  * @param richBody - The rich text body to check
  * @returns Whether the body is empty
  */
-export function isRichTextEmpty(richBody: RichTextBody | null | undefined): boolean {
+export function isRichTextEmpty(richBody: AnnotationBody | null | undefined): boolean {
   if (!richBody?.items || richBody.items.length === 0) {
     return true;
   }
@@ -128,7 +123,7 @@ export function isRichTextEmpty(richBody: RichTextBody | null | undefined): bool
  * @param richBody - The rich text body to measure
  * @returns Character count
  */
-export function getRichTextLength(richBody: RichTextBody | null | undefined): number {
+export function getRichTextLength(richBody: AnnotationBody | null | undefined): number {
   return extractPlainText(richBody).length;
 }
 
@@ -144,10 +139,10 @@ export function getRichTextLength(richBody: RichTextBody | null | undefined): nu
  * @returns Truncated rich text body
  */
 export function truncateRichText(
-  richBody: RichTextBody | null | undefined,
+  richBody: AnnotationBody | null | undefined,
   maxLength: number,
   ellipsis = '...'
-): RichTextBody {
+): AnnotationBody {
   if (!richBody?.items) {
     return { type: 'RichText', items: [], format: 'application/x-chive-gloss+json' };
   }
@@ -206,7 +201,7 @@ export function truncateRichText(
  * @param richBody - The rich text body to extract from
  * @returns Array of node reference URIs
  */
-export function extractNodeRefs(richBody: RichTextBody | null | undefined): string[] {
+export function extractNodeRefs(richBody: AnnotationBody | null | undefined): string[] {
   if (!richBody?.items) {
     return [];
   }
@@ -222,7 +217,7 @@ export function extractNodeRefs(richBody: RichTextBody | null | undefined): stri
  * @param richBody - The rich text body to extract from
  * @returns Array of eprint reference URIs
  */
-export function extractEprintRefs(richBody: RichTextBody | null | undefined): string[] {
+export function extractEprintRefs(richBody: AnnotationBody | null | undefined): string[] {
   if (!richBody?.items) {
     return [];
   }
@@ -238,7 +233,7 @@ export function extractEprintRefs(richBody: RichTextBody | null | undefined): st
  * @param richBody - The value to validate
  * @returns Whether the value is a valid rich text body
  */
-export function isValidRichTextBody(richBody: unknown): richBody is RichTextBody {
+export function isValidRichTextBody(richBody: unknown): richBody is AnnotationBody {
   if (!richBody || typeof richBody !== 'object') {
     return false;
   }
@@ -275,7 +270,7 @@ export function isValidRichTextBody(richBody: unknown): richBody is RichTextBody
  * @param plainText - The plain text abstract
  * @returns Rich text body
  */
-export function migrateAbstractToRichText(plainText: string | null | undefined): RichTextBody {
+export function migrateAbstractToRichText(plainText: string | null | undefined): AnnotationBody {
   if (!plainText) {
     return { type: 'RichText', items: [], format: 'application/x-chive-gloss+json' };
   }

@@ -24,7 +24,11 @@ import {
 } from '@/lib/hooks';
 import { getCurrentAgent } from '@/lib/auth';
 import { addCoauthorToEprint } from '@/lib/atproto/record-creator';
-import type { CoauthorClaimRequest } from '@/lib/api/schema';
+import type {
+  CoauthorClaimRequest,
+  ReviewNotification,
+  EndorsementNotification,
+} from '@/lib/api/schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -494,7 +498,7 @@ function ReviewsNotificationsSection() {
         <CardDescription>Recent comments and reviews from the community</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {notifications.map((notification) => (
+        {notifications.map((notification: ReviewNotification) => (
           <div
             key={notification.uri}
             className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
@@ -503,16 +507,16 @@ function ReviewsNotificationsSection() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium">
-                  {notification.reviewerDisplayName ?? notification.reviewerHandle ?? 'Someone'}
+                  {notification.reviewer.displayName ?? notification.reviewer.handle ?? 'Someone'}
                 </span>
-                <span className="text-muted-foreground">
-                  {notification.isReply ? 'replied to a review on' : 'reviewed'}
-                </span>
+                <span className="text-muted-foreground">reviewed</span>
               </div>
               <p className="text-sm text-muted-foreground truncate mt-0.5">
                 {notification.eprintTitle}
               </p>
-              <p className="text-sm mt-1 line-clamp-2">{notification.text}</p>
+              {notification.preview && (
+                <p className="text-sm mt-1 line-clamp-2">{notification.preview}</p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 {new Date(notification.createdAt).toLocaleDateString()}
               </p>
@@ -534,19 +538,13 @@ function ReviewsNotificationsSection() {
 // =============================================================================
 
 /**
- * Maps endorsement type to human-readable label.
+ * Formats contribution types for display.
  */
-function getEndorsementTypeLabel(type: 'methods' | 'results' | 'overall'): string {
-  switch (type) {
-    case 'methods':
-      return 'methods';
-    case 'results':
-      return 'results';
-    case 'overall':
-      return 'overall quality';
-    default:
-      return type;
-  }
+function formatContributions(contributions: string[]): string {
+  if (contributions.length === 0) return 'this paper';
+  if (contributions.length === 1) return contributions[0];
+  if (contributions.length === 2) return contributions.join(' and ');
+  return `${contributions.slice(0, -1).join(', ')}, and ${contributions[contributions.length - 1]}`;
 }
 
 /**
@@ -630,7 +628,7 @@ function EndorsementsNotificationsSection() {
         <CardDescription>Endorsements from other researchers</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {notifications.map((notification) => (
+        {notifications.map((notification: EndorsementNotification) => (
           <div
             key={notification.uri}
             className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
@@ -639,10 +637,10 @@ function EndorsementsNotificationsSection() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium">
-                  {notification.endorserDisplayName ?? notification.endorserHandle ?? 'Someone'}
+                  {notification.endorser.displayName ?? notification.endorser.handle ?? 'Someone'}
                 </span>
                 <span className="text-muted-foreground">
-                  endorsed the {getEndorsementTypeLabel(notification.endorsementType)} of
+                  endorsed {formatContributions(notification.contributions)} of
                 </span>
               </div>
               <p className="text-sm text-muted-foreground truncate mt-0.5">

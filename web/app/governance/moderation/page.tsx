@@ -53,19 +53,22 @@ export default function ModerationPage() {
     isLoading: pendingLoading,
     error: pendingError,
   } = useProposals({
-    status: 'pending',
+    status: 'open',
     type: typeFilter === 'all' ? undefined : typeFilter,
     limit: 50,
   });
 
-  const getStatusIcon = (status: ProposalStatus) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'open':
+      case 'pending': // Legacy
         return Clock;
       case 'approved':
         return CheckCircle;
       case 'rejected':
         return XCircle;
+      case 'withdrawn':
+      case 'expired': // Legacy
       default:
         return FileText;
     }

@@ -5,6 +5,10 @@ import { APIError } from '@/lib/errors';
 
 /**
  * Backlink source type.
+ *
+ * @remarks
+ * Uses open union pattern `(string & {})` to allow future source types
+ * without breaking compatibility, matching the lexicon's knownValues pattern.
  */
 export type BacklinkSourceType =
   | 'semble.collection'
@@ -12,7 +16,8 @@ export type BacklinkSourceType =
   | 'whitewind.blog'
   | 'bluesky.post'
   | 'bluesky.embed'
-  | 'other';
+  | 'other'
+  | (string & {});
 
 /**
  * Backlink record.
@@ -118,21 +123,13 @@ export function useBacklinks(targetUri: string, options: UseBacklinksOptions = {
         queryParams.cursor = pageParam;
       }
 
-      const { data, error } = await api.GET('/xrpc/pub.chive.backlink.list', {
-        params: {
-          query: queryParams,
-        },
-      });
+      const response = await api.pub.chive.backlink.list(queryParams);
 
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch backlinks',
-          undefined,
-          '/xrpc/pub.chive.backlink.list'
-        );
+      if (!response.data) {
+        throw new APIError('Failed to fetch backlinks', undefined, 'pub.chive.backlink.list');
       }
 
-      return data!;
+      return response.data;
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
@@ -169,19 +166,17 @@ export function useBacklinkCounts(targetUri: string, options: UseBacklinkCountsO
   return useQuery({
     queryKey: backlinkKeys.counts(targetUri),
     queryFn: async (): Promise<BacklinkCounts> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.backlink.getCounts', {
-        params: {
-          query: { targetUri },
-        },
-      });
-      if (error) {
+      const response = await api.pub.chive.backlink.getCounts({ targetUri });
+
+      if (!response.data) {
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch backlink counts',
+          'Failed to fetch backlink counts',
           undefined,
-          '/xrpc/pub.chive.backlink.getCounts'
+          'pub.chive.backlink.getCounts'
         );
       }
-      return data!;
+
+      return response.data;
     },
     enabled: enabled && !!targetUri,
     staleTime: 5 * 60 * 1000, // 5 minutes

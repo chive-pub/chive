@@ -91,7 +91,7 @@ export interface UseMentionTriggerReturn {
 // CONSTANTS
 // =============================================================================
 
-const TRIGGER_CHARS = ['@', '#'] as const;
+const _TRIGGER_CHARS = ['@', '#'] as const;
 
 const INITIAL_STATE: MentionTriggerState = {
   trigger: null,
@@ -144,7 +144,7 @@ function getCursorPosition(): { top: number; left: number } | null {
 /**
  * Get the text before the cursor in the current text node.
  */
-function getTextBeforeCursor(element: HTMLElement): { text: string; node: Node | null } {
+function getTextBeforeCursor(_element: HTMLElement): { text: string; node: Node | null } {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) {
     return { text: '', node: null };

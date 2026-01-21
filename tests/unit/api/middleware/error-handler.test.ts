@@ -3,7 +3,7 @@
  *
  * @remarks
  * Tests error mapping from ChiveError types to HTTP responses
- * following Stripe/GitHub error response patterns.
+ * using ATProto-compliant flat error format.
  */
 
 import { Hono } from 'hono';
@@ -58,15 +58,9 @@ describe('Error Handler Middleware', () => {
       const res = await app.request('/test');
 
       expect(res.status).toBe(400);
-      const body = (await res.json()) as {
-        error: { code: string; message: string; field?: string; requestId: string };
-      };
-      expect(body.error).toMatchObject({
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid email format',
-        field: 'email',
-        requestId: 'req_test123',
-      });
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe('InvalidRequest');
+      expect(body.message).toBe('Invalid email format');
     });
 
     it('returns 404 for NotFoundError', async () => {
@@ -77,14 +71,9 @@ describe('Error Handler Middleware', () => {
       const res = await app.request('/test');
 
       expect(res.status).toBe(404);
-      const body = (await res.json()) as {
-        error: { code: string; message: string; requestId: string };
-      };
-      expect(body.error).toMatchObject({
-        code: 'NOT_FOUND',
-        message: 'Eprint not found: at://did/collection/123',
-        requestId: 'req_test123',
-      });
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe('NotFound');
+      expect(body.message).toBe('Eprint not found: at://did/collection/123');
     });
 
     it('returns 401 for AuthenticationError', async () => {
@@ -95,8 +84,8 @@ describe('Error Handler Middleware', () => {
       const res = await app.request('/test');
 
       expect(res.status).toBe(401);
-      const body = (await res.json()) as { error: { code: string } };
-      expect(body.error.code).toBe('AUTHENTICATION_ERROR');
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('AuthenticationRequired');
     });
 
     it('returns 403 for AuthorizationError', async () => {
@@ -107,8 +96,8 @@ describe('Error Handler Middleware', () => {
       const res = await app.request('/test');
 
       expect(res.status).toBe(403);
-      const body = (await res.json()) as { error: { code: string } };
-      expect(body.error.code).toBe('AUTHORIZATION_ERROR');
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('Forbidden');
     });
 
     it('returns 429 for RateLimitError with Retry-After header', async () => {
@@ -120,14 +109,8 @@ describe('Error Handler Middleware', () => {
 
       expect(res.status).toBe(429);
       expect(res.headers.get('Retry-After')).toBe('30');
-      const body = (await res.json()) as {
-        error: { code: string; retryAfter: number; requestId: string };
-      };
-      expect(body.error).toMatchObject({
-        code: 'RATE_LIMIT_EXCEEDED',
-        retryAfter: 30,
-        requestId: 'req_test123',
-      });
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe('RateLimitExceeded');
     });
 
     it('returns 500 for DatabaseError', async () => {
@@ -138,8 +121,8 @@ describe('Error Handler Middleware', () => {
       const res = await app.request('/test');
 
       expect(res.status).toBe(500);
-      const body = (await res.json()) as { error: { code: string } };
-      expect(body.error.code).toBe('DATABASE_ERROR');
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('DATABASE_ERROR');
     });
 
     it('returns 500 for ComplianceError', async () => {
@@ -150,8 +133,8 @@ describe('Error Handler Middleware', () => {
       const res = await app.request('/test');
 
       expect(res.status).toBe(500);
-      const body = (await res.json()) as { error: { code: string } };
-      expect(body.error.code).toBe('COMPLIANCE_VIOLATION');
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('COMPLIANCE_VIOLATION');
     });
 
     it('returns 500 for unknown errors', async () => {
@@ -162,8 +145,8 @@ describe('Error Handler Middleware', () => {
       const res = await app.request('/test');
 
       expect(res.status).toBe(500);
-      const body = (await res.json()) as { error: { code: string } };
-      expect(body.error.code).toBe('INTERNAL_ERROR');
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('InternalServerError');
     });
 
     it('logs debug for ValidationError', async () => {
@@ -195,45 +178,30 @@ describe('Error Handler Middleware', () => {
   });
 
   describe('createErrorResponse', () => {
-    it('creates standardized error response object', () => {
-      const response = createErrorResponse('INVALID_INPUT', 'Email is required', 'req_123', {
-        field: 'email',
-      });
+    it('creates ATProto-compliant flat error response', () => {
+      const response = createErrorResponse('InvalidRequest', 'Email is required');
 
       expect(response).toEqual({
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'Email is required',
-          requestId: 'req_123',
-          field: 'email',
-        },
+        error: 'InvalidRequest',
+        message: 'Email is required',
       });
     });
 
-    it('omits field when not provided', () => {
-      const response = createErrorResponse('NOT_FOUND', 'Resource not found', 'req_456');
+    it('handles NotFound error type', () => {
+      const response = createErrorResponse('NotFound', 'Resource not found');
 
       expect(response).toEqual({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Resource not found',
-          requestId: 'req_456',
-        },
+        error: 'NotFound',
+        message: 'Resource not found',
       });
     });
 
-    it('includes retryAfter when provided', () => {
-      const response = createErrorResponse('RATE_LIMIT_EXCEEDED', 'Too many requests', 'req_789', {
-        retryAfter: 30,
-      });
+    it('handles RateLimitExceeded error type', () => {
+      const response = createErrorResponse('RateLimitExceeded', 'Too many requests');
 
       expect(response).toEqual({
-        error: {
-          code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many requests',
-          requestId: 'req_789',
-          retryAfter: 30,
-        },
+        error: 'RateLimitExceeded',
+        message: 'Too many requests',
       });
     });
   });

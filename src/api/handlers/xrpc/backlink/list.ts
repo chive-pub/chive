@@ -14,103 +14,68 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import {
-  listBacklinksParamsSchema,
-  listBacklinksResponseSchema,
-  type ListBacklinksParams,
-  type ListBacklinksResponse,
-} from '../../../schemas/backlink.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/backlink/list.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.backlink.list query.
- *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Paginated list of backlinks to the target eprint
- *
- * @example
- * ```http
- * GET /xrpc/pub.chive.backlink.list?targetUri=at://did:plc:abc/pub.chive.eprint.submission/xyz&limit=20
- *
- * Response:
- * {
- *   "backlinks": [
- *     {
- *       "id": 1,
- *       "sourceUri": "at://did:plc:def/app.bsky.feed.post/ghi",
- *       "sourceType": "bluesky.post",
- *       "targetUri": "at://did:plc:abc/pub.chive.eprint.submission/xyz",
- *       "indexedAt": "2024-01-15T10:00:00Z",
- *       "deleted": false
- *     }
- *   ],
- *   "cursor": "next_page_cursor",
- *   "hasMore": true
- * }
- * ```
+ * XRPC method for pub.chive.backlink.list.
  *
  * @public
  */
-export async function listBacklinksHandler(
-  c: Context<ChiveEnv>,
-  params: ListBacklinksParams
-): Promise<ListBacklinksResponse> {
-  const logger = c.get('logger');
-  const { backlink } = c.get('services');
+export const list: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const { backlink } = c.get('services');
 
-  // Debug logging for E2E test debugging
-  logger.info('listBacklinks called', {
-    targetUri: params.targetUri,
-    sourceType: params.sourceType,
-    limit: params.limit,
-    cursor: params.cursor,
-  });
+    // Debug logging for E2E test debugging
+    logger.info('listBacklinks called', {
+      targetUri: params.targetUri,
+      sourceType: params.sourceType,
+      limit: params.limit,
+      cursor: params.cursor,
+    });
 
-  const result = await backlink.getBacklinks(params.targetUri, {
-    sourceType: params.sourceType,
-    limit: params.limit ?? 50,
-    cursor: params.cursor,
-  });
+    // Cast lexicon type to service type (lexicon uses (string & {}) for extensibility)
+    type ServiceSourceType =
+      | 'semble.collection'
+      | 'leaflet.list'
+      | 'whitewind.blog'
+      | 'bluesky.post'
+      | 'bluesky.embed'
+      | 'other';
 
-  // Debug: log result count
-  logger.info('listBacklinks result', {
-    targetUri: params.targetUri,
-    sourceType: params.sourceType,
-    backlinksCount: result.backlinks.length,
-    hasCursor: !!result.cursor,
-  });
+    const result = await backlink.getBacklinks(params.targetUri, {
+      sourceType: params.sourceType as ServiceSourceType | undefined,
+      limit: params.limit ?? 50,
+      cursor: params.cursor,
+    });
 
-  return {
-    backlinks: result.backlinks.map((bl) => ({
-      id: bl.id,
-      sourceUri: bl.sourceUri,
-      sourceType: bl.sourceType,
-      targetUri: bl.targetUri,
-      context: bl.context,
-      indexedAt: bl.indexedAt.toISOString(),
-      deleted: bl.deleted,
-    })),
-    cursor: result.cursor,
-    hasMore: result.cursor !== undefined,
-  };
-}
+    // Debug: log result count
+    logger.info('listBacklinks result', {
+      targetUri: params.targetUri,
+      sourceType: params.sourceType,
+      backlinksCount: result.backlinks.length,
+      hasCursor: !!result.cursor,
+    });
 
-/**
- * Endpoint definition for pub.chive.backlink.list.
- *
- * @public
- */
-export const listBacklinksEndpoint: XRPCEndpoint<ListBacklinksParams, ListBacklinksResponse> = {
-  method: 'pub.chive.backlink.list' as never,
-  type: 'query',
-  description: 'List backlinks to an eprint',
-  inputSchema: listBacklinksParamsSchema,
-  outputSchema: listBacklinksResponseSchema,
-  handler: listBacklinksHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    const response: OutputSchema = {
+      backlinks: result.backlinks.map((bl) => ({
+        id: bl.id,
+        sourceUri: bl.sourceUri,
+        sourceType: bl.sourceType,
+        targetUri: bl.targetUri,
+        context: bl.context,
+        indexedAt: bl.indexedAt.toISOString(),
+        deleted: bl.deleted,
+      })),
+      cursor: result.cursor,
+      hasMore: result.cursor !== undefined,
+    };
+
+    return { encoding: 'application/json', body: response };
+  },
 };

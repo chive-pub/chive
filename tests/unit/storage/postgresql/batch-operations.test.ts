@@ -51,6 +51,7 @@ function createMockEprint(uri: string): StoredEprint {
     pdsUrl: 'https://pds.example.com',
     indexedAt: new Date('2024-01-01'),
     createdAt: new Date('2024-01-01'),
+    version: 1,
   };
 }
 

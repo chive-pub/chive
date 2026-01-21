@@ -22,7 +22,7 @@
  */
 
 import { cn } from '@/lib/utils';
-import type { Review, ReviewThread } from '@/lib/api/schema';
+import type { Review, FrontendReviewThread } from '@/lib/api/schema';
 import { ReviewCard, ReviewCardSkeleton } from './review-card';
 import { ReviewThreadComponent } from './review-thread';
 
@@ -126,7 +126,7 @@ export function ReviewList({
     );
 
     // Build thread structure
-    const buildThread = (review: Review, depth: number = 0): ReviewThread => {
+    const buildThread = (review: Review, depth: number = 0): FrontendReviewThread => {
       const replies = repliesByParent[review.uri] || [];
       return {
         parent: review,

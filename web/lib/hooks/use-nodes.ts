@@ -231,19 +231,15 @@ export function useNodeSearch(
   return useQuery({
     queryKey: nodeKeys.search(query, params),
     queryFn: async (): Promise<NodesResponse> => {
-      const { data } = await api.GET('/xrpc/pub.chive.graph.searchNodes', {
-        params: {
-          query: {
-            query,
-            kind: params.kind,
-            subkind: params.subkind,
-            status: params.status,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-          },
-        },
+      const response = await api.pub.chive.graph.searchNodes({
+        query,
+        kind: params.kind,
+        subkind: params.subkind,
+        status: params.status,
+        limit: params.limit ?? 20,
+        cursor: params.cursor,
       });
-      return data as NodesResponse;
+      return response.data as NodesResponse;
     },
     enabled: query.length >= 2 && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000,
@@ -270,15 +266,11 @@ export function useNode(id: string, options: UseNodeOptions = {}) {
   return useQuery({
     queryKey: nodeKeys.detail(id),
     queryFn: async (): Promise<NodeDetail> => {
-      const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-        params: {
-          query: {
-            id,
-            includeEdges: includeEdges ?? false,
-          },
-        },
+      const response = await api.pub.chive.graph.getNode({
+        id,
+        includeEdges: includeEdges ?? false,
       });
-      return data as NodeDetail;
+      return response.data as NodeDetail;
     },
     enabled: !!id && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000,
@@ -310,17 +302,13 @@ export function useNodesBySubkind(
   return useQuery({
     queryKey: nodeKeys.bySubkind(subkind, params),
     queryFn: async (): Promise<NodesResponse> => {
-      const { data } = await api.GET('/xrpc/pub.chive.graph.listNodes', {
-        params: {
-          query: {
-            subkind,
-            status: params.status ?? 'established',
-            limit: params.limit ?? 100,
-            cursor: params.cursor,
-          },
-        },
+      const response = await api.pub.chive.graph.listNodes({
+        subkind,
+        status: params.status ?? 'established',
+        limit: params.limit ?? 100,
+        cursor: params.cursor,
       });
-      return data as NodesResponse;
+      return response.data as NodesResponse;
     },
     enabled: !!subkind && (options.enabled ?? true),
     staleTime: 10 * 60 * 1000, // Longer stale time for type listings
@@ -343,17 +331,13 @@ export function useNodesByKind(
   return useQuery({
     queryKey: nodeKeys.byKind(kind, params),
     queryFn: async (): Promise<NodesResponse> => {
-      const { data } = await api.GET('/xrpc/pub.chive.graph.listNodes', {
-        params: {
-          query: {
-            kind,
-            status: params.status ?? 'established',
-            limit: params.limit ?? 100,
-            cursor: params.cursor,
-          },
-        },
+      const response = await api.pub.chive.graph.listNodes({
+        kind,
+        status: params.status ?? 'established',
+        limit: params.limit ?? 100,
+        cursor: params.cursor,
       });
-      return data as NodesResponse;
+      return response.data as NodesResponse;
     },
     enabled: options.enabled ?? true,
     staleTime: 10 * 60 * 1000,
@@ -370,10 +354,11 @@ export function usePrefetchNode() {
     queryClient.prefetchQuery({
       queryKey: nodeKeys.detail(id),
       queryFn: async (): Promise<NodeDetail | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-          params: { query: { id, includeEdges: false } },
+        const response = await api.pub.chive.graph.getNode({
+          id,
+          includeEdges: false,
         });
-        return data as NodeDetail | undefined;
+        return response.data as NodeDetail | undefined;
       },
       staleTime: 5 * 60 * 1000,
     });

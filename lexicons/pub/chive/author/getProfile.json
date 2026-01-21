@@ -1,0 +1,138 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.author.getProfile",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get author profile and metrics by DID",
+      "parameters": {
+        "type": "params",
+        "required": ["did"],
+        "properties": {
+          "did": {
+            "type": "string",
+            "format": "did",
+            "description": "Author DID"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["profile", "metrics"],
+          "properties": {
+            "profile": {
+              "type": "ref",
+              "ref": "#authorProfile"
+            },
+            "metrics": {
+              "type": "ref",
+              "ref": "#authorMetrics"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    },
+    "authorProfile": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri"
+        },
+        "bio": {
+          "type": "string"
+        },
+        "affiliation": {
+          "type": "string"
+        },
+        "affiliations": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#affiliation"
+          }
+        },
+        "orcid": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string",
+          "format": "uri"
+        },
+        "pdsEndpoint": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "nameVariants": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "previousAffiliations": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#affiliation"
+          }
+        },
+        "researchKeywords": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#researchKeyword"
+          }
+        },
+        "semanticScholarId": { "type": "string" },
+        "openAlexId": { "type": "string" },
+        "googleScholarId": { "type": "string" },
+        "arxivAuthorId": { "type": "string" },
+        "openReviewId": { "type": "string" },
+        "dblpId": { "type": "string" },
+        "scopusAuthorId": { "type": "string" }
+      }
+    },
+    "affiliation": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "rorId": { "type": "string" }
+      }
+    },
+    "researchKeyword": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "fastId": { "type": "string" },
+        "wikidataId": { "type": "string" }
+      }
+    },
+    "authorMetrics": {
+      "type": "object",
+      "required": ["totalEprints", "totalViews", "totalDownloads", "totalEndorsements"],
+      "properties": {
+        "totalEprints": { "type": "integer" },
+        "totalViews": { "type": "integer" },
+        "totalDownloads": { "type": "integer" },
+        "totalEndorsements": { "type": "integer" }
+      }
+    }
+  }
+}

@@ -178,17 +178,17 @@ export function useEprintTags(eprintUri: string, options: UseTagsOptions = {}) {
   return useQuery({
     queryKey: tagKeys.forEprint(eprintUri),
     queryFn: async (): Promise<EprintTagsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.tag.listForEprint', {
-        params: { query: { eprintUri } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.tag.listForEprint({ eprintUri });
+        return response.data as unknown as EprintTagsResponse;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch tags',
+          error instanceof Error ? error.message : 'Failed to fetch tags',
           undefined,
-          '/xrpc/pub.chive.tag.listForEprint'
+          'pub.chive.tag.listForEprint'
         );
       }
-      return data! as unknown as EprintTagsResponse;
     },
     enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -228,21 +228,21 @@ export function useTagSuggestions(query: string, options: UseTagsOptions = {}) {
   return useQuery({
     queryKey: tagKeys.suggestions(query),
     queryFn: async (): Promise<TagSuggestion[]> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.tag.getSuggestions', {
-        params: { query: { q: query } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.tag.getSuggestions({ q: query });
+        // Map API source values to domain source values
+        return response.data.suggestions.map((s) => ({
+          ...s,
+          source: s.source === 'cooccurrence' ? 'co-occurrence' : s.source,
+        })) as TagSuggestion[];
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch tag suggestions',
+          error instanceof Error ? error.message : 'Failed to fetch tag suggestions',
           undefined,
-          '/xrpc/pub.chive.tag.getSuggestions'
+          'pub.chive.tag.getSuggestions'
         );
       }
-      // Map API source values to domain source values
-      return data!.suggestions.map((s) => ({
-        ...s,
-        source: s.source === 'cooccurrence' ? 'co-occurrence' : s.source,
-      })) as TagSuggestion[];
     },
     enabled: query.length >= 2 && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000, // 5 minutes; suggestions are fairly stable.
@@ -279,18 +279,18 @@ export function useTrendingTags(
   return useQuery({
     queryKey: tagKeys.trending(timeWindow),
     queryFn: async (): Promise<TrendingTagsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.tag.getTrending', {
-        params: { query: { timeWindow } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.tag.getTrending({ timeWindow });
+        // Return API response directly - types now match
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch trending tags',
+          error instanceof Error ? error.message : 'Failed to fetch trending tags',
           undefined,
-          '/xrpc/pub.chive.tag.getTrending'
+          'pub.chive.tag.getTrending'
         );
       }
-      // Return API response directly - types now match
-      return data!;
     },
     enabled: options.enabled ?? true,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -332,26 +332,24 @@ export function useTagSearch(
   return useQuery({
     queryKey: tagKeys.search(query, params),
     queryFn: async (): Promise<TagSearchResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.tag.search', {
-        params: {
-          query: {
-            q: query,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-            minQuality: params.minQuality,
-            includeSpam: params.includeSpam,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.tag.search({
+          q: query,
+          limit: params.limit ?? 20,
+          cursor: params.cursor,
+          minQuality: params.minQuality,
+          includeSpam: params.includeSpam,
+        });
+        // Return API response directly - types now match
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search tags',
+          error instanceof Error ? error.message : 'Failed to search tags',
           undefined,
-          '/xrpc/pub.chive.tag.search'
+          'pub.chive.tag.search'
         );
       }
-      // Return API response directly - types now match
-      return data!;
     },
     enabled: query.length >= 2 && (options.enabled ?? true),
     staleTime: 60 * 1000, // 1 minute
@@ -388,22 +386,21 @@ export function useTagDetail(normalizedForm: string, options: UseTagsOptions = {
   return useQuery({
     queryKey: tagKeys.detail(normalizedForm),
     queryFn: async (): Promise<TagSummary | null> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.tag.getDetail', {
-        params: { query: { tag: normalizedForm } },
-      });
-      if (error) {
-        const errorObj = error as { message?: string; status?: number };
+      try {
+        const response = await api.pub.chive.tag.getDetail({ tag: normalizedForm });
+        return response.data;
+      } catch (error) {
         // Return null for 404 (tag not found)
-        if (errorObj.status === 404) {
+        if (error instanceof APIError && error.statusCode === 404) {
           return null;
         }
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          errorObj.message ?? 'Failed to fetch tag details',
-          errorObj.status,
-          '/xrpc/pub.chive.tag.getDetail'
+          error instanceof Error ? error.message : 'Failed to fetch tag details',
+          undefined,
+          'pub.chive.tag.getDetail'
         );
       }
-      return data!;
     },
     enabled: !!normalizedForm && (options.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -448,6 +445,7 @@ export function useCreateTag() {
       // The author info comes from the current user's agent DID
       return {
         uri: result.uri,
+        cid: result.cid,
         eprintUri: input.eprintUri,
         author: {
           did: agent.did ?? '',
@@ -529,10 +527,12 @@ export function usePrefetchTags() {
     queryClient.prefetchQuery({
       queryKey: tagKeys.forEprint(eprintUri),
       queryFn: async (): Promise<EprintTagsResponse | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.tag.listForEprint', {
-          params: { query: { eprintUri } },
-        });
-        return data;
+        try {
+          const response = await api.pub.chive.tag.listForEprint({ eprintUri });
+          return response.data;
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 2 * 60 * 1000,
     });

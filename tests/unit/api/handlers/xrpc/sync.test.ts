@@ -5,10 +5,12 @@
  * Tests registerPDS and indexRecord handlers.
  */
 
+import type { Context } from 'hono';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { indexRecordHandler } from '@/api/handlers/xrpc/sync/indexRecord.js';
-import { registerPDSHandler } from '@/api/handlers/xrpc/sync/registerPDS.js';
+import { indexRecord } from '@/api/handlers/xrpc/sync/indexRecord.js';
+import { registerPDS } from '@/api/handlers/xrpc/sync/registerPDS.js';
+import type { ChiveEnv } from '@/api/types/context.js';
 import type { AtUri, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -59,10 +61,7 @@ describe('XRPC Sync Handlers', () => {
   let mockPDSRegistry: MockPDSRegistry;
   let mockPDSScanner: MockPDSScanner;
   let mockEprintService: MockEprintService;
-  let mockContext: {
-    get: ReturnType<typeof vi.fn>;
-    set: ReturnType<typeof vi.fn>;
-  };
+  let mockContext: Context<ChiveEnv>;
 
   const mockUser = {
     did: 'did:plc:user123' as DID,
@@ -95,7 +94,7 @@ describe('XRPC Sync Handlers', () => {
         }
       }),
       set: vi.fn(),
-    };
+    } as unknown as Context<ChiveEnv>;
 
     // Mock global fetch for PDS validation
     global.fetch = vi.fn().mockResolvedValue({
@@ -104,15 +103,17 @@ describe('XRPC Sync Handlers', () => {
     });
   });
 
-  describe('registerPDSHandler', () => {
+  describe('registerPDS', () => {
     it('registers a new PDS successfully', async () => {
-      const result = await registerPDSHandler(
-        mockContext as unknown as Parameters<typeof registerPDSHandler>[0],
-        { pdsUrl: 'https://custom-pds.example.com' }
-      );
+      const result = await registerPDS.handler({
+        params: undefined,
+        input: { pdsUrl: 'https://custom-pds.example.com' },
+        auth: null,
+        c: mockContext,
+      });
 
-      expect(result.registered).toBe(true);
-      expect(result.pdsUrl).toBe('https://custom-pds.example.com');
+      expect(result.body.registered).toBe(true);
+      expect(result.body.pdsUrl).toBe('https://custom-pds.example.com');
       expect(mockPDSRegistry.registerPDS).toHaveBeenCalledWith(
         'https://custom-pds.example.com',
         'user_registration'
@@ -120,8 +121,11 @@ describe('XRPC Sync Handlers', () => {
     });
 
     it('normalizes PDS URL by removing trailing slash', async () => {
-      await registerPDSHandler(mockContext as unknown as Parameters<typeof registerPDSHandler>[0], {
-        pdsUrl: 'https://custom-pds.example.com/',
+      await registerPDS.handler({
+        params: undefined,
+        input: { pdsUrl: 'https://custom-pds.example.com/' },
+        auth: null,
+        c: mockContext,
       });
 
       expect(mockPDSRegistry.registerPDS).toHaveBeenCalledWith(
@@ -133,17 +137,19 @@ describe('XRPC Sync Handlers', () => {
     it('scans user DID when authenticated and PDS is new', async () => {
       mockPDSScanner.scanDID.mockResolvedValue(5);
 
-      const result = await registerPDSHandler(
-        mockContext as unknown as Parameters<typeof registerPDSHandler>[0],
-        { pdsUrl: 'https://custom-pds.example.com' }
-      );
+      const result = await registerPDS.handler({
+        params: undefined,
+        input: { pdsUrl: 'https://custom-pds.example.com' },
+        auth: null,
+        c: mockContext,
+      });
 
       expect(mockPDSScanner.scanDID).toHaveBeenCalledWith(
         'https://custom-pds.example.com',
         'did:plc:user123'
       );
-      expect(result.status).toBe('scanned');
-      expect(result.message).toContain('5 record(s) indexed');
+      expect(result.body.status).toBe('scanned');
+      expect(result.body.message).toContain('5 record(s) indexed');
     });
 
     it('returns already_exists status for existing PDS', async () => {
@@ -152,12 +158,14 @@ describe('XRPC Sync Handlers', () => {
         status: 'active',
       });
 
-      const result = await registerPDSHandler(
-        mockContext as unknown as Parameters<typeof registerPDSHandler>[0],
-        { pdsUrl: 'https://existing-pds.example.com' }
-      );
+      const result = await registerPDS.handler({
+        params: undefined,
+        input: { pdsUrl: 'https://existing-pds.example.com' },
+        auth: null,
+        c: mockContext,
+      });
 
-      expect(result.status).toBe('already_exists');
+      expect(result.body.status).toBe('already_exists');
       expect(mockPDSRegistry.registerPDS).not.toHaveBeenCalled();
     });
 
@@ -168,30 +176,38 @@ describe('XRPC Sync Handlers', () => {
       });
       mockPDSScanner.scanDID.mockResolvedValue(3);
 
-      const result = await registerPDSHandler(
-        mockContext as unknown as Parameters<typeof registerPDSHandler>[0],
-        { pdsUrl: 'https://existing-pds.example.com' }
-      );
+      const result = await registerPDS.handler({
+        params: undefined,
+        input: { pdsUrl: 'https://existing-pds.example.com' },
+        auth: null,
+        c: mockContext,
+      });
 
       expect(mockPDSScanner.scanDID).toHaveBeenCalled();
-      expect(result.status).toBe('scanned');
+      expect(result.body.status).toBe('scanned');
     });
 
     it('throws ServiceUnavailableError when registry is not available', async () => {
-      mockContext.get = vi.fn((key: string) => {
-        switch (key) {
-          case 'services':
-            return { pdsRegistry: null };
-          case 'logger':
-            return mockLogger;
-          default:
-            return undefined;
-        }
-      });
+      const noRegistryContext = {
+        get: vi.fn((key: string) => {
+          switch (key) {
+            case 'services':
+              return { pdsRegistry: null };
+            case 'logger':
+              return mockLogger;
+            default:
+              return undefined;
+          }
+        }),
+        set: vi.fn(),
+      } as unknown as Context<ChiveEnv>;
 
       await expect(
-        registerPDSHandler(mockContext as unknown as Parameters<typeof registerPDSHandler>[0], {
-          pdsUrl: 'https://pds.example.com',
+        registerPDS.handler({
+          params: undefined,
+          input: { pdsUrl: 'https://pds.example.com' },
+          auth: null,
+          c: noRegistryContext,
         })
       ).rejects.toThrow('PDS registration is not currently available');
     });
@@ -200,8 +216,11 @@ describe('XRPC Sync Handlers', () => {
       global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
 
       await expect(
-        registerPDSHandler(mockContext as unknown as Parameters<typeof registerPDSHandler>[0], {
-          pdsUrl: 'https://unreachable-pds.example.com',
+        registerPDS.handler({
+          params: undefined,
+          input: { pdsUrl: 'https://unreachable-pds.example.com' },
+          auth: null,
+          c: mockContext,
         })
       ).rejects.toThrow('PDS does not appear to be reachable');
     });
@@ -210,14 +229,17 @@ describe('XRPC Sync Handlers', () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
       await expect(
-        registerPDSHandler(mockContext as unknown as Parameters<typeof registerPDSHandler>[0], {
-          pdsUrl: 'https://pds.example.com',
+        registerPDS.handler({
+          params: undefined,
+          input: { pdsUrl: 'https://pds.example.com' },
+          auth: null,
+          c: mockContext,
         })
       ).rejects.toThrow('Could not connect to PDS');
     });
   });
 
-  describe('indexRecordHandler', () => {
+  describe('indexRecord', () => {
     const validUri = 'at://did:plc:user123/pub.chive.eprint.submission/abc123' as AtUri;
 
     beforeEach(() => {
@@ -268,32 +290,40 @@ describe('XRPC Sync Handlers', () => {
     });
 
     it('indexes a record successfully', async () => {
-      const result = await indexRecordHandler(
-        mockContext as unknown as Parameters<typeof indexRecordHandler>[0],
-        { uri: validUri }
-      );
+      const result = await indexRecord.handler({
+        params: undefined,
+        input: { uri: validUri },
+        auth: null,
+        c: mockContext,
+      });
 
-      expect(result.indexed).toBe(true);
-      expect(result.uri).toBe(validUri);
+      expect(result.body.indexed).toBe(true);
+      expect(result.body.uri).toBe(validUri);
     });
 
     it('requires authentication', async () => {
-      mockContext.get = vi.fn((key: string) => {
-        switch (key) {
-          case 'services':
-            return { eprint: mockEprintService };
-          case 'logger':
-            return mockLogger;
-          case 'user':
-            return null; // No user
-          default:
-            return undefined;
-        }
-      });
+      const noUserContext = {
+        get: vi.fn((key: string) => {
+          switch (key) {
+            case 'services':
+              return { eprint: mockEprintService };
+            case 'logger':
+              return mockLogger;
+            case 'user':
+              return null; // No user
+            default:
+              return undefined;
+          }
+        }),
+        set: vi.fn(),
+      } as unknown as Context<ChiveEnv>;
 
       await expect(
-        indexRecordHandler(mockContext as unknown as Parameters<typeof indexRecordHandler>[0], {
-          uri: validUri,
+        indexRecord.handler({
+          params: undefined,
+          input: { uri: validUri },
+          auth: null,
+          c: noUserContext,
         })
       ).rejects.toThrow('Authentication required');
     });
@@ -302,35 +332,43 @@ describe('XRPC Sync Handlers', () => {
       const otherUserUri = 'at://did:plc:other456/pub.chive.eprint.submission/abc123' as AtUri;
 
       await expect(
-        indexRecordHandler(mockContext as unknown as Parameters<typeof indexRecordHandler>[0], {
-          uri: otherUserUri,
+        indexRecord.handler({
+          params: undefined,
+          input: { uri: otherUserUri },
+          auth: null,
+          c: mockContext,
         })
       ).rejects.toThrow('Can only index your own records');
     });
 
     it('allows admins to index any record', async () => {
-      mockContext.get = vi.fn((key: string) => {
-        switch (key) {
-          case 'services':
-            return { eprint: mockEprintService, pdsRegistry: mockPDSRegistry };
-          case 'logger':
-            return mockLogger;
-          case 'user':
-            return { ...mockUser, isAdmin: true };
-          default:
-            return undefined;
-        }
-      });
+      const adminContext = {
+        get: vi.fn((key: string) => {
+          switch (key) {
+            case 'services':
+              return { eprint: mockEprintService, pdsRegistry: mockPDSRegistry };
+            case 'logger':
+              return mockLogger;
+            case 'user':
+              return { ...mockUser, isAdmin: true };
+            default:
+              return undefined;
+          }
+        }),
+        set: vi.fn(),
+      } as unknown as Context<ChiveEnv>;
 
       const otherUserUri = 'at://did:plc:other456/pub.chive.eprint.submission/abc123' as AtUri;
 
       // Should not throw (would fail later due to fetch mock, but auth passes)
       // The test verifies the auth check passes
       try {
-        await indexRecordHandler(
-          mockContext as unknown as Parameters<typeof indexRecordHandler>[0],
-          { uri: otherUserUri }
-        );
+        await indexRecord.handler({
+          params: undefined,
+          input: { uri: otherUserUri },
+          auth: null,
+          c: adminContext,
+        });
       } catch (error) {
         // Expected to fail at PDS resolution, not auth
         expect((error as Error).message).not.toContain('Can only index your own records');
@@ -341,8 +379,11 @@ describe('XRPC Sync Handlers', () => {
       const nonEprintUri = 'at://did:plc:user123/app.bsky.feed.post/abc123' as AtUri;
 
       await expect(
-        indexRecordHandler(mockContext as unknown as Parameters<typeof indexRecordHandler>[0], {
-          uri: nonEprintUri,
+        indexRecord.handler({
+          params: undefined,
+          input: { uri: nonEprintUri },
+          auth: null,
+          c: mockContext,
         })
       ).rejects.toThrow('not supported for manual indexing');
     });
@@ -353,19 +394,24 @@ describe('XRPC Sync Handlers', () => {
         error: new Error('Validation failed'),
       });
 
-      const result = await indexRecordHandler(
-        mockContext as unknown as Parameters<typeof indexRecordHandler>[0],
-        { uri: validUri }
-      );
+      const result = await indexRecord.handler({
+        params: undefined,
+        input: { uri: validUri },
+        auth: null,
+        c: mockContext,
+      });
 
-      expect(result.indexed).toBe(false);
-      expect(result.error).toBe('Validation failed');
+      expect(result.body.indexed).toBe(false);
+      expect(result.body.error).toBe('Validation failed');
     });
 
     it('throws ValidationError for invalid AT URI', async () => {
       await expect(
-        indexRecordHandler(mockContext as unknown as Parameters<typeof indexRecordHandler>[0], {
-          uri: 'not-a-valid-uri' as AtUri,
+        indexRecord.handler({
+          params: undefined,
+          input: { uri: 'not-a-valid-uri' as AtUri },
+          auth: null,
+          c: mockContext,
         })
       ).rejects.toThrow('Invalid AT URI format');
     });

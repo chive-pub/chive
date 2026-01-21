@@ -1,0 +1,108 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.getEdge",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Retrieve a knowledge graph edge by AT-URI",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Edge AT-URI"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#graphEdge"
+        }
+      },
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
+    },
+    "graphEdge": {
+      "type": "object",
+      "description": "Graph edge response",
+      "required": ["id", "uri", "sourceUri", "targetUri", "relationSlug", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Edge UUID identifier"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the edge"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "sourceUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of source node"
+        },
+        "targetUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of target node"
+        },
+        "relationUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of relation type node"
+        },
+        "relationSlug": {
+          "type": "string",
+          "description": "Relation slug (broader, narrower, related, etc.)"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Edge weight (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "metadata": {
+          "type": "ref",
+          "ref": "pub.chive.graph.edge#edgeMetadata",
+          "description": "Edge-specific metadata"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["proposed", "established", "deprecated"],
+          "description": "Edge lifecycle status"
+        },
+        "proposalUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of creating proposal"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "createdBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of creator"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        }
+      }
+    }
+  }
+}

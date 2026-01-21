@@ -1,0 +1,75 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.grantDelegation",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Grant PDS delegation to a trusted editor. Only accessible to administrators. Delegation allows the user to write records to the Governance PDS.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["delegateDid", "collections", "daysValid"],
+          "properties": {
+            "delegateDid": {
+              "type": "string",
+              "format": "did",
+              "description": "DID of the user to delegate to"
+            },
+            "collections": {
+              "type": "array",
+              "minLength": 1,
+              "items": { "type": "string" },
+              "description": "NSID collections the delegation covers"
+            },
+            "daysValid": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 365,
+              "description": "Number of days the delegation is valid"
+            },
+            "maxRecordsPerDay": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100,
+              "description": "Maximum records delegate can create per day"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#delegationResult"
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "Unauthorized" },
+        { "name": "InvalidRequest" }
+      ]
+    },
+    "delegationResult": {
+      "type": "object",
+      "description": "Result of delegation operation",
+      "required": ["success", "message"],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the operation succeeded"
+        },
+        "delegationId": {
+          "type": "string",
+          "description": "Delegation ID (if created)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable result message"
+        }
+      }
+    }
+  }
+}

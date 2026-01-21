@@ -23,6 +23,7 @@ import {
   type ExternalEprint,
   type ImportSource,
   type SuggestedPaper,
+  type SuggestedPaperAuthor,
 } from '@/lib/hooks';
 import type { CoauthorClaimRequest } from '@/lib/api/schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -297,7 +298,7 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
   };
 
   // Format author names
-  const authorNames = paper.authors.map((a) => a.name);
+  const authorNames = paper.authors.map((a: SuggestedPaperAuthor) => a.name);
   const displayAuthors = authorNames.slice(0, 3).join(', ');
   const additionalAuthors = authorNames.length > 3 ? ` +${authorNames.length - 3} more` : '';
 

@@ -1,0 +1,149 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.tag.listForEprint",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List tags for a specific eprint with TaxoFolk suggestions",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint to list tags for"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["tags"],
+          "properties": {
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#userTag"
+              },
+              "description": "Tags applied to the eprint"
+            },
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#tagSuggestion"
+              },
+              "description": "TaxoFolk suggestions based on existing tags"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "userTag": {
+      "type": "object",
+      "description": "A user-applied tag on an eprint",
+      "required": [
+        "uri",
+        "cid",
+        "eprintUri",
+        "author",
+        "displayForm",
+        "normalizedForm",
+        "createdAt"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Tag AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Tagged eprint AT-URI"
+        },
+        "author": {
+          "type": "ref",
+          "ref": "#authorRef",
+          "description": "Tag creator"
+        },
+        "displayForm": {
+          "type": "string",
+          "description": "Original display form of the tag"
+        },
+        "normalizedForm": {
+          "type": "string",
+          "description": "Normalized form (lowercase, hyphenated)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "description": "Reference to an author",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID"
+        },
+        "handle": {
+          "type": "string",
+          "description": "Author handle"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri",
+          "description": "Avatar URL"
+        }
+      }
+    },
+    "tagSuggestion": {
+      "type": "object",
+      "description": "A tag suggestion from the TaxoFolk system",
+      "required": ["displayForm", "normalizedForm", "confidence", "source"],
+      "properties": {
+        "displayForm": {
+          "type": "string",
+          "description": "Suggested display form"
+        },
+        "normalizedForm": {
+          "type": "string",
+          "description": "Normalized form of the suggestion"
+        },
+        "confidence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Suggestion confidence (0-100, scaled from 0-1)"
+        },
+        "source": {
+          "type": "string",
+          "knownValues": ["cooccurrence", "authority", "facet"],
+          "description": "Source of the suggestion"
+        },
+        "matchedTerm": {
+          "type": "string",
+          "description": "Term that triggered this suggestion"
+        }
+      }
+    }
+  }
+}

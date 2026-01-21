@@ -27,7 +27,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { Review, ReviewThread } from '@/lib/api/schema';
+import type { Review, FrontendReviewThread } from '@/lib/api/schema';
 import { ReviewCard } from './review-card';
 
 // =============================================================================
@@ -39,7 +39,7 @@ import { ReviewCard } from './review-card';
  */
 export interface ReviewThreadProps {
   /** The thread to render */
-  thread: ReviewThread;
+  thread: FrontendReviewThread;
 
   /** Current nesting depth */
   depth?: number;

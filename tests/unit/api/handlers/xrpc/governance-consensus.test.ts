@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { listProposalsHandler } from '@/api/handlers/xrpc/governance/listProposals.js';
+import { listProposals } from '@/api/handlers/xrpc/governance/listProposals.js';
 import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -127,14 +127,18 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.consensus).toBeDefined();
-      expect(result.proposals[0]?.consensus?.approvalPercentage).toBe(0);
-      expect(result.proposals[0]?.consensus?.voterCount).toBe(0);
-      expect(result.proposals[0]?.consensus?.consensusReached).toBe(false);
-      expect(result.proposals[0]?.consensus?.recommendedStatus).toBe('pending');
+      expect(result.body.proposals[0]?.consensus).toBeDefined();
+      expect(result.body.proposals[0]?.consensus?.approvalPercentage).toBe(0);
+      expect(result.body.proposals[0]?.consensus?.voterCount).toBe(0);
+      expect(result.body.proposals[0]?.consensus?.consensusReached).toBe(false);
+      expect(result.body.proposals[0]?.consensus?.recommendedStatus).toBe('pending');
     });
 
     it('returns 100% approval when all votes approve', async () => {
@@ -148,13 +152,17 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.consensus?.approvalPercentage).toBe(100);
-      expect(result.proposals[0]?.consensus?.voterCount).toBe(5);
-      expect(result.proposals[0]?.consensus?.consensusReached).toBe(true);
-      expect(result.proposals[0]?.consensus?.recommendedStatus).toBe('approved');
+      expect(result.body.proposals[0]?.consensus?.approvalPercentage).toBe(100);
+      expect(result.body.proposals[0]?.consensus?.voterCount).toBe(5);
+      expect(result.body.proposals[0]?.consensus?.consensusReached).toBe(true);
+      expect(result.body.proposals[0]?.consensus?.recommendedStatus).toBe('approved');
     });
 
     it('returns 0% approval when all votes reject', async () => {
@@ -168,11 +176,15 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.consensus?.approvalPercentage).toBe(0);
-      expect(result.proposals[0]?.consensus?.recommendedStatus).toBe('rejected');
+      expect(result.body.proposals[0]?.consensus?.approvalPercentage).toBe(0);
+      expect(result.body.proposals[0]?.consensus?.recommendedStatus).toBe('rejected');
     });
 
     it('does not reach consensus with fewer than 3 votes', async () => {
@@ -186,13 +198,17 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.consensus?.voterCount).toBe(2);
-      expect(result.proposals[0]?.consensus?.minimumVotes).toBe(3);
-      expect(result.proposals[0]?.consensus?.consensusReached).toBe(false);
-      expect(result.proposals[0]?.consensus?.recommendedStatus).toBe('pending');
+      expect(result.body.proposals[0]?.consensus?.voterCount).toBe(2);
+      expect(result.body.proposals[0]?.consensus?.minimumVotes).toBe(3);
+      expect(result.body.proposals[0]?.consensus?.consensusReached).toBe(false);
+      expect(result.body.proposals[0]?.consensus?.recommendedStatus).toBe('pending');
     });
 
     it('reaches consensus at 67%+ approval with 3+ votes', async () => {
@@ -206,14 +222,18 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
       // 75% > 67% threshold
-      expect(result.proposals[0]?.consensus?.approvalPercentage).toBe(75);
-      expect(result.proposals[0]?.consensus?.threshold).toBe(67);
-      expect(result.proposals[0]?.consensus?.consensusReached).toBe(true);
-      expect(result.proposals[0]?.consensus?.recommendedStatus).toBe('approved');
+      expect(result.body.proposals[0]?.consensus?.approvalPercentage).toBe(75);
+      expect(result.body.proposals[0]?.consensus?.threshold).toBe(67);
+      expect(result.body.proposals[0]?.consensus?.consensusReached).toBe(true);
+      expect(result.body.proposals[0]?.consensus?.recommendedStatus).toBe('approved');
     });
 
     it('excludes abstains from approval percentage calculation', async () => {
@@ -227,12 +247,16 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
       // 3/(3+1) = 75%
-      expect(result.proposals[0]?.consensus?.approvalPercentage).toBe(75);
-      expect(result.proposals[0]?.consensus?.voterCount).toBe(14); // Total including abstains
+      expect(result.body.proposals[0]?.consensus?.approvalPercentage).toBe(75);
+      expect(result.body.proposals[0]?.consensus?.voterCount).toBe(14); // Total including abstains
     });
 
     it('recommends rejection below 33% approval threshold', async () => {
@@ -246,11 +270,15 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.consensus?.approvalPercentage).toBe(20);
-      expect(result.proposals[0]?.consensus?.recommendedStatus).toBe('rejected');
+      expect(result.body.proposals[0]?.consensus?.approvalPercentage).toBe(20);
+      expect(result.body.proposals[0]?.consensus?.recommendedStatus).toBe('rejected');
     });
 
     it('remains pending between 33% and 67% approval', async () => {
@@ -264,12 +292,16 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.consensus?.approvalPercentage).toBe(50);
-      expect(result.proposals[0]?.consensus?.consensusReached).toBe(false);
-      expect(result.proposals[0]?.consensus?.recommendedStatus).toBe('pending');
+      expect(result.body.proposals[0]?.consensus?.approvalPercentage).toBe(50);
+      expect(result.body.proposals[0]?.consensus?.consensusReached).toBe(false);
+      expect(result.body.proposals[0]?.consensus?.recommendedStatus).toBe('pending');
     });
   });
 
@@ -295,10 +327,14 @@ describe('Consensus Calculation in listProposals', () => {
         description: 'A field of computer science',
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.label).toBe('Quantum Computing');
+      expect(result.body.proposals[0]?.label).toBe('Quantum Computing');
     });
 
     it('uses changes.label when nodeUri is not set', async () => {
@@ -313,10 +349,14 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.label).toBe('New Field Name');
+      expect(result.body.proposals[0]?.label).toBe('New Field Name');
     });
 
     it('enriches proposal with proposer display name', async () => {
@@ -339,10 +379,14 @@ describe('Consensus Calculation in listProposals', () => {
         },
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.proposerName).toBe('Alice Researcher');
+      expect(result.body.proposals[0]?.proposerName).toBe('Alice Researcher');
     });
 
     it('leaves proposerName undefined when user not found', async () => {
@@ -361,10 +405,14 @@ describe('Consensus Calculation in listProposals', () => {
         error: { message: 'User not found' },
       });
 
-      // @ts-expect-error Partial mock context for testing
-      const result = await listProposalsHandler(mockContext, { limit: 20 });
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.proposerName).toBeUndefined();
+      expect(result.body.proposals[0]?.proposerName).toBeUndefined();
     });
   });
 
@@ -384,8 +432,12 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      await listProposalsHandler(mockContext, { limit: 20 });
+      await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
       // Should only look up unique node URIs
       expect(mockGraphService.getNode).toHaveBeenCalledTimes(2);
@@ -406,8 +458,12 @@ describe('Consensus Calculation in listProposals', () => {
         hasMore: false,
       });
 
-      // @ts-expect-error Partial mock context for testing
-      await listProposalsHandler(mockContext, { limit: 20 });
+      await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
       // Should only look up unique proposer DIDs
       expect(mockTrustedEditorService.getEditorStatus).toHaveBeenCalledTimes(2);

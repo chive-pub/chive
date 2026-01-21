@@ -1,0 +1,227 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.listTrustedEditors",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List all users with trusted editor or higher roles (admin only)",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "role": {
+            "type": "string",
+            "knownValues": [
+              "community-member",
+              "trusted-editor",
+              "graph-editor",
+              "domain-expert",
+              "administrator"
+            ],
+            "description": "Filter by role"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["editors", "total"],
+          "properties": {
+            "editors": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#trustedEditor"
+              },
+              "description": "List of trusted editors"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of editors"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "Unauthorized" }]
+    },
+    "trustedEditor": {
+      "type": "object",
+      "description": "Trusted editor record",
+      "required": ["did", "role", "roleGrantedAt", "hasDelegation", "metrics"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Editor DID"
+        },
+        "handle": {
+          "type": "string",
+          "description": "Editor handle"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Editor display name"
+        },
+        "role": {
+          "type": "string",
+          "knownValues": [
+            "community-member",
+            "trusted-editor",
+            "graph-editor",
+            "domain-expert",
+            "administrator"
+          ],
+          "description": "Current governance role"
+        },
+        "roleGrantedAt": {
+          "type": "integer",
+          "description": "Timestamp when role was granted"
+        },
+        "roleGrantedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of admin who granted the role"
+        },
+        "hasDelegation": {
+          "type": "boolean",
+          "description": "Whether editor has an active PDS delegation"
+        },
+        "delegationExpiresAt": {
+          "type": "integer",
+          "description": "Delegation expiration timestamp"
+        },
+        "recordsCreatedToday": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Records created today under delegation"
+        },
+        "dailyRateLimit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Daily rate limit for delegation"
+        },
+        "metrics": {
+          "type": "ref",
+          "ref": "#reputationMetrics"
+        }
+      }
+    },
+    "reputationMetrics": {
+      "type": "object",
+      "description": "User reputation metrics for governance",
+      "required": [
+        "did",
+        "accountCreatedAt",
+        "accountAgeDays",
+        "eprintCount",
+        "wellEndorsedEprintCount",
+        "totalEndorsements",
+        "proposalCount",
+        "voteCount",
+        "successfulProposals",
+        "warningCount",
+        "violationCount",
+        "reputationScore",
+        "role",
+        "eligibleForTrustedEditor",
+        "missingCriteria"
+      ],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "User DID"
+        },
+        "accountCreatedAt": {
+          "type": "integer",
+          "description": "Account creation timestamp"
+        },
+        "accountAgeDays": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Account age in days"
+        },
+        "eprintCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total eprints authored"
+        },
+        "wellEndorsedEprintCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Eprints with substantial endorsements"
+        },
+        "totalEndorsements": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total endorsements received"
+        },
+        "proposalCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Governance proposals submitted"
+        },
+        "voteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Votes cast"
+        },
+        "successfulProposals": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposals that were approved"
+        },
+        "warningCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Moderation warnings received"
+        },
+        "violationCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy violations recorded"
+        },
+        "reputationScore": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Computed reputation score"
+        },
+        "role": {
+          "type": "string",
+          "knownValues": [
+            "community-member",
+            "trusted-editor",
+            "graph-editor",
+            "domain-expert",
+            "administrator"
+          ],
+          "description": "Current governance role"
+        },
+        "eligibleForTrustedEditor": {
+          "type": "boolean",
+          "description": "Whether user meets trusted editor criteria"
+        },
+        "missingCriteria": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of missing eligibility criteria"
+        }
+      }
+    }
+  }
+}

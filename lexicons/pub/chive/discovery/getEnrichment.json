@@ -1,0 +1,119 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.discovery.getEnrichment",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get enrichment data for an eprint (citations, concepts, topics)",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Eprint AT-URI"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["available"],
+          "properties": {
+            "enrichment": {
+              "type": "ref",
+              "ref": "#enrichmentData"
+            },
+            "available": {
+              "type": "boolean",
+              "description": "Whether enrichment data is available"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    },
+    "enrichmentData": {
+      "type": "object",
+      "required": ["uri"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "semanticScholarId": {
+          "type": "string",
+          "description": "Semantic Scholar paper ID"
+        },
+        "openAlexId": {
+          "type": "string",
+          "description": "OpenAlex work ID"
+        },
+        "citationCount": {
+          "type": "integer",
+          "description": "Total citation count"
+        },
+        "influentialCitationCount": {
+          "type": "integer",
+          "description": "Influential citation count"
+        },
+        "referencesCount": {
+          "type": "integer",
+          "description": "Number of references"
+        },
+        "concepts": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#concept"
+          }
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#topic"
+          }
+        },
+        "lastEnrichedAt": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
+    },
+    "concept": {
+      "type": "object",
+      "required": ["id", "displayName"],
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": "string" },
+        "wikidataId": { "type": "string" },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Relevance score (scaled by 1000 for 0.0-1.0 range)"
+        }
+      }
+    },
+    "topic": {
+      "type": "object",
+      "required": ["id", "displayName"],
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": "string" },
+        "subfield": { "type": "string" },
+        "field": { "type": "string" },
+        "domain": { "type": "string" },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Relevance score (scaled by 1000 for 0.0-1.0 range)"
+        }
+      }
+    }
+  }
+}

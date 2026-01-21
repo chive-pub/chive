@@ -145,7 +145,7 @@ export function AuthorReviews({ did, limit = 20, className }: AuthorReviewsProps
 
   return (
     <div className={cn('space-y-4', className)}>
-      {reviews.map((review) => (
+      {reviews.map((review: Review) => (
         <AuthorReviewItem key={review.uri} review={review} />
       ))}
 

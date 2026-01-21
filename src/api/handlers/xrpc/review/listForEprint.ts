@@ -8,27 +8,22 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+  ReviewView,
+} from '../../../../lexicons/generated/types/pub/chive/review/listForEprint.js';
 import type { ReviewThread as ServiceReviewThread } from '../../../../services/review/review-service.js';
 import type { AtUri } from '../../../../types/atproto.js';
-import {
-  listReviewsForEprintParamsSchema,
-  reviewsResponseSchema,
-  type ListReviewsForEprintParams,
-  type ReviewsResponse,
-} from '../../../schemas/review.js';
-import type { Review } from '../../../schemas/review.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Flattens a review thread tree into a list of reviews.
  *
  * @internal
  */
-function flattenThreads(threads: readonly ServiceReviewThread[]): Review[] {
-  const reviews: Review[] = [];
+function flattenThreads(threads: readonly ServiceReviewThread[]): ReviewView[] {
+  const reviews: ReviewView[] = [];
 
   function processThread(thread: ServiceReviewThread): void {
     const root = thread.root;
@@ -64,77 +59,60 @@ function flattenThreads(threads: readonly ServiceReviewThread[]): Review[] {
 }
 
 /**
- * Handler for pub.chive.review.listForEprint query.
+ * XRPC method for pub.chive.review.listForEprint.
  *
- * @param c - Hono context with Chive environment
- * @param params - Validated query parameters
- * @returns Paginated list of reviews
- *
- * @public
- */
-export async function listForEprintHandler(
-  c: Context<ChiveEnv>,
-  params: ListReviewsForEprintParams
-): Promise<ReviewsResponse> {
-  const logger = c.get('logger');
-  const reviewService = c.get('services').review;
-
-  logger.debug('Listing reviews for eprint', {
-    eprintUri: params.eprintUri,
-    motivation: params.motivation,
-    inlineOnly: params.inlineOnly,
-    limit: params.limit,
-    cursor: params.cursor,
-  });
-
-  // Get threaded reviews and flatten them
-  const threads = await reviewService.getReviews(params.eprintUri as AtUri);
-  const allReviews = flattenThreads(threads);
-
-  // Apply pagination
-  const limit = params.limit ?? 50;
-  let startIndex = 0;
-
-  // Handle cursor-based pagination (cursor is the index)
-  if (params.cursor) {
-    startIndex = parseInt(params.cursor, 10) || 0;
-  }
-
-  // Get total before any filtering
-  const total = allReviews.length;
-
-  // Slice for pagination
-  const endIndex = startIndex + limit;
-  const paginatedReviews = allReviews.slice(startIndex, endIndex);
-  const hasMore = endIndex < allReviews.length;
-
-  const response: ReviewsResponse = {
-    reviews: paginatedReviews,
-    cursor: hasMore ? String(endIndex) : undefined,
-    hasMore,
-    total,
-  };
-
-  logger.info('Reviews listed for eprint', {
-    eprintUri: params.eprintUri,
-    count: response.reviews.length,
-  });
-
-  return response;
-}
-
-/**
- * Endpoint definition for pub.chive.review.listForEprint.
+ * @remarks
+ * Returns a paginated list of reviews for an eprint.
  *
  * @public
  */
-export const listForEprintEndpoint: XRPCEndpoint<ListReviewsForEprintParams, ReviewsResponse> = {
-  method: 'pub.chive.review.listForEprint' as never,
-  type: 'query',
-  description: 'List reviews for an eprint',
-  inputSchema: listReviewsForEprintParamsSchema,
-  outputSchema: reviewsResponseSchema,
-  handler: listForEprintHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+export const listForEprint: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const reviewService = c.get('services').review;
+
+    logger.debug('Listing reviews for eprint', {
+      eprintUri: params.eprintUri,
+      motivation: params.motivation,
+      inlineOnly: params.inlineOnly,
+      limit: params.limit,
+      cursor: params.cursor,
+    });
+
+    // Get threaded reviews and flatten them
+    const threads = await reviewService.getReviews(params.eprintUri as AtUri);
+    const allReviews = flattenThreads(threads);
+
+    // Apply pagination
+    const limit = params.limit ?? 50;
+    let startIndex = 0;
+
+    // Handle cursor-based pagination (cursor is the index)
+    if (params.cursor) {
+      startIndex = parseInt(params.cursor, 10) || 0;
+    }
+
+    // Get total before any filtering
+    const total = allReviews.length;
+
+    // Slice for pagination
+    const endIndex = startIndex + limit;
+    const paginatedReviews = allReviews.slice(startIndex, endIndex);
+    const hasMore = endIndex < allReviews.length;
+
+    const response: OutputSchema = {
+      reviews: paginatedReviews,
+      cursor: hasMore ? String(endIndex) : undefined,
+      hasMore,
+      total,
+    };
+
+    logger.info('Reviews listed for eprint', {
+      eprintUri: params.eprintUri,
+      count: response.reviews.length,
+    });
+
+    return { encoding: 'application/json', body: response };
+  },
 };

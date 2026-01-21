@@ -1,0 +1,79 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.autocomplete",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Provides fast autocomplete suggestions for claiming search. Optimized for low latency with short timeouts.",
+      "parameters": {
+        "type": "params",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 2,
+            "description": "Search query prefix"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 8,
+            "description": "Maximum number of suggestions to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["suggestions"],
+          "properties": {
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#suggestion"
+              },
+              "description": "List of autocomplete suggestions"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "suggestion": {
+      "type": "object",
+      "description": "An autocomplete suggestion for a claimable eprint",
+      "required": ["title", "authors", "source", "externalId"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "authors": {
+          "type": "string",
+          "description": "First 2 authors joined (e.g., 'Author1, Author2 et al.')"
+        },
+        "source": {
+          "type": "string",
+          "description": "External source identifier (e.g., arxiv, biorxiv)"
+        },
+        "externalId": {
+          "type": "string",
+          "description": "Source-specific identifier"
+        },
+        "highlightedTitle": {
+          "type": "string",
+          "description": "Title with query portion highlighted using markdown bold"
+        },
+        "fieldMatchScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "User field relevance score (0-100), present if authenticated"
+        }
+      }
+    }
+  }
+}

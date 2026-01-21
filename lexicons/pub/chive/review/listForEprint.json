@@ -1,0 +1,359 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.review.listForEprint",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List reviews for a specific eprint with optional filtering",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          },
+          "motivation": {
+            "type": "string",
+            "knownValues": [
+              "commenting",
+              "highlighting",
+              "questioning",
+              "replying",
+              "assessing",
+              "bookmarking",
+              "classifying",
+              "describing",
+              "editing",
+              "linking",
+              "moderating",
+              "tagging"
+            ],
+            "description": "Filter by W3C Web Annotation motivation"
+          },
+          "inlineOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only include inline annotations with text span targets"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["reviews", "hasMore"],
+          "properties": {
+            "reviews": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#reviewView"
+              },
+              "description": "List of reviews for the eprint"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of reviews for this eprint"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "reviewView": {
+      "type": "object",
+      "description": "View of a review/comment",
+      "required": [
+        "uri",
+        "cid",
+        "author",
+        "eprintUri",
+        "content",
+        "motivation",
+        "replyCount",
+        "createdAt",
+        "indexedAt"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Review AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "author": {
+          "type": "ref",
+          "ref": "#authorRef"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the eprint being reviewed"
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain text content of the review"
+        },
+        "body": {
+          "type": "ref",
+          "ref": "#annotationBody",
+          "description": "Rich text body with facets"
+        },
+        "target": {
+          "type": "ref",
+          "ref": "#textSpanTarget",
+          "description": "Target text span for inline annotations"
+        },
+        "motivation": {
+          "type": "string",
+          "knownValues": [
+            "commenting",
+            "highlighting",
+            "questioning",
+            "replying",
+            "assessing",
+            "bookmarking",
+            "classifying",
+            "describing",
+            "editing",
+            "linking",
+            "moderating",
+            "tagging"
+          ],
+          "description": "W3C Web Annotation motivation"
+        },
+        "parentReviewUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Parent review URI for threaded replies"
+        },
+        "replyCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of direct replies"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the review was created"
+        },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the review was indexed"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "annotationBody": {
+      "type": "object",
+      "description": "Rich text body with optional facets",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 10000,
+          "description": "Plain text content"
+        },
+        "facets": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#richTextFacet"
+          },
+          "description": "Rich text facets for mentions, links, and tags"
+        }
+      }
+    },
+    "richTextFacet": {
+      "type": "object",
+      "required": ["index", "features"],
+      "properties": {
+        "index": {
+          "type": "ref",
+          "ref": "#byteSlice"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "union",
+            "refs": ["#mentionFacet", "#linkFacet", "#tagFacet"]
+          }
+        }
+      }
+    },
+    "byteSlice": {
+      "type": "object",
+      "description": "Byte slice for facet positioning",
+      "required": ["byteStart", "byteEnd"],
+      "properties": {
+        "byteStart": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byteEnd": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "mentionFacet": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "app.bsky.richtext.facet#mention"
+        },
+        "did": {
+          "type": "string",
+          "format": "did"
+        }
+      }
+    },
+    "linkFacet": {
+      "type": "object",
+      "required": ["uri"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "app.bsky.richtext.facet#link"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "tagFacet": {
+      "type": "object",
+      "required": ["tag"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "app.bsky.richtext.facet#tag"
+        },
+        "tag": {
+          "type": "string"
+        }
+      }
+    },
+    "textSpanTarget": {
+      "type": "object",
+      "description": "Target text span for inline annotations (W3C Web Annotation compatible)",
+      "required": ["source"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Eprint AT-URI"
+        },
+        "selector": {
+          "type": "ref",
+          "ref": "#textQuoteSelector",
+          "description": "Text quote selector"
+        },
+        "refinedBy": {
+          "type": "ref",
+          "ref": "#textPositionSelector",
+          "description": "Position refinement with page info"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Page number (deprecated, use refinedBy.pageNumber)"
+        }
+      }
+    },
+    "textQuoteSelector": {
+      "type": "object",
+      "description": "W3C Text Quote Selector",
+      "required": ["type", "exact"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextQuoteSelector"
+        },
+        "exact": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 100
+        }
+      }
+    },
+    "textPositionSelector": {
+      "type": "object",
+      "description": "W3C Text Position Selector with optional page info",
+      "required": ["type", "start", "end"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextPositionSelector"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Page number in PDF"
+        }
+      }
+    }
+  }
+}

@@ -5,21 +5,19 @@
  * @public
  */
 
-export { getSubmissionHandler, getSubmissionEndpoint } from './getSubmission.js';
+export { getSubmission } from './getSubmission.js';
+export { searchSubmissions } from './searchSubmissions.js';
+export { listByAuthor } from './listByAuthor.js';
 
-export { searchSubmissionsHandler, searchSubmissionsEndpoint } from './searchSubmissions.js';
-
-export { listByAuthorHandler, listByAuthorEndpoint } from './listByAuthor.js';
-
-import { getSubmissionEndpoint } from './getSubmission.js';
-import { listByAuthorEndpoint } from './listByAuthor.js';
-import { searchSubmissionsEndpoint } from './searchSubmissions.js';
+import { getSubmission } from './getSubmission.js';
+import { listByAuthor } from './listByAuthor.js';
+import { searchSubmissions } from './searchSubmissions.js';
 
 /**
- * All eprint XRPC endpoints.
+ * All eprint XRPC methods keyed by NSID.
  */
-export const eprintEndpoints = [
-  getSubmissionEndpoint,
-  searchSubmissionsEndpoint,
-  listByAuthorEndpoint,
-] as const;
+export const eprintMethods = {
+  'pub.chive.eprint.getSubmission': getSubmission,
+  'pub.chive.eprint.searchSubmissions': searchSubmissions,
+  'pub.chive.eprint.listByAuthor': listByAuthor,
+} as const;

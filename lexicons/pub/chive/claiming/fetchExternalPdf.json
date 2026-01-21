@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.fetchExternalPdf",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Fetch external PDF through proxy to avoid CORS issues. Returns PDF binary data. Only allows fetching from trusted academic sources.",
+      "parameters": {
+        "type": "params",
+        "required": ["source", "externalId"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "External source identifier (e.g., arxiv, biorxiv, medrxiv)"
+          },
+          "externalId": {
+            "type": "string",
+            "description": "Source-specific identifier for the eprint"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/pdf",
+        "description": "PDF binary data with Content-Disposition header for download"
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to fetch PDFs"
+        },
+        {
+          "name": "InvalidParameters",
+          "description": "Missing source or externalId parameter"
+        },
+        {
+          "name": "EprintNotFound",
+          "description": "The specified eprint does not exist in the external source"
+        },
+        {
+          "name": "PdfNotAvailable",
+          "description": "No PDF is available for this eprint"
+        },
+        {
+          "name": "DomainNotAllowed",
+          "description": "PDF URL is not from an allowed academic domain"
+        },
+        {
+          "name": "FetchFailed",
+          "description": "Failed to fetch PDF from external source"
+        }
+      ]
+    }
+  }
+}

@@ -220,14 +220,15 @@ describe('LexiconValidator', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('rejects searchSubmissions parameters without required q', () => {
-      const invalidParams = {
+    it('accepts searchSubmissions parameters without q (browsing mode)', () => {
+      // q is optional - when omitted, returns recent eprints (browsing mode)
+      const browsingParams = {
         author: 'did:plc:abc123',
         limit: 25,
       };
 
-      const result = validator.validateParams('pub.chive.eprint.searchSubmissions', invalidParams);
-      expect(result.valid).toBe(false);
+      const result = validator.validateParams('pub.chive.eprint.searchSubmissions', browsingParams);
+      expect(result.valid).toBe(true);
     });
   });
 

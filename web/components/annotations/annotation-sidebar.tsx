@@ -96,7 +96,7 @@ export function AnnotationSidebar({
 
     const groups = new Map<number, Review[]>();
 
-    data.reviews.forEach((review) => {
+    data.reviews.forEach((review: Review) => {
       const pageNumber = review.target?.refinedBy?.pageNumber ?? 0;
       const existing = groups.get(pageNumber) ?? [];
       groups.set(pageNumber, [...existing, review]);

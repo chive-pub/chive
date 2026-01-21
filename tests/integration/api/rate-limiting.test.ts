@@ -361,10 +361,8 @@ describe('API Rate Limiting Integration', () => {
       expect(res.status).toBe(429);
       const body = (await res.json()) as RateLimitResponse;
 
-      expect(body.error).toBeDefined();
-      expect(body.error.code).toBe('RATE_LIMIT_EXCEEDED');
-      expect(body.error.message).toBeDefined();
-      expect(body.error.requestId).toBeDefined();
+      expect(body.error).toBe('RateLimitExceeded');
+      expect(body.message).toBeDefined();
     });
   });
 

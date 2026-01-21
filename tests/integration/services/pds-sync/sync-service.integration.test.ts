@@ -127,6 +127,7 @@ function createTestStoredEprint(
     pdsUrl: TEST_PDS_URL,
     indexedAt: new Date(),
     createdAt: new Date(),
+    version: 1,
     ...overrides,
   };
 }

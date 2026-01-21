@@ -8,64 +8,42 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/approveCoauthor.js';
 import { AuthenticationError } from '../../../../types/errors.js';
-import {
-  approveCoauthorParamsSchema,
-  approveCoauthorResponseSchema,
-  type ApproveCoauthorParams,
-  type ApproveCoauthorResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.claiming.approveCoauthor.
- *
- * @param c - Hono context
- * @param params - Parameters
- * @returns Success status
+ * XRPC method for pub.chive.claiming.approveCoauthor.
  *
  * @public
  */
-export async function approveCoauthorHandler(
-  c: Context<ChiveEnv>,
-  params: ApproveCoauthorParams
-): Promise<ApproveCoauthorResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming } = c.get('services');
+export const approveCoauthor: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: true,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  logger.debug('Approving co-author request', {
-    requestId: params.requestId,
-    ownerDid: user.did,
-  });
+    logger.debug('Approving co-author request', {
+      requestId: params.requestId,
+      ownerDid: user.did,
+    });
 
-  await claiming.approveCoauthorRequest(params.requestId, user.did);
+    await claiming.approveCoauthorRequest(params.requestId, user.did);
 
-  return {
-    success: true,
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.claiming.approveCoauthor.
- *
- * @public
- */
-export const approveCoauthorEndpoint: XRPCEndpoint<ApproveCoauthorParams, ApproveCoauthorResponse> =
-  {
-    method: 'pub.chive.claiming.approveCoauthor' as never,
-    type: 'procedure',
-    description: 'Approve a co-author request on your eprint',
-    inputSchema: approveCoauthorParamsSchema,
-    outputSchema: approveCoauthorResponseSchema,
-    handler: approveCoauthorHandler,
-    auth: 'required',
-    rateLimit: 'authenticated',
-  };
+    return {
+      encoding: 'application/json',
+      body: {
+        success: true,
+      },
+    };
+  },
+};

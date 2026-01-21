@@ -9,24 +9,16 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
-import { AuthenticationError } from '../../../../types/errors.js';
-import {
-  startClaimFromExternalParamsSchema,
-  startClaimFromExternalResponseSchema,
-  type StartClaimFromExternalParams,
-  type StartClaimFromExternalResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/startClaimFromExternal.js';
+import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.claiming.startClaimFromExternal.
- *
- * @param c - Hono context
- * @param params - Claim parameters
- * @returns Created claim request
+ * XRPC method for pub.chive.claiming.startClaimFromExternal.
  *
  * @remarks
  * Implements "import on demand" - only imports the eprint when
@@ -39,65 +31,53 @@ import type { XRPCEndpoint } from '../../../types/handlers.js';
  *
  * @public
  */
-export async function startClaimFromExternalHandler(
-  c: Context<ChiveEnv>,
-  params: StartClaimFromExternalParams
-): Promise<StartClaimFromExternalResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming } = c.get('services');
+export const startClaimFromExternal: XRPCMethod<void, InputSchema, OutputSchema> = {
+  auth: true,
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    if (!input) {
+      throw new ValidationError('Input is required', 'input');
+    }
+    const params = input;
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required to claim eprints');
-  }
+    if (!user) {
+      throw new AuthenticationError('Authentication required to claim eprints');
+    }
 
-  logger.info('Starting claim from external', {
-    source: params.source,
-    externalId: params.externalId,
-    claimantDid: user.did,
-  });
+    logger.info('Starting claim from external', {
+      source: params.source,
+      externalId: params.externalId,
+      claimantDid: user.did,
+    });
 
-  // Start claim (imports on demand if needed)
-  const claim = await claiming.startClaimFromExternal(params.source, params.externalId, user.did);
+    // Start claim (imports on demand if needed)
+    const claim = await claiming.startClaimFromExternal(params.source, params.externalId, user.did);
 
-  logger.info('Claim started from external', {
-    claimId: claim.id,
-    source: params.source,
-    externalId: params.externalId,
-    claimantDid: user.did,
-  });
+    logger.info('Claim started from external', {
+      claimId: claim.id,
+      source: params.source,
+      externalId: params.externalId,
+      claimantDid: user.did,
+    });
 
-  return {
-    claim: {
-      id: claim.id,
-      importId: claim.importId,
-      claimantDid: claim.claimantDid,
-      status: claim.status,
-      canonicalUri: claim.canonicalUri,
-      rejectionReason: claim.rejectionReason,
-      reviewedBy: claim.reviewedBy,
-      reviewedAt: claim.reviewedAt?.toISOString(),
-      createdAt: claim.createdAt.toISOString(),
-      expiresAt: claim.expiresAt?.toISOString(),
-    },
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.claiming.startClaimFromExternal.
- *
- * @public
- */
-export const startClaimFromExternalEndpoint: XRPCEndpoint<
-  StartClaimFromExternalParams,
-  StartClaimFromExternalResponse
-> = {
-  method: 'pub.chive.claiming.startClaimFromExternal' as never,
-  type: 'procedure',
-  description: 'Start a claim from an external search result (imports on demand)',
-  inputSchema: startClaimFromExternalParamsSchema,
-  outputSchema: startClaimFromExternalResponseSchema,
-  handler: startClaimFromExternalHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return {
+      encoding: 'application/json',
+      body: {
+        claim: {
+          id: claim.id,
+          importId: claim.importId,
+          claimantDid: claim.claimantDid,
+          status: claim.status,
+          canonicalUri: claim.canonicalUri,
+          rejectionReason: claim.rejectionReason,
+          reviewedBy: claim.reviewedBy,
+          reviewedAt: claim.reviewedAt?.toISOString(),
+          createdAt: claim.createdAt.toISOString(),
+          expiresAt: claim.expiresAt?.toISOString(),
+        },
+      },
+    };
+  },
 };

@@ -15,13 +15,32 @@ import {
 } from './use-author';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockGet } = vi.hoisted(() => ({
-  mockGet: vi.fn(),
+const { mockGetProfile, mockListByAuthor } = vi.hoisted(() => ({
+  mockGetProfile: vi.fn(),
+  mockListByAuthor: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockGet,
+    pub: {
+      chive: {
+        author: {
+          getProfile: mockGetProfile,
+        },
+        eprint: {
+          listByAuthor: mockListByAuthor,
+        },
+      },
+    },
+  },
+  authApi: {
+    pub: {
+      chive: {
+        actor: {
+          getMyProfile: vi.fn(),
+        },
+      },
+    },
   },
 }));
 
@@ -59,9 +78,8 @@ describe('useAuthor', () => {
 
   it('fetches author profile by DID', async () => {
     const mockResponse = createMockAuthorProfileResponse();
-    mockGet.mockResolvedValueOnce({
+    mockGetProfile.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -72,9 +90,7 @@ describe('useAuthor', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.author.getProfile', {
-      params: { query: { did: 'did:plc:abc' } },
-    });
+    expect(mockGetProfile).toHaveBeenCalledWith({ did: 'did:plc:abc' });
   });
 
   it('is disabled when DID is empty', () => {
@@ -94,10 +110,7 @@ describe('useAuthor', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Author not found' },
-    });
+    mockGetProfile.mockRejectedValueOnce(new Error('Author not found'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useAuthor('did:plc:invalid'), { wrapper: Wrapper });
@@ -117,9 +130,8 @@ describe('useAuthorProfile', () => {
 
   it('fetches author profile', async () => {
     const mockResponse = createMockAuthorProfileResponse();
-    mockGet.mockResolvedValueOnce({
+    mockGetProfile.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -140,9 +152,8 @@ describe('useAuthorMetrics', () => {
 
   it('fetches author metrics', async () => {
     const mockResponse = createMockAuthorProfileResponse();
-    mockGet.mockResolvedValueOnce({
+    mockGetProfile.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -170,9 +181,8 @@ describe('useAuthorEprints', () => {
       cursor: 'next-cursor',
       hasMore: true,
     };
-    mockGet.mockResolvedValueOnce({
+    mockListByAuthor.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -184,14 +194,12 @@ describe('useAuthorEprints', () => {
 
     expect(result.current.data?.pages[0]).toEqual(mockResponse);
     expect(result.current.hasNextPage).toBe(true);
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.listByAuthor', {
-      params: {
-        query: expect.objectContaining({
-          did: 'did:plc:abc',
-          limit: 10,
-        }),
-      },
-    });
+    expect(mockListByAuthor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        did: 'did:plc:abc',
+        limit: 10,
+      })
+    );
   });
 
   it('handles custom limit', async () => {
@@ -199,9 +207,8 @@ describe('useAuthorEprints', () => {
       eprints: [],
       hasMore: false,
     };
-    mockGet.mockResolvedValueOnce({
+    mockListByAuthor.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -213,14 +220,12 @@ describe('useAuthorEprints', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockGet).toHaveBeenCalledWith('/xrpc/pub.chive.eprint.listByAuthor', {
-      params: {
-        query: expect.objectContaining({
-          did: 'did:plc:abc',
-          limit: 5,
-        }),
-      },
-    });
+    expect(mockListByAuthor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        did: 'did:plc:abc',
+        limit: 5,
+      })
+    );
   });
 });
 

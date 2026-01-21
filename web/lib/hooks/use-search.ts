@@ -76,28 +76,24 @@ export function useSearch(query: string, params: UseSearchParams = {}) {
   return useQuery({
     queryKey: searchKeys.query(query, params),
     queryFn: async (): Promise<SearchResultsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.searchSubmissions', {
-        params: {
-          query: {
-            q: query,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-            sort: 'relevance' as const,
-            field: params.field,
-            author: params.author,
-            dateFrom: params.dateFrom,
-            dateTo: params.dateTo,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.eprint.searchSubmissions({
+          q: query,
+          limit: params.limit ?? 20,
+          cursor: params.cursor,
+          author: params.author,
+          dateFrom: params.dateFrom,
+          dateTo: params.dateTo,
+        });
+        return response.data as unknown as SearchResultsResponse;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search eprints',
+          error instanceof Error ? error.message : 'Failed to search eprints',
           undefined,
-          '/xrpc/pub.chive.eprint.searchSubmissions'
+          'pub.chive.eprint.searchSubmissions'
         );
       }
-      return data! as unknown as SearchResultsResponse;
     },
     enabled: query.length >= 2, // Only search with 2+ characters
     staleTime: 30 * 1000, // 30 seconds per user preference
@@ -134,23 +130,20 @@ export function useInstantSearch(query: string) {
   return useQuery({
     queryKey: ['instant-search', query],
     queryFn: async (): Promise<SearchResultsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.searchSubmissions', {
-        params: {
-          query: {
-            q: query,
-            limit: 5, // Fewer results for instant search
-            sort: 'relevance' as const,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.eprint.searchSubmissions({
+          q: query,
+          limit: 5, // Fewer results for instant search
+        });
+        return response.data as unknown as SearchResultsResponse;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to search eprints',
+          error instanceof Error ? error.message : 'Failed to search eprints',
           undefined,
-          '/xrpc/pub.chive.eprint.searchSubmissions'
+          'pub.chive.eprint.searchSubmissions'
         );
       }
-      return data! as unknown as SearchResultsResponse;
     },
     enabled: query.length >= 2,
     staleTime: 10 * 1000, // 10 seconds for instant search

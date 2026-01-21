@@ -23,8 +23,9 @@ const WEB_DIR = path.join(__dirname, '../../web');
  * - tests: Test files and mocks are not production code
  * - lib/atproto: User-initiated PDS write utilities (users write to their own PDS,
  *   which is proper ATProto architecture; Chive AppView only reads from firehose)
+ * - generated: Auto-generated code from ATProto lexicons (type definitions, not runtime code)
  */
-const EXCLUDED_DIRS = ['node_modules', '.next', 'dist', '.storybook', 'tests'];
+const EXCLUDED_DIRS = ['node_modules', '.next', 'dist', '.storybook', 'tests', 'generated'];
 
 /**
  * Paths excluded from PDS write pattern checks.
@@ -39,6 +40,7 @@ const EXCLUDED_DIRS = ['node_modules', '.next', 'dist', '.storybook', 'tests'];
  * - lib/hooks: Contains hooks for user-initiated PDS writes (activity logging,
  *   submission workflows). TSDoc examples show ATProto usage patterns.
  * - lib/auth: Contains E2E mock agent for testing (mock PDS operations).
+ * - lib/api/generated: Auto-generated ATProto lexicon types (type definitions only).
  */
 const PDS_WRITE_EXCLUDED_PATHS = [
   'lib/atproto',
@@ -46,6 +48,7 @@ const PDS_WRITE_EXCLUDED_PATHS = [
   'lib/schemas',
   'lib/hooks',
   'lib/auth',
+  'lib/api/generated', // Auto-generated ATProto lexicon type definitions
   'components/governance', // User-initiated governance proposal writes to user's own PDS
 ];
 
@@ -151,18 +154,20 @@ describe('Frontend ATProto compliance', () => {
 
   describe('API client compliance', () => {
     it('uses pub.chive.* XRPC endpoints for Chive data', () => {
-      const schemaPath = path.join(WEB_DIR, 'lib/api/schema.d.ts');
+      // Check main schema file which re-exports from generated types
+      const schemaPath = path.join(WEB_DIR, 'lib/api/schema.ts');
       const content = readFileContent(schemaPath);
 
-      expect(content).toContain('pub.chive.eprint');
-      expect(content).toContain('pub.chive.graph');
-      expect(content).toContain('pub.chive.metrics');
+      // Schema imports from pub.chive namespace
+      expect(content).toContain('pub/chive/eprint');
+      expect(content).toContain('pub/chive/graph');
+      expect(content).toContain('pub/chive/metrics');
     });
 
     it('includes source PDS information in eprint types', () => {
-      // Check generated schema (source of truth from OpenAPI spec)
-      const generatedSchemaPath = path.join(WEB_DIR, 'lib/api/schema.generated.ts');
-      const content = readFileContent(generatedSchemaPath);
+      // Check main schema for EprintSource type with PDS tracking
+      const schemaPath = path.join(WEB_DIR, 'lib/api/schema.ts');
+      const content = readFileContent(schemaPath);
 
       // ATProto compliance: eprints must include PDS source tracking
       expect(content).toContain('pdsEndpoint');
@@ -171,24 +176,23 @@ describe('Frontend ATProto compliance', () => {
     });
 
     it('uses BlobRef pattern for document references', () => {
-      // Check domain types file for BlobRef interface
-      const schemaPath = path.join(WEB_DIR, 'lib/api/schema.d.ts');
+      // Check schema file for BlobRef usage
+      const schemaPath = path.join(WEB_DIR, 'lib/api/schema.ts');
       const content = readFileContent(schemaPath);
 
-      // ATProto compliance: BlobRef interface for file references
+      // ATProto compliance: BlobRef from @atproto/lexicon for file references
       expect(content).toContain('BlobRef');
-      expect(content).toContain("$type: 'blob'");
-      expect(content).toContain('ref: string');
-      expect(content).toContain('mimeType: string');
-      expect(content).toContain('size: number');
+      expect(content).toContain('@atproto/lexicon');
+      // EprintSource provides metadata about source PDS
+      expect(content).toContain('EprintSource');
     });
   });
 
   describe('Data sovereignty transparency', () => {
     it('exposes PDS source in eprint API responses', () => {
-      // Check generated schema for source field in eprint responses
-      const generatedSchemaPath = path.join(WEB_DIR, 'lib/api/schema.generated.ts');
-      const content = readFileContent(generatedSchemaPath);
+      // Check main schema for EprintSource type with PDS tracking
+      const schemaPath = path.join(WEB_DIR, 'lib/api/schema.ts');
+      const content = readFileContent(schemaPath);
 
       // ATProto compliance: API responses include source PDS information
       expect(content).toContain('pdsEndpoint');
@@ -196,9 +200,9 @@ describe('Frontend ATProto compliance', () => {
     });
 
     it('tracks staleness of indexed data', () => {
-      // Check generated schema for staleness tracking fields
-      const generatedSchemaPath = path.join(WEB_DIR, 'lib/api/schema.generated.ts');
-      const content = readFileContent(generatedSchemaPath);
+      // Check main schema for staleness tracking in EprintSource
+      const schemaPath = path.join(WEB_DIR, 'lib/api/schema.ts');
+      const content = readFileContent(schemaPath);
 
       // ATProto compliance: staleness tracking for data sovereignty
       expect(content).toContain('stale');

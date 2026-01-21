@@ -1,7 +1,11 @@
 import { render, screen, waitFor } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { vi, beforeEach, describe, it, expect } from 'vitest';
-import { createMockBlobRef, createMockInlineReview, createMockAuthor } from '@/tests/mock-data';
+import {
+  createMockBlobRef,
+  createMockInlineReview,
+  createMockReviewAuthor,
+} from '@/tests/mock-data';
 import { mockHighlighterUtils } from '@/__mocks__/react-pdf-highlighter-extended';
 
 // Mock react-pdf-highlighter-extended with our test implementation
@@ -46,12 +50,12 @@ const mockReviews = [
   createMockInlineReview({
     uri: 'at://review/1',
     content: 'First inline review',
-    author: createMockAuthor({ displayName: 'Dr. First' }),
+    author: createMockReviewAuthor({ displayName: 'Dr. First' }),
   }),
   createMockInlineReview({
     uri: 'at://review/2',
     content: 'Second inline review',
-    author: createMockAuthor({ displayName: 'Dr. Second' }),
+    author: createMockReviewAuthor({ displayName: 'Dr. Second' }),
   }),
 ];
 
@@ -94,7 +98,15 @@ describe('AnnotatedPDFViewer', () => {
       expect(documentUrl).toContain(defaultProps.pdsEndpoint);
       // DID is URL-encoded in the query string
       expect(documentUrl).toContain(encodeURIComponent(defaultProps.did));
-      expect(documentUrl).toContain(defaultProps.blobRef.ref);
+      // BlobRef.ref can be a string, { $link: string }, or CID object
+      const ref = defaultProps.blobRef.ref;
+      const cid =
+        typeof ref === 'string'
+          ? ref
+          : typeof ref === 'object' && ref !== null && '$link' in ref
+            ? (ref as { $link: string }).$link
+            : String(ref);
+      expect(documentUrl).toContain(cid);
     });
   });
 

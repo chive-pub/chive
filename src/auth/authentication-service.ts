@@ -634,14 +634,8 @@ export class AuthenticationService implements IAuthenticationService {
     }
 
     // Parse the stored TOTP data (stored by MFA service as JSON)
-    let secret: string;
-    try {
-      const parsed = JSON.parse(totpData) as { secret: string; enrolledAt?: string };
-      secret = parsed.secret;
-    } catch {
-      // Legacy format: plain secret string
-      secret = totpData;
-    }
+    const parsed = JSON.parse(totpData) as { secret: string; enrolledAt?: string };
+    const secret = parsed.secret;
 
     if (!secret) {
       this.logger.warn('TOTP secret is empty for DID', { did });

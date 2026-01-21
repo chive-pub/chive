@@ -22,7 +22,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { api, getApiBaseUrl } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
@@ -32,7 +32,8 @@ import {
 } from '@/lib/atproto/record-creator';
 import type {
   Review,
-  ReviewsResponse,
+  ListReviewsResponse,
+  ListAuthorReviewsResponse,
   ReviewThread,
   TextSpanTarget,
   AnnotationBody,
@@ -171,26 +172,24 @@ export function useReviews(
 ) {
   return useQuery({
     queryKey: reviewKeys.list(eprintUri, params),
-    queryFn: async (): Promise<ReviewsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.review.listForEprint', {
-        params: {
-          query: {
-            eprintUri,
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-            motivation: params.motivation,
-            inlineOnly: params.inlineOnly,
-          },
-        },
-      });
-      if (error) {
+    queryFn: async (): Promise<ListReviewsResponse> => {
+      try {
+        const response = await api.pub.chive.review.listForEprint({
+          eprintUri,
+          limit: params.limit ?? 20,
+          cursor: params.cursor,
+          motivation: params.motivation,
+          inlineOnly: params.inlineOnly,
+        });
+        return response.data as unknown as ListReviewsResponse;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch reviews',
+          error instanceof Error ? error.message : 'Failed to fetch reviews',
           undefined,
-          '/xrpc/pub.chive.review.listForEprint'
+          'pub.chive.review.listForEprint'
         );
       }
-      return data! as unknown as ReviewsResponse;
     },
     enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 60 * 1000, // 1 minute; reviews are more dynamic.
@@ -221,24 +220,22 @@ export function useReviews(
 export function useInlineReviews(eprintUri: string, options: UseReviewsOptions = {}) {
   return useQuery({
     queryKey: reviewKeys.inline(eprintUri),
-    queryFn: async (): Promise<ReviewsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.review.listForEprint', {
-        params: {
-          query: {
-            eprintUri,
-            inlineOnly: true,
-            limit: 100, // Get all inline reviews
-          },
-        },
-      });
-      if (error) {
+    queryFn: async (): Promise<ListReviewsResponse> => {
+      try {
+        const response = await api.pub.chive.review.listForEprint({
+          eprintUri,
+          inlineOnly: true,
+          limit: 100, // Get all inline reviews
+        });
+        return response.data as unknown as ListReviewsResponse;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch inline reviews',
+          error instanceof Error ? error.message : 'Failed to fetch inline reviews',
           undefined,
-          '/xrpc/pub.chive.review.listForEprint'
+          'pub.chive.review.listForEprint'
         );
       }
-      return data! as unknown as ReviewsResponse;
     },
     enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 60 * 1000,
@@ -273,17 +270,17 @@ export function useReviewThread(reviewUri: string, options: UseReviewsOptions = 
   return useQuery({
     queryKey: reviewKeys.thread(reviewUri),
     queryFn: async (): Promise<ReviewThread> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.review.getThread', {
-        params: { query: { uri: reviewUri } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.review.getThread({ uri: reviewUri });
+        return response.data as unknown as ReviewThread;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch review thread',
+          error instanceof Error ? error.message : 'Failed to fetch review thread',
           undefined,
-          '/xrpc/pub.chive.review.getThread'
+          'pub.chive.review.getThread'
         );
       }
-      return data! as unknown as ReviewThread;
     },
     enabled: !!reviewUri && (options.enabled ?? true),
     staleTime: 60 * 1000,
@@ -445,11 +442,16 @@ export function usePrefetchReviews() {
   return (eprintUri: string) => {
     queryClient.prefetchQuery({
       queryKey: reviewKeys.list(eprintUri, {}),
-      queryFn: async (): Promise<ReviewsResponse | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.review.listForEprint', {
-          params: { query: { eprintUri, limit: 20 } },
-        });
-        return data as unknown as ReviewsResponse | undefined;
+      queryFn: async (): Promise<ListReviewsResponse | undefined> => {
+        try {
+          const response = await api.pub.chive.review.listForEprint({
+            eprintUri,
+            limit: 20,
+          });
+          return response.data as unknown as ListReviewsResponse;
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 60 * 1000,
     });
@@ -502,23 +504,22 @@ export function useAuthorReviews(reviewerDid: string, options: UseAuthorReviewsO
 
   return useQuery({
     queryKey: [...reviewKeys.byUser(reviewerDid), { limit, cursor }],
-    queryFn: async (): Promise<ReviewsResponse> => {
-      // Use the proper API base URL to reach the backend directly
-      const baseUrl = getApiBaseUrl();
-      const response = await fetch(
-        `${baseUrl}/xrpc/pub.chive.review.listForAuthor?reviewerDid=${encodeURIComponent(reviewerDid)}&limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
-      );
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
+    queryFn: async (): Promise<ListAuthorReviewsResponse> => {
+      try {
+        const response = await api.pub.chive.review.listForAuthor({
+          reviewerDid,
+          limit,
+          cursor,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch author reviews',
-          response.status,
-          '/xrpc/pub.chive.review.listForAuthor'
+          error instanceof Error ? error.message : 'Failed to fetch author reviews',
+          undefined,
+          'pub.chive.review.listForAuthor'
         );
       }
-
-      return response.json();
     },
     enabled: !!reviewerDid && enabled,
     staleTime: 60 * 1000,

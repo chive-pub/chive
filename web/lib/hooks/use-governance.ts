@@ -33,13 +33,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { APIError } from '@/lib/errors';
 import { api, authApi } from '@/lib/api/client';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
-import {
-  createFieldProposalRecord,
-  createVoteRecord,
-  createNodeProposalRecord,
-} from '@/lib/atproto/record-creator';
+import { createVoteRecord, createNodeProposalRecord } from '@/lib/atproto/record-creator';
 import type {
-  FieldProposal as RecordCreatorFieldProposal,
   Vote as RecordCreatorVote,
   NodeProposal as RecordCreatorNodeProposal,
 } from '@/lib/schemas/governance';
@@ -277,12 +272,20 @@ export function useProposals(params: ProposalListParams = {}, options: UseGovern
   return useQuery({
     queryKey: governanceKeys.proposalsList(params),
     queryFn: async (): Promise<ProposalsResponse> => {
-      const { data } = await api.GET('/xrpc/pub.chive.governance.listProposals', {
-        params: {
-          query: { ...params, limit: params.limit ?? 20 },
-        },
-      });
-      return data!;
+      try {
+        const response = await api.pub.chive.governance.listProposals({
+          ...params,
+          limit: params.limit ?? 20,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch proposals',
+          undefined,
+          'pub.chive.governance.listProposals'
+        );
+      }
     },
     enabled: options.enabled ?? true,
     staleTime: 30 * 1000, // 30 seconds
@@ -306,12 +309,17 @@ export function useProposal(proposalId: string, options: UseGovernanceOptions = 
   return useQuery({
     queryKey: governanceKeys.proposal(proposalId),
     queryFn: async (): Promise<Proposal> => {
-      const { data } = await api.GET('/xrpc/pub.chive.governance.getProposal', {
-        params: {
-          query: { proposalId },
-        },
-      });
-      return data!;
+      try {
+        const response = await api.pub.chive.governance.getProposal({ proposalId });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch proposal',
+          undefined,
+          'pub.chive.governance.getProposal'
+        );
+      }
     },
     enabled: !!proposalId && (options.enabled ?? true),
     staleTime: 30 * 1000,
@@ -334,12 +342,20 @@ export function useProposalVotes(proposalId: string, options: UseGovernanceOptio
   return useQuery({
     queryKey: governanceKeys.votes(proposalId),
     queryFn: async (): Promise<VotesResponse> => {
-      const { data } = await api.GET('/xrpc/pub.chive.governance.listVotes', {
-        params: {
-          query: { proposalId, limit: 50 },
-        },
-      });
-      return data!;
+      try {
+        const response = await api.pub.chive.governance.listVotes({
+          proposalId,
+          limit: 50,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch votes',
+          undefined,
+          'pub.chive.governance.listVotes'
+        );
+      }
     },
     enabled: !!proposalId && (options.enabled ?? true),
     staleTime: 30 * 1000,
@@ -364,12 +380,10 @@ export function useMyVote(proposalId: string, userDid: string, options: UseGover
     queryKey: governanceKeys.userVote(proposalId, userDid),
     queryFn: async (): Promise<Vote | null> => {
       try {
-        const { data } = await api.GET('/xrpc/pub.chive.governance.getUserVote', {
-          params: {
-            query: { proposalId, userDid },
-          },
-        });
-        return data?.vote ?? null;
+        const response = await api.pub.chive.governance.getUserVote({ proposalId, userDid });
+        // The API returns a VoteView with a different $type discriminator than listVotes.
+        // Cast to Vote since they share the same structural shape.
+        return (response.data?.vote as Vote) ?? null;
       } catch (error) {
         if (error instanceof APIError && error.statusCode === 404) {
           return null;
@@ -392,8 +406,17 @@ export function usePendingProposalsCount(options: UseGovernanceOptions = {}) {
   return useQuery({
     queryKey: governanceKeys.pendingCount(),
     queryFn: async (): Promise<number> => {
-      const { data } = await api.GET('/xrpc/pub.chive.governance.getPendingCount', {});
-      return data!.count;
+      try {
+        const response = await api.pub.chive.governance.getPendingCount({});
+        return response.data.count;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch pending count',
+          undefined,
+          'pub.chive.governance.getPendingCount'
+        );
+      }
     },
     enabled: options.enabled ?? true,
     staleTime: 60 * 1000, // 1 minute
@@ -479,13 +502,22 @@ export function useCreateProposal() {
       return {
         id: result.uri.split('/').pop() ?? '',
         uri: result.uri,
+        cid: result.cid,
         type: input.type,
         nodeUri: input.targetUri,
         changes: input.changes,
         rationale: input.rationale,
-        status: 'pending' as ProposalStatus,
+        status: 'open' as ProposalStatus,
         proposedBy: '',
         votes: { approve: 0, reject: 0, abstain: 0 },
+        consensus: {
+          approvalPercentage: 0,
+          threshold: CONSENSUS_THRESHOLD,
+          voterCount: 0,
+          minimumVotes: MINIMUM_VOTES,
+          consensusReached: false,
+          recommendedStatus: 'pending',
+        },
         createdAt: new Date().toISOString(),
       };
     },
@@ -532,6 +564,7 @@ export function useCreateVote() {
       return {
         id: result.uri.split('/').pop() ?? '',
         uri: result.uri,
+        cid: result.cid,
         proposalUri: input.proposalId,
         voterDid: agent.did ?? '',
         voterRole: 'community-member' as VoterRole,
@@ -554,19 +587,21 @@ export function useCreateVote() {
 
       // Optimistically update the proposal's vote counts
       if (previousProposal) {
-        const voteKey = input.vote as keyof typeof previousProposal.votes;
+        // Build updated vote counts based on vote type
+        const { approve, reject, abstain } = previousProposal.votes;
+        const updatedVotes = {
+          approve: input.vote === 'approve' ? approve + 1 : approve,
+          reject: input.vote === 'reject' ? reject + 1 : reject,
+          abstain: input.vote === 'abstain' ? abstain + 1 : abstain,
+        };
+
         queryClient.setQueryData<Proposal>(governanceKeys.proposal(input.proposalId), {
           ...previousProposal,
-          votes: {
-            ...previousProposal.votes,
-            [voteKey]: previousProposal.votes[voteKey] + 1,
+          votes: updatedVotes,
+          consensus: {
+            ...previousProposal.consensus,
+            voterCount: previousProposal.consensus.voterCount + 1,
           },
-          consensus: previousProposal.consensus
-            ? {
-                ...previousProposal.consensus,
-                voterCount: previousProposal.consensus.voterCount + 1,
-              }
-            : undefined,
         });
       }
 
@@ -621,10 +656,12 @@ export function usePrefetchProposal() {
     queryClient.prefetchQuery({
       queryKey: governanceKeys.proposal(proposalId),
       queryFn: async (): Promise<Proposal | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.governance.getProposal', {
-          params: { query: { proposalId } },
-        });
-        return data;
+        try {
+          const response = await api.pub.chive.governance.getProposal({ proposalId });
+          return response.data;
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 30 * 1000,
     });
@@ -653,8 +690,17 @@ export function useMyEditorStatus(options: UseGovernanceOptions = {}) {
   return useQuery({
     queryKey: governanceKeys.myEditorStatus(),
     queryFn: async (): Promise<EditorStatus> => {
-      const { data } = await authApi.GET('/xrpc/pub.chive.governance.getEditorStatus', {});
-      return data!;
+      try {
+        const response = await authApi.pub.chive.governance.getEditorStatus({});
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch editor status',
+          undefined,
+          'pub.chive.governance.getEditorStatus'
+        );
+      }
     },
     enabled: options.enabled ?? true,
     staleTime: 60 * 1000, // 1 minute
@@ -677,12 +723,17 @@ export function useEditorStatus(did: string, options: UseGovernanceOptions = {})
   return useQuery({
     queryKey: governanceKeys.editorStatus(did),
     queryFn: async (): Promise<EditorStatus> => {
-      const { data } = await api.GET('/xrpc/pub.chive.governance.getEditorStatus', {
-        params: {
-          query: { did },
-        },
-      });
-      return data!;
+      try {
+        const response = await api.pub.chive.governance.getEditorStatus({ did });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch editor status',
+          undefined,
+          'pub.chive.governance.getEditorStatus'
+        );
+      }
     },
     enabled: !!did && (options.enabled ?? true),
     staleTime: 60 * 1000,
@@ -708,16 +759,21 @@ export function useTrustedEditors(
   return useQuery({
     queryKey: governanceKeys.trustedEditorsList(params),
     queryFn: async (): Promise<ListTrustedEditorsResponse> => {
-      const { data } = await authApi.GET('/xrpc/pub.chive.governance.listTrustedEditors', {
-        params: {
-          query: {
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-            role: params.role,
-          },
-        },
-      });
-      return data!;
+      try {
+        const response = await authApi.pub.chive.governance.listTrustedEditors({
+          limit: params.limit ?? 20,
+          cursor: params.cursor,
+          role: params.role,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch trusted editors',
+          undefined,
+          'pub.chive.governance.listTrustedEditors'
+        );
+      }
     },
     enabled: options.enabled ?? true,
     staleTime: 30 * 1000,
@@ -742,12 +798,19 @@ export function useRequestElevation() {
 
   return useMutation({
     mutationFn: async (): Promise<ElevationResult> => {
-      const { data } = await api.POST('/xrpc/pub.chive.governance.requestElevation', {
-        body: {
+      try {
+        const response = await api.pub.chive.governance.requestElevation({
           targetRole: 'trusted-editor',
-        },
-      });
-      return data!;
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to request elevation',
+          undefined,
+          'pub.chive.governance.requestElevation'
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: governanceKeys.myEditorStatus() });
@@ -776,15 +839,22 @@ export function useGrantDelegation() {
 
   return useMutation({
     mutationFn: async (input: GrantDelegationInput): Promise<DelegationResult> => {
-      const { data } = await api.POST('/xrpc/pub.chive.governance.grantDelegation', {
-        body: {
+      try {
+        const response = await api.pub.chive.governance.grantDelegation({
           delegateDid: input.delegateDid,
           collections: input.collections,
           daysValid: input.daysValid ?? 365,
           maxRecordsPerDay: input.maxRecordsPerDay ?? 100,
-        },
-      });
-      return data!;
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to grant delegation',
+          undefined,
+          'pub.chive.governance.grantDelegation'
+        );
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -812,12 +882,19 @@ export function useRevokeDelegation() {
 
   return useMutation({
     mutationFn: async (input: RevokeDelegationInput): Promise<DelegationResult> => {
-      const { data } = await api.POST('/xrpc/pub.chive.governance.revokeDelegation', {
-        body: {
+      try {
+        const response = await api.pub.chive.governance.revokeDelegation({
           delegationId: input.delegationId,
-        },
-      });
-      return data!;
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to revoke delegation',
+          undefined,
+          'pub.chive.governance.revokeDelegation'
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: governanceKeys.trustedEditors() });
@@ -845,13 +922,20 @@ export function useRevokeRole() {
 
   return useMutation({
     mutationFn: async (input: RevokeRoleInput): Promise<ElevationResult> => {
-      const { data } = await api.POST('/xrpc/pub.chive.governance.revokeRole', {
-        body: {
+      try {
+        const response = await api.pub.chive.governance.revokeRole({
           did: input.did,
           reason: input.reason,
-        },
-      });
-      return data!;
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to revoke role',
+          undefined,
+          'pub.chive.governance.revokeRole'
+        );
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: governanceKeys.editorStatus(variables.did) });
@@ -882,15 +966,20 @@ export function useElevationRequests(
   return useQuery({
     queryKey: governanceKeys.elevationRequests(params),
     queryFn: async (): Promise<ElevationRequestsResponse> => {
-      const { data } = await authApi.GET('/xrpc/pub.chive.governance.listElevationRequests', {
-        params: {
-          query: {
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-          },
-        },
-      });
-      return data!;
+      try {
+        const response = await authApi.pub.chive.governance.listElevationRequests({
+          limit: params.limit ?? 20,
+          cursor: params.cursor,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch elevation requests',
+          undefined,
+          'pub.chive.governance.listElevationRequests'
+        );
+      }
     },
     enabled: options.enabled ?? true,
     staleTime: 30 * 1000,
@@ -917,13 +1006,20 @@ export function useApproveElevation() {
 
   return useMutation({
     mutationFn: async (input: ApproveElevationInput): Promise<ElevationResult> => {
-      const { data } = await authApi.POST('/xrpc/pub.chive.governance.approveElevation', {
-        body: {
+      try {
+        const response = await authApi.pub.chive.governance.approveElevation({
           requestId: input.requestId,
           verificationNotes: input.verificationNotes,
-        },
-      });
-      return data!;
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to approve elevation',
+          undefined,
+          'pub.chive.governance.approveElevation'
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: governanceKeys.elevationRequests() });
@@ -952,13 +1048,20 @@ export function useRejectElevation() {
 
   return useMutation({
     mutationFn: async (input: RejectElevationInput): Promise<ElevationResult> => {
-      const { data } = await authApi.POST('/xrpc/pub.chive.governance.rejectElevation', {
-        body: {
+      try {
+        const response = await authApi.pub.chive.governance.rejectElevation({
           requestId: input.requestId,
           reason: input.reason,
-        },
-      });
-      return data!;
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to reject elevation',
+          undefined,
+          'pub.chive.governance.rejectElevation'
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: governanceKeys.elevationRequests() });
@@ -984,15 +1087,20 @@ export function useDelegations(
   return useQuery({
     queryKey: governanceKeys.delegations(params),
     queryFn: async (): Promise<DelegationsResponse> => {
-      const { data } = await authApi.GET('/xrpc/pub.chive.governance.listDelegations', {
-        params: {
-          query: {
-            limit: params.limit ?? 20,
-            cursor: params.cursor,
-          },
-        },
-      });
-      return data!;
+      try {
+        const response = await authApi.pub.chive.governance.listDelegations({
+          limit: params.limit ?? 20,
+          cursor: params.cursor,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch delegations',
+          undefined,
+          'pub.chive.governance.listDelegations'
+        );
+      }
     },
     enabled: options.enabled ?? true,
     staleTime: 30 * 1000,
@@ -1005,8 +1113,9 @@ export function useDelegations(
 
 /**
  * Vote weight by role.
+ * Uses string index for compatibility with lexicon's open union types.
  */
-export const VOTE_WEIGHTS: Record<VoterRole, number> = {
+export const VOTE_WEIGHTS: Record<string, number> = {
   'community-member': 1,
   reviewer: 2,
   'domain-expert': 3,
@@ -1015,8 +1124,9 @@ export const VOTE_WEIGHTS: Record<VoterRole, number> = {
 
 /**
  * Human-readable role labels.
+ * Uses string index for compatibility with lexicon's open union types.
  */
-export const ROLE_LABELS: Record<VoterRole, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   'community-member': 'Community Member',
   reviewer: 'Reviewer',
   'domain-expert': 'Domain Expert',
@@ -1026,21 +1136,24 @@ export const ROLE_LABELS: Record<VoterRole, string> = {
 /**
  * Human-readable status labels.
  */
-export const STATUS_LABELS: Record<ProposalStatus, string> = {
-  pending: 'Pending Review',
+export const STATUS_LABELS: Record<string, string> = {
+  open: 'Pending Review',
+  pending: 'Pending Review', // Legacy: maps to 'open'
   approved: 'Approved',
   rejected: 'Rejected',
-  expired: 'Expired',
+  withdrawn: 'Withdrawn',
+  expired: 'Expired', // Legacy: maps to 'withdrawn'
 };
 
 /**
  * Human-readable proposal type labels.
+ * Uses string index for compatibility with lexicon's open union types.
  */
-export const TYPE_LABELS: Record<ProposalType, string> = {
+export const TYPE_LABELS: Record<string, string> = {
   create: 'Create',
   update: 'Update',
   merge: 'Merge',
-  delete: 'Delete',
+  deprecate: 'Deprecate',
 };
 
 /**
@@ -1053,8 +1166,9 @@ export const CATEGORY_LABELS: Record<ProposalCategory, string> = {
 
 /**
  * Human-readable vote labels.
+ * Uses string index for compatibility with lexicon's open union types.
  */
-export const VOTE_LABELS: Record<VoteAction, string> = {
+export const VOTE_LABELS: Record<string, string> = {
   approve: 'Approve',
   reject: 'Reject',
   abstain: 'Abstain',
@@ -1063,8 +1177,9 @@ export const VOTE_LABELS: Record<VoteAction, string> = {
 
 /**
  * Human-readable governance role labels.
+ * Uses string index for compatibility with lexicon's open union types.
  */
-export const GOVERNANCE_ROLE_LABELS: Record<GovernanceRole, string> = {
+export const GOVERNANCE_ROLE_LABELS: Record<string, string> = {
   'community-member': 'Community Member',
   'trusted-editor': 'Trusted Editor',
   'graph-editor': 'Graph Editor',

@@ -19,7 +19,13 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/web/node_modules ./web/node_modules
 COPY web ./web
+COPY lexicons ./lexicons
+COPY scripts ./scripts
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Generate lexicon types from JSON schemas
+RUN pnpm lexicons:generate
+
 WORKDIR /app/web
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL

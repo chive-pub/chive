@@ -73,12 +73,10 @@ export function useSearchTracking(impressionId: string | undefined) {
 
       // Record the click
       try {
-        await api.POST('/xrpc/pub.chive.metrics.recordSearchClick', {
-          body: {
-            impressionId,
-            uri,
-            position,
-          },
+        await api.pub.chive.metrics.recordSearchClick({
+          impressionId,
+          uri,
+          position,
         });
       } catch (error) {
         console.warn('Failed to record search click:', error);
@@ -137,11 +135,9 @@ export function useSearchTracking(impressionId: string | undefined) {
       if (!impressionId) return;
 
       try {
-        await api.POST('/xrpc/pub.chive.metrics.recordSearchDownload', {
-          body: {
-            impressionId,
-            uri,
-          },
+        await api.pub.chive.metrics.recordSearchDownload({
+          impressionId,
+          uri,
         });
       } catch (error) {
         console.warn('Failed to record search download:', error);

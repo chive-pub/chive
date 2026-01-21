@@ -1,0 +1,81 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.autocompleteKeyword",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Autocomplete research keywords using FAST subject headings and Wikidata entities",
+      "parameters": {
+        "type": "params",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Search query for keyword"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 8,
+            "description": "Maximum number of suggestions to return"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "knownValues": ["fast", "wikidata"]
+            },
+            "description": "Data sources to query (defaults to both)"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["suggestions"],
+          "properties": {
+            "suggestions": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#keywordSuggestion"
+              }
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "keywordSuggestion": {
+      "type": "object",
+      "description": "A keyword suggestion from FAST or Wikidata",
+      "required": ["id", "label", "source"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifier from the source system (FAST ID or Wikidata Q-number)"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the keyword"
+        },
+        "source": {
+          "type": "string",
+          "knownValues": ["fast", "wikidata", "freetext"],
+          "description": "Source of the keyword suggestion"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the keyword (Wikidata only)"
+        },
+        "usageCount": {
+          "type": "integer",
+          "description": "Usage count from FAST database"
+        }
+      }
+    }
+  }
+}

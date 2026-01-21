@@ -91,6 +91,8 @@ export interface GraphNode {
   slug?: string;
   /** AT-URI of the node */
   uri: AtUri;
+  /** Content identifier (CID) when available from ATProto record */
+  cid?: string;
   /** Node kind: 'type' for classifications, 'object' for instances */
   kind: NodeKind;
   /** Subkind slug (e.g., 'field', 'institution', 'contribution-type') */
@@ -144,6 +146,8 @@ export interface GraphEdge {
   id: string;
   /** AT-URI of the edge */
   uri: AtUri;
+  /** Content identifier (CID) when available from ATProto record */
+  cid?: string;
   /** AT-URI of source node */
   sourceUri: AtUri;
   /** AT-URI of target node */

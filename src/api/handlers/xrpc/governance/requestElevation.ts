@@ -9,122 +9,117 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/governance/requestElevation.js';
 import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
-import {
-  requestElevationInputSchema,
-  elevationResultSchema,
-  type RequestElevationInput,
-  type ElevationResult,
-} from '../../../schemas/governance.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.governance.requestElevation procedure.
- *
- * @param c - Hono context with Chive environment
- * @param input - Validated input
- * @returns Result of the elevation request
+ * XRPC method for pub.chive.governance.requestElevation.
  *
  * @public
  */
-export async function requestElevationHandler(
-  c: Context<ChiveEnv>,
-  input: RequestElevationInput
-): Promise<ElevationResult> {
-  const logger = c.get('logger');
-  const user = c.get('user');
+export const requestElevation: XRPCMethod<void, InputSchema, OutputSchema> = {
+  type: 'procedure',
+  auth: true,
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
 
-  // Check auth first for better error messages
-  if (!user?.did) {
-    throw new AuthenticationError('Authentication required');
-  }
+    // Check auth first for better error messages
+    if (!user?.did) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  const trustedEditorService = c.get('services').trustedEditor;
-  if (!trustedEditorService) {
-    throw new Error('Trusted editor service not configured');
-  }
+    if (!input) {
+      throw new Error('Input required');
+    }
 
-  const userDid = user.did;
+    const trustedEditorService = c.get('services').trustedEditor;
+    if (!trustedEditorService) {
+      throw new Error('Trusted editor service not configured');
+    }
 
-  logger.debug('Processing elevation request', {
-    userDid,
-    targetRole: input.targetRole,
-  });
+    const userDid = user.did;
 
-  // Get current status to check eligibility
-  const statusResult = await trustedEditorService.getEditorStatus(userDid);
+    logger.debug('Processing elevation request', {
+      userDid,
+      targetRole: input.targetRole,
+    });
 
-  if (!statusResult.ok) {
-    throw new ValidationError('Unable to retrieve user status');
-  }
+    // Get current status to check eligibility
+    const statusResult = await trustedEditorService.getEditorStatus(userDid);
 
-  const status = statusResult.value;
+    if (!statusResult.ok) {
+      throw new ValidationError('Unable to retrieve user status');
+    }
 
-  // Check if already has the role or higher
-  if (status.role !== 'community-member') {
-    return {
-      success: false,
-      message: `You already have the ${status.role} role`,
-    };
-  }
+    const status = statusResult.value;
 
-  // Check eligibility criteria
-  if (!status.metrics.eligibleForTrustedEditor) {
-    const missingCriteria = status.metrics.missingCriteria.join(', ');
-    return {
-      success: false,
-      message: `Not yet eligible. Missing criteria: ${missingCriteria}`,
-    };
-  }
-
-  // Process automatic elevation for trusted-editor
-  if (input.targetRole === 'trusted-editor') {
-    // For automatic elevation, the system grants itself
-    const result = await trustedEditorService.elevateToTrustedEditor(userDid, userDid);
-
-    if (result.ok) {
-      logger.info('User elevated to trusted editor', {
-        userDid,
-      });
-
+    // Check if already has the role or higher
+    if (status.role !== 'community-member') {
       return {
-        success: true,
-        message: 'Successfully elevated to trusted editor',
-      };
-    } else {
-      logger.warn('Elevation request failed', {
-        userDid,
-        error: result.error.message,
-      });
-
-      return {
-        success: false,
-        message: result.error.message,
+        encoding: 'application/json',
+        body: {
+          success: false,
+          message: `You already have the ${status.role} role`,
+        },
       };
     }
-  }
 
-  return {
-    success: false,
-    message: 'Invalid target role',
-  };
-}
+    // Check eligibility criteria
+    if (!status.metrics.eligibleForTrustedEditor) {
+      const missingCriteria = status.metrics.missingCriteria.join(', ');
+      return {
+        encoding: 'application/json',
+        body: {
+          success: false,
+          message: `Not yet eligible. Missing criteria: ${missingCriteria}`,
+        },
+      };
+    }
 
-/**
- * Endpoint definition for pub.chive.governance.requestElevation.
- *
- * @public
- */
-export const requestElevationEndpoint: XRPCEndpoint<RequestElevationInput, ElevationResult> = {
-  method: 'pub.chive.governance.requestElevation' as never,
-  type: 'procedure',
-  description: 'Request elevation to trusted editor role',
-  inputSchema: requestElevationInputSchema,
-  outputSchema: elevationResultSchema,
-  handler: requestElevationHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    // Process automatic elevation for trusted-editor
+    if (input.targetRole === 'trusted-editor') {
+      // For automatic elevation, the system grants itself
+      const result = await trustedEditorService.elevateToTrustedEditor(userDid, userDid);
+
+      if (result.ok) {
+        logger.info('User elevated to trusted editor', {
+          userDid,
+        });
+
+        return {
+          encoding: 'application/json',
+          body: {
+            success: true,
+            message: 'Successfully elevated to trusted editor',
+          },
+        };
+      } else {
+        logger.warn('Elevation request failed', {
+          userDid,
+          error: result.error.message,
+        });
+
+        return {
+          encoding: 'application/json',
+          body: {
+            success: false,
+            message: result.error.message,
+          },
+        };
+      }
+    }
+
+    return {
+      encoding: 'application/json',
+      body: {
+        success: false,
+        message: 'Invalid target role',
+      },
+    };
+  },
 };

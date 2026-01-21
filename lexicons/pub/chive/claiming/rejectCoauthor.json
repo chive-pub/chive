@@ -1,0 +1,46 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.rejectCoauthor",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Reject a pending co-author request. Only the PDS owner can reject.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["requestId"],
+          "properties": {
+            "requestId": {
+              "type": "integer",
+              "description": "ID of the co-author request to reject"
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "Optional rejection reason"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the rejection was successful"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "Forbidden" },
+        { "name": "NotFound" }
+      ]
+    }
+  }
+}

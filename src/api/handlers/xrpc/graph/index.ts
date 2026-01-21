@@ -8,51 +8,41 @@
  * @public
  */
 
-// Node handlers
-export { getNodeHandler, getNodeEndpoint } from './getNode.js';
-export { listNodesHandler, listNodesEndpoint } from './listNodes.js';
-export { searchNodesHandler, searchNodesEndpoint } from './searchNodes.js';
-export { getSubkindsHandler, getSubkindsEndpoint } from './getSubkinds.js';
-export { getHierarchyHandler, getHierarchyEndpoint } from './getHierarchy.js';
+import { browseFaceted } from './browseFaceted.js';
+import { getCommunities } from './getCommunities.js';
+import { getEdge } from './getEdge.js';
+import { getHierarchy } from './getHierarchy.js';
+import { getNode } from './getNode.js';
+import { getRelations } from './getRelations.js';
+import { getSubkinds } from './getSubkinds.js';
+import { listEdges } from './listEdges.js';
+import { listNodes } from './listNodes.js';
+import { searchNodes } from './searchNodes.js';
 
-// Edge handlers
-export { getEdgeHandler, getEdgeEndpoint } from './getEdge.js';
-export { listEdgesHandler, listEdgesEndpoint } from './listEdges.js';
-export { getRelationsHandler, getRelationsEndpoint } from './getRelations.js';
-
-// Faceted browsing (still uses PMEST/FAST but queries via unified nodes)
-export { browseFacetedHandler, browseFacetedEndpoint } from './browseFaceted.js';
-
-// Community detection
-export { getCommunitiesHandler, getCommunitiesEndpoint } from './getCommunities.js';
+// Re-export individual methods
+export { browseFaceted } from './browseFaceted.js';
+export { getCommunities } from './getCommunities.js';
+export { getEdge } from './getEdge.js';
+export { getHierarchy } from './getHierarchy.js';
+export { getNode } from './getNode.js';
+export { getRelations } from './getRelations.js';
+export { getSubkinds } from './getSubkinds.js';
+export { listEdges } from './listEdges.js';
+export { listNodes } from './listNodes.js';
+export { searchNodes } from './searchNodes.js';
 
 /**
- * All graph XRPC endpoints.
+ * All graph XRPC methods keyed by NSID.
  */
-import { browseFacetedEndpoint } from './browseFaceted.js';
-import { getCommunitiesEndpoint } from './getCommunities.js';
-import { getEdgeEndpoint } from './getEdge.js';
-import { getHierarchyEndpoint } from './getHierarchy.js';
-import { getNodeEndpoint } from './getNode.js';
-import { getRelationsEndpoint } from './getRelations.js';
-import { getSubkindsEndpoint } from './getSubkinds.js';
-import { listEdgesEndpoint } from './listEdges.js';
-import { listNodesEndpoint } from './listNodes.js';
-import { searchNodesEndpoint } from './searchNodes.js';
-
-export const graphEndpoints = [
-  // Node endpoints
-  getNodeEndpoint,
-  listNodesEndpoint,
-  searchNodesEndpoint,
-  getSubkindsEndpoint,
-  getHierarchyEndpoint,
-  // Edge endpoints
-  getEdgeEndpoint,
-  listEdgesEndpoint,
-  getRelationsEndpoint,
-  // Faceted browsing
-  browseFacetedEndpoint,
-  // Graph algorithms
-  getCommunitiesEndpoint,
-] as const;
+export const graphMethods = {
+  'pub.chive.graph.getNode': getNode,
+  'pub.chive.graph.listNodes': listNodes,
+  'pub.chive.graph.searchNodes': searchNodes,
+  'pub.chive.graph.getSubkinds': getSubkinds,
+  'pub.chive.graph.getHierarchy': getHierarchy,
+  'pub.chive.graph.getEdge': getEdge,
+  'pub.chive.graph.listEdges': listEdges,
+  'pub.chive.graph.getRelations': getRelations,
+  'pub.chive.graph.browseFaceted': browseFaceted,
+  'pub.chive.graph.getCommunities': getCommunities,
+} as const;

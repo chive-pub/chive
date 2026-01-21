@@ -145,6 +145,14 @@ export interface StoredEprint {
   readonly previousVersionUri?: AtUri;
 
   /**
+   * Version number (1-indexed).
+   *
+   * @remarks
+   * Increments with each new version posted by author.
+   */
+  readonly version: number;
+
+  /**
    * Changelog describing changes in this version.
    *
    * @remarks

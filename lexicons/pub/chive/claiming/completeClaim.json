@@ -1,0 +1,53 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.completeClaim",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Complete a claim after the user creates their canonical record in their PDS. Requires authentication and claimant ownership.",
+      "parameters": {
+        "type": "params",
+        "required": ["claimId", "canonicalUri"],
+        "properties": {
+          "claimId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "ID of the claim request to complete"
+          },
+          "canonicalUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the canonical record created in user's PDS"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the claim was successfully completed"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to complete claims"
+        },
+        {
+          "name": "ClaimNotFound",
+          "description": "The specified claim does not exist"
+        },
+        {
+          "name": "Unauthorized",
+          "description": "Only the claimant can complete their own claim"
+        }
+      ]
+    }
+  }
+}

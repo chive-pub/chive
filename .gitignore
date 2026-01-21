@@ -16,6 +16,10 @@ build/
 .turbo/
 *.tsbuildinfo
 
+# Generated lexicon types (regenerated on CI)
+src/lexicons/generated/
+web/lib/api/generated/
+
 # Docusaurus
 docs/.docusaurus/
 docs/build/

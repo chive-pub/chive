@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.endorsement.getSummary",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get endorsement summary (counts by contribution type) for an eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["total", "endorserCount", "byType"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total endorsement count"
+            },
+            "endorserCount": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Unique endorser count"
+            },
+            "byType": {
+              "type": "ref",
+              "ref": "#endorsementCountByType",
+              "description": "Count by contribution type"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "endorsementCountByType": {
+      "type": "object",
+      "description": "Map of contribution type slug to endorsement count",
+      "properties": {}
+    }
+  }
+}

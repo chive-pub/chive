@@ -199,16 +199,16 @@ Get endorsement summary for an eprint.
   "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
   "totalEndorsements": 15,
   "byContribution": {
-    "methodology": 8,
-    "writing": 5,
-    "conceptualization": 12,
-    "data_curation": 3
+    "methodological": 8,
+    "analytical": 5,
+    "theoretical": 12,
+    "data": 3
   },
   "endorsers": [
     {
       "did": "did:plc:endorser...",
       "handle": "expert.bsky.social",
-      "contributions": ["methodology", "conceptualization"]
+      "contributions": ["methodological", "theoretical"]
     }
   ]
 }

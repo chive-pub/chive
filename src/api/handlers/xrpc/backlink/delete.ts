@@ -1,5 +1,5 @@
 /**
- * Handler for pub.chive.backlink.delete.
+ * XRPC handler for pub.chive.backlink.delete.
  *
  * @remarks
  * Deletes (marks as deleted) a backlink record. Internal/plugin use only.
@@ -8,63 +8,37 @@
  * @public
  */
 
-import type { Context } from 'hono';
-import { z } from 'zod';
-
+import type {
+  InputSchema,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/backlink/delete.js';
 import { AuthenticationError } from '../../../../types/errors.js';
-import { deleteBacklinkInputSchema, type DeleteBacklinkInput } from '../../../schemas/backlink.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Response schema for delete operation.
- */
-const deleteBacklinkResponseSchema = z.object({
-  success: z.boolean(),
-});
-
-type DeleteBacklinkResponse = z.infer<typeof deleteBacklinkResponseSchema>;
-
-/**
- * Handler for pub.chive.backlink.delete.
- *
- * @param c - Hono context
- * @param input - Backlink to delete
- * @returns Success indicator
+ * XRPC method for pub.chive.backlink.delete.
  *
  * @public
  */
-export async function deleteBacklinkHandler(
-  c: Context<ChiveEnv>,
-  input: DeleteBacklinkInput
-): Promise<DeleteBacklinkResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { backlink } = c.get('services');
+export const deleteBacklink: XRPCMethod<void, InputSchema, OutputSchema> = {
+  auth: true,
+  handler: async ({ input, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { backlink } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  logger.debug('Deleting backlink', { sourceUri: input.sourceUri });
+    if (!input) {
+      throw new Error('Input required');
+    }
 
-  await backlink.deleteBacklink(input.sourceUri);
+    logger.debug('Deleting backlink', { sourceUri: input.sourceUri });
 
-  return { success: true };
-}
+    await backlink.deleteBacklink(input.sourceUri);
 
-/**
- * Endpoint definition for pub.chive.backlink.delete.
- *
- * @public
- */
-export const deleteBacklinkEndpoint: XRPCEndpoint<DeleteBacklinkInput, DeleteBacklinkResponse> = {
-  method: 'pub.chive.backlink.delete' as never,
-  type: 'procedure',
-  description: 'Delete a backlink record (internal/plugin use)',
-  inputSchema: deleteBacklinkInputSchema,
-  outputSchema: deleteBacklinkResponseSchema,
-  handler: deleteBacklinkHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return { encoding: 'application/json', body: { success: true } };
+  },
 };

@@ -1,0 +1,118 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.listDelegations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List active PDS delegations. Only accessible by administrators.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["delegations", "total"],
+          "properties": {
+            "delegations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#delegation"
+              },
+              "description": "List of delegations"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of delegations"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "Unauthorized" }]
+    },
+    "delegation": {
+      "type": "object",
+      "description": "PDS delegation record",
+      "required": [
+        "id",
+        "delegateDid",
+        "collections",
+        "expiresAt",
+        "maxRecordsPerDay",
+        "recordsCreatedToday",
+        "grantedAt",
+        "grantedBy",
+        "active"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Delegation identifier"
+        },
+        "delegateDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the delegate"
+        },
+        "handle": {
+          "type": "string",
+          "description": "Delegate handle"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Delegate display name"
+        },
+        "collections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "NSID collections the delegation covers"
+        },
+        "expiresAt": {
+          "type": "integer",
+          "description": "Expiration timestamp"
+        },
+        "maxRecordsPerDay": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum records delegate can create per day"
+        },
+        "recordsCreatedToday": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Records created today under this delegation"
+        },
+        "grantedAt": {
+          "type": "integer",
+          "description": "Timestamp when delegation was granted"
+        },
+        "grantedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of admin who granted the delegation"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the delegation is currently active"
+        }
+      }
+    }
+  }
+}

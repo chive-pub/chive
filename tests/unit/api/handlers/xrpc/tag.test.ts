@@ -8,11 +8,11 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getDetailHandler } from '@/api/handlers/xrpc/tag/getDetail.js';
-import { getSuggestionsHandler } from '@/api/handlers/xrpc/tag/getSuggestions.js';
-import { getTrendingHandler } from '@/api/handlers/xrpc/tag/getTrending.js';
-import { listForEprintHandler } from '@/api/handlers/xrpc/tag/listForEprint.js';
-import { searchHandler } from '@/api/handlers/xrpc/tag/search.js';
+import { getDetail } from '@/api/handlers/xrpc/tag/getDetail.js';
+import { getSuggestions } from '@/api/handlers/xrpc/tag/getSuggestions.js';
+import { getTrending } from '@/api/handlers/xrpc/tag/getTrending.js';
+import { listForEprint } from '@/api/handlers/xrpc/tag/listForEprint.js';
+import { search } from '@/api/handlers/xrpc/tag/search.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 const createMockLogger = (): ILogger => ({
@@ -90,7 +90,7 @@ describe('XRPC Tag Handlers', () => {
     };
   });
 
-  describe('getSuggestionsHandler', () => {
+  describe('getSuggestions', () => {
     it('returns tag suggestions for a query', async () => {
       const tags: MockTagData[] = [
         createMockTagData(),
@@ -100,16 +100,18 @@ describe('XRPC Tag Handlers', () => {
           usageCount: 75,
         }),
       ];
-      // getSuggestionsHandler uses searchTags internally
+      // getSuggestions uses searchTags internally
       mockTagManager.searchTags.mockResolvedValue({ tags, total: 2 });
 
-      const result = await getSuggestionsHandler(
-        mockContext as unknown as Parameters<typeof getSuggestionsHandler>[0],
-        { q: 'machine', limit: 10 }
-      );
+      const result = await getSuggestions.handler({
+        params: { q: 'machine', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.suggestions).toHaveLength(2);
-      expect(result.suggestions[0]).toMatchObject({
+      expect(result.body.suggestions).toHaveLength(2);
+      expect(result.body.suggestions[0]).toMatchObject({
         normalizedForm: 'machine-learning',
         displayForm: 'machine learning',
       });
@@ -119,10 +121,12 @@ describe('XRPC Tag Handlers', () => {
     it('uses default limit of 10', async () => {
       mockTagManager.searchTags.mockResolvedValue({ tags: [], total: 0 });
 
-      await getSuggestionsHandler(
-        mockContext as unknown as Parameters<typeof getSuggestionsHandler>[0],
-        { q: 'test' }
-      );
+      await getSuggestions.handler({
+        params: { q: 'test', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
       expect(mockTagManager.searchTags).toHaveBeenCalledWith('test', 10);
     });
@@ -130,16 +134,18 @@ describe('XRPC Tag Handlers', () => {
     it('returns empty array when no suggestions found', async () => {
       mockTagManager.searchTags.mockResolvedValue({ tags: [], total: 0 });
 
-      const result = await getSuggestionsHandler(
-        mockContext as unknown as Parameters<typeof getSuggestionsHandler>[0],
-        { q: 'nonexistent', limit: 10 }
-      );
+      const result = await getSuggestions.handler({
+        params: { q: 'nonexistent', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.suggestions).toHaveLength(0);
+      expect(result.body.suggestions).toHaveLength(0);
     });
   });
 
-  describe('getTrendingHandler', () => {
+  describe('getTrending', () => {
     it('returns trending tags', async () => {
       const tags: MockTagData[] = [
         createMockTagData({ normalizedForm: 'ai', rawForm: 'AI', usageCount: 500 }),
@@ -148,14 +154,16 @@ describe('XRPC Tag Handlers', () => {
       ];
       mockTagManager.getTrendingTags.mockResolvedValue(tags);
 
-      const result = await getTrendingHandler(
-        mockContext as unknown as Parameters<typeof getTrendingHandler>[0],
-        { timeWindow: 'week', limit: 10 }
-      );
+      const result = await getTrending.handler({
+        params: { timeWindow: 'week', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.tags).toHaveLength(3);
-      expect(result.tags[0]?.normalizedForm).toBe('ai');
-      expect(result.timeWindow).toBe('week');
+      expect(result.body.tags).toHaveLength(3);
+      expect(result.body.tags[0]?.normalizedForm).toBe('ai');
+      expect(result.body.timeWindow).toBe('week');
       expect(mockTagManager.getTrendingTags).toHaveBeenCalledWith(10, {
         timeWindow: 'week',
         minUsage: 1,
@@ -165,8 +173,11 @@ describe('XRPC Tag Handlers', () => {
     it('uses default limit of 20', async () => {
       mockTagManager.getTrendingTags.mockResolvedValue([]);
 
-      await getTrendingHandler(mockContext as unknown as Parameters<typeof getTrendingHandler>[0], {
-        timeWindow: 'week',
+      await getTrending.handler({
+        params: { timeWindow: 'week', limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
       });
 
       expect(mockTagManager.getTrendingTags).toHaveBeenCalledWith(20, {
@@ -176,7 +187,7 @@ describe('XRPC Tag Handlers', () => {
     });
   });
 
-  describe('searchHandler', () => {
+  describe('search', () => {
     it('returns search results for tags', async () => {
       const tags: MockTagData[] = [
         createMockTagData({
@@ -187,13 +198,15 @@ describe('XRPC Tag Handlers', () => {
       ];
       mockTagManager.searchTags.mockResolvedValue({ tags, total: 1 });
 
-      const result = await searchHandler(
-        mockContext as unknown as Parameters<typeof searchHandler>[0],
-        { q: 'neural', limit: 20 }
-      );
+      const result = await search.handler({
+        params: { q: 'neural', limit: 20, includeSpam: false },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.tags).toHaveLength(1);
-      expect(result.tags[0]?.normalizedForm).toBe('neural-networks');
+      expect(result.body.tags).toHaveLength(1);
+      expect(result.body.tags[0]?.normalizedForm).toBe('neural-networks');
       expect(mockTagManager.searchTags).toHaveBeenCalledWith('neural', 20);
     });
 
@@ -204,17 +217,19 @@ describe('XRPC Tag Handlers', () => {
       ];
       mockTagManager.searchTags.mockResolvedValue({ tags, total: 2 });
 
-      const result = await searchHandler(
-        mockContext as unknown as Parameters<typeof searchHandler>[0],
-        { q: 'tag', limit: 20 }
-      );
+      const result = await search.handler({
+        params: { q: 'tag', limit: 20, includeSpam: false },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.tags).toHaveLength(1);
-      expect(result.tags[0]?.normalizedForm).toBe('good-tag');
+      expect(result.body.tags).toHaveLength(1);
+      expect(result.body.tags[0]?.normalizedForm).toBe('good-tag');
     });
   });
 
-  describe('listForEprintHandler', () => {
+  describe('listForEprint', () => {
     it('returns tags for a specific eprint', async () => {
       const eprintTags: MockTagData[] = [
         createMockTagData({ normalizedForm: 'quantum-computing', rawForm: 'quantum computing' }),
@@ -228,50 +243,59 @@ describe('XRPC Tag Handlers', () => {
         },
       ]);
 
-      const result = await listForEprintHandler(
-        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
-        { eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' }
-      );
+      const result = await listForEprint.handler({
+        params: { eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.tags).toHaveLength(2);
-      expect(result.suggestions).toHaveLength(1);
+      expect(result.body.tags).toHaveLength(2);
+      expect(result.body.suggestions).toHaveLength(1);
       expect(mockTagManager.getTagsForRecord).toHaveBeenCalled();
     });
 
     it('returns empty arrays when no tags exist', async () => {
       mockTagManager.getTagsForRecord.mockResolvedValue([]);
 
-      const result = await listForEprintHandler(
-        mockContext as unknown as Parameters<typeof listForEprintHandler>[0],
-        { eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' }
-      );
+      const result = await listForEprint.handler({
+        params: { eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.tags).toHaveLength(0);
-      expect(result.suggestions).toHaveLength(0);
+      expect(result.body.tags).toHaveLength(0);
+      expect(result.body.suggestions).toHaveLength(0);
     });
   });
 
-  describe('getDetailHandler', () => {
+  describe('getDetail', () => {
     it('returns tag details with usage statistics', async () => {
       const tagDetail = createMockTagData();
       mockTagManager.getTag.mockResolvedValue(tagDetail);
 
-      const result = await getDetailHandler(
-        mockContext as unknown as Parameters<typeof getDetailHandler>[0],
-        { tag: 'machine-learning' }
-      );
+      const result = await getDetail.handler({
+        params: { tag: 'machine-learning' },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
 
-      expect(result.normalizedForm).toBe('machine-learning');
-      expect(result.displayForms).toContain('machine learning');
-      expect(result.usageCount).toBe(150);
+      expect(result.body.normalizedForm).toBe('machine-learning');
+      expect(result.body.displayForms).toContain('machine learning');
+      expect(result.body.usageCount).toBe(150);
     });
 
     it('throws NotFoundError when tag does not exist', async () => {
       mockTagManager.getTag.mockResolvedValue(null);
 
       await expect(
-        getDetailHandler(mockContext as unknown as Parameters<typeof getDetailHandler>[0], {
-          tag: 'nonexistent-tag',
+        getDetail.handler({
+          params: { tag: 'nonexistent-tag' },
+          input: undefined,
+          auth: null,
+          c: mockContext as never,
         })
       ).rejects.toThrow();
     });

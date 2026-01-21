@@ -8,82 +8,68 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/claiming/getClaim.js';
 import { AuthenticationError } from '../../../../types/errors.js';
-import {
-  getClaimParamsSchema,
-  getClaimResponseSchema,
-  type GetClaimParams,
-  type GetClaimResponse,
-} from '../../../schemas/claiming.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+// Use generated types from lexicons
 
 /**
- * Handler for pub.chive.claiming.getClaim.
- *
- * @param c - Hono context
- * @param params - Parameters
- * @returns Claim request or null
+ * XRPC method for pub.chive.claiming.getClaim.
  *
  * @public
  */
-export async function getClaimHandler(
-  c: Context<ChiveEnv>,
-  params: GetClaimParams
-): Promise<GetClaimResponse> {
-  const logger = c.get('logger');
-  const user = c.get('user');
-  const { claiming } = c.get('services');
+export const getClaim: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: true,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const user = c.get('user');
+    const { claiming } = c.get('services');
 
-  if (!user) {
-    throw new AuthenticationError('Authentication required');
-  }
+    if (!user) {
+      throw new AuthenticationError('Authentication required');
+    }
 
-  logger.debug('Getting claim', {
-    claimId: params.claimId,
-  });
+    logger.debug('Getting claim', {
+      claimId: params.claimId,
+    });
 
-  const claim = await claiming.getClaim(params.claimId);
+    const claim = await claiming.getClaim(params.claimId);
 
-  // Only allow viewing own claims or admin viewing any claim
-  if (claim && claim.claimantDid !== user.did && !user.isAdmin) {
-    return { claim: null };
-  }
+    // Only allow viewing own claims or admin viewing any claim
+    if (claim && claim.claimantDid !== user.did && !user.isAdmin) {
+      return {
+        encoding: 'application/json',
+        body: {},
+      };
+    }
 
-  if (!claim) {
-    return { claim: null };
-  }
+    if (!claim) {
+      return {
+        encoding: 'application/json',
+        body: {},
+      };
+    }
 
-  return {
-    claim: {
-      id: claim.id,
-      importId: claim.importId,
-      claimantDid: claim.claimantDid,
-      status: claim.status,
-      canonicalUri: claim.canonicalUri,
-      rejectionReason: claim.rejectionReason,
-      reviewedBy: claim.reviewedBy,
-      reviewedAt: claim.reviewedAt?.toISOString(),
-      createdAt: claim.createdAt.toISOString(),
-      expiresAt: claim.expiresAt?.toISOString(),
-    },
-  };
-}
-
-/**
- * Endpoint definition for pub.chive.claiming.getClaim.
- *
- * @public
- */
-export const getClaimEndpoint: XRPCEndpoint<GetClaimParams, GetClaimResponse> = {
-  method: 'pub.chive.claiming.getClaim' as never,
-  type: 'query',
-  description: 'Get a claim request by ID',
-  inputSchema: getClaimParamsSchema,
-  outputSchema: getClaimResponseSchema,
-  handler: getClaimHandler,
-  auth: 'required',
-  rateLimit: 'authenticated',
+    return {
+      encoding: 'application/json',
+      body: {
+        claim: {
+          $type: 'pub.chive.claiming.getClaim#claimRequest',
+          id: claim.id,
+          importId: claim.importId,
+          claimantDid: claim.claimantDid,
+          status: claim.status,
+          canonicalUri: claim.canonicalUri,
+          rejectionReason: claim.rejectionReason,
+          reviewedBy: claim.reviewedBy,
+          reviewedAt: claim.reviewedAt?.toISOString(),
+          createdAt: claim.createdAt.toISOString(),
+          expiresAt: claim.expiresAt?.toISOString(),
+        },
+      },
+    };
+  },
 };

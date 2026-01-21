@@ -1,5 +1,5 @@
 /**
- * Author profile handler.
+ * XRPC handler for pub.chive.author.getProfile.
  *
  * @remarks
  * Returns author profile information and aggregated metrics.
@@ -13,19 +13,17 @@
 import type { Context } from 'hono';
 
 import { DIDResolver } from '../../../../auth/did/did-resolver.js';
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/author/getProfile.js';
 import type { EprintService } from '../../../../services/eprint/eprint-service.js';
 import type { MetricsService } from '../../../../services/metrics/metrics-service.js';
 import type { DID } from '../../../../types/atproto.js';
 import { NotFoundError } from '../../../../types/errors.js';
 import type { ILogger } from '../../../../types/interfaces/logger.interface.js';
-import {
-  authorProfileResponseSchema,
-  getAuthorProfileParamsSchema,
-  type AuthorProfileResponse,
-  type GetAuthorProfileParams,
-} from '../../../schemas/author.js';
 import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Affiliation from PDS profile.
@@ -201,122 +199,6 @@ async function fetchProfileFromPDS(
 }
 
 /**
- * Handler for pub.chive.author.getProfile.
- *
- * @param c - Hono context
- * @param params - Request parameters
- * @returns Author profile response with profile and metrics
- *
- * @throws {NotFoundError} When the author is not found in the index
- */
-export async function getProfileHandler(
-  c: Context<ChiveEnv>,
-  params: GetAuthorProfileParams
-): Promise<AuthorProfileResponse> {
-  const logger = c.get('logger');
-  const redis = c.get('redis');
-  const { eprint, metrics } = c.get('services');
-
-  const did = params.did as DID;
-
-  logger.debug('Fetching author profile', { did });
-
-  // Try to get cached profile first
-  const cacheKey = `chive:author:profile:${did}`;
-  const cached = await redis.get(cacheKey);
-
-  if (cached) {
-    try {
-      return JSON.parse(cached) as AuthorProfileResponse;
-    } catch {
-      // Invalid cache, continue to fetch
-    }
-  }
-
-  // Resolve DID to get PDS endpoint and handle
-  const didResolver = new DIDResolver({ redis, logger });
-
-  const [pdsEndpoint, didDoc] = await Promise.all([
-    didResolver.getPDSEndpoint(did),
-    didResolver.resolveDID(did),
-  ]);
-
-  // Extract handle from alsoKnownAs
-  let handle: string | undefined;
-  if (didDoc?.alsoKnownAs) {
-    const handleEntry = didDoc.alsoKnownAs.find((aka) => aka.startsWith('at://'));
-    if (handleEntry) {
-      handle = handleEntry.replace('at://', '');
-    }
-  }
-
-  // Get author's eprints (for metrics)
-  const authorEprints = await eprint.getEprintsByAuthor(did, { limit: 1 });
-
-  // Only throw 404 if we can't resolve the DID at all
-  // Users with valid DIDs should always have profiles, even with no eprints
-  if (!pdsEndpoint) {
-    throw new NotFoundError('Author', did);
-  }
-
-  // Fetch profile from PDS if available
-  let profileData: Awaited<ReturnType<typeof fetchProfileFromPDS>> = null;
-  if (pdsEndpoint) {
-    profileData = await fetchProfileFromPDS(did, pdsEndpoint, logger);
-  }
-
-  // Compute author metrics from indexed data
-  const [totalViews, totalDownloads, endorsementCount] = await Promise.all([
-    // Aggregate views across all eprints
-    aggregateAuthorViews(did, eprint, metrics, logger),
-    // Aggregate downloads
-    aggregateAuthorDownloads(did, eprint, metrics, logger),
-    // Count endorsements (from review service)
-    countAuthorEndorsements(did, c),
-  ]);
-
-  const response: AuthorProfileResponse = {
-    profile: {
-      did,
-      handle: handle ?? profileData?.handle,
-      displayName: profileData?.displayName,
-      avatar: profileData?.avatar,
-      bio: profileData?.bio,
-      affiliation: profileData?.affiliation,
-      affiliations: profileData?.affiliations,
-      orcid: profileData?.orcid,
-      website: profileData?.website,
-      pdsEndpoint: pdsEndpoint ?? 'unknown',
-      // Research fields
-      fields: profileData?.fields,
-      // Paper matching fields
-      nameVariants: profileData?.nameVariants,
-      previousAffiliations: profileData?.previousAffiliations,
-      researchKeywords: profileData?.researchKeywords,
-      // External authority IDs
-      semanticScholarId: profileData?.semanticScholarId,
-      openAlexId: profileData?.openAlexId,
-      googleScholarId: profileData?.googleScholarId,
-      arxivAuthorId: profileData?.arxivAuthorId,
-      openReviewId: profileData?.openReviewId,
-      dblpId: profileData?.dblpId,
-      scopusAuthorId: profileData?.scopusAuthorId,
-    },
-    metrics: {
-      totalEprints: authorEprints.total ?? 0,
-      totalViews,
-      totalDownloads,
-      totalEndorsements: endorsementCount,
-    },
-  };
-
-  // Cache for 5 minutes
-  await redis.setex(cacheKey, 300, JSON.stringify(response));
-
-  return response;
-}
-
-/**
  * Aggregates total views across all author's eprints.
  */
 async function aggregateAuthorViews(
@@ -418,17 +300,118 @@ async function countAuthorEndorsements(did: DID, c: Context<ChiveEnv>): Promise<
 }
 
 /**
- * XRPC endpoint definition for pub.chive.author.getProfile.
+ * XRPC method for pub.chive.author.getProfile.
+ *
+ * @remarks
+ * Returns author profile information and aggregated metrics.
+ * Profile data is resolved from the user's PDS via identity resolution.
+ * Metrics are computed by the AppView from indexed eprints.
  *
  * @public
  */
-export const getProfileEndpoint: XRPCEndpoint<GetAuthorProfileParams, AuthorProfileResponse> = {
-  method: 'pub.chive.author.getProfile' as never,
-  type: 'query',
-  description: 'Get author profile and metrics by DID',
-  inputSchema: getAuthorProfileParamsSchema,
-  outputSchema: authorProfileResponseSchema,
-  handler: getProfileHandler,
+export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  rateLimit: 'authenticated',
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const redis = c.get('redis');
+    const { eprint, metrics } = c.get('services');
+
+    const did = params.did as DID;
+
+    logger.debug('Fetching author profile', { did });
+
+    // Try to get cached profile first
+    const cacheKey = `chive:author:profile:${did}`;
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      try {
+        return { encoding: 'application/json', body: JSON.parse(cached) as OutputSchema };
+      } catch {
+        // Invalid cache, continue to fetch
+      }
+    }
+
+    // Resolve DID to get PDS endpoint and handle
+    const didResolver = new DIDResolver({ redis, logger });
+
+    const [pdsEndpoint, didDoc] = await Promise.all([
+      didResolver.getPDSEndpoint(did),
+      didResolver.resolveDID(did),
+    ]);
+
+    // Extract handle from alsoKnownAs
+    let handle: string | undefined;
+    if (didDoc?.alsoKnownAs) {
+      const handleEntry = didDoc.alsoKnownAs.find((aka) => aka.startsWith('at://'));
+      if (handleEntry) {
+        handle = handleEntry.replace('at://', '');
+      }
+    }
+
+    // Get author's eprints (for metrics)
+    const authorEprints = await eprint.getEprintsByAuthor(did, { limit: 1 });
+
+    // Only throw 404 if we can't resolve the DID at all
+    // Users with valid DIDs should always have profiles, even with no eprints
+    if (!pdsEndpoint) {
+      throw new NotFoundError('Author', did);
+    }
+
+    // Fetch profile from PDS if available
+    let profileData: Awaited<ReturnType<typeof fetchProfileFromPDS>> = null;
+    if (pdsEndpoint) {
+      profileData = await fetchProfileFromPDS(did, pdsEndpoint, logger);
+    }
+
+    // Compute author metrics from indexed data
+    const [totalViews, totalDownloads, endorsementCount] = await Promise.all([
+      // Aggregate views across all eprints
+      aggregateAuthorViews(did, eprint, metrics, logger),
+      // Aggregate downloads
+      aggregateAuthorDownloads(did, eprint, metrics, logger),
+      // Count endorsements (from review service)
+      countAuthorEndorsements(did, c),
+    ]);
+
+    const response: OutputSchema = {
+      profile: {
+        did,
+        handle: handle ?? profileData?.handle,
+        displayName: profileData?.displayName,
+        avatar: profileData?.avatar,
+        bio: profileData?.bio,
+        affiliation: profileData?.affiliation,
+        affiliations: profileData?.affiliations,
+        orcid: profileData?.orcid,
+        website: profileData?.website,
+        pdsEndpoint: pdsEndpoint ?? 'unknown',
+        // Research fields
+        fields: profileData?.fields,
+        // Paper matching fields
+        nameVariants: profileData?.nameVariants,
+        previousAffiliations: profileData?.previousAffiliations,
+        researchKeywords: profileData?.researchKeywords,
+        // External authority IDs
+        semanticScholarId: profileData?.semanticScholarId,
+        openAlexId: profileData?.openAlexId,
+        googleScholarId: profileData?.googleScholarId,
+        arxivAuthorId: profileData?.arxivAuthorId,
+        openReviewId: profileData?.openReviewId,
+        dblpId: profileData?.dblpId,
+        scopusAuthorId: profileData?.scopusAuthorId,
+      },
+      metrics: {
+        totalEprints: authorEprints.total ?? 0,
+        totalViews,
+        totalDownloads,
+        totalEndorsements: endorsementCount,
+      },
+    };
+
+    // Cache for 5 minutes
+    await redis.setex(cacheKey, 300, JSON.stringify(response));
+
+    return { encoding: 'application/json', body: response };
+  },
 };

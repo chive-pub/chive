@@ -1,5 +1,5 @@
 /**
- * Handler for pub.chive.metrics.getViewCount.
+ * XRPC handler for pub.chive.metrics.getViewCount.
  *
  * @remarks
  * Gets simple view count for an eprint.
@@ -8,53 +8,28 @@
  * @public
  */
 
-import type { Context } from 'hono';
-
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/metrics/getViewCount.js';
 import type { AtUri } from '../../../../types/atproto.js';
-import {
-  getViewCountParamsSchema,
-  viewCountResponseSchema,
-  type GetViewCountParams,
-  type ViewCountResponse,
-} from '../../../schemas/metrics.js';
-import type { ChiveEnv } from '../../../types/context.js';
-import type { XRPCEndpoint } from '../../../types/handlers.js';
+import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
- * Handler for pub.chive.metrics.getViewCount.
- *
- * @param c - Hono context
- * @param params - Request parameters
- * @returns View count
+ * XRPC method for pub.chive.metrics.getViewCount.
  *
  * @public
  */
-export async function getViewCountHandler(
-  c: Context<ChiveEnv>,
-  params: GetViewCountParams
-): Promise<ViewCountResponse> {
-  const logger = c.get('logger');
-  const { metrics } = c.get('services');
+export const getViewCount: XRPCMethod<QueryParams, void, OutputSchema> = {
+  auth: false,
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const logger = c.get('logger');
+    const { metrics } = c.get('services');
 
-  logger.debug('Getting view count', { uri: params.uri });
+    logger.debug('Getting view count', { uri: params.uri });
 
-  const count = await metrics.getViewCount(params.uri as AtUri);
+    const count = await metrics.getViewCount(params.uri as AtUri);
 
-  return { count };
-}
-
-/**
- * Endpoint definition for pub.chive.metrics.getViewCount.
- *
- * @public
- */
-export const getViewCountEndpoint: XRPCEndpoint<GetViewCountParams, ViewCountResponse> = {
-  method: 'pub.chive.metrics.getViewCount' as never,
-  type: 'query',
-  description: 'Get view count for an eprint',
-  inputSchema: getViewCountParamsSchema,
-  outputSchema: viewCountResponseSchema,
-  handler: getViewCountHandler,
-  auth: 'none',
-  rateLimit: 'anonymous',
+    return { encoding: 'application/json', body: { count } };
+  },
 };

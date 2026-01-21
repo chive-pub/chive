@@ -87,26 +87,37 @@ Review comment or reply.
 
 ### pub.chive.review.endorsement
 
-Formal endorsement of an eprint.
+Endorsement of contribution types in an eprint.
 
 ```typescript
 {
   "$type": "pub.chive.review.endorsement",
-  "subject": StrongRef,         // Reference to eprint
-  "endorsementType": EndorsementType,
-  "statement": string,          // Optional, max 500 chars
-  "createdAt": string
+  "eprintUri": string,            // Required, AT-URI of eprint being endorsed
+  "contributions": string[],      // Required, 1-15 contribution types (no duplicates)
+  "comment": string,              // Optional, max 5000 chars
+  "createdAt": string             // Required, ISO 8601
 }
-
-type EndorsementType =
-  | "overall"                   // General endorsement
-  | "methodology"               // Sound methodology
-  | "results"                   // Verified results
-  | "reproducibility"           // Reproducible
-  | "writing"                   // Well-written
-  | "novelty"                   // Novel contribution
-  | "significance";             // Significant impact
 ```
+
+**Contribution types** (based on CRediT taxonomy):
+
+| Value               | Description              |
+| ------------------- | ------------------------ |
+| `methodological`    | Sound methodology        |
+| `analytical`        | Analytical rigor         |
+| `theoretical`       | Theoretical framework    |
+| `empirical`         | Empirical approach       |
+| `conceptual`        | Conceptualization        |
+| `technical`         | Technical implementation |
+| `data`              | Data quality/curation    |
+| `replication`       | Replication study        |
+| `reproducibility`   | Reproducible results     |
+| `synthesis`         | Literature synthesis     |
+| `interdisciplinary` | Cross-disciplinary work  |
+| `pedagogical`       | Educational value        |
+| `visualization`     | Data visualization       |
+| `societal-impact`   | Societal relevance       |
+| `clinical`          | Clinical applicability   |
 
 ## Graph lexicons
 
@@ -246,17 +257,27 @@ Extended user profile.
 }
 ```
 
-### pub.chive.actor.discoverySettings
+### pub.chive.discovery.settings
 
-Discovery preferences.
+Discovery preferences for personalized recommendations.
 
 ```typescript
 {
-  "$type": "pub.chive.actor.discoverySettings",
-  "recommendationDiversity": "low" | "medium" | "high",
-  "excludeSources": string[],
-  "languages": string[],
-  "emailDigestFrequency": "never" | "daily" | "weekly"
+  "$type": "pub.chive.discovery.settings",
+  "enablePersonalization": boolean,
+  "enableForYouFeed": boolean,
+  "forYouSignals": {
+    "fields": boolean,
+    "citations": boolean,
+    "collaborators": boolean,
+    "trending": boolean
+  },
+  "relatedPapersSignals": {
+    "citations": boolean,
+    "topics": boolean
+  },
+  "citationNetworkDisplay": "hidden" | "preview" | "expanded",
+  "showRecommendationReasons": boolean
 }
 ```
 

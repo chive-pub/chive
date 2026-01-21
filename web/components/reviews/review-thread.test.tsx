@@ -1,8 +1,8 @@
 import { render, screen } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { ReviewThreadComponent, ThreadCollapseToggle } from './review-thread';
-import { createMockReview, createMockAuthor } from '@/tests/mock-data';
-import type { ReviewThread } from '@/lib/api/schema';
+import { createMockReview, createMockReviewAuthor } from '@/tests/mock-data';
+import type { FrontendReviewThread } from '@/lib/api/schema';
 
 // Mock next/link
 vi.mock('next/link', () => ({
@@ -44,15 +44,15 @@ describe('ThreadCollapseToggle', () => {
 });
 
 describe('ReviewThreadComponent', () => {
-  const createThread = (depth: number = 0, replyCount: number = 0): ReviewThread => {
+  const createThread = (depth: number = 0, replyCount: number = 0): FrontendReviewThread => {
     const parent = createMockReview({
       uri: `at://review-d${depth}`,
       content: `Review at depth ${depth}`,
       body: undefined, // Use plain text content, not rich body
-      author: createMockAuthor({ displayName: `Author ${depth}` }),
+      author: createMockReviewAuthor({ displayName: `Author ${depth}` }),
     });
 
-    const replies: ReviewThread[] = [];
+    const replies: FrontendReviewThread[] = [];
     for (let i = 0; i < replyCount; i++) {
       replies.push({
         parent: createMockReview({
@@ -60,7 +60,7 @@ describe('ReviewThreadComponent', () => {
           content: `Reply ${i}`,
           body: undefined, // Use plain text content, not rich body
           parentReviewUri: parent.uri,
-          author: createMockAuthor({ displayName: `Replier ${i}` }),
+          author: createMockReviewAuthor({ displayName: `Replier ${i}` }),
         }),
         replies: [],
         totalReplies: 0,
@@ -119,7 +119,7 @@ describe('ReviewThreadComponent', () => {
     });
 
     it('renders nested threads recursively', () => {
-      const nestedThread: ReviewThread = {
+      const nestedThread: FrontendReviewThread = {
         parent: createMockReview({
           uri: 'at://parent',
           content: 'Parent content',
@@ -271,7 +271,7 @@ describe('ReviewThreadComponent', () => {
 
   describe('showTargets prop', () => {
     it('shows targets only at depth 0', () => {
-      const threadWithTarget: ReviewThread = {
+      const threadWithTarget: FrontendReviewThread = {
         parent: createMockReview({
           target: {
             source: 'at://test',
@@ -288,7 +288,7 @@ describe('ReviewThreadComponent', () => {
     });
 
     it('hides targets at depth > 0 even if showTargets is true', () => {
-      const threadWithTarget: ReviewThread = {
+      const threadWithTarget: FrontendReviewThread = {
         parent: createMockReview({
           target: {
             source: 'at://test',

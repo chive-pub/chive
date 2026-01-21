@@ -2,14 +2,14 @@ import { Eye, Download, ThumbsUp } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { formatCompactNumber } from '@/lib/utils/format-number';
-import type { EprintMetrics as EprintMetricsType } from '@/lib/api/schema';
+import type { EprintMetricsView } from '@/lib/api/schema';
 
 /**
  * Props for the EprintMetrics component.
  */
 export interface EprintMetricsProps {
   /** Metrics data */
-  metrics?: EprintMetricsType;
+  metrics?: EprintMetricsView;
   /** Display size */
   size?: 'sm' | 'default' | 'lg';
   /** Whether to show all metrics or just primary ones */
@@ -53,13 +53,13 @@ export function EprintMetrics({
     <div className={cn('flex items-center text-muted-foreground', gap, textSize, className)}>
       <MetricItem
         icon={<Eye className={iconSize} />}
-        value={metrics.views}
+        value={metrics.views ?? 0}
         label="views"
         size={size}
       />
       <MetricItem
         icon={<Download className={iconSize} />}
-        value={metrics.downloads}
+        value={metrics.downloads ?? 0}
         label="downloads"
         size={size}
       />

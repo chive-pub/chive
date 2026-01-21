@@ -72,6 +72,7 @@ export function FieldBreadcrumb({ field, className }: FieldBreadcrumbProps) {
  */
 interface FieldChild {
   id: string;
+  uri: string;
   label: string;
   eprintCount?: number;
   childCount?: number;
@@ -207,7 +208,7 @@ function FieldTreeNode({ field, selectedId, onSelect, level }: FieldTreeNodeProp
 
   const mightHaveChildren = hasChildCount(field) ? (field.childCount ?? 0) > 0 : true;
 
-  const { data: children, isLoading: isLoadingChildren } = useFieldChildren(field.id, {
+  const { data: children, isLoading: isLoadingChildren } = useFieldChildren(field.uri, {
     enabled: isExpanded && mightHaveChildren,
   });
 

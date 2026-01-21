@@ -61,7 +61,22 @@ export function PDFViewer({ blobRef, pdsEndpoint, did, className }: PDFViewerPro
   const [pdfModule, setPdfModule] = useState<typeof import('react-pdf') | null>(null);
 
   // Construct blob URL from PDS endpoint
-  const pdfUrl = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobRef.ref)}`;
+  // blobRef.ref can be a string, { $link: string }, or a CID object with toString()
+  const getCidString = (): string => {
+    if (typeof blobRef.ref === 'string') {
+      return blobRef.ref;
+    }
+    if (typeof blobRef.ref === 'object' && blobRef.ref !== null) {
+      if ('$link' in blobRef.ref) {
+        return (blobRef.ref as { $link: string }).$link;
+      }
+      // CID object from multiformats
+      return blobRef.ref.toString();
+    }
+    return String(blobRef.ref);
+  };
+  const cid = getCidString();
+  const pdfUrl = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 
   // Dynamically import react-pdf to avoid SSR issues
   useEffect(() => {
@@ -402,7 +417,22 @@ export function PDFDownloadButton({
   filename,
   className,
 }: PDFDownloadButtonProps) {
-  const pdfUrl = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobRef.ref)}`;
+  // blobRef.ref can be a string, { $link: string }, or a CID object with toString()
+  const getCidString = (): string => {
+    if (typeof blobRef.ref === 'string') {
+      return blobRef.ref;
+    }
+    if (typeof blobRef.ref === 'object' && blobRef.ref !== null) {
+      if ('$link' in blobRef.ref) {
+        return (blobRef.ref as { $link: string }).$link;
+      }
+      // CID object from multiformats
+      return blobRef.ref.toString();
+    }
+    return String(blobRef.ref);
+  };
+  const cid = getCidString();
+  const pdfUrl = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 
   const handleDownload = useCallback(() => {
     const link = document.createElement('a');

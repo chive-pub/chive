@@ -172,6 +172,7 @@ export class EprintService {
         documentFormat: record.documentFormat,
         supplementaryMaterials: record.supplementaryMaterials,
         previousVersionUri: record.previousVersionUri,
+        version: record.version,
         versionNotes: record.versionNotes,
         keywords: record.keywords,
         fields: record.fields,

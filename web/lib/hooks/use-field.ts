@@ -101,31 +101,30 @@ export function useField(id: string, options: UseFieldOptions = {}) {
   return useQuery({
     queryKey: fieldKeys.detail(id),
     queryFn: async (): Promise<FieldNode> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-        params: {
-          query: {
-            id,
-            includeEdges,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.graph.getNode({
+          id,
+          includeEdges,
+        });
+        const data = response.data;
+        return {
+          id: data.id,
+          uri: data.uri,
+          label: data.label,
+          description: data.description,
+          wikidataId: data.externalIds?.find((e) => e.system === 'wikidata')?.identifier,
+          status: data.status as FieldNode['status'],
+          edges: data.edges,
+          externalIds: data.externalIds,
+        };
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch field',
+          error instanceof Error ? error.message : 'Failed to fetch field',
           undefined,
-          '/xrpc/pub.chive.graph.getNode'
+          'pub.chive.graph.getNode'
         );
       }
-      return {
-        id: data!.id,
-        uri: data!.uri,
-        label: data!.label,
-        description: data!.description,
-        wikidataId: data!.externalIds?.find((e) => e.system === 'wikidata')?.identifier,
-        status: data!.status as FieldNode['status'],
-        edges: data!.edges,
-        externalIds: data!.externalIds,
-      };
     },
     enabled: !!id && enabled,
     staleTime: 6 * 60 * 60 * 1000,
@@ -141,83 +140,83 @@ export function useFieldWithRelations(id: string, options: { enabled?: boolean }
   return useQuery({
     queryKey: [...fieldKeys.detail(id), 'relations'],
     queryFn: async (): Promise<FieldWithRelations> => {
-      const { data: nodeData, error: nodeError } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-        params: {
-          query: {
-            id,
-            includeEdges: true,
-          },
-        },
-      });
+      try {
+        const nodeResponse = await api.pub.chive.graph.getNode({
+          id,
+          includeEdges: true,
+        });
+        const nodeData = nodeResponse.data;
 
-      if (nodeError) {
+        const field: FieldNode = {
+          id: nodeData.id,
+          uri: nodeData.uri,
+          label: nodeData.label,
+          description: nodeData.description,
+          wikidataId: nodeData.externalIds?.find((e) => e.system === 'wikidata')?.identifier,
+          status: nodeData.status as FieldNode['status'],
+          edges: nodeData.edges,
+          externalIds: nodeData.externalIds,
+        };
+
+        const edges = nodeData?.edges ?? [];
+
+        const broaderEdges = edges.filter((e) => e.relationSlug === 'broader');
+        const narrowerEdges = edges.filter((e) => e.relationSlug === 'narrower');
+        const relatedEdges = edges.filter((e) => e.relationSlug === 'related');
+
+        const extractTargetId = (uri: string) => uri.split('/').pop() ?? '';
+        const allTargetIds = [...broaderEdges, ...narrowerEdges, ...relatedEdges].map((e) =>
+          extractTargetId(e.targetUri)
+        );
+
+        const targetNodes = await Promise.all(
+          allTargetIds.map(async (targetId) => {
+            try {
+              const response = await api.pub.chive.graph.getNode({
+                id: targetId,
+                includeEdges: false,
+              });
+              const data = response.data;
+              return { id: data.id, uri: data.uri, label: data.label };
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const nodeMap = new Map(
+          targetNodes.filter((n): n is NonNullable<typeof n> => n !== null).map((n) => [n.id, n])
+        );
+
+        const mapEdgesToRelated = (edgeList: typeof edges, relation: string): RelatedField[] =>
+          edgeList
+            .map((edge) => {
+              const targetId = extractTargetId(edge.targetUri);
+              const target = nodeMap.get(targetId);
+              if (!target) return null;
+              return {
+                id: target.id,
+                uri: target.uri,
+                label: target.label,
+                relationSlug: relation,
+              };
+            })
+            .filter((r): r is RelatedField => r !== null);
+
+        return {
+          ...field,
+          parents: mapEdgesToRelated(broaderEdges, 'broader'),
+          children: mapEdgesToRelated(narrowerEdges, 'narrower'),
+          related: mapEdgesToRelated(relatedEdges, 'related'),
+        };
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (nodeError as { message?: string }).message ?? 'Failed to fetch field',
+          error instanceof Error ? error.message : 'Failed to fetch field',
           undefined,
-          '/xrpc/pub.chive.graph.getNode'
+          'pub.chive.graph.getNode'
         );
       }
-
-      const field: FieldNode = {
-        id: nodeData!.id,
-        uri: nodeData!.uri,
-        label: nodeData!.label,
-        description: nodeData!.description,
-        wikidataId: nodeData!.externalIds?.find((e) => e.system === 'wikidata')?.identifier,
-        status: nodeData!.status as FieldNode['status'],
-        edges: nodeData!.edges,
-        externalIds: nodeData!.externalIds,
-      };
-
-      const edges = nodeData?.edges ?? [];
-
-      const broaderEdges = edges.filter((e) => e.relationSlug === 'broader');
-      const narrowerEdges = edges.filter((e) => e.relationSlug === 'narrower');
-      const relatedEdges = edges.filter((e) => e.relationSlug === 'related');
-
-      const extractTargetId = (uri: string) => uri.split('/').pop() ?? '';
-      const allTargetIds = [...broaderEdges, ...narrowerEdges, ...relatedEdges].map((e) =>
-        extractTargetId(e.targetUri)
-      );
-
-      const targetNodes = await Promise.all(
-        allTargetIds.map(async (targetId) => {
-          try {
-            const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-              params: { query: { id: targetId, includeEdges: false } },
-            });
-            return data ? { id: data.id, uri: data.uri, label: data.label } : null;
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      const nodeMap = new Map(
-        targetNodes.filter((n): n is NonNullable<typeof n> => n !== null).map((n) => [n.id, n])
-      );
-
-      const mapEdgesToRelated = (edgeList: typeof edges, relation: string): RelatedField[] =>
-        edgeList
-          .map((edge) => {
-            const targetId = extractTargetId(edge.targetUri);
-            const target = nodeMap.get(targetId);
-            if (!target) return null;
-            return {
-              id: target.id,
-              uri: target.uri,
-              label: target.label,
-              relationSlug: relation,
-            };
-          })
-          .filter((r): r is RelatedField => r !== null);
-
-      return {
-        ...field,
-        parents: mapEdgesToRelated(broaderEdges, 'broader'),
-        children: mapEdgesToRelated(narrowerEdges, 'narrower'),
-        related: mapEdgesToRelated(relatedEdges, 'related'),
-      };
     },
     enabled: !!id && enabled,
     staleTime: 60 * 60 * 1000,
@@ -237,37 +236,36 @@ export function useFields(params: UseFieldsParams = {}) {
   return useQuery({
     queryKey: fieldKeys.list(params),
     queryFn: async () => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listNodes', {
-        params: {
-          query: {
-            subkind: 'field',
-            status: params.status,
-            limit: params.limit ?? 50,
-            cursor: params.cursor,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.graph.listNodes({
+          subkind: 'field',
+          status: params.status,
+          limit: params.limit ?? 50,
+          cursor: params.cursor,
+        });
+        const data = response.data;
+        return {
+          fields: data.nodes.map(
+            (node): FieldSummaryNode => ({
+              id: node.id,
+              uri: node.uri,
+              label: node.label,
+              description: node.description,
+              status: node.status as FieldSummaryNode['status'],
+            })
+          ),
+          cursor: data.cursor,
+          hasMore: data.hasMore,
+          total: data.total,
+        };
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch fields',
+          error instanceof Error ? error.message : 'Failed to fetch fields',
           undefined,
-          '/xrpc/pub.chive.graph.listNodes'
+          'pub.chive.graph.listNodes'
         );
       }
-      return {
-        fields: data!.nodes.map(
-          (node): FieldSummaryNode => ({
-            id: node.id,
-            uri: node.uri,
-            label: node.label,
-            description: node.description,
-            status: node.status as FieldSummaryNode['status'],
-          })
-        ),
-        cursor: data!.cursor,
-        hasMore: data!.hasMore,
-        total: data!.total,
-      };
     },
     staleTime: 60 * 60 * 1000,
     placeholderData: (previousData) => previousData,
@@ -287,22 +285,20 @@ export function useFieldHierarchy(options: UseFieldHierarchyOptions = {}) {
   return useQuery({
     queryKey: fieldKeys.hierarchy(),
     queryFn: async () => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.getHierarchy', {
-        params: {
-          query: {
-            subkind: 'field',
-            relationSlug: 'broader',
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.graph.getHierarchy({
+          subkind: 'field',
+          relationSlug: 'broader',
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch field hierarchy',
+          error instanceof Error ? error.message : 'Failed to fetch field hierarchy',
           undefined,
-          '/xrpc/pub.chive.graph.getHierarchy'
+          'pub.chive.graph.getHierarchy'
         );
       }
-      return data!;
     },
     enabled,
     staleTime: 60 * 60 * 1000,
@@ -315,67 +311,70 @@ interface UseFieldChildrenOptions {
 
 /**
  * Fetches children of a field.
+ *
+ * @param fieldUri - The AT-URI of the field node
+ * @param options - Query options
  */
-export function useFieldChildren(fieldId: string, options: UseFieldChildrenOptions = {}) {
+export function useFieldChildren(fieldUri: string, options: UseFieldChildrenOptions = {}) {
   const { enabled = true } = options;
 
   return useQuery({
-    queryKey: fieldKeys.children(fieldId),
+    queryKey: fieldKeys.children(fieldUri),
     queryFn: async (): Promise<FieldSummaryNode[]> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.graph.listEdges', {
-        params: {
-          query: {
-            limit: 100,
-            sourceUri: fieldId,
-            relationSlug: 'narrower',
-            status: 'established',
-          },
-        },
-      });
-      if (error) {
-        throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch field children',
-          undefined,
-          '/xrpc/pub.chive.graph.listEdges'
-        );
-      }
-      // Extract target nodes from edges
-      const edges = data?.edges ?? [];
-      const targetIds = edges
-        .map((edge) => edge.targetUri.split('/').pop())
-        .filter(Boolean) as string[];
+      try {
+        const response = await api.pub.chive.graph.listEdges({
+          limit: 100,
+          sourceUri: fieldUri,
+          relationSlug: 'narrower',
+          status: 'established',
+        });
+        const data = response.data;
+        // Extract target nodes from edges
+        const edges = data?.edges ?? [];
+        const targetIds = edges
+          .map((edge) => edge.targetUri.split('/').pop())
+          .filter(Boolean) as string[];
 
-      if (targetIds.length === 0) {
-        return [];
-      }
+        if (targetIds.length === 0) {
+          return [];
+        }
 
-      // Fetch target nodes in parallel
-      const nodes = await Promise.all(
-        targetIds.map(async (targetId) => {
-          try {
-            const { data: nodeData } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-              params: { query: { id: targetId, includeEdges: false } },
-            });
-            return nodeData;
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      return nodes
-        .filter((n): n is NonNullable<typeof n> => n !== null)
-        .map(
-          (node): FieldSummaryNode => ({
-            id: node.id,
-            uri: node.uri,
-            label: node.label,
-            description: node.description,
-            status: node.status as FieldSummaryNode['status'],
+        // Fetch target nodes in parallel
+        const nodes = await Promise.all(
+          targetIds.map(async (targetId) => {
+            try {
+              const nodeResponse = await api.pub.chive.graph.getNode({
+                id: targetId,
+                includeEdges: false,
+              });
+              return nodeResponse.data;
+            } catch {
+              return null;
+            }
           })
         );
+
+        return nodes
+          .filter((n): n is NonNullable<typeof n> => n !== null)
+          .map(
+            (node): FieldSummaryNode => ({
+              id: node.id,
+              uri: node.uri,
+              label: node.label,
+              description: node.description,
+              status: node.status as FieldSummaryNode['status'],
+            })
+          );
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch field children',
+          undefined,
+          'pub.chive.graph.listEdges'
+        );
+      }
     },
-    enabled: !!fieldId && enabled,
+    enabled: !!fieldUri && enabled,
     staleTime: 60 * 60 * 1000,
   });
 }
@@ -394,6 +393,11 @@ interface FieldEprintsResponse {
 
 /**
  * Fetches eprints associated with a field with infinite scrolling support.
+ *
+ * @remarks
+ * The searchSubmissions API returns SearchHit objects containing only URI and score.
+ * This hook returns minimal eprint references. Callers should use useEprint to
+ * fetch full eprint details for display if needed.
  */
 export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions = {}) {
   const { limit = 10, enabled = true } = options;
@@ -401,40 +405,33 @@ export function useFieldEprints(fieldId: string, options: UseFieldEprintsOptions
   return useInfiniteQuery({
     queryKey: fieldKeys.eprints(fieldId),
     queryFn: async ({ pageParam }): Promise<FieldEprintsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.searchSubmissions', {
-        params: {
-          query: {
-            fieldId,
-            limit,
-            sort: 'date',
-            cursor: pageParam as string | undefined,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.eprint.searchSubmissions({
+          q: '*', // Required parameter - search all eprints
+          fieldUris: [fieldId],
+          limit,
+          cursor: pageParam as string | undefined,
+        });
+        const data = response.data;
+        // SearchHit only contains uri and score - map to minimal EprintSummary
+        const hasMore = !!data.cursor;
+        return {
+          eprints: (data.hits ?? []).map((hit) => ({
+            uri: hit.uri,
+            // Other fields require separate getSubmission calls to hydrate
+          })) as EprintSummary[],
+          cursor: data.cursor,
+          hasMore,
+          total: data.total ?? 0,
+        };
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch field eprints',
+          error instanceof Error ? error.message : 'Failed to fetch field eprints',
           undefined,
-          '/xrpc/pub.chive.eprint.searchSubmissions'
+          'pub.chive.eprint.searchSubmissions'
         );
       }
-      return {
-        eprints: (data!.hits ?? []).map((hit) => ({
-          uri: hit.uri,
-          cid: hit.cid,
-          title: hit.title,
-          abstract: hit.abstract,
-          submittedBy: hit.submittedBy,
-          authors: hit.authors ?? [],
-          fields: hit.fields,
-          createdAt: hit.createdAt,
-          source: hit.source,
-          metrics: hit.metrics,
-        })),
-        cursor: data!.cursor,
-        hasMore: data!.hasMore,
-        total: data!.total,
-      };
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
@@ -453,25 +450,25 @@ export function usePrefetchField() {
     queryClient.prefetchQuery({
       queryKey: fieldKeys.detail(id),
       queryFn: async (): Promise<FieldNode | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.graph.getNode', {
-          params: {
-            query: {
-              id,
-              includeEdges: true,
-            },
-          },
-        });
-        if (!data) return undefined;
-        return {
-          id: data.id,
-          uri: data.uri,
-          label: data.label,
-          description: data.description,
-          wikidataId: data.externalIds?.find((e) => e.system === 'wikidata')?.identifier,
-          status: data.status as FieldNode['status'],
-          edges: data.edges,
-          externalIds: data.externalIds,
-        };
+        try {
+          const response = await api.pub.chive.graph.getNode({
+            id,
+            includeEdges: true,
+          });
+          const data = response.data;
+          return {
+            id: data.id,
+            uri: data.uri,
+            label: data.label,
+            description: data.description,
+            wikidataId: data.externalIds?.find((e) => e.system === 'wikidata')?.identifier,
+            status: data.status as FieldNode['status'],
+            edges: data.edges,
+            externalIds: data.externalIds,
+          };
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 6 * 60 * 60 * 1000,
     });

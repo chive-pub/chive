@@ -13,11 +13,22 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { startClaimFromExternalHandler } from '@/api/handlers/xrpc/claiming/startClaimFromExternal.js';
-import { importSourceSchema } from '@/api/schemas/claiming.js';
+import { startClaimFromExternal } from '@/api/handlers/xrpc/claiming/startClaimFromExternal.js';
 import type { DID } from '@/types/atproto.js';
 import { AuthenticationError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
+
+/**
+ * Simple validator matching the lexicon requirements.
+ */
+const importSourceSchema = {
+  safeParse: (value: string): { success: boolean } => {
+    if (typeof value !== 'string' || value.length < 2 || value.length > 50) {
+      return { success: false };
+    }
+    return { success: /^[a-z0-9]+$/.test(value) };
+  },
+};
 
 // =============================================================================
 // MOCK FACTORIES
@@ -107,7 +118,7 @@ const createTestClaimRequest = (overrides: Partial<MockClaimRequest> = {}): Mock
 // TESTS
 // =============================================================================
 
-describe('startClaimFromExternalHandler', () => {
+describe('startClaimFromExternal', () => {
   let mockClaimingService: MockClaimingService;
   let mockLogger: ILogger;
 
@@ -126,17 +137,21 @@ describe('startClaimFromExternalHandler', () => {
       });
 
       await expect(
-        startClaimFromExternalHandler(
-          mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-          { source: 'arxiv', externalId: '2401.12345' }
-        )
+        startClaimFromExternal.handler({
+          params: undefined,
+          input: { source: 'arxiv', externalId: '2401.12345' },
+          auth: null,
+          c: mockContext as never,
+        })
       ).rejects.toThrow(AuthenticationError);
 
       await expect(
-        startClaimFromExternalHandler(
-          mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-          { source: 'arxiv', externalId: '2401.12345' }
-        )
+        startClaimFromExternal.handler({
+          params: undefined,
+          input: { source: 'arxiv', externalId: '2401.12345' },
+          auth: null,
+          c: mockContext as never,
+        })
       ).rejects.toThrow('Authentication required to claim eprints');
     });
 
@@ -150,13 +165,15 @@ describe('startClaimFromExternalHandler', () => {
         logger: mockLogger,
       });
 
-      const result = await startClaimFromExternalHandler(
-        mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-        { source: 'arxiv', externalId: '2401.12345' }
-      );
+      const result = await startClaimFromExternal.handler({
+        params: undefined,
+        input: { source: 'arxiv', externalId: '2401.12345' },
+        auth: { did: 'did:plc:testuser123', iss: 'did:plc:testuser123' },
+        c: mockContext as never,
+      });
 
-      expect(result.claim).toBeDefined();
-      expect(result.claim.id).toBe(1);
+      expect(result.body.claim).toBeDefined();
+      expect(result.body.claim.id).toBe(1);
     });
   });
 
@@ -212,10 +229,12 @@ describe('startClaimFromExternalHandler', () => {
         logger: mockLogger,
       });
 
-      await startClaimFromExternalHandler(
-        mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-        { source: 'semanticscholar', externalId: 'paper789' }
-      );
+      await startClaimFromExternal.handler({
+        params: undefined,
+        input: { source: 'semanticscholar', externalId: 'paper789' },
+        auth: { did: 'did:plc:claimant456', iss: 'did:plc:claimant456' },
+        c: mockContext as never,
+      });
 
       expect(mockClaimingService.startClaimFromExternal).toHaveBeenCalledWith(
         'semanticscholar',
@@ -241,12 +260,14 @@ describe('startClaimFromExternalHandler', () => {
         logger: mockLogger,
       });
 
-      const result = await startClaimFromExternalHandler(
-        mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-        { source: 'openalex', externalId: 'W123456789' }
-      );
+      const result = await startClaimFromExternal.handler({
+        params: undefined,
+        input: { source: 'openalex', externalId: 'W123456789' },
+        auth: { did: 'did:plc:testuser123', iss: 'did:plc:testuser123' },
+        c: mockContext as never,
+      });
 
-      expect(result.claim).toMatchObject({
+      expect(result.body.claim).toMatchObject({
         id: 42,
         importId: 100,
         claimantDid: 'did:plc:testuser123',
@@ -254,8 +275,8 @@ describe('startClaimFromExternalHandler', () => {
       });
 
       // Dates should be ISO strings
-      expect(result.claim.createdAt).toBe('2024-01-15T10:00:00.000Z');
-      expect(result.claim.expiresAt).toBe('2024-01-22T10:00:00.000Z');
+      expect(result.body.claim.createdAt).toBe('2024-01-15T10:00:00.000Z');
+      expect(result.body.claim.expiresAt).toBe('2024-01-22T10:00:00.000Z');
     });
 
     it('handles claim without optional fields', async () => {
@@ -274,16 +295,18 @@ describe('startClaimFromExternalHandler', () => {
         logger: mockLogger,
       });
 
-      const result = await startClaimFromExternalHandler(
-        mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-        { source: 'arxiv', externalId: '2401.00001' }
-      );
+      const result = await startClaimFromExternal.handler({
+        params: undefined,
+        input: { source: 'arxiv', externalId: '2401.00001' },
+        auth: { did: 'did:plc:testuser123', iss: 'did:plc:testuser123' },
+        c: mockContext as never,
+      });
 
-      expect(result.claim.canonicalUri).toBeUndefined();
-      expect(result.claim.rejectionReason).toBeUndefined();
-      expect(result.claim.reviewedBy).toBeUndefined();
-      expect(result.claim.reviewedAt).toBeUndefined();
-      expect(result.claim.expiresAt).toBeUndefined();
+      expect(result.body.claim.canonicalUri).toBeUndefined();
+      expect(result.body.claim.rejectionReason).toBeUndefined();
+      expect(result.body.claim.reviewedBy).toBeUndefined();
+      expect(result.body.claim.reviewedAt).toBeUndefined();
+      expect(result.body.claim.expiresAt).toBeUndefined();
     });
   });
 
@@ -298,10 +321,12 @@ describe('startClaimFromExternalHandler', () => {
         logger: mockLogger,
       });
 
-      await startClaimFromExternalHandler(
-        mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-        { source: 'crossref', externalId: '10.1234/test' }
-      );
+      await startClaimFromExternal.handler({
+        params: undefined,
+        input: { source: 'crossref', externalId: '10.1234/test' },
+        auth: { did: 'did:plc:logtest', iss: 'did:plc:logtest' },
+        c: mockContext as never,
+      });
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Starting claim from external',
@@ -335,10 +360,12 @@ describe('startClaimFromExternalHandler', () => {
       });
 
       await expect(
-        startClaimFromExternalHandler(
-          mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-          { source: 'arxiv', externalId: '2401.99999' }
-        )
+        startClaimFromExternal.handler({
+          params: undefined,
+          input: { source: 'arxiv', externalId: '2401.99999' },
+          auth: { did: 'did:plc:testuser123', iss: 'did:plc:testuser123' },
+          c: mockContext as never,
+        })
       ).rejects.toThrow('External source unavailable');
     });
   });
@@ -364,12 +391,14 @@ describe('startClaimFromExternalHandler', () => {
           logger: mockLogger,
         });
 
-        const result = await startClaimFromExternalHandler(
-          mockContext as unknown as Parameters<typeof startClaimFromExternalHandler>[0],
-          { source, externalId }
-        );
+        const result = await startClaimFromExternal.handler({
+          params: undefined,
+          input: { source, externalId },
+          auth: { did: 'did:plc:testuser123', iss: 'did:plc:testuser123' },
+          c: mockContext as never,
+        });
 
-        expect(result.claim).toBeDefined();
+        expect(result.body.claim).toBeDefined();
         expect(mockClaimingService.startClaimFromExternal).toHaveBeenCalledWith(
           source,
           externalId,

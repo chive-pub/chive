@@ -1,0 +1,201 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.listElevationRequests",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List pending elevation requests for admin review. Only accessible by administrators.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["requests", "total"],
+          "properties": {
+            "requests": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#elevationRequest"
+              },
+              "description": "List of elevation requests"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of requests"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "Unauthorized" }]
+    },
+    "elevationRequest": {
+      "type": "object",
+      "description": "Elevation request record",
+      "required": ["id", "did", "requestedRole", "currentRole", "requestedAt", "metrics"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Request identifier"
+        },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Requester DID"
+        },
+        "handle": {
+          "type": "string",
+          "description": "Requester handle"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Requester display name"
+        },
+        "requestedRole": {
+          "type": "string",
+          "knownValues": ["trusted-editor", "administrator"],
+          "description": "Role being requested"
+        },
+        "currentRole": {
+          "type": "string",
+          "knownValues": ["community-member", "trusted-editor", "administrator"],
+          "description": "Current role"
+        },
+        "requestedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Request timestamp"
+        },
+        "metrics": {
+          "type": "ref",
+          "ref": "#reputationMetrics"
+        },
+        "verificationNotes": {
+          "type": "string",
+          "description": "Admin verification notes"
+        }
+      }
+    },
+    "reputationMetrics": {
+      "type": "object",
+      "description": "User reputation metrics for governance",
+      "required": [
+        "did",
+        "accountCreatedAt",
+        "accountAgeDays",
+        "eprintCount",
+        "wellEndorsedEprintCount",
+        "totalEndorsements",
+        "proposalCount",
+        "voteCount",
+        "successfulProposals",
+        "warningCount",
+        "violationCount",
+        "reputationScore",
+        "role",
+        "eligibleForTrustedEditor",
+        "missingCriteria"
+      ],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "User DID"
+        },
+        "accountCreatedAt": {
+          "type": "integer",
+          "description": "Account creation timestamp"
+        },
+        "accountAgeDays": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Account age in days"
+        },
+        "eprintCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total eprints authored"
+        },
+        "wellEndorsedEprintCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Eprints with substantial endorsements"
+        },
+        "totalEndorsements": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total endorsements received"
+        },
+        "proposalCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Governance proposals submitted"
+        },
+        "voteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Votes cast"
+        },
+        "successfulProposals": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposals that were approved"
+        },
+        "warningCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Moderation warnings received"
+        },
+        "violationCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy violations recorded"
+        },
+        "reputationScore": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Computed reputation score"
+        },
+        "role": {
+          "type": "string",
+          "knownValues": [
+            "community-member",
+            "trusted-editor",
+            "graph-editor",
+            "domain-expert",
+            "administrator"
+          ],
+          "description": "Current governance role"
+        },
+        "eligibleForTrustedEditor": {
+          "type": "boolean",
+          "description": "Whether user meets trusted editor criteria"
+        },
+        "missingCriteria": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of missing eligibility criteria"
+        }
+      }
+    }
+  }
+}

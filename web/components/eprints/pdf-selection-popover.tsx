@@ -28,7 +28,7 @@ import { MessageSquare, Link2, Highlighter, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { TextSpanTarget } from '@/lib/api/schema';
+import type { UnifiedTextSpanTarget } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
@@ -42,19 +42,19 @@ export interface PDFSelectionPopoverProps {
   selectedText: string;
 
   /** W3C target for the selection */
-  target: TextSpanTarget;
+  target: UnifiedTextSpanTarget;
 
   /** Position for the popover */
   position: { x: number; y: number };
 
   /** Callback to add a review */
-  onAddReview: (target: TextSpanTarget) => void;
+  onAddReview: (target: UnifiedTextSpanTarget) => void;
 
   /** Callback to link to entity */
-  onLinkEntity: (target: TextSpanTarget, selectedText: string) => void;
+  onLinkEntity: (target: UnifiedTextSpanTarget, selectedText: string) => void;
 
   /** Callback to highlight (without annotation) */
-  onHighlight?: (target: TextSpanTarget) => void;
+  onHighlight?: (target: UnifiedTextSpanTarget) => void;
 
   /** Callback to close the popover */
   onClose: () => void;

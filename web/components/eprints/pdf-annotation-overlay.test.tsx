@@ -5,7 +5,11 @@ import {
   reviewsToHighlights,
   type AnnotationHighlight,
 } from './pdf-annotation-overlay';
-import { createMockReview, createMockTextSpanTarget, createMockAuthor } from '@/tests/mock-data';
+import {
+  createMockReview,
+  createMockTextSpanTarget,
+  createMockReviewAuthor,
+} from '@/tests/mock-data';
 
 describe('PDFAnnotationOverlay', () => {
   const createHighlight = (overrides?: Partial<AnnotationHighlight>): AnnotationHighlight => ({
@@ -221,7 +225,7 @@ describe('reviewsToHighlights', () => {
         uri: 'at://review/1',
         content: 'Great point about the methodology',
         target: createMockTextSpanTarget(),
-        author: createMockAuthor({ displayName: 'Dr. Reviewer' }),
+        author: createMockReviewAuthor({ displayName: 'Dr. Reviewer' }),
       }),
     ];
 
@@ -286,7 +290,7 @@ describe('reviewsToHighlights', () => {
     const reviews = [
       createMockReview({
         target: createMockTextSpanTarget(),
-        author: createMockAuthor({ displayName: '', handle: 'user.bsky.social' }),
+        author: createMockReviewAuthor({ displayName: '', handle: 'user.bsky.social' }),
       }),
     ];
 
@@ -299,7 +303,7 @@ describe('reviewsToHighlights', () => {
     const reviews = [
       createMockReview({
         target: createMockTextSpanTarget(),
-        author: createMockAuthor({ displayName: '', handle: '' }),
+        author: createMockReviewAuthor({ displayName: '', handle: '' }),
       }),
     ];
 

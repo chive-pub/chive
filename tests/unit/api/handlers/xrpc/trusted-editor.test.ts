@@ -8,12 +8,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getEditorStatusHandler } from '@/api/handlers/xrpc/governance/getEditorStatus.js';
-import { grantDelegationHandler } from '@/api/handlers/xrpc/governance/grantDelegation.js';
-import { listTrustedEditorsHandler } from '@/api/handlers/xrpc/governance/listTrustedEditors.js';
-import { requestElevationHandler } from '@/api/handlers/xrpc/governance/requestElevation.js';
-import { revokeDelegationHandler } from '@/api/handlers/xrpc/governance/revokeDelegation.js';
-import { revokeRoleHandler } from '@/api/handlers/xrpc/governance/revokeRole.js';
+import { getEditorStatus } from '@/api/handlers/xrpc/governance/getEditorStatus.js';
+import { grantDelegation } from '@/api/handlers/xrpc/governance/grantDelegation.js';
+import { listTrustedEditors } from '@/api/handlers/xrpc/governance/listTrustedEditors.js';
+import { requestElevation } from '@/api/handlers/xrpc/governance/requestElevation.js';
+import { revokeDelegation } from '@/api/handlers/xrpc/governance/revokeDelegation.js';
+import { revokeRole } from '@/api/handlers/xrpc/governance/revokeRole.js';
 import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -147,7 +147,7 @@ describe('XRPC Trusted Editor Handlers', () => {
     };
   });
 
-  describe('getEditorStatusHandler', () => {
+  describe('getEditorStatus.handler', () => {
     it('returns editor status for the current user when no DID specified', async () => {
       const status = createMockEditorStatus({ did: 'did:plc:currentuser' as DID });
       mockTrustedEditorService.getEditorStatus.mockResolvedValue({
@@ -155,13 +155,15 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: status,
       });
 
-      const result = await getEditorStatusHandler(
-        mockContext as unknown as Parameters<typeof getEditorStatusHandler>[0],
-        {}
-      );
+      const result = await getEditorStatus.handler({
+        params: {},
+        input: undefined,
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof getEditorStatus.handler>[0]['c'],
+      });
 
-      expect(result.did).toBe('did:plc:currentuser');
-      expect(result.role).toBe('community-member');
+      expect(result.body.did).toBe('did:plc:currentuser');
+      expect(result.body.role).toBe('community-member');
       expect(mockTrustedEditorService.getEditorStatus).toHaveBeenCalledWith('did:plc:currentuser');
     });
 
@@ -172,12 +174,14 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: status,
       });
 
-      const result = await getEditorStatusHandler(
-        mockContext as unknown as Parameters<typeof getEditorStatusHandler>[0],
-        { did: 'did:plc:target' }
-      );
+      const result = await getEditorStatus.handler({
+        params: { did: 'did:plc:target' },
+        input: undefined,
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof getEditorStatus.handler>[0]['c'],
+      });
 
-      expect(result.did).toBe('did:plc:target');
+      expect(result.body.did).toBe('did:plc:target');
       expect(mockTrustedEditorService.getEditorStatus).toHaveBeenCalledWith('did:plc:target');
     });
 
@@ -188,10 +192,12 @@ describe('XRPC Trusted Editor Handlers', () => {
       });
 
       await expect(
-        getEditorStatusHandler(
-          mockContext as unknown as Parameters<typeof getEditorStatusHandler>[0],
-          { did: 'did:plc:nonexistent' }
-        )
+        getEditorStatus.handler({
+          params: { did: 'did:plc:nonexistent' },
+          input: undefined,
+          auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+          c: mockContext as unknown as Parameters<typeof getEditorStatus.handler>[0]['c'],
+        })
       ).rejects.toThrow();
     });
 
@@ -209,14 +215,16 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: status,
       });
 
-      const result = await getEditorStatusHandler(
-        mockContext as unknown as Parameters<typeof getEditorStatusHandler>[0],
-        {}
-      );
+      const result = await getEditorStatus.handler({
+        params: {},
+        input: undefined,
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof getEditorStatus.handler>[0]['c'],
+      });
 
-      expect(result.role).toBe('trusted-editor');
-      expect(result.hasDelegation).toBe(true);
-      expect(result.delegationCollections).toContain('pub.chive.graph.authority');
+      expect(result.body.role).toBe('trusted-editor');
+      expect(result.body.hasDelegation).toBe(true);
+      expect(result.body.delegationCollections).toContain('pub.chive.graph.authority');
     });
 
     it('includes eligibility information for community members', async () => {
@@ -232,17 +240,19 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: status,
       });
 
-      const result = await getEditorStatusHandler(
-        mockContext as unknown as Parameters<typeof getEditorStatusHandler>[0],
-        {}
-      );
+      const result = await getEditorStatus.handler({
+        params: {},
+        input: undefined,
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof getEditorStatus.handler>[0]['c'],
+      });
 
-      expect(result.metrics.eligibleForTrustedEditor).toBe(false);
-      expect(result.metrics.missingCriteria).toContain('Need 10+ well-endorsed eprints');
+      expect(result.body.metrics.eligibleForTrustedEditor).toBe(false);
+      expect(result.body.metrics.missingCriteria).toContain('Need 10+ well-endorsed eprints');
     });
   });
 
-  describe('listTrustedEditorsHandler', () => {
+  describe('listTrustedEditors.handler', () => {
     it('returns list of trusted editors', async () => {
       const editors = [
         createMockEditorStatus({ did: 'did:plc:editor1' as DID, role: 'trusted-editor' }),
@@ -269,13 +279,15 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: createMockEditorStatus({ role: 'administrator' }),
       });
 
-      const result = await listTrustedEditorsHandler(
-        mockContext as unknown as Parameters<typeof listTrustedEditorsHandler>[0],
-        { limit: 20 }
-      );
+      const result = await listTrustedEditors.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof listTrustedEditors.handler>[0]['c'],
+      });
 
-      expect(result.editors).toHaveLength(2);
-      expect(result.total).toBe(2);
+      expect(result.body.editors).toHaveLength(2);
+      expect(result.body.total).toBe(2);
     });
 
     it('throws AuthorizationError for non-admin users', async () => {
@@ -285,10 +297,12 @@ describe('XRPC Trusted Editor Handlers', () => {
       });
 
       await expect(
-        listTrustedEditorsHandler(
-          mockContext as unknown as Parameters<typeof listTrustedEditorsHandler>[0],
-          { limit: 20 }
-        )
+        listTrustedEditors.handler({
+          params: { limit: 20 },
+          input: undefined,
+          auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+          c: mockContext as unknown as Parameters<typeof listTrustedEditors.handler>[0]['c'],
+        })
       ).rejects.toThrow('Administrator access required');
     });
 
@@ -305,16 +319,18 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: createMockEditorStatus({ role: 'administrator' }),
       });
 
-      const result = await listTrustedEditorsHandler(
-        mockContext as unknown as Parameters<typeof listTrustedEditorsHandler>[0],
-        { limit: 20, role: 'trusted-editor' }
-      );
+      const result = await listTrustedEditors.handler({
+        params: { limit: 20, role: 'trusted-editor' },
+        input: undefined,
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof listTrustedEditors.handler>[0]['c'],
+      });
 
-      expect(result.editors[0]?.role).toBe('trusted-editor');
+      expect(result.body.editors[0]?.role).toBe('trusted-editor');
     });
   });
 
-  describe('requestElevationHandler', () => {
+  describe('requestElevation.handler', () => {
     it('elevates eligible user to trusted editor', async () => {
       mockTrustedEditorService.getEditorStatus.mockResolvedValue({
         ok: true,
@@ -331,13 +347,15 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: undefined,
       });
 
-      const result = await requestElevationHandler(
-        mockContext as unknown as Parameters<typeof requestElevationHandler>[0],
-        { targetRole: 'trusted-editor' }
-      );
+      const result = await requestElevation.handler({
+        params: undefined as unknown as void,
+        input: { targetRole: 'trusted-editor' },
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof requestElevation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(true);
-      expect(result.message).toContain('Successfully elevated');
+      expect(result.body.success).toBe(true);
+      expect(result.body.message).toContain('Successfully elevated');
     });
 
     it('rejects ineligible user', async () => {
@@ -353,13 +371,15 @@ describe('XRPC Trusted Editor Handlers', () => {
         }),
       });
 
-      const result = await requestElevationHandler(
-        mockContext as unknown as Parameters<typeof requestElevationHandler>[0],
-        { targetRole: 'trusted-editor' }
-      );
+      const result = await requestElevation.handler({
+        params: undefined as unknown as void,
+        input: { targetRole: 'trusted-editor' },
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof requestElevation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('Not yet eligible');
+      expect(result.body.success).toBe(false);
+      expect(result.body.message).toContain('Not yet eligible');
     });
 
     it('rejects user who already has the role', async () => {
@@ -368,17 +388,19 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: createMockEditorStatus({ role: 'trusted-editor' }),
       });
 
-      const result = await requestElevationHandler(
-        mockContext as unknown as Parameters<typeof requestElevationHandler>[0],
-        { targetRole: 'trusted-editor' }
-      );
+      const result = await requestElevation.handler({
+        params: undefined as unknown as void,
+        input: { targetRole: 'trusted-editor' },
+        auth: { did: 'did:plc:currentuser' as DID, iss: 'did:plc:currentuser' },
+        c: mockContext as unknown as Parameters<typeof requestElevation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('already have');
+      expect(result.body.success).toBe(false);
+      expect(result.body.message).toContain('already have');
     });
   });
 
-  describe('grantDelegationHandler', () => {
+  describe('grantDelegation.handler', () => {
     beforeEach(() => {
       // Set admin context
       mockContext.get = vi.fn((key: string) => {
@@ -412,18 +434,20 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: { id: 'delegation-123' },
       });
 
-      const result = await grantDelegationHandler(
-        mockContext as unknown as Parameters<typeof grantDelegationHandler>[0],
-        {
+      const result = await grantDelegation.handler({
+        params: undefined as unknown as void,
+        input: {
           delegateDid: 'did:plc:delegate',
           collections: ['pub.chive.graph.authority'],
           daysValid: 365,
           maxRecordsPerDay: 100,
-        }
-      );
+        },
+        auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof grantDelegation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(true);
-      expect(result.delegationId).toBe('delegation-123');
+      expect(result.body.success).toBe(true);
+      expect(result.body.delegationId).toBe('delegation-123');
     });
 
     it('rejects delegation to community member', async () => {
@@ -441,15 +465,17 @@ describe('XRPC Trusted Editor Handlers', () => {
         });
 
       await expect(
-        grantDelegationHandler(
-          mockContext as unknown as Parameters<typeof grantDelegationHandler>[0],
-          {
+        grantDelegation.handler({
+          params: undefined as unknown as void,
+          input: {
             delegateDid: 'did:plc:member',
             collections: ['pub.chive.graph.authority'],
             daysValid: 365,
             maxRecordsPerDay: 100,
-          }
-        )
+          },
+          auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof grantDelegation.handler>[0]['c'],
+        })
       ).rejects.toThrow('must have trusted editor or higher role');
     });
 
@@ -467,22 +493,24 @@ describe('XRPC Trusted Editor Handlers', () => {
           }),
         });
 
-      const result = await grantDelegationHandler(
-        mockContext as unknown as Parameters<typeof grantDelegationHandler>[0],
-        {
+      const result = await grantDelegation.handler({
+        params: undefined as unknown as void,
+        input: {
           delegateDid: 'did:plc:delegate',
           collections: ['pub.chive.graph.authority'],
           daysValid: 365,
           maxRecordsPerDay: 100,
-        }
-      );
+        },
+        auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof grantDelegation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('already has an active delegation');
+      expect(result.body.success).toBe(false);
+      expect(result.body.message).toContain('already has an active delegation');
     });
   });
 
-  describe('revokeDelegationHandler', () => {
+  describe('revokeDelegation.handler', () => {
     beforeEach(() => {
       mockContext.get = vi.fn((key: string) => {
         if (key === 'services')
@@ -506,13 +534,15 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: undefined,
       });
 
-      const result = await revokeDelegationHandler(
-        mockContext as unknown as Parameters<typeof revokeDelegationHandler>[0],
-        { delegationId: 'delegation-123' }
-      );
+      const result = await revokeDelegation.handler({
+        params: undefined as unknown as void,
+        input: { delegationId: 'delegation-123' },
+        auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof revokeDelegation.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(true);
-      expect(result.delegationId).toBe('delegation-123');
+      expect(result.body.success).toBe(true);
+      expect(result.body.delegationId).toBe('delegation-123');
     });
 
     it('throws AuthorizationError for non-admin', async () => {
@@ -522,15 +552,17 @@ describe('XRPC Trusted Editor Handlers', () => {
       });
 
       await expect(
-        revokeDelegationHandler(
-          mockContext as unknown as Parameters<typeof revokeDelegationHandler>[0],
-          { delegationId: 'delegation-123' }
-        )
+        revokeDelegation.handler({
+          params: undefined as unknown as void,
+          input: { delegationId: 'delegation-123' },
+          auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof revokeDelegation.handler>[0]['c'],
+        })
       ).rejects.toThrow('Administrator access required');
     });
   });
 
-  describe('revokeRoleHandler', () => {
+  describe('revokeRole.handler', () => {
     beforeEach(() => {
       mockContext.get = vi.fn((key: string) => {
         if (key === 'services')
@@ -562,13 +594,15 @@ describe('XRPC Trusted Editor Handlers', () => {
         value: undefined,
       });
 
-      const result = await revokeRoleHandler(
-        mockContext as unknown as Parameters<typeof revokeRoleHandler>[0],
-        { did: 'did:plc:target', reason: 'Violation of community guidelines' }
-      );
+      const result = await revokeRole.handler({
+        params: undefined as unknown as void,
+        input: { did: 'did:plc:target', reason: 'Violation of community guidelines' },
+        auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof revokeRole.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(true);
-      expect(result.message).toContain('Role revoked');
+      expect(result.body.success).toBe(true);
+      expect(result.body.message).toContain('Role revoked');
     });
 
     it('prevents revoking own role', async () => {
@@ -578,9 +612,11 @@ describe('XRPC Trusted Editor Handlers', () => {
       });
 
       await expect(
-        revokeRoleHandler(mockContext as unknown as Parameters<typeof revokeRoleHandler>[0], {
-          did: 'did:plc:admin',
-          reason: 'Testing',
+        revokeRole.handler({
+          params: undefined as unknown as void,
+          input: { did: 'did:plc:admin', reason: 'Testing' },
+          auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+          c: mockContext as unknown as Parameters<typeof revokeRole.handler>[0]['c'],
         })
       ).rejects.toThrow('Cannot revoke your own role');
     });
@@ -599,13 +635,15 @@ describe('XRPC Trusted Editor Handlers', () => {
           }),
         });
 
-      const result = await revokeRoleHandler(
-        mockContext as unknown as Parameters<typeof revokeRoleHandler>[0],
-        { did: 'did:plc:member', reason: 'Testing' }
-      );
+      const result = await revokeRole.handler({
+        params: undefined as unknown as void,
+        input: { did: 'did:plc:member', reason: 'Testing' },
+        auth: { did: 'did:plc:admin' as DID, iss: 'did:plc:admin' },
+        c: mockContext as unknown as Parameters<typeof revokeRole.handler>[0]['c'],
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('does not have a special role');
+      expect(result.body.success).toBe(false);
+      expect(result.body.message).toContain('does not have a special role');
     });
   });
 });

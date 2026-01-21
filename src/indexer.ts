@@ -363,7 +363,7 @@ async function main(): Promise<void> {
 
     // Create indexing service
     const indexingService = new IndexingService({
-      relay: config.relayUrl,
+      relays: [config.relayUrl],
       db: pgPool,
       redis,
       redisConnection: parseRedisUrl(config.redisUrl),

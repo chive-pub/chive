@@ -32,6 +32,7 @@ import {
   BarChart3,
   Globe,
   Stethoscope,
+  CircleDot,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -84,8 +85,12 @@ interface ContributionConfig {
 
 /**
  * Configuration for each contribution type.
+ *
+ * @remarks
+ * Uses `Record<string, ContributionConfig>` to allow safe indexing with
+ * open union types from the lexicon (`ContributionType | (string & {})`).
  */
-const CONTRIBUTION_CONFIG: Record<ContributionType, ContributionConfig> = {
+const CONTRIBUTION_CONFIG: Record<string, ContributionConfig> = {
   // Core Research
   methodological: {
     icon: FlaskConical,
@@ -206,6 +211,29 @@ const CONTRIBUTION_CONFIG: Record<ContributionType, ContributionConfig> = {
 };
 
 /**
+ * Default configuration for unknown contribution types.
+ */
+const DEFAULT_CONTRIBUTION_CONFIG: ContributionConfig = {
+  icon: CircleDot,
+  label: 'Other',
+  description: 'Additional contribution type',
+  colorClass: 'text-gray-600 dark:text-gray-400',
+  bgClass: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-900/30 dark:hover:bg-gray-900/50',
+};
+
+/**
+ * Gets the configuration for a contribution type with fallback for unknown types.
+ */
+function getContributionConfig(type: string): ContributionConfig {
+  return (
+    CONTRIBUTION_CONFIG[type] ?? {
+      ...DEFAULT_CONTRIBUTION_CONFIG,
+      label: type.charAt(0).toUpperCase() + type.slice(1).replace(/-/g, ' '),
+    }
+  );
+}
+
+/**
  * Size configurations.
  */
 const SIZE_CONFIG = {
@@ -242,7 +270,7 @@ export function EndorsementBadge({
   onClick,
   className,
 }: EndorsementBadgeProps) {
-  const config = CONTRIBUTION_CONFIG[type];
+  const config = getContributionConfig(type);
   const sizeConfig = SIZE_CONFIG[size];
   const Icon = config.icon;
 
@@ -285,11 +313,30 @@ export function EndorsementBadge({
 }
 
 /**
+ * Structural type for endorsement summary that accepts both getSummary
+ * and listForEprint response shapes (which differ in $type discriminators).
+ *
+ * @remarks
+ * The `byType` property is typed as `object` to accept any object type,
+ * including the generated `EndorsementCountByType` interfaces which have
+ * different `$type` discriminator values but share the same runtime shape.
+ */
+export interface EndorsementSummaryInput {
+  /** Total endorsement count */
+  total: number;
+  /** Unique endorser count */
+  endorserCount: number;
+  /** Counts by contribution type (open object with optional counts) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  byType: { $type?: string } | Record<string, any>;
+}
+
+/**
  * Displays endorsement badges based on summary data.
  */
 export interface EndorsementBadgeGroupProps {
   /** Endorsement summary with counts by type */
-  summary: EndorsementSummary;
+  summary: EndorsementSummaryInput;
 
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
@@ -326,9 +373,10 @@ export function EndorsementBadgeGroup({
   className,
 }: EndorsementBadgeGroupProps) {
   // Get non-zero contribution types, sorted by count descending
+  // Filter for numeric values > 0 (excludes $type and other non-numeric properties)
   const contributionEntries = Object.entries(summary.byType || {})
-    .filter(([, count]) => count && count > 0)
-    .sort(([, a], [, b]) => (b || 0) - (a || 0)) as [ContributionType, number][];
+    .filter((entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] > 0)
+    .sort(([, a], [, b]) => b - a) as [ContributionType, number][];
 
   // Don't render if no endorsements
   if (contributionEntries.length === 0) {
@@ -455,6 +503,6 @@ export function EndorsementBadgeSkeleton({ size = 'md' }: { size?: 'sm' | 'md' |
 }
 
 /**
- * Re-export contribution config for external use.
+ * Re-export contribution config and helper for external use.
  */
-export { CONTRIBUTION_CONFIG };
+export { CONTRIBUTION_CONFIG, getContributionConfig };

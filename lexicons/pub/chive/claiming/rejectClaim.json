@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.rejectClaim",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Reject a pending claim with a reason. Admin only.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["claimId", "reason"],
+          "properties": {
+            "claimId": {
+              "type": "integer",
+              "description": "ID of the claim request to reject"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "Rejection reason"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the rejection was successful"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "Forbidden" },
+        { "name": "NotFound" }
+      ]
+    }
+  }
+}

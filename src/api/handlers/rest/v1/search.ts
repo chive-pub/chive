@@ -10,13 +10,12 @@
  */
 
 import type { Hono } from 'hono';
-import type { z } from 'zod';
+import { HTTPException } from 'hono/http-exception';
 
+import type { QueryParams as SearchSubmissionsParams } from '../../../../lexicons/generated/types/pub/chive/eprint/searchSubmissions.js';
 import { REST_PATH_PREFIX } from '../../../config.js';
-import { validateQuery } from '../../../middleware/validation.js';
-import { searchEprintsParamsSchema } from '../../../schemas/eprint.js';
 import type { ChiveEnv } from '../../../types/context.js';
-import { searchSubmissionsHandler } from '../../xrpc/eprint/index.js';
+import { searchSubmissions } from '../../xrpc/eprint/index.js';
 
 /**
  * Registers REST v1 search routes.
@@ -28,7 +27,7 @@ import { searchSubmissionsHandler } from '../../xrpc/eprint/index.js';
  * - `GET /api/v1/search` - Search eprints
  *
  * Query parameters:
- * - `q` (required): Search query string
+ * - `q` (optional): Search query string. If omitted, returns recent eprints (browsing mode)
  * - `limit`: Maximum results (default: 50, max: 100)
  * - `cursor`: Pagination cursor
  * - `sort`: Sort order (relevance, date, views)
@@ -48,9 +47,48 @@ export function registerSearchRoutes(app: Hono<ChiveEnv>): void {
   const searchPath = `${REST_PATH_PREFIX}/search`;
 
   // GET /api/v1/search: Search eprints
-  app.get(searchPath, validateQuery(searchEprintsParamsSchema), async (c) => {
-    const params = c.get('validatedInput') as z.infer<typeof searchEprintsParamsSchema>;
-    const result = await searchSubmissionsHandler(c, params);
-    return c.json(result);
+  // Supports browsing mode when q is omitted (returns recent eprints)
+  app.get(searchPath, async (c) => {
+    const query = c.req.query();
+
+    // Parse limit with default
+    const limit = query.limit ? parseInt(query.limit, 10) : 20;
+    if (isNaN(limit) || limit < 1 || limit > 100) {
+      throw new HTTPException(400, { message: 'Invalid limit: must be 1-100' });
+    }
+
+    // Parse fieldUris from comma-separated string or array
+    const fieldUris = query.fieldUris
+      ? Array.isArray(query.fieldUris)
+        ? query.fieldUris
+        : query.fieldUris.split(',')
+      : undefined;
+
+    const params: SearchSubmissionsParams = {
+      q: query.q,
+      limit,
+      cursor: query.cursor,
+      author: query.author,
+      fieldUris,
+      topicUris: query.topicUris
+        ? Array.isArray(query.topicUris)
+          ? query.topicUris
+          : query.topicUris.split(',')
+        : undefined,
+      facetUris: query.facetUris
+        ? Array.isArray(query.facetUris)
+          ? query.facetUris
+          : query.facetUris.split(',')
+        : undefined,
+      paperTypeUri: query.paperTypeUri,
+      publicationStatusUri: query.publicationStatusUri,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+    };
+
+    const user = c.get('user');
+    const auth = user ? { did: user.did, iss: user.did } : null;
+    const result = await searchSubmissions.handler({ params, input: undefined, auth, c });
+    return c.json(result.body);
   });
 }

@@ -188,25 +188,29 @@ function BodyItemRenderer({ item }: { item: RichAnnotationItem }) {
       return <span>{item.content}</span>;
 
     case 'wikidataRef':
-      return <WikidataRefChip qid={item.qid} label={item.label} url={item.url} />;
+      return (
+        <WikidataRefChip qid={item.qid ?? ''} label={item.label ?? 'Unknown'} url={item.url} />
+      );
 
     case 'nodeRef':
-      return <NodeRefChip uri={item.uri} label={item.label} subkind={item.subkind} />;
+      return (
+        <NodeRefChip uri={item.uri ?? ''} label={item.label ?? 'Unknown'} subkind={item.subkind} />
+      );
 
     case 'fieldRef':
-      return <FieldRefChip uri={item.uri} label={item.label} />;
+      return <FieldRefChip uri={item.uri ?? ''} label={item.label ?? 'Unknown'} />;
 
     case 'facetRef':
-      return <FacetRefChip dimension={item.dimension} value={item.value} />;
+      return <FacetRefChip dimension={item.dimension ?? 'unknown'} value={item.value ?? ''} />;
 
     case 'eprintRef':
-      return <EprintRefChip uri={item.uri} title={item.title} />;
+      return <EprintRefChip uri={item.uri ?? ''} title={item.title ?? 'Untitled'} />;
 
     case 'annotationRef':
-      return <AnnotationRefChip uri={item.uri} excerpt={item.excerpt} />;
+      return <AnnotationRefChip uri={item.uri ?? ''} excerpt={item.excerpt ?? '...'} />;
 
     case 'authorRef':
-      return <AuthorRefChip did={item.did} displayName={item.displayName} />;
+      return <AuthorRefChip did={item.did ?? ''} displayName={item.displayName ?? 'Unknown'} />;
 
     default:
       return null;
@@ -216,6 +220,18 @@ function BodyItemRenderer({ item }: { item: RichAnnotationItem }) {
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
+
+/**
+ * Extracts items from RichAnnotationBody, handling both array and object forms.
+ */
+function getBodyItems(body: RichAnnotationBody | null): RichAnnotationItem[] {
+  if (!body) return [];
+  // Handle array form
+  if (Array.isArray(body)) return body;
+  // Handle object form with items property
+  if ('items' in body && Array.isArray(body.items)) return body.items;
+  return [];
+}
 
 /**
  * Renders an annotation body with rich text and reference chips.
@@ -228,7 +244,9 @@ export function AnnotationBodyRenderer({
   className,
   mode = 'inline',
 }: AnnotationBodyRendererProps) {
-  if (!body || !body.items || body.items.length === 0) {
+  const items = getBodyItems(body);
+
+  if (items.length === 0) {
     return null;
   }
 
@@ -241,7 +259,7 @@ export function AnnotationBodyRenderer({
       )}
       data-testid="annotation-body"
     >
-      {body.items.map((item, index) => (
+      {items.map((item: RichAnnotationItem, index: number) => (
         <BodyItemRenderer key={index} item={item} />
       ))}
     </div>

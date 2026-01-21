@@ -5,18 +5,78 @@
  * This module defines domain models for peer reviews and endorsements.
  * All models are immutable (readonly properties).
  *
+ * Models are aligned with lexicon definitions:
+ * - Review: pub.chive.review.comment
+ * - Endorsement: pub.chive.review.endorsement
+ *
  * @packageDocumentation
  * @public
  */
 
 import type { AtUri, CID, DID, Timestamp } from '../atproto.js';
 
+import type { TextSpanTarget } from './annotation.js';
+
+// Re-export for convenience
+export type { TextSpanTarget };
+
+// =============================================================================
+// RICH TEXT TYPES
+// =============================================================================
+
+/**
+ * Plain text item in rich text body.
+ */
+export interface TextItem {
+  readonly type: 'text';
+  readonly content: string;
+}
+
+/**
+ * Reference to a knowledge graph node in rich text.
+ */
+export interface NodeRefItem {
+  readonly type: 'nodeRef';
+  readonly nodeUri: AtUri;
+  readonly label?: string;
+}
+
+/**
+ * Reference to another eprint in rich text.
+ */
+export interface EprintRefItem {
+  readonly type: 'eprintRef';
+  readonly eprintUri: AtUri;
+  readonly label?: string;
+}
+
+/**
+ * Rich text item (union type).
+ */
+export type RichTextItem = TextItem | NodeRefItem | EprintRefItem;
+
+/**
+ * Known motivation types (fallback when URI not available).
+ */
+export type MotivationType =
+  | 'commenting'
+  | 'questioning'
+  | 'assessing'
+  | 'suggesting'
+  | 'correcting'
+  | 'highlighting';
+
+// =============================================================================
+// REVIEW (COMMENT) MODEL
+// =============================================================================
+
 /**
  * Review comment on an eprint.
  *
  * @remarks
- * Represents a peer review comment, which can be inline (attached to specific
- * line) or general. Reviews support threaded discussions.
+ * Represents a peer review comment aligned with pub.chive.review.comment lexicon.
+ * Supports rich text body with node/eprint references, threaded discussions,
+ * and optional PDF targeting.
  *
  * @public
  */
@@ -42,27 +102,33 @@ export interface Review {
   readonly reviewer: DID;
 
   /**
-   * Review content (Markdown).
+   * Rich text body (array of text/nodeRef/eprintRef items).
    */
-  readonly content: string;
+  readonly body: readonly RichTextItem[];
 
   /**
-   * Line number for inline comments.
-   *
-   * @remarks
-   * If provided, this review is attached to a specific line in the PDF.
-   * Null for general comments.
+   * Target span in PDF for inline comments.
    */
-  readonly lineNumber?: number;
+  readonly target?: TextSpanTarget;
 
   /**
-   * Parent review URI for threaded discussions.
+   * AT URI of motivation node (from knowledge graph).
+   */
+  readonly motivationUri?: AtUri;
+
+  /**
+   * Fallback motivation type if URI not available.
+   */
+  readonly motivationFallback?: MotivationType;
+
+  /**
+   * Parent comment URI for threaded discussions.
    *
    * @remarks
    * If provided, this review is a reply to another review.
    * Null for top-level comments.
    */
-  readonly parentReviewUri?: AtUri;
+  readonly parentComment?: AtUri;
 
   /**
    * Review creation timestamp.
@@ -75,12 +141,17 @@ export interface Review {
   readonly updatedAt?: Timestamp;
 }
 
+// =============================================================================
+// ENDORSEMENT MODEL
+// =============================================================================
+
 /**
  * Endorsement of an eprint.
  *
  * @remarks
- * Formal endorsement indicating that the endorser vouches for specific
- * aspects of the eprint (methods, results, or overall quality).
+ * Formal endorsement aligned with pub.chive.review.endorsement lexicon.
+ * Endorsers select one or more contribution qualities from the knowledge graph
+ * (endorsement-contribution subkind nodes).
  *
  * @public
  */
@@ -106,14 +177,17 @@ export interface Endorsement {
   readonly endorser: DID;
 
   /**
-   * Type of endorsement.
+   * Contribution qualities being endorsed.
    *
    * @remarks
-   * - `methods`: Endorses experimental/computational methods
-   * - `results`: Endorses findings and conclusions
-   * - `overall`: General endorsement of quality
+   * Array of slugs from endorsement-contribution nodes in the knowledge graph.
+   * Examples: 'methodological', 'empirical', 'reproducibility', 'visualization'
+   *
+   * Must contain at least one value. Maximum 5 contributions per endorsement.
+   *
+   * @see pub.chive.review.endorsement lexicon for knownValues
    */
-  readonly endorsementType: 'methods' | 'results' | 'overall';
+  readonly contributions: readonly string[];
 
   /**
    * Optional comment explaining endorsement.

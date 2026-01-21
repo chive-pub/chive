@@ -1,0 +1,74 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.listEdges",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List knowledge graph edges with optional filtering",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "sourceUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Filter by source node AT-URI"
+          },
+          "targetUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Filter by target node AT-URI"
+          },
+          "relationSlug": {
+            "type": "string",
+            "description": "Filter by relation type slug"
+          },
+          "status": {
+            "type": "string",
+            "knownValues": ["proposed", "established", "deprecated"],
+            "description": "Filter by lifecycle status"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["edges", "hasMore", "total"],
+          "properties": {
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.graph.getEdge#graphEdge"
+              },
+              "description": "List of edges"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results exist"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total count of matching edges"
+            }
+          }
+        }
+      }
+    }
+  }
+}

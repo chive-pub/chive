@@ -461,8 +461,8 @@ describe('ATProto Core Services Compliance', () => {
 
       const endorsement: Endorsement = {
         $type: 'pub.chive.review.endorsement',
-        subject: { uri: TEST_URI, cid: TEST_CID },
-        endorsementType: 'methods',
+        eprintUri: TEST_URI,
+        contributions: ['methodological'],
         createdAt: new Date().toISOString(),
       };
 

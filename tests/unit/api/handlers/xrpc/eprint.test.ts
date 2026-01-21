@@ -8,8 +8,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getSubmissionHandler } from '@/api/handlers/xrpc/eprint/getSubmission.js';
-import { listByAuthorHandler } from '@/api/handlers/xrpc/eprint/listByAuthor.js';
+import { getSubmission } from '@/api/handlers/xrpc/eprint/getSubmission.js';
+import { listByAuthor } from '@/api/handlers/xrpc/eprint/listByAuthor.js';
 import type { EprintView } from '@/services/eprint/eprint-service.js';
 import type { AtUri, CID, DID, Timestamp } from '@/types/atproto.js';
 import { NotFoundError } from '@/types/errors.js';
@@ -44,9 +44,13 @@ const mockAuthor: EprintAuthor = {
   isHighlighted: false,
 };
 
+// Use valid CIDv1 strings for mock data
+const VALID_CID = 'bafyreigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi';
+const VALID_BLOB_CID = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku';
+
 const createMockEprint = (overrides?: Partial<EprintView>): EprintView => ({
   uri: 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri,
-  cid: 'bafyreiabc123' as CID,
+  cid: VALID_CID as CID,
   title: 'Quantum Computing Advances',
   abstract: createMockAbstract('This paper presents advances in quantum computing...'),
   abstractPlainText: 'This paper presents advances in quantum computing...',
@@ -56,7 +60,7 @@ const createMockEprint = (overrides?: Partial<EprintView>): EprintView => ({
   pdsUrl: 'https://bsky.social',
   documentBlobRef: {
     $type: 'blob',
-    ref: 'bafkreipdf123' as CID,
+    ref: VALID_BLOB_CID as CID,
     mimeType: 'application/pdf',
     size: 1024000,
   },
@@ -64,11 +68,12 @@ const createMockEprint = (overrides?: Partial<EprintView>): EprintView => ({
   publicationStatus: 'eprint',
   createdAt: new Date('2024-01-15T10:00:00Z'),
   indexedAt: new Date('2024-01-15T10:05:00Z'),
+  version: 1,
   versions: [
     {
       uri: 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri,
       versionNumber: 1,
-      cid: 'bafyreiabc123' as CID,
+      cid: VALID_CID as CID,
       createdAt: Date.parse('2024-01-15T10:00:00Z') as Timestamp,
       changes: 'Initial submission',
     },
@@ -104,8 +109,8 @@ describe('XRPC Eprint Handlers', () => {
   let mockEprintService: MockEprintService;
   let mockMetricsService: MockMetricsService;
   let mockContext: {
-    get: ReturnType<typeof vi.fn>;
-    set: ReturnType<typeof vi.fn>;
+    get: (key: string) => unknown;
+    set: (key: string, value: unknown) => void;
   };
 
   beforeEach(() => {
@@ -124,7 +129,7 @@ describe('XRPC Eprint Handlers', () => {
           case 'logger':
             return mockLogger;
           case 'user':
-            return undefined;
+            return null;
           default:
             return undefined;
         }
@@ -133,138 +138,126 @@ describe('XRPC Eprint Handlers', () => {
     };
   });
 
-  describe('getSubmissionHandler', () => {
+  /**
+   * Helper to get auth context from mock context.
+   * Returns null since our mock doesn't have an authenticated user.
+   */
+  function getAuthFromContext(): null {
+    return null;
+  }
+
+  describe('getSubmission', () => {
     it('returns eprint with ATProto-compliant source information', async () => {
       const eprint = createMockEprint();
       mockEprintService.getEprint.mockResolvedValue(eprint);
 
-      const result = await getSubmissionHandler(
-        mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: eprint.uri }
-      );
+      const auth = getAuthFromContext();
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth,
+        c: mockContext as never,
+      });
 
-      expect(result.uri).toBe(eprint.uri);
-      expect(result.title).toBe(eprint.title);
+      expect(result.body.uri).toBe(eprint.uri);
+      expect(result.body.value.title).toBe(eprint.title);
 
-      // Verify ATProto compliance: source field
-      expect(result.source).toBeDefined();
-      expect(result.source.pdsEndpoint).toBe('https://bsky.social');
-      expect(result.source.recordUrl).toContain('com.atproto.repo.getRecord');
-      expect(result.source.blobUrl).toContain('com.atproto.sync.getBlob');
-      expect(result.source.lastVerifiedAt).toBeDefined();
-      expect(typeof result.source.stale).toBe('boolean');
+      // Verify ATProto compliance: pdsUrl field
+      expect(result.body.pdsUrl).toBeDefined();
+      expect(result.body.pdsUrl).toBe('https://bsky.social');
     });
 
     it('includes document as BlobRef, not inline data', async () => {
       const eprint = createMockEprint();
       mockEprintService.getEprint.mockResolvedValue(eprint);
 
-      const result = await getSubmissionHandler(
-        mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: eprint.uri }
-      );
-
-      // Verify BlobRef structure
-      expect(result.document).toMatchObject({
-        $type: 'blob',
-        ref: 'bafkreipdf123',
-        mimeType: 'application/pdf',
-        size: 1024000,
+      const auth = getAuthFromContext();
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
+
+      // Verify document blob - it's now a BlobRef instance which has cid, mimeType, size
+      expect(result.body.value.document).toBeDefined();
+      // BlobRef from @atproto/lexicon stores cid as CID type
+      expect(result.body.value.document.mimeType).toBe('application/pdf');
+      expect(result.body.value.document.size).toBe(1024000);
     });
 
     it('includes version history', async () => {
       const eprint = createMockEprint();
       mockEprintService.getEprint.mockResolvedValue(eprint);
 
-      const result = await getSubmissionHandler(
-        mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: eprint.uri }
-      );
-
-      expect(result.versions).toHaveLength(1);
-      const firstVersion = result.versions?.[0];
-      if (firstVersion) {
-        expect(firstVersion).toMatchObject({
-          version: 1,
-          cid: 'bafyreiabc123',
-          changelog: 'Initial submission',
-        });
-      }
-    });
-
-    it('includes metrics when available', async () => {
-      const eprint = createMockEprint();
-      mockEprintService.getEprint.mockResolvedValue(eprint);
-
-      const result = await getSubmissionHandler(
-        mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: eprint.uri }
-      );
-
-      expect(result.metrics).toMatchObject({
-        views: 150,
-        downloads: 42,
-        endorsements: 5,
+      const auth = getAuthFromContext();
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth,
+        c: mockContext as never,
       });
-    });
 
-    it('throws NotFoundError when eprint does not exist', async () => {
-      mockEprintService.getEprint.mockResolvedValue(null);
-
-      await expect(
-        getSubmissionHandler(mockContext as unknown as Parameters<typeof getSubmissionHandler>[0], {
-          uri: 'at://did:plc:notfound/pub.chive.eprint.submission/xyz' as AtUri,
-        })
-      ).rejects.toThrow(NotFoundError);
+      // The getSubmission output schema doesn't have versions array
+      // It returns the record value directly - version history comes from separate endpoint
+      expect(result.body.cid).toBe(VALID_CID);
     });
 
     it('records view metric asynchronously', async () => {
       const eprint = createMockEprint();
       mockEprintService.getEprint.mockResolvedValue(eprint);
 
-      await getSubmissionHandler(
-        mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: eprint.uri }
-      );
+      const auth = getAuthFromContext();
+      await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth,
+        c: mockContext as never,
+      });
 
+      // View metric is recorded but not included in output
+      // Metrics are fetched separately via pub.chive.eprint.getMetrics
       expect(mockMetricsService.recordView).toHaveBeenCalledWith(
         eprint.uri,
         undefined // user DID (anonymous)
       );
     });
 
-    it('marks eprint as stale if indexed > 7 days ago', async () => {
-      const eprint = createMockEprint({
-        indexedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000), // 8 days ago
-      });
-      mockEprintService.getEprint.mockResolvedValue(eprint);
+    it('throws NotFoundError when eprint does not exist', async () => {
+      mockEprintService.getEprint.mockResolvedValue(null);
 
-      const result = await getSubmissionHandler(
-        mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: eprint.uri }
-      );
-
-      expect(result.source.stale).toBe(true);
+      const auth = getAuthFromContext();
+      await expect(
+        getSubmission.handler({
+          params: { uri: 'at://did:plc:notfound/pub.chive.eprint.submission/xyz' as AtUri },
+          input: undefined,
+          auth,
+          c: mockContext as never,
+        })
+      ).rejects.toThrow(NotFoundError);
     });
 
-    it('marks eprint as fresh if indexed within 7 days', async () => {
+    it('includes indexedAt timestamp', async () => {
       const eprint = createMockEprint({
-        indexedAt: new Date(), // Now
+        indexedAt: new Date('2024-01-15T10:05:00Z'),
       });
       mockEprintService.getEprint.mockResolvedValue(eprint);
 
-      const result = await getSubmissionHandler(
-        mockContext as unknown as Parameters<typeof getSubmissionHandler>[0],
-        { uri: eprint.uri }
-      );
+      const auth = getAuthFromContext();
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth,
+        c: mockContext as never,
+      });
 
-      expect(result.source.stale).toBe(false);
+      // indexedAt is returned as ISO string
+      expect(result.body.indexedAt).toBe('2024-01-15T10:05:00.000Z');
     });
   });
 
-  describe('listByAuthorHandler', () => {
-    it('returns paginated list with ATProto-compliant source info', async () => {
+  describe('listByAuthor', () => {
+    it('returns paginated list of eprints', async () => {
       const eprints = [
         createMockEprint(),
         createMockEprint({
@@ -278,20 +271,16 @@ describe('XRPC Eprint Handlers', () => {
         total: 2,
       });
 
-      const result = await listByAuthorHandler(
-        mockContext as unknown as Parameters<typeof listByAuthorHandler>[0],
-        { did: 'did:plc:author123', limit: 20, sort: 'date' }
-      );
+      const auth = getAuthFromContext();
+      const result = await listByAuthor.handler({
+        params: { did: 'did:plc:author123', limit: 20, sortBy: 'indexedAt', sortOrder: 'desc' },
+        input: undefined,
+        auth,
+        c: mockContext as never,
+      });
 
-      expect(result.eprints).toHaveLength(2);
-      expect(result.total).toBe(2);
-      expect(result.hasMore).toBe(false);
-
-      // Each eprint should have source info
-      for (const p of result.eprints) {
-        expect(p.source).toBeDefined();
-        expect(p.source.pdsEndpoint).toBe('https://bsky.social');
-      }
+      expect(result.body.eprints).toHaveLength(2);
+      expect(result.body.total).toBe(2);
     });
 
     it('handles pagination with cursor', async () => {
@@ -307,13 +296,16 @@ describe('XRPC Eprint Handlers', () => {
         total: 45,
       });
 
-      const result = await listByAuthorHandler(
-        mockContext as unknown as Parameters<typeof listByAuthorHandler>[0],
-        { did: 'did:plc:author123', limit: 20, sort: 'date' }
-      );
+      const auth = getAuthFromContext();
+      const result = await listByAuthor.handler({
+        params: { did: 'did:plc:author123', limit: 20, sortBy: 'indexedAt', sortOrder: 'desc' },
+        input: undefined,
+        auth,
+        c: mockContext as never,
+      });
 
-      expect(result.hasMore).toBe(true);
-      expect(result.cursor).toBe('20');
+      // cursor should be set when there are more results
+      expect(result.body.cursor).toBe('20');
     });
 
     it('truncates abstract to 500 characters', async () => {
@@ -328,13 +320,16 @@ describe('XRPC Eprint Handlers', () => {
         total: 1,
       });
 
-      const result = await listByAuthorHandler(
-        mockContext as unknown as Parameters<typeof listByAuthorHandler>[0],
-        { did: 'did:plc:author123', limit: 20, sort: 'date' }
-      );
+      const auth = getAuthFromContext();
+      const result = await listByAuthor.handler({
+        params: { did: 'did:plc:author123', limit: 20, sortBy: 'indexedAt', sortOrder: 'desc' },
+        input: undefined,
+        auth,
+        c: mockContext as never,
+      });
 
-      const firstEprint = result.eprints[0];
-      if (firstEprint) {
+      const firstEprint = result.body.eprints[0];
+      if (firstEprint?.abstract) {
         expect(firstEprint.abstract.length).toBe(500);
       }
     });

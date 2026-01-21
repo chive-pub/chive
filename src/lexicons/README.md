@@ -44,7 +44,7 @@ All Chive lexicons use the `pub.chive.*` namespace:
 | NSID                                  | Description                      |
 | ------------------------------------- | -------------------------------- |
 | `pub.chive.actor.profile`             | User profile metadata            |
-| `pub.chive.actor.discoverySettings`   | Content discovery preferences    |
+| `pub.chive.discovery.settings`        | Content discovery preferences    |
 | `pub.chive.eprint.submission`         | Core eprint record               |
 | `pub.chive.eprint.version`            | Version metadata                 |
 | `pub.chive.eprint.userTag`            | User-contributed tags            |

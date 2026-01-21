@@ -938,7 +938,6 @@ export interface ReviewCommentRecord {
   $type: 'pub.chive.review.comment';
   eprintUri: string;
   content: string;
-  lineNumber?: number;
   parentComment?: string;
   createdAt: string;
 }
@@ -949,7 +948,6 @@ export interface ReviewCommentRecord {
 export interface CreateReviewInput {
   eprintUri: string;
   content: string;
-  lineNumber?: number;
   parentReviewUri?: string;
 }
 
@@ -976,9 +974,6 @@ export async function createReviewRecord(
     createdAt: new Date().toISOString(),
   };
 
-  if (input.lineNumber !== undefined) {
-    record.lineNumber = input.lineNumber;
-  }
   if (input.parentReviewUri) {
     record.parentComment = input.parentReviewUri;
   }

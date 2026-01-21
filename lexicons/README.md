@@ -54,8 +54,10 @@ Reconciliation records for merging or splitting graph entities.
 **`pub.chive.actor.profile`**
 Chive-specific author profile with ORCID, affiliations, and research fields.
 
-**`pub.chive.actor.discoverySettings`**
-User preferences for discovery and notification settings.
+### Discovery Records
+
+**`pub.chive.discovery.settings`**
+User preferences for discovery and personalization settings.
 
 ### XRPC Queries
 

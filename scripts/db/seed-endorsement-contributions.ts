@@ -11,6 +11,10 @@ import { NodeCreator } from './lib/node-creator.js';
 
 /**
  * Endorsement contribution definitions.
+ *
+ * @remarks
+ * These slugs MUST match the knownValues in pub.chive.review.endorsement lexicon.
+ * See lexicons/pub/chive/review/endorsement.json for the source of truth.
  */
 const ENDORSEMENT_CONTRIBUTION_DEFINITIONS = [
   {
@@ -38,40 +42,70 @@ const ENDORSEMENT_CONTRIBUTION_DEFINITIONS = [
     displayOrder: 4,
   },
   {
-    slug: 'reproducibility',
-    label: 'Reproducibility',
-    description: 'The work provides sufficient detail and materials for replication.',
+    slug: 'conceptual',
+    label: 'Conceptual Innovation',
+    description: 'The work introduces novel concepts or reframes existing understanding.',
     displayOrder: 5,
   },
   {
-    slug: 'clarity',
-    label: 'Clarity of Presentation',
-    description: 'The work is well-written and clearly presents its findings.',
+    slug: 'technical',
+    label: 'Technical Excellence',
+    description: 'The work demonstrates high technical quality in implementation or analysis.',
     displayOrder: 6,
   },
   {
-    slug: 'novelty',
-    label: 'Novelty',
-    description: 'The work presents original ideas or approaches not previously explored.',
+    slug: 'data',
+    label: 'Data Quality',
+    description: 'The work provides high-quality data collection, curation, or analysis.',
     displayOrder: 7,
   },
   {
-    slug: 'significance',
-    label: 'Significance',
-    description: 'The work addresses an important problem with meaningful implications.',
+    slug: 'replication',
+    label: 'Replication Value',
+    description: 'The work replicates or extends existing findings with rigor.',
     displayOrder: 8,
+  },
+  {
+    slug: 'reproducibility',
+    label: 'Reproducibility',
+    description: 'The work provides sufficient detail and materials for replication.',
+    displayOrder: 9,
+  },
+  {
+    slug: 'synthesis',
+    label: 'Synthesis & Integration',
+    description: 'The work synthesizes diverse sources or integrates multiple perspectives.',
+    displayOrder: 10,
   },
   {
     slug: 'interdisciplinary',
     label: 'Interdisciplinary Impact',
     description: 'The work bridges multiple disciplines or has cross-domain applications.',
-    displayOrder: 9,
+    displayOrder: 11,
   },
   {
-    slug: 'practical',
-    label: 'Practical Application',
-    description: 'The work has clear practical applications or societal impact.',
-    displayOrder: 10,
+    slug: 'pedagogical',
+    label: 'Pedagogical Value',
+    description: 'The work is valuable for teaching or educational purposes.',
+    displayOrder: 12,
+  },
+  {
+    slug: 'visualization',
+    label: 'Visualization Quality',
+    description: 'The work provides excellent data visualization or graphical presentation.',
+    displayOrder: 13,
+  },
+  {
+    slug: 'societal-impact',
+    label: 'Societal Impact',
+    description: 'The work has meaningful implications for society or public policy.',
+    displayOrder: 14,
+  },
+  {
+    slug: 'clinical',
+    label: 'Clinical Relevance',
+    description: 'The work has direct applications to clinical practice or patient care.',
+    displayOrder: 15,
   },
 ] as const;
 

@@ -1,0 +1,375 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.browseFaceted",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Browse eprints using dynamic faceted classification from the knowledge graph",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Optional text query"
+          },
+          "facets": {
+            "type": "string",
+            "description": "JSON-encoded facet filters keyed by facet slug (e.g., {\"methodology\":[\"meta-analysis\"]})"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["hits", "facets", "hasMore", "total"],
+          "properties": {
+            "hits": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#eprintSummary"
+              },
+              "description": "Matching eprints"
+            },
+            "facets": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#facetDefinition"
+              },
+              "description": "Available facet refinements"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results exist"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total count of matching eprints"
+            },
+            "impressionId": {
+              "type": "string",
+              "description": "Impression ID for click tracking"
+            }
+          }
+        }
+      }
+    },
+    "eprintSummary": {
+      "type": "object",
+      "description": "Eprint summary for faceted browse results",
+      "required": [
+        "uri",
+        "cid",
+        "title",
+        "abstract",
+        "authors",
+        "submittedBy",
+        "license",
+        "createdAt",
+        "indexedAt",
+        "source"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Eprint AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "CID of indexed version"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Eprint abstract"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#authorRef"
+          },
+          "description": "All authors with contributions"
+        },
+        "submittedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of human user who submitted"
+        },
+        "paperDid": {
+          "type": "string",
+          "format": "did",
+          "description": "Paper DID if paper has its own PDS"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#fieldRef"
+          },
+          "description": "Subject fields"
+        },
+        "license": {
+          "type": "string",
+          "description": "License identifier"
+        },
+        "keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Keywords"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Index timestamp"
+        },
+        "source": {
+          "type": "ref",
+          "ref": "#sourceInfo",
+          "description": "Source PDS information"
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Relevance score (scaled by 1000 for 0.0-1.0 range)"
+        },
+        "highlights": {
+          "type": "unknown",
+          "description": "Search highlights keyed by field"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "description": "Author reference with contributions",
+      "required": ["did", "name", "order", "affiliations", "contributions"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "ORCID identifier"
+        },
+        "email": {
+          "type": "string",
+          "description": "Contact email"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Author order (1-based)"
+        },
+        "affiliations": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#affiliationRef"
+          },
+          "description": "Author affiliations"
+        },
+        "contributions": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#contributionRef"
+          },
+          "description": "CRediT contributions"
+        },
+        "isCorrespondingAuthor": {
+          "type": "boolean",
+          "description": "Whether this is the corresponding author"
+        },
+        "isHighlighted": {
+          "type": "boolean",
+          "description": "Whether this author should be highlighted"
+        },
+        "handle": {
+          "type": "string",
+          "description": "ATProto handle"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Avatar image URL"
+        }
+      }
+    },
+    "affiliationRef": {
+      "type": "object",
+      "description": "Author affiliation",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Institution name"
+        },
+        "rorId": {
+          "type": "string",
+          "description": "ROR identifier"
+        },
+        "department": {
+          "type": "string",
+          "description": "Department name"
+        }
+      }
+    },
+    "contributionRef": {
+      "type": "object",
+      "description": "CRediT contribution",
+      "required": ["typeUri", "typeId", "typeLabel"],
+      "properties": {
+        "typeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of contribution type node"
+        },
+        "typeId": {
+          "type": "string",
+          "description": "Contribution type identifier"
+        },
+        "typeLabel": {
+          "type": "string",
+          "description": "Contribution type label"
+        },
+        "degree": {
+          "type": "string",
+          "knownValues": ["lead", "equal", "supporting"],
+          "description": "Degree of contribution"
+        }
+      }
+    },
+    "fieldRef": {
+      "type": "object",
+      "description": "Subject field reference",
+      "required": ["uri", "label"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Field AT-URI"
+        },
+        "label": {
+          "type": "string",
+          "description": "Field label"
+        },
+        "id": {
+          "type": "string",
+          "description": "Field identifier"
+        },
+        "parentUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Parent field AT-URI"
+        }
+      }
+    },
+    "sourceInfo": {
+      "type": "object",
+      "description": "Source PDS information",
+      "required": ["pdsEndpoint"],
+      "properties": {
+        "pdsEndpoint": {
+          "type": "string",
+          "description": "PDS endpoint URL"
+        },
+        "recordUrl": {
+          "type": "string",
+          "description": "Direct record URL"
+        },
+        "blobUrl": {
+          "type": "string",
+          "description": "Blob URL"
+        },
+        "lastVerifiedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last verification timestamp"
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "Whether data is potentially stale"
+        }
+      }
+    },
+    "facetDefinition": {
+      "type": "object",
+      "description": "Facet definition from the knowledge graph",
+      "required": ["slug", "label", "values"],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "description": "Facet slug identifier"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label"
+        },
+        "description": {
+          "type": "string",
+          "description": "Facet description"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#facetValue"
+          },
+          "description": "Available values with counts"
+        }
+      }
+    },
+    "facetValue": {
+      "type": "object",
+      "description": "Facet value with count",
+      "required": ["value", "count"],
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Facet value"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of eprints with this value"
+        }
+      }
+    }
+  }
+}

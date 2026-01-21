@@ -8,6 +8,7 @@ import {
   createMockEprintTagsResponse,
   createMockTrendingTagsResponse,
 } from '@/tests/mock-data';
+import { APIError } from '@/lib/errors';
 
 import {
   tagKeys,
@@ -22,19 +23,39 @@ import {
 } from './use-tags';
 
 // Mock functions must be hoisted along with vi.mock
-const { mockApiGet, mockApiPost, mockGetCurrentAgent, mockCreateUserTagRecord, mockDeleteRecord } =
-  vi.hoisted(() => ({
-    mockApiGet: vi.fn(),
-    mockApiPost: vi.fn(),
-    mockGetCurrentAgent: vi.fn(),
-    mockCreateUserTagRecord: vi.fn(),
-    mockDeleteRecord: vi.fn(),
-  }));
+const {
+  mockListForEprint,
+  mockGetSuggestions,
+  mockGetTrending,
+  mockTagSearch,
+  mockGetDetail,
+  mockGetCurrentAgent,
+  mockCreateTagRecord,
+  mockDeleteRecord,
+} = vi.hoisted(() => ({
+  mockListForEprint: vi.fn(),
+  mockGetSuggestions: vi.fn(),
+  mockGetTrending: vi.fn(),
+  mockTagSearch: vi.fn(),
+  mockGetDetail: vi.fn(),
+  mockGetCurrentAgent: vi.fn(),
+  mockCreateTagRecord: vi.fn(),
+  mockDeleteRecord: vi.fn(),
+}));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
-    POST: mockApiPost,
+    pub: {
+      chive: {
+        tag: {
+          listForEprint: mockListForEprint,
+          getSuggestions: mockGetSuggestions,
+          getTrending: mockGetTrending,
+          search: mockTagSearch,
+          getDetail: mockGetDetail,
+        },
+      },
+    },
   },
 }));
 
@@ -43,7 +64,7 @@ vi.mock('@/lib/auth/oauth-client', () => ({
 }));
 
 vi.mock('@/lib/atproto/record-creator', () => ({
-  createTagRecord: mockCreateUserTagRecord,
+  createTagRecord: mockCreateTagRecord,
   deleteRecord: mockDeleteRecord,
 }));
 
@@ -101,9 +122,8 @@ describe('useEprintTags', () => {
 
   it('fetches tags for an eprint', async () => {
     const mockResponse = createMockEprintTagsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -114,9 +134,7 @@ describe('useEprintTags', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.listForEprint', {
-      params: { query: { eprintUri } },
-    });
+    expect(mockListForEprint).toHaveBeenCalledWith({ eprintUri });
   });
 
   it('is disabled when eprintUri is empty', () => {
@@ -127,10 +145,7 @@ describe('useEprintTags', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Tags unavailable' },
-    });
+    mockListForEprint.mockRejectedValueOnce(new Error('Tags unavailable'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useEprintTags(eprintUri), { wrapper: Wrapper });
@@ -149,7 +164,7 @@ describe('useEprintTags', () => {
     });
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockListForEprint).not.toHaveBeenCalled();
   });
 });
 
@@ -163,9 +178,8 @@ describe('useTagSuggestions', () => {
       createMockTagSuggestion({ normalizedForm: 'machine-learning' }),
       createMockTagSuggestion({ normalizedForm: 'deep-learning' }),
     ];
-    mockApiGet.mockResolvedValueOnce({
+    mockGetSuggestions.mockResolvedValueOnce({
       data: { suggestions },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -181,9 +195,7 @@ describe('useTagSuggestions', () => {
       source: s.source === 'cooccurrence' ? 'co-occurrence' : s.source,
     }));
     expect(result.current.data).toEqual(expectedSuggestions);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.getSuggestions', {
-      params: { query: { q: 'machine' } },
-    });
+    expect(mockGetSuggestions).toHaveBeenCalledWith({ q: 'machine' });
   });
 
   it('is disabled when query is less than 2 characters', () => {
@@ -194,9 +206,8 @@ describe('useTagSuggestions', () => {
   });
 
   it('is enabled when query is exactly 2 characters', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockGetSuggestions.mockResolvedValueOnce({
       data: { suggestions: [] },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -206,14 +217,11 @@ describe('useTagSuggestions', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalled();
+    expect(mockGetSuggestions).toHaveBeenCalled();
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Suggestions unavailable' },
-    });
+    mockGetSuggestions.mockRejectedValueOnce(new Error('Suggestions unavailable'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useTagSuggestions('machine'), { wrapper: Wrapper });
@@ -233,9 +241,8 @@ describe('useTrendingTags', () => {
 
   it('fetches trending tags with default time window', async () => {
     const mockResponse = createMockTrendingTagsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetTrending.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -246,16 +253,13 @@ describe('useTrendingTags', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.getTrending', {
-      params: { query: { timeWindow: 'week' } },
-    });
+    expect(mockGetTrending).toHaveBeenCalledWith({ timeWindow: 'week' });
   });
 
   it('fetches trending tags with custom time window', async () => {
     const mockResponse = createMockTrendingTagsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetTrending.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -265,16 +269,11 @@ describe('useTrendingTags', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.getTrending', {
-      params: { query: { timeWindow: 'month' } },
-    });
+    expect(mockGetTrending).toHaveBeenCalledWith({ timeWindow: 'month' });
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Trending unavailable' },
-    });
+    mockGetTrending.mockRejectedValueOnce(new Error('Trending unavailable'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useTrendingTags(), { wrapper: Wrapper });
@@ -298,9 +297,8 @@ describe('useTagSearch', () => {
       total: 1,
       hasMore: false,
     };
-    mockApiGet.mockResolvedValueOnce({
+    mockTagSearch.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -311,19 +309,16 @@ describe('useTagSearch', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.search', {
-      params: {
-        query: expect.objectContaining({
-          q: 'machine',
-        }),
-      },
-    });
+    expect(mockTagSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: 'machine',
+      })
+    );
   });
 
   it('passes search parameters', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockTagSearch.mockResolvedValueOnce({
       data: { tags: [], total: 0, hasMore: false },
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -341,15 +336,12 @@ describe('useTagSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.search', {
-      params: {
-        query: {
-          q: 'ai',
-          limit: 20,
-          minQuality: 0.5,
-          includeSpam: false,
-        },
-      },
+    expect(mockTagSearch).toHaveBeenCalledWith({
+      q: 'ai',
+      limit: 20,
+      minQuality: 0.5,
+      includeSpam: false,
+      cursor: undefined,
     });
   });
 
@@ -361,10 +353,7 @@ describe('useTagSearch', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Search failed' },
-    });
+    mockTagSearch.mockRejectedValueOnce(new Error('Search failed'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useTagSearch('machine'), { wrapper: Wrapper });
@@ -384,9 +373,8 @@ describe('useTagDetail', () => {
 
   it('fetches tag detail', async () => {
     const mockTag = createMockTagSummary({ normalizedForm: 'machine-learning' });
-    mockApiGet.mockResolvedValueOnce({
+    mockGetDetail.mockResolvedValueOnce({
       data: mockTag,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -397,16 +385,11 @@ describe('useTagDetail', () => {
     });
 
     expect(result.current.data).toEqual(mockTag);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.getDetail', {
-      params: { query: { tag: 'machine-learning' } },
-    });
+    expect(mockGetDetail).toHaveBeenCalledWith({ tag: 'machine-learning' });
   });
 
   it('returns null for non-existent tag (404)', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { status: 404, message: 'Not found' },
-    });
+    mockGetDetail.mockRejectedValueOnce(new APIError('Not found', 404, 'getDetail'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useTagDetail('nonexistent-tag'), { wrapper: Wrapper });
@@ -426,10 +409,7 @@ describe('useTagDetail', () => {
   });
 
   it('throws error for non-404 errors', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { status: 500, message: 'Server error' },
-    });
+    mockGetDetail.mockRejectedValueOnce(new APIError('Server error', 500, 'getDetail'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useTagDetail('machine-learning'), { wrapper: Wrapper });
@@ -452,7 +432,7 @@ describe('useCreateTag', () => {
 
   it('creates a tag', async () => {
     mockGetCurrentAgent.mockReturnValue(mockAgent as never);
-    mockCreateUserTagRecord.mockResolvedValueOnce({
+    mockCreateTagRecord.mockResolvedValueOnce({
       uri: 'at://did:plc:user123/pub.chive.eprint.userTag/abc',
       cid: 'bafycid123',
     });
@@ -465,7 +445,7 @@ describe('useCreateTag', () => {
       displayForm: 'Machine Learning',
     });
 
-    expect(mockCreateUserTagRecord).toHaveBeenCalledWith(mockAgent, {
+    expect(mockCreateTagRecord).toHaveBeenCalledWith(mockAgent, {
       eprintUri,
       displayForm: 'Machine Learning',
     });
@@ -489,7 +469,7 @@ describe('useCreateTag', () => {
 
   it('throws error when record creation fails', async () => {
     mockGetCurrentAgent.mockReturnValue(mockAgent as never);
-    mockCreateUserTagRecord.mockRejectedValueOnce(new Error('PDS write failed'));
+    mockCreateTagRecord.mockRejectedValueOnce(new Error('PDS write failed'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useCreateTag(), { wrapper: Wrapper });
@@ -557,9 +537,8 @@ describe('usePrefetchTags', () => {
 
   it('prefetches tags for an eprint', async () => {
     const mockResponse = createMockEprintTagsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper, queryClient } = createWrapper();
@@ -568,9 +547,7 @@ describe('usePrefetchTags', () => {
     result.current(eprintUri);
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.tag.listForEprint', {
-        params: { query: { eprintUri } },
-      });
+      expect(mockListForEprint).toHaveBeenCalledWith({ eprintUri });
     });
 
     // Check that data is in cache

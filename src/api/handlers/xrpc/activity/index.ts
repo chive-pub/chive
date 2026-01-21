@@ -5,27 +5,24 @@
  * @public
  */
 
-export { logActivityEndpoint, logActivityHandler } from './logActivity.js';
-export { markFailedEndpoint, markFailedHandler } from './markFailed.js';
-export { getActivityFeedEndpoint, getActivityFeedHandler } from './getActivityFeed.js';
-export {
-  getCorrelationMetricsEndpoint,
-  getCorrelationMetricsHandler,
-} from './getCorrelationMetrics.js';
+import { getActivityFeed } from './getActivityFeed.js';
+import { getCorrelationMetrics } from './getCorrelationMetrics.js';
+import { logActivity } from './logActivity.js';
+import { markFailed } from './markFailed.js';
 
-import { getActivityFeedEndpoint } from './getActivityFeed.js';
-import { getCorrelationMetricsEndpoint } from './getCorrelationMetrics.js';
-import { logActivityEndpoint } from './logActivity.js';
-import { markFailedEndpoint } from './markFailed.js';
+export { getActivityFeed } from './getActivityFeed.js';
+export { getCorrelationMetrics } from './getCorrelationMetrics.js';
+export { logActivity } from './logActivity.js';
+export { markFailed } from './markFailed.js';
 
 /**
- * All activity XRPC endpoints.
+ * Activity XRPC methods keyed by NSID.
  *
  * @public
  */
-export const activityEndpoints = [
-  logActivityEndpoint,
-  markFailedEndpoint,
-  getActivityFeedEndpoint,
-  getCorrelationMetricsEndpoint,
-] as const;
+export const activityMethods = {
+  'pub.chive.activity.log': logActivity,
+  'pub.chive.activity.markFailed': markFailed,
+  'pub.chive.activity.getFeed': getActivityFeed,
+  'pub.chive.activity.getCorrelationMetrics': getCorrelationMetrics,
+} as const;

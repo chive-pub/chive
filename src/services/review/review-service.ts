@@ -68,11 +68,6 @@ export interface ReviewComment {
   readonly parent?: AtUri;
   readonly createdAt: string;
   /**
-   * Line number for inline comments on specific lines of text.
-   * Used when commenting on a specific line in an eprint.
-   */
-  readonly lineNumber?: number;
-  /**
    * Text span target for precise inline annotations.
    * Follows W3C Web Annotation data model.
    */
@@ -82,12 +77,16 @@ export interface ReviewComment {
 /**
  * Endorsement record from lexicon.
  *
+ * @remarks
+ * Aligned with pub.chive.review.endorsement lexicon.
+ * Uses `contributions` array for CRediT taxonomy roles.
+ *
  * @public
  */
 export interface Endorsement {
   readonly $type: 'pub.chive.review.endorsement';
-  readonly subject: { readonly uri: AtUri; readonly cid: string };
-  readonly endorsementType: 'methods' | 'results' | 'overall';
+  readonly eprintUri: AtUri;
+  readonly contributions: readonly string[];
   readonly comment?: string;
   readonly createdAt: string;
 }
@@ -109,13 +108,24 @@ function extractDidFromUri(uri: AtUri): DID {
 /**
  * Endorsement view for display.
  *
+ * @remarks
+ * Aligned with pub.chive.review.endorsement lexicon.
+ * Uses `contributions` array for CRediT taxonomy roles.
+ *
  * @public
  */
 export interface EndorsementView {
   readonly uri: AtUri;
   readonly endorser: DID;
   readonly eprintUri: AtUri;
-  readonly endorsementType: 'methods' | 'results' | 'overall';
+  /**
+   * Array of contribution slugs being endorsed.
+   *
+   * @remarks
+   * Values from endorsement-contribution nodes in knowledge graph.
+   * Examples: 'methodological', 'empirical', 'reproducibility'
+   */
+  readonly contributions: readonly string[];
   readonly comment?: string;
   readonly createdAt: Date;
 }
@@ -159,7 +169,7 @@ export interface EndorsementSummary {
   readonly recentEndorsers: readonly {
     readonly did: DID;
     readonly endorsedAt: Date;
-    readonly endorsementType: string;
+    readonly contributions: readonly string[];
   }[];
 }
 
@@ -192,7 +202,7 @@ export interface EndorsementNotification {
   readonly endorserDisplayName?: string;
   readonly eprintUri: AtUri;
   readonly eprintTitle: string;
-  readonly endorsementType: 'methods' | 'results' | 'overall';
+  readonly contributions: readonly string[];
   readonly comment?: string;
   readonly createdAt: Date;
 }
@@ -269,14 +279,17 @@ export class ReviewService {
     metadata: RecordMetadata
   ): Promise<Result<void, DatabaseError>> {
     try {
+      // Convert text to rich text body format
+      const body = JSON.stringify([{ type: 'text', content: record.text }]);
+
       await this.pool.query(
         `INSERT INTO reviews_index (
-          uri, cid, eprint_uri, reviewer_did, content, line_number, parent_review_uri,
+          uri, cid, eprint_uri, reviewer_did, body, parent_comment,
           created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
-          content = EXCLUDED.content,
+          body = EXCLUDED.body,
           updated_at = NOW(),
           last_synced_at = NOW()`,
         [
@@ -284,8 +297,7 @@ export class ReviewService {
           metadata.cid,
           record.subject.uri,
           extractDidFromUri(metadata.uri),
-          record.text,
-          record.lineNumber ?? null,
+          body,
           record.parent ?? null,
           new Date(record.createdAt),
           metadata.pdsUrl,
@@ -325,20 +337,20 @@ export class ReviewService {
     try {
       await this.pool.query(
         `INSERT INTO endorsements_index (
-          uri, cid, eprint_uri, endorser_did, endorsement_type, comment,
+          uri, cid, eprint_uri, endorser_did, contributions, comment,
           created_at, pds_url, indexed_at, last_synced_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
-          endorsement_type = EXCLUDED.endorsement_type,
+          contributions = EXCLUDED.contributions,
           comment = EXCLUDED.comment,
           last_synced_at = NOW()`,
         [
           metadata.uri,
           metadata.cid,
-          record.subject.uri,
+          record.eprintUri,
           extractDidFromUri(metadata.uri),
-          record.endorsementType,
+          record.contributions,
           record.comment ?? null,
           new Date(record.createdAt),
           metadata.pdsUrl,
@@ -347,8 +359,8 @@ export class ReviewService {
 
       this.logger.info('Indexed endorsement', {
         uri: metadata.uri,
-        eprintUri: record.subject.uri,
-        type: record.endorsementType,
+        eprintUri: record.eprintUri,
+        contributions: record.contributions,
       });
 
       return Ok(undefined);
@@ -373,14 +385,17 @@ export class ReviewService {
   async getReviews(eprintUri: AtUri): Promise<readonly ReviewThread[]> {
     try {
       // Fetch all reviews for this eprint
+      // Extract text from body JSONB (body is array of {type, content} objects)
       const result = await this.pool.query<{
         uri: string;
         reviewer_did: string;
-        content: string;
-        parent_review_uri: string | null;
+        text: string;
+        parent_comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, reviewer_did, content, parent_review_uri, created_at
+        `SELECT uri, reviewer_did,
+                COALESCE(body->0->>'content', '') as text,
+                parent_comment, created_at
          FROM reviews_index
          WHERE eprint_uri = $1
          ORDER BY created_at ASC`,
@@ -393,8 +408,8 @@ export class ReviewService {
 
       // First pass: count replies for each review
       for (const row of result.rows) {
-        if (row.parent_review_uri) {
-          replyCounts.set(row.parent_review_uri, (replyCounts.get(row.parent_review_uri) ?? 0) + 1);
+        if (row.parent_comment) {
+          replyCounts.set(row.parent_comment, (replyCounts.get(row.parent_comment) ?? 0) + 1);
         }
       }
 
@@ -404,11 +419,11 @@ export class ReviewService {
           uri: row.uri as AtUri,
           author: row.reviewer_did,
           subject: eprintUri,
-          text: row.content,
-          parent: (row.parent_review_uri as AtUri) ?? undefined,
+          text: row.text,
+          parent: (row.parent_comment as AtUri) ?? undefined,
           createdAt: new Date(row.created_at),
           replyCount: replyCounts.get(row.uri) ?? 0,
-          parentUri: row.parent_review_uri ?? undefined,
+          parentUri: row.parent_comment ?? undefined,
         });
       }
 
@@ -482,11 +497,11 @@ export class ReviewService {
         uri: string;
         endorser_did: string;
         eprint_uri: string;
-        endorsement_type: 'methods' | 'results' | 'overall';
+        contributions: string[] | null;
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
+        `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1
          ORDER BY created_at DESC`,
@@ -497,7 +512,7 @@ export class ReviewService {
         uri: row.uri as AtUri,
         endorser: row.endorser_did as DID,
         eprintUri: row.eprint_uri as AtUri,
-        endorsementType: row.endorsement_type,
+        contributions: row.contributions ?? [],
         comment: row.comment ?? undefined,
         createdAt: new Date(row.created_at),
       }));
@@ -519,15 +534,15 @@ export class ReviewService {
    */
   async getEndorsementSummary(eprintUri: AtUri): Promise<EndorsementSummary> {
     try {
-      // Get aggregated counts
+      // Get aggregated counts by unnesting the contributions array
       const countsResult = await this.pool.query<{
-        endorsement_type: string;
+        contribution: string;
         count: string;
       }>(
-        `SELECT endorsement_type, COUNT(*) as count
-         FROM endorsements_index
+        `SELECT c as contribution, COUNT(*) as count
+         FROM endorsements_index, unnest(contributions) as c
          WHERE eprint_uri = $1
-         GROUP BY endorsement_type`,
+         GROUP BY c`,
         [eprintUri]
       );
 
@@ -550,10 +565,10 @@ export class ReviewService {
       // Get recent endorsers (last 5)
       const recentResult = await this.pool.query<{
         endorser_did: string;
-        endorsement_type: string;
+        contributions: string[];
         created_at: Date;
       }>(
-        `SELECT DISTINCT ON (endorser_did) endorser_did, endorsement_type, created_at
+        `SELECT DISTINCT ON (endorser_did) endorser_did, contributions, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1
          ORDER BY endorser_did, created_at DESC
@@ -564,7 +579,7 @@ export class ReviewService {
       // Build byType map
       const byType: Record<string, number> = {};
       for (const row of countsResult.rows) {
-        byType[row.endorsement_type] = parseInt(row.count, 10);
+        byType[row.contribution] = parseInt(row.count, 10);
       }
 
       return {
@@ -575,7 +590,7 @@ export class ReviewService {
         recentEndorsers: recentResult.rows.map((row) => ({
           did: row.endorser_did as DID,
           endorsedAt: new Date(row.created_at),
-          endorsementType: row.endorsement_type,
+          contributions: row.contributions,
         })),
       };
     } catch (error) {
@@ -609,11 +624,11 @@ export class ReviewService {
         uri: string;
         endorser_did: string;
         eprint_uri: string;
-        endorsement_type: 'methods' | 'results' | 'overall';
+        contributions: string[];
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
+        `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND endorser_did = $2
          LIMIT 1`,
@@ -629,7 +644,7 @@ export class ReviewService {
         uri: row.uri as AtUri,
         endorser: row.endorser_did as DID,
         eprintUri: row.eprint_uri as AtUri,
-        endorsementType: row.endorsement_type,
+        contributions: row.contributions ?? [],
         comment: row.comment ?? undefined,
         createdAt: new Date(row.created_at),
       };
@@ -669,7 +684,7 @@ export class ReviewService {
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
-      let query = `SELECT uri, endorser_did, eprint_uri, endorsement_type, comment, created_at
+      let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1`;
       const params: unknown[] = [eprintUri];
@@ -690,7 +705,7 @@ export class ReviewService {
         uri: string;
         endorser_did: string;
         eprint_uri: string;
-        endorsement_type: 'methods' | 'results' | 'overall';
+        contributions: string[];
         comment: string | null;
         created_at: Date;
       }>(query, params);
@@ -710,7 +725,7 @@ export class ReviewService {
           uri: row.uri as AtUri,
           endorser: row.endorser_did as DID,
           eprintUri: row.eprint_uri as AtUri,
-          endorsementType: row.endorsement_type,
+          contributions: row.contributions ?? [],
           comment: row.comment ?? undefined,
           createdAt: new Date(row.created_at),
         })),
@@ -744,13 +759,15 @@ export class ReviewService {
         uri: string;
         reviewer_did: string;
         eprint_uri: string;
-        content: string;
-        parent_review_uri: string | null;
+        text: string;
+        parent_comment: string | null;
         created_at: Date;
         reply_count: number;
       }>(
-        `SELECT uri, reviewer_did, eprint_uri, content, parent_review_uri, created_at,
-                COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_review_uri = reviews_index.uri), 0)::int as reply_count
+        `SELECT uri, reviewer_did, eprint_uri,
+                COALESCE(body->0->>'content', '') as text,
+                parent_comment, created_at,
+                COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_comment = reviews_index.uri), 0)::int as reply_count
          FROM reviews_index
          WHERE uri = $1`,
         [uri]
@@ -765,8 +782,8 @@ export class ReviewService {
         uri: row.uri as AtUri,
         author: row.reviewer_did,
         subject: row.eprint_uri as AtUri,
-        text: row.content,
-        parent: (row.parent_review_uri as AtUri) ?? undefined,
+        text: row.text,
+        parent: (row.parent_comment as AtUri) ?? undefined,
         createdAt: new Date(row.created_at),
         replyCount: row.reply_count,
       };
@@ -794,24 +811,24 @@ export class ReviewService {
         uri: string;
         reviewer_did: string;
         eprint_uri: string;
-        content: string;
-        parent_review_uri: string | null;
+        text: string;
+        parent_comment: string | null;
         created_at: Date;
         depth: number;
       }>(
         `WITH RECURSIVE thread AS (
-           SELECT uri, reviewer_did, eprint_uri, content, parent_review_uri, created_at, 0 AS depth
+           SELECT uri, reviewer_did, eprint_uri, COALESCE(body->0->>'content', '') as text, parent_comment, created_at, 0 AS depth
            FROM reviews_index
            WHERE uri = $1
 
            UNION ALL
 
-           SELECT r.uri, r.reviewer_did, r.eprint_uri, r.content, r.parent_review_uri, r.created_at, t.depth + 1
+           SELECT r.uri, r.reviewer_did, r.eprint_uri, COALESCE(r.body->0->>'content', '') as text, r.parent_comment, r.created_at, t.depth + 1
            FROM reviews_index r
-           INNER JOIN thread t ON r.parent_review_uri = t.uri
+           INNER JOIN thread t ON r.parent_comment = t.uri
            WHERE t.depth < $2
          )
-         SELECT uri, reviewer_did, eprint_uri, content, parent_review_uri, created_at, depth
+         SELECT uri, reviewer_did, eprint_uri, text, parent_comment, created_at, depth
          FROM thread
          ORDER BY depth ASC, created_at ASC`,
         [rootUri, maxDepth]
@@ -822,10 +839,10 @@ export class ReviewService {
       const replyCountResult =
         uris.length > 0
           ? await this.pool.query<{ parent_uri: string; count: string }>(
-              `SELECT parent_review_uri as parent_uri, COUNT(*)::text as count
+              `SELECT parent_comment as parent_uri, COUNT(*)::text as count
              FROM reviews_index
-             WHERE parent_review_uri = ANY($1)
-             GROUP BY parent_review_uri`,
+             WHERE parent_comment = ANY($1)
+             GROUP BY parent_comment`,
               [uris]
             )
           : { rows: [] };
@@ -839,8 +856,8 @@ export class ReviewService {
         uri: row.uri as AtUri,
         author: row.reviewer_did,
         subject: row.eprint_uri as AtUri,
-        text: row.content,
-        parent: (row.parent_review_uri as AtUri) ?? undefined,
+        text: row.text,
+        parent: (row.parent_comment as AtUri) ?? undefined,
         createdAt: new Date(row.created_at),
         replyCount: replyCounts.get(row.uri) ?? 0,
       }));
@@ -881,13 +898,15 @@ export class ReviewService {
         uri: string;
         reviewer_did: string;
         eprint_uri: string;
-        content: string;
-        parent_review_uri: string | null;
+        text: string;
+        parent_comment: string | null;
         created_at: Date;
         reply_count: number;
       }>(
-        `SELECT r.uri, r.reviewer_did, r.eprint_uri, r.content, r.parent_review_uri, r.created_at,
-                COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_review_uri = r.uri), 0)::int as reply_count
+        `SELECT r.uri, r.reviewer_did, r.eprint_uri,
+                COALESCE(r.body->0->>'content', '') as text,
+                r.parent_comment, r.created_at,
+                COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_comment = r.uri), 0)::int as reply_count
          FROM reviews_index r
          WHERE r.reviewer_did = $1
          ORDER BY r.created_at DESC
@@ -899,8 +918,8 @@ export class ReviewService {
         uri: row.uri as AtUri,
         author: row.reviewer_did,
         subject: row.eprint_uri as AtUri,
-        text: row.content,
-        parent: (row.parent_review_uri as AtUri) ?? undefined,
+        text: row.text,
+        parent: (row.parent_comment as AtUri) ?? undefined,
         createdAt: new Date(row.created_at),
         replyCount: row.reply_count,
       }));
@@ -961,8 +980,8 @@ export class ReviewService {
           r.uri,
           r.reviewer_did,
           r.eprint_uri,
-          r.content,
-          r.parent_review_uri,
+          COALESCE(r.body->0->>'content', '') as text,
+          r.parent_comment,
           r.created_at,
           e.title as eprint_title,
           a.handle as reviewer_handle,
@@ -989,8 +1008,8 @@ export class ReviewService {
         uri: string;
         reviewer_did: string;
         eprint_uri: string;
-        content: string;
-        parent_review_uri: string | null;
+        text: string;
+        parent_comment: string | null;
         created_at: Date;
         eprint_title: string;
         reviewer_handle: string | null;
@@ -1014,8 +1033,8 @@ export class ReviewService {
           reviewerDisplayName: row.reviewer_display_name ?? undefined,
           eprintUri: row.eprint_uri as AtUri,
           eprintTitle: row.eprint_title,
-          text: row.content,
-          isReply: !!row.parent_review_uri,
+          text: row.text,
+          isReply: !!row.parent_comment,
           createdAt: new Date(row.created_at),
         })),
         cursor,
@@ -1069,7 +1088,7 @@ export class ReviewService {
           en.uri,
           en.endorser_did,
           en.eprint_uri,
-          en.endorsement_type,
+          en.contributions,
           en.comment,
           en.created_at,
           e.title as eprint_title,
@@ -1097,7 +1116,7 @@ export class ReviewService {
         uri: string;
         endorser_did: string;
         eprint_uri: string;
-        endorsement_type: 'methods' | 'results' | 'overall';
+        contributions: string[];
         comment: string | null;
         created_at: Date;
         eprint_title: string;
@@ -1122,7 +1141,7 @@ export class ReviewService {
           endorserDisplayName: row.endorser_display_name ?? undefined,
           eprintUri: row.eprint_uri as AtUri,
           eprintTitle: row.eprint_title,
-          endorsementType: row.endorsement_type,
+          contributions: row.contributions,
           comment: row.comment ?? undefined,
           createdAt: new Date(row.created_at),
         })),

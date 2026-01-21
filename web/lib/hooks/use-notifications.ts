@@ -72,27 +72,20 @@ export function useReviewNotifications(options: UseReviewNotificationsOptions = 
   return useQuery<ReviewNotificationsResponse>({
     queryKey: notificationKeys.reviewsOnMyPapers({ limit, cursor }),
     queryFn: async () => {
-      const { data, error } = await authApi.GET(
-        '/xrpc/pub.chive.notification.listReviewsOnMyPapers',
-        {
-          params: {
-            query: {
-              limit,
-              cursor,
-            },
-          },
-        }
-      );
-
-      if (error) {
+      try {
+        const response = await authApi.pub.chive.notification.listReviewsOnMyPapers({
+          limit,
+          cursor,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          error.error?.message ?? 'Failed to fetch review notifications',
+          error instanceof Error ? error.message : 'Failed to fetch review notifications',
           undefined,
-          '/xrpc/pub.chive.notification.listReviewsOnMyPapers'
+          'pub.chive.notification.listReviewsOnMyPapers'
         );
       }
-
-      return data as ReviewNotificationsResponse;
     },
     enabled,
     staleTime: 30_000, // 30 seconds
@@ -137,27 +130,20 @@ export function useEndorsementNotifications(options: UseEndorsementNotifications
   return useQuery<EndorsementNotificationsResponse>({
     queryKey: notificationKeys.endorsementsOnMyPapers({ limit, cursor }),
     queryFn: async () => {
-      const { data, error } = await authApi.GET(
-        '/xrpc/pub.chive.notification.listEndorsementsOnMyPapers',
-        {
-          params: {
-            query: {
-              limit,
-              cursor,
-            },
-          },
-        }
-      );
-
-      if (error) {
+      try {
+        const response = await authApi.pub.chive.notification.listEndorsementsOnMyPapers({
+          limit,
+          cursor,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          error.error?.message ?? 'Failed to fetch endorsement notifications',
+          error instanceof Error ? error.message : 'Failed to fetch endorsement notifications',
           undefined,
-          '/xrpc/pub.chive.notification.listEndorsementsOnMyPapers'
+          'pub.chive.notification.listEndorsementsOnMyPapers'
         );
       }
-
-      return data as EndorsementNotificationsResponse;
     },
     enabled,
     staleTime: 30_000, // 30 seconds

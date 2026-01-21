@@ -40,7 +40,7 @@ import type { Driver, Session } from 'neo4j-driver';
 
 import { createNeo4jDriver, getGovernanceDid } from '../../src/storage/neo4j/setup.js';
 
-import { conceptUuid } from './lib/deterministic-uuid.js';
+import { uuidv5, CHIVE_NAMESPACE } from './lib/deterministic-uuid.js';
 
 // =============================================================================
 // Types
@@ -1024,7 +1024,8 @@ async function seedConcepts(session: Session, governanceDid: string): Promise<vo
 
   for (const concept of ALL_CONCEPTS) {
     // Generate deterministic UUID from slug for idempotency
-    const uuid = conceptUuid(concept.slug);
+    // Using the legacy concept:slug format to maintain backward compatibility with existing UUIDs
+    const uuid = uuidv5(CHIVE_NAMESPACE, `concept:${concept.slug}`);
 
     await session.run(
       `

@@ -12,15 +12,8 @@ import type {
   AuthorMetrics,
   AuthorProfileResponse,
   EprintSummary,
+  GetMyProfileResponse,
 } from '@/lib/api/schema';
-import type { paths } from '@/lib/api/schema.generated';
-
-/**
- * Chive profile type extracted from OpenAPI schema.
- * Used for both get and update operations.
- */
-export type ChiveProfile =
-  paths['/xrpc/pub.chive.actor.getMyProfile']['get']['responses']['200']['content']['application/json'];
 
 /**
  * Query key factory for author-related queries.
@@ -86,17 +79,17 @@ export function useAuthor(did: string, options: UseAuthorOptions = {}) {
   return useQuery({
     queryKey: authorKeys.profile(did),
     queryFn: async (): Promise<AuthorProfileResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.author.getProfile', {
-        params: { query: { did } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.author.getProfile({ did });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch author',
+          error instanceof Error ? error.message : 'Failed to fetch author',
           undefined,
-          '/xrpc/pub.chive.author.getProfile'
+          'pub.chive.author.getProfile'
         );
       }
-      return data!;
     },
     enabled: !!did && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -122,17 +115,17 @@ export function useAuthorProfile(did: string) {
   return useQuery({
     queryKey: authorKeys.profile(did),
     queryFn: async (): Promise<AuthorProfile> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.author.getProfile', {
-        params: { query: { did } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.author.getProfile({ did });
+        return response.data.profile;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch author profile',
+          error instanceof Error ? error.message : 'Failed to fetch author profile',
           undefined,
-          '/xrpc/pub.chive.author.getProfile'
+          'pub.chive.author.getProfile'
         );
       }
-      return data!.profile;
     },
     enabled: !!did,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -163,17 +156,17 @@ export function useAuthorMetrics(did: string) {
   return useQuery({
     queryKey: authorKeys.metrics(did),
     queryFn: async (): Promise<AuthorMetrics> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.author.getProfile', {
-        params: { query: { did } },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.author.getProfile({ did });
+        return response.data.metrics;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch author metrics',
+          error instanceof Error ? error.message : 'Failed to fetch author metrics',
           undefined,
-          '/xrpc/pub.chive.author.getProfile'
+          'pub.chive.author.getProfile'
         );
       }
-      return data!.metrics;
     },
     enabled: !!did,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -205,10 +198,12 @@ export function usePrefetchAuthor() {
     queryClient.prefetchQuery({
       queryKey: authorKeys.profile(did),
       queryFn: async (): Promise<AuthorProfileResponse | undefined> => {
-        const { data } = await api.GET('/xrpc/pub.chive.author.getProfile', {
-          params: { query: { did } },
-        });
-        return data;
+        try {
+          const response = await api.pub.chive.author.getProfile({ did });
+          return response.data;
+        } catch {
+          return undefined;
+        }
       },
       staleTime: 5 * 60 * 1000,
     });
@@ -248,7 +243,7 @@ export function formatOrcidUrl(orcid: string): string {
 interface AuthorEprintsResponse {
   eprints: EprintSummary[];
   cursor?: string;
-  hasMore: boolean;
+  total?: number;
 }
 
 interface UseAuthorEprintsOptions {
@@ -288,27 +283,26 @@ export function useAuthorEprints(did: string, options: UseAuthorEprintsOptions =
   return useInfiniteQuery({
     queryKey: authorKeys.eprints(did, { limit }),
     queryFn: async ({ pageParam }): Promise<AuthorEprintsResponse> => {
-      const { data, error } = await api.GET('/xrpc/pub.chive.eprint.listByAuthor', {
-        params: {
-          query: {
-            did,
-            limit,
-            sort: 'date' as const,
-            cursor: pageParam as string | undefined,
-          },
-        },
-      });
-      if (error) {
+      try {
+        const response = await api.pub.chive.eprint.listByAuthor({
+          did,
+          limit,
+          sortBy: 'publishedAt',
+          sortOrder: 'desc',
+          cursor: pageParam as string | undefined,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
         throw new APIError(
-          (error as { message?: string }).message ?? 'Failed to fetch author eprints',
+          error instanceof Error ? error.message : 'Failed to fetch author eprints',
           undefined,
-          '/xrpc/pub.chive.eprint.listByAuthor'
+          'pub.chive.eprint.listByAuthor'
         );
       }
-      return data!;
     },
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
+    getNextPageParam: (lastPage) => lastPage.cursor,
     enabled: !!did && enabled,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -362,11 +356,10 @@ export function useUpdateChiveProfile() {
 export function useMyChiveProfile() {
   return useQuery({
     queryKey: ['my-chive-profile'],
-    queryFn: async (): Promise<ChiveProfile | null> => {
+    queryFn: async (): Promise<GetMyProfileResponse | null> => {
       try {
-        // authApi throws APIError on non-2xx via error middleware
-        const { data } = await authApi.GET('/xrpc/pub.chive.actor.getMyProfile');
-        return data ?? null;
+        const response = await authApi.pub.chive.actor.getMyProfile();
+        return response.data ?? null;
       } catch (error) {
         // Not found is okay; user may not have a Chive profile yet.
         if (error instanceof APIError && error.statusCode === 404) {

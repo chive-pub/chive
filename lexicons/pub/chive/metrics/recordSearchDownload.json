@@ -1,0 +1,42 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.metrics.recordSearchDownload",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Record a download event from a search result (strong positive relevance signal)",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["impressionId", "uri"],
+          "properties": {
+            "impressionId": {
+              "type": "string",
+              "description": "UUID of the search impression"
+            },
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the downloaded eprint"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the download was recorded"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "InvalidRequest" }]
+    }
+  }
+}

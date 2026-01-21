@@ -92,28 +92,6 @@ export class AlphaLandingPage {
 }
 
 /**
- * Home page (alias for AlphaLandingPage for backwards compatibility).
- */
-export class HomePage extends AlphaLandingPage {
-  // Backwards compatibility aliases
-  readonly heroTitle: Locator;
-  readonly heroSubtitle: Locator;
-  readonly searchCta: Locator;
-  readonly submitCta: Locator;
-  readonly header: HeaderComponent;
-
-  constructor(page: Page) {
-    super(page);
-    this.header = new HeaderComponent(page);
-    this.heroTitle = this.title;
-    this.heroSubtitle = this.tagline;
-    // These don't exist on the new landing page but provide stubs
-    this.searchCta = page.getByRole('link', { name: /explore|browse|search/i }).first();
-    this.submitCta = page.getByRole('link', { name: /submit/i }).first();
-  }
-}
-
-/**
  * Search page.
  */
 export class SearchPage {
@@ -261,7 +239,6 @@ export class AuthorPage {
 export class SignInPage {
   readonly page: Page;
   readonly handleInput: Locator;
-  readonly pdsInput: Locator; // Alias for backwards compatibility
   readonly continueButton: Locator;
   readonly errorMessage: Locator;
   readonly validationError: Locator;
@@ -272,7 +249,6 @@ export class SignInPage {
     this.page = page;
     // The login form uses a handle/DID input (accessible name comes from placeholder)
     this.handleInput = page.getByRole('textbox', { name: /bsky\.social/i });
-    this.pdsInput = this.handleInput; // Alias
     this.continueButton = page.getByRole('button', { name: /continue with at protocol/i });
     // Server-side errors shown in Alert (exclude Next.js route announcer)
     this.errorMessage = page.locator('[role="alert"]:not(#__next-route-announcer__)');

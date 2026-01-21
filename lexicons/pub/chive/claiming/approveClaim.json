@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.approveClaim",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Approve a pending claim request. Admin only.",
+      "parameters": {
+        "type": "params",
+        "required": ["claimId"],
+        "properties": {
+          "claimId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "ID of the claim request to approve"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the approval was successful"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to approve claims"
+        },
+        {
+          "name": "Forbidden",
+          "description": "Only administrators can approve claims"
+        },
+        {
+          "name": "ClaimNotFound",
+          "description": "The specified claim does not exist"
+        }
+      ]
+    }
+  }
+}

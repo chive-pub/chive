@@ -18,18 +18,21 @@ import {
   useDeleteEndorsement,
   usePrefetchEndorsements,
 } from './use-endorsement';
+import { APIError } from '@/lib/errors';
 
 // Mock functions using vi.hoisted for proper hoisting
 const {
-  mockApiGet,
-  mockApiPost,
+  mockListForEprint,
+  mockGetSummary,
+  mockGetUserEndorsement,
   mockGetCurrentAgent,
   mockCreateEndorsementRecord,
   mockUpdateEndorsementRecord,
   mockDeleteRecord,
 } = vi.hoisted(() => ({
-  mockApiGet: vi.fn(),
-  mockApiPost: vi.fn(),
+  mockListForEprint: vi.fn(),
+  mockGetSummary: vi.fn(),
+  mockGetUserEndorsement: vi.fn(),
   mockGetCurrentAgent: vi.fn(),
   mockCreateEndorsementRecord: vi.fn(),
   mockUpdateEndorsementRecord: vi.fn(),
@@ -38,8 +41,23 @@ const {
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
-    POST: mockApiPost,
+    pub: {
+      chive: {
+        endorsement: {
+          listForEprint: mockListForEprint,
+          getSummary: mockGetSummary,
+        },
+      },
+    },
+  },
+  authApi: {
+    pub: {
+      chive: {
+        endorsement: {
+          getUserEndorsement: mockGetUserEndorsement,
+        },
+      },
+    },
   },
 }));
 
@@ -112,9 +130,8 @@ describe('useEndorsements', () => {
 
   it('fetches endorsements for an eprint', async () => {
     const mockResponse = createMockEndorsementsResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -125,13 +142,11 @@ describe('useEndorsements', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.listForEprint', {
-      params: {
-        query: expect.objectContaining({
-          eprintUri,
-        }),
-      },
-    });
+    expect(mockListForEprint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eprintUri,
+      })
+    );
   });
 
   it('is disabled when eprintUri is empty', () => {
@@ -142,9 +157,8 @@ describe('useEndorsements', () => {
   });
 
   it('passes additional parameters', async () => {
-    mockApiGet.mockResolvedValueOnce({
+    mockListForEprint.mockResolvedValueOnce({
       data: createMockEndorsementsResponse(),
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -162,23 +176,15 @@ describe('useEndorsements', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.listForEprint', {
-      params: {
-        query: {
-          eprintUri,
-          limit: 20,
-          cursor: 'next',
-          contributionType: 'methodological',
-        },
-      },
+    expect(mockListForEprint).toHaveBeenCalledWith({
+      eprintUri,
+      limit: 20,
+      cursor: 'next',
     });
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Endorsement service unavailable' },
-    });
+    mockListForEprint.mockRejectedValueOnce(new Error('Endorsement service unavailable'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useEndorsements(eprintUri), { wrapper: Wrapper });
@@ -197,7 +203,7 @@ describe('useEndorsements', () => {
     });
 
     expect(result.current.fetchStatus).toBe('idle');
-    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(mockListForEprint).not.toHaveBeenCalled();
   });
 });
 
@@ -210,9 +216,8 @@ describe('useEndorsementSummary', () => {
 
   it('fetches endorsement summary', async () => {
     const mockSummary = createMockEndorsementSummary();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetSummary.mockResolvedValueOnce({
       data: mockSummary,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -223,9 +228,7 @@ describe('useEndorsementSummary', () => {
     });
 
     expect(result.current.data).toEqual(mockSummary);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.getSummary', {
-      params: { query: { eprintUri } },
-    });
+    expect(mockGetSummary).toHaveBeenCalledWith({ eprintUri });
   });
 
   it('is disabled when eprintUri is empty', () => {
@@ -236,10 +239,7 @@ describe('useEndorsementSummary', () => {
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Summary unavailable' },
-    });
+    mockGetSummary.mockRejectedValueOnce(new Error('Summary unavailable'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useEndorsementSummary(eprintUri), { wrapper: Wrapper });
@@ -262,9 +262,8 @@ describe('useUserEndorsement', () => {
 
   it('fetches user endorsement', async () => {
     const mockEndorsement = createMockEndorsement({ endorserDid: userDid });
-    mockApiGet.mockResolvedValueOnce({
+    mockGetUserEndorsement.mockResolvedValueOnce({
       data: mockEndorsement,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -277,16 +276,13 @@ describe('useUserEndorsement', () => {
     });
 
     expect(result.current.data).toEqual(mockEndorsement);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.getUserEndorsement', {
-      params: { query: { eprintUri, userDid } },
-    });
+    expect(mockGetUserEndorsement).toHaveBeenCalledWith({ eprintUri, userDid });
   });
 
   it('returns null when user has not endorsed (404)', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { status: 404, message: 'Not found' },
-    });
+    mockGetUserEndorsement.mockRejectedValueOnce(
+      new APIError('Not found', 404, 'getUserEndorsement')
+    );
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useUserEndorsement(eprintUri, userDid), {
@@ -315,10 +311,9 @@ describe('useUserEndorsement', () => {
   });
 
   it('throws error for non-404 errors', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { status: 500, message: 'Server error' },
-    });
+    mockGetUserEndorsement.mockRejectedValueOnce(
+      new APIError('Server error', 500, 'getUserEndorsement')
+    );
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useUserEndorsement(eprintUri, userDid), {
@@ -590,9 +585,8 @@ describe('usePrefetchEndorsements', () => {
 
   it('prefetches endorsement summary for an eprint', async () => {
     const mockSummary = createMockEndorsementSummary();
-    mockApiGet.mockResolvedValueOnce({
+    mockGetSummary.mockResolvedValueOnce({
       data: mockSummary,
-      error: undefined,
     });
 
     const { Wrapper, queryClient } = createWrapper();
@@ -601,9 +595,7 @@ describe('usePrefetchEndorsements', () => {
     result.current(eprintUri);
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.endorsement.getSummary', {
-        params: { query: { eprintUri } },
-      });
+      expect(mockGetSummary).toHaveBeenCalledWith({ eprintUri });
     });
 
     // Check that data is in cache

@@ -8,9 +8,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getProposalHandler } from '@/api/handlers/xrpc/governance/getProposal.js';
-import { listProposalsHandler } from '@/api/handlers/xrpc/governance/listProposals.js';
-import { listVotesHandler } from '@/api/handlers/xrpc/governance/listVotes.js';
+import { getProposal } from '@/api/handlers/xrpc/governance/getProposal.js';
+import { listProposals } from '@/api/handlers/xrpc/governance/listProposals.js';
+import { listVotes } from '@/api/handlers/xrpc/governance/listVotes.js';
 import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -104,7 +104,7 @@ describe('XRPC Governance Handlers', () => {
     };
   });
 
-  describe('listProposalsHandler', () => {
+  describe('listProposals.handler', () => {
     it('returns paginated list of proposals', async () => {
       const proposals = [
         createMockProposal(),
@@ -122,13 +122,15 @@ describe('XRPC Governance Handlers', () => {
         offset: 0,
       });
 
-      const result = await listProposalsHandler(
-        mockContext as unknown as Parameters<typeof listProposalsHandler>[0],
-        { limit: 20 }
-      );
+      const result = await listProposals.handler({
+        params: { limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals).toHaveLength(2);
-      expect(result.total).toBe(2);
+      expect(result.body.proposals).toHaveLength(2);
+      expect(result.body.total).toBe(2);
     });
 
     it('filters by status', async () => {
@@ -141,13 +143,15 @@ describe('XRPC Governance Handlers', () => {
         offset: 0,
       });
 
-      const result = await listProposalsHandler(
-        mockContext as unknown as Parameters<typeof listProposalsHandler>[0],
-        { status: 'pending', limit: 20 }
-      );
+      const result = await listProposals.handler({
+        params: { status: 'pending', limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals).toHaveLength(1);
-      expect(result.proposals[0]?.status).toBe('pending');
+      expect(result.body.proposals).toHaveLength(1);
+      expect(result.body.proposals[0]?.status).toBe('pending');
     });
 
     it('handles pagination with cursor', async () => {
@@ -157,13 +161,15 @@ describe('XRPC Governance Handlers', () => {
         cursor: '40', // Next page cursor
       });
 
-      const result = await listProposalsHandler(
-        mockContext as unknown as Parameters<typeof listProposalsHandler>[0],
-        { limit: 20, cursor: '20' }
-      );
+      const result = await listProposals.handler({
+        params: { limit: 20, cursor: '20' },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.cursor).toBe('40');
-      expect(result.total).toBe(100);
+      expect(result.body.cursor).toBe('40');
+      expect(result.body.total).toBe(100);
       expect(mockGraphAdapter.listProposals).toHaveBeenCalled();
     });
 
@@ -177,36 +183,43 @@ describe('XRPC Governance Handlers', () => {
         offset: 0,
       });
 
-      const result = await listProposalsHandler(
-        mockContext as unknown as Parameters<typeof listProposalsHandler>[0],
-        { type: 'create', limit: 20 }
-      );
+      const result = await listProposals.handler({
+        params: { type: 'create', limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listProposals.handler>[0]['c'],
+      });
 
-      expect(result.proposals[0]?.type).toBe('create');
+      expect(result.body.proposals[0]?.type).toBe('create');
     });
   });
 
-  describe('getProposalHandler', () => {
+  describe('getProposal.handler', () => {
     it('returns proposal details with vote counts', async () => {
       const proposal = createMockProposal();
       mockGraphAdapter.getProposalById.mockResolvedValue(proposal);
 
-      const result = await getProposalHandler(
-        mockContext as unknown as Parameters<typeof getProposalHandler>[0],
-        { proposalId: 'proposal-abc123' }
-      );
+      const result = await getProposal.handler({
+        params: { proposalId: 'proposal-abc123' },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof getProposal.handler>[0]['c'],
+      });
 
-      expect(result.id).toBe('proposal-abc123');
-      expect(result.votes.approve).toBe(5);
-      expect(result.votes.reject).toBe(1);
+      expect(result.body.id).toBe('proposal-abc123');
+      expect(result.body.votes.approve).toBe(5);
+      expect(result.body.votes.reject).toBe(1);
     });
 
     it('throws NotFoundError when proposal does not exist', async () => {
       mockGraphAdapter.getProposalById.mockResolvedValue(null);
 
       await expect(
-        getProposalHandler(mockContext as unknown as Parameters<typeof getProposalHandler>[0], {
-          proposalId: 'nonexistent-proposal',
+        getProposal.handler({
+          params: { proposalId: 'nonexistent-proposal' },
+          input: undefined,
+          auth: null,
+          c: mockContext as unknown as Parameters<typeof getProposal.handler>[0]['c'],
         })
       ).rejects.toThrow();
     });
@@ -215,16 +228,18 @@ describe('XRPC Governance Handlers', () => {
       const proposal = createMockProposal();
       mockGraphAdapter.getProposalById.mockResolvedValue(proposal);
 
-      const result = await getProposalHandler(
-        mockContext as unknown as Parameters<typeof getProposalHandler>[0],
-        { proposalId: 'proposal-abc123' }
-      );
+      const result = await getProposal.handler({
+        params: { proposalId: 'proposal-abc123' },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof getProposal.handler>[0]['c'],
+      });
 
-      expect(result.proposedBy).toBe('did:plc:proposer123');
+      expect(result.body.proposedBy).toBe('did:plc:proposer123');
     });
   });
 
-  describe('listVotesHandler', () => {
+  describe('listVotes.handler', () => {
     it('returns votes for a proposal', async () => {
       const votes: MockVote[] = [
         {
@@ -253,13 +268,15 @@ describe('XRPC Governance Handlers', () => {
 
       mockGraphAdapter.getVotesForProposal.mockResolvedValue(votes);
 
-      const result = await listVotesHandler(
-        mockContext as unknown as Parameters<typeof listVotesHandler>[0],
-        { proposalId: 'proposal-abc123', limit: 20 }
-      );
+      const result = await listVotes.handler({
+        params: { proposalId: 'proposal-abc123', limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listVotes.handler>[0]['c'],
+      });
 
-      expect(result.votes).toHaveLength(2);
-      expect(result.total).toBe(2);
+      expect(result.body.votes).toHaveLength(2);
+      expect(result.body.total).toBe(2);
     });
 
     it('includes voter role information', async () => {
@@ -278,24 +295,28 @@ describe('XRPC Governance Handlers', () => {
 
       mockGraphAdapter.getVotesForProposal.mockResolvedValue(votes);
 
-      const result = await listVotesHandler(
-        mockContext as unknown as Parameters<typeof listVotesHandler>[0],
-        { proposalId: 'proposal-abc123', limit: 20 }
-      );
+      const result = await listVotes.handler({
+        params: { proposalId: 'proposal-abc123', limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listVotes.handler>[0]['c'],
+      });
 
-      expect(result.votes[0]?.voterRole).toBe('domain-expert');
+      expect(result.body.votes[0]?.voterRole).toBe('domain-expert');
     });
 
     it('returns empty array when no votes exist', async () => {
       mockGraphAdapter.getVotesForProposal.mockResolvedValue([]);
 
-      const result = await listVotesHandler(
-        mockContext as unknown as Parameters<typeof listVotesHandler>[0],
-        { proposalId: 'proposal-abc123', limit: 20 }
-      );
+      const result = await listVotes.handler({
+        params: { proposalId: 'proposal-abc123', limit: 20 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof listVotes.handler>[0]['c'],
+      });
 
-      expect(result.votes).toHaveLength(0);
-      expect(result.total).toBe(0);
+      expect(result.body.votes).toHaveLength(0);
+      expect(result.body.total).toBe(0);
     });
   });
 });

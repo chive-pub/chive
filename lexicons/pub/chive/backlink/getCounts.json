@@ -1,0 +1,67 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.backlink.getCounts",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get aggregated backlink counts for an eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["targetUri"],
+        "properties": {
+          "targetUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the target eprint"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "sembleCollections",
+            "leafletLists",
+            "whitewindBlogs",
+            "blueskyPosts",
+            "blueskyEmbeds",
+            "other",
+            "total"
+          ],
+          "properties": {
+            "sembleCollections": {
+              "type": "integer",
+              "description": "Count of Semble collection backlinks"
+            },
+            "leafletLists": {
+              "type": "integer",
+              "description": "Count of Leaflet list backlinks"
+            },
+            "whitewindBlogs": {
+              "type": "integer",
+              "description": "Count of Whitewind blog backlinks"
+            },
+            "blueskyPosts": {
+              "type": "integer",
+              "description": "Count of Bluesky post backlinks"
+            },
+            "blueskyEmbeds": {
+              "type": "integer",
+              "description": "Count of Bluesky embed backlinks"
+            },
+            "other": {
+              "type": "integer",
+              "description": "Count of other backlinks"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total count of all backlinks"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    }
+  }
+}

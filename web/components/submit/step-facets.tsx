@@ -4,27 +4,35 @@
  * Facet selection step for eprint submission.
  *
  * @remarks
- * Step 6 of the submission wizard. Handles:
- * - PMEST/FAST faceted classification selection
- * - Document type (form-genre) selection
- * - Methodology (energy) selection
- * - Geographic scope (space) selection
- * - Time period (time) selection
+ * Step 6 of the submission wizard. Fetches available facets dynamically
+ * from the knowledge graph and allows users to select values.
  *
  * @packageDocumentation
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { Layers, Plus, X, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { Layers, X, ChevronDown, ChevronRight, Info, Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { FacetAutocomplete, type FacetSuggestion } from '@/components/forms/facet-autocomplete';
-import type { FacetDimension } from '@/lib/api/schema';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  useFacetCounts,
+  type FacetDefinition,
+  type FacetValue,
+} from '@/lib/hooks/use-faceted-search';
 import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
@@ -42,114 +50,55 @@ export interface StepFacetsProps {
 }
 
 /**
- * Internal facet value representation.
+ * Selected facet value for form state.
  */
-interface FacetFormValue {
-  type: FacetDimension;
+interface SelectedFacet {
+  /** Facet slug (dimension identifier) */
+  slug: string;
+  /** Selected value */
   value: string;
+  /** Display label */
   label?: string;
 }
 
 // =============================================================================
-// CONSTANTS
+// FACET SELECTOR COMPONENT
 // =============================================================================
 
-/**
- * PMEST dimension metadata.
- */
-const PMEST_DIMENSIONS: Array<{
-  id: FacetDimension;
-  label: string;
-  description: string;
-  examples: string;
-}> = [
-  {
-    id: 'form-genre',
-    label: 'Document Type',
-    description: 'What type of document is this?',
-    examples: 'Research article, review, preprint, thesis, conference paper',
-  },
-  {
-    id: 'energy',
-    label: 'Methodology',
-    description: 'What research methods or approaches were used?',
-    examples: 'Qualitative research, machine learning, meta-analysis, RCT',
-  },
-  {
-    id: 'space',
-    label: 'Geographic Scope',
-    description: 'What geographic regions does this research focus on?',
-    examples: 'Global, Europe, Southeast Asia, sub-Saharan Africa',
-  },
-  {
-    id: 'time',
-    label: 'Time Period',
-    description: 'What time periods does this research cover?',
-    examples: '21st century, Industrial Revolution, Cold War era',
-  },
-];
-
-/**
- * Entity facet dimensions (less commonly used for paper classification).
- */
-const ENTITY_DIMENSIONS: Array<{
-  id: FacetDimension;
-  label: string;
-  description: string;
-  examples: string;
-}> = [
-  {
-    id: 'person',
-    label: 'Person',
-    description: 'Named individuals that are the subject of this research',
-    examples: 'Historical figures, case study subjects',
-  },
-  {
-    id: 'organization',
-    label: 'Organization',
-    description: 'Institutions or organizations that are the subject of this research',
-    examples: 'Companies, government bodies, research institutions',
-  },
-  {
-    id: 'event',
-    label: 'Event',
-    description: 'Named events that are the subject of this research',
-    examples: 'Conferences, historical events, disasters',
-  },
-  {
-    id: 'work',
-    label: 'Work',
-    description: 'Named works that are the subject of this research',
-    examples: 'Books, films, artworks, datasets',
-  },
-];
-
-// =============================================================================
-// DIMENSION SECTION COMPONENT
-// =============================================================================
-
-interface DimensionSectionProps {
-  dimension: {
-    id: FacetDimension;
-    label: string;
-    description: string;
-    examples: string;
-  };
-  values: FacetFormValue[];
-  onAdd: (facet: FacetSuggestion) => void;
+interface FacetSelectorProps {
+  facet: FacetDefinition;
+  selectedValues: string[];
+  onSelect: (value: string, label?: string) => void;
   onRemove: (value: string) => void;
   defaultOpen?: boolean;
 }
 
-function DimensionSection({
-  dimension,
-  values,
-  onAdd,
+function FacetSelector({
+  facet,
+  selectedValues,
+  onSelect,
   onRemove,
   defaultOpen = false,
-}: DimensionSectionProps) {
+}: FacetSelectorProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const dimensionValues = values.filter((v) => v.type === dimension.id);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter values based on search query
+  const filteredValues = useMemo(() => {
+    if (!searchQuery) return facet.values;
+    const query = searchQuery.toLowerCase();
+    return facet.values.filter(
+      (v) => v.value.toLowerCase().includes(query) || v.label?.toLowerCase().includes(query)
+    );
+  }, [facet.values, searchQuery]);
+
+  // Get selected value objects for display
+  const selectedValueObjects = useMemo(() => {
+    return selectedValues
+      .map((v) => facet.values.find((fv) => fv.value === v))
+      .filter((v): v is FacetValue => v !== undefined);
+  }, [selectedValues, facet.values]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg">
@@ -161,10 +110,10 @@ function DimensionSection({
         >
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4" />
-            <span className="font-medium text-sm">{dimension.label}</span>
-            {dimensionValues.length > 0 && (
+            <span className="font-medium text-sm">{facet.label}</span>
+            {selectedValues.length > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {dimensionValues.length}
+                {selectedValues.length}
               </Badge>
             )}
           </div>
@@ -172,18 +121,17 @@ function DimensionSection({
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="px-4 pb-4 space-y-3">
-        <p className="text-sm text-muted-foreground">{dimension.description}</p>
-        <p className="text-xs text-muted-foreground italic">Examples: {dimension.examples}</p>
+        {facet.description && <p className="text-sm text-muted-foreground">{facet.description}</p>}
 
         {/* Selected values */}
-        {dimensionValues.length > 0 && (
+        {selectedValueObjects.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {dimensionValues.map((facet) => (
-              <Badge key={facet.value} variant="secondary" className="gap-1 py-1 px-2">
-                {facet.label || facet.value}
+            {selectedValueObjects.map((v) => (
+              <Badge key={v.value} variant="secondary" className="gap-1 py-1 px-2">
+                {v.label || v.value}
                 <button
                   type="button"
-                  onClick={() => onRemove(facet.value)}
+                  onClick={() => onRemove(v.value)}
                   className="ml-1 hover:text-destructive"
                 >
                   <X className="h-3 w-3" />
@@ -193,19 +141,67 @@ function DimensionSection({
           </div>
         )}
 
-        {/* Add facet autocomplete */}
-        <div className="flex gap-2 items-end">
-          <div className="flex-1">
-            <Label className="sr-only">Add {dimension.label}</Label>
-            <FacetAutocomplete
-              dimension={dimension.id}
-              onSelect={onAdd}
-              placeholder={`Search ${dimension.label.toLowerCase()}...`}
-            />
-          </div>
-        </div>
+        {/* Value selector */}
+        <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-full justify-start" type="button">
+              <span className="text-muted-foreground">Add {facet.label.toLowerCase()}...</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0" align="start">
+            <Command>
+              <CommandInput
+                placeholder={`Search ${facet.label.toLowerCase()}...`}
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
+              <CommandList>
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup>
+                  {filteredValues.slice(0, 20).map((v) => {
+                    const isSelected = selectedValues.includes(v.value);
+                    return (
+                      <CommandItem
+                        key={v.value}
+                        value={v.value}
+                        disabled={isSelected}
+                        onSelect={() => {
+                          if (!isSelected) {
+                            onSelect(v.value, v.label);
+                            setSearchOpen(false);
+                            setSearchQuery('');
+                          }
+                        }}
+                        className={cn(isSelected && 'opacity-50')}
+                      >
+                        <span>{v.label || v.value}</span>
+                        {v.count > 0 && (
+                          <span className="ml-auto text-xs text-muted-foreground">{v.count}</span>
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+// =============================================================================
+// LOADING SKELETON
+// =============================================================================
+
+function FacetsSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} className="h-14 w-full rounded-lg" />
+      ))}
+    </div>
   );
 }
 
@@ -220,55 +216,47 @@ function DimensionSection({
  * @returns Facet selection step element
  */
 export function StepFacets({ form, className }: StepFacetsProps) {
+  // Fetch available facets from knowledge graph
+  const { data: facets, isLoading, error } = useFacetCounts();
+
   const watchedFacets = form.watch('facets');
-  const facets = useMemo(() => watchedFacets ?? [], [watchedFacets]);
+  const selectedFacets = useMemo<SelectedFacet[]>(
+    () => (watchedFacets as SelectedFacet[] | undefined) ?? [],
+    [watchedFacets]
+  );
 
-  const [showEntityFacets, setShowEntityFacets] = useState(false);
+  // Get selected values for a specific facet
+  const getSelectedValues = useCallback(
+    (slug: string): string[] => {
+      return selectedFacets.filter((f) => f.slug === slug).map((f) => f.value);
+    },
+    [selectedFacets]
+  );
 
-  // Handle facet addition
-  const handleFacetAdd = useCallback(
-    (suggestion: FacetSuggestion) => {
+  // Handle facet value selection
+  const handleSelect = useCallback(
+    (slug: string, value: string, label?: string) => {
       // Check for duplicates
-      if (facets.some((f) => f.value === suggestion.id)) {
+      if (selectedFacets.some((f) => f.slug === slug && f.value === value)) {
         return;
       }
 
-      const newFacet: FacetFormValue = {
-        type: suggestion.dimension,
-        value: suggestion.id,
-        label: suggestion.label,
-      };
-
-      form.setValue('facets', [...facets, newFacet], {
+      const newFacet: SelectedFacet = { slug, value, label };
+      form.setValue('facets', [...selectedFacets, newFacet], {
         shouldValidate: true,
       });
     },
-    [form, facets]
+    [form, selectedFacets]
   );
 
-  // Handle facet removal
-  const handleFacetRemove = useCallback(
-    (value: string) => {
-      const updated = facets.filter((f) => f.value !== value);
+  // Handle facet value removal
+  const handleRemove = useCallback(
+    (slug: string, value: string) => {
+      const updated = selectedFacets.filter((f) => !(f.slug === slug && f.value === value));
       form.setValue('facets', updated, { shouldValidate: true });
     },
-    [form, facets]
+    [form, selectedFacets]
   );
-
-  // Count facets by dimension
-  const facetsByDimension = useMemo(() => {
-    const counts: Partial<Record<FacetDimension, number>> = {};
-    for (const facet of facets) {
-      counts[facet.type] = (counts[facet.type] || 0) + 1;
-    }
-    return counts;
-  }, [facets]);
-
-  const totalPmestFacets =
-    (facetsByDimension['form-genre'] || 0) +
-    (facetsByDimension['energy'] || 0) +
-    (facetsByDimension['space'] || 0) +
-    (facetsByDimension['time'] || 0);
 
   return (
     <div className={cn('space-y-6', className)} data-testid="facets-step">
@@ -279,70 +267,59 @@ export function StepFacets({ form, className }: StepFacetsProps) {
           Faceted Classification
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Add optional facets to improve discoverability. These categorize your work by document
-          type, methodology, geographic scope, and time period.
+          Add optional facets to improve discoverability. Select from available classification
+          dimensions.
         </p>
       </div>
 
-      {/* PMEST Dimensions (main) */}
-      <div className="space-y-3">
-        <h4 className="font-medium text-sm">Classification Dimensions</h4>
-        {PMEST_DIMENSIONS.map((dimension) => (
-          <DimensionSection
-            key={dimension.id}
-            dimension={dimension}
-            values={facets}
-            onAdd={handleFacetAdd}
-            onRemove={handleFacetRemove}
-            defaultOpen={dimension.id === 'form-genre'}
-          />
-        ))}
-      </div>
+      {/* Loading state */}
+      {isLoading && <FacetsSkeleton />}
 
-      {/* Entity Facets (collapsible) */}
-      <Collapsible open={showEntityFacets} onOpenChange={setShowEntityFacets}>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" className="w-full justify-between" type="button">
-            <span className="text-sm">Entity Facets (Advanced)</span>
-            {showEntityFacets ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-3 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Use these if your research specifically studies named persons, organizations, events, or
-            works.
-          </p>
-          {ENTITY_DIMENSIONS.map((dimension) => (
-            <DimensionSection
-              key={dimension.id}
-              dimension={dimension}
-              values={facets}
-              onAdd={handleFacetAdd}
-              onRemove={handleFacetRemove}
+      {/* Error state */}
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          Failed to load facets. You can continue without selecting facets.
+        </div>
+      )}
+
+      {/* Facet selectors */}
+      {facets && facets.length > 0 && (
+        <div className="space-y-3">
+          {facets.map((facet, index) => (
+            <FacetSelector
+              key={facet.slug}
+              facet={facet}
+              selectedValues={getSelectedValues(facet.slug)}
+              onSelect={(value, label) => handleSelect(facet.slug, value, label)}
+              onRemove={(value) => handleRemove(facet.slug, value)}
+              defaultOpen={index === 0}
             />
           ))}
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {facets && facets.length === 0 && !isLoading && (
+        <div className="rounded-lg border border-muted bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+          No facets available. You can continue without selecting facets.
+        </div>
+      )}
 
       {/* Summary */}
-      {facets.length > 0 && (
+      {selectedFacets.length > 0 && (
         <div className="rounded-lg border border-muted bg-muted/30 p-4">
           <h4 className="font-medium mb-2 flex items-center gap-2">
             <Info className="h-4 w-4" />
-            Selected Facets ({facets.length})
+            Selected Facets ({selectedFacets.length})
           </h4>
           <div className="flex flex-wrap gap-2">
-            {facets.map((facet) => (
-              <Badge key={facet.value} variant="outline" className="gap-1">
-                <span className="text-xs text-muted-foreground">{facet.type}:</span>
+            {selectedFacets.map((facet) => (
+              <Badge key={`${facet.slug}-${facet.value}`} variant="outline" className="gap-1">
+                <span className="text-xs text-muted-foreground">{facet.slug}:</span>
                 {facet.label || facet.value}
                 <button
                   type="button"
-                  onClick={() => handleFacetRemove(facet.value)}
+                  onClick={() => handleRemove(facet.slug, facet.value)}
                   className="ml-1 hover:text-destructive"
                 >
                   <X className="h-3 w-3" />
@@ -357,9 +334,8 @@ export function StepFacets({ form, className }: StepFacetsProps) {
       <section className="rounded-lg border border-muted bg-muted/30 p-4">
         <h4 className="font-medium mb-2">Classification Tips</h4>
         <ul className="text-sm text-muted-foreground space-y-1 list-inside list-disc">
-          <li>Document Type helps readers understand what kind of work this is</li>
-          <li>Methodology facets help researchers find similar approaches</li>
-          <li>Geographic and temporal facets are useful for area studies research</li>
+          <li>Facets help readers discover your work through filtering</li>
+          <li>Select values that accurately describe your research</li>
           <li>All facets are optional - add only what&apos;s relevant</li>
         </ul>
       </section>

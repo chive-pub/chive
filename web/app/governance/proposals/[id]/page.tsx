@@ -85,18 +85,22 @@ export default function ProposalDetailPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'open':
+      case 'pending': // Legacy
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
       case 'approved':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       case 'rejected':
         return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      case 'withdrawn':
+      case 'expired': // Legacy
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
       default:
         return '';
     }
   };
 
-  const getVoteIcon = (vote: VoteAction) => {
+  const getVoteIcon = (vote: string): typeof ThumbsUp => {
     switch (vote) {
       case 'approve':
         return ThumbsUp;
@@ -104,9 +108,15 @@ export default function ProposalDetailPage() {
         return ThumbsDown;
       case 'abstain':
       case 'request-changes':
+      default:
         return MinusCircle;
     }
   };
+
+  // Extract Wikidata ID from externalIds array
+  const wikidataId = proposal?.changes.externalIds?.find(
+    (id) => id.system === 'wikidata'
+  )?.identifier;
 
   return (
     <div className="space-y-6">
@@ -128,7 +138,7 @@ export default function ProposalDetailPage() {
           </Badge>
         </div>
         <h1 className="text-2xl font-bold tracking-tight">
-          {proposal.label ?? proposal.fieldId ?? 'Untitled Proposal'}
+          {proposal.label ?? proposal.changes.label ?? 'Untitled Proposal'}
         </h1>
         <p className="text-muted-foreground">
           Proposed by {proposal.proposerName ?? proposal.proposedBy} on{' '}
@@ -168,29 +178,29 @@ export default function ProposalDetailPage() {
                     <dd className="mt-1">{proposal.changes.description}</dd>
                   </div>
                 )}
-                {proposal.changes.fieldType && (
+                {proposal.changes.kind && (
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Type</dt>
-                    <dd className="mt-1 capitalize">{proposal.changes.fieldType}</dd>
+                    <dt className="text-sm font-medium text-muted-foreground">Kind</dt>
+                    <dd className="mt-1 capitalize">{proposal.changes.kind}</dd>
                   </div>
                 )}
-                {proposal.changes.parentId && (
+                {proposal.changes.subkind && (
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Parent Field</dt>
-                    <dd className="mt-1">{proposal.changes.parentId}</dd>
+                    <dt className="text-sm font-medium text-muted-foreground">Subkind</dt>
+                    <dd className="mt-1">{proposal.changes.subkind}</dd>
                   </div>
                 )}
-                {proposal.changes.wikidataId && (
+                {wikidataId && (
                   <div>
                     <dt className="text-sm font-medium text-muted-foreground">Wikidata ID</dt>
                     <dd className="mt-1">
                       <a
-                        href={`https://www.wikidata.org/wiki/${proposal.changes.wikidataId}`}
+                        href={`https://www.wikidata.org/wiki/${wikidataId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
-                        {proposal.changes.wikidataId}
+                        {wikidataId}
                       </a>
                     </dd>
                   </div>
@@ -317,7 +327,7 @@ export default function ProposalDetailPage() {
           </Card>
 
           {/* Voting Interface */}
-          {proposal.status === 'pending' && (
+          {(proposal.status === 'open' || proposal.status === 'pending') && (
             <Card>
               <CardHeader>
                 <CardTitle>Cast Your Vote</CardTitle>

@@ -1,0 +1,56 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.sync.indexRecord",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Index a record from PDS (owner or admin only)",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the record to index"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "indexed"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the indexed record"
+            },
+            "indexed": {
+              "type": "boolean",
+              "description": "Whether indexing succeeded"
+            },
+            "cid": {
+              "type": "string",
+              "format": "cid",
+              "description": "CID of the indexed record (if successful)"
+            },
+            "error": {
+              "type": "string",
+              "description": "Error message (if failed)"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "InvalidRequest" },
+        { "name": "AuthenticationRequired" },
+        { "name": "NotFound" }
+      ]
+    }
+  }
+}

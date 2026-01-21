@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.governance.requestElevation",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Request elevation to trusted editor role. The request is validated against eligibility criteria.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["targetRole"],
+          "properties": {
+            "targetRole": {
+              "type": "string",
+              "knownValues": ["trusted-editor"],
+              "description": "Role to request elevation to"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#elevationResult"
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "InvalidRequest" }]
+    },
+    "elevationResult": {
+      "type": "object",
+      "description": "Result of elevation operation",
+      "required": ["success", "message"],
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the operation succeeded"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Elevation request ID (if created)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable result message"
+        }
+      }
+    }
+  }
+}

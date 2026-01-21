@@ -18,13 +18,19 @@ import {
 } from './use-faceted-search';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockApiGet } = vi.hoisted(() => ({
-  mockApiGet: vi.fn(),
+const { mockBrowseFaceted } = vi.hoisted(() => ({
+  mockBrowseFaceted: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
-    GET: mockApiGet,
+    pub: {
+      chive: {
+        graph: {
+          browseFaceted: mockBrowseFaceted,
+        },
+      },
+    },
   },
 }));
 
@@ -51,9 +57,8 @@ describe('useFacetedSearch', () => {
 
   it('performs faceted search with single dimension', async () => {
     const mockResponse = createMockFacetedSearchResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockBrowseFaceted.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -66,18 +71,17 @@ describe('useFacetedSearch', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
-      params: {
-        query: expect.objectContaining({ facets: { matter: ['physics'] } }),
-      },
-    });
+    expect(mockBrowseFaceted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        facets: JSON.stringify({ matter: ['physics'] }),
+      })
+    );
   });
 
   it('performs faceted search with multiple dimensions', async () => {
     const mockResponse = createMockFacetedSearchResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockBrowseFaceted.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -97,24 +101,21 @@ describe('useFacetedSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
-      params: {
-        query: expect.objectContaining({
-          facets: {
-            matter: ['physics'],
-            energy: ['classification'],
-            person: ['einstein'],
-          },
+    expect(mockBrowseFaceted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        facets: JSON.stringify({
+          matter: ['physics'],
+          energy: ['classification'],
+          person: ['einstein'],
         }),
-      },
-    });
+      })
+    );
   });
 
   it('performs faceted search with text query', async () => {
     const mockResponse = createMockFacetedSearchResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockBrowseFaceted.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -127,14 +128,12 @@ describe('useFacetedSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
-      params: {
-        query: expect.objectContaining({
-          q: 'machine learning',
-          facets: { matter: ['computer-science'] },
-        }),
-      },
-    });
+    expect(mockBrowseFaceted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: 'machine learning',
+        facets: JSON.stringify({ matter: ['computer-science'] }),
+      })
+    );
   });
 
   it('is disabled when no filters are set', () => {
@@ -146,9 +145,8 @@ describe('useFacetedSearch', () => {
 
   it('is enabled when limit is set even without filters', async () => {
     const mockResponse = createMockFacetedSearchResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockBrowseFaceted.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -158,14 +156,11 @@ describe('useFacetedSearch', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalled();
+    expect(mockBrowseFaceted).toHaveBeenCalled();
   });
 
   it('throws error when API returns error', async () => {
-    mockApiGet.mockResolvedValueOnce({
-      data: undefined,
-      error: { message: 'Search failed' },
-    });
+    mockBrowseFaceted.mockRejectedValueOnce(new Error('Search failed'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useFacetedSearch({ facets: { matter: ['invalid'] } }), {
@@ -187,9 +182,8 @@ describe('useFacetCounts', () => {
 
   it('fetches facet counts', async () => {
     const mockResponse = createMockFacetedSearchResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockBrowseFaceted.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -202,21 +196,18 @@ describe('useFacetCounts', () => {
     });
 
     expect(result.current.data).toEqual(mockResponse.facets);
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
-      params: {
-        query: expect.objectContaining({
-          facets: { matter: ['physics'] },
-          limit: 0,
-        }),
-      },
-    });
+    expect(mockBrowseFaceted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        facets: JSON.stringify({ matter: ['physics'] }),
+        limit: 0,
+      })
+    );
   });
 
   it('fetches counts with empty filters', async () => {
     const mockResponse = createMockFacetedSearchResponse();
-    mockApiGet.mockResolvedValueOnce({
+    mockBrowseFaceted.mockResolvedValueOnce({
       data: mockResponse,
-      error: undefined,
     });
 
     const { Wrapper } = createWrapper();
@@ -226,13 +217,11 @@ describe('useFacetCounts', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/xrpc/pub.chive.graph.browseFaceted', {
-      params: {
-        query: expect.objectContaining({
-          limit: 0,
-        }),
-      },
-    });
+    expect(mockBrowseFaceted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 0,
+      })
+    );
   });
 });
 

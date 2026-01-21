@@ -13,16 +13,14 @@ const COLLECTIONS = [
   'pub.chive.eprint.submission',
   'pub.chive.eprint.version',
   'pub.chive.actor.profile',
-  'pub.chive.actor.discoverySettings',
+  'pub.chive.discovery.settings',
   'pub.chive.review.comment',
   'pub.chive.review.endorsement',
-  'pub.chive.graph.userTag',
-  'pub.chive.graph.concept',
-  'pub.chive.graph.conceptProposal',
-  'pub.chive.graph.field',
-  'pub.chive.graph.fieldProposal',
-  'pub.chive.graph.facet',
-  'pub.chive.graph.facetProposal',
+  'pub.chive.graph.node',
+  'pub.chive.graph.nodeProposal',
+  'pub.chive.graph.edge',
+  'pub.chive.graph.edgeProposal',
+  'pub.chive.graph.vote',
 ];
 
 async function listRecords(pdsUrl: string, did: string) {

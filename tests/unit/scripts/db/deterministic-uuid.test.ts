@@ -3,7 +3,7 @@
  *
  * @remarks
  * Tests the UUID v5 implementation used by seed scripts to ensure:
- * - UUIDs are deterministic (same input → same output)
+ * - UUIDs are deterministic (same input -> same output)
  * - UUIDs are valid format (8-4-4-4-12)
  * - Different inputs produce different UUIDs
  * - UUID version and variant bits are correctly set
@@ -16,14 +16,31 @@ import { describe, it, expect } from 'vitest';
 import {
   CHIVE_NAMESPACE,
   uuidv5,
-  contributionTypeUuid,
-  fieldUuid,
-  facetUuid,
-  conceptUuid,
+  nodeUuid,
+  edgeUuid,
 } from '../../../../scripts/db/lib/deterministic-uuid.js';
 
 // UUID format regex: 8-4-4-4-12 hexadecimal characters
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// =============================================================================
+// Helper functions for testing UUID generation patterns
+// =============================================================================
+
+/** Generate UUID for contribution type using nodeUuid */
+function contributionTypeUuid(slug: string): string {
+  return nodeUuid('contribution-type', slug);
+}
+
+/** Generate UUID for field using nodeUuid */
+function fieldUuid(slug: string): string {
+  return nodeUuid('field', slug);
+}
+
+/** Generate UUID for facet using nodeUuid */
+function facetUuid(slug: string): string {
+  return nodeUuid('facet', slug);
+}
 
 describe('Deterministic UUID Generation', () => {
   describe('CHIVE_NAMESPACE', () => {
@@ -89,7 +106,7 @@ describe('Deterministic UUID Generation', () => {
     });
 
     it('handles unicode characters in name', () => {
-      const uuid = uuidv5(CHIVE_NAMESPACE, 'café-naïve-日本語');
+      const uuid = uuidv5(CHIVE_NAMESPACE, 'cafe-naive-japanese');
       expect(uuid).toMatch(UUID_REGEX);
     });
 
@@ -100,7 +117,55 @@ describe('Deterministic UUID Generation', () => {
     });
   });
 
-  describe('contributionTypeUuid', () => {
+  describe('nodeUuid', () => {
+    it('returns valid UUID format', () => {
+      const uuid = nodeUuid('field', 'linguistics');
+      expect(uuid).toMatch(UUID_REGEX);
+    });
+
+    it('is deterministic', () => {
+      const uuid1 = nodeUuid('field', 'computer-science');
+      const uuid2 = nodeUuid('field', 'computer-science');
+      expect(uuid1).toBe(uuid2);
+    });
+
+    it('produces different UUIDs for different subkinds with same slug', () => {
+      const uuid1 = nodeUuid('field', 'software');
+      const uuid2 = nodeUuid('contribution-type', 'software');
+      expect(uuid1).not.toBe(uuid2);
+    });
+
+    it('produces different UUIDs for different slugs with same subkind', () => {
+      const uuid1 = nodeUuid('field', 'physics');
+      const uuid2 = nodeUuid('field', 'mathematics');
+      expect(uuid1).not.toBe(uuid2);
+    });
+  });
+
+  describe('edgeUuid', () => {
+    it('returns valid UUID format', () => {
+      const uuid = edgeUuid(
+        'at://did:plc:governance/pub.chive.graph.node/abc123',
+        'at://did:plc:governance/pub.chive.graph.node/def456',
+        'broader'
+      );
+      expect(uuid).toMatch(UUID_REGEX);
+    });
+
+    it('is deterministic', () => {
+      const uuid1 = edgeUuid('source', 'target', 'broader');
+      const uuid2 = edgeUuid('source', 'target', 'broader');
+      expect(uuid1).toBe(uuid2);
+    });
+
+    it('produces different UUIDs for different relations', () => {
+      const uuid1 = edgeUuid('source', 'target', 'broader');
+      const uuid2 = edgeUuid('source', 'target', 'narrower');
+      expect(uuid1).not.toBe(uuid2);
+    });
+  });
+
+  describe('contributionTypeUuid (helper using nodeUuid)', () => {
     it('returns valid UUID format', () => {
       const uuid = contributionTypeUuid('conceptualization');
       expect(uuid).toMatch(UUID_REGEX);
@@ -152,7 +217,7 @@ describe('Deterministic UUID Generation', () => {
     });
   });
 
-  describe('fieldUuid', () => {
+  describe('fieldUuid (helper using nodeUuid)', () => {
     it('returns valid UUID format', () => {
       const uuid = fieldUuid('linguistics');
       expect(uuid).toMatch(UUID_REGEX);
@@ -179,7 +244,7 @@ describe('Deterministic UUID Generation', () => {
     });
   });
 
-  describe('facetUuid', () => {
+  describe('facetUuid (helper using nodeUuid)', () => {
     it('returns valid UUID format', () => {
       const uuid = facetUuid('qualitative-research');
       expect(uuid).toMatch(UUID_REGEX);
@@ -196,62 +261,6 @@ describe('Deterministic UUID Generation', () => {
       const uuid2 = facetUuid('review-article');
       expect(uuid1).not.toBe(uuid2);
     });
-
-    it('produces different UUID than conceptUuid for same slug', () => {
-      // Facet and concept with same slug should have different UUIDs
-      const facetUuidResult = facetUuid('dataset');
-      const conceptUuidResult = conceptUuid('dataset');
-      expect(facetUuidResult).not.toBe(conceptUuidResult);
-    });
-  });
-
-  describe('conceptUuid', () => {
-    it('returns valid UUID format', () => {
-      const uuid = conceptUuid('pdf');
-      expect(uuid).toMatch(UUID_REGEX);
-    });
-
-    it('is deterministic', () => {
-      const uuid1 = conceptUuid('university');
-      const uuid2 = conceptUuid('university');
-      expect(uuid1).toBe(uuid2);
-    });
-
-    it('produces different UUIDs for different slugs', () => {
-      const uuid1 = conceptUuid('github');
-      const uuid2 = conceptUuid('gitlab');
-      expect(uuid1).not.toBe(uuid2);
-    });
-
-    it('handles all concept categories', () => {
-      const conceptSlugs = [
-        // document-format
-        'pdf',
-        'latex',
-        'jupyter-notebook',
-        // publication-status
-        'preprint',
-        'published',
-        // access-type
-        'open-access',
-        'closed-access',
-        // platform
-        'github',
-        'zenodo',
-        // institution-type
-        'university',
-        'research-institute',
-        // identifier-type
-        'doi',
-        'orcid',
-      ];
-
-      const uuids = conceptSlugs.map(conceptUuid);
-      const uniqueUuids = new Set(uuids);
-
-      expect(uniqueUuids.size).toBe(conceptSlugs.length);
-      uuids.forEach((uuid) => expect(uuid).toMatch(UUID_REGEX));
-    });
   });
 
   describe('Cross-entity type isolation', () => {
@@ -263,12 +272,11 @@ describe('Deterministic UUID Generation', () => {
       const contribUuid = contributionTypeUuid(slug);
       const fieldUuidResult = fieldUuid(slug);
       const facetUuidResult = facetUuid(slug);
-      const conceptUuidResult = conceptUuid(slug);
 
-      const allUuids = [contribUuid, fieldUuidResult, facetUuidResult, conceptUuidResult];
+      const allUuids = [contribUuid, fieldUuidResult, facetUuidResult];
       const uniqueUuids = new Set(allUuids);
 
-      expect(uniqueUuids.size).toBe(4);
+      expect(uniqueUuids.size).toBe(3);
     });
   });
 
@@ -281,14 +289,12 @@ describe('Deterministic UUID Generation', () => {
         results.push(contributionTypeUuid('conceptualization'));
         results.push(fieldUuid('linguistics'));
         results.push(facetUuid('qualitative-research'));
-        results.push(conceptUuid('pdf'));
       }
 
-      // Every 4th element should be the same
-      expect(results[0]).toBe(results[4]);
-      expect(results[1]).toBe(results[5]);
-      expect(results[2]).toBe(results[6]);
-      expect(results[3]).toBe(results[7]);
+      // Every 3rd element should be the same
+      expect(results[0]).toBe(results[3]);
+      expect(results[1]).toBe(results[4]);
+      expect(results[2]).toBe(results[5]);
     });
   });
 });

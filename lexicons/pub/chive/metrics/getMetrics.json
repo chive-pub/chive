@@ -1,0 +1,68 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.metrics.getMetrics",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get comprehensive metrics for an eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "totalViews",
+            "uniqueViews",
+            "totalDownloads",
+            "views24h",
+            "views7d",
+            "views30d"
+          ],
+          "properties": {
+            "totalViews": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total view count"
+            },
+            "uniqueViews": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Unique viewer count"
+            },
+            "totalDownloads": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total download count"
+            },
+            "views24h": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Views in last 24 hours"
+            },
+            "views7d": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Views in last 7 days"
+            },
+            "views30d": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Views in last 30 days"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }]
+    }
+  }
+}

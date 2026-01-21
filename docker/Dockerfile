@@ -47,6 +47,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json pnpm-lock.yaml tsconfig.json ./
 COPY src ./src
 COPY scripts ./scripts
+COPY lexicons ./lexicons
+
+# Generate lexicon types from JSON schemas
+RUN pnpm lexicons:generate
 
 # Build TypeScript to JavaScript
 RUN pnpm exec tsc --project tsconfig.json

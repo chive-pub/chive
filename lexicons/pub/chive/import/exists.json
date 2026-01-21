@@ -1,0 +1,40 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.import.exists",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Check if an eprint has been imported from an external source",
+      "parameters": {
+        "type": "params",
+        "required": ["source", "externalId"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "description": "External source identifier (e.g., arxiv, biorxiv, semanticscholar)"
+          },
+          "externalId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Source-specific identifier for the eprint"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["exists"],
+          "properties": {
+            "exists": {
+              "type": "boolean",
+              "description": "Whether the eprint has been imported"
+            }
+          }
+        }
+      }
+    }
+  }
+}

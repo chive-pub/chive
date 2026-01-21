@@ -11,7 +11,14 @@ vi.mock('next/link', () => ({
 }));
 
 describe('FieldBadge', () => {
-  const mockField = { uri: 'computer-science', label: 'Computer Science' };
+  const mockField = {
+    id: 'cs',
+    uri: 'computer-science',
+    label: 'Computer Science',
+    kind: 'object' as const,
+    status: 'established' as const,
+    createdAt: '2024-01-01T00:00:00Z',
+  };
 
   it('renders field name', () => {
     render(<FieldBadge field={mockField} />);
@@ -36,7 +43,14 @@ describe('FieldBadge', () => {
   });
 
   it('encodes field URI in URL', () => {
-    const fieldWithSpecialChars = { uri: 'field/with/slashes', label: 'Special Field' };
+    const fieldWithSpecialChars = {
+      id: 'special',
+      uri: 'field/with/slashes',
+      label: 'Special Field',
+      kind: 'object' as const,
+      status: 'established' as const,
+      createdAt: '2024-01-01T00:00:00Z',
+    };
     render(<FieldBadge field={fieldWithSpecialChars} />);
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/fields/field%2Fwith%2Fslashes');
@@ -45,10 +59,38 @@ describe('FieldBadge', () => {
 
 describe('FieldBadgeList', () => {
   const mockFields = [
-    { uri: 'physics', label: 'Physics' },
-    { uri: 'chemistry', label: 'Chemistry' },
-    { uri: 'biology', label: 'Biology' },
-    { uri: 'math', label: 'Mathematics' },
+    {
+      id: '1',
+      uri: 'physics',
+      label: 'Physics',
+      kind: 'object' as const,
+      status: 'established' as const,
+      createdAt: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: '2',
+      uri: 'chemistry',
+      label: 'Chemistry',
+      kind: 'object' as const,
+      status: 'established' as const,
+      createdAt: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: '3',
+      uri: 'biology',
+      label: 'Biology',
+      kind: 'object' as const,
+      status: 'established' as const,
+      createdAt: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: '4',
+      uri: 'math',
+      label: 'Mathematics',
+      kind: 'object' as const,
+      status: 'established' as const,
+      createdAt: '2024-01-01T00:00:00Z',
+    },
   ];
 
   it('renders all fields when count is below max', () => {
