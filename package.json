@@ -64,7 +64,6 @@
   },
   "devDependencies": {
     "@atproto/lex-cli": "^0.9.8",
-    "@atproto/lexicon": "^0.5.2",
     "@eslint/js": "^9.39.1",
     "@microsoft/tsdoc": "^0.16.0",
     "@playwright/test": "^1.57.0",
@@ -113,6 +112,7 @@
   "dependencies": {
     "@atproto/api": "^0.18.3",
     "@atproto/identity": "^0.4.10",
+    "@atproto/lexicon": "^0.5.2",
     "@atproto/oauth-client-node": "^0.3.13",
     "@atproto/xrpc": "^0.7.6",
     "@atproto/xrpc-server": "^0.10.4",
