@@ -303,6 +303,12 @@ export const authApi = new AtpBaseClient({
 
 /**
  * Create a server-side API client with Next.js caching.
+ *
+ * @remarks
+ * Includes observability features:
+ * - Request ID generation for correlation
+ * - W3C Trace Context propagation
+ * - Structured logging
  */
 export function createServerClient(options?: { revalidate?: number }) {
   const serverFetch: typeof globalThis.fetch = async (
@@ -310,27 +316,80 @@ export function createServerClient(options?: { revalidate?: number }) {
     init?: RequestInit
   ): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const method = init?.method ?? 'GET';
     const headers = new Headers(init?.headers);
+    const parsedUrl = new URL(url, 'http://localhost');
+    const endpoint = parsedUrl.pathname;
+
+    // Generate correlation IDs
+    const requestId = generateRequestId();
+    const trace = generateTraceparent();
+
+    // Add correlation headers
+    headers.set('X-Request-ID', requestId);
+    headers.set('traceparent', trace.traceparent);
+
     if (isTunnelMode) {
       headers.set('Bypass-Tunnel-Reminder', 'true');
     }
 
-    const response = await fetch(input, {
-      ...init,
-      headers,
-      next: { revalidate: options?.revalidate ?? 60 },
-    } as RequestInit);
+    // Create request-scoped logger
+    const requestLogger = logger.child({
+      requestId,
+      traceId: trace.traceId,
+      spanId: trace.spanId,
+      endpoint,
+      method,
+      server: true,
+    });
 
-    if (!response.ok) {
-      const responseBody = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-      const errorMessage =
-        typeof responseBody.message === 'string'
-          ? responseBody.message
-          : 'An unknown error occurred';
-      throw new APIError(errorMessage, response.status, new URL(url, 'http://localhost').pathname);
+    requestLogger.debug('Server API request started');
+
+    const startTime = performance.now();
+
+    try {
+      const response = await fetch(input, {
+        ...init,
+        headers,
+        next: { revalidate: options?.revalidate ?? 60 },
+      } as RequestInit);
+
+      const durationMs = Math.round(performance.now() - startTime);
+      const status = response.status;
+
+      if (!response.ok) {
+        const responseBody = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+        const errorMessage =
+          typeof responseBody.message === 'string'
+            ? responseBody.message
+            : 'An unknown error occurred';
+
+        requestLogger.warn('Server API request failed', {
+          status,
+          durationMs,
+          error: errorMessage,
+        });
+
+        throw new APIError(errorMessage, status, endpoint);
+      }
+
+      requestLogger.debug('Server API request completed', {
+        status,
+        durationMs,
+      });
+
+      return response;
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - startTime);
+
+      if (!(error instanceof APIError)) {
+        requestLogger.error('Server API request error', error as Error, {
+          durationMs,
+        });
+      }
+
+      throw error;
     }
-
-    return response;
   };
 
   return new AtpBaseClient({

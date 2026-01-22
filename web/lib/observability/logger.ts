@@ -7,24 +7,38 @@
  * data redaction, and support for child loggers.
  *
  * In development: Pretty-prints to console with colors.
- * In production: Outputs JSON for potential remote collection.
+ * In production: Outputs JSON and forwards to Grafana Faro.
  *
  * @packageDocumentation
  */
 
+import { LogLevel as FaroLogLevel } from '@grafana/faro-web-sdk';
+
+import { getFaro } from './faro';
+
 /**
  * Log levels in order of severity.
  */
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type BrowserLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
  * Numeric values for log levels (for comparison).
  */
-const LOG_LEVEL_VALUES: Record<LogLevel, number> = {
+const LOG_LEVEL_VALUES: Record<BrowserLogLevel, number> = {
   debug: 10,
   info: 20,
   warn: 30,
   error: 40,
+};
+
+/**
+ * Map our log levels to Faro log levels.
+ */
+const FARO_LOG_LEVEL_MAP: Record<BrowserLogLevel, FaroLogLevel> = {
+  debug: FaroLogLevel.DEBUG,
+  info: FaroLogLevel.INFO,
+  warn: FaroLogLevel.WARN,
+  error: FaroLogLevel.ERROR,
 };
 
 /**
@@ -51,7 +65,7 @@ export interface LogContext {
  * Structured log entry format (matches backend Pino output).
  */
 export interface LogEntry {
-  level: LogLevel;
+  level: BrowserLogLevel;
   time: string;
   msg: string;
   service: string;
@@ -65,11 +79,13 @@ export interface LogEntry {
  */
 export interface LoggerOptions {
   /** Minimum log level to output */
-  level?: LogLevel;
+  level?: BrowserLogLevel;
   /** Base context to include in all logs */
   context?: LogContext;
   /** Service name for log entries */
   service?: string;
+  /** Whether to forward logs to Faro */
+  forwardToFaro?: boolean;
 }
 
 /**
@@ -136,7 +152,7 @@ const isDev = process.env.NODE_ENV === 'development';
 /**
  * Default log level based on environment.
  */
-const DEFAULT_LEVEL: LogLevel = isDev ? 'debug' : 'info';
+const DEFAULT_LEVEL: BrowserLogLevel = isDev ? 'debug' : 'info';
 
 /**
  * Global log buffer for debug panel access.
@@ -168,6 +184,7 @@ export function clearLogBuffer(): void {
  * - Automatic context injection
  * - Sensitive data redaction
  * - Child logger support
+ * - Faro integration for production observability
  *
  * @example
  * ```typescript
@@ -181,14 +198,16 @@ export function clearLogBuffer(): void {
  * ```
  */
 export class BrowserLogger {
-  private level: LogLevel;
+  private level: BrowserLogLevel;
   private context: LogContext;
   private service: string;
+  private forwardToFaro: boolean;
 
   constructor(options: LoggerOptions = {}) {
     this.level = options.level ?? DEFAULT_LEVEL;
     this.context = options.context ?? {};
     this.service = options.service ?? 'chive-web';
+    this.forwardToFaro = options.forwardToFaro ?? true;
   }
 
   /**
@@ -199,13 +218,14 @@ export class BrowserLogger {
       level: this.level,
       context: { ...this.context, ...additionalContext },
       service: this.service,
+      forwardToFaro: this.forwardToFaro,
     });
   }
 
   /**
    * Checks if the given level should be logged.
    */
-  private shouldLog(level: LogLevel): boolean {
+  private shouldLog(level: BrowserLogLevel): boolean {
     return LOG_LEVEL_VALUES[level] >= LOG_LEVEL_VALUES[this.level];
   }
 
@@ -213,7 +233,7 @@ export class BrowserLogger {
    * Creates a log entry.
    */
   private createEntry(
-    level: LogLevel,
+    level: BrowserLogLevel,
     message: string,
     context?: LogContext,
     error?: Error
@@ -253,6 +273,48 @@ export class BrowserLogger {
   }
 
   /**
+   * Forward log to Faro.
+   */
+  private forwardToFaroInstance(entry: LogEntry): void {
+    if (!this.forwardToFaro) return;
+
+    const faro = getFaro();
+    if (!faro) return;
+
+    try {
+      // Build context for Faro
+      const faroContext: Record<string, string> = {};
+
+      // Add relevant context fields
+      if (entry.path) faroContext['path'] = String(entry.path);
+      if (entry.component) faroContext['component'] = String(entry.component);
+      if (entry.traceId) faroContext['traceId'] = String(entry.traceId);
+      if (entry.spanId) faroContext['spanId'] = String(entry.spanId);
+      if (entry.requestId) faroContext['requestId'] = String(entry.requestId);
+
+      // Push log to Faro
+      faro.api.pushLog([entry.msg], {
+        level: FARO_LOG_LEVEL_MAP[entry.level],
+        context: Object.keys(faroContext).length > 0 ? faroContext : undefined,
+      });
+
+      // If there's an error, also push it as an error event
+      if (entry.err && entry.level === 'error') {
+        const errObj = entry.err as {
+          type?: string;
+          message?: string;
+          stack?: string;
+        };
+        faro.api.pushError(new Error(errObj.message ?? entry.msg), {
+          context: faroContext,
+        });
+      }
+    } catch {
+      // Silently fail - don't create infinite loops
+    }
+  }
+
+  /**
    * Outputs a log entry.
    */
   private output(entry: LogEntry): void {
@@ -260,6 +322,11 @@ export class BrowserLogger {
     logBuffer.push(entry);
     if (logBuffer.length > LOG_BUFFER_MAX_SIZE) {
       logBuffer.shift();
+    }
+
+    // Forward to Faro in production
+    if (!isDev) {
+      this.forwardToFaroInstance(entry);
     }
 
     // In production, output JSON
@@ -355,3 +422,6 @@ export function createLogger(options: LoggerOptions = {}): BrowserLogger {
 export const logger = createLogger();
 
 export default logger;
+
+// Re-export log level type with consistent naming
+export type LogLevel = BrowserLogLevel;

@@ -14,6 +14,7 @@
 
 import { ImageResponse } from '@vercel/og';
 import type { NextRequest } from 'next/server';
+import { logger } from '@/lib/observability';
 
 export const runtime = 'edge';
 
@@ -102,7 +103,10 @@ export async function GET(request: NextRequest) {
         return new Response(`Unknown type: ${imageType}`, { status: 400 });
     }
   } catch (error) {
-    console.error('OG image generation error:', error);
+    logger.error('OG image generation error', error as Error, {
+      component: 'og-route',
+      type: imageType,
+    });
     return new Response('Failed to generate image', { status: 500 });
   }
 }

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 
 import { ErrorCard } from '@/components/errors';
-import { logger } from '@/lib/observability';
+import { logger, usePushError, useTraceId } from '@/lib/observability';
 
 interface ErrorBoundaryProps {
   error: Error & { digest?: string };
@@ -11,12 +11,23 @@ interface ErrorBoundaryProps {
 }
 
 export default function AboutError({ error, reset }: ErrorBoundaryProps) {
+  const pushError = usePushError();
+  const traceId = useTraceId();
+
   useEffect(() => {
     logger.error('About page error', error, {
       digest: error.digest,
       component: 'about-error-boundary',
+      traceId,
     });
-  }, [error]);
+
+    pushError(error, {
+      component: 'about-error-boundary',
+      route: '/about',
+      digest: error.digest ?? '',
+      traceId: traceId ?? '',
+    });
+  }, [error, pushError, traceId]);
 
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -29,6 +40,11 @@ export default function AboutError({ error, reset }: ErrorBoundaryProps) {
         onRetry={reset}
         showDetails={isDev}
       />
+      {traceId && (
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Reference: {traceId.slice(0, 8)}
+        </p>
+      )}
     </div>
   );
 }

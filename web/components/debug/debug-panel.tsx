@@ -37,13 +37,10 @@ export function DebugPanel() {
   const [activeTab, setActiveTab] = useState<DebugTab>('requests');
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
-  // Only render in development
-  if (process.env.NODE_ENV !== 'development') {
-    return null;
-  }
-
   // Refresh logs periodically when panel is open
   useEffect(() => {
+    // Only run in development
+    if (process.env.NODE_ENV !== 'development') return;
     if (!isOpen) return;
 
     const updateLogs = () => {
@@ -55,6 +52,11 @@ export function DebugPanel() {
 
     return () => clearInterval(interval);
   }, [isOpen]);
+
+  // Only render in development
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
 
   const handleClear = () => {
     clearLogBuffer();

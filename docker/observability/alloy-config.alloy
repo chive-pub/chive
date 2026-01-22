@@ -1,0 +1,116 @@
+// Grafana Alloy Configuration for Chive
+// Receives telemetry from frontend (Faro) and backend (OTLP)
+
+// =============================================================================
+// FARO RECEIVER - Frontend Real User Monitoring
+// =============================================================================
+// Receives browser telemetry from @grafana/faro-web-sdk
+faro.receiver "default" {
+  server {
+    listen_address = "0.0.0.0"
+    listen_port    = 12347
+
+    // Allow any HTTPS origin for self-hosted flexibility
+    // In production, Traefik handles TLS termination
+    cors_allowed_origins = ["*"]
+  }
+
+  // Output destinations
+  output {
+    logs   = [loki.process.faro_logs.receiver]
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+// =============================================================================
+// OTLP RECEIVER - Backend OpenTelemetry
+// =============================================================================
+// Receives traces from backend services via OTLP protocol
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+    logs   = [otelcol.processor.batch.default.input]
+  }
+}
+
+// =============================================================================
+// PROCESSORS
+// =============================================================================
+// Batch processor for efficient export
+otelcol.processor.batch "default" {
+  timeout             = "5s"
+  send_batch_size     = 1000
+  send_batch_max_size = 1500
+
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+    logs   = [otelcol.exporter.loki.default.input]
+  }
+}
+
+// Process Faro logs before sending to Loki
+loki.process "faro_logs" {
+  forward_to = [loki.write.default.receiver]
+
+  // Add static labels
+  stage.static_labels {
+    values = {
+      source = "faro",
+      app    = "chive-web",
+    }
+  }
+
+  // Extract JSON fields as labels
+  stage.json {
+    expressions = {
+      level       = "level",
+      browser     = "browser.name",
+      os          = "os.name",
+      page_url    = "page.url",
+      session_id  = "session.id",
+      trace_id    = "trace.id",
+    }
+  }
+
+  // Map extracted values to labels (only low-cardinality ones)
+  stage.labels {
+    values = {
+      level   = "",
+      browser = "",
+      os      = "",
+    }
+  }
+}
+
+// =============================================================================
+// EXPORTERS
+// =============================================================================
+// Export traces to Tempo
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// Export logs to Loki (from OTLP)
+otelcol.exporter.loki "default" {
+  forward_to = [loki.write.default.receiver]
+}
+
+// Write logs to Loki
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

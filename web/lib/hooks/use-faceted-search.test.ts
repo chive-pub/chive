@@ -199,7 +199,7 @@ describe('useFacetCounts', () => {
     expect(mockBrowseFaceted).toHaveBeenCalledWith(
       expect.objectContaining({
         facets: JSON.stringify({ matter: ['physics'] }),
-        limit: 0,
+        limit: 1, // Minimum limit - we only care about facets
       })
     );
   });
@@ -219,7 +219,7 @@ describe('useFacetCounts', () => {
 
     expect(mockBrowseFaceted).toHaveBeenCalledWith(
       expect.objectContaining({
-        limit: 0,
+        limit: 1, // Minimum limit - we only care about facets
       })
     );
   });

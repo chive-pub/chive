@@ -5,7 +5,7 @@
  *
  * @remarks
  * Catches all unhandled errors in the app and displays a user-friendly
- * error message. Logs errors to the observability system.
+ * error message. Reports errors to Faro for production monitoring.
  *
  * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling
  *
@@ -15,7 +15,7 @@
 import { useEffect } from 'react';
 
 import { ErrorCard } from '@/components/errors';
-import { logger } from '@/lib/observability';
+import { logger, usePushError, useTraceId } from '@/lib/observability';
 
 /**
  * Props for the error boundary component.
@@ -31,13 +31,25 @@ interface ErrorBoundaryProps {
  * Root error boundary component.
  */
 export default function Error({ error, reset }: ErrorBoundaryProps) {
+  const pushError = usePushError();
+  const traceId = useTraceId();
+
   useEffect(() => {
     // Log the error to our observability system
     logger.error('Unhandled error caught by error boundary', error, {
       digest: error.digest,
       component: 'root-error-boundary',
+      traceId,
     });
-  }, [error]);
+
+    // Report to Faro for production monitoring
+    pushError(error, {
+      component: 'root-error-boundary',
+      route: '/',
+      digest: error.digest ?? '',
+      traceId: traceId ?? '',
+    });
+  }, [error, pushError, traceId]);
 
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -55,6 +67,11 @@ export default function Error({ error, reset }: ErrorBoundaryProps) {
           onRetry={reset}
           showDetails={isDev}
         />
+        {traceId && (
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Reference: {traceId.slice(0, 8)}
+          </p>
+        )}
       </div>
     </div>
   );

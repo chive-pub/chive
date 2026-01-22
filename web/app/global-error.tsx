@@ -8,12 +8,18 @@
  * It must define its own <html> and <body> tags since it replaces the
  * root layout when an error occurs.
  *
+ * Note: This component cannot use hooks like usePushError since it renders
+ * outside the provider tree. It reports errors directly via the logger which
+ * forwards to Faro in production.
+ *
  * @see https://nextjs.org/docs/app/building-your-application/routing/error-handling#handling-errors-in-root-layouts
  *
  * @packageDocumentation
  */
 
 import { useEffect } from 'react';
+import { logger } from '@/lib/observability';
+import { getFaro } from '@/lib/observability/faro';
 
 /**
  * Props for the global error boundary component.
@@ -34,13 +40,27 @@ interface GlobalErrorProps {
  */
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    // Log to console since our logger might not be available
-    console.error('Global error caught:', {
-      name: error.name,
-      message: error.message,
+    // Log error with structured context
+    logger.error('Global error caught', error, {
+      component: 'global-error-boundary',
       digest: error.digest,
-      stack: error.stack,
     });
+
+    // Try to report to Faro directly (may not be initialized)
+    try {
+      const faro = getFaro();
+      if (faro) {
+        faro.api.pushError(error, {
+          context: {
+            component: 'global-error-boundary',
+            route: 'root-layout',
+            digest: error.digest ?? '',
+          },
+        });
+      }
+    } catch {
+      // Faro may not be available, ignore
+    }
   }, [error]);
 
   return (

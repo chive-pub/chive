@@ -3,25 +3,49 @@
  *
  * @remarks
  * This file is automatically loaded by Next.js when the instrumentation
- * hook is enabled. It sets up OpenTelemetry for server-side tracing.
+ * hook is enabled. It sets up OpenTelemetry for server-side tracing
+ * using @vercel/otel for seamless integration.
  *
  * @see https://nextjs.org/docs/app/guides/instrumentation
+ * @see https://www.npmjs.com/package/@vercel/otel
+ *
  * @packageDocumentation
  */
 
+import { registerOTel } from '@vercel/otel';
+
+/**
+ * Register OpenTelemetry instrumentation.
+ *
+ * @remarks
+ * Called by Next.js during server startup. Sets up distributed tracing
+ * with proper propagation to correlate frontend (Faro) and backend spans.
+ */
 export async function register() {
-  // Only register server-side instrumentation in Node.js runtime
+  // Register OpenTelemetry with @vercel/otel
+  registerOTel({
+    serviceName: process.env.OTEL_SERVICE_NAME ?? 'chive-web',
+    // Use OTLP exporter if configured, otherwise use console in development
+    attributes: {
+      'service.version': process.env.NEXT_PUBLIC_APP_VERSION ?? '0.0.0',
+      'deployment.environment': process.env.NODE_ENV ?? 'development',
+    },
+  });
+
+  // Only run additional initialization in Node.js runtime
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    // Import server-side tracing setup
-    // This will be expanded when we add full OTEL SDK
-    const { initializeTraceContext } = await import('./lib/observability/trace');
+    // Import server-side tracing setup and logger
+    const { initializeTraceContext, logger } = await import('./lib/observability');
 
     // Initialize a root trace context for server-side operations
     initializeTraceContext();
 
     // Log instrumentation registration
     if (process.env.NODE_ENV === 'development') {
-      console.log('[instrumentation] Server-side observability initialized');
+      logger.info('Server-side observability initialized with OpenTelemetry', {
+        component: 'instrumentation',
+        serviceName: process.env.OTEL_SERVICE_NAME ?? 'chive-web',
+      });
     }
   }
 }
@@ -31,9 +55,9 @@ export async function register() {
  *
  * @remarks
  * This hook is called for unhandled errors in API routes and server components.
- * It provides a central place to log and track errors.
+ * It provides a central place to log and track errors with distributed tracing.
  */
-export function onRequestError(
+export async function onRequestError(
   error: { digest: string } & Error,
   request: {
     path: string;
@@ -52,14 +76,20 @@ export function onRequestError(
     renderType?: 'dynamic' | 'dynamic-resume';
   }
 ) {
-  // Log error with context for debugging
-  // This will be enhanced with structured logging when OTEL is fully integrated
-  console.error('[instrumentation] Request error:', {
-    error: {
-      message: error.message,
-      digest: error.digest,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-    },
+  // Dynamic import to avoid issues during instrumentation bootstrap
+  const { logger } = await import('./lib/observability');
+
+  // Extract trace context from request headers for correlation
+  const traceparent = request.headers['traceparent'];
+  const tracestate = request.headers['tracestate'];
+
+  // Log error with structured context
+  logger.error('Request error', error, {
+    component: 'instrumentation',
+    digest: error.digest,
+    // Include trace context for correlation with frontend
+    ...(traceparent ? { traceparent } : {}),
+    ...(tracestate ? { tracestate } : {}),
     request: {
       path: request.path,
       method: request.method,
