@@ -36,6 +36,9 @@ const IGNORED_ENDPOINTS = [
   '/api/metrics',
   '/_next/',
   '/favicon.ico',
+  // Faro collector - don't instrument our own telemetry requests
+  '/collect',
+  ':12347',
 ];
 
 /**

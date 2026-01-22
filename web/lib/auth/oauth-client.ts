@@ -54,8 +54,7 @@ const handleResolver = new AtprotoDohHandleResolver({
  * NEXT_PUBLIC_OAUTH_BASE_URL=https://abc123.ngrok.io
  * ```
  *
- * For loopback development, ATProto requires 127.0.0.1 (NOT localhost).
- * This function automatically rewrites localhost to 127.0.0.1.
+ * For loopback development, ATProto requires "http://localhost" (NOT 127.0.0.1).
  */
 function getOAuthBaseUrl(): string {
   // Check for explicit override (for ngrok/tunnel development)
@@ -63,14 +62,9 @@ function getOAuthBaseUrl(): string {
     return process.env.NEXT_PUBLIC_OAUTH_BASE_URL;
   }
 
-  // In browser, use current origin but rewrite localhost to 127.0.0.1
+  // In browser, use current origin
   if (typeof window !== 'undefined') {
-    const origin = window.location.origin;
-    // ATProto requires 127.0.0.1 for loopback, NOT localhost
-    if (origin.includes('localhost')) {
-      return origin.replace('localhost', '127.0.0.1');
-    }
-    return origin;
+    return window.location.origin;
   }
 
   // Fallback for production
@@ -81,9 +75,8 @@ function getOAuthBaseUrl(): string {
  * Get the OAuth client ID.
  *
  * @remarks
- * For loopback addresses, ATProto OAuth requires:
- * 1. The client ID must be 127.0.0.1 (NOT localhost)
- * 2. No path component (just origin)
+ * For loopback addresses, ATProto OAuth requires EXACTLY "http://localhost"
+ * without any port or path. The actual port is passed via redirect_uri query param.
  *
  * For production URLs, we use the full path to the client metadata document.
  *
@@ -93,14 +86,10 @@ function getClientId(): string {
   const baseUrl = getOAuthBaseUrl();
   const url = new URL(baseUrl);
 
-  // ATProto requires 127.0.0.1 (NOT localhost) for loopback clients
-  if (url.hostname === '127.0.0.1' || url.hostname === '[::1]') {
-    return url.origin; // No path for loopback
-  }
-
-  // localhost should be rewritten to 127.0.0.1 for ATProto compliance
-  if (url.hostname === 'localhost') {
-    return `http://127.0.0.1:${url.port || '3000'}`;
+  // ATProto requires EXACTLY "http://localhost" for loopback clients
+  // No port, no path - just the origin without port
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]') {
+    return 'http://localhost';
   }
 
   // For production, use full client metadata URL

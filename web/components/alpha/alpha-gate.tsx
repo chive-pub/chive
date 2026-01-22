@@ -24,6 +24,17 @@ interface AlphaGateProps {
 }
 
 /**
+ * Check if alpha gate should be bypassed in development.
+ *
+ * @remarks
+ * When NEXT_PUBLIC_DEV_MODE=local, the alpha gate is bypassed to allow
+ * testing without OAuth (which requires tunneling).
+ */
+function shouldBypassAlphaGate(): boolean {
+  return process.env.NEXT_PUBLIC_DEV_MODE === 'local';
+}
+
+/**
  * Alpha gate component that restricts access to approved alpha testers.
  *
  * @remarks
@@ -38,6 +49,9 @@ interface AlphaGateProps {
  * Users who are not approved alpha testers are redirected to the homepage
  * where they can see the signup form or their application status.
  *
+ * In local development mode (NEXT_PUBLIC_DEV_MODE=local), the gate is
+ * bypassed to allow testing without OAuth.
+ *
  * @example
  * ```tsx
  * // In a layout file like app/eprints/layout.tsx
@@ -47,6 +61,10 @@ interface AlphaGateProps {
  * ```
  */
 export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateProps) {
+  // Bypass alpha gate in local development mode
+  if (shouldBypassAlphaGate()) {
+    return <>{children}</>;
+  }
   const router = useRouter();
   const { logout } = useAuth();
   const isAuthenticated = useIsAuthenticated();

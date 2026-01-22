@@ -35,20 +35,9 @@ export interface FaroConfig {
 }
 
 /**
- * Get environment variable with optional default.
+ * Parse float with bounds checking.
  */
-function getEnv(key: string, defaultValue?: string): string | undefined {
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key] ?? defaultValue;
-  }
-  return defaultValue;
-}
-
-/**
- * Parse float from environment variable with default.
- */
-function getEnvFloat(key: string, defaultValue: number): number {
-  const value = getEnv(key);
+function parseFloatBounded(value: string | undefined, defaultValue: number): number {
   if (value === undefined) return defaultValue;
   const parsed = parseFloat(value);
   return isNaN(parsed) ? defaultValue : Math.min(1, Math.max(0, parsed));
@@ -56,20 +45,24 @@ function getEnvFloat(key: string, defaultValue: number): number {
 
 /**
  * Determine the current environment.
+ *
+ * @remarks
+ * Must use direct process.env access for Next.js static replacement.
  */
 function getEnvironment(): string {
-  return getEnv('NEXT_PUBLIC_ENVIRONMENT') ?? getEnv('NODE_ENV') ?? 'development';
+  // Direct access required for Next.js to inline at build time
+  return process.env.NEXT_PUBLIC_ENVIRONMENT ?? process.env.NODE_ENV ?? 'development';
 }
 
 /**
  * Determine if Faro should be enabled.
  */
 function isFaroEnabled(): boolean {
-  // Explicitly disabled
-  if (getEnv('NEXT_PUBLIC_FARO_ENABLED') === 'false') return false;
+  // Explicitly disabled - direct access required for Next.js
+  if (process.env.NEXT_PUBLIC_FARO_ENABLED === 'false') return false;
 
   // Must have collector URL in production
-  const collectorUrl = getEnv('NEXT_PUBLIC_FARO_URL');
+  const collectorUrl = process.env.NEXT_PUBLIC_FARO_URL;
   const env = getEnvironment();
 
   // Always enabled in development (sends to console only if no URL)
@@ -99,6 +92,10 @@ function getDefaultSampleRates(): { trace: number; session: number } {
  *
  * @returns Faro configuration object
  *
+ * @remarks
+ * Must use direct process.env access for Next.js static replacement.
+ * Dynamic key lookups like process.env[key] won't work.
+ *
  * @example
  * ```typescript
  * const config = getFaroConfig();
@@ -110,17 +107,24 @@ function getDefaultSampleRates(): { trace: number; session: number } {
 export function getFaroConfig(): FaroConfig {
   const defaults = getDefaultSampleRates();
 
+  // Direct process.env access required for Next.js to inline at build time
   return {
-    collectorUrl: getEnv('NEXT_PUBLIC_FARO_URL'),
-    appName: getEnv('NEXT_PUBLIC_APP_NAME', 'chive-web') ?? 'chive-web',
-    appVersion: getEnv('NEXT_PUBLIC_APP_VERSION', '0.0.0') ?? '0.0.0',
+    collectorUrl: process.env.NEXT_PUBLIC_FARO_URL,
+    appName: process.env.NEXT_PUBLIC_APP_NAME ?? 'chive-web',
+    appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? '0.0.0',
     environment: getEnvironment(),
-    traceSampleRate: getEnvFloat('NEXT_PUBLIC_FARO_TRACE_SAMPLE_RATE', defaults.trace),
-    sessionSampleRate: getEnvFloat('NEXT_PUBLIC_FARO_SESSION_SAMPLE_RATE', defaults.session),
+    traceSampleRate: parseFloatBounded(
+      process.env.NEXT_PUBLIC_FARO_TRACE_SAMPLE_RATE,
+      defaults.trace
+    ),
+    sessionSampleRate: parseFloatBounded(
+      process.env.NEXT_PUBLIC_FARO_SESSION_SAMPLE_RATE,
+      defaults.session
+    ),
     enabled: isFaroEnabled(),
-    instrumentConsole: getEnv('NEXT_PUBLIC_FARO_INSTRUMENT_CONSOLE', 'true') === 'true',
-    instrumentPerformance: getEnv('NEXT_PUBLIC_FARO_INSTRUMENT_PERFORMANCE', 'true') === 'true',
-    instrumentErrors: getEnv('NEXT_PUBLIC_FARO_INSTRUMENT_ERRORS', 'true') === 'true',
+    instrumentConsole: process.env.NEXT_PUBLIC_FARO_INSTRUMENT_CONSOLE !== 'false',
+    instrumentPerformance: process.env.NEXT_PUBLIC_FARO_INSTRUMENT_PERFORMANCE !== 'false',
+    instrumentErrors: process.env.NEXT_PUBLIC_FARO_INSTRUMENT_ERRORS !== 'false',
   };
 }
 
