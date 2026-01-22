@@ -23,7 +23,10 @@ import { z } from 'zod';
 import { ArrowLeft, ArrowRight, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { logger } from '@/lib/observability';
 import { Button } from '@/components/ui/button';
+
+const submitLogger = logger.child({ component: 'submission-wizard' });
 import { cn } from '@/lib/utils';
 import { useAuth, useAgent } from '@/lib/auth/auth-context';
 import { createEprintRecord, type CreateRecordResult } from '@/lib/atproto';
@@ -774,14 +777,18 @@ export function SubmissionWizard({
 
         // Check if indexing succeeded (API returns { indexed: false, error: "..." } on failure)
         if (!indexResult.data.indexed) {
-          console.warn('Indexing failed but record saved to PDS:', indexResult.data.error);
+          submitLogger.warn('Indexing failed but record saved to PDS', {
+            error: indexResult.data.error,
+          });
           toast.info('Your paper was saved to your PDS.', {
             description: 'It may take a moment to appear in search results.',
           });
         }
       } catch (syncError) {
         // Log but don't fail - the record exists in the target PDS
-        console.warn('Sync indexing failed (record saved to PDS):', syncError);
+        submitLogger.warn('Sync indexing failed (record saved to PDS)', {
+          error: syncError instanceof Error ? syncError.message : String(syncError),
+        });
         toast.info('Your paper was saved to your PDS.', {
           description: 'It may take a moment to appear in search results.',
         });
@@ -792,7 +799,7 @@ export function SubmissionWizard({
 
       onSuccess?.(result);
     } catch (error) {
-      console.error('Submission error:', error);
+      submitLogger.error('Submission error', error);
       setSubmitError(
         error instanceof Error ? error.message : 'An error occurred while submitting your eprint'
       );

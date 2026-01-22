@@ -6,6 +6,7 @@ import { Providers } from '@/components/providers';
 import { ConditionalHeader } from '@/components/conditional-header';
 import { SkipLink } from '@/components/skip-link';
 import { Toaster } from '@/components/ui/sonner';
+import { DebugPanel } from '@/components/debug';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
           </div>
           <Toaster />
+          <DebugPanel />
         </Providers>
       </body>
     </html>

@@ -10,7 +10,11 @@
  * @see https://atproto.com/specs/oauth
  */
 
+import { logger } from '@/lib/observability';
+
 import type { ChiveUser } from './types';
+
+const authLogger = logger.child({ component: 'auth-storage' });
 
 /** localStorage key for session metadata */
 const SESSION_METADATA_KEY = 'chive_session_metadata';
@@ -66,7 +70,7 @@ export function saveSessionMetadata(user: ChiveUser): void {
   try {
     localStorage.setItem(SESSION_METADATA_KEY, JSON.stringify(metadata));
   } catch (error) {
-    console.error('Failed to save session metadata:', error);
+    authLogger.error('Failed to save session metadata', error);
   }
 }
 
@@ -90,7 +94,7 @@ export function loadSessionMetadata(): SessionMetadata | null {
 
     return metadata;
   } catch (error) {
-    console.error('Failed to load session metadata:', error);
+    authLogger.error('Failed to load session metadata', error);
     return null;
   }
 }
@@ -104,7 +108,7 @@ export function clearSessionMetadata(): void {
   try {
     localStorage.removeItem(SESSION_METADATA_KEY);
   } catch (error) {
-    console.error('Failed to clear session metadata:', error);
+    authLogger.error('Failed to clear session metadata', error);
   }
 }
 
@@ -281,7 +285,7 @@ export function storeOAuthState(
       JSON.stringify({ ...data, createdAt: Date.now() })
     );
   } catch (error) {
-    console.error('Failed to store OAuth state:', error);
+    authLogger.error('Failed to store OAuth state', error, { state });
   }
 }
 
@@ -314,7 +318,7 @@ export function verifyOAuthState(state: string): { redirectUrl?: string; pdsUrl?
 
     return { redirectUrl: data.redirectUrl, pdsUrl: data.pdsUrl };
   } catch (error) {
-    console.error('Failed to verify OAuth state:', error);
+    authLogger.error('Failed to verify OAuth state', error, { state });
     return null;
   }
 }
@@ -340,6 +344,6 @@ export function clearAllAuthStorage(): void {
       }
     }
   } catch (error) {
-    console.error('Failed to clear OAuth states:', error);
+    authLogger.error('Failed to clear OAuth states', error);
   }
 }

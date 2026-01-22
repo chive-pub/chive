@@ -25,8 +25,11 @@ import * as React from 'react';
 import { useCallback } from 'react';
 import { Building2, MapPin, ExternalLink } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { cn } from '@/lib/utils';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'funder-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -126,7 +129,11 @@ async function searchFunders(query: string): Promise<CrossRefFunder[]> {
 
   const response = await fetch(`${CROSSREF_FUNDERS_URL}?${params.toString()}`);
   if (!response.ok) {
-    console.error('CrossRef funders search failed:', response.statusText);
+    log.error('CrossRef funders search failed', undefined, {
+      query,
+      status: response.status,
+      statusText: response.statusText,
+    });
     return [];
   }
 

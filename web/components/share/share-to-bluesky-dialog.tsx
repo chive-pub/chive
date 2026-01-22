@@ -13,7 +13,10 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { logger } from '@/lib/observability';
 import { Button } from '@/components/ui/button';
+
+const shareLogger = logger.child({ component: 'share-to-bluesky' });
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -98,7 +101,7 @@ export function ShareToBlueskyDialog({
           setOgImageBlob(new Uint8Array(arrayBuffer));
         }
       } catch (error) {
-        console.error('Failed to fetch OG image:', error);
+        shareLogger.error('Failed to fetch OG image', error);
       } finally {
         setIsLoadingImage(false);
       }

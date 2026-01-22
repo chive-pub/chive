@@ -137,6 +137,11 @@ export const CORS_CONFIG = {
     'Accept',
     'Accept-Language',
     'Bypass-Tunnel-Reminder',
+    // W3C Trace Context headers for distributed tracing
+    'traceparent',
+    'tracestate',
+    // OpenTelemetry baggage header
+    'baggage',
     // E2E test auth bypass headers (only processed when ENABLE_E2E_AUTH_BYPASS=true)
     'X-E2E-Auth-Did',
     'X-E2E-Auth-Handle',
@@ -152,6 +157,8 @@ export const CORS_CONFIG = {
     'X-RateLimit-Remaining',
     'X-RateLimit-Reset',
     'Retry-After',
+    // Expose trace ID for client correlation
+    'X-Trace-ID',
   ],
 
   /**

@@ -5,7 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 import { startLogin } from '@/lib/auth';
+import { logger } from '@/lib/observability';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const paperPopupLogger = logger.child({ component: 'paper-oauth-popup' });
 
 /**
  * Loading fallback for the popup page.
@@ -66,7 +69,7 @@ function PaperOAuthPopupContent() {
 
         window.location.href = url.toString();
       } catch (err) {
-        console.error('Failed to start paper OAuth:', err);
+        paperPopupLogger.error('Failed to start paper OAuth', err, { handle });
         setError(err instanceof Error ? err.message : 'Failed to start authentication');
         setIsRedirecting(false);
       }

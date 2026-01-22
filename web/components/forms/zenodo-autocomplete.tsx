@@ -24,7 +24,10 @@
 import { useCallback, useMemo } from 'react';
 import { Database, FileCode, FileText, Package } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'zenodo-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -202,7 +205,11 @@ function createZenodoSearchFn(recordType?: ZenodoRecordType) {
     const response = await fetch(`${ZENODO_API_URL}?${params.toString()}`);
 
     if (!response.ok) {
-      console.error('Zenodo search failed:', response.statusText);
+      log.error('Zenodo search failed', undefined, {
+        query,
+        status: response.status,
+        statusText: response.statusText,
+      });
       return [];
     }
 

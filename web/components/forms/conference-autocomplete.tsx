@@ -23,7 +23,10 @@
 import { useCallback } from 'react';
 import { Building } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'conference-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -134,7 +137,11 @@ async function searchDblpVenues(query: string): Promise<Conference[]> {
   const response = await fetch(`${DBLP_API_URL}?${params.toString()}`);
 
   if (!response.ok) {
-    console.error('DBLP search failed:', response.statusText);
+    log.error('DBLP search failed', undefined, {
+      query,
+      status: response.status,
+      statusText: response.statusText,
+    });
     return [];
   }
 

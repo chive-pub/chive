@@ -28,6 +28,9 @@ import { BookOpen, Hash, Building2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { AutocompleteInput } from './autocomplete-input';
+import { logger } from '@/lib/observability';
+
+const journalLogger = logger.child({ component: 'journal-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -128,7 +131,11 @@ async function searchJournals(query: string): Promise<CrossRefJournal[]> {
 
   const response = await fetch(`${CROSSREF_JOURNALS_URL}?${params.toString()}`);
   if (!response.ok) {
-    console.error('CrossRef journals search failed:', response.statusText);
+    journalLogger.error('CrossRef journals search failed', undefined, {
+      status: response.status,
+      statusText: response.statusText,
+      query,
+    });
     return [];
   }
 

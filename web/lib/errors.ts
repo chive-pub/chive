@@ -11,6 +11,25 @@
  */
 
 /**
+ * Error severity levels for monitoring and alerting.
+ */
+export type ErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+/**
+ * Serialized error format for structured logging.
+ */
+export interface SerializedError {
+  name: string;
+  code: string;
+  message: string;
+  severity: ErrorSeverity;
+  isRetryable: boolean;
+  stack?: string;
+  cause?: SerializedError;
+  [key: string]: unknown;
+}
+
+/**
  * Base error class for all Chive frontend errors.
  *
  * @remarks
@@ -68,6 +87,62 @@ export abstract class ChiveError extends Error {
     this.cause = cause;
     Error.captureStackTrace?.(this, this.constructor);
   }
+
+  /**
+   * Error severity for monitoring and alerting.
+   *
+   * @remarks
+   * Override in subclasses to customize severity based on error type.
+   * Default is 'medium' for most errors.
+   */
+  get severity(): ErrorSeverity {
+    return 'medium';
+  }
+
+  /**
+   * Whether this error is retryable.
+   *
+   * @remarks
+   * Override in subclasses to indicate whether the operation
+   * can be retried. Default is false (non-retryable).
+   */
+  get isRetryable(): boolean {
+    return false;
+  }
+
+  /**
+   * Converts error to a plain object for structured logging.
+   *
+   * @remarks
+   * Produces a JSON-serializable object with all error properties,
+   * including nested cause chains.
+   */
+  toJSON(): SerializedError {
+    const result: SerializedError = {
+      name: this.name,
+      code: this.code,
+      message: this.message,
+      severity: this.severity,
+      isRetryable: this.isRetryable,
+      stack: this.stack,
+    };
+
+    if (this.cause) {
+      result.cause =
+        this.cause instanceof ChiveError
+          ? this.cause.toJSON()
+          : {
+              name: this.cause.name,
+              code: 'UNKNOWN',
+              message: this.cause.message,
+              severity: 'medium',
+              isRetryable: false,
+              stack: this.cause.stack,
+            };
+    }
+
+    return result;
+  }
 }
 
 /**
@@ -115,6 +190,28 @@ export class APIError extends ChiveError {
     super(message, cause);
     this.statusCode = statusCode;
     this.endpoint = endpoint;
+  }
+
+  get severity(): ErrorSeverity {
+    // 5xx errors are high severity, 4xx are medium
+    if (this.statusCode && this.statusCode >= 500) return 'high';
+    return 'medium';
+  }
+
+  get isRetryable(): boolean {
+    // 5xx errors and specific 4xx errors are retryable
+    if (!this.statusCode) return true;
+    if (this.statusCode >= 500) return true;
+    if (this.statusCode === 408 || this.statusCode === 429) return true;
+    return false;
+  }
+
+  toJSON(): SerializedError {
+    return {
+      ...super.toJSON(),
+      statusCode: this.statusCode,
+      endpoint: this.endpoint,
+    };
   }
 }
 
@@ -305,6 +402,21 @@ export class RateLimitError extends ChiveError {
     super(`Rate limit exceeded. Retry after ${retryAfter} seconds.`);
     this.retryAfter = retryAfter;
   }
+
+  get severity(): ErrorSeverity {
+    return 'low';
+  }
+
+  get isRetryable(): boolean {
+    return true;
+  }
+
+  toJSON(): SerializedError {
+    return {
+      ...super.toJSON(),
+      retryAfter: this.retryAfter,
+    };
+  }
 }
 
 /**
@@ -338,5 +450,14 @@ export class NetworkError extends ChiveError {
    */
   constructor(message: string, cause?: Error) {
     super(message, cause);
+  }
+
+  get severity(): ErrorSeverity {
+    return 'high';
+  }
+
+  get isRetryable(): boolean {
+    // Network errors are typically transient and retryable
+    return true;
   }
 }

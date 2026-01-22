@@ -27,8 +27,11 @@ import * as React from 'react';
 import { useCallback } from 'react';
 import { ExternalLink, Calendar, BookOpen } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { cn } from '@/lib/utils';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'doi-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -189,7 +192,11 @@ async function searchCrossRef(query: string): Promise<CrossRefWork[]> {
 
   const response = await fetch(`${CROSSREF_API_URL}?${params.toString()}`);
   if (!response.ok) {
-    console.error('CrossRef search failed:', response.statusText);
+    log.error('CrossRef search failed', undefined, {
+      query,
+      status: response.status,
+      statusText: response.statusText,
+    });
     return [];
   }
 

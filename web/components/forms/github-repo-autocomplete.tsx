@@ -23,7 +23,10 @@
 import { useCallback } from 'react';
 import { Github, Star, GitFork, Code } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'github-repo-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -164,7 +167,11 @@ async function searchGithub(query: string): Promise<GithubRepo[]> {
   });
 
   if (!response.ok) {
-    console.error('GitHub search failed:', response.statusText);
+    log.error('GitHub search failed', undefined, {
+      query,
+      status: response.status,
+      statusText: response.statusText,
+    });
     return [];
   }
 

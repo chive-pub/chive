@@ -31,6 +31,20 @@ WORKDIR /app/web
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Validate required environment variables at build time
+RUN if [ -z "$NEXT_PUBLIC_API_URL" ]; then \
+      echo ""; \
+      echo "========================================"; \
+      echo "ERROR: NEXT_PUBLIC_API_URL is required"; \
+      echo "========================================"; \
+      echo ""; \
+      echo "This variable must be set at build time."; \
+      echo "Example: docker build --build-arg NEXT_PUBLIC_API_URL=https://example.com/api"; \
+      echo ""; \
+      exit 1; \
+    fi
+
 RUN pnpm build
 
 # Production image

@@ -12,9 +12,54 @@ import { AtpBaseClient } from './generated/index';
 import { APIError } from '@/lib/errors';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import { logger } from '@/lib/observability';
 
 // Re-export types from generated client
 export * from './generated/index';
+
+// =============================================================================
+// REQUEST CORRELATION
+// =============================================================================
+
+/**
+ * Generates a unique request ID for correlation.
+ */
+function generateRequestId(): string {
+  return `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
+}
+
+/**
+ * Generates a W3C Trace Context traceparent header.
+ *
+ * @remarks
+ * Format: 00-trace_id-span_id-trace_flags
+ * - version: 00 (current version)
+ * - trace_id: 32 hex chars (128-bit random)
+ * - span_id: 16 hex chars (64-bit random)
+ * - trace_flags: 01 (sampled)
+ *
+ * @see https://www.w3.org/TR/trace-context/
+ */
+function generateTraceparent(): { traceparent: string; traceId: string; spanId: string } {
+  // Generate random trace ID (128-bit / 32 hex chars)
+  const traceIdArray = new Uint8Array(16);
+  crypto.getRandomValues(traceIdArray);
+  const traceId = Array.from(traceIdArray)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  // Generate random span ID (64-bit / 16 hex chars)
+  const spanIdArray = new Uint8Array(8);
+  crypto.getRandomValues(spanIdArray);
+  const spanId = Array.from(spanIdArray)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  // trace_flags: 01 = sampled
+  const traceparent = `00-${traceId}-${spanId}-01`;
+
+  return { traceparent, traceId, spanId };
+}
 
 // =============================================================================
 // CONFIGURATION
@@ -109,7 +154,10 @@ async function getAuthHeaders(headers: Headers, url: string): Promise<Headers> {
       const token = await getServiceAuthToken(agent, lxm);
       headers.set('Authorization', `Bearer ${token}`);
     } catch (error) {
-      console.error('Failed to get service auth token:', error);
+      logger.error('Failed to get service auth token', error as Error, {
+        component: 'api-client',
+        endpoint: new URL(url, 'http://localhost').pathname,
+      });
     }
   }
 
@@ -117,16 +165,33 @@ async function getAuthHeaders(headers: Headers, url: string): Promise<Headers> {
 }
 
 /**
- * Creates a fetch handler with authentication support.
+ * Creates a fetch handler with authentication support and observability.
  *
  * @remarks
  * Returns a function matching the standard fetch signature expected by @atproto/xrpc:
  * `(input: URL | RequestInfo, init?: RequestInit) => Promise<Response>`
+ *
+ * Features:
+ * - Structured logging of all requests and responses
+ * - W3C Trace Context propagation for distributed tracing
+ * - Request ID generation for correlation
+ * - Performance timing
  */
 function createFetchHandler(options: { authenticated: boolean }): typeof globalThis.fetch {
   return async (input: URL | RequestInfo, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const method = init?.method ?? 'GET';
     const headers = new Headers(init?.headers);
+    const parsedUrl = new URL(url, 'http://localhost');
+    const endpoint = parsedUrl.pathname;
+
+    // Generate correlation IDs
+    const requestId = generateRequestId();
+    const trace = generateTraceparent();
+
+    // Add correlation headers
+    headers.set('X-Request-ID', requestId);
+    headers.set('traceparent', trace.traceparent);
 
     // Add tunnel bypass header if needed
     if (isTunnelMode) {
@@ -138,22 +203,63 @@ function createFetchHandler(options: { authenticated: boolean }): typeof globalT
       await getAuthHeaders(headers, url);
     }
 
-    const response = await fetch(input, {
-      ...init,
-      headers,
+    // Create request-scoped logger
+    const requestLogger = logger.child({
+      requestId,
+      traceId: trace.traceId,
+      spanId: trace.spanId,
+      endpoint,
+      method,
     });
 
-    // Check for errors and throw APIError for non-ok responses
-    if (!response.ok) {
-      const responseBody = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-      const errorMessage =
-        typeof responseBody.message === 'string'
-          ? responseBody.message
-          : 'An unknown error occurred';
-      throw new APIError(errorMessage, response.status, new URL(url, 'http://localhost').pathname);
-    }
+    requestLogger.debug('API request started');
 
-    return response;
+    const startTime = performance.now();
+
+    try {
+      const response = await fetch(input, {
+        ...init,
+        headers,
+      });
+
+      const durationMs = Math.round(performance.now() - startTime);
+      const status = response.status;
+
+      // Check for errors and throw APIError for non-ok responses
+      if (!response.ok) {
+        const responseBody = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+        const errorMessage =
+          typeof responseBody.message === 'string'
+            ? responseBody.message
+            : 'An unknown error occurred';
+
+        requestLogger.warn('API request failed', {
+          status,
+          durationMs,
+          error: errorMessage,
+        });
+
+        throw new APIError(errorMessage, status, endpoint);
+      }
+
+      requestLogger.debug('API request completed', {
+        status,
+        durationMs,
+      });
+
+      return response;
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - startTime);
+
+      // Only log if not already logged (APIError case)
+      if (!(error instanceof APIError)) {
+        requestLogger.error('API request error', error as Error, {
+          durationMs,
+        });
+      }
+
+      throw error;
+    }
   };
 }
 

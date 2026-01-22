@@ -24,7 +24,10 @@ import * as React from 'react';
 import { useCallback } from 'react';
 import { ExternalLink } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'lcsh-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -83,7 +86,11 @@ async function searchLcsh(query: string): Promise<LcshSuggestion[]> {
 
   const response = await fetch(url);
   if (!response.ok) {
-    console.error('LCSH search failed:', response.statusText);
+    log.error('LCSH search failed', undefined, {
+      query,
+      status: response.status,
+      statusText: response.statusText,
+    });
     return [];
   }
 

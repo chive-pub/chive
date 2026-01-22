@@ -18,7 +18,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { CheckCircle2, Loader2, User, FileText, AlertCircle } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { Button } from '@/components/ui/button';
+
+const destinationLogger = logger.child({ component: 'step-destination' });
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -132,7 +135,7 @@ export function StepDestination({ form, className }: StepDestinationProps) {
       form.setValue('paperDid', session.paperDid, { shouldValidate: true });
       form.setValue('usePaperPds', true, { shouldValidate: true });
     } catch (error) {
-      console.error('Paper authentication failed:', error);
+      destinationLogger.error('Paper authentication failed', error);
       setAuthError(error instanceof Error ? error.message : 'Authentication failed');
     } finally {
       setIsAuthenticating(false);

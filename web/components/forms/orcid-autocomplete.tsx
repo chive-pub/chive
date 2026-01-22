@@ -23,7 +23,10 @@
 import { useCallback } from 'react';
 import { User, Building } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'orcid-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -130,7 +133,11 @@ async function searchOrcid(query: string): Promise<OrcidPerson[]> {
   });
 
   if (!response.ok) {
-    console.error('ORCID search failed:', response.statusText);
+    log.error('ORCID search failed', undefined, {
+      query,
+      status: response.status,
+      statusText: response.statusText,
+    });
     return [];
   }
 

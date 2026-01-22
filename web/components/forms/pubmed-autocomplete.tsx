@@ -23,7 +23,10 @@
 import { useCallback } from 'react';
 import { FileText, BookOpen, Users, Calendar } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'pubmed-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -126,7 +129,11 @@ async function searchPubmed(query: string): Promise<PubmedEntry[]> {
 
   const searchResponse = await fetch(`${ESEARCH_URL}?${searchParams.toString()}`);
   if (!searchResponse.ok) {
-    console.error('PubMed search failed:', searchResponse.statusText);
+    log.error('PubMed search failed', undefined, {
+      query,
+      status: searchResponse.status,
+      statusText: searchResponse.statusText,
+    });
     return [];
   }
 
@@ -146,7 +153,11 @@ async function searchPubmed(query: string): Promise<PubmedEntry[]> {
 
   const summaryResponse = await fetch(`${ESUMMARY_URL}?${summaryParams.toString()}`);
   if (!summaryResponse.ok) {
-    console.error('PubMed summary fetch failed:', summaryResponse.statusText);
+    log.error('PubMed summary fetch failed', undefined, {
+      pmids: ids,
+      status: summaryResponse.status,
+      statusText: summaryResponse.statusText,
+    });
     return [];
   }
 

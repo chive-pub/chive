@@ -26,6 +26,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { api } from '@/lib/api/client';
+import { logger } from '@/lib/observability';
+
+const trackingLogger = logger.child({ component: 'search-tracking' });
 
 /**
  * Click tracking data stored in sessionStorage.
@@ -79,7 +82,11 @@ export function useSearchTracking(impressionId: string | undefined) {
           position,
         });
       } catch (error) {
-        console.warn('Failed to record search click:', error);
+        trackingLogger.warn('Failed to record search click', {
+          impressionId,
+          uri,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     },
     [impressionId]
@@ -140,7 +147,11 @@ export function useSearchTracking(impressionId: string | undefined) {
           uri,
         });
       } catch (error) {
-        console.warn('Failed to record search download:', error);
+        trackingLogger.warn('Failed to record search download', {
+          impressionId,
+          uri,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     },
     [impressionId]

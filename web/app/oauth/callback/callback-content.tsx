@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { initializeOAuth } from '@/lib/auth';
+import { logger } from '@/lib/observability';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const oauthLogger = logger.child({ component: 'oauth-callback' });
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -55,7 +58,7 @@ export function OAuthCallbackContent() {
           }
         }
       } catch (err) {
-        console.error('OAuth callback error:', err);
+        oauthLogger.error('OAuth callback error', err);
         setError(err instanceof Error ? err.message : 'Authentication failed');
         setIsProcessing(false);
       }

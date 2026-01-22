@@ -23,9 +23,12 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Plus, X, Building2, ExternalLink, Loader2 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
+import { logger } from '@/lib/observability';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+const log = logger.child({ component: 'affiliation-input' });
 
 // =============================================================================
 // TYPES
@@ -215,7 +218,7 @@ function useDualSourceSearch() {
       });
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Institution search error:', error);
+        log.error('Institution search error', error, { query: searchQuery });
         setResults({ chiveInstitutions: [], rorOrganizations: [] });
       }
     } finally {

@@ -29,6 +29,9 @@ import type {
   ProposedNode,
   ProposalEvidence,
 } from '../schemas/governance';
+import { logger } from '@/lib/observability';
+
+const recordLogger = logger.child({ component: 'record-creator' });
 
 // =============================================================================
 // TYPES
@@ -235,7 +238,7 @@ export async function ensureChiveProfile(agent: Agent): Promise<CreateRecordResu
 
     if (!isNotFound) {
       // Unexpected error
-      console.error('Error checking for existing profile:', error);
+      recordLogger.error('Error checking for existing profile', error);
       return null;
     }
   }
@@ -259,7 +262,7 @@ export async function ensureChiveProfile(agent: Agent): Promise<CreateRecordResu
       cid: response.data.cid,
     };
   } catch (error) {
-    console.error('Error creating profile:', error);
+    recordLogger.error('Error creating profile', error);
     return null;
   }
 }

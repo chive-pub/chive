@@ -4,6 +4,9 @@ import { authApi, getApiBaseUrl } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import { logger } from '@/lib/observability';
+
+const claimingLogger = logger.child({ component: 'claiming' });
 /**
  * Claim status type derived from the lexicon.
  */
@@ -688,7 +691,10 @@ export async function fetchExternalPdf(source: string, externalId: string): Prom
       const token = await getServiceAuthToken(agent, 'pub.chive.claiming.fetchExternalPdf');
       headers['Authorization'] = `Bearer ${token}`;
     } catch (error) {
-      console.error('Failed to get service auth token for PDF fetch:', error);
+      claimingLogger.error('Failed to get service auth token for PDF fetch', error, {
+        source,
+        externalId,
+      });
       // Continue without auth - backend will return 401
     }
   }

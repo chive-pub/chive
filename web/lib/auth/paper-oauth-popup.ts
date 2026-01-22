@@ -24,6 +24,9 @@
 
 import type { OAuthSession } from '@atproto/oauth-client-browser';
 import { setPaperSession, type PaperSession } from './paper-session';
+import { logger } from '@/lib/observability';
+
+const paperOAuthLogger = logger.child({ component: 'paper-oauth-popup' });
 
 /**
  * Message sent from popup callback to main window.
@@ -88,7 +91,7 @@ function handlePaperOAuthMessage(event: MessageEvent): void {
   }
 
   if (!pendingPopup) {
-    console.warn('[Paper OAuth] Received callback but no pending popup');
+    paperOAuthLogger.warn('Received callback but no pending popup');
     return;
   }
 
@@ -262,7 +265,7 @@ export function postPaperSessionToOpener(session: {
   pdsEndpoint: string;
 }): void {
   if (!window.opener) {
-    console.error('[Paper OAuth] No opener window found');
+    paperOAuthLogger.error('No opener window found when posting session');
     return;
   }
 
@@ -287,7 +290,7 @@ export function postPaperSessionToOpener(session: {
  */
 export function postPaperErrorToOpener(error: string): void {
   if (!window.opener) {
-    console.error('[Paper OAuth] No opener window found');
+    paperOAuthLogger.error('No opener window found when posting error', undefined, { error });
     return;
   }
 

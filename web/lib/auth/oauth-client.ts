@@ -17,6 +17,9 @@ import {
 import { Agent } from '@atproto/api';
 import type { DID, Handle, ChiveUser, LoginOptions } from './types';
 import { AuthenticationError, NetworkError } from '@/lib/errors';
+import { logger } from '@/lib/observability';
+
+const oauthLogger = logger.child({ component: 'oauth-client' });
 
 /**
  * Handle resolver using ATProto's official DNS-over-HTTPS resolver.
@@ -286,7 +289,7 @@ export async function startLogin(options: LoginOptions): Promise<string> {
 
     return url.toString();
   } catch (error) {
-    console.error('OAuth authorize error:', error);
+    oauthLogger.error('OAuth authorize error', error, { handle });
     throw error;
   }
 }
@@ -336,7 +339,7 @@ export async function initializeOAuth(): Promise<{
         return { user, session: result.session, agent: currentAgent };
       }
     } catch (error) {
-      console.error('OAuth callback error:', error);
+      oauthLogger.error('OAuth callback error', error);
       throw error;
     }
   }
@@ -373,7 +376,7 @@ export async function restoreSession(did?: string): Promise<{
       return { user, session, agent: currentAgent };
     }
   } catch (error) {
-    console.error('Failed to restore session:', error);
+    oauthLogger.error('Failed to restore session', error, { did });
   }
 
   return null;
@@ -456,7 +459,7 @@ async function fetchUserProfile(session: OAuthSession): Promise<ChiveUser> {
     try {
       pdsEndpoint = await getPDSEndpoint(session.did as DID);
     } catch (error) {
-      console.error('Failed to resolve PDS endpoint:', error);
+      oauthLogger.error('Failed to resolve PDS endpoint', error, { did: session.did });
       pdsEndpoint = 'unknown';
     }
   }
@@ -473,7 +476,7 @@ async function fetchUserProfile(session: OAuthSession): Promise<ChiveUser> {
       pdsEndpoint,
     };
   } catch (error) {
-    console.error('Failed to fetch profile:', error);
+    oauthLogger.error('Failed to fetch profile', error, { did: session.did });
 
     // Return minimal user info
     return {
@@ -496,7 +499,7 @@ export async function logout(): Promise<void> {
       // Revoke the session
       await currentSession.signOut?.();
     } catch (error) {
-      console.error('Session signOut error:', error);
+      oauthLogger.error('Session signOut error', error);
     }
   }
 
@@ -700,7 +703,7 @@ export function setE2EMockAgent(userDid: string, userHandle: string): void {
   // TypeScript casting is needed because our mock doesn't implement the full Agent interface
   currentAgent = mockAgent as unknown as Agent;
 
-  console.log('[E2E] Mock agent set for user:', userDid);
+  oauthLogger.debug('E2E mock agent set', { userDid });
 }
 
 /**

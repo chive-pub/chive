@@ -25,6 +25,10 @@
 
 import type { Agent } from '@atproto/api';
 
+import { logger } from '@/lib/observability';
+
+const serviceAuthLogger = logger.child({ component: 'service-auth' });
+
 /**
  * Chive's service DID for service auth JWT audience claim.
  *
@@ -222,7 +226,7 @@ export function createServiceAuthFetch(
         headers,
       });
     } catch (error) {
-      console.error('Failed to get service auth token:', error);
+      serviceAuthLogger.error('Failed to get service auth token', error, { lxm });
       // Fall back to unauthenticated request
       return fetch(input, init);
     }
