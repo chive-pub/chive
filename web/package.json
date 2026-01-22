@@ -18,6 +18,7 @@
     "openapi:generate": "openapi-typescript http://localhost:3001/openapi.json -o ./lib/api/schema.generated.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.7.0",
     "@atproto/api": "^0.18.3",
     "@atproto/common-web": "^0.4.9",
     "@atproto/lexicon": "^0.5.2",
