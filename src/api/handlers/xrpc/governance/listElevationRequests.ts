@@ -56,10 +56,11 @@ export const listElevationRequests: XRPCMethod<QueryParams, void, OutputSchema> 
     }
 
     // Enrich with metrics
+    // Convert reputationScore from 0-1 float to integer for lexicon compliance
     const enrichedRequests: ElevationRequest[] = await Promise.all(
       result.value.requests.map(async (req) => {
         const metricsResult = await trustedEditorService.calculateReputationMetrics(req.did);
-        const metrics: ReputationMetrics = metricsResult.ok
+        const rawMetrics = metricsResult.ok
           ? metricsResult.value
           : {
               did: req.did,
@@ -78,6 +79,12 @@ export const listElevationRequests: XRPCMethod<QueryParams, void, OutputSchema> 
               eligibleForTrustedEditor: false,
               missingCriteria: [],
             };
+
+        // Scale reputationScore to 0-100 integer
+        const metrics: ReputationMetrics = {
+          ...rawMetrics,
+          reputationScore: Math.round((rawMetrics.reputationScore ?? 0) * 100),
+        };
 
         return {
           id: req.id,

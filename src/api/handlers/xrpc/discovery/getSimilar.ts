@@ -144,6 +144,7 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     // Map to response format
+    // Lexicon expects score as integer 0-1000 (scaled from 0-1)
     const relatedPapers: SchemaRelatedEprint[] = related.map((r) => ({
       uri: r.uri as string,
       title: r.title,
@@ -151,7 +152,7 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
       authors: r.authors?.map((a) => ({ name: a.name })),
       categories: r.categories ? [...r.categories] : undefined,
       publicationDate: formatDate(r.publicationDate),
-      score: r.score,
+      score: Math.round((r.score ?? 0) * 1000),
       relationshipType: mapRelationshipType(r.relationshipType),
       explanation: r.explanation,
     }));
@@ -176,6 +177,7 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
                 !includeTypes.includes('bibliographic-coupling'));
 
             if (matchesType) {
+              // Graph similarity is 0-1, scale to 0-1000 for lexicon
               relatedPapers.push({
                 uri: paper.uri,
                 title: paper.title,
@@ -183,7 +185,7 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
                 authors: paper.authors?.map((name) => ({ name })),
                 categories: undefined,
                 publicationDate: undefined,
-                score: paper.similarity,
+                score: Math.round((paper.similarity ?? 0) * 1000),
                 relationshipType:
                   paper.reason === 'bibliographic-coupling' ? 'bibliographic-coupling' : 'co-cited',
                 explanation:

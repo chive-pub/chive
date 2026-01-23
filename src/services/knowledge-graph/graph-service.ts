@@ -680,22 +680,30 @@ export class KnowledgeGraphService {
 
   /**
    * Gets vote weight by role.
+   * Returns integer 0-1000 (normalized weight scaled for lexicon compliance).
    *
    * @internal
    */
   private getVoteWeight(role: string): number {
+    // Raw role weights (1-5 scale)
+    let rawWeight: number;
     switch (role) {
       case 'administrator':
-        return 5.0;
+        rawWeight = 5.0;
+        break;
       case 'domain-expert':
-        return 3.0;
+        rawWeight = 3.0;
+        break;
       case 'graph-editor':
       case 'trusted-editor':
-        return 2.0;
+        rawWeight = 2.0;
+        break;
       case 'community-member':
       default:
-        return 1.0;
+        rawWeight = 1.0;
     }
+    // Normalize to 0-1 range (divide by max weight 5) and scale to 0-1000 for lexicon
+    return Math.round((rawWeight / 5.0) * 1000);
   }
 }
 

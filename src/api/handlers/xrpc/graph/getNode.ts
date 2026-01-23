@@ -116,10 +116,15 @@ export const getNode: XRPCMethod<QueryParams, void, OutputSchema> = {
         targetUri: edge.targetUri,
         relationUri: edge.relationUri,
         relationSlug: edge.relationSlug,
-        weight: edge.weight,
+        // Lexicon expects weight as integer 0-1000 (scaled from 0-1)
+        weight: edge.weight !== undefined ? Math.round(edge.weight * 1000) : undefined,
         metadata: edge.metadata
           ? {
-              confidence: edge.metadata.confidence,
+              // Lexicon expects confidence as integer 0-1000 (scaled from 0-1)
+              confidence:
+                edge.metadata.confidence !== undefined
+                  ? Math.round(edge.metadata.confidence * 1000)
+                  : undefined,
               startDate: edge.metadata.startDate?.toISOString(),
               endDate: edge.metadata.endDate?.toISOString(),
               source: edge.metadata.source,

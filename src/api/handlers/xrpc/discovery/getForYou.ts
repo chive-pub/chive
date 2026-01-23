@@ -91,6 +91,7 @@ export const getForYou: XRPCMethod<QueryParams, void, OutputSchema> = {
     });
 
     // Map to response format
+    // Lexicon expects score/weight as integers 0-1000 (scaled from 0-1)
     const recommendations = result.recommendations.map((r) => ({
       uri: r.uri as string,
       title: r.title,
@@ -98,11 +99,11 @@ export const getForYou: XRPCMethod<QueryParams, void, OutputSchema> = {
       authors: r.authors?.map((a) => ({ name: a.name })),
       categories: r.categories ? [...r.categories] : undefined,
       publicationDate: formatDate(r.publicationDate),
-      score: r.score,
+      score: Math.round((r.score ?? 0) * 1000),
       explanation: {
         type: mapExplanationType(r.explanation.type),
         text: r.explanation.text,
-        weight: r.explanation.weight,
+        weight: Math.round((r.explanation.weight ?? 0) * 1000),
         data: r.explanation.data
           ? {
               similarPaperTitle: r.explanation.data.similarPaperTitle,

@@ -57,21 +57,46 @@ export const listTrustedEditors: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     // Map to API response format
+    // Convert reputationScore from 0-1 float to integer for lexicon compliance
     const editors: TrustedEditor[] = result.value.editors
       .filter((e) => !params.role || e.role === params.role)
-      .map((e) => ({
-        did: e.did,
-        handle: undefined,
-        displayName: e.displayName,
-        role: e.role,
-        roleGrantedAt: e.roleGrantedAt ?? Date.now(),
-        roleGrantedBy: e.roleGrantedBy,
-        hasDelegation: e.hasDelegation,
-        delegationExpiresAt: e.delegationExpiresAt,
-        recordsCreatedToday: e.recordsCreatedToday,
-        dailyRateLimit: e.dailyRateLimit,
-        metrics: e.metrics,
-      }));
+      .map((e) => {
+        // Default metrics if service doesn't provide them
+        const rawMetrics = e.metrics ?? {
+          did: e.did,
+          accountCreatedAt: Date.now(),
+          accountAgeDays: 0,
+          eprintCount: 0,
+          wellEndorsedEprintCount: 0,
+          totalEndorsements: 0,
+          proposalCount: 0,
+          voteCount: 0,
+          successfulProposals: 0,
+          warningCount: 0,
+          violationCount: 0,
+          reputationScore: 0,
+          role: e.role,
+          eligibleForTrustedEditor: false,
+          missingCriteria: [],
+        };
+
+        return {
+          did: e.did,
+          handle: undefined,
+          displayName: e.displayName,
+          role: e.role,
+          roleGrantedAt: e.roleGrantedAt ?? Date.now(),
+          roleGrantedBy: e.roleGrantedBy,
+          hasDelegation: e.hasDelegation,
+          delegationExpiresAt: e.delegationExpiresAt,
+          recordsCreatedToday: e.recordsCreatedToday,
+          dailyRateLimit: e.dailyRateLimit,
+          metrics: {
+            ...rawMetrics,
+            reputationScore: Math.round((rawMetrics.reputationScore ?? 0) * 100),
+          },
+        };
+      });
 
     logger.info('Trusted editors listed', {
       count: editors.length,

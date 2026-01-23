@@ -36,10 +36,11 @@ export const getSuggestions: XRPCMethod<QueryParams, void, OutputSchema> = {
     const searchResults = await tagManager.searchTags(params.q, limit);
 
     // Map search results to suggestion format
+    // Lexicon expects confidence as integer 0-100 (scaled from 0-1)
     const suggestions: OutputSchema['suggestions'] = searchResults.tags.map((tag) => ({
       displayForm: tag.rawForm,
       normalizedForm: tag.normalizedForm,
-      confidence: tag.qualityScore ?? 0.5,
+      confidence: Math.round((tag.qualityScore ?? 0.5) * 100),
       source: 'cooccurrence' as const,
       matchedTerm: params.q,
     }));

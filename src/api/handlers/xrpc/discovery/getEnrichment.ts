@@ -88,6 +88,7 @@ export const getEnrichment: XRPCMethod<QueryParams, void, OutputSchema> = {
       conceptCount: enrichment.concepts?.length ?? 0,
     });
 
+    // Lexicon expects score as integer 0-1000 (scaled from 0-1)
     return {
       encoding: 'application/json',
       body: {
@@ -102,7 +103,7 @@ export const getEnrichment: XRPCMethod<QueryParams, void, OutputSchema> = {
             id: c.id,
             displayName: c.displayName,
             wikidataId: c.wikidataId,
-            score: c.score,
+            score: Math.round((c.score ?? 0) * 1000),
           })),
           topics: enrichment.topics?.map((t) => ({
             id: t.id,
@@ -110,7 +111,7 @@ export const getEnrichment: XRPCMethod<QueryParams, void, OutputSchema> = {
             subfield: t.subfield,
             field: t.field,
             domain: t.domain,
-            score: t.score,
+            score: Math.round((t.score ?? 0) * 1000),
           })),
           lastEnrichedAt: enrichment.lastEnrichedAt?.toISOString(),
         },
