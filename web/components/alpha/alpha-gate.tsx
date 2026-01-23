@@ -61,26 +61,29 @@ function shouldBypassAlphaGate(): boolean {
  * ```
  */
 export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateProps) {
-  // Bypass alpha gate in local development mode
-  if (shouldBypassAlphaGate()) {
-    return <>{children}</>;
-  }
+  // All hooks must be called unconditionally at the top of the component
   const router = useRouter();
   const { logout } = useAuth();
   const isAuthenticated = useIsAuthenticated();
+  const bypassGate = shouldBypassAlphaGate();
   const {
     data: alphaStatus,
     isLoading,
     isError,
     error,
   } = useAlphaStatus({
-    enabled: isAuthenticated,
+    // Skip the query if bypassing or not authenticated
+    enabled: isAuthenticated && !bypassGate,
   });
 
   // Check if error is an authentication error (401)
   const isAuthError = error instanceof APIError && error.statusCode === 401;
 
   useEffect(() => {
+    // No redirects needed when bypassing
+    if (bypassGate) {
+      return;
+    }
     // If unauthenticated and not allowed, redirect to landing page
     if (!isAuthenticated && !allowUnauthenticated) {
       router.replace('/');
@@ -114,6 +117,7 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
       }
     }
   }, [
+    bypassGate,
     isAuthenticated,
     isLoading,
     isError,
@@ -123,6 +127,11 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
     router,
     logout,
   ]);
+
+  // Bypass alpha gate in local development mode
+  if (bypassGate) {
+    return <>{children}</>;
+  }
 
   // Allow unauthenticated users through if configured
   if (!isAuthenticated) {
