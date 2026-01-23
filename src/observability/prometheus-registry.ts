@@ -285,6 +285,146 @@ export const databaseMetrics = {
 };
 
 /**
+ * Pre-defined metrics for PDS scanning and backfilling.
+ *
+ * @remarks
+ * Tracks PDS discovery, scanning, and record indexing operations.
+ *
+ * @public
+ */
+export const pdsMetrics = {
+  /**
+   * Total PDS scans counter.
+   *
+   * @remarks
+   * Labels: status (success/error/skipped)
+   *
+   * @example
+   * ```typescript
+   * pdsMetrics.scansTotal.inc({ status: 'success' });
+   * ```
+   */
+  scansTotal: new Counter({
+    name: 'chive_pds_scans_total',
+    help: 'Total number of PDS scans',
+    labelNames: ['status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'status'>),
+
+  /**
+   * PDS scan duration histogram.
+   *
+   * @remarks
+   * Labels: status (success/error)
+   *
+   * @example
+   * ```typescript
+   * const end = pdsMetrics.scanDuration.startTimer();
+   * // ... scan PDS ...
+   * end({ status: 'success' });
+   * ```
+   */
+  scanDuration: new Histogram({
+    name: 'chive_pds_scan_duration_seconds',
+    help: 'PDS scan duration in seconds',
+    labelNames: ['status'] as const,
+    buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'status'>),
+
+  /**
+   * Total records scanned counter.
+   *
+   * @remarks
+   * Labels: collection (pub.chive.eprint.submission, etc.)
+   *
+   * @example
+   * ```typescript
+   * pdsMetrics.recordsScanned.inc({ collection: 'pub.chive.eprint.submission' });
+   * ```
+   */
+  recordsScanned: new Counter({
+    name: 'chive_pds_records_scanned_total',
+    help: 'Total number of records scanned from PDSes',
+    labelNames: ['collection'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'collection'>),
+
+  /**
+   * Total records indexed counter.
+   *
+   * @remarks
+   * Labels: collection, status (success/error)
+   *
+   * @example
+   * ```typescript
+   * pdsMetrics.recordsIndexed.inc({ collection: 'pub.chive.eprint.submission', status: 'success' });
+   * ```
+   */
+  recordsIndexed: new Counter({
+    name: 'chive_pds_records_indexed_total',
+    help: 'Total number of records indexed from PDS scans',
+    labelNames: ['collection', 'status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'collection' | 'status'>),
+
+  /**
+   * Record indexing duration histogram.
+   *
+   * @remarks
+   * Labels: collection, status
+   *
+   * @example
+   * ```typescript
+   * const end = pdsMetrics.recordIndexDuration.startTimer({ collection: 'pub.chive.eprint.submission' });
+   * // ... index record ...
+   * end({ status: 'success' });
+   * ```
+   */
+  recordIndexDuration: new Histogram({
+    name: 'chive_pds_record_index_duration_seconds',
+    help: 'PDS record indexing duration in seconds',
+    labelNames: ['collection', 'status'] as const,
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'collection' | 'status'>),
+
+  /**
+   * PDSes discovered gauge.
+   *
+   * @remarks
+   * Total number of PDSes known to the system.
+   *
+   * @example
+   * ```typescript
+   * pdsMetrics.pdsesDiscovered.set(count);
+   * ```
+   */
+  pdsesDiscovered: new Gauge({
+    name: 'chive_pdses_discovered_total',
+    help: 'Total number of PDSes discovered',
+    registers: [prometheusRegistry],
+  } satisfies GaugeConfiguration<string>),
+
+  /**
+   * PDSes with Chive records gauge.
+   *
+   * @remarks
+   * Number of PDSes that have pub.chive.* records.
+   *
+   * @example
+   * ```typescript
+   * pdsMetrics.pdsesWithRecords.set(count);
+   * ```
+   */
+  pdsesWithRecords: new Gauge({
+    name: 'chive_pdses_with_records_total',
+    help: 'Number of PDSes with Chive records',
+    registers: [prometheusRegistry],
+  } satisfies GaugeConfiguration<string>),
+};
+
+/**
  * Retrieves all metrics in Prometheus text format.
  *
  * @returns Promise resolving to metrics string

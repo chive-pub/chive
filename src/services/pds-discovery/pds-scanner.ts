@@ -15,6 +15,12 @@
 import { AtpAgent } from '@atproto/api';
 import { injectable } from 'tsyringe';
 
+import {
+  pdsMetrics,
+  withSpan,
+  addSpanAttributes,
+  recordSpanError,
+} from '../../observability/index.js';
 import type { AtUri, DID, CID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
@@ -108,71 +114,102 @@ export class PDSScanner {
    * @returns Scan result with record count
    */
   async scanPDS(pdsUrl: string): Promise<ScanResult> {
-    this.logger.info('Starting PDS scan', { pdsUrl });
+    return withSpan(
+      'pds.scan',
+      async () => {
+        this.logger.info('Starting PDS scan', { pdsUrl });
+        addSpanAttributes({
+          'pds.url': pdsUrl,
+        });
 
-    try {
-      // Mark scan as started
-      await this.registry.markScanStarted(pdsUrl);
+        const endTimer = pdsMetrics.scanDuration.startTimer();
 
-      // First, get list of repos on this PDS
-      const repos = await this.listReposOnPDS(pdsUrl);
+        try {
+          // Mark scan as started
+          await this.registry.markScanStarted(pdsUrl);
 
-      if (repos.length === 0) {
-        this.logger.debug('No repos found on PDS', { pdsUrl });
-        const result = { hasChiveRecords: false, chiveRecordCount: 0 };
-        await this.registry.markScanCompleted(pdsUrl, result);
-        return result;
-      }
+          // First, get list of repos on this PDS
+          const repos = await this.listReposOnPDS(pdsUrl);
 
-      this.logger.debug('Found repos on PDS', { pdsUrl, count: repos.length });
+          if (repos.length === 0) {
+            this.logger.debug('No repos found on PDS', { pdsUrl });
+            const result = { hasChiveRecords: false, chiveRecordCount: 0 };
+            await this.registry.markScanCompleted(pdsUrl, result);
+            pdsMetrics.scansTotal.inc({ status: 'success' });
+            endTimer({ status: 'success' });
+            addSpanAttributes({
+              'pds.repos_count': 0,
+              'pds.records_indexed': 0,
+            });
+            return result;
+          }
 
-      // Scan each repo for Chive records
-      let totalRecords = 0;
-      const delay = 60000 / this.config.requestsPerMinute;
+          this.logger.debug('Found repos on PDS', { pdsUrl, count: repos.length });
+          addSpanAttributes({ 'pds.repos_count': repos.length });
 
-      for (const did of repos) {
-        if (totalRecords >= this.config.maxRecordsPerPDS) {
-          this.logger.debug('Reached max records limit', {
+          // Scan each repo for Chive records
+          let totalRecords = 0;
+          const delay = 60000 / this.config.requestsPerMinute;
+
+          for (const did of repos) {
+            if (totalRecords >= this.config.maxRecordsPerPDS) {
+              this.logger.debug('Reached max records limit', {
+                pdsUrl,
+                limit: this.config.maxRecordsPerPDS,
+              });
+              break;
+            }
+
+            const records = await this.scanRepoForChiveRecords(pdsUrl, did);
+            totalRecords += records;
+
+            // Rate limiting
+            if (repos.length > 1) {
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+          }
+
+          const result: ScanResult = {
+            hasChiveRecords: totalRecords > 0,
+            chiveRecordCount: totalRecords,
+            nextScanHours: totalRecords > 0 ? 24 : 168, // 1 day if has records, 7 days otherwise
+          };
+
+          await this.registry.markScanCompleted(pdsUrl, result);
+
+          this.logger.info('PDS scan completed', {
             pdsUrl,
-            limit: this.config.maxRecordsPerPDS,
+            totalRecords,
+            reposScanned: repos.length,
           });
-          break;
+
+          pdsMetrics.scansTotal.inc({ status: 'success' });
+          endTimer({ status: 'success' });
+          addSpanAttributes({
+            'pds.records_indexed': totalRecords,
+            'pds.has_chive_records': result.hasChiveRecords,
+          });
+
+          return result;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          await this.registry.markScanFailed(pdsUrl, errorMessage);
+
+          this.logger.error('PDS scan failed', error instanceof Error ? error : undefined, {
+            pdsUrl,
+          });
+
+          pdsMetrics.scansTotal.inc({ status: 'error' });
+          endTimer({ status: 'error' });
+          if (error instanceof Error) {
+            recordSpanError(error);
+          }
+
+          throw error;
         }
-
-        const records = await this.scanRepoForChiveRecords(pdsUrl, did);
-        totalRecords += records;
-
-        // Rate limiting
-        if (repos.length > 1) {
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-
-      const result: ScanResult = {
-        hasChiveRecords: totalRecords > 0,
-        chiveRecordCount: totalRecords,
-        nextScanHours: totalRecords > 0 ? 24 : 168, // 1 day if has records, 7 days otherwise
-      };
-
-      await this.registry.markScanCompleted(pdsUrl, result);
-
-      this.logger.info('PDS scan completed', {
-        pdsUrl,
-        totalRecords,
-        reposScanned: repos.length,
-      });
-
-      return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      await this.registry.markScanFailed(pdsUrl, errorMessage);
-
-      this.logger.error('PDS scan failed', error instanceof Error ? error : undefined, {
-        pdsUrl,
-      });
-
-      throw error;
-    }
+      },
+      { attributes: { 'pds.operation': 'scan' } }
+    );
   }
 
   /**
@@ -414,49 +451,81 @@ export class PDSScanner {
     collection: string,
     record: ListRecordsRecord
   ): Promise<boolean> {
-    try {
-      // Only handle eprint submissions for now
-      if (collection !== 'pub.chive.eprint.submission') {
-        return false;
-      }
-
-      // Transform the PDS record to our format
-      let transformed;
-      try {
-        transformed = transformPDSRecord(record.value, record.uri as AtUri, record.cid as CID);
-      } catch {
-        this.logger.debug('Record transformation failed', { uri: record.uri });
-        return false;
-      }
-
-      // Build metadata
-      const metadata: RecordMetadata = {
-        uri: record.uri as AtUri,
-        cid: record.cid as CID,
-        pdsUrl,
-        indexedAt: new Date(),
-      };
-
-      // Index via existing pipeline
-      const result = await this.eprintService.indexEprint(transformed, metadata);
-
-      if (result.ok) {
-        this.logger.info('Indexed record from PDS scan', { uri: record.uri });
-        return true;
-      } else {
-        this.logger.debug('Failed to index record', {
-          uri: record.uri,
-          error: result.error.message,
+    return withSpan(
+      'pds.index_record',
+      async () => {
+        addSpanAttributes({
+          'record.uri': record.uri,
+          'record.collection': collection,
         });
-        return false;
-      }
-    } catch (error) {
-      this.logger.debug('Record indexing error', {
-        uri: record.uri,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return false;
-    }
+        pdsMetrics.recordsScanned.inc({ collection });
+
+        const endTimer = pdsMetrics.recordIndexDuration.startTimer({ collection });
+
+        try {
+          // Only handle eprint submissions for now
+          if (collection !== 'pub.chive.eprint.submission') {
+            pdsMetrics.scansTotal.inc({ status: 'skipped' });
+            endTimer({ status: 'skipped' });
+            return false;
+          }
+
+          // Transform the PDS record to our format
+          let transformed;
+          try {
+            transformed = transformPDSRecord(record.value, record.uri as AtUri, record.cid as CID);
+          } catch (err) {
+            this.logger.debug('Record transformation failed', { uri: record.uri });
+            pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+            endTimer({ status: 'error' });
+            if (err instanceof Error) {
+              recordSpanError(err, 'Record transformation failed');
+            }
+            return false;
+          }
+
+          // Build metadata
+          const metadata: RecordMetadata = {
+            uri: record.uri as AtUri,
+            cid: record.cid as CID,
+            pdsUrl,
+            indexedAt: new Date(),
+          };
+
+          // Index via existing pipeline
+          const result = await this.eprintService.indexEprint(transformed, metadata);
+
+          if (result.ok) {
+            this.logger.info('Indexed record from PDS scan', { uri: record.uri });
+            pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+            endTimer({ status: 'success' });
+            addSpanAttributes({ 'record.indexed': true });
+            return true;
+          } else {
+            this.logger.debug('Failed to index record', {
+              uri: record.uri,
+              error: result.error.message,
+            });
+            pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+            endTimer({ status: 'error' });
+            addSpanAttributes({ 'record.indexed': false, 'record.error': result.error.message });
+            return false;
+          }
+        } catch (error) {
+          this.logger.debug('Record indexing error', {
+            uri: record.uri,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+          endTimer({ status: 'error' });
+          if (error instanceof Error) {
+            recordSpanError(error);
+          }
+          return false;
+        }
+      },
+      { attributes: { 'pds.operation': 'index_record' } }
+    );
   }
 
   /**

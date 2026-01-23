@@ -61,6 +61,7 @@ export {
   eprintMetrics,
   firehoseMetrics,
   databaseMetrics,
+  pdsMetrics,
   DEFAULT_HISTOGRAM_BUCKETS,
   MAX_CARDINALITY,
 } from './prometheus-registry.js';
