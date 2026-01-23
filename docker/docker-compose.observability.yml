@@ -74,6 +74,27 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Prometheus - metrics backend (for Tempo service graphs)
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: chive-prometheus
+    ports:
+      - "9090:9090"     # Prometheus UI
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-remote-write-receiver"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   # Grafana - visualization
   grafana:
     image: grafana/grafana:11.4.0
@@ -93,6 +114,7 @@ services:
     depends_on:
       - tempo
       - loki
+      - prometheus
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 10s
@@ -103,6 +125,7 @@ services:
 volumes:
   tempo_data:
   loki_data:
+  prometheus_data:
   grafana_data:
 
 networks:
