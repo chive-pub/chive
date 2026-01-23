@@ -145,6 +145,9 @@ services:
   # ---------------------------------------------------------------------------
   # Chive Documentation (Docusaurus)
   # ---------------------------------------------------------------------------
+  # NOTE: Docs are deployed separately via deploy-docs.yml workflow using
+  # docker-compose.docs.yml (nginx serving static files). This service is
+  # included in the 'docs' profile for standalone testing only.
   chive-docs:
     build:
       context: ..
@@ -168,6 +171,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    profiles:
+      - docs
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.docs.rule=Host(`docs.${DOMAIN}`)"
