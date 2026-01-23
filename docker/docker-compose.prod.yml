@@ -613,6 +613,43 @@ services:
       - observability
 
   # ---------------------------------------------------------------------------
+  # Prometheus - Metrics Backend
+  # ---------------------------------------------------------------------------
+  # Receives metrics from Tempo's metrics_generator for service graphs
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: chive-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-remote-write-receiver"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - chive-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    profiles:
+      - observability
+
+  # ---------------------------------------------------------------------------
   # Grafana - Visualization & Dashboards
   # ---------------------------------------------------------------------------
   grafana:
@@ -641,6 +678,7 @@ services:
     depends_on:
       - tempo
       - loki
+      - prometheus
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
       interval: 30s
@@ -678,6 +716,8 @@ volumes:
     name: chive_tempo_data
   loki_data:
     name: chive_loki_data
+  prometheus_data:
+    name: chive_prometheus_data
   grafana_data:
     name: chive_grafana_data
 
