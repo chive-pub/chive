@@ -58,11 +58,14 @@ RUN pnpm lexicons:generate
 # Build TypeScript to JavaScript
 RUN pnpm exec tsc --project tsconfig.json
 
-# Copy JSON config files that TypeScript doesn't handle
+# Copy config files that TypeScript doesn't handle
 # Elasticsearch templates, ILM policies, and ingest pipelines
 RUN cp -r src/storage/elasticsearch/templates dist/src/storage/elasticsearch/ && \
     cp -r src/storage/elasticsearch/ilm dist/src/storage/elasticsearch/ && \
     cp -r src/storage/elasticsearch/pipelines dist/src/storage/elasticsearch/
+
+# Neo4j schema (Cypher scripts for indexes and constraints)
+RUN cp -r src/storage/neo4j/schema dist/src/storage/neo4j/
 
 # Prune devDependencies for production (ignore-scripts to skip husky)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
