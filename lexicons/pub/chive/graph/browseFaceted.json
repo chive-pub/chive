@@ -171,7 +171,7 @@
     "authorRef": {
       "type": "object",
       "description": "Author reference with contributions",
-      "required": ["did", "name", "order", "affiliations", "contributions"],
+      "required": ["name", "order", "affiliations", "contributions"],
       "properties": {
         "did": {
           "type": "string",

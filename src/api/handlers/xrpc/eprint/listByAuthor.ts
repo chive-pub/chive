@@ -71,13 +71,12 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
         cid: p.cid,
         title: p.title,
         abstract: p.abstractPlainText?.substring(0, 500),
-        authors: (p.authors ?? [])
-          .filter((author) => author.did !== undefined)
-          .map((author) => ({
-            did: author.did as string,
-            handle: undefined,
-            displayName: author.name,
-          })),
+        authors: (p.authors ?? []).map((author) => ({
+          // Only include did if it's a valid DID (not empty string)
+          ...(author.did ? { did: author.did } : {}),
+          handle: undefined,
+          displayName: author.name,
+        })),
         fields: p.fields?.map((f) => ({
           uri: f.uri,
           label: f.label,
