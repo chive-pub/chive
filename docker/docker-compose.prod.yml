@@ -215,6 +215,22 @@ services:
     restart: "no"
 
   # ---------------------------------------------------------------------------
+  # Neo4j Setup (runs once before API starts)
+  # ---------------------------------------------------------------------------
+  chive-neo4j-setup:
+    image: chive:${CHIVE_VERSION:-latest}
+    container_name: chive-neo4j-setup
+    command: ["node", "--enable-source-maps", "dist/scripts/db/setup-neo4j.js"]
+    env_file:
+      - .env.production
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - chive-network
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
   # Chive API (AppView)
   # ---------------------------------------------------------------------------
   chive-api:
@@ -240,6 +256,8 @@ services:
       chive-migrate:
         condition: service_completed_successfully
       chive-es-setup:
+        condition: service_completed_successfully
+      chive-neo4j-setup:
         condition: service_completed_successfully
     networks:
       - chive-network

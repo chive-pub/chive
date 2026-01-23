@@ -146,7 +146,8 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
         title: p.title,
         abstract: p.abstract,
         authors: p.authors.map((a) => ({
-          did: a.did ?? '',
+          // Only include did if it's a valid DID (not empty string)
+          ...(a.did ? { did: a.did } : {}),
           name: a.name,
           orcid: a.orcid,
           email: a.email,

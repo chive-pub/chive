@@ -104,7 +104,6 @@
     },
     "authorRef": {
       "type": "object",
-      "required": ["did"],
       "properties": {
         "did": {
           "type": "string",

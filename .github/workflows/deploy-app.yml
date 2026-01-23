@@ -191,15 +191,16 @@ jobs:
             docker compose -f docker-compose.prod.yml --profile observability pull postgres redis elasticsearch neo4j traefik alloy tempo loki prometheus grafana || true
 
             # Build the main chive image (API + Indexer) - must target production stage
+            # --no-cache ensures lexicons are regenerated from latest schemas
             echo "Building main chive image..."
-            docker build --target production -t chive:latest -f ../docker/Dockerfile .. || {
+            docker build --no-cache --target production -t chive:latest -f ../docker/Dockerfile .. || {
               echo "::error::Failed to build main chive image"
               exit 1
             }
 
-            # Build web container
+            # Build web container (--no-cache ensures lexicons are regenerated)
             echo "Building chive-web container..."
-            docker compose -f docker-compose.prod.yml build chive-web || {
+            docker compose -f docker-compose.prod.yml build --no-cache chive-web || {
               echo "::error::Failed to build chive-web image"
               exit 1
             }

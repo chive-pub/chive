@@ -358,6 +358,9 @@ export class TagManager {
   /**
    * Search tags by partial match.
    *
+   * Uses fulltext index (tagTextIndex) for fast search, falling back to
+   * CONTAINS if index is not available.
+   *
    * @param searchText - Search query
    * @param limit - Maximum results (default: 50)
    * @returns Search results
@@ -371,7 +374,18 @@ export class TagManager {
   async searchTags(searchText: string, limit = 50): Promise<TagSearchResult> {
     const normalized = this.normalizeTag(searchText);
 
-    const query = `
+    // Use fulltext index for fast search
+    const fullTextQuery = `
+      CALL db.index.fulltext.queryNodes('tagTextIndex', $searchText)
+      YIELD node AS tag, score
+      WITH tag, score
+      ORDER BY score DESC, tag.usageCount DESC, tag.qualityScore DESC
+      LIMIT $limit
+      RETURN tag
+    `;
+
+    // Fallback query if fulltext index not available
+    const fallbackQuery = `
       MATCH (tag:UserTag)
       WHERE tag.normalizedForm CONTAINS $searchText
       WITH tag
@@ -380,16 +394,31 @@ export class TagManager {
       RETURN tag
     `;
 
-    const result = await this.connection.executeQuery<{
-      tag: Record<string, string | number | Date>;
-    }>(query, { searchText: normalized, limit: neo4j.int(limit) });
+    try {
+      // Try fulltext search first (wildcards for prefix/suffix matching)
+      const result = await this.connection.executeQuery<{
+        tag: Record<string, string | number | Date>;
+      }>(fullTextQuery, { searchText: `${normalized}*`, limit: neo4j.int(limit) });
 
-    const tags = result.records.map((record) => this.mapTag(record.get('tag')));
+      const tags = result.records.map((record) => this.mapTag(record.get('tag')));
 
-    return {
-      tags,
-      total: tags.length,
-    };
+      return {
+        tags,
+        total: tags.length,
+      };
+    } catch {
+      // Fall back to CONTAINS if fulltext index not available
+      const result = await this.connection.executeQuery<{
+        tag: Record<string, string | number | Date>;
+      }>(fallbackQuery, { searchText: normalized, limit: neo4j.int(limit) });
+
+      const tags = result.records.map((record) => this.mapTag(record.get('tag')));
+
+      return {
+        tags,
+        total: tags.length,
+      };
+    }
   }
 
   /**
