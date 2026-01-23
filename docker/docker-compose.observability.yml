@@ -31,7 +31,8 @@ services:
       - tempo
       - loki
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:12345/-/ready"]
+      # Alloy image doesn't include wget/curl, use bash TCP
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/12345 && echo -e \"GET /-/ready HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
       interval: 10s
       timeout: 5s
       retries: 5
