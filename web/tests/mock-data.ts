@@ -375,7 +375,7 @@ export function createMockEprint(overrides: Partial<Eprint> = {}): Eprint {
  *
  * @remarks
  * EprintSummary (from listByAuthor) uses lean data:
- * - `fields` is `string[]` (field URIs), not full FieldRef objects
+ * - `fields` is `FieldRef[]` with uri and label
  * - `authors` is `AuthorRef[]` with only did, handle, displayName
  */
 export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}): EprintSummary {
@@ -386,7 +386,12 @@ export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}):
     abstract:
       'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
     authors: [{ did: 'did:plc:test123', handle: 'testuser.bsky.social', displayName: 'Test User' }],
-    fields: ['at://did:plc:chive-governance/pub.chive.graph.field/computer-science'],
+    fields: [
+      {
+        uri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
+        label: 'Computer Science',
+      },
+    ],
     indexedAt: '2024-01-15T10:35:00Z',
     ...overrides,
   };

@@ -71,6 +71,7 @@ function createMockStorage(): IStorageBackend {
     storeEprint: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getEprint: vi.fn().mockResolvedValue(null),
     getEprintsByAuthor: vi.fn().mockResolvedValue([]),
+    countEprintsByAuthor: vi.fn().mockResolvedValue(0),
     listEprintUris: vi.fn().mockResolvedValue([]),
     trackPDSSource: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     isStale: vi.fn().mockResolvedValue(false),

@@ -85,11 +85,11 @@ function getFields(eprint: EprintCardData): FieldRef[] {
     }));
   }
 
-  // EprintSummary has field URIs only - create minimal refs
-  return eprint.fields.map((uri: string) => ({
-    id: uri,
-    uri,
-    label: uri.split('/').pop() ?? uri,
+  // EprintSummary now has field refs with uri and label
+  return eprint.fields.map((f) => ({
+    id: f.id ?? f.uri,
+    uri: f.uri,
+    label: f.label,
     kind: 'type' as const,
     subkind: undefined,
     status: 'established' as const,
