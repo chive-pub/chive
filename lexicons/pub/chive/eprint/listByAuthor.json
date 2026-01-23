@@ -87,7 +87,10 @@
         },
         "fields": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "ref",
+            "ref": "#fieldRef"
+          }
         },
         "indexedAt": {
           "type": "string",
@@ -112,6 +115,24 @@
         },
         "displayName": {
           "type": "string"
+        }
+      }
+    },
+    "fieldRef": {
+      "type": "object",
+      "required": ["uri", "label"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "AT URI of the field node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable field label"
+        },
+        "id": {
+          "type": "string",
+          "description": "Optional unique ID"
         }
       }
     }
