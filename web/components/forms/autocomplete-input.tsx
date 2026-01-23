@@ -28,6 +28,9 @@ import * as React from 'react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Check, X } from 'lucide-react';
+import { logger } from '@/lib/observability';
+
+const autocompleteLogger = logger.child({ component: 'autocomplete-input' });
 
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -292,7 +295,11 @@ export function useAutocompleteSearch<T>(
       const url = `${endpoint}?q=${encodeURIComponent(query)}`;
       const response = await fetch(url);
       if (!response.ok) {
-        console.error('Autocomplete search failed:', response.statusText);
+        autocompleteLogger.error('Autocomplete search failed', undefined, {
+          endpoint,
+          status: response.status,
+          statusText: response.statusText,
+        });
         return [];
       }
       const data = await response.json();

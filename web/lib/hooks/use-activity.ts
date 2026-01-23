@@ -19,6 +19,9 @@ import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
 
 import { authApi } from '../api/client';
 import { TID } from '@atproto/common-web';
+import { logger } from '@/lib/observability';
+
+const activityLogger = logger.child({ component: 'activity' });
 
 // =============================================================================
 // TYPES
@@ -360,7 +363,11 @@ export function useActivityLogging() {
       });
     } catch (error) {
       // Log activity failed; still attempt the PDS write.
-      console.warn('Failed to log activity:', error);
+      activityLogger.warn('Failed to log activity', {
+        collection: params.collection,
+        category: params.category,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     // Perform PDS write
@@ -376,7 +383,7 @@ export function useActivityLogging() {
           errorMessage: error instanceof Error ? error.message : String(error),
         });
       } catch {
-        console.warn('Failed to mark activity as failed');
+        activityLogger.warn('Failed to mark activity as failed', { collection: params.collection });
       }
       throw error;
     }
@@ -418,7 +425,11 @@ export function useActivityLogging() {
         targetTitle: params.targetTitle,
       });
     } catch (error) {
-      console.warn('Failed to log delete activity:', error);
+      activityLogger.warn('Failed to log delete activity', {
+        uri: params.uri,
+        category: params.category,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     // Perform PDS delete
@@ -434,7 +445,7 @@ export function useActivityLogging() {
           errorMessage: error instanceof Error ? error.message : String(error),
         });
       } catch {
-        console.warn('Failed to mark delete activity as failed');
+        activityLogger.warn('Failed to mark delete activity as failed', { uri: params.uri });
       }
       throw error;
     }

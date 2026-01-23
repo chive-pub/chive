@@ -17,6 +17,9 @@ import {
 import { Agent } from '@atproto/api';
 import type { DID, Handle, ChiveUser, LoginOptions } from './types';
 import { AuthenticationError, NetworkError } from '@/lib/errors';
+import { logger } from '@/lib/observability';
+
+const oauthLogger = logger.child({ component: 'oauth-client' });
 
 /**
  * Handle resolver using ATProto's official DNS-over-HTTPS resolver.
@@ -51,8 +54,7 @@ const handleResolver = new AtprotoDohHandleResolver({
  * NEXT_PUBLIC_OAUTH_BASE_URL=https://abc123.ngrok.io
  * ```
  *
- * For loopback development, ATProto requires 127.0.0.1 (NOT localhost).
- * This function automatically rewrites localhost to 127.0.0.1.
+ * For loopback development, ATProto requires "http://localhost" (NOT 127.0.0.1).
  */
 function getOAuthBaseUrl(): string {
   // Check for explicit override (for ngrok/tunnel development)
@@ -60,14 +62,9 @@ function getOAuthBaseUrl(): string {
     return process.env.NEXT_PUBLIC_OAUTH_BASE_URL;
   }
 
-  // In browser, use current origin but rewrite localhost to 127.0.0.1
+  // In browser, use current origin
   if (typeof window !== 'undefined') {
-    const origin = window.location.origin;
-    // ATProto requires 127.0.0.1 for loopback, NOT localhost
-    if (origin.includes('localhost')) {
-      return origin.replace('localhost', '127.0.0.1');
-    }
-    return origin;
+    return window.location.origin;
   }
 
   // Fallback for production
@@ -78,9 +75,8 @@ function getOAuthBaseUrl(): string {
  * Get the OAuth client ID.
  *
  * @remarks
- * For loopback addresses, ATProto OAuth requires:
- * 1. The client ID must be 127.0.0.1 (NOT localhost)
- * 2. No path component (just origin)
+ * For loopback addresses, ATProto OAuth requires EXACTLY "http://localhost"
+ * without any port or path. The actual port is passed via redirect_uri query param.
  *
  * For production URLs, we use the full path to the client metadata document.
  *
@@ -90,14 +86,10 @@ function getClientId(): string {
   const baseUrl = getOAuthBaseUrl();
   const url = new URL(baseUrl);
 
-  // ATProto requires 127.0.0.1 (NOT localhost) for loopback clients
-  if (url.hostname === '127.0.0.1' || url.hostname === '[::1]') {
-    return url.origin; // No path for loopback
-  }
-
-  // localhost should be rewritten to 127.0.0.1 for ATProto compliance
-  if (url.hostname === 'localhost') {
-    return `http://127.0.0.1:${url.port || '3000'}`;
+  // ATProto requires EXACTLY "http://localhost" for loopback clients
+  // No port, no path - just the origin without port
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]') {
+    return 'http://localhost';
   }
 
   // For production, use full client metadata URL
@@ -286,7 +278,7 @@ export async function startLogin(options: LoginOptions): Promise<string> {
 
     return url.toString();
   } catch (error) {
-    console.error('OAuth authorize error:', error);
+    oauthLogger.error('OAuth authorize error', error, { handle });
     throw error;
   }
 }
@@ -336,7 +328,7 @@ export async function initializeOAuth(): Promise<{
         return { user, session: result.session, agent: currentAgent };
       }
     } catch (error) {
-      console.error('OAuth callback error:', error);
+      oauthLogger.error('OAuth callback error', error);
       throw error;
     }
   }
@@ -373,7 +365,7 @@ export async function restoreSession(did?: string): Promise<{
       return { user, session, agent: currentAgent };
     }
   } catch (error) {
-    console.error('Failed to restore session:', error);
+    oauthLogger.error('Failed to restore session', error, { did });
   }
 
   return null;
@@ -456,7 +448,7 @@ async function fetchUserProfile(session: OAuthSession): Promise<ChiveUser> {
     try {
       pdsEndpoint = await getPDSEndpoint(session.did as DID);
     } catch (error) {
-      console.error('Failed to resolve PDS endpoint:', error);
+      oauthLogger.error('Failed to resolve PDS endpoint', error, { did: session.did });
       pdsEndpoint = 'unknown';
     }
   }
@@ -473,7 +465,7 @@ async function fetchUserProfile(session: OAuthSession): Promise<ChiveUser> {
       pdsEndpoint,
     };
   } catch (error) {
-    console.error('Failed to fetch profile:', error);
+    oauthLogger.error('Failed to fetch profile', error, { did: session.did });
 
     // Return minimal user info
     return {
@@ -496,7 +488,7 @@ export async function logout(): Promise<void> {
       // Revoke the session
       await currentSession.signOut?.();
     } catch (error) {
-      console.error('Session signOut error:', error);
+      oauthLogger.error('Session signOut error', error);
     }
   }
 
@@ -700,7 +692,7 @@ export function setE2EMockAgent(userDid: string, userHandle: string): void {
   // TypeScript casting is needed because our mock doesn't implement the full Agent interface
   currentAgent = mockAgent as unknown as Agent;
 
-  console.log('[E2E] Mock agent set for user:', userDid);
+  oauthLogger.debug('E2E mock agent set', { userDid });
 }
 
 /**

@@ -20,6 +20,9 @@ build/
 src/lexicons/generated/
 web/lib/api/generated/
 
+# OpenAPI generated types (optional tooling, not used in current architecture)
+web/lib/api/schema.generated.ts
+
 # Docusaurus
 docs/.docusaurus/
 docs/build/

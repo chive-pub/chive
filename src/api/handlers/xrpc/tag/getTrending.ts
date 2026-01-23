@@ -52,11 +52,12 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     // Map to TagSummary format
+    // Lexicon expects qualityScore as integer 0-100 (scaled from 0-1)
     const tags: OutputSchema['tags'] = trendingTags.map((tag) => ({
       normalizedForm: tag.normalizedForm,
       displayForms: [tag.rawForm],
       usageCount: tag.usageCount ?? 0,
-      qualityScore: tag.qualityScore ?? 0,
+      qualityScore: Math.round((tag.qualityScore ?? 0) * 100),
       isPromoted: false,
       promotedTo: undefined,
     }));

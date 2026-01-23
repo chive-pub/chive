@@ -1,0 +1,134 @@
+# Observability stack with Grafana Alloy, Tempo, Loki, and Grafana
+# Usage: docker compose -f docker/docker-compose.observability.yml up -d
+#
+# This provides:
+# - Grafana Alloy: Receives Faro telemetry (frontend) and OTLP (backend)
+# - Tempo: Distributed tracing storage
+# - Loki: Log aggregation
+# - Grafana: Visualization and dashboards
+#
+# Access Grafana at http://localhost:3002 (admin/admin)
+
+services:
+  # Grafana Alloy - unified telemetry collector
+  # Replaces: OTel Collector + Grafana Agent + Faro Collector
+  alloy:
+    image: grafana/alloy:v1.5.1
+    container_name: chive-alloy
+    ports:
+      - "12345:12345"   # Alloy UI
+      - "12347:12347"   # Faro receiver (frontend telemetry)
+      - "4317:4317"     # OTLP gRPC (backend traces)
+      - "4318:4318"     # OTLP HTTP (backend traces)
+    volumes:
+      - ./observability/alloy-config.alloy:/etc/alloy/config.alloy:ro
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --stability.level=generally-available
+    depends_on:
+      - tempo
+      - loki
+    healthcheck:
+      # Alloy image doesn't include wget/curl, use bash TCP
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/12345 && echo -e \"GET /-/ready HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Tempo - distributed tracing backend
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: chive-tempo
+    ports:
+      - "3200:3200"     # Tempo query frontend
+      - "9095:9095"     # Tempo gRPC
+    volumes:
+      - ./observability/tempo-config.yaml:/etc/tempo/config.yaml:ro
+      - tempo_data:/var/tempo
+    command:
+      - -config.file=/etc/tempo/config.yaml
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3200/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Loki - log aggregation
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: chive-loki
+    ports:
+      - "3100:3100"     # Loki HTTP
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+    command:
+      - -config.file=/etc/loki/config.yaml
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Prometheus - metrics backend (for Tempo service graphs)
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: chive-prometheus
+    ports:
+      - "9090:9090"     # Prometheus UI
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-remote-write-receiver"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Grafana - visualization
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: chive-grafana
+    ports:
+      - "3002:3000"     # Grafana UI (3002 to avoid conflict with Next.js)
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor tempoServiceGraph traceQLStreaming metricsSummary
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  tempo_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: chive-observability

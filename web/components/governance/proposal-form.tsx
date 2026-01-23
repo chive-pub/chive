@@ -20,7 +20,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Send, Loader2, Info, Plus, Edit, Trash2, Link2, Network, Tags } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { Button } from '@/components/ui/button';
+
+const proposalLogger = logger.child({ component: 'proposal-form' });
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -420,7 +423,7 @@ export function ProposalForm({
           onSuccess?.(proposal as Proposal);
         }
       } catch (err) {
-        console.error('Failed to create proposal:', err);
+        proposalLogger.error('Failed to create proposal', err);
         setError(err instanceof Error ? err.message : 'Failed to create proposal');
       } finally {
         setIsSubmitting(false);

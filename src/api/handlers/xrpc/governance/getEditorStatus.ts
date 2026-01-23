@@ -61,6 +61,26 @@ export const getEditorStatus: XRPCMethod<QueryParams, void, OutputSchema> = {
       hasDelegation: status.hasDelegation,
     });
 
+    // Convert reputationScore from 0-1 float to integer for lexicon compliance
+    // The service always returns metrics for a valid status
+    const rawMetrics = status.metrics ?? {
+      did: status.did,
+      accountCreatedAt: Date.now(),
+      accountAgeDays: 0,
+      eprintCount: 0,
+      wellEndorsedEprintCount: 0,
+      totalEndorsements: 0,
+      proposalCount: 0,
+      voteCount: 0,
+      successfulProposals: 0,
+      warningCount: 0,
+      violationCount: 0,
+      reputationScore: 0,
+      role: status.role,
+      eligibleForTrustedEditor: false,
+      missingCriteria: [],
+    };
+
     return {
       encoding: 'application/json',
       body: {
@@ -76,7 +96,10 @@ export const getEditorStatus: XRPCMethod<QueryParams, void, OutputSchema> = {
           : undefined,
         recordsCreatedToday: status.recordsCreatedToday,
         dailyRateLimit: status.dailyRateLimit,
-        metrics: status.metrics,
+        metrics: {
+          ...rawMetrics,
+          reputationScore: Math.round((rawMetrics.reputationScore ?? 0) * 100),
+        },
       },
     };
   },

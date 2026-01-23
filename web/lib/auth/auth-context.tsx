@@ -39,6 +39,9 @@ import {
 } from './oauth-client';
 import { clearServiceAuthTokens, getServiceAuthToken } from './service-auth';
 import { ensureChiveProfile } from '../atproto/record-creator';
+import { logger } from '@/lib/observability';
+
+const authLogger = logger.child({ component: 'auth-context' });
 
 /**
  * Registers the user's PDS with Chive and syncs their existing records.
@@ -63,7 +66,9 @@ async function registerUserPDS(pdsEndpoint: string, agent: Agent | null): Promis
         const token = await getServiceAuthToken(agent, 'pub.chive.sync.registerPDS');
         headers['Authorization'] = `Bearer ${token}`;
       } catch (authError) {
-        console.warn('Failed to get service auth token for PDS registration:', authError);
+        authLogger.warn('Failed to get service auth token for PDS registration', {
+          error: authError instanceof Error ? authError.message : String(authError),
+        });
         // Continue without auth - PDS will still be registered
       }
     }
@@ -78,17 +83,20 @@ async function registerUserPDS(pdsEndpoint: string, agent: Agent | null): Promis
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
       // Don't throw for "already exists" - that's fine
       if (error.status !== 'already_exists' && error.status !== 'scanned') {
-        console.warn('PDS registration response:', error);
+        authLogger.warn('PDS registration response error', { error, pdsEndpoint });
       }
     } else {
       const result = await response.json().catch(() => ({}));
       if (result.status === 'scanned') {
-        console.info('Synced existing records:', result.message);
+        authLogger.info('Synced existing records', { message: result.message, pdsEndpoint });
       }
     }
   } catch (error) {
     // Log but don't fail login if PDS registration fails
-    console.warn('PDS registration failed:', error);
+    authLogger.warn('PDS registration failed', {
+      pdsEndpoint,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -225,7 +233,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const agent = getCurrentAgent();
           if (agent) {
             ensureChiveProfile(agent).catch((err) => {
-              console.warn('Failed to ensure Chive profile:', err);
+              authLogger.warn('Failed to ensure Chive profile', {
+                error: err instanceof Error ? err.message : String(err),
+              });
             });
           }
 
@@ -233,7 +243,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // This backfills historical submissions that weren't captured in real-time
           if (callbackResult.user.pdsEndpoint && callbackResult.user.pdsEndpoint !== 'unknown') {
             registerUserPDS(callbackResult.user.pdsEndpoint, agent).catch((err) => {
-              console.warn('Failed to register PDS:', err);
+              authLogger.warn('Failed to register PDS after OAuth callback', {
+                pdsEndpoint: callbackResult.user.pdsEndpoint,
+                error: err instanceof Error ? err.message : String(err),
+              });
             });
           }
           return;
@@ -262,7 +275,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (restoredSession.user.pdsEndpoint && restoredSession.user.pdsEndpoint !== 'unknown') {
             const restoredAgent = getCurrentAgent();
             registerUserPDS(restoredSession.user.pdsEndpoint, restoredAgent).catch((err) => {
-              console.warn('Failed to register PDS:', err);
+              authLogger.warn('Failed to register PDS on session restore', {
+                pdsEndpoint: restoredSession.user.pdsEndpoint,
+                error: err instanceof Error ? err.message : String(err),
+              });
             });
           }
           return;
@@ -271,7 +287,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // No session found
         setState((prev) => ({ ...prev, isLoading: false }));
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        authLogger.error('Auth initialization error', error);
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -322,7 +338,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         error: null,
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      authLogger.error('Logout error', error);
       // Clear state and tokens even if logout fails
       clearServiceAuthTokens();
       setState({

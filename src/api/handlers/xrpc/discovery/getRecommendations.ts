@@ -130,6 +130,7 @@ export const getRecommendations: XRPCMethod<QueryParams, void, OutputSchema> = {
     });
 
     // Map discovery recommendations to response format
+    // Lexicon expects score/weight as integers 0-1000 (scaled from 0-1)
     const recommendations: RecommendedEprint[] = result.recommendations.map((r) => ({
       uri: r.uri as string,
       title: r.title,
@@ -137,11 +138,11 @@ export const getRecommendations: XRPCMethod<QueryParams, void, OutputSchema> = {
       authors: r.authors?.map((a) => ({ name: a.name })),
       categories: r.categories ? [...r.categories] : undefined,
       publicationDate: formatDate(r.publicationDate),
-      score: r.score,
+      score: Math.round((r.score ?? 0) * 1000),
       explanation: {
         type: mapExplanationType(r.explanation.type),
         text: r.explanation.text,
-        weight: r.explanation.weight,
+        weight: Math.round((r.explanation.weight ?? 0) * 1000),
         data: r.explanation.data
           ? {
               similarPaperTitle: r.explanation.data.similarPaperTitle,
@@ -167,6 +168,8 @@ export const getRecommendations: XRPCMethod<QueryParams, void, OutputSchema> = {
 
         for (const rec of graphRecs) {
           if (!existingUris.has(rec.uri)) {
+            // Graph rec.score is 0-1, scale to 0-1000 for lexicon
+            const scaledScore = Math.round((rec.score ?? 0) * 1000);
             recommendations.push({
               uri: rec.uri as string,
               title: rec.title,
@@ -174,7 +177,7 @@ export const getRecommendations: XRPCMethod<QueryParams, void, OutputSchema> = {
               authors: rec.authors?.map((name) => ({ name })),
               categories: rec.relatedFields,
               publicationDate: undefined,
-              score: rec.score,
+              score: scaledScore,
               explanation: {
                 type: mapGraphReasonToExplanationType(rec.reason),
                 text:
@@ -187,7 +190,7 @@ export const getRecommendations: XRPCMethod<QueryParams, void, OutputSchema> = {
                         : rec.reason === 'trending-in-field'
                           ? `Trending in your research areas`
                           : `Recommended based on content similarity`,
-                weight: rec.score,
+                weight: scaledScore,
                 data: undefined,
               },
             });

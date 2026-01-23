@@ -385,6 +385,44 @@ export class EprintsRepository {
   }
 
   /**
+   * Counts total eprints by author.
+   *
+   * @param author - Author DID to count eprints for
+   * @returns Total count of eprints by this author
+   *
+   * @remarks
+   * Uses JSONB containment query to count eprints where the author DID
+   * appears anywhere in the authors array.
+   *
+   * @example
+   * ```typescript
+   * const count = await repo.countByAuthor(toDID('did:plc:abc')!);
+   * console.log(`Author has ${count} eprints`);
+   * ```
+   *
+   * @public
+   */
+  async countByAuthor(author: DID): Promise<number> {
+    try {
+      const query = `
+        SELECT COUNT(*)::int AS count
+        FROM eprints_index
+        WHERE authors @> $1::jsonb
+      `;
+
+      const result = await this.pool.query<{ count: number }>(query, [
+        JSON.stringify([{ did: author }]),
+      ]);
+
+      return result.rows[0]?.count ?? 0;
+    } catch (error) {
+      throw error instanceof Error
+        ? error
+        : new Error(`Failed to count eprints by author: ${String(error)}`);
+    }
+  }
+
+  /**
    * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit

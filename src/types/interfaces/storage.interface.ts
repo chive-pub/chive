@@ -414,6 +414,26 @@ export interface IStorageBackend {
   getEprintsByAuthor(author: DID, options?: EprintQueryOptions): Promise<StoredEprint[]>;
 
   /**
+   * Counts total eprints by author.
+   *
+   * @param author - Author DID
+   * @returns Total count of eprints by this author
+   *
+   * @remarks
+   * Returns the total count without fetching full eprint data.
+   * Used for displaying metrics in author profiles.
+   *
+   * @example
+   * ```typescript
+   * const count = await storage.countEprintsByAuthor(toDID('did:plc:abc')!);
+   * console.log(`Author has ${count} eprints`);
+   * ```
+   *
+   * @public
+   */
+  countEprintsByAuthor(author: DID): Promise<number>;
+
+  /**
    * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit

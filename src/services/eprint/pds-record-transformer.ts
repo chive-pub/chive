@@ -159,9 +159,31 @@ export interface PDSEprintRecord {
  * @returns Internal BlobRef with CID as string
  */
 function transformBlobRef(pdsBlobRef: PDSBlobRef): BlobRef {
+  // Handle both raw JSON format and AtpAgent-parsed CID objects
+  // Raw JSON: ref: { $link: "bafkrei..." }
+  // AtpAgent: ref: CID(bafkrei...) - already a CID object with .toString()
+  let cidString: string;
+
+  if (pdsBlobRef.ref && typeof pdsBlobRef.ref === 'object') {
+    if ('$link' in pdsBlobRef.ref) {
+      // Raw JSON format from fetch()
+      cidString = (pdsBlobRef.ref as { $link: string }).$link;
+    } else if (typeof (pdsBlobRef.ref as { toString: () => string }).toString === 'function') {
+      // AtpAgent-parsed CID object
+      cidString = (pdsBlobRef.ref as { toString: () => string }).toString();
+    } else {
+      throw new ValidationError('Invalid blob ref structure', 'ref');
+    }
+  } else if (typeof pdsBlobRef.ref === 'string') {
+    // Already a string
+    cidString = pdsBlobRef.ref;
+  } else {
+    throw new ValidationError('Invalid blob ref structure', 'ref');
+  }
+
   return {
     $type: 'blob',
-    ref: pdsBlobRef.ref.$link as CID,
+    ref: cidString as CID,
     mimeType: pdsBlobRef.mimeType,
     size: pdsBlobRef.size,
   };

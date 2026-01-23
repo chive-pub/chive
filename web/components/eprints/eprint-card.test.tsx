@@ -55,14 +55,16 @@ describe('EprintCard', () => {
   });
 
   it('shows fields when available', () => {
-    // EprintSummary has fields as string[] (URIs), the component extracts the label from the URI
+    // EprintSummary has fields as FieldRef[] with uri and label
     const eprint = createMockEprintSummary({
-      fields: ['physics', 'chemistry'],
+      fields: [
+        { uri: 'at://did:plc:governance/pub.chive.graph.field/physics', label: 'Physics' },
+        { uri: 'at://did:plc:governance/pub.chive.graph.field/chemistry', label: 'Chemistry' },
+      ],
     });
     render(<EprintCard eprint={eprint} />);
-    // The component extracts label from URI's last segment
-    expect(screen.getByText('physics')).toBeInTheDocument();
-    expect(screen.getByText('chemistry')).toBeInTheDocument();
+    expect(screen.getByText('Physics')).toBeInTheDocument();
+    expect(screen.getByText('Chemistry')).toBeInTheDocument();
   });
 
   it('hides fields section when no fields', () => {

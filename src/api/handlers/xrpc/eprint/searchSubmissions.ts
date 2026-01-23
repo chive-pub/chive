@@ -165,7 +165,8 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
     const response: OutputSchema = {
       hits: searchResults.hits.map((hit) => ({
         uri: hit.uri,
-        score: hit.score ?? 0,
+        // Lexicon expects integer score scaled by 1000 for precision
+        score: Math.round((hit.score ?? 0) * 1000),
         highlight: hit.highlight
           ? {
               title: hit.highlight.title ? [...hit.highlight.title] : undefined,

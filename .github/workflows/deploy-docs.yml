@@ -55,8 +55,9 @@ jobs:
             sudo chmod -R 755 /opt/chive/docs/build
 
             # Restart docs container using docs-specific compose file
+            # Note: traefik is already running from deploy-app.yml, we only recreate chive-docs
             cd /opt/chive/docker
-            docker compose -f docker-compose.docs.yml up -d --force-recreate chive-docs
+            DOMAIN="${{ vars.DOMAIN }}" docker compose -f docker-compose.docs.yml up -d --force-recreate chive-docs
 
             echo "Documentation deployed successfully!"
 

@@ -150,6 +150,7 @@ describe('MentionPopover', () => {
 
   it('selects with Enter key', async () => {
     const onSelect = vi.fn();
+    const user = userEvent.setup();
 
     render(<MentionPopover trigger={baseTrigger} onSelect={onSelect} onClose={() => {}} />);
 
@@ -157,9 +158,12 @@ describe('MentionPopover', () => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
 
-    fireEvent.keyDown(document, { key: 'Enter' });
+    // Use userEvent which properly handles React state updates
+    await user.keyboard('{Enter}');
 
-    expect(onSelect).toHaveBeenCalledWith(mockActors[0]);
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledWith(mockActors[0]);
+    });
   });
 
   it('closes on Escape key', async () => {

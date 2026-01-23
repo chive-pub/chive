@@ -199,6 +199,22 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Counts total eprints by author.
+   *
+   * @param author - Author DID
+   * @returns Total count of eprints by this author
+   *
+   * @remarks
+   * Returns the total count without fetching full eprint data.
+   * Used for displaying metrics in author profiles.
+   *
+   * @public
+   */
+  async countEprintsByAuthor(author: DID): Promise<number> {
+    return this.eprintsRepo.countByAuthor(author);
+  }
+
+  /**
    * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit

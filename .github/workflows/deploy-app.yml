@@ -29,6 +29,7 @@ jobs:
           if [ -z "${{ secrets.POSTGRES_PASSWORD }}" ]; then missing="$missing POSTGRES_PASSWORD"; fi
           if [ -z "${{ secrets.NEO4J_PASSWORD }}" ]; then missing="$missing NEO4J_PASSWORD"; fi
           if [ -z "${{ secrets.JWT_SECRET }}" ]; then missing="$missing JWT_SECRET"; fi
+          if [ -z "${{ secrets.GRAFANA_ADMIN_PASSWORD }}" ]; then missing="$missing GRAFANA_ADMIN_PASSWORD"; fi
 
           # Check required variables
           if [ -z "${{ vars.DOMAIN }}" ]; then missing="$missing DOMAIN(var)"; fi
@@ -64,6 +65,7 @@ jobs:
           ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
           ZULIP_BOT_API_KEY: ${{ secrets.ZULIP_BOT_API_KEY }}
           ZULIP_INVITE_URL: ${{ secrets.ZULIP_INVITE_URL }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         run: |
           mkdir -p docker-env
 
@@ -81,6 +83,7 @@ jobs:
           GOVERNANCE_PDS_ADMIN_PASSWORD=${GOVERNANCE_PDS_ADMIN_PASSWORD}
           GOVERNANCE_PDS_ROTATION_KEY=${GOVERNANCE_PDS_ROTATION_KEY}
           TRAEFIK_BASIC_AUTH=${TRAEFIK_BASIC_AUTH}
+          GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
           EOF
 
           # Create .env.production for container runtime
@@ -183,9 +186,9 @@ jobs:
             echo "=== Building and deploying containers ==="
             cd docker
 
-            # Pull latest base images
+            # Pull latest base images (including observability stack)
             echo "Pulling latest base images..."
-            docker compose -f docker-compose.prod.yml pull postgres redis elasticsearch neo4j traefik || true
+            docker compose -f docker-compose.prod.yml --profile observability pull postgres redis elasticsearch neo4j traefik alloy tempo loki prometheus grafana || true
 
             # Build the main chive image (API + Indexer) - must target production stage
             echo "Building main chive image..."
@@ -203,9 +206,9 @@ jobs:
 
             # Note: chive-docs is deployed separately via deploy-docs.yml workflow
 
-            # Start all services
-            echo "Starting services..."
-            docker compose -f docker-compose.prod.yml up -d
+            # Start all services including observability stack
+            echo "Starting services with observability..."
+            docker compose -f docker-compose.prod.yml --profile observability up -d
 
             # Wait for services to initialize
             echo "Waiting for services to initialize..."
@@ -213,13 +216,13 @@ jobs:
 
             # Show running containers
             echo "=== Container status ==="
-            docker compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml --profile observability ps
 
             # Check for any failed containers
-            failed=$(docker compose -f docker-compose.prod.yml ps --status exited --format json 2>/dev/null | grep -c '"State":"exited"' || echo "0")
+            failed=$(docker compose -f docker-compose.prod.yml --profile observability ps --status exited --format json 2>/dev/null | grep -c '"State":"exited"' || echo "0")
             if [ "$failed" != "0" ]; then
               echo "::warning::Some containers may have exited"
-              docker compose -f docker-compose.prod.yml logs --tail=50 2>&1 | head -100
+              docker compose -f docker-compose.prod.yml --profile observability logs --tail=50 2>&1 | head -100
             fi
 
             # Cleanup old images
@@ -364,6 +367,22 @@ jobs:
             echo "✓ Docs health check passed"
           else
             echo "⚠ Docs health check failed (non-critical)"
+          fi
+
+          echo ""
+          echo "Checking Grafana at https://grafana.$domain/..."
+          if curl -sf --max-time 30 "https://grafana.$domain/api/health" > /dev/null; then
+            echo "✓ Grafana health check passed"
+          else
+            echo "⚠ Grafana health check failed (non-critical)"
+          fi
+
+          echo ""
+          echo "Checking Faro collector at https://faro.$domain/..."
+          if curl -sf --max-time 30 "https://faro.$domain/ready" > /dev/null 2>&1 || curl -sf --max-time 30 -X OPTIONS "https://faro.$domain/collect" > /dev/null 2>&1; then
+            echo "✓ Faro collector health check passed"
+          else
+            echo "⚠ Faro collector health check failed (non-critical)"
           fi
 
           echo ""

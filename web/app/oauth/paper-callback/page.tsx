@@ -7,7 +7,10 @@ import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 import { initializeOAuth } from '@/lib/auth';
 import { postPaperSessionToOpener, postPaperErrorToOpener } from '@/lib/auth/paper-oauth-popup';
+import { logger } from '@/lib/observability';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const paperCallbackLogger = logger.child({ component: 'paper-oauth-callback' });
 
 /**
  * Loading fallback for the callback page.
@@ -109,7 +112,7 @@ function PaperOAuthCallbackContent() {
           }
         }
       } catch (err) {
-        console.error('Paper OAuth callback error:', err);
+        paperCallbackLogger.error('Paper OAuth callback error', err);
         const errMsg = err instanceof Error ? err.message : 'Authentication failed';
         setError(errMsg);
         setStatus('error');

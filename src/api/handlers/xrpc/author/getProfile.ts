@@ -349,9 +349,6 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
       }
     }
 
-    // Get author's eprints (for metrics)
-    const authorEprints = await eprint.getEprintsByAuthor(did, { limit: 1 });
-
     // Only throw 404 if we can't resolve the DID at all
     // Users with valid DIDs should always have profiles, even with no eprints
     if (!pdsEndpoint) {
@@ -365,13 +362,15 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     // Compute author metrics from indexed data
-    const [totalViews, totalDownloads, endorsementCount] = await Promise.all([
+    const [totalViews, totalDownloads, endorsementCount, eprintCount] = await Promise.all([
       // Aggregate views across all eprints
       aggregateAuthorViews(did, eprint, metrics, logger),
       // Aggregate downloads
       aggregateAuthorDownloads(did, eprint, metrics, logger),
       // Count endorsements (from review service)
       countAuthorEndorsements(did, c),
+      // Count total eprints
+      eprint.countEprintsByAuthor(did),
     ]);
 
     const response: OutputSchema = {
@@ -402,7 +401,7 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
         scopusAuthorId: profileData?.scopusAuthorId,
       },
       metrics: {
-        totalEprints: authorEprints.total ?? 0,
+        totalEprints: eprintCount,
         totalViews,
         totalDownloads,
         totalEndorsements: endorsementCount,

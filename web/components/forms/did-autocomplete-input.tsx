@@ -14,11 +14,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { AtSign, Loader2, Check } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
+import { logger } from '@/lib/observability';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { getApiBaseUrl } from '@/lib/api/client';
 import type { AuthorAffiliation } from './affiliation-input';
+
+const log = logger.child({ component: 'did-autocomplete-input' });
 
 // =============================================================================
 // TYPES
@@ -187,7 +190,7 @@ function useActorSearch() {
       }
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Actor search error:', error);
+        log.error('Actor search error', error, { query: cleanQuery });
         setResults([]);
       }
     } finally {

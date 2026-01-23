@@ -58,7 +58,8 @@ export const listForEprint: XRPCMethod<QueryParams, void, OutputSchema> = {
         suggestions = coOccurrences.map(({ tag, coOccurrenceCount }) => ({
           displayForm: tag.rawForm,
           normalizedForm: tag.normalizedForm,
-          confidence: Math.min(coOccurrenceCount / 10, 1), // Normalize to 0-1
+          // Lexicon expects integer 0-100 (scaled from 0-1)
+          confidence: Math.round(Math.min(coOccurrenceCount / 10, 1) * 100),
           source: 'cooccurrence' as const,
           matchedTerm: topTag.normalizedForm,
         }));

@@ -29,8 +29,34 @@ RUN pnpm lexicons:generate
 
 WORKDIR /app/web
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Required build args
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Observability build args (Grafana Faro)
+ARG NEXT_PUBLIC_FARO_URL
+ARG NEXT_PUBLIC_APP_VERSION
+ARG NEXT_PUBLIC_FARO_TRACE_SAMPLE_RATE=0.1
+ARG NEXT_PUBLIC_FARO_SESSION_SAMPLE_RATE=0.5
+ENV NEXT_PUBLIC_FARO_URL=$NEXT_PUBLIC_FARO_URL
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
+ENV NEXT_PUBLIC_FARO_TRACE_SAMPLE_RATE=$NEXT_PUBLIC_FARO_TRACE_SAMPLE_RATE
+ENV NEXT_PUBLIC_FARO_SESSION_SAMPLE_RATE=$NEXT_PUBLIC_FARO_SESSION_SAMPLE_RATE
+
+# Validate required environment variables at build time
+RUN if [ -z "$NEXT_PUBLIC_API_URL" ]; then \
+      echo ""; \
+      echo "========================================"; \
+      echo "ERROR: NEXT_PUBLIC_API_URL is required"; \
+      echo "========================================"; \
+      echo ""; \
+      echo "This variable must be set at build time."; \
+      echo "Example: docker build --build-arg NEXT_PUBLIC_API_URL=https://example.com/api"; \
+      echo ""; \
+      exit 1; \
+    fi
+
 RUN pnpm build
 
 # Production image

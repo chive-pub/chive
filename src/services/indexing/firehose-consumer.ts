@@ -47,6 +47,7 @@
 
 import WebSocket from 'ws';
 
+import { firehoseMetrics } from '../../observability/index.js';
 import type { CID, DID } from '../../types/atproto.js';
 import { ValidationError } from '../../types/errors.js';
 import type {
@@ -468,6 +469,9 @@ export class FirehoseConsumer implements IEventStreamConsumer {
     this.state = ConnectionState.CONNECTED;
     this.reconnectionManager.reset();
 
+    // Track active connection
+    firehoseMetrics.activeConnections.inc();
+
     if (!this.ws) {
       return;
     }
@@ -518,6 +522,9 @@ export class FirehoseConsumer implements IEventStreamConsumer {
       // Parse Jetstream JSON event
       const jetstreamEvent = JSON.parse(data.toString('utf-8')) as JetstreamEvent;
 
+      // Track event by type
+      firehoseMetrics.eventsTotal.inc({ event_type: jetstreamEvent.kind });
+
       // Only process commit events
       if (jetstreamEvent.kind !== 'commit' || !jetstreamEvent.commit) {
         return;
@@ -542,6 +549,13 @@ export class FirehoseConsumer implements IEventStreamConsumer {
         // Convert microseconds to ISO timestamp
         time: new Date(jetstreamEvent.time_us / 1000).toISOString(),
       };
+
+      // Track cursor lag (difference between event time and current time)
+      const eventTimeMs = jetstreamEvent.time_us / 1000;
+      const lagSeconds = (Date.now() - eventTimeMs) / 1000;
+      if (lagSeconds >= 0) {
+        firehoseMetrics.cursorLag.set(lagSeconds);
+      }
 
       // Store record in ops for downstream processing
       if (commit.record) {
@@ -572,6 +586,9 @@ export class FirehoseConsumer implements IEventStreamConsumer {
    * @internal
    */
   private async onClose(): Promise<void> {
+    // Decrement active connections
+    firehoseMetrics.activeConnections.dec();
+
     if (this.state === ConnectionState.DISCONNECTING) {
       // Graceful shutdown: don't reconnect
       return;

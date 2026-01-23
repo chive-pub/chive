@@ -45,6 +45,16 @@ const config: Config = {
         readme: 'none',
         sanitizeComments: true,
         treatWarningsAsErrors: false,
+        // Suppress warnings for external types and internal implementation details
+        excludeExternals: true,
+        excludeNotDocumented: false,
+        excludeInternal: true,
+        excludePrivate: true,
+        validation: {
+          notExported: false,
+          invalidLink: false,
+          notDocumented: false,
+        },
         sidebar: {
           autoConfiguration: false,
         },
@@ -62,6 +72,16 @@ const config: Config = {
         readme: 'none',
         sanitizeComments: true,
         treatWarningsAsErrors: false,
+        // Suppress warnings for external types and internal implementation details
+        excludeExternals: true,
+        excludeNotDocumented: false,
+        excludeInternal: true,
+        excludePrivate: true,
+        validation: {
+          notExported: false,
+          invalidLink: false,
+          notDocumented: false,
+        },
         sidebar: {
           autoConfiguration: false,
         },

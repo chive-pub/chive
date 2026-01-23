@@ -324,6 +324,10 @@ export class EprintService {
     };
   }
 
+  async countEprintsByAuthor(did: DID): Promise<number> {
+    return this.storage.countEprintsByAuthor(did);
+  }
+
   async getVersionHistory(uri: AtUri): Promise<readonly EprintVersion[]> {
     const chain = await this.versionManager.getVersionChain(uri);
     return chain.versions;

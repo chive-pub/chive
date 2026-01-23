@@ -3,6 +3,9 @@
 import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
+import { logger } from '@/lib/observability';
+
+const eprintLogger = logger.child({ component: 'eprint-content' });
 
 import {
   EprintHeader,
@@ -725,7 +728,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   },
                 });
               } catch (error) {
-                console.error('Failed to create entity link annotation:', error);
+                eprintLogger.error('Failed to create entity link annotation', error);
               }
 
               setEntityLinkDialogOpen(false);

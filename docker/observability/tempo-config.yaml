@@ -1,0 +1,73 @@
+# Tempo Configuration for Chive
+# Distributed tracing backend
+
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+
+# Distributor receives spans and routes to ingesters
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+# Ingester writes spans to storage
+ingester:
+  max_block_duration: 5m
+
+# Compactor merges blocks for efficient storage
+compactor:
+  compaction:
+    block_retention: 168h  # 7 days
+
+# Storage configuration (local filesystem for development)
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+# Query configuration
+querier:
+  frontend_worker:
+    frontend_address: localhost:9095
+
+# Metrics generator for span metrics
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: chive-local
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+  processor:
+    service_graphs:
+      dimensions:
+        - http.method
+        - http.status_code
+        - http.route
+    span_metrics:
+      dimensions:
+        - http.method
+        - http.status_code
+        - http.route
+        - service.name
+
+# Overrides for multi-tenancy (disabled for local dev)
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics

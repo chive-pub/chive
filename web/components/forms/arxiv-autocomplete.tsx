@@ -23,7 +23,10 @@
 import { useCallback } from 'react';
 import { FileText, Calendar, Users } from 'lucide-react';
 
+import { logger } from '@/lib/observability';
 import { AutocompleteInput } from './autocomplete-input';
+
+const log = logger.child({ component: 'arxiv-autocomplete' });
 
 // =============================================================================
 // TYPES
@@ -177,7 +180,11 @@ async function searchArxiv(query: string): Promise<ArxivEntry[]> {
   const response = await fetch(`${ARXIV_API_URL}?${params.toString()}`);
 
   if (!response.ok) {
-    console.error('arXiv search failed:', response.statusText);
+    log.error('arXiv search failed', undefined, {
+      query,
+      status: response.status,
+      statusText: response.statusText,
+    });
     return [];
   }
 

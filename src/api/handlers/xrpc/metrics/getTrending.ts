@@ -141,7 +141,8 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
             : undefined,
           viewsInWindow: entry.score,
           rank: index + 1,
-          velocity: entry.velocity,
+          // Lexicon expects velocity as integer percentage (scaled from 0-1 ratio)
+          velocity: entry.velocity !== undefined ? Math.round(entry.velocity * 100) : undefined,
         };
       })
     );

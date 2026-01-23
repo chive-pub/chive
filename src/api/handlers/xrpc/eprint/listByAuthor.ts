@@ -78,7 +78,11 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
             handle: undefined,
             displayName: author.name,
           })),
-        fields: p.fields?.map((f) => f.uri),
+        fields: p.fields?.map((f) => ({
+          uri: f.uri,
+          label: f.label,
+          id: f.id,
+        })),
         indexedAt: p.indexedAt.toISOString(),
         publishedAt: p.createdAt.toISOString(),
       })),

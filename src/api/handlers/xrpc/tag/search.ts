@@ -37,10 +37,11 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
     const searchResults = await tagManager.searchTags(params.q, limit);
 
     // Filter by minimum quality if specified
+    // minQuality from lexicon is 0-100, tag.qualityScore from TagManager is 0-1
     let filteredTags = searchResults.tags;
     if (params.minQuality !== undefined) {
-      const minQuality = params.minQuality;
-      filteredTags = filteredTags.filter((tag) => (tag.qualityScore ?? 0) >= minQuality);
+      const minQualityNormalized = params.minQuality / 100;
+      filteredTags = filteredTags.filter((tag) => (tag.qualityScore ?? 0) >= minQualityNormalized);
     }
 
     // Filter out spam tags unless explicitly included
@@ -49,11 +50,12 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     // Map to TagSummary format
+    // Lexicon expects qualityScore as integer 0-100 (scaled from 0-1)
     const tags: OutputSchema['tags'] = filteredTags.map((tag) => ({
       normalizedForm: tag.normalizedForm,
       displayForms: [tag.rawForm],
       usageCount: tag.usageCount ?? 0,
-      qualityScore: tag.qualityScore ?? 0,
+      qualityScore: Math.round((tag.qualityScore ?? 0) * 100),
       isPromoted: false,
       promotedTo: undefined,
     }));

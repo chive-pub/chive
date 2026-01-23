@@ -1,4 +1,9 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
+
+import { logger } from '@/lib/observability';
+import { ChiveError } from '@/lib/errors';
+
+const queryLogger = logger.child({ component: 'query-client' });
 
 /**
  * Creates a configured QueryClient instance.
@@ -6,6 +11,7 @@ import { QueryClient } from '@tanstack/react-query';
  *
  * @remarks
  * Configuration follows user preference for fresh data (30s staleTime).
+ * Includes global error handlers for observability.
  */
 export function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -29,6 +35,24 @@ export function makeQueryClient(): QueryClient {
         retry: 0,
       },
     },
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        queryLogger.warn('Query failed', {
+          queryKey: query.queryKey,
+          error: error instanceof Error ? error.message : String(error),
+          code: error instanceof ChiveError ? error.code : undefined,
+        });
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) => {
+        queryLogger.error('Mutation failed', error instanceof Error ? error : undefined, {
+          mutationKey: mutation.options.mutationKey,
+          error: error instanceof Error ? error.message : String(error),
+          code: error instanceof ChiveError ? error.code : undefined,
+        });
+      },
+    }),
   });
 }
 

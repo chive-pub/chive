@@ -3,9 +3,11 @@ import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 
 import { Providers } from '@/components/providers';
+import { FaroInit } from '@/components/observability';
 import { ConditionalHeader } from '@/components/conditional-header';
 import { SkipLink } from '@/components/skip-link';
 import { Toaster } from '@/components/ui/sonner';
+import { DebugPanel } from '@/components/debug';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -64,6 +66,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background font-sans antialiased">
+        {/* Initialize Grafana Faro for observability (errors, traces, web vitals) */}
+        <FaroInit />
         <Providers>
           <SkipLink />
           <div className="relative flex min-h-screen flex-col">
@@ -73,6 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
           </div>
           <Toaster />
+          <DebugPanel />
         </Providers>
       </body>
     </html>
