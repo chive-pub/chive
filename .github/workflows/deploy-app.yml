@@ -208,8 +208,9 @@ jobs:
             # Note: chive-docs is deployed separately via deploy-docs.yml workflow
 
             # Start all services including observability stack
+            # --force-recreate ensures containers use the newly built images
             echo "Starting services with observability..."
-            docker compose -f docker-compose.prod.yml --profile observability up -d
+            docker compose -f docker-compose.prod.yml --profile observability up -d --force-recreate
 
             # Wait for services to initialize
             echo "Waiting for services to initialize..."
