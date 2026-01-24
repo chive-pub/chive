@@ -308,7 +308,7 @@ describe('XRPC Eprint Handlers', () => {
       expect(result.body.cursor).toBe('20');
     });
 
-    it('truncates abstract to 500 characters', async () => {
+    it('returns full abstract without truncation', async () => {
       const longAbstract = 'A'.repeat(1000);
       const eprint = createMockEprint({
         abstract: createMockAbstract(longAbstract),
@@ -330,7 +330,7 @@ describe('XRPC Eprint Handlers', () => {
 
       const firstEprint = result.body.eprints[0];
       if (firstEprint?.abstract) {
-        expect(firstEprint.abstract.length).toBe(500);
+        expect(firstEprint.abstract.length).toBe(1000);
       }
     });
   });
