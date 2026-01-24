@@ -13,6 +13,28 @@ import { APIError } from '@/lib/errors';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import { logger } from '@/lib/observability';
+import { getFaro } from '@/lib/observability/faro/initialize';
+
+// =============================================================================
+// TELEMETRY HELPER
+// =============================================================================
+
+/**
+ * Reports an error to Faro telemetry.
+ */
+function reportErrorToFaro(error: Error, context: Record<string, string>): void {
+  try {
+    const faro = getFaro();
+    if (!faro) return;
+
+    faro.api.pushError(error, {
+      context,
+      type: 'api-error',
+    });
+  } catch {
+    // Silently fail - don't let telemetry errors affect the app
+  }
+}
 
 // Re-export types from generated client
 export * from './generated/index';
@@ -239,7 +261,17 @@ function createFetchHandler(options: { authenticated: boolean }): typeof globalT
           error: errorMessage,
         });
 
-        throw new APIError(errorMessage, status, endpoint);
+        // Report to Faro telemetry
+        const apiError = new APIError(errorMessage, status, endpoint);
+        reportErrorToFaro(apiError, {
+          endpoint,
+          method,
+          status: String(status),
+          requestId,
+          traceId: trace.traceId,
+        });
+
+        throw apiError;
       }
 
       requestLogger.debug('API request completed', {
@@ -255,6 +287,17 @@ function createFetchHandler(options: { authenticated: boolean }): typeof globalT
       if (!(error instanceof APIError)) {
         requestLogger.error('API request error', error as Error, {
           durationMs,
+        });
+
+        // Report non-API errors to Faro (network errors, XRPC validation errors, etc.)
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        reportErrorToFaro(errorObj, {
+          endpoint,
+          method,
+          requestId,
+          traceId: trace.traceId,
+          errorType: errorObj.name || 'UnknownError',
+          durationMs: String(durationMs),
         });
       }
 

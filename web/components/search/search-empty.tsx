@@ -1,7 +1,11 @@
+'use client';
+
+import { useEffect } from 'react';
 import { Search, FileQuestion, FilterX } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useFaro } from '@/lib/observability/faro/react/useFaro';
 
 /**
  * Props for the SearchEmpty component.
@@ -124,6 +128,20 @@ export function SearchError({
   onRetry,
   className,
 }: SearchErrorProps) {
+  const { pushError, pushLog } = useFaro();
+
+  // Report error to Faro telemetry on mount
+  useEffect(() => {
+    pushError(new Error(message), {
+      component: 'SearchError',
+      path: typeof window !== 'undefined' ? window.location.pathname : '',
+    });
+    pushLog(`Search failed: ${message}`, 'error', {
+      component: 'SearchError',
+      path: typeof window !== 'undefined' ? window.location.pathname : '',
+    });
+  }, [message, pushError, pushLog]);
+
   return (
     <div
       className={cn(
