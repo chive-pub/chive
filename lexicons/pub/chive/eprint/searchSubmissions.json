@@ -118,9 +118,37 @@
           "minimum": 0,
           "description": "Relevance score (scaled by 1000 for precision)"
         },
+        "title": {
+          "type": "string",
+          "description": "Eprint title for display"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#authorSummary"
+          },
+          "description": "Author summaries for display"
+        },
         "highlight": {
           "type": "ref",
           "ref": "#highlightResult"
+        }
+      }
+    },
+    "authorSummary": {
+      "type": "object",
+      "description": "Minimal author info for search results",
+      "required": ["name"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID if known"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name"
         }
       }
     },
