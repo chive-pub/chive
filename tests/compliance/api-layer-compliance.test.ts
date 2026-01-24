@@ -830,7 +830,7 @@ describe('API Layer ATProto Compliance', () => {
 
       // CRITICAL: Document MUST be BlobRef structure in value.document
       expect(body.value.document).toBeDefined();
-      const document = body.value.document as unknown as Record<string, unknown>;
+      const document = body.value.document as Record<string, unknown>;
       expect(document.$type).toBe('blob');
       expect(document.ref).toBeDefined();
       expect(document.mimeType).toBe('application/pdf');
@@ -852,7 +852,7 @@ describe('API Layer ATProto Compliance', () => {
       const body = (await res.json()) as EprintResponse;
 
       // CRITICAL: No inline blob data fields (these properties should not exist on BlobRef)
-      const document = body.value.document as unknown as Record<string, unknown>;
+      const document = body.value.document as Record<string, unknown>;
       expect(document.data).toBeUndefined();
       expect(document.content).toBeUndefined();
       expect(document.buffer).toBeUndefined();
@@ -1098,7 +1098,7 @@ describe('API Layer ATProto Compliance', () => {
 
       // User should be able to fetch blob from PDS using CID in value.document
       // ATProto BlobRef format: { $type: 'blob', ref: { $link: string }, mimeType, size }
-      const document = body.value.document as unknown as Record<string, unknown>;
+      const document = body.value.document as Record<string, unknown>;
       expect(document.ref).toBeDefined();
       // ref is a $link object in ATProto format
       const refObj = document.ref as { $link?: string } | string;

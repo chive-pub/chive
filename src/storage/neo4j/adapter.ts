@@ -156,6 +156,39 @@ export class Neo4jAdapter implements IGraphDatabase {
   }
 
   /**
+   * Gets multiple nodes by IDs in a single query.
+   *
+   * @param ids - Node identifiers to fetch
+   * @param subkind - Optional subkind filter
+   * @returns Map of id to GraphNode (missing nodes are not included)
+   */
+  async getNodesByIds(ids: readonly string[], subkind?: string): Promise<Map<string, GraphNode>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const labelFilter = subkind ? `:${subkindToLabel(subkind)}` : '';
+
+    const query = `
+      MATCH (n:Node${labelFilter})
+      WHERE n.id IN $ids
+      RETURN n
+    `;
+
+    const result = await this.connection.executeQuery<{
+      n: Neo4jNode;
+    }>(query, { ids: [...ids] });
+
+    const nodeMap = new Map<string, GraphNode>();
+    for (const record of result.records) {
+      const node = this.mapNeo4jNode(record.get('n'));
+      nodeMap.set(node.id, node);
+    }
+
+    return nodeMap;
+  }
+
+  /**
    * Lists nodes with filtering.
    */
   async listNodes(options: NodeSearchOptions): Promise<NodeSearchResult> {

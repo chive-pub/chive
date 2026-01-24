@@ -46,6 +46,7 @@
 import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type { AtUri, CID, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError } from '../../types/errors.js';
+import type { IGraphDatabase } from '../../types/interfaces/graph.interface.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IRepository } from '../../types/interfaces/repository.interface.js';
@@ -89,6 +90,11 @@ export interface EprintServiceOptions {
    * If provided, keywords from eprints will be indexed as user tags.
    */
   readonly tagManager?: TagManager;
+  /**
+   * Optional graph database for resolving field labels.
+   * If provided, field URIs will be resolved to human-readable labels.
+   */
+  readonly graph?: IGraphDatabase;
 }
 
 /**
@@ -141,6 +147,7 @@ export class EprintService {
   private readonly logger: ILogger;
   private readonly versionManager: VersionManager;
   private readonly tagManager: TagManager | null;
+  private readonly graph: IGraphDatabase | null;
 
   constructor(options: EprintServiceOptions) {
     this.storage = options.storage;
@@ -150,6 +157,7 @@ export class EprintService {
     this.logger = options.logger;
     this.versionManager = new VersionManager({ storage: options.storage });
     this.tagManager = options.tagManager ?? null;
+    this.graph = options.graph ?? null;
   }
 
   async indexEprint(
@@ -158,6 +166,12 @@ export class EprintService {
   ): Promise<Result<void, DatabaseError>> {
     try {
       const abstractPlainText = extractPlainText(record.abstract);
+
+      // Resolve field labels from knowledge graph if available
+      let resolvedFields = record.fields;
+      if (this.graph && record.fields && record.fields.length > 0) {
+        resolvedFields = await this.resolveFieldLabels(record.fields);
+      }
 
       const storeResult = await this.storage.storeEprint({
         uri: metadata.uri,
@@ -175,7 +189,7 @@ export class EprintService {
         version: record.version,
         versionNotes: record.versionNotes,
         keywords: record.keywords,
-        fields: record.fields,
+        fields: resolvedFields,
         license: record.license,
         publicationStatus: record.publicationStatus,
         publishedVersion: record.publishedVersion,
@@ -433,5 +447,49 @@ export class EprintService {
         endorsements: 0,
       },
     };
+  }
+
+  /**
+   * Resolves field URIs to their human-readable labels from the knowledge graph.
+   *
+   * @param fields - Fields with URIs (labels may be set to URIs by transformer)
+   * @returns Fields with resolved labels
+   *
+   * @internal
+   */
+  private async resolveFieldLabels(
+    fields: readonly { uri: string; label: string; id?: string }[]
+  ): Promise<readonly { uri: string; label: string; id?: string }[]> {
+    if (!this.graph) {
+      return fields;
+    }
+
+    // Extract field IDs (URIs are UUIDs in this context)
+    const fieldIds = fields.map((f) => f.uri);
+
+    try {
+      // Batch fetch all field nodes from the knowledge graph
+      const nodeMap = await this.graph.getNodesByIds(fieldIds, 'field');
+
+      // Map fields with resolved labels
+      return fields.map((field) => {
+        const node = nodeMap.get(field.uri);
+        if (node) {
+          return {
+            uri: field.uri,
+            label: node.label,
+            id: field.id ?? field.uri,
+          };
+        }
+        // Keep original if node not found (fallback to URI)
+        return field;
+      });
+    } catch (error) {
+      this.logger.warn('Failed to resolve field labels, using URIs as fallback', {
+        fieldCount: fields.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return fields;
+    }
   }
 }

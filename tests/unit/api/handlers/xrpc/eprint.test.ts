@@ -160,7 +160,9 @@ describe('XRPC Eprint Handlers', () => {
       });
 
       expect(result.body.uri).toBe(eprint.uri);
-      expect(result.body.value.title).toBe(eprint.title);
+      // value is unknown type per ATProto pattern (like com.atproto.repo.getRecord)
+      const value = result.body.value as { title: string };
+      expect(value.title).toBe(eprint.title);
 
       // Verify ATProto compliance: pdsUrl field
       expect(result.body.pdsUrl).toBeDefined();
@@ -179,11 +181,13 @@ describe('XRPC Eprint Handlers', () => {
         c: mockContext as never,
       });
 
+      // value is unknown type per ATProto pattern (like com.atproto.repo.getRecord)
+      const value = result.body.value as { document: { mimeType: string; size: number } };
       // Verify document blob - it's now a BlobRef instance which has cid, mimeType, size
-      expect(result.body.value.document).toBeDefined();
+      expect(value.document).toBeDefined();
       // BlobRef from @atproto/lexicon stores cid as CID type
-      expect(result.body.value.document.mimeType).toBe('application/pdf');
-      expect(result.body.value.document.size).toBe(1024000);
+      expect(value.document.mimeType).toBe('application/pdf');
+      expect(value.document.size).toBe(1024000);
     });
 
     it('includes version history', async () => {

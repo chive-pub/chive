@@ -378,6 +378,7 @@ function createServices(
     identity: identityResolver,
     logger,
     tagManager, // Auto-generate tags from eprint keywords
+    graph: graphAdapter, // Resolve field labels from knowledge graph
   });
 
   const searchService = new SearchService({

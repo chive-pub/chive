@@ -36,8 +36,8 @@
               "format": "cid"
             },
             "value": {
-              "type": "ref",
-              "ref": "pub.chive.eprint.submission"
+              "type": "unknown",
+              "description": "The eprint submission record. Must contain $type field."
             },
             "indexedAt": {
               "type": "string",
