@@ -70,7 +70,7 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
         uri: p.uri,
         cid: p.cid,
         title: p.title,
-        abstract: p.abstractPlainText?.substring(0, 500),
+        abstract: p.abstractPlainText,
         authors: (p.authors ?? []).map((author) => ({
           // Only include did if it's a valid DID (not empty string)
           ...(author.did ? { did: author.did } : {}),

@@ -82,8 +82,7 @@
           }
         },
         "abstract": {
-          "type": "string",
-          "maxLength": 500
+          "type": "string"
         },
         "fields": {
           "type": "array",

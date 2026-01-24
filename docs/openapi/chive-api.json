@@ -15575,7 +15575,7 @@
           },
           "abstract": {
             "type": "string",
-            "description": "Truncated abstract (max 500 chars)"
+            "description": "Eprint abstract"
           },
           "authors": {
             "type": "array",

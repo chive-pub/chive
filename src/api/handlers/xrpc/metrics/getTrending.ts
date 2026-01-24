@@ -94,7 +94,7 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
           uri: eprintData.uri,
           cid: eprintData.cid,
           title: eprintData.title,
-          abstract: plainAbstract.substring(0, 500),
+          abstract: plainAbstract,
           authors: eprintData.authors.map((author) => ({
             did: author.did,
             name: author.name,

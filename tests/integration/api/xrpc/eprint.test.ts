@@ -698,7 +698,7 @@ describe('XRPC Eprint Endpoints Integration', () => {
       }
     });
 
-    it('truncates abstracts to 500 characters', async () => {
+    it('returns full abstracts without truncation', async () => {
       const longAbstract = 'A'.repeat(1000);
       const uri = createTestUri('truncate1');
       const cid = createTestCid('truncate1');
@@ -717,7 +717,7 @@ describe('XRPC Eprint Endpoints Integration', () => {
       const matchingEprint = body.eprints.find((p) => p.uri === uri);
       expect(matchingEprint).toBeDefined();
       if (matchingEprint?.abstract) {
-        expect(matchingEprint.abstract.length).toBeLessThanOrEqual(500);
+        expect(matchingEprint.abstract.length).toBe(1000);
       }
     });
   });
