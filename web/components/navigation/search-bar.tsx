@@ -52,7 +52,7 @@ export function SearchBar({ className }: SearchBarProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const debouncedQuery = useDebounce(query, 400);
+  const debouncedQuery = useDebounce(query, 300);
   const { data: eprintData, isLoading: isLoadingEprints } = useInstantSearch(debouncedQuery);
   const { data: authorData, isLoading: isLoadingAuthors } = useAuthorSearch(debouncedQuery, {
     limit: 3,

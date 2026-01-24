@@ -57,7 +57,7 @@ import type { IndexRetryWorker } from '../workers/index-retry-worker.js';
 import { CORS_CONFIG, HEALTH_PATHS } from './config.js';
 import { authenticateServiceAuth } from './middleware/auth.js';
 import { errorHandler } from './middleware/error-handler.js';
-import { conditionalRateLimiter } from './middleware/rate-limit.js';
+import { conditionalRateLimiter, autocompleteRateLimiter } from './middleware/rate-limit.js';
 import { requestContext } from './middleware/request-context.js';
 import { registerRoutes } from './routes.js';
 import type { ChiveEnv, ChiveServices } from './types/context.js';
@@ -348,12 +348,35 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
   // 5. ATProto service auth (optional; sets user if valid token present)
   app.use('*', authenticateServiceAuth(serviceAuthVerifier, config.authzService));
 
-  // 6. Rate limiting (skip for health checks)
+  // 6. Rate limiting
+  // Autocomplete endpoints get higher rate limits (5x for anonymous)
+  const autocompletePatterns = [
+    '/xrpc/pub.chive.search.searchSubmissions',
+    '/xrpc/pub.chive.actor.autocompleteOrcid',
+    '/xrpc/pub.chive.actor.autocompleteAffiliation',
+    '/xrpc/pub.chive.actor.autocompleteKeyword',
+    '/xrpc/pub.chive.actor.autocompleteOpenReview',
+    '/xrpc/pub.chive.claiming.autocomplete',
+    '/api/v1/search', // REST search endpoint
+  ];
+
+  const isAutocompleteEndpoint = (path: string): boolean =>
+    autocompletePatterns.some((pattern) => path.startsWith(pattern));
+
+  const isHealthCheck = (path: string): boolean =>
+    path === HEALTH_PATHS.liveness || path === HEALTH_PATHS.readiness;
+
+  // Apply autocomplete rate limiter to search/autocomplete endpoints
+  for (const pattern of autocompletePatterns) {
+    app.use(`${pattern}*`, autocompleteRateLimiter());
+  }
+
+  // Apply standard rate limiter to all other endpoints (skip health checks and autocomplete)
   app.use(
     '*',
     conditionalRateLimiter((c) => {
       const path = c.req.path;
-      return path === HEALTH_PATHS.liveness || path === HEALTH_PATHS.readiness;
+      return isHealthCheck(path) || isAutocompleteEndpoint(path);
     })
   );
 

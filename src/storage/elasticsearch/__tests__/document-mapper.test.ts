@@ -245,9 +245,11 @@ describe('mapEprintToDocument', () => {
       const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
       expect(document.field_nodes).toBeDefined();
-      expect(document.field_nodes).toContain('Computer Science');
-      expect(document.field_nodes).toContain('Machine Learning');
-      expect(document.field_nodes).toContain('Natural Language Processing');
+      // field_nodes is now an array of objects with id and label
+      const labels = document.field_nodes?.map((n) => n.label);
+      expect(labels).toContain('Computer Science');
+      expect(labels).toContain('Machine Learning');
+      expect(labels).toContain('Natural Language Processing');
     });
 
     it('should extract primary field', () => {

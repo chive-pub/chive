@@ -352,12 +352,12 @@ export class SearchQueryBuilder {
    * Builds subjects filter query.
    *
    * @remarks
-   * Subjects can be provided as AT-URIs or plain UUIDs. The Elasticsearch
-   * documents store field_nodes as UUIDs, so AT-URIs are normalized to
-   * extract the UUID (rkey) portion using @atproto/api.
+   * Uses nested query since field_nodes is a nested type with id and label.
+   * Subjects can be provided as AT-URIs or plain UUIDs - they are normalized
+   * to UUIDs for matching against the indexed field_nodes.id values.
    *
    * @param subjects - Subject URIs to filter by (AT-URIs or UUIDs)
-   * @returns Terms query or undefined if no subjects
+   * @returns Nested query or undefined if no subjects
    */
   private buildSubjectsFilter(
     subjects: readonly string[] | undefined
@@ -369,9 +369,15 @@ export class SearchQueryBuilder {
     // Normalize AT-URIs to UUIDs using the centralized utility
     const normalizedSubjects = subjects.map((s) => extractRkeyOrPassthrough(s));
 
+    // Use nested query since field_nodes is a nested type
     return {
-      terms: {
-        field_nodes: normalizedSubjects,
+      nested: {
+        path: 'field_nodes',
+        query: {
+          terms: {
+            'field_nodes.id': normalizedSubjects,
+          },
+        },
       },
     };
   }

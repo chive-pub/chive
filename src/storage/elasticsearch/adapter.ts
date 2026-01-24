@@ -468,9 +468,15 @@ export class ElasticsearchAdapter implements ISearchEngine {
         const normalizedSubjects: string[] = query.filters.subjects.map((s: string): string =>
           extractRkeyOrPassthrough(s)
         );
+        // Use nested query since field_nodes is a nested type with id and label
         filter.push({
-          terms: {
-            field_nodes: normalizedSubjects,
+          nested: {
+            path: 'field_nodes',
+            query: {
+              terms: {
+                'field_nodes.id': normalizedSubjects,
+              },
+            },
           },
         });
       }

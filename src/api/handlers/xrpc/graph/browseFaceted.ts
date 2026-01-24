@@ -14,7 +14,7 @@ import type {
   OutputSchema,
   FacetDefinition,
 } from '../../../../lexicons/generated/types/pub/chive/graph/browseFaceted.js';
-import { normalizeFieldUri, isUuid } from '../../../../utils/at-uri.js';
+import { normalizeFieldUri } from '../../../../utils/at-uri.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -174,8 +174,7 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
         fields: p.fields?.map((f) => ({
           // Ensure field URIs are proper AT-URIs, not raw UUIDs
           uri: normalizeFieldUri(f.uri),
-          // If label is a UUID (failed resolution), use a fallback
-          label: isUuid(f.label) ? 'Unknown Field' : f.label,
+          label: f.label,
           id: f.id,
           parentUri: f.parentUri ? normalizeFieldUri(f.parentUri) : undefined,
         })),

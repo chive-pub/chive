@@ -31,6 +31,7 @@ import type {
   FundingSource,
   ConferencePresentation,
 } from '../../types/models/eprint.js';
+import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
 import { extractPlainText } from '../../utils/rich-text.js';
 
 /**
@@ -53,7 +54,7 @@ export interface IndexableEprintDocument {
   readonly authors?: readonly AuthorDocument[];
   readonly submitted_by: string;
   readonly paper_did?: string;
-  readonly field_nodes?: readonly string[];
+  readonly field_nodes?: readonly FieldNodeDocument[];
   readonly primary_field?: string;
   readonly keywords?: readonly string[];
   readonly facets?: FacetDocument;
@@ -104,6 +105,27 @@ export interface IndexableEprintDocument {
   // PDS tracking
   readonly pds_url: string;
   readonly pds_endpoint?: string;
+}
+
+/**
+ * Field node document for nested mapping.
+ *
+ * @remarks
+ * Stores both the UUID (for filtering) and label (for display).
+ * This denormalization eliminates the need for query-time label resolution.
+ *
+ * @public
+ */
+export interface FieldNodeDocument {
+  /**
+   * Field node UUID (normalized from AT-URI at index time).
+   */
+  readonly id: string;
+
+  /**
+   * Human-readable field label.
+   */
+  readonly label: string;
 }
 
 /**
@@ -379,9 +401,9 @@ export function mapEprintToDocument(
     authors: mapAuthors(eprint.authors),
     submitted_by: eprint.submittedBy,
     paper_did: eprint.paperDid,
-    field_nodes: eprint.fields?.map((f) => f.uri ?? f.id) ?? extractFieldNodes(eprint.facets),
+    field_nodes: mapFieldNodes(eprint.fields) ?? extractFieldNodesFromFacets(eprint.facets),
     primary_field:
-      eprint.fields?.[0]?.uri ?? eprint.fields?.[0]?.id ?? extractPrimaryField(eprint.facets),
+      extractPrimaryFieldId(eprint.fields) ?? extractPrimaryFieldFromFacets(eprint.facets),
     keywords: eprint.keywords ? [...eprint.keywords] : undefined,
     facets: mapFacets(eprint.facets),
     authorities: extractAuthorities(eprint.facets),
@@ -489,28 +511,75 @@ function mapAuthors(authors: readonly EprintAuthor[]): readonly AuthorDocument[]
 }
 
 /**
- * Extracts field nodes from facets.
+ * Maps eprint fields to field node documents.
  *
- * @param facets - Facet array
- * @returns Field node URIs
+ * @param fields - Eprint fields with URI and label
+ * @returns Field node documents with normalized UUIDs
  *
  * @remarks
- * Field nodes are facets with dimension "topical" or "matter" (subject matter).
+ * Normalizes AT-URIs to UUIDs at index time so query-time normalization
+ * is not needed. Labels are denormalized for efficient display.
  */
-function extractFieldNodes(facets: readonly Facet[]): readonly string[] | undefined {
-  const fieldFacets = facets.filter((f) => f.dimension === 'topical' || f.dimension === 'matter');
-  return fieldFacets.length > 0 ? fieldFacets.map((f) => f.value) : undefined;
+function mapFieldNodes(
+  fields?: readonly { uri: string; label: string; id?: string }[]
+): readonly FieldNodeDocument[] | undefined {
+  if (!fields || fields.length === 0) return undefined;
+
+  return fields.map((f) => ({
+    // Normalize AT-URI to UUID at index time
+    id: extractRkeyOrPassthrough(f.uri ?? f.id ?? ''),
+    label: f.label,
+  }));
 }
 
 /**
- * Extracts primary field from facets.
+ * Extracts primary field ID from eprint fields.
+ *
+ * @param fields - Eprint fields
+ * @returns Primary field UUID (normalized from AT-URI)
+ */
+function extractPrimaryFieldId(
+  fields?: readonly { uri: string; label: string; id?: string }[]
+): string | undefined {
+  if (!fields || fields.length === 0) return undefined;
+  const first = fields[0];
+  if (!first) return undefined;
+  return extractRkeyOrPassthrough(first.uri ?? first.id ?? '');
+}
+
+/**
+ * Extracts field nodes from facets (fallback when fields not provided).
  *
  * @param facets - Facet array
- * @returns Primary field URI (first field node)
+ * @returns Field node documents
+ *
+ * @remarks
+ * Field nodes are facets with dimension "topical" or "matter" (subject matter).
+ * Used as fallback when eprint.fields is not provided.
  */
-function extractPrimaryField(facets: readonly Facet[]): string | undefined {
-  const fieldNodes = extractFieldNodes(facets);
-  return fieldNodes?.[0];
+function extractFieldNodesFromFacets(
+  facets: readonly Facet[]
+): readonly FieldNodeDocument[] | undefined {
+  const fieldFacets = facets.filter((f) => f.dimension === 'topical' || f.dimension === 'matter');
+  if (fieldFacets.length === 0) return undefined;
+
+  return fieldFacets.map((f) => ({
+    // Facet values may be URIs or plain values - normalize to UUID
+    id: extractRkeyOrPassthrough(f.value),
+    // Facet type doesn't include labels - use value as label (will be resolved during indexing)
+    label: f.value,
+  }));
+}
+
+/**
+ * Extracts primary field from facets (fallback).
+ *
+ * @param facets - Facet array
+ * @returns Primary field UUID
+ */
+function extractPrimaryFieldFromFacets(facets: readonly Facet[]): string | undefined {
+  const fieldNodes = extractFieldNodesFromFacets(facets);
+  return fieldNodes?.[0]?.id;
 }
 
 /**
