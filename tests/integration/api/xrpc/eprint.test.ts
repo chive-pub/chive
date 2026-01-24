@@ -456,7 +456,7 @@ describe('XRPC Eprint Endpoints Integration', () => {
 
       // Verify BlobRef structure in value.document
       expect(body.value.document).toBeDefined();
-      const document = body.value.document as unknown as Record<string, unknown>;
+      const document = body.value.document as Record<string, unknown>;
       expect(document.$type).toBe('blob');
       expect(document.ref).toBeDefined();
       expect(document.mimeType).toBe('application/pdf');

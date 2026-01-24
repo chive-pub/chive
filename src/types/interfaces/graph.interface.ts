@@ -148,6 +148,15 @@ export interface IGraphDatabase {
   getNode(id: string, subkind?: string): Promise<GraphNode | null>;
 
   /**
+   * Gets multiple nodes by IDs in a single query.
+   *
+   * @param ids - Node identifiers to fetch
+   * @param subkind - Optional subkind filter
+   * @returns Map of id to GraphNode (missing nodes are not included)
+   */
+  getNodesByIds(ids: readonly string[], subkind?: string): Promise<Map<string, GraphNode>>;
+
+  /**
    * Lists nodes with filtering.
    */
   listNodes(options: NodeSearchOptions): Promise<NodeSearchResult>;

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
+import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
 import { APIError } from '@/lib/errors';
 import type { Eprint, EprintSummary, EprintAuthorView } from '@/lib/api/schema';
 
@@ -146,7 +147,10 @@ export function useEprint(uri: string, options: UseEprintOptions = {}) {
     queryFn: async (): Promise<Eprint> => {
       try {
         const response = await api.pub.chive.eprint.getSubmission({ uri });
-        const { value, ...metadata } = response.data;
+        const { value: rawValue, ...metadata } = response.data;
+
+        // Cast value to SubmissionRecord type (value is unknown per ATProto pattern)
+        const value = rawValue as SubmissionRecord;
 
         // Transform raw record to enriched Eprint view
         const abstractItems = value.abstract as Array<{
@@ -370,7 +374,10 @@ export function usePrefetchEprint() {
       queryFn: async (): Promise<Eprint | undefined> => {
         try {
           const response = await api.pub.chive.eprint.getSubmission({ uri });
-          const { value, ...metadata } = response.data;
+          const { value: rawValue, ...metadata } = response.data;
+
+          // Cast value to SubmissionRecord type (value is unknown per ATProto pattern)
+          const value = rawValue as SubmissionRecord;
 
           // Transform raw record to enriched Eprint view
           const abstractItems = value.abstract as Array<{

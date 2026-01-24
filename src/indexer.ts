@@ -326,6 +326,7 @@ async function main(): Promise<void> {
       identity: identityResolver,
       logger,
       tagManager, // Auto-generate tags from eprint keywords
+      graph: graphAdapter, // Resolve field labels from knowledge graph
     });
 
     const reviewService = new ReviewService({

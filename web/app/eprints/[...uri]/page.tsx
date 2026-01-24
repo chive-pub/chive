@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { EprintDetailContent } from './eprint-content';
 import { EprintDetailSkeleton } from './loading';
 import { createServerClient } from '@/lib/api/client';
+import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
 
 /**
  * Eprint detail page route parameters.
@@ -27,8 +28,8 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
     const response = await serverApi.pub.chive.eprint.getSubmission({ uri: fullUri });
     const data = response.data;
 
-    // Access the record value - the actual eprint content
-    const value = data.value;
+    // Cast value to SubmissionRecord type (value is unknown per ATProto pattern)
+    const value = data.value as SubmissionRecord;
     const firstAuthor = value.authors[0];
     const authorName = firstAuthor?.name ?? 'Unknown';
 
