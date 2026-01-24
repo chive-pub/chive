@@ -4,10 +4,13 @@
  * @remarks
  * AT-URIs follow the format: at://<did>/<collection>/<rkey>
  * This module provides utilities for constructing AT-URIs from internal IDs.
+ * Uses the @atproto/api library for parsing.
  *
  * @packageDocumentation
  * @public
  */
+
+import { AtUri as AtUriParser } from '@atproto/api';
 
 import type { AtUri, DID } from '../types/atproto.js';
 
@@ -45,6 +48,25 @@ export const DEFAULT_GOVERNANCE_DID: DID =
  */
 export function isAtUri(uri: string): boolean {
   return uri.startsWith('at://');
+}
+
+/**
+ * Extracts the rkey (record key/UUID) from an AT-URI.
+ *
+ * @param uri - The AT-URI to parse
+ * @returns The rkey portion of the URI
+ *
+ * @example
+ * ```typescript
+ * extractRkey('at://did:plc:abc/pub.chive.graph.node/123-456');
+ * // => '123-456'
+ * ```
+ *
+ * @public
+ */
+export function extractRkey(uri: string): string {
+  const parsed = new AtUriParser(uri);
+  return parsed.rkey;
 }
 
 /**
@@ -96,6 +118,24 @@ export function normalizeFieldUri(uri: string, governanceDid?: DID): AtUri {
     return uri as AtUri;
   }
   return makeGraphNodeUri(uri, governanceDid);
+}
+
+/**
+ * Extracts the rkey from an AT-URI, or returns the string as-is if not an AT-URI.
+ *
+ * @remarks
+ * Useful for normalizing field URIs to UUIDs for Elasticsearch filtering.
+ *
+ * @param uri - The AT-URI or UUID
+ * @returns The rkey/UUID
+ *
+ * @public
+ */
+export function extractRkeyOrPassthrough(uri: string): string {
+  if (isAtUri(uri)) {
+    return extractRkey(uri);
+  }
+  return uri;
 }
 
 /**

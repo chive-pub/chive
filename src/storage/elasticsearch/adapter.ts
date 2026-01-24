@@ -25,6 +25,7 @@ import type {
   SearchQuery,
   SearchResults,
 } from '../../types/interfaces/search.interface.js';
+import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
 
 import type { ElasticsearchConnectionPool } from './connection.js';
 import type { IndexableEprintDocument } from './document-mapper.js';
@@ -463,9 +464,13 @@ export class ElasticsearchAdapter implements ISearchEngine {
       }
 
       if (query.filters.subjects && query.filters.subjects.length > 0) {
+        // Normalize AT-URIs to UUIDs using the centralized utility
+        const normalizedSubjects: string[] = query.filters.subjects.map((s: string): string =>
+          extractRkeyOrPassthrough(s)
+        );
         filter.push({
           terms: {
-            field_nodes: [...query.filters.subjects],
+            field_nodes: normalizedSubjects,
           },
         });
       }

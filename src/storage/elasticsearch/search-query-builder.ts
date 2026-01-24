@@ -17,6 +17,7 @@
 import type { estypes } from '@elastic/elasticsearch';
 
 import type { SearchQuery } from '../../types/interfaces/search.interface.js';
+import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
 
 /**
  * Field boost configuration for search.
@@ -350,7 +351,12 @@ export class SearchQueryBuilder {
   /**
    * Builds subjects filter query.
    *
-   * @param subjects - Subject URIs to filter by
+   * @remarks
+   * Subjects can be provided as AT-URIs or plain UUIDs. The Elasticsearch
+   * documents store field_nodes as UUIDs, so AT-URIs are normalized to
+   * extract the UUID (rkey) portion using @atproto/api.
+   *
+   * @param subjects - Subject URIs to filter by (AT-URIs or UUIDs)
    * @returns Terms query or undefined if no subjects
    */
   private buildSubjectsFilter(
@@ -360,9 +366,12 @@ export class SearchQueryBuilder {
       return undefined;
     }
 
+    // Normalize AT-URIs to UUIDs using the centralized utility
+    const normalizedSubjects = subjects.map((s) => extractRkeyOrPassthrough(s));
+
     return {
       terms: {
-        field_nodes: [...subjects],
+        field_nodes: normalizedSubjects,
       },
     };
   }
