@@ -43,7 +43,66 @@ export const authorKeys = {
   /** Key for author eprints queries */
   eprints: (did: string, params?: { limit?: number }) =>
     [...authorKeys.all, 'eprints', did, params] as const,
+  /** Key for author search queries */
+  search: (query: string, limit?: number) => [...authorKeys.all, 'search', query, limit] as const,
 };
+
+/**
+ * Author search result from the API.
+ */
+export interface AuthorSearchResult {
+  did: string;
+  handle?: string;
+  displayName?: string;
+  avatar?: string;
+  affiliation?: string;
+  eprintCount?: number;
+}
+
+/**
+ * Hook for searching authors by name.
+ *
+ * @param query - Search query
+ * @param options - Query options
+ * @returns Query result with matching authors
+ *
+ * @example
+ * ```tsx
+ * const { data, isLoading } = useAuthorSearch('Smith', { limit: 5 });
+ *
+ * data?.authors.map((author) => (
+ *   <div key={author.did}>{author.displayName}</div>
+ * ));
+ * ```
+ */
+export function useAuthorSearch(
+  query: string,
+  options: { limit?: number; enabled?: boolean } = {}
+) {
+  const { limit = 10, enabled = true } = options;
+
+  return useQuery({
+    queryKey: authorKeys.search(query, limit),
+    queryFn: async (): Promise<{ authors: AuthorSearchResult[] }> => {
+      try {
+        const response = await api.pub.chive.author.searchAuthors({
+          q: query,
+          limit,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to search authors',
+          undefined,
+          'pub.chive.author.searchAuthors'
+        );
+      }
+    },
+    enabled: enabled && query.length >= 2,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
 
 interface UseAuthorOptions {
   /** Whether the query is enabled */

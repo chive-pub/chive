@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Loader2, FileText } from 'lucide-react';
+import { Search, Loader2, FileText, User } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useInstantSearch } from '@/lib/hooks/use-search';
+import { useAuthorSearch } from '@/lib/hooks/use-author';
 import { useDebounce } from '@/lib/hooks/use-eprint-search';
 import type { EnrichedSearchHit } from '@/lib/api/schema';
 
@@ -52,10 +53,17 @@ export function SearchBar({ className }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const debouncedQuery = useDebounce(query, 200);
-  const { data, isLoading } = useInstantSearch(debouncedQuery);
+  const { data: eprintData, isLoading: isLoadingEprints } = useInstantSearch(debouncedQuery);
+  const { data: authorData, isLoading: isLoadingAuthors } = useAuthorSearch(debouncedQuery, {
+    limit: 3,
+    enabled: debouncedQuery.length >= 2,
+  });
+
+  const isLoading = isLoadingEprints || isLoadingAuthors;
 
   // Cast to EnrichedSearchHit as the API returns enriched data
-  const suggestions = (data?.hits ?? []) as EnrichedSearchHit[];
+  const eprintSuggestions = (eprintData?.hits ?? []) as EnrichedSearchHit[];
+  const authorSuggestions = authorData?.authors ?? [];
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -109,16 +117,19 @@ export function SearchBar({ className }: SearchBarProps) {
   }, []);
 
   return (
-    <Popover open={isOpen && suggestions.length > 0} onOpenChange={setIsOpen}>
+    <Popover
+      open={isOpen && (eprintSuggestions.length > 0 || authorSuggestions.length > 0)}
+      onOpenChange={setIsOpen}
+    >
       <PopoverTrigger asChild>
         <form
           role="search"
-          aria-label="Search eprints"
+          aria-label="Search eprints and authors"
           onSubmit={handleSubmit}
           className={cn('relative w-full max-w-sm', className)}
         >
           <label htmlFor="header-search" className="sr-only">
-            Search for eprints
+            Search for eprints and authors
           </label>
           <Search
             className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
@@ -128,7 +139,7 @@ export function SearchBar({ className }: SearchBarProps) {
             ref={inputRef}
             id="header-search"
             type="search"
-            placeholder="Search eprints..."
+            placeholder="Search eprints & authors..."
             className="pl-8 pr-10"
             value={query}
             onChange={handleInputChange}
@@ -158,13 +169,14 @@ export function SearchBar({ className }: SearchBarProps) {
       >
         <Command>
           <CommandList>
-            {suggestions.length === 0 && !isLoading && (
-              <CommandEmpty className="py-3 text-center text-sm">No eprints found</CommandEmpty>
+            {eprintSuggestions.length === 0 && authorSuggestions.length === 0 && !isLoading && (
+              <CommandEmpty className="py-3 text-center text-sm">No results found</CommandEmpty>
             )}
 
-            {suggestions.length > 0 && (
+            {/* Eprint suggestions */}
+            {eprintSuggestions.length > 0 && (
               <CommandGroup heading="Eprints">
-                {suggestions.map((hit) => (
+                {eprintSuggestions.map((hit) => (
                   <CommandItem
                     key={hit.uri}
                     value={hit.uri}
@@ -180,6 +192,38 @@ export function SearchBar({ className }: SearchBarProps) {
                             {hit.authors
                               .map((a: { name?: string }) => a.name ?? 'Unknown')
                               .join(', ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {/* Author suggestions */}
+            {authorSuggestions.length > 0 && (
+              <CommandGroup heading="Authors">
+                {authorSuggestions.map((author) => (
+                  <CommandItem
+                    key={author.did}
+                    value={author.did}
+                    onSelect={() => {
+                      setIsOpen(false);
+                      setQuery('');
+                      router.push(`/authors/${encodeURIComponent(author.did)}`);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-start gap-2 w-full">
+                      <User className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                        <span className="font-medium line-clamp-1">
+                          {author.displayName ?? author.handle ?? author.did}
+                        </span>
+                        {author.affiliation && (
+                          <span className="text-xs text-muted-foreground line-clamp-1">
+                            {author.affiliation}
                           </span>
                         )}
                       </div>
