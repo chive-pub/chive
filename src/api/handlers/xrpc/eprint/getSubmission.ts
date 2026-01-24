@@ -23,6 +23,7 @@ import type {
 } from '../../../../lexicons/generated/types/pub/chive/eprint/getSubmission.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
+import { normalizeFieldUri } from '../../../../utils/at-uri.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -161,7 +162,7 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
         submittedBy: result.submittedBy,
         paperDid: result.paperDid,
         keywords: result.keywords ? [...result.keywords] : undefined,
-        fieldUris: result.fields?.map((f) => f.uri),
+        fieldUris: result.fields?.map((f) => normalizeFieldUri(f.uri)),
         version: result.version,
         licenseSlug: result.license as
           | 'CC-BY-4.0'

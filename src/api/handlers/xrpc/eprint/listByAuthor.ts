@@ -19,6 +19,7 @@ import type {
 } from '../../../../lexicons/generated/types/pub/chive/eprint/listByAuthor.js';
 import type { DID } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
+import { normalizeFieldUri, isUuid } from '../../../../utils/at-uri.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -78,8 +79,8 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
           displayName: author.name,
         })),
         fields: p.fields?.map((f) => ({
-          uri: f.uri,
-          label: f.label,
+          uri: normalizeFieldUri(f.uri),
+          label: isUuid(f.label) ? 'Unknown Field' : f.label,
           id: f.id,
         })),
         indexedAt: p.indexedAt.toISOString(),

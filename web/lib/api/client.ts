@@ -255,23 +255,32 @@ function createFetchHandler(options: { authenticated: boolean }): typeof globalT
             ? responseBody.message
             : 'An unknown error occurred';
 
-        requestLogger.warn('API request failed', {
-          status,
-          durationMs,
-          error: errorMessage,
-        });
+        // 404 is often expected (e.g., user hasn't endorsed yet, resource doesn't exist)
+        // Only log as debug, not as warning, and don't report to Faro
+        if (status === 404) {
+          requestLogger.debug('Resource not found', {
+            status,
+            durationMs,
+          });
+        } else {
+          requestLogger.warn('API request failed', {
+            status,
+            durationMs,
+            error: errorMessage,
+          });
 
-        // Report to Faro telemetry
-        const apiError = new APIError(errorMessage, status, endpoint);
-        reportErrorToFaro(apiError, {
-          endpoint,
-          method,
-          status: String(status),
-          requestId,
-          traceId: trace.traceId,
-        });
+          // Report to Faro telemetry (skip 404s as they're often expected)
+          const apiError = new APIError(errorMessage, status, endpoint);
+          reportErrorToFaro(apiError, {
+            endpoint,
+            method,
+            status: String(status),
+            requestId,
+            traceId: trace.traceId,
+          });
+        }
 
-        throw apiError;
+        throw new APIError(errorMessage, status, endpoint);
       }
 
       requestLogger.debug('API request completed', {
@@ -407,11 +416,19 @@ export function createServerClient(options?: { revalidate?: number }) {
             ? responseBody.message
             : 'An unknown error occurred';
 
-        requestLogger.warn('Server API request failed', {
-          status,
-          durationMs,
-          error: errorMessage,
-        });
+        // 404 is often expected, don't log as warning
+        if (status === 404) {
+          requestLogger.debug('Server resource not found', {
+            status,
+            durationMs,
+          });
+        } else {
+          requestLogger.warn('Server API request failed', {
+            status,
+            durationMs,
+            error: errorMessage,
+          });
+        }
 
         throw new APIError(errorMessage, status, endpoint);
       }
