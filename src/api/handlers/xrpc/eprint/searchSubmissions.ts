@@ -162,18 +162,46 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
     const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
     const hasMore = offset + searchResults.hits.length < searchResults.total;
 
+    // Fetch eprint data for all results to include title/authors
+    const eprintDataForResponse = new Map<string, Awaited<ReturnType<typeof eprint.getEprint>>>();
+    if (searchResults.hits.length > 0) {
+      // If we already fetched for LTR logging, reuse that data
+      if (hasTextQuery && eprintDataMap.size > 0) {
+        for (const [uri, data] of eprintDataMap) {
+          eprintDataForResponse.set(uri, data);
+        }
+      } else {
+        // Otherwise fetch eprint data for response
+        const eprintPromises = searchResults.hits.map(async (hit) => {
+          const data = await eprint.getEprint(hit.uri);
+          if (data) {
+            eprintDataForResponse.set(hit.uri, data);
+          }
+        });
+        await Promise.all(eprintPromises);
+      }
+    }
+
     const response: OutputSchema = {
-      hits: searchResults.hits.map((hit) => ({
-        uri: hit.uri,
-        // Lexicon expects integer score scaled by 1000 for precision
-        score: Math.round((hit.score ?? 0) * 1000),
-        highlight: hit.highlight
-          ? {
-              title: hit.highlight.title ? [...hit.highlight.title] : undefined,
-              abstract: hit.highlight.abstract ? [...hit.highlight.abstract] : undefined,
-            }
-          : undefined,
-      })),
+      hits: searchResults.hits.map((hit) => {
+        const eprintData = eprintDataForResponse.get(hit.uri);
+        return {
+          uri: hit.uri,
+          // Lexicon expects integer score scaled by 1000 for precision
+          score: Math.round((hit.score ?? 0) * 1000),
+          title: eprintData?.title,
+          authors: eprintData?.authors?.map((a) => ({
+            ...(a.did ? { did: a.did } : {}),
+            name: a.name,
+          })),
+          highlight: hit.highlight
+            ? {
+                title: hit.highlight.title ? [...hit.highlight.title] : undefined,
+                abstract: hit.highlight.abstract ? [...hit.highlight.abstract] : undefined,
+              }
+            : undefined,
+        };
+      }),
       cursor: hasMore ? String(offset + searchResults.hits.length) : undefined,
       total: searchResults.total,
       facetAggregations: undefined,

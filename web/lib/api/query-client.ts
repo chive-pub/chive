@@ -1,7 +1,26 @@
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
 
 import { logger } from '@/lib/observability';
+import { getFaro } from '@/lib/observability/faro/initialize';
 import { ChiveError } from '@/lib/errors';
+
+/**
+ * Reports an error to Faro telemetry.
+ */
+function reportQueryErrorToFaro(error: unknown, context: Record<string, string>): void {
+  try {
+    const faro = getFaro();
+    if (!faro) return;
+
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    faro.api.pushError(errorObj, {
+      context,
+      type: 'react-query-error',
+    });
+  } catch {
+    // Silently fail - don't let telemetry errors affect the app
+  }
+}
 
 const queryLogger = logger.child({ component: 'query-client' });
 
@@ -37,19 +56,43 @@ export function makeQueryClient(): QueryClient {
     },
     queryCache: new QueryCache({
       onError: (error, query) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorCode = error instanceof ChiveError ? error.code : undefined;
+
         queryLogger.warn('Query failed', {
           queryKey: query.queryKey,
-          error: error instanceof Error ? error.message : String(error),
-          code: error instanceof ChiveError ? error.code : undefined,
+          error: errorMessage,
+          code: errorCode,
+        });
+
+        // Report to Faro telemetry
+        reportQueryErrorToFaro(error, {
+          queryKey: JSON.stringify(query.queryKey),
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+          code: errorCode ?? '',
+          path: typeof window !== 'undefined' ? window.location.pathname : '',
         });
       },
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorCode = error instanceof ChiveError ? error.code : undefined;
+
         queryLogger.error('Mutation failed', error instanceof Error ? error : undefined, {
           mutationKey: mutation.options.mutationKey,
-          error: error instanceof Error ? error.message : String(error),
-          code: error instanceof ChiveError ? error.code : undefined,
+          error: errorMessage,
+          code: errorCode,
+        });
+
+        // Report to Faro telemetry
+        reportQueryErrorToFaro(error, {
+          mutationKey: mutation.options.mutationKey
+            ? JSON.stringify(mutation.options.mutationKey)
+            : 'unknown',
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+          code: errorCode ?? '',
+          path: typeof window !== 'undefined' ? window.location.pathname : '',
         });
       },
     }),

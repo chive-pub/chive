@@ -10,14 +10,16 @@ import {
   useAuthorProfile,
   useAuthorMetrics,
   useAuthorEprints,
+  useAuthorSearch,
   hasOrcid,
   formatOrcidUrl,
 } from './use-author';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockGetProfile, mockListByAuthor } = vi.hoisted(() => ({
+const { mockGetProfile, mockListByAuthor, mockSearchAuthors } = vi.hoisted(() => ({
   mockGetProfile: vi.fn(),
   mockListByAuthor: vi.fn(),
+  mockSearchAuthors: vi.fn(),
 }));
 
 vi.mock('@/lib/api/client', () => ({
@@ -26,6 +28,7 @@ vi.mock('@/lib/api/client', () => ({
       chive: {
         author: {
           getProfile: mockGetProfile,
+          searchAuthors: mockSearchAuthors,
         },
         eprint: {
           listByAuthor: mockListByAuthor,
@@ -68,6 +71,10 @@ describe('authorKeys', () => {
       'did:plc:abc',
       { limit: 10 },
     ]);
+  });
+
+  it('generates search key', () => {
+    expect(authorKeys.search('smith', 10)).toEqual(['authors', 'search', 'smith', 10]);
   });
 });
 
@@ -253,5 +260,85 @@ describe('formatOrcidUrl', () => {
     expect(formatOrcidUrl('https://orcid.org/0000-0002-1825-0097')).toBe(
       'https://orcid.org/0000-0002-1825-0097'
     );
+  });
+});
+
+describe('useAuthorSearch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('searches authors by query', async () => {
+    const mockResponse = {
+      authors: [
+        {
+          did: 'did:plc:abc',
+          handle: 'alice.bsky.social',
+          displayName: 'Alice Smith',
+          affiliation: 'MIT',
+          eprintCount: 5,
+        },
+        {
+          did: 'did:plc:def',
+          handle: 'bob.bsky.social',
+          displayName: 'Bob Smith',
+        },
+      ],
+    };
+    mockSearchAuthors.mockResolvedValueOnce({ data: mockResponse });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAuthorSearch('smith'), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockResponse);
+    expect(mockSearchAuthors).toHaveBeenCalledWith({ q: 'smith', limit: 10 });
+  });
+
+  it('uses custom limit', async () => {
+    mockSearchAuthors.mockResolvedValueOnce({ data: { authors: [] } });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAuthorSearch('test', { limit: 5 }), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockSearchAuthors).toHaveBeenCalledWith({ q: 'test', limit: 5 });
+  });
+
+  it('is disabled when query is too short', () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAuthorSearch('a'), { wrapper: Wrapper });
+
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+
+  it('can be disabled via options', () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAuthorSearch('smith', { enabled: false }), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+
+  it('handles API errors', async () => {
+    mockSearchAuthors.mockRejectedValueOnce(new Error('Search failed'));
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useAuthorSearch('error'), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.error?.message).toBe('Search failed');
   });
 });

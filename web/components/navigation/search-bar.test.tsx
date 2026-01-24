@@ -25,6 +25,14 @@ vi.mock('@/lib/hooks/use-search', () => ({
   }),
 }));
 
+// Mock the useAuthorSearch hook
+vi.mock('@/lib/hooks/use-author', () => ({
+  useAuthorSearch: () => ({
+    data: null,
+    isLoading: false,
+  }),
+}));
+
 // Create a wrapper with QueryClientProvider
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -51,20 +59,20 @@ describe('SearchBar', () => {
 
     const input = screen.getByRole('searchbox');
     expect(input).toBeInTheDocument();
-    expect(input).toHaveAttribute('placeholder', 'Search eprints...');
+    expect(input).toHaveAttribute('placeholder', 'Search eprints & authors...');
   });
 
   it('has search form with correct role', () => {
     render(<SearchBar />, { wrapper: createWrapper() });
 
-    const form = screen.getByRole('search', { name: 'Search eprints' });
+    const form = screen.getByRole('search', { name: 'Search eprints and authors' });
     expect(form).toBeInTheDocument();
   });
 
   it('has accessible label for input', () => {
     render(<SearchBar />, { wrapper: createWrapper() });
 
-    const label = screen.getByText('Search for eprints');
+    const label = screen.getByText('Search for eprints and authors');
     expect(label).toHaveClass('sr-only');
   });
 
@@ -148,7 +156,7 @@ describe('SearchBar', () => {
   it('applies custom className', () => {
     render(<SearchBar className="custom-search" />, { wrapper: createWrapper() });
 
-    const form = screen.getByRole('search', { name: 'Search eprints' });
+    const form = screen.getByRole('search', { name: 'Search eprints and authors' });
     expect(form).toHaveClass('custom-search');
   });
 
