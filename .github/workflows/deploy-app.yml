@@ -54,7 +54,6 @@ jobs:
           GOVERNANCE_PDS_JWT_SECRET: ${{ secrets.GOVERNANCE_PDS_JWT_SECRET }}
           GOVERNANCE_PDS_ADMIN_PASSWORD: ${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }}
           GOVERNANCE_PDS_ROTATION_KEY: ${{ secrets.GOVERNANCE_PDS_ROTATION_KEY }}
-          TRAEFIK_BASIC_AUTH: ${{ secrets.TRAEFIK_BASIC_AUTH }}
           ATPROTO_SERVICE_DID: ${{ vars.ATPROTO_SERVICE_DID }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -82,7 +81,6 @@ jobs:
           GOVERNANCE_PDS_JWT_SECRET=${GOVERNANCE_PDS_JWT_SECRET}
           GOVERNANCE_PDS_ADMIN_PASSWORD=${GOVERNANCE_PDS_ADMIN_PASSWORD}
           GOVERNANCE_PDS_ROTATION_KEY=${GOVERNANCE_PDS_ROTATION_KEY}
-          TRAEFIK_BASIC_AUTH=${TRAEFIK_BASIC_AUTH}
           GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
           EOF
 
@@ -118,7 +116,6 @@ jobs:
           ZULIP_BOT_EMAIL=${ZULIP_BOT_EMAIL}
           ZULIP_BOT_API_KEY=${ZULIP_BOT_API_KEY}
           ZULIP_INVITE_URL=${ZULIP_INVITE_URL}
-          TRAEFIK_BASIC_AUTH=${TRAEFIK_BASIC_AUTH}
           EOF
 
           # Remove leading whitespace
@@ -356,7 +353,7 @@ jobs:
             docker exec \
               -e DATABASE_URL=postgresql://chive:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/chive \
               -e ELASTICSEARCH_URL=http://elasticsearch:9200 \
-              -e NEO4J_URL=bolt://neo4j:7687 \
+              -e NEO4J_URI=bolt://neo4j:7687 \
               -e NEO4J_USER=neo4j \
               -e NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }} \
               chive-api \

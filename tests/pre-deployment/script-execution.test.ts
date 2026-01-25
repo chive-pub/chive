@@ -219,6 +219,9 @@ describe('Pre-Deployment Script Execution', () => {
 
       esClient = new ElasticsearchClient({ node: ELASTICSEARCH_URL });
 
+      // Delete ALL existing eprints - we only want the real one from the user's PDS
+      await pgClient.query('DELETE FROM eprints_index');
+
       // Fetch a real eprint from the user's PDS
       const agent = new AtpAgent({ service: TEST_CONFIG.userPdsEndpoint });
       const response = await agent.com.atproto.repo.listRecords({
@@ -291,6 +294,11 @@ describe('Pre-Deployment Script Execution', () => {
       expect(result.stdout).toContain('PostgreSQL is healthy');
       expect(result.stdout).toContain('Elasticsearch is healthy');
       expect(result.stdout).toContain('Neo4j is healthy');
+
+      // Must have ZERO failures - any failure means we're hitting fake/invalid PDSes
+      expect(result.stdout).not.toContain('FAIL:');
+      expect(result.stdout).not.toContain('WARNING: Some records failed');
+      expect(result.stdout).toContain('Failed: 0');
     });
 
     it('can reindex a real eprint from user PDS', async () => {
@@ -303,8 +311,16 @@ describe('Pre-Deployment Script Execution', () => {
         REINDEX_MAX_RETRIES: '2',
       });
 
-      // Must complete the reindex
+      // Must complete the reindex with exit code 0
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('EPRINT REINDEXING SCRIPT');
+      expect(result.stdout).toContain('REINDEXING COMPLETE');
+
+      // Must have ZERO failures - any failure means we're hitting fake/invalid PDSes
+      expect(result.stdout).not.toContain('FAIL:');
+      expect(result.stdout).not.toContain('WARNING: Some records failed');
+      expect(result.stdout).toContain('Failed: 0');
+      expect(result.stdout).toMatch(/Successful: \d+ \(100\.0%\)/);
 
       // Verify the document was indexed in Elasticsearch
       const esDoc = await esClient.get({

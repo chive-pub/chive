@@ -16,7 +16,7 @@
  * Environment variables:
  * - DATABASE_URL: PostgreSQL connection string
  * - ELASTICSEARCH_URL: Elasticsearch URL
- * - NEO4J_URL: Neo4j bolt URL
+ * - NEO4J_URI: Neo4j bolt URI
  * - NEO4J_USER: Neo4j username
  * - NEO4J_PASSWORD: Neo4j password
  * - REINDEX_BATCH_SIZE: Number of records per batch (default: 50)
@@ -424,7 +424,7 @@ async function main() {
   });
 
   const neo4jDriver = neo4j.driver(
-    process.env.NEO4J_URL || 'bolt://127.0.0.1:7687',
+    process.env.NEO4J_URI || 'bolt://127.0.0.1:7687',
     neo4j.auth.basic(
       process.env.NEO4J_USER || 'neo4j',
       process.env.NEO4J_PASSWORD || 'chive_test_password'
