@@ -531,11 +531,11 @@ services:
           cpus: '0.5'
           memory: 1536M
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
-      interval: 30s
-      timeout: 15s
+      test: ["CMD-SHELL", "cypher-shell -u $${NEO4J_AUTH%%/*} -p $${NEO4J_AUTH##*/} 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
       retries: 10
-      start_period: 90s
+      start_period: 120s
 
   # ---------------------------------------------------------------------------
   # Grafana Alloy - Unified Telemetry Collector
