@@ -22,7 +22,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const TEST_CONFIG = {
   postgres: {
     connectionString:
-      process.env.DATABASE_URL ?? 'postgresql://chive:chive_test_password@127.0.0.1:5432/chive',
+      process.env.DATABASE_URL ??
+      'postgresql://chive:chive_test_password@127.0.0.1:5432/chive_test',
   },
   elasticsearch: {
     node: process.env.ELASTICSEARCH_URL ?? 'http://127.0.0.1:9200',

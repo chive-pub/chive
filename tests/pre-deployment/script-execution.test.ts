@@ -37,7 +37,8 @@ async function runScript(
         ...env,
         // Ensure scripts use test database
         DATABASE_URL:
-          process.env.DATABASE_URL ?? 'postgresql://chive:chive_test_password@127.0.0.1:5432/chive',
+          process.env.DATABASE_URL ??
+          'postgresql://chive:chive_test_password@127.0.0.1:5432/chive_test',
         ELASTICSEARCH_URL: process.env.ELASTICSEARCH_URL ?? 'http://127.0.0.1:9200',
         NEO4J_URI: process.env.NEO4J_URI ?? 'bolt://127.0.0.1:7687',
         NEO4J_USER: process.env.NEO4J_USER ?? 'neo4j',

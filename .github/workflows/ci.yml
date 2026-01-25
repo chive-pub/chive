@@ -317,7 +317,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: chive
+          POSTGRES_DB: chive_test
           POSTGRES_USER: chive
           POSTGRES_PASSWORD: chive_test_password
         ports:
@@ -343,8 +343,8 @@ jobs:
       POSTGRES_PORT: 5432
       POSTGRES_USER: chive
       POSTGRES_PASSWORD: chive_test_password
-      POSTGRES_DB: chive
-      DATABASE_URL: postgresql://chive:chive_test_password@localhost:5432/chive
+      POSTGRES_DB: chive_test
+      DATABASE_URL: postgresql://chive:chive_test_password@localhost:5432/chive_test
       REDIS_URL: redis://localhost:6379
       ELASTICSEARCH_URL: http://localhost:9200
       NEO4J_URI: bolt://localhost:7687
