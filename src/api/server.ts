@@ -367,8 +367,9 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
     path === HEALTH_PATHS.liveness || path === HEALTH_PATHS.readiness;
 
   // Apply autocomplete rate limiter to search/autocomplete endpoints
+  // Note: Hono matches exact paths; query strings are not part of the path
   for (const pattern of autocompletePatterns) {
-    app.use(`${pattern}*`, autocompleteRateLimiter());
+    app.use(pattern, autocompleteRateLimiter());
   }
 
   // Apply standard rate limiter to all other endpoints (skip health checks and autocomplete)

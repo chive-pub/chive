@@ -19,7 +19,7 @@ import type { Hono } from 'hono';
 import { Redis } from 'ioredis';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-import { RATE_LIMIT_KEY_PREFIX } from '@/api/config.js';
+import { RATE_LIMIT_KEY_PREFIX, AUTOCOMPLETE_RATE_LIMITS } from '@/api/config.js';
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
 import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
@@ -70,6 +70,11 @@ const _TEST_DID_ADMIN = 'did:plc:adminuser' as DID;
 void _TEST_DID_AUTH; // Reserved for authenticated tier tests
 void _TEST_DID_PREMIUM; // Reserved for premium tier tests
 void _TEST_DID_ADMIN; // Reserved for admin tier tests
+
+// Standard endpoints (60 req/min) vs autocomplete endpoints (300 req/min)
+const STANDARD_ENDPOINT = '/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test';
+const AUTOCOMPLETE_ENDPOINT = '/api/v1/search?q=test';
+const AUTOCOMPLETE_ANONYMOUS_LIMIT = AUTOCOMPLETE_RATE_LIMITS.anonymous;
 
 describe('API Rate Limiting Integration', () => {
   let redis: Redis;
@@ -128,7 +133,7 @@ describe('API Rate Limiting Integration', () => {
 
   describe('Rate Limit Headers', () => {
     it('includes X-RateLimit-Limit header', async () => {
-      const res = await app.request('/api/v1/search?q=test');
+      const res = await app.request(STANDARD_ENDPOINT);
 
       expect(res.headers.get('X-RateLimit-Limit')).toBeDefined();
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
@@ -136,7 +141,7 @@ describe('API Rate Limiting Integration', () => {
     });
 
     it('includes X-RateLimit-Remaining header', async () => {
-      const res = await app.request('/api/v1/search?q=test');
+      const res = await app.request(STANDARD_ENDPOINT);
 
       expect(res.headers.get('X-RateLimit-Remaining')).toBeDefined();
       const remaining = parseInt(res.headers.get('X-RateLimit-Remaining') ?? '0', 10);
@@ -144,7 +149,7 @@ describe('API Rate Limiting Integration', () => {
     });
 
     it('includes X-RateLimit-Reset header with Unix timestamp', async () => {
-      const res = await app.request('/api/v1/search?q=test');
+      const res = await app.request(STANDARD_ENDPOINT);
 
       expect(res.headers.get('X-RateLimit-Reset')).toBeDefined();
       const reset = parseInt(res.headers.get('X-RateLimit-Reset') ?? '0', 10);
@@ -162,12 +167,12 @@ describe('API Rate Limiting Integration', () => {
       // Clear any existing data for deterministic test
       await redis.del(key);
 
-      const res1 = await app.request('/api/v1/search?q=test', {
+      const res1 = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': testIp },
       });
       const remaining1 = parseInt(res1.headers.get('X-RateLimit-Remaining') ?? '0', 10);
 
-      const res2 = await app.request('/api/v1/search?q=test', {
+      const res2 = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': testIp },
       });
       const remaining2 = parseInt(res2.headers.get('X-RateLimit-Remaining') ?? '0', 10);
@@ -184,8 +189,8 @@ describe('API Rate Limiting Integration', () => {
       expect(res.status).toBe(200);
     });
 
-    it('applies 60 req/min limit for anonymous users', async () => {
-      const res = await app.request('/api/v1/search?q=test', {
+    it('applies 60 req/min limit for standard endpoints', async () => {
+      const res = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': TEST_IP },
       });
 
@@ -193,17 +198,26 @@ describe('API Rate Limiting Integration', () => {
       expect(limit).toBe(60);
     });
 
+    it('applies higher rate limit for autocomplete endpoints', async () => {
+      const res = await app.request(AUTOCOMPLETE_ENDPOINT, {
+        headers: { 'X-Forwarded-For': TEST_IP },
+      });
+
+      const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
+      expect(limit).toBe(AUTOCOMPLETE_ANONYMOUS_LIMIT);
+    });
+
     it('rate limits different IPs independently', async () => {
       const ip1 = '172.16.0.1';
       const ip2 = '172.16.0.2';
 
       // Make requests from different IPs
-      const res1 = await app.request('/api/v1/search?q=test', {
+      const res1 = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': ip1 },
       });
       const remaining1 = parseInt(res1.headers.get('X-RateLimit-Remaining') ?? '0', 10);
 
-      const res2 = await app.request('/api/v1/search?q=test', {
+      const res2 = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': ip2 },
       });
       const remaining2 = parseInt(res2.headers.get('X-RateLimit-Remaining') ?? '0', 10);
@@ -256,7 +270,7 @@ describe('API Rate Limiting Integration', () => {
       // Clear any existing data
       await redis.del(key);
 
-      await app.request('/api/v1/search?q=test', {
+      await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': testIp },
       });
 
@@ -273,7 +287,7 @@ describe('API Rate Limiting Integration', () => {
       // Clear any existing data
       await redis.del(key);
 
-      await app.request('/api/v1/search?q=test', {
+      await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': testIp },
       });
 
@@ -303,7 +317,7 @@ describe('API Rate Limiting Integration', () => {
       await redis.zadd(key, ...entries);
       await redis.expire(key, 61);
 
-      const res = await app.request('/api/v1/search?q=test', {
+      const res = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': testIp },
       });
 
@@ -326,7 +340,7 @@ describe('API Rate Limiting Integration', () => {
       await redis.zadd(key, ...entries);
       await redis.expire(key, 61);
 
-      const res = await app.request('/api/v1/search?q=test', {
+      const res = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': testIp },
       });
 
@@ -354,7 +368,7 @@ describe('API Rate Limiting Integration', () => {
       await redis.zadd(key, ...entries);
       await redis.expire(key, 61);
 
-      const res = await app.request('/api/v1/search?q=test', {
+      const res = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': testIp },
       });
 
@@ -367,18 +381,18 @@ describe('API Rate Limiting Integration', () => {
   });
 
   describe('Different Endpoint Rate Limits', () => {
-    it('applies same rate limit across different endpoints', async () => {
+    it('applies same rate limit counter across standard endpoints', async () => {
       const testIp = '192.168.100.1';
       const key = buildRateLimitKey('anonymous', testIp);
 
       // Clear any existing data
       await redis.del(key);
 
-      // Make requests to different endpoints
-      const res1 = await app.request('/api/v1/search?q=test', {
+      // Make requests to different standard endpoints (not autocomplete)
+      const res1 = await app.request('/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test1', {
         headers: { 'X-Forwarded-For': testIp },
       });
-      const res2 = await app.request('/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test', {
+      const res2 = await app.request('/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test2', {
         headers: { 'X-Forwarded-For': testIp },
       });
 
@@ -389,6 +403,27 @@ describe('API Rate Limiting Integration', () => {
       // Rate limit key should have entries from both requests
       const count = await redis.zcard(key);
       expect(count).toBe(2);
+    });
+
+    it('autocomplete endpoints have higher rate limits than standard', async () => {
+      const testIp = '192.168.100.2';
+
+      const standardRes = await app.request(STANDARD_ENDPOINT, {
+        headers: { 'X-Forwarded-For': testIp },
+      });
+      const autocompleteRes = await app.request(AUTOCOMPLETE_ENDPOINT, {
+        headers: { 'X-Forwarded-For': testIp },
+      });
+
+      const standardLimit = parseInt(standardRes.headers.get('X-RateLimit-Limit') ?? '0', 10);
+      const autocompleteLimit = parseInt(
+        autocompleteRes.headers.get('X-RateLimit-Limit') ?? '0',
+        10
+      );
+
+      expect(autocompleteLimit).toBeGreaterThan(standardLimit);
+      expect(standardLimit).toBe(60);
+      expect(autocompleteLimit).toBe(AUTOCOMPLETE_ANONYMOUS_LIMIT);
     });
   });
 
@@ -401,7 +436,7 @@ describe('API Rate Limiting Integration', () => {
       // Clear any existing data
       await redis.del(key);
 
-      await app.request('/api/v1/search?q=test', {
+      await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': proxyChain },
       });
 
@@ -412,13 +447,22 @@ describe('API Rate Limiting Integration', () => {
   });
 
   describe('Rate Limit Tier Verification', () => {
-    it('anonymous tier uses 60 req/min limit', async () => {
-      const res = await app.request('/api/v1/search?q=test', {
+    it('standard endpoints use 60 req/min limit', async () => {
+      const res = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': '10.10.10.1' },
       });
 
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
       expect(limit).toBe(60);
+    });
+
+    it('autocomplete endpoints use higher req/min limit', async () => {
+      const res = await app.request(AUTOCOMPLETE_ENDPOINT, {
+        headers: { 'X-Forwarded-For': '10.10.10.2' },
+      });
+
+      const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
+      expect(limit).toBe(AUTOCOMPLETE_ANONYMOUS_LIMIT);
     });
   });
 
@@ -432,7 +476,7 @@ describe('API Rate Limiting Integration', () => {
 
       // Make 10 concurrent requests (async callback ensures Promise return type)
       const promises = Array.from({ length: 10 }, async () =>
-        app.request('/api/v1/search?q=test', {
+        app.request(STANDARD_ENDPOINT, {
           headers: { 'X-Forwarded-For': testIp },
         })
       );
@@ -454,7 +498,7 @@ describe('API Rate Limiting Integration', () => {
     it('rate limits GET requests', async () => {
       const testIp = '192.168.180.1';
 
-      const res = await app.request('/api/v1/search?q=test', {
+      const res = await app.request(STANDARD_ENDPOINT, {
         method: 'GET',
         headers: { 'X-Forwarded-For': testIp },
       });
@@ -465,13 +509,14 @@ describe('API Rate Limiting Integration', () => {
     it('rate limits POST requests', async () => {
       const testIp = '192.168.180.2';
 
-      const res = await app.request('/xrpc/pub.chive.eprint.searchSubmissions', {
+      // Use a POST endpoint that's not autocomplete
+      const res = await app.request('/xrpc/pub.chive.eprint.getEprint', {
         method: 'POST',
         headers: {
           'X-Forwarded-For': testIp,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ q: 'test' }),
+        body: JSON.stringify({ uri: 'at://did:plc:test/pub.chive.eprint/abc123' }),
       });
 
       expect(res.headers.get('X-RateLimit-Limit')).toBeDefined();

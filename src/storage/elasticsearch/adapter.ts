@@ -660,10 +660,16 @@ export class ElasticsearchAdapter implements ISearchEngine {
             value: String(bucket.key),
             count: bucket.doc_count,
           }));
-        } else if (this.isNestedAggregate(aggregation) && 'author_terms' in aggregation) {
-          const authorTerms = aggregation.author_terms as estypes.AggregationsAggregate;
-          if (this.isTermsAggregate(authorTerms)) {
-            const typedBuckets = authorTerms.buckets as {
+        } else if (this.isNestedAggregate(aggregation)) {
+          // Handle nested aggregations (author_terms, subject_terms)
+          let nestedTerms: estypes.AggregationsAggregate | undefined;
+          if ('author_terms' in aggregation) {
+            nestedTerms = aggregation.author_terms as estypes.AggregationsAggregate;
+          } else if ('subject_terms' in aggregation) {
+            nestedTerms = aggregation.subject_terms as estypes.AggregationsAggregate;
+          }
+          if (nestedTerms && this.isTermsAggregate(nestedTerms)) {
+            const typedBuckets = nestedTerms.buckets as {
               key: string | number;
               doc_count: number;
             }[];
