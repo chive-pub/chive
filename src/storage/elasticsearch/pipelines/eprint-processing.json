@@ -91,7 +91,7 @@
     {
       "script": {
         "lang": "painless",
-        "source": "if (ctx.field_nodes != null && ctx.field_nodes.length > 0) { ctx.primary_field = ctx.field_nodes[0]; }",
+        "source": "if (ctx.field_nodes != null && ctx.field_nodes.length > 0) { ctx.primary_field = ctx.field_nodes[0].id; }",
         "on_failure": [
           {
             "set": {
