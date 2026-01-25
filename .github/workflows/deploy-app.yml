@@ -337,6 +337,35 @@ jobs:
 
             echo "=== Governance sync complete ==="
 
+      - name: Reindex Elasticsearch
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+
+            echo "=== Reindexing Elasticsearch ==="
+
+            cd /opt/chive
+
+            # Run the reindex script inside the chive-api container
+            # This fetches fresh records from PDSes and reindexes with current schema
+            docker exec \
+              -e DATABASE_URL=postgresql://chive:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/chive \
+              -e ELASTICSEARCH_URL=http://elasticsearch:9200 \
+              -e NEO4J_URL=bolt://neo4j:7687 \
+              -e NEO4J_USER=neo4j \
+              -e NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }} \
+              chive-api \
+              node --enable-source-maps dist/scripts/reindex-all-eprints.js || {
+                echo "::warning::Elasticsearch reindex failed - manual intervention may be required"
+              }
+
+            echo "=== Elasticsearch reindex complete ==="
+
       - name: Verify deployment
         if: ${{ vars.DOMAIN != '' }}
         run: |

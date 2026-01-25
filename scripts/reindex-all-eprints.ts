@@ -138,7 +138,9 @@ async function main() {
       });
 
       console.log(`  Successfully reindexed!`);
-      console.log(`  field_nodes: ${esDocument.field_nodes?.join(', ') || 'none'}`);
+      console.log(
+        `  field_nodes: ${esDocument.field_nodes?.map((f) => f.label).join(', ') || 'none'}`
+      );
     } catch (error) {
       console.error(`  Error: ${error instanceof Error ? error.message : String(error)}`);
     }
