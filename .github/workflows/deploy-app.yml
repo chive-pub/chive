@@ -1,5 +1,4 @@
 name: Deploy App
-# Deployment workflow for production
 
 on:
   workflow_run:
@@ -55,7 +54,7 @@ jobs:
           GOVERNANCE_PDS_JWT_SECRET: ${{ secrets.GOVERNANCE_PDS_JWT_SECRET }}
           GOVERNANCE_PDS_ADMIN_PASSWORD: ${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }}
           GOVERNANCE_PDS_ROTATION_KEY: ${{ secrets.GOVERNANCE_PDS_ROTATION_KEY }}
-                    ATPROTO_SERVICE_DID: ${{ vars.ATPROTO_SERVICE_DID }}
+          ATPROTO_SERVICE_DID: ${{ vars.ATPROTO_SERVICE_DID }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
@@ -82,7 +81,7 @@ jobs:
           GOVERNANCE_PDS_JWT_SECRET=${GOVERNANCE_PDS_JWT_SECRET}
           GOVERNANCE_PDS_ADMIN_PASSWORD=${GOVERNANCE_PDS_ADMIN_PASSWORD}
           GOVERNANCE_PDS_ROTATION_KEY=${GOVERNANCE_PDS_ROTATION_KEY}
-                    GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+          GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
           EOF
 
           # Create .env.production for container runtime
@@ -117,7 +116,7 @@ jobs:
           ZULIP_BOT_EMAIL=${ZULIP_BOT_EMAIL}
           ZULIP_BOT_API_KEY=${ZULIP_BOT_API_KEY}
           ZULIP_INVITE_URL=${ZULIP_INVITE_URL}
-                    EOF
+          EOF
 
           # Remove leading whitespace
           sed -i 's/^          //' docker-env/.env docker-env/.env.production
