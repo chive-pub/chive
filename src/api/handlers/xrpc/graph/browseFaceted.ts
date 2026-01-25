@@ -14,6 +14,7 @@ import type {
   OutputSchema,
   FacetDefinition,
 } from '../../../../lexicons/generated/types/pub/chive/graph/browseFaceted.js';
+import { normalizeFieldUri } from '../../../../utils/at-uri.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -171,10 +172,11 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
         submittedBy: p.submittedBy,
         paperDid: p.paperDid,
         fields: p.fields?.map((f) => ({
-          uri: f.uri,
+          // Ensure field URIs are proper AT-URIs, not raw UUIDs
+          uri: normalizeFieldUri(f.uri),
           label: f.label,
           id: f.id,
-          parentUri: f.parentUri,
+          parentUri: f.parentUri ? normalizeFieldUri(f.parentUri) : undefined,
         })),
         license: p.license ?? 'CC-BY-4.0',
         keywords: p.keywords ? [...p.keywords] : undefined,

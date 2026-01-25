@@ -78,8 +78,17 @@ export interface IndexableEprintDocument {
    *
    * @remarks
    * Indexed as keyword field for faceted filtering.
+   * @deprecated Use fieldNodes instead for nested field data.
    */
   readonly subjects: readonly string[];
+
+  /**
+   * Field nodes with resolved labels from knowledge graph.
+   *
+   * @remarks
+   * Indexed as nested documents for faceted filtering with human-readable labels.
+   */
+  readonly fieldNodes?: readonly { id: string; label: string }[];
 
   /**
    * Eprint creation timestamp.

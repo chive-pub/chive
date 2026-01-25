@@ -130,10 +130,12 @@ describe('SearchQueryBuilder', () => {
       const filterClause = Array.isArray(query.bool?.filter)
         ? query.bool.filter[0]
         : query.bool?.filter;
-      expect(filterClause).toHaveProperty('terms');
+      // field_nodes is now nested, so we use a nested query
+      expect(filterClause).toHaveProperty('nested');
 
-      const terms = filterClause && 'terms' in filterClause ? filterClause.terms : null;
-      expect(terms).toHaveProperty('field_nodes');
+      const nested = filterClause && 'nested' in filterClause ? filterClause.nested : null;
+      expect(nested).toHaveProperty('path', 'field_nodes');
+      expect(nested).toHaveProperty('query');
     });
 
     it('should ignore empty subjects array', () => {

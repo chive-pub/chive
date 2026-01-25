@@ -42,6 +42,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:compliance": "vitest run --config vitest.compliance.config.ts",
+    "test:pre-deployment": "vitest run --config vitest.pre-deployment.config.ts",
     "test:performance": "k6 run tests/performance/baseline-load.js",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint . --ext .ts,.tsx",

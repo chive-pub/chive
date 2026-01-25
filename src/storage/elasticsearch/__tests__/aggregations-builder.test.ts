@@ -76,15 +76,16 @@ describe('FacetedAggregationsBuilder', () => {
       }
     });
 
-    it('should build terms aggregation for subjects', () => {
+    it('should build nested aggregation for subjects', () => {
       const builder = new FacetedAggregationsBuilder();
       const aggregations = builder.build(['subjects']);
 
       expect(aggregations.subjects).toBeDefined();
-      expect(aggregations.subjects).toHaveProperty('terms');
-      if (aggregations.subjects && 'terms' in aggregations.subjects) {
-        const terms = aggregations.subjects.terms;
-        expect(terms).toHaveProperty('field', 'field_nodes');
+      // field_nodes is now nested, so subjects uses nested aggregation
+      expect(aggregations.subjects).toHaveProperty('nested');
+      if (aggregations.subjects && 'nested' in aggregations.subjects) {
+        const nested = aggregations.subjects.nested;
+        expect(nested).toHaveProperty('path', 'field_nodes');
       }
     });
 

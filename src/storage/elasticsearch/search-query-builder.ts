@@ -17,6 +17,7 @@
 import type { estypes } from '@elastic/elasticsearch';
 
 import type { SearchQuery } from '../../types/interfaces/search.interface.js';
+import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
 
 /**
  * Field boost configuration for search.
@@ -350,8 +351,13 @@ export class SearchQueryBuilder {
   /**
    * Builds subjects filter query.
    *
-   * @param subjects - Subject URIs to filter by
-   * @returns Terms query or undefined if no subjects
+   * @remarks
+   * Uses nested query since field_nodes is a nested type with id and label.
+   * Subjects can be provided as AT-URIs or plain UUIDs - they are normalized
+   * to UUIDs for matching against the indexed field_nodes.id values.
+   *
+   * @param subjects - Subject URIs to filter by (AT-URIs or UUIDs)
+   * @returns Nested query or undefined if no subjects
    */
   private buildSubjectsFilter(
     subjects: readonly string[] | undefined
@@ -360,9 +366,18 @@ export class SearchQueryBuilder {
       return undefined;
     }
 
+    // Normalize AT-URIs to UUIDs using the centralized utility
+    const normalizedSubjects = subjects.map((s) => extractRkeyOrPassthrough(s));
+
+    // Use nested query since field_nodes is a nested type
     return {
-      terms: {
-        field_nodes: [...subjects],
+      nested: {
+        path: 'field_nodes',
+        query: {
+          terms: {
+            'field_nodes.id': normalizedSubjects,
+          },
+        },
       },
     };
   }

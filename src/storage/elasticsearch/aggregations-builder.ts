@@ -189,7 +189,7 @@ export class FacetedAggregationsBuilder {
 
       // Common facets
       case 'subjects':
-        return this.buildTermsAggregation('field_nodes');
+        return this.buildSubjectsAggregation();
       case 'author':
         return this.buildAuthorAggregation();
       case 'year':
@@ -239,6 +239,32 @@ export class FacetedAggregationsBuilder {
           terms: {
             field: 'authors.name.keyword',
             size: this.config.maxAuthorBuckets,
+            min_doc_count: this.config.minDocCount,
+          },
+        },
+      },
+    };
+  }
+
+  /**
+   * Builds nested subjects aggregation.
+   *
+   * @returns Nested aggregation with sub-aggregation
+   *
+   * @remarks
+   * Uses nested aggregation because field_nodes are stored as nested documents
+   * with id (UUID) and label fields. Aggregates by label for display.
+   */
+  private buildSubjectsAggregation(): estypes.AggregationsAggregationContainer {
+    return {
+      nested: {
+        path: 'field_nodes',
+      },
+      aggs: {
+        subject_terms: {
+          terms: {
+            field: 'field_nodes.label.keyword',
+            size: this.config.maxBuckets,
             min_doc_count: this.config.minDocCount,
           },
         },

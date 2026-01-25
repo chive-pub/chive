@@ -25,6 +25,7 @@ import type {
   SearchQuery,
   SearchResults,
 } from '../../types/interfaces/search.interface.js';
+import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
 
 import type { ElasticsearchConnectionPool } from './connection.js';
 import type { IndexableEprintDocument } from './document-mapper.js';
@@ -387,7 +388,8 @@ export class ElasticsearchAdapter implements ISearchEngine {
       abstract: doc.abstract,
       full_text: doc.fullText,
       keywords: doc.keywords,
-      field_nodes: doc.subjects,
+      // Use fieldNodes if available (nested format), otherwise fall back to subjects as IDs only
+      field_nodes: doc.fieldNodes ?? doc.subjects?.map((s) => ({ id: s, label: s })),
       authors: [
         {
           did: doc.author,
@@ -463,9 +465,19 @@ export class ElasticsearchAdapter implements ISearchEngine {
       }
 
       if (query.filters.subjects && query.filters.subjects.length > 0) {
+        // Normalize AT-URIs to UUIDs using the centralized utility
+        const normalizedSubjects: string[] = query.filters.subjects.map((s: string): string =>
+          extractRkeyOrPassthrough(s)
+        );
+        // Use nested query since field_nodes is a nested type with id and label
         filter.push({
-          terms: {
-            field_nodes: [...query.filters.subjects],
+          nested: {
+            path: 'field_nodes',
+            query: {
+              terms: {
+                'field_nodes.id': normalizedSubjects,
+              },
+            },
           },
         });
       }
@@ -649,10 +661,16 @@ export class ElasticsearchAdapter implements ISearchEngine {
             value: String(bucket.key),
             count: bucket.doc_count,
           }));
-        } else if (this.isNestedAggregate(aggregation) && 'author_terms' in aggregation) {
-          const authorTerms = aggregation.author_terms as estypes.AggregationsAggregate;
-          if (this.isTermsAggregate(authorTerms)) {
-            const typedBuckets = authorTerms.buckets as {
+        } else if (this.isNestedAggregate(aggregation)) {
+          // Handle nested aggregations (author_terms, subject_terms)
+          let nestedTerms: estypes.AggregationsAggregate | undefined;
+          if ('author_terms' in aggregation) {
+            nestedTerms = aggregation.author_terms as estypes.AggregationsAggregate;
+          } else if ('subject_terms' in aggregation) {
+            nestedTerms = aggregation.subject_terms as estypes.AggregationsAggregate;
+          }
+          if (nestedTerms && this.isTermsAggregate(nestedTerms)) {
+            const typedBuckets = nestedTerms.buckets as {
               key: string | number;
               doc_count: number;
             }[];

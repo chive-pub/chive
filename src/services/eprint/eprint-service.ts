@@ -222,6 +222,15 @@ export class EprintService {
         .filter((f) => f.dimension === 'matter' || f.dimension === 'personality')
         .map((f) => f.value);
 
+      // Map resolved fields to the format expected by search indexing
+      // Filter out fields without IDs (should not happen, but be defensive)
+      const fieldNodes = resolvedFields
+        ?.filter((f): f is typeof f & { id: string } => f.id !== undefined)
+        .map((f) => ({
+          id: f.id,
+          label: f.label,
+        }));
+
       await this.search.indexEprint({
         uri: metadata.uri,
         author: authorDid ?? record.submittedBy,
@@ -230,6 +239,7 @@ export class EprintService {
         abstract: abstractPlainText,
         keywords: record.keywords as string[],
         subjects,
+        fieldNodes,
         createdAt: new Date(record.createdAt),
         indexedAt: metadata.indexedAt,
       });

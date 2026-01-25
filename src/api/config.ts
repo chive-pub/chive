@@ -51,6 +51,32 @@ export const RATE_LIMITS: Readonly<Record<RateLimitTier, number>> = RATE_LIMITIN
     };
 
 /**
+ * Autocomplete-specific rate limits (requests per minute).
+ *
+ * @remarks
+ * Higher limits for autocomplete endpoints because:
+ * - Autocomplete fires on every keystroke (even with debouncing)
+ * - Users expect near-instant feedback for search suggestions
+ * - These are lightweight read-only operations
+ *
+ * @public
+ */
+export const AUTOCOMPLETE_RATE_LIMITS: Readonly<Record<RateLimitTier, number>> =
+  RATE_LIMITING_DISABLED
+    ? {
+        anonymous: 999999,
+        authenticated: 999999,
+        premium: 999999,
+        admin: 999999,
+      }
+    : {
+        anonymous: 300, // 5x normal (5 req/sec for fast typing)
+        authenticated: 600, // 2x normal
+        premium: 1500, // 1.5x normal
+        admin: 5000, // Same as normal (already high)
+      };
+
+/**
  * Rate limit window in milliseconds.
  *
  * @public

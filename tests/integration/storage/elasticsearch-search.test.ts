@@ -79,7 +79,13 @@ describe('Elasticsearch Search Integration', () => {
               name: { type: 'text', fields: { keyword: { type: 'keyword' } } },
             },
           },
-          field_nodes: { type: 'keyword' },
+          field_nodes: {
+            type: 'nested',
+            properties: {
+              id: { type: 'keyword' },
+              label: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+            },
+          },
           facets: {
             properties: {
               matter: { type: 'keyword', fields: { text: { type: 'text' } } },

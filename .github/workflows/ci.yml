@@ -292,8 +292,90 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
       - name: Build summary
         run: |
           echo "## Build Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "All packages built successfully." >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # Stage 7: Pre-Deployment Verification (runs scripts and jobs against test stack)
+  # ==============================================================================
+
+  pre-deployment-tests:
+    name: Pre-Deployment Verification
+    runs-on: ubuntu-latest
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: chive_test
+          POSTGRES_USER: chive
+          POSTGRES_PASSWORD: chive_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: chive
+      POSTGRES_PASSWORD: chive_test_password
+      POSTGRES_DB: chive_test
+      DATABASE_URL: postgresql://chive:chive_test_password@localhost:5432/chive_test
+      REDIS_URL: redis://localhost:6379
+      ELASTICSEARCH_URL: http://localhost:9200
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: chive_test_password
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+      - uses: ./.github/actions/start-services
+
+      - name: Run database migrations
+        run: pnpm db:migrate:up
+
+      - name: Seed test data
+        run: pnpm seed:test
+
+      - name: Run pre-deployment tests
+        run: pnpm test:pre-deployment
+
+      - name: Pre-deployment summary
+        if: always()
+        run: |
+          echo "## Pre-Deployment Verification Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Verified that all scripts, jobs, and services function correctly." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Checks performed:" >> $GITHUB_STEP_SUMMARY
+          echo "- Service health (PostgreSQL, Elasticsearch, Neo4j, Redis)" >> $GITHUB_STEP_SUMMARY
+          echo "- Elasticsearch schema and mappings" >> $GITHUB_STEP_SUMMARY
+          echo "- Neo4j schema and indexes" >> $GITHUB_STEP_SUMMARY
+          echo "- Indexing pipeline with nested field_nodes" >> $GITHUB_STEP_SUMMARY
+          echo "- Script execution (reindex, setup)" >> $GITHUB_STEP_SUMMARY
+          echo "- Job and worker module imports" >> $GITHUB_STEP_SUMMARY

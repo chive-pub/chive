@@ -2,7 +2,7 @@ import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
 
 import { logger } from '@/lib/observability';
 import { getFaro } from '@/lib/observability/faro/initialize';
-import { ChiveError } from '@/lib/errors';
+import { ChiveError, APIError } from '@/lib/errors';
 
 /**
  * Reports an error to Faro telemetry.
@@ -56,6 +56,11 @@ export function makeQueryClient(): QueryClient {
     },
     queryCache: new QueryCache({
       onError: (error, query) => {
+        // Skip logging 404 errors - they're often expected (e.g., user hasn't endorsed yet)
+        if (error instanceof APIError && error.statusCode === 404) {
+          return;
+        }
+
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorCode = error instanceof ChiveError ? error.code : undefined;
 

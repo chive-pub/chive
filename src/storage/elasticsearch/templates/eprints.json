@@ -151,7 +151,21 @@
           }
         },
         "field_nodes": {
-          "type": "keyword"
+          "type": "nested",
+          "properties": {
+            "id": {
+              "type": "keyword"
+            },
+            "label": {
+              "type": "text",
+              "analyzer": "eprint_analyzer",
+              "fields": {
+                "keyword": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
         },
         "primary_field": {
           "type": "keyword"

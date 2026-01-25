@@ -21,6 +21,7 @@ import type { Redis } from 'ioredis';
 import { RateLimitError } from '../../types/errors.js';
 import {
   RATE_LIMITS,
+  AUTOCOMPLETE_RATE_LIMITS,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_KEY_PREFIX,
   RATE_LIMIT_FAIL_MODE,
@@ -281,4 +282,32 @@ export function conditionalRateLimiter(
 
     await limiter(c, next);
   };
+}
+
+/**
+ * Autocomplete-specific rate limiter with higher limits.
+ *
+ * @remarks
+ * Uses AUTOCOMPLETE_RATE_LIMITS instead of RATE_LIMITS for higher throughput.
+ * Designed for search autocomplete/typeahead endpoints that fire on every keystroke.
+ *
+ * Industry standard: Autocomplete endpoints typically have 3-5x higher rate limits
+ * than standard API endpoints because:
+ * - They fire on every keystroke (even with debouncing)
+ * - Users expect near-instant feedback
+ * - They are lightweight read-only operations
+ *
+ * @example
+ * ```typescript
+ * // Apply to autocomplete endpoints
+ * app.get('/xrpc/pub.chive.search.searchSubmissions', autocompleteRateLimiter(), handler);
+ * app.get('/xrpc/pub.chive.search.autocomplete', autocompleteRateLimiter(), handler);
+ * ```
+ *
+ * @returns Hono middleware handler with elevated rate limits
+ *
+ * @public
+ */
+export function autocompleteRateLimiter(): MiddlewareHandler<ChiveEnv> {
+  return rateLimiter(AUTOCOMPLETE_RATE_LIMITS);
 }

@@ -12,7 +12,7 @@
 #   2. Create required directories: mkdir -p data/{postgres,redis,elasticsearch,neo4j}
 #   3. Build the application: docker build -t chive:latest -f docker/Dockerfile .
 #
-# Estimated resources: 6GB RAM minimum, 8GB recommended
+# Estimated resources: 10GB RAM minimum, 16GB recommended
 # =============================================================================
 
 services:
@@ -447,6 +447,9 @@ services:
   # ---------------------------------------------------------------------------
   # Elasticsearch 8 - Full-text search
   # ---------------------------------------------------------------------------
+  # Memory allocation follows Elasticsearch best practices:
+  # - Heap: 50% of container memory (max 32GB for compressed oops)
+  # - Remaining: OS file cache for Lucene segments
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: chive-elasticsearch
@@ -455,7 +458,8 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      # Heap: 1.5GB (50% of 3GB container)
+      - "ES_JAVA_OPTS=-Xms1536m -Xmx1536m"
       - cluster.name=chive-cluster
       - bootstrap.memory_lock=true
       - cluster.routing.allocation.disk.threshold_enabled=true
@@ -469,10 +473,10 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 2G
+          memory: 3G
         reservations:
           cpus: '0.5'
-          memory: 1G
+          memory: 1536M
     ulimits:
       memlock:
         soft: -1
@@ -490,6 +494,10 @@ services:
   # ---------------------------------------------------------------------------
   # Neo4j 5 - Knowledge graph
   # ---------------------------------------------------------------------------
+  # Memory allocation follows Neo4j best practices:
+  # - Heap: 50% of container memory for query processing
+  # - Page cache: 25-30% for graph data caching
+  # - Remaining: OS overhead, buffers, and transaction memory
   neo4j:
     image: neo4j:5-community
     container_name: chive-neo4j
@@ -499,11 +507,16 @@ services:
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: apoc.*
       NEO4J_dbms_security_procedures_allowlist: apoc.*
-      # Memory configuration for small server
-      NEO4J_server_memory_heap_initial__size: 256m
-      NEO4J_server_memory_heap_max__size: 512m
-      NEO4J_server_memory_pagecache_size: 256m
-      NEO4J_dbms_memory_transaction_total_max: 256m
+      # Memory configuration - sized for 2.5GB container
+      # Heap: 1.25GB (50% of container) for query processing
+      NEO4J_server_memory_heap_initial__size: 1g
+      NEO4J_server_memory_heap_max__size: 1280m
+      # Page cache: 768MB (~30%) for caching graph data
+      NEO4J_server_memory_pagecache_size: 768m
+      # Transaction memory pool
+      NEO4J_dbms_memory_transaction_total_max: 384m
+      # Query cache for repeated queries
+      NEO4J_db_query__cache__size: 1000
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -512,11 +525,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '1.5'
+          memory: 2560M
         reservations:
-          cpus: '0.25'
-          memory: 512M
+          cpus: '0.5'
+          memory: 1536M
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
       interval: 30s
