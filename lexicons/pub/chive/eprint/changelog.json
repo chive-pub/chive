@@ -1,0 +1,121 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.changelog",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Structured changelog entry for eprint version",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["eprintUri", "version", "sections", "createdAt"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "URI of the eprint this changelog belongs to"
+          },
+          "version": {
+            "type": "ref",
+            "ref": "pub.chive.eprint.submission#semanticVersion",
+            "description": "Semantic version this changelog describes"
+          },
+          "previousVersion": {
+            "type": "ref",
+            "ref": "pub.chive.eprint.submission#semanticVersion",
+            "description": "Previous semantic version"
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-line summary of changes",
+            "maxLength": 500
+          },
+          "sections": {
+            "type": "array",
+            "description": "Structured changelog sections",
+            "items": {
+              "type": "ref",
+              "ref": "#changelogSection"
+            },
+            "maxLength": 20
+          },
+          "reviewerResponse": {
+            "type": "string",
+            "description": "Response to peer review feedback (if applicable)",
+            "maxLength": 10000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this changelog was created"
+          }
+        }
+      }
+    },
+    "changelogSection": {
+      "type": "object",
+      "description": "A section of changes grouped by category",
+      "required": ["category", "items"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Category of changes (kebab-case per ATProto style guide)",
+          "knownValues": [
+            "methodology",
+            "results",
+            "analysis",
+            "discussion",
+            "conclusions",
+            "data",
+            "figures",
+            "tables",
+            "references",
+            "supplementary-materials",
+            "corrections",
+            "formatting",
+            "language-editing",
+            "acknowledgments",
+            "authorship",
+            "other"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "description": "Individual change items in this section",
+          "items": {
+            "type": "ref",
+            "ref": "#changeItem"
+          },
+          "maxLength": 50
+        }
+      }
+    },
+    "changeItem": {
+      "type": "object",
+      "description": "Individual change entry",
+      "required": ["description"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Description of the change",
+          "maxLength": 2000
+        },
+        "changeType": {
+          "type": "string",
+          "description": "Type of change",
+          "knownValues": ["added", "changed", "removed", "fixed", "deprecated"]
+        },
+        "location": {
+          "type": "string",
+          "description": "Location in document (e.g., Section 3.2, Figure 5)",
+          "maxLength": 100
+        },
+        "reviewReference": {
+          "type": "string",
+          "description": "Reference to reviewer comment being addressed",
+          "maxLength": 200
+        }
+      }
+    }
+  }
+}

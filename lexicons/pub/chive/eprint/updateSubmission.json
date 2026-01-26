@@ -1,0 +1,156 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.updateSubmission",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Update an eprint submission with a new version",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "versionBump"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the eprint to update"
+            },
+            "versionBump": {
+              "type": "string",
+              "description": "Type of version increment",
+              "knownValues": ["major", "minor", "patch"]
+            },
+            "title": {
+              "type": "string",
+              "description": "Updated title",
+              "maxLength": 500
+            },
+            "abstract": {
+              "type": "array",
+              "description": "Updated rich abstract",
+              "items": {
+                "type": "union",
+                "refs": [
+                  "pub.chive.eprint.submission#textItem",
+                  "pub.chive.eprint.submission#nodeRefItem"
+                ]
+              },
+              "maxLength": 100
+            },
+            "document": {
+              "type": "blob",
+              "description": "Updated document (if replacing)",
+              "accept": [
+                "application/pdf",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "text/html",
+                "text/markdown",
+                "text/x-markdown",
+                "text/x-tex",
+                "application/x-tex",
+                "application/x-ipynb+json",
+                "application/vnd.oasis.opendocument.text",
+                "application/rtf",
+                "application/epub+zip",
+                "text/plain"
+              ],
+              "maxSize": 52428800
+            },
+            "keywords": {
+              "type": "array",
+              "description": "Updated keywords",
+              "items": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "maxLength": 20
+            },
+            "fieldUris": {
+              "type": "array",
+              "description": "Updated field node references",
+              "items": {
+                "type": "string",
+                "format": "at-uri"
+              },
+              "maxLength": 10
+            },
+            "changelog": {
+              "type": "ref",
+              "ref": "#changelogInput",
+              "description": "Structured changelog for this update"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "version", "expectedCid"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "URI of the updated eprint"
+            },
+            "version": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission#semanticVersion",
+              "description": "New semantic version"
+            },
+            "expectedCid": {
+              "type": "string",
+              "format": "cid",
+              "description": "CID of the current indexed version for optimistic concurrency control. The frontend should pass this to the PDS when updating; if the CID has changed, the PDS will reject the update to prevent race conditions."
+            },
+            "changelogUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "URI of the created changelog record"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "NotFound",
+          "description": "Eprint not found"
+        },
+        {
+          "name": "Unauthorized",
+          "description": "User is not authorized to update this eprint"
+        },
+        {
+          "name": "ValidationError",
+          "description": "Invalid update data"
+        }
+      ]
+    },
+    "changelogInput": {
+      "type": "object",
+      "description": "Changelog input for update operation",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "One-line summary of changes",
+          "maxLength": 500
+        },
+        "sections": {
+          "type": "array",
+          "description": "Structured changelog sections",
+          "items": {
+            "type": "ref",
+            "ref": "pub.chive.eprint.changelog#changelogSection"
+          },
+          "maxLength": 20
+        },
+        "reviewerResponse": {
+          "type": "string",
+          "description": "Response to peer review feedback",
+          "maxLength": 10000
+        }
+      }
+    }
+  }
+}

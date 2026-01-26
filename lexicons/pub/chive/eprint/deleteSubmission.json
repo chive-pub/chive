@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.deleteSubmission",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Delete an eprint submission from the user's PDS",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the eprint to delete"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the deletion was successful"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "NotFound",
+          "description": "Eprint not found"
+        },
+        {
+          "name": "Unauthorized",
+          "description": "User is not authorized to delete this eprint"
+        }
+      ]
+    }
+  }
+}
