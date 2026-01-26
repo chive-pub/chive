@@ -238,6 +238,7 @@ export class TagManager {
         tag.updatedAt = datetime()
       WITH tag
       MERGE (record {uri: $recordUri})
+      WITH tag, record
       // Check if relationship already exists before creating
       OPTIONAL MATCH (record)-[existing:TAGGED_WITH]->(tag)
       WITH tag, record, existing IS NULL as isNewRelationship
