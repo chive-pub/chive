@@ -37,10 +37,12 @@ function parseArgs(): Args {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+    if (!arg) continue;
     if (arg === '--dry-run') {
       dryRun = true;
     } else if (arg === '--delay') {
-      delay = parseInt(args[++i], 10);
+      const delayArg = args[++i];
+      delay = parseInt(delayArg ?? '', 10);
       if (isNaN(delay) || delay < 0) {
         console.error('Error: --delay must be a non-negative number');
         process.exit(1);
@@ -100,11 +102,14 @@ function parseThreadFile(filePath: string): ThreadPost[] {
         }
       }
 
-      const [, num, total, titlePart] = headerMatch;
+      const num = headerMatch[1];
+      const total = headerMatch[2];
+      const titlePart = headerMatch[3];
+      if (!num || !total) continue;
       currentPost = {
         number: parseInt(num, 10),
         total: parseInt(total, 10),
-        title: titlePart.trim() || undefined,
+        title: titlePart?.trim() || undefined,
         text: '',
       };
       currentLines = [];
@@ -183,13 +188,22 @@ async function getCidForUri(agent: AtpAgent, uri: string): Promise<string> {
     throw new Error(`Invalid AT-URI: ${uri}`);
   }
 
-  const [, repo, collection, rkey] = match;
+  const repo = match[1];
+  const collection = match[2];
+  const rkey = match[3];
+  if (!repo || !collection || !rkey) {
+    throw new Error(`Invalid AT-URI format: ${uri}`);
+  }
 
   const response = await agent.com.atproto.repo.getRecord({
     repo,
     collection,
     rkey,
   });
+
+  if (!response.data.cid) {
+    throw new Error(`Record has no CID: ${uri}`);
+  }
 
   return response.data.cid;
 }
@@ -254,16 +268,23 @@ async function main() {
     return;
   }
 
-  // Authenticate
+  // Authenticate - handle and appPassword are validated above for non-dry-run
   console.log(`Connecting to PDS: ${pdsUrl}`);
   const agent = new AtpAgent({ service: pdsUrl });
 
+  if (!handle || !appPassword) {
+    throw new Error('CHIVE_HANDLE and CHIVE_APP_PASSWORD are required');
+  }
+
   try {
     await agent.login({
-      identifier: handle!,
-      password: appPassword!,
+      identifier: handle,
+      password: appPassword,
     });
-    console.log(`Authenticated as: ${agent.session!.handle} (${agent.session!.did})\n`);
+    if (!agent.session) {
+      throw new Error('Login succeeded but no session was created');
+    }
+    console.log(`Authenticated as: ${agent.session.handle} (${agent.session.did})\n`);
   } catch (error) {
     console.error('Authentication failed:', error);
     process.exit(1);
@@ -286,9 +307,14 @@ async function main() {
   // Post thread
   const postedUris: { uri: string; cid: string }[] = [];
   let rootPost: { uri: string; cid: string } | undefined;
+  const session = agent.session;
+  if (!session) {
+    throw new Error('No session available');
+  }
 
   for (let i = 0; i < posts.length; i++) {
     const post = posts[i];
+    if (!post) continue;
     const isFirst = i === 0;
     const replyTo = isFirst ? undefined : postedUris[i - 1];
 
@@ -301,7 +327,7 @@ async function main() {
       const result = await createPost(
         agent,
         post.text,
-        replyTo ? { ...replyTo, ...rootPost! } : undefined,
+        replyTo && rootPost ? { ...replyTo, ...rootPost } : undefined,
         embedForThisPost
       );
 
@@ -313,7 +339,7 @@ async function main() {
       postedUris.push(result);
 
       const rkey = result.uri.split('/').pop();
-      const postUrl = `https://bsky.app/profile/${agent.session!.handle}/post/${rkey}`;
+      const postUrl = `https://bsky.app/profile/${session.handle}/post/${rkey}`;
       console.log(`  Posted: ${postUrl}`);
 
       // Delay before next post (except for last one)
@@ -332,12 +358,14 @@ async function main() {
   }
 
   console.log('\n=== Thread Posted Successfully ===');
-  console.log(
-    `\nThread URL: https://bsky.app/profile/${agent.session!.handle}/post/${rootPost!.uri.split('/').pop()}`
-  );
+  if (rootPost) {
+    console.log(
+      `\nThread URL: https://bsky.app/profile/${session.handle}/post/${rootPost.uri.split('/').pop()}`
+    );
+  }
   console.log('\nAll post URIs:');
-  for (let i = 0; i < postedUris.length; i++) {
-    console.log(`  ${i + 1}. ${postedUris[i].uri}`);
+  for (const [i, postedUri] of postedUris.entries()) {
+    console.log(`  ${i + 1}. ${postedUri.uri}`);
   }
 }
 

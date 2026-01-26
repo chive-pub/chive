@@ -201,26 +201,6 @@ async function checkNeo4jHealth(driver: Driver): Promise<boolean> {
   }
 }
 
-async function resolveElasticsearchIndex(client: ElasticsearchClient): Promise<string> {
-  try {
-    // Check if alias exists and get the underlying index
-    const aliasExists = await client.indices.existsAlias({ name: CONFIG.indexAlias });
-    if (aliasExists) {
-      const aliases = await client.indices.getAlias({ name: CONFIG.indexAlias });
-      const indices = Object.keys(aliases);
-      if (indices.length > 0) {
-        console.log(`Using index via alias '${CONFIG.indexAlias}': ${indices[0]}`);
-        return indices[0];
-      }
-    }
-  } catch {
-    // Alias doesn't exist, fall back to direct index name
-  }
-
-  console.log(`Using direct index name: ${CONFIG.indexName}`);
-  return CONFIG.indexName;
-}
-
 // =============================================================================
 // SINGLE RECORD REINDEXING
 // =============================================================================

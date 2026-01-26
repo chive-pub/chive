@@ -339,6 +339,38 @@ jobs:
 
             echo "=== Governance sync complete ==="
 
+      - name: Setup Elasticsearch Index
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+
+            echo "=== Setting up Elasticsearch index with correct mapping ==="
+
+            cd /opt/chive
+
+            # Recreate the index to ensure correct mapping (field_nodes as nested type)
+            # This is idempotent - if mapping is already correct, it just verifies
+            docker exec \
+              -e ELASTICSEARCH_URL=http://elasticsearch:9200 \
+              chive-api \
+              node --enable-source-maps dist/scripts/db/recreate-elasticsearch-index.js || {
+                echo "::warning::Elasticsearch index recreation failed - will try setup instead"
+                docker exec \
+                  -e ELASTICSEARCH_URL=http://elasticsearch:9200 \
+                  chive-api \
+                  node --enable-source-maps dist/scripts/db/setup-elasticsearch.js || {
+                    echo "::error::Elasticsearch setup failed"
+                    exit 1
+                  }
+              }
+
+            echo "=== Elasticsearch index setup complete ==="
+
       - name: Reindex Elasticsearch
         uses: appleboy/ssh-action@v1.0.3
         with:
