@@ -2,12 +2,22 @@
 /**
  * Script to list and delete records from a user's PDS.
  *
+ * @remarks
+ * Lists all Chive-related records in a user's PDS. Delete functionality
+ * requires authentication which must be provided via environment variables.
+ *
  * Usage:
  *   pnpm tsx scripts/cleanup-pds-records.ts list <did>
  *   pnpm tsx scripts/cleanup-pds-records.ts delete <did> <collection> [rkey]
+ *
+ * Environment Variables (for delete):
+ *   CHIVE_HANDLE - Bluesky handle
+ *   CHIVE_APP_PASSWORD - App password for authentication
+ *
+ * @packageDocumentation
  */
 
-import { Agent } from '@atproto/api';
+import { AtpAgent } from '@atproto/api';
 
 const COLLECTIONS = [
   'pub.chive.eprint.submission',
@@ -23,7 +33,25 @@ const COLLECTIONS = [
   'pub.chive.graph.vote',
 ];
 
-async function listRecords(pdsUrl: string, did: string) {
+async function resolvePdsUrl(did: string): Promise<string> {
+  try {
+    const plcResponse = await fetch(`https://plc.directory/${did}`);
+    if (plcResponse.ok) {
+      const plcData = (await plcResponse.json()) as {
+        service: Array<{ id: string; serviceEndpoint: string }>;
+      };
+      const pdsService = plcData.service?.find((s) => s.id === '#atproto_pds');
+      if (pdsService) {
+        return pdsService.serviceEndpoint;
+      }
+    }
+  } catch {
+    console.log('Could not resolve PDS URL, using bsky.social');
+  }
+  return 'https://bsky.social';
+}
+
+async function listRecords(pdsUrl: string, did: string): Promise<void> {
   console.log(`\nListing records for ${did} from ${pdsUrl}...\n`);
 
   for (const collection of COLLECTIONS) {
@@ -50,7 +78,7 @@ async function listRecords(pdsUrl: string, did: string) {
         for (const record of data.records) {
           const rkey = record.uri.split('/').pop();
           const value = record.value as Record<string, unknown>;
-          const title = value.title || value.displayName || value.text || '(no title)';
+          const title = value.title ?? value.displayName ?? value.text ?? '(no title)';
           console.log(`  - ${rkey}: ${String(title).slice(0, 60)}...`);
         }
       }
@@ -60,7 +88,11 @@ async function listRecords(pdsUrl: string, did: string) {
   }
 }
 
-async function deleteAllRecordsInCollection(agent: Agent, did: string, collection: string) {
+async function deleteAllRecordsInCollection(
+  agent: AtpAgent,
+  did: string,
+  collection: string
+): Promise<void> {
   console.log(`\nDeleting all records in ${collection}...`);
 
   const response = await agent.com.atproto.repo.listRecords({
@@ -77,21 +109,30 @@ async function deleteAllRecordsInCollection(agent: Agent, did: string, collectio
   console.log(`Found ${response.data.records.length} records to delete`);
 
   for (const record of response.data.records) {
-    const rkey = record.uri.split('/').pop()!;
+    const rkeyMatch = record.uri.split('/').pop();
+    if (!rkeyMatch) {
+      console.error(`  ✗ Could not extract rkey from ${record.uri}`);
+      continue;
+    }
     try {
       await agent.com.atproto.repo.deleteRecord({
         repo: did,
         collection,
-        rkey,
+        rkey: rkeyMatch,
       });
-      console.log(`  ✓ Deleted ${rkey}`);
+      console.log(`  ✓ Deleted ${rkeyMatch}`);
     } catch (error) {
-      console.error(`  ✗ Failed to delete ${rkey}:`, error);
+      console.error(`  ✗ Failed to delete ${rkeyMatch}:`, error);
     }
   }
 }
 
-async function deleteRecord(agent: Agent, did: string, collection: string, rkey: string) {
+async function deleteRecord(
+  agent: AtpAgent,
+  did: string,
+  collection: string,
+  rkey: string
+): Promise<void> {
   console.log(`\nDeleting ${collection}/${rkey}...`);
 
   try {
@@ -106,7 +147,7 @@ async function deleteRecord(agent: Agent, did: string, collection: string, rkey:
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   const [command, did, collection, rkey] = process.argv.slice(2);
 
   if (!command || !did) {
@@ -122,27 +163,16 @@ Examples:
 
 Collections:
 ${COLLECTIONS.map((c) => `  - ${c}`).join('\n')}
+
+Environment Variables (for delete):
+  CHIVE_HANDLE       - Bluesky handle for authentication
+  CHIVE_APP_PASSWORD - App password for authentication
 `);
     process.exit(1);
   }
 
   // Resolve DID to PDS URL
-  let pdsUrl = 'https://bsky.social';
-  try {
-    const plcResponse = await fetch(`https://plc.directory/${did}`);
-    if (plcResponse.ok) {
-      const plcData = (await plcResponse.json()) as {
-        service: Array<{ id: string; serviceEndpoint: string }>;
-      };
-      const pdsService = plcData.service?.find((s) => s.id === '#atproto_pds');
-      if (pdsService) {
-        pdsUrl = pdsService.serviceEndpoint;
-      }
-    }
-  } catch {
-    console.log('Could not resolve PDS URL, using bsky.social');
-  }
-
+  const pdsUrl = await resolvePdsUrl(did);
   console.log(`PDS URL: ${pdsUrl}`);
 
   if (command === 'list') {
@@ -153,17 +183,43 @@ ${COLLECTIONS.map((c) => `  - ${c}`).join('\n')}
       process.exit(1);
     }
 
-    // For delete, we need authentication
-    // This would need to be run with proper auth context
-    console.log(`
-To delete records, you need to be authenticated.
-Use the app's UI or run this with proper authentication.
+    // Check for authentication
+    const handle = process.env.CHIVE_HANDLE;
+    const appPassword = process.env.CHIVE_APP_PASSWORD;
+
+    if (!handle || !appPassword) {
+      console.error(`
+Error: Authentication required for delete operations.
+
+Set these environment variables:
+  CHIVE_HANDLE       - Your Bluesky handle
+  CHIVE_APP_PASSWORD - Your app password
 
 For now, listing what would be deleted...
 `);
-    await listRecords(pdsUrl, did);
+      await listRecords(pdsUrl, did);
+      process.exit(1);
+    }
+
+    // Authenticate
+    const agent = new AtpAgent({ service: pdsUrl });
+    try {
+      await agent.login({ identifier: handle, password: appPassword });
+      console.log(`Authenticated as: ${agent.session?.handle}`);
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      process.exit(1);
+    }
+
+    // Perform delete
+    if (rkey) {
+      await deleteRecord(agent, did, collection, rkey);
+    } else {
+      await deleteAllRecordsInCollection(agent, did, collection);
+    }
   } else {
     console.error(`Unknown command: ${command}`);
+    console.log(`\nAvailable commands: list, delete`);
     process.exit(1);
   }
 }

@@ -22,7 +22,6 @@ import fs from 'fs';
 import pg from 'pg';
 import { createClient, type RedisClientType } from 'redis';
 
-import { AlphaApplicationService } from '../src/services/alpha/alpha-application-service.js';
 import {
   createEmailServiceFromEnv,
   type EmailService,
@@ -400,7 +399,7 @@ async function cmdApprove(
     if (emailService && zulipInviteUrl) {
       try {
         const emailContent = renderAlphaApprovalEmail({
-          handle: app.handle,
+          handle: app.handle ?? undefined,
           email: app.email,
           zulipInviteUrl,
         });
@@ -652,18 +651,22 @@ async function main(): Promise<void> {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+    if (!arg) continue;
     if (arg === '--dry-run') {
       dryRun = true;
     } else if (arg === '--skip-email') {
       skipEmail = true;
-    } else if (arg === '--reviewer' && args[i + 1]) {
-      reviewer = args[++i];
+    } else if (arg === '--reviewer') {
+      const nextArg = args[++i];
+      if (nextArg) {
+        reviewer = nextArg;
+      }
     } else if (!arg.startsWith('--')) {
       positional.push(arg);
     }
   }
 
-  const command = positional[0];
+  const command = positional[0] ?? '';
   const commandArg = positional[1];
 
   // Check required env vars
