@@ -50,7 +50,7 @@ function renderWithForm() {
         paperDid: undefined,
         title: '',
         abstract: '',
-        license: 'cc-by-4.0',
+        licenseSlug: 'CC-BY-4.0',
         authors: [],
         fieldNodes: [],
       } as EprintFormValues,

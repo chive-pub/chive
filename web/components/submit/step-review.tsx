@@ -120,7 +120,7 @@ export function StepReview({
     title,
     abstract,
     keywords = [],
-    license,
+    licenseSlug,
     authors = [],
     fieldNodes = [],
     publicationStatus,
@@ -326,7 +326,7 @@ export function StepReview({
 
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase text-muted-foreground">License</span>
-            <Badge variant="secondary">{license || 'Not selected'}</Badge>
+            <Badge variant="secondary">{licenseSlug || 'Not selected'}</Badge>
           </div>
 
           {keywords.length > 0 && (

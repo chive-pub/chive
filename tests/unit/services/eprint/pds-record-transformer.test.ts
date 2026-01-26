@@ -8,7 +8,11 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { transformPDSRecord, isPDSEprintRecord } from '@/services/eprint/pds-record-transformer.js';
+import {
+  transformPDSRecord,
+  transformPDSRecordWithSchema,
+  isPDSEprintRecord,
+} from '@/services/eprint/pds-record-transformer.js';
 import type { AtUri, CID } from '@/types/atproto.js';
 import { ValidationError } from '@/types/errors.js';
 
@@ -342,18 +346,63 @@ describe('transformPDSRecord', () => {
       expect(result.keywords).toEqual(['testing', 'unit tests', 'vitest']);
     });
 
-    it('preserves license', () => {
+    it('preserves license from legacy license field', () => {
       const pdsRecord = createMockPDSRecord();
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.license).toBe('CC-BY-4.0');
     });
 
-    it('defaults license to CC-BY-4.0', () => {
-      const pdsRecord = createMockPDSRecord({ license: undefined });
+    it('uses licenseSlug over legacy license field', () => {
+      const pdsRecord = createMockPDSRecord({
+        licenseSlug: 'MIT',
+        license: 'CC-BY-4.0',
+      });
+      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+      expect(result.license).toBe('MIT');
+    });
+
+    it('falls back to legacy license field if licenseSlug is missing', () => {
+      const pdsRecord = createMockPDSRecord({
+        licenseSlug: undefined,
+        license: 'Apache-2.0',
+      });
+      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+      expect(result.license).toBe('Apache-2.0');
+    });
+
+    it('defaults license to CC-BY-4.0 when both fields are missing', () => {
+      const pdsRecord = createMockPDSRecord({
+        licenseSlug: undefined,
+        license: undefined,
+      });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.license).toBe('CC-BY-4.0');
+    });
+
+    it('stores licenseUri when provided', () => {
+      const pdsRecord = createMockPDSRecord({
+        licenseUri: 'at://did:plc:gov/pub.chive.graph.node/license-mit',
+        licenseSlug: 'MIT',
+      });
+      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+      expect(result.licenseUri).toBe('at://did:plc:gov/pub.chive.graph.node/license-mit');
+      expect(result.license).toBe('MIT');
+    });
+
+    it('handles licenseUri being undefined', () => {
+      const pdsRecord = createMockPDSRecord({
+        licenseUri: undefined,
+        licenseSlug: 'CC0-1.0',
+      });
+      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+      expect(result.licenseUri).toBeUndefined();
+      expect(result.license).toBe('CC0-1.0');
     });
 
     it('defaults documentFormat to pdf', () => {
@@ -578,5 +627,201 @@ describe('isPDSEprintRecord', () => {
   it('returns false for non-string createdAt', () => {
     const record = createMockPDSRecord({ createdAt: 1234567890 });
     expect(isPDSEprintRecord(record)).toBe(false);
+  });
+});
+
+// =============================================================================
+// ABSTRACT EDGE CASES
+// =============================================================================
+
+describe('transformPDSRecord abstract edge cases', () => {
+  it('handles node ref without label', () => {
+    const pdsRecord = createMockPDSRecord({
+      abstract: [
+        { type: 'text', content: 'Relates to ' },
+        { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/field1' },
+        { type: 'text', content: ' research.' },
+      ],
+    });
+
+    const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+    expect(result.abstract.items).toHaveLength(3);
+    // nodeRef without label should still be included with empty string label
+    const nodeRef = result.abstract.items[1];
+    expect(nodeRef?.type).toBe('nodeRef');
+    if (nodeRef?.type === 'nodeRef') {
+      expect(nodeRef.label).toBe('');
+    }
+    // Plain text should not include node ref without label
+    expect(result.abstractPlainText).toBe('Relates to  research.');
+  });
+
+  it('handles node ref with label in plain text', () => {
+    const pdsRecord = createMockPDSRecord({
+      abstract: [
+        { type: 'text', content: 'Explores ' },
+        {
+          type: 'nodeRef',
+          uri: 'at://did:plc:123/pub.chive.graph.node/quantum',
+          label: 'quantum computing',
+        },
+        { type: 'text', content: ' advances.' },
+      ],
+    });
+
+    const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+    expect(result.abstractPlainText).toBe('Explores quantum computing advances.');
+  });
+
+  it('filters out invalid items from rich text array', () => {
+    const pdsRecord = createMockPDSRecord({
+      abstract: [
+        { type: 'text', content: 'Valid text' },
+        null,
+        'not an object',
+        { type: 'text', content: ' more text' },
+        { notType: 'invalid' },
+        { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/field1', label: 'field' },
+      ],
+    });
+
+    const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+    // Should only include valid items
+    expect(result.abstract.items).toHaveLength(3);
+    expect(result.abstract.items[0]?.type).toBe('text');
+    expect(result.abstract.items[1]?.type).toBe('text');
+    expect(result.abstract.items[2]?.type).toBe('nodeRef');
+  });
+
+  it('handles empty string abstract', () => {
+    const pdsRecord = createMockPDSRecord({
+      abstract: '',
+    });
+
+    const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+    expect(result.abstract.items).toHaveLength(0);
+    expect(result.abstractPlainText).toBeUndefined();
+  });
+
+  it('handles unknown abstract type as empty', () => {
+    const pdsRecord = createMockPDSRecord({
+      abstract: 12345, // number type - not valid
+    });
+
+    const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
+
+    expect(result.abstract.items).toHaveLength(0);
+    expect(result.abstractPlainText).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// transformPDSRecordWithSchema TESTS
+// =============================================================================
+
+describe('transformPDSRecordWithSchema', () => {
+  describe('schema detection', () => {
+    it('detects legacy string abstract format', () => {
+      const pdsRecord = createMockPDSRecord({
+        abstract: 'This is a plain text abstract.',
+      });
+
+      const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
+
+      expect(result.abstractFormat).toBe('string');
+      expect(result.schemaDetection.isCurrentSchema).toBe(false);
+      expect(result.schemaDetection.compatibility.detectedFormat).toBe('legacy');
+      expect(result.schemaDetection.compatibility.deprecatedFields).toHaveLength(1);
+      expect(result.schemaDetection.compatibility.deprecatedFields[0]?.field).toBe('abstract');
+    });
+
+    it('detects current rich text array format', () => {
+      const pdsRecord = createMockPDSRecord({
+        abstract: [
+          { type: 'text', content: 'This is a ' },
+          { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/field1', label: 'rich' },
+          { type: 'text', content: ' text abstract.' },
+        ],
+      });
+
+      const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
+
+      expect(result.abstractFormat).toBe('rich-text-array');
+      expect(result.schemaDetection.isCurrentSchema).toBe(true);
+      expect(result.schemaDetection.compatibility.detectedFormat).toBe('current');
+      expect(result.schemaDetection.compatibility.deprecatedFields).toHaveLength(0);
+    });
+
+    it('detects empty abstract', () => {
+      const pdsRecord = createMockPDSRecord({
+        abstract: undefined,
+      });
+
+      const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
+
+      expect(result.abstractFormat).toBe('empty');
+      expect(result.schemaDetection.isCurrentSchema).toBe(true);
+    });
+  });
+
+  describe('transformation with schema metadata', () => {
+    it('transforms legacy string abstract to RichTextBody', () => {
+      const pdsRecord = createMockPDSRecord({
+        abstract: 'Legacy plain text abstract.',
+      });
+
+      const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
+
+      expect(result.eprint.abstract.type).toBe('RichText');
+      expect(result.eprint.abstract.items).toHaveLength(1);
+      expect(result.eprint.abstract.items[0]?.type).toBe('text');
+      expect((result.eprint.abstract.items[0] as { content: string }).content).toBe(
+        'Legacy plain text abstract.'
+      );
+      expect(result.eprint.abstractPlainText).toBe('Legacy plain text abstract.');
+    });
+
+    it('transforms rich text array to RichTextBody', () => {
+      const pdsRecord = createMockPDSRecord({
+        abstract: [
+          { type: 'text', content: 'Hello ' },
+          { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/world', label: 'world' },
+        ],
+      });
+
+      const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
+
+      expect(result.eprint.abstract.type).toBe('RichText');
+      expect(result.eprint.abstract.items).toHaveLength(2);
+      expect(result.eprint.abstract.items[0]?.type).toBe('text');
+      expect(result.eprint.abstract.items[1]?.type).toBe('nodeRef');
+      expect(result.eprint.abstractPlainText).toBe('Hello world');
+    });
+
+    it('includes schema detection in result', () => {
+      const pdsRecord = createMockPDSRecord();
+      const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
+
+      expect(result.schemaDetection).toBeDefined();
+      expect(result.schemaDetection.fieldDetections).toHaveLength(1);
+      expect(result.schemaDetection.fieldDetections[0]?.field).toBe('abstract');
+      expect(result.schemaDetection.compatibility).toBeDefined();
+    });
+
+    it('returns valid Eprint model', () => {
+      const pdsRecord = createMockPDSRecord();
+      const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
+
+      // Verify the eprint model is complete
+      expect(result.eprint.uri).toBe(mockUri);
+      expect(result.eprint.cid).toBe(mockCid);
+      expect(result.eprint.title).toBe('Test Paper: A Study in Testing');
+      expect(result.eprint.authors).toHaveLength(1);
+      expect(result.eprint.documentBlobRef).toBeDefined();
+    });
   });
 });

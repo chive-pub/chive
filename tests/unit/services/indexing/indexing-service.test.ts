@@ -13,6 +13,7 @@ import {
   type EventProcessor,
 } from '@/services/indexing/indexing-service.js';
 import type { NSID } from '@/types/atproto.js';
+import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 // =============================================================================
 // Mocks
@@ -94,6 +95,16 @@ function createMockRedis(): MockRedis {
   };
 }
 
+function createMockLogger(): ILogger {
+  return {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  };
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -102,11 +113,13 @@ describe('IndexingService', () => {
   let mockPool: MockPool;
   let mockRedis: MockRedis;
   let mockProcessor: EventProcessor;
+  let mockLogger: ILogger;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockPool = createMockPool();
     mockRedis = createMockRedis();
+    mockLogger = createMockLogger();
     const processorFn = vi.fn();
     processorFn.mockResolvedValue(undefined);
     mockProcessor = processorFn;
@@ -119,6 +132,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       expect(service).toBeDefined();
@@ -130,6 +144,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       expect(service).toBeDefined();
@@ -142,6 +157,7 @@ describe('IndexingService', () => {
           db: mockPool as unknown as IndexingServiceOptions['db'],
           redis: mockRedis as unknown as IndexingServiceOptions['redis'],
           processor: mockProcessor,
+          logger: mockLogger,
         });
       }).toThrow('At least one relay URL must be provided');
     });
@@ -154,6 +170,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       const status = service.getStatus();
@@ -170,6 +187,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       const status = service.getStatus();
@@ -193,6 +211,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       const status = service.getStatus();
@@ -209,6 +228,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       // Start the service (will return immediately due to empty iterator)
@@ -228,6 +248,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       // Should not throw
@@ -242,6 +263,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       expect(service).toBeDefined();
@@ -254,6 +276,7 @@ describe('IndexingService', () => {
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
         concurrency: 20,
+        logger: mockLogger,
       });
 
       expect(service).toBeDefined();
@@ -266,6 +289,7 @@ describe('IndexingService', () => {
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
         collections: ['pub.chive.eprint.submission' as NSID],
+        logger: mockLogger,
       });
 
       expect(service).toBeDefined();
@@ -277,6 +301,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       expect(service).toBeDefined();
@@ -289,6 +314,7 @@ describe('IndexingService', () => {
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
         serviceName: 'custom-indexer',
+        logger: mockLogger,
       });
 
       expect(service).toBeDefined();
@@ -302,6 +328,7 @@ describe('IndexingService', () => {
         db: mockPool as unknown as IndexingServiceOptions['db'],
         redis: mockRedis as unknown as IndexingServiceOptions['redis'],
         processor: mockProcessor,
+        logger: mockLogger,
       });
 
       const status = service.getStatus();

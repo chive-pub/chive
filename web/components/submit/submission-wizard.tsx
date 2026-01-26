@@ -50,17 +50,6 @@ import type { EprintAuthorFormData } from '@/components/forms/eprint-author-edit
 // =============================================================================
 
 /**
- * Supported license values.
- */
-type LicenseValue =
-  | 'cc-by-4.0'
-  | 'cc-by-sa-4.0'
-  | 'cc-by-nc-4.0'
-  | 'cc-by-nc-sa-4.0'
-  | 'cc0-1.0'
-  | 'arxiv-perpetual';
-
-/**
  * Supported document format values.
  */
 export type DocumentFormatValue =
@@ -151,7 +140,10 @@ export interface EprintFormValues {
   title: string;
   abstract: string;
   keywords?: string[];
-  license: LicenseValue;
+  /** AT-URI to license node (subkind=license) */
+  licenseUri?: string;
+  /** SPDX identifier for display fallback (e.g., 'CC-BY-4.0') */
+  licenseSlug: string;
 
   // Step 4: Authors
   authors: EprintAuthorFormData[];
@@ -298,24 +290,6 @@ const DOCUMENT_FORMAT_VALUES = [
 ] as const;
 
 /**
- * Supplementary category values for validation.
- */
-const SUPPLEMENTARY_CATEGORY_VALUES = [
-  'appendix',
-  'figure',
-  'table',
-  'dataset',
-  'code',
-  'notebook',
-  'video',
-  'audio',
-  'presentation',
-  'protocol',
-  'questionnaire',
-  'other',
-] as const;
-
-/**
  * Supplementary material schema for validation.
  */
 const supplementaryMaterialSchema = z.object({
@@ -345,7 +319,8 @@ const formSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500, 'Title too long'),
   abstract: z.string().min(50, 'Abstract must be at least 50 characters').max(10000),
   keywords: z.array(z.string()).max(20).optional(),
-  license: z.string().min(1, 'License is required'),
+  licenseUri: z.string().optional(),
+  licenseSlug: z.string().min(1, 'License is required'),
 
   // Step 4: Authors
   // Note: Using nullish() to allow null values and external collaborators without DIDs
@@ -357,7 +332,7 @@ const formSchema = z.object({
         handle: z.string().nullish(),
         avatar: z.string().nullish(),
         orcid: z.string().nullish(),
-        email: z.string().email().nullish().or(z.literal('')),
+        email: z.union([z.email(), z.literal('')]).nullish(),
         order: z.number().int().min(1),
         affiliations: z.array(
           z.object({
@@ -416,7 +391,8 @@ const stepSchemas = {
     title: z.string().min(1, 'Title is required').max(500),
     abstract: z.string().min(50, 'Abstract must be at least 50 characters').max(10000),
     keywords: z.array(z.string()).max(20).optional(),
-    license: z.string().min(1, 'License is required'),
+    licenseUri: z.string().optional(),
+    licenseSlug: z.string().min(1, 'License is required'),
   }),
   authors: z.object({
     authors: z
@@ -427,7 +403,7 @@ const stepSchemas = {
           handle: z.string().nullish(),
           avatar: z.string().nullish(),
           orcid: z.string().nullish(),
-          email: z.string().email().nullish().or(z.literal('')),
+          email: z.union([z.email(), z.literal('')]).nullish(),
           order: z.number().int().min(1),
           affiliations: z.array(
             z.object({
@@ -478,7 +454,7 @@ const stepSchemas = {
     publishedVersion: z
       .object({
         doi: z.string().optional(),
-        url: z.string().url().optional().or(z.literal('')),
+        url: z.union([z.url(), z.literal('')]).optional(),
         journal: z.string().optional(),
         publisher: z.string().optional(),
       })
@@ -496,7 +472,7 @@ const stepSchemas = {
     codeRepositories: z
       .array(
         z.object({
-          url: z.string().url().optional().or(z.literal('')),
+          url: z.union([z.url(), z.literal('')]).optional(),
           platformUri: z.string().optional(),
           platformName: z.string().optional(),
           label: z.string().optional(),
@@ -506,7 +482,7 @@ const stepSchemas = {
     dataRepositories: z
       .array(
         z.object({
-          url: z.string().url().optional().or(z.literal('')),
+          url: z.union([z.url(), z.literal('')]).optional(),
           platformUri: z.string().optional(),
           platformName: z.string().optional(),
           label: z.string().optional(),
@@ -515,7 +491,7 @@ const stepSchemas = {
       .optional(),
     preregistration: z
       .object({
-        url: z.string().url().optional().or(z.literal('')),
+        url: z.union([z.url(), z.literal('')]).optional(),
         platformUri: z.string().optional(),
         platformName: z.string().optional(),
       })
@@ -534,7 +510,7 @@ const stepSchemas = {
         conferenceLocation: z.string().optional(),
         presentationTypeUri: z.string().optional(),
         presentationTypeName: z.string().optional(),
-        conferenceUrl: z.string().url().optional().or(z.literal('')),
+        conferenceUrl: z.union([z.url(), z.literal('')]).optional(),
       })
       .optional(),
   }),
@@ -604,7 +580,8 @@ export function SubmissionWizard({
       title: prefilled?.title ?? '',
       abstract: prefilled?.abstract ?? '',
       keywords: prefilled?.keywords ?? [],
-      license: 'cc-by-4.0',
+      licenseUri: undefined,
+      licenseSlug: 'CC-BY-4.0',
       authors: prefilledAuthors,
       fieldNodes: [],
       facets: [],
@@ -761,7 +738,8 @@ export function SubmissionWizard({
           title: values.title,
           abstract: values.abstract,
           keywords: values.keywords ?? [],
-          license: values.license,
+          licenseUri: values.licenseUri,
+          licenseSlug: values.licenseSlug,
           authors: transformedAuthors,
           fieldNodes: transformedFieldNodes,
           facets: transformedFacets.length > 0 ? transformedFacets : undefined,

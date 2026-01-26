@@ -54,13 +54,18 @@
 
 import type { Pool } from 'pg';
 
-import type { AtUri, DID } from '../../types/atproto.js';
+import type { AtUri, CID, DID } from '../../types/atproto.js';
 import type {
   IStorageBackend,
   EprintQueryOptions,
   StoredEprint,
+  StoredChangelog,
+  ChangelogQueryOptions,
+  ChangelogListResult,
+  SemanticVersionData,
+  ChangelogSectionData,
 } from '../../types/interfaces/storage.interface.js';
-import type { Result } from '../../types/result.js';
+import { Err, Ok, type Result } from '../../types/result.js';
 
 import { EprintsRepository } from './eprints-repository.js';
 import { PDSTracker } from './pds-tracker.js';
@@ -82,6 +87,7 @@ import { StalenessDetector } from './staleness-detector.js';
  * @since 0.1.0
  */
 export class PostgreSQLAdapter implements IStorageBackend {
+  private readonly pool: Pool;
   private readonly eprintsRepo: EprintsRepository;
   private readonly pdsTracker: PDSTracker;
   private readonly stalenessDetector: StalenessDetector;
@@ -99,6 +105,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
    * for efficient resource sharing.
    */
   constructor(pool: Pool) {
+    this.pool = pool;
     this.eprintsRepo = new EprintsRepository(pool);
     this.pdsTracker = new PDSTracker(pool);
     this.stalenessDetector = new StalenessDetector(pool);
@@ -261,6 +268,39 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Stores an eprint and tracks PDS source in a single transaction.
+   *
+   * @param eprint - Eprint metadata to index
+   * @param pdsUrl - URL of the user's PDS
+   * @param lastSynced - Last successful sync timestamp
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Delegates to EprintsRepository for the transactional operation.
+   * Both store and PDS tracking happen atomically.
+   *
+   * **ATProto Compliance:** Ensures consistent PDS source tracking.
+   *
+   * @example
+   * ```typescript
+   * const result = await adapter.storeEprintWithPDSTracking(
+   *   eprintData,
+   *   'https://pds.example.com',
+   *   new Date()
+   * );
+   * ```
+   *
+   * @public
+   */
+  async storeEprintWithPDSTracking(
+    eprint: StoredEprint,
+    pdsUrl: string,
+    lastSynced: Date
+  ): Promise<Result<void, Error>> {
+    return this.eprintsRepo.storeWithPDSTracking(eprint, pdsUrl, lastSynced);
+  }
+
+  /**
    * Finds an eprint by external identifiers.
    *
    * @param externalIds - External service identifiers to search
@@ -322,4 +362,207 @@ export class PostgreSQLAdapter implements IStorageBackend {
   async isStale(uri: AtUri): Promise<boolean> {
     return this.stalenessDetector.isStale(uri);
   }
+
+  /**
+   * Deletes an eprint from the index.
+   *
+   * @param uri - AT URI of the eprint to delete
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Delegates to EprintsRepository for the deletion.
+   * Removes the eprint from the local index only.
+   *
+   * **ATProto Compliance:** Never writes to user PDSes.
+   *
+   * @example
+   * ```typescript
+   * const result = await adapter.deleteEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
+   * );
+   *
+   * if (!result.ok) {
+   *   console.error('Failed to delete:', result.error);
+   * }
+   * ```
+   *
+   * @public
+   */
+  async deleteEprint(uri: AtUri): Promise<Result<void, Error>> {
+    return this.eprintsRepo.delete(uri);
+  }
+
+  /**
+   * Retrieves a single changelog entry by URI.
+   *
+   * @param uri - AT URI of the changelog record
+   * @returns Changelog view or null if not found
+   *
+   * @remarks
+   * Changelogs are indexed from the firehose and describe changes
+   * between eprint versions.
+   *
+   * @public
+   */
+  async getChangelog(uri: AtUri): Promise<StoredChangelog | null> {
+    const result = await this.pool.query<ChangelogRow>(
+      `SELECT uri, cid, eprint_uri, version, previous_version, summary,
+              sections, reviewer_response, created_at
+       FROM changelogs_index
+       WHERE uri = $1`,
+      [uri]
+    );
+
+    const row = result.rows[0];
+    if (!row) {
+      return null;
+    }
+
+    return this.mapChangelogRow(row);
+  }
+
+  /**
+   * Lists changelogs for a specific eprint with pagination.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset)
+   * @returns Paginated list of changelogs, newest first
+   *
+   * @remarks
+   * Returns changelogs ordered by creation date descending.
+   *
+   * @public
+   */
+  async listChangelogs(
+    eprintUri: AtUri,
+    options?: ChangelogQueryOptions
+  ): Promise<ChangelogListResult> {
+    const limit = options?.limit ?? 50;
+    const offset = options?.offset ?? 0;
+
+    // Get total count
+    const countResult = await this.pool.query<{ count: string }>(
+      'SELECT COUNT(*) as count FROM changelogs_index WHERE eprint_uri = $1',
+      [eprintUri]
+    );
+    const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+    // Get paginated changelogs, newest first
+    const result = await this.pool.query<ChangelogRow>(
+      `SELECT uri, cid, eprint_uri, version, previous_version, summary,
+              sections, reviewer_response, created_at
+       FROM changelogs_index
+       WHERE eprint_uri = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [eprintUri, limit, offset]
+    );
+
+    const changelogs = result.rows.map((row) => this.mapChangelogRow(row));
+
+    return {
+      changelogs,
+      total,
+    };
+  }
+
+  /**
+   * Stores or updates a changelog index record.
+   *
+   * @param changelog - Changelog metadata to index
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Upserts the changelog (insert or update based on URI).
+   *
+   * @public
+   */
+  async storeChangelog(changelog: StoredChangelog): Promise<Result<void, Error>> {
+    try {
+      await this.pool.query(
+        `INSERT INTO changelogs_index (
+          uri, cid, eprint_uri, version, previous_version, summary,
+          sections, reviewer_response, created_at, indexed_at, last_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          version = EXCLUDED.version,
+          previous_version = EXCLUDED.previous_version,
+          summary = EXCLUDED.summary,
+          sections = EXCLUDED.sections,
+          reviewer_response = EXCLUDED.reviewer_response,
+          last_synced_at = NOW()`,
+        [
+          changelog.uri,
+          changelog.cid,
+          changelog.eprintUri,
+          JSON.stringify(changelog.version),
+          changelog.previousVersion ? JSON.stringify(changelog.previousVersion) : null,
+          changelog.summary ?? null,
+          JSON.stringify(changelog.sections),
+          changelog.reviewerResponse ?? null,
+          new Date(changelog.createdAt),
+        ]
+      );
+      return Ok(undefined);
+    } catch (error) {
+      return Err(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * Deletes a changelog from the index.
+   *
+   * @param uri - AT URI of the changelog to delete
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async deleteChangelog(uri: AtUri): Promise<Result<void, Error>> {
+    try {
+      await this.pool.query('DELETE FROM changelogs_index WHERE uri = $1', [uri]);
+      return Ok(undefined);
+    } catch (error) {
+      return Err(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * Maps a changelog database row to StoredChangelog.
+   *
+   * @param row - Database row
+   * @returns Mapped changelog object
+   *
+   * @internal
+   */
+  private mapChangelogRow(row: ChangelogRow): StoredChangelog {
+    return {
+      uri: row.uri as AtUri,
+      cid: row.cid as CID,
+      eprintUri: row.eprint_uri as AtUri,
+      version: row.version as SemanticVersionData,
+      previousVersion: row.previous_version as SemanticVersionData | undefined,
+      summary: row.summary ?? undefined,
+      sections: (row.sections as ChangelogSectionData[]) ?? [],
+      reviewerResponse: row.reviewer_response ?? undefined,
+      createdAt: row.created_at.toISOString(),
+    };
+  }
+}
+
+/**
+ * Database row representation of changelog index record.
+ *
+ * @internal
+ */
+interface ChangelogRow {
+  readonly uri: string;
+  readonly cid: string;
+  readonly eprint_uri: string;
+  readonly version: unknown; // JSONB
+  readonly previous_version: unknown; // JSONB, can be null
+  readonly summary: string | null;
+  readonly sections: unknown; // JSONB array
+  readonly reviewer_response: string | null;
+  readonly created_at: Date;
 }

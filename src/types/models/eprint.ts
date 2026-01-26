@@ -864,6 +864,16 @@ export interface Eprint {
   readonly license: string;
 
   /**
+   * AT-URI to license node in the knowledge graph.
+   *
+   * @remarks
+   * Points to a governance-controlled license node (subkind=license).
+   * Optional; when present, provides canonical license reference.
+   * The `license` field contains the SPDX identifier for fallback.
+   */
+  readonly licenseUri?: AtUri;
+
+  /**
    * Current publication status.
    *
    * @remarks

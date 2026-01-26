@@ -1,0 +1,82 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.getChangelog",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get a specific changelog entry by URI",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the changelog record"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "cid", "eprintUri", "version", "sections", "createdAt"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the changelog record"
+            },
+            "cid": {
+              "type": "string",
+              "format": "cid",
+              "description": "Content ID of the changelog record"
+            },
+            "eprintUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "URI of the eprint this changelog belongs to"
+            },
+            "version": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission#semanticVersion",
+              "description": "Semantic version this changelog describes"
+            },
+            "previousVersion": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission#semanticVersion",
+              "description": "Previous semantic version"
+            },
+            "summary": {
+              "type": "string",
+              "description": "One-line summary of changes"
+            },
+            "sections": {
+              "type": "array",
+              "description": "Structured changelog sections",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.eprint.changelog#changelogSection"
+              }
+            },
+            "reviewerResponse": {
+              "type": "string",
+              "description": "Response to peer review feedback"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "datetime",
+              "description": "When this changelog was created"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "NotFound",
+          "description": "Changelog not found"
+        }
+      ]
+    }
+  }
+}

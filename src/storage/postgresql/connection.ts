@@ -16,7 +16,15 @@
 
 import { Pool, type PoolConfig } from 'pg';
 
+import { createLogger } from '../../observability/logger.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
+
 import type { DatabaseConfig } from './config.js';
+
+/**
+ * Module-level logger for PostgreSQL connection operations.
+ */
+const logger: ILogger = createLogger({ service: 'postgresql-connection' });
 
 /**
  * Connection pool statistics.
@@ -105,10 +113,7 @@ export function createPool(config: DatabaseConfig): Pool {
 
   // Log unexpected errors (e.g., connection drop)
   pool.on('error', (err: Error) => {
-    console.error('Unexpected database error on idle client', {
-      error: err.message,
-      stack: err.stack,
-    });
+    logger.error('Unexpected database error on idle client', err);
   });
 
   return pool;
@@ -159,8 +164,8 @@ export async function healthCheck(pool: Pool): Promise<boolean> {
       client.release();
     }
   } catch (error) {
-    console.error('Health check failed', {
-      error: error instanceof Error ? error.message : String(error),
+    logger.error('Health check failed', error instanceof Error ? error : undefined, {
+      details: error instanceof Error ? undefined : String(error),
     });
     return false;
   }

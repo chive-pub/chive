@@ -56,9 +56,17 @@ export function makeQueryClient(): QueryClient {
     },
     queryCache: new QueryCache({
       onError: (error, query) => {
-        // Skip logging 404 errors - they're often expected (e.g., user hasn't endorsed yet)
-        if (error instanceof APIError && error.statusCode === 404) {
-          return;
+        // Skip logging expected "not found" errors (e.g., user hasn't endorsed yet)
+        // Check both statusCode and message patterns since statusCode may not always be set
+        if (error instanceof APIError) {
+          if (error.statusCode === 404) {
+            return;
+          }
+          // Also skip endorsement "not found" errors which are expected when user hasn't endorsed
+          const message = error.message.toLowerCase();
+          if (message.includes('not found') && message.includes('endorsement')) {
+            return;
+          }
         }
 
         const errorMessage = error instanceof Error ? error.message : String(error);

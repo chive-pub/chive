@@ -1,3 +1,5 @@
+@import 'katex/dist/katex.min.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -73,5 +75,59 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+}
+
+/* LaTeX styling */
+@layer components {
+  .latex-inline {
+    @apply inline;
+  }
+
+  .latex-display {
+    @apply block my-4 text-center overflow-x-auto;
+  }
+
+  .latex-error {
+    @apply text-destructive bg-destructive/10 rounded px-1;
+  }
+
+  /* TipTap editor placeholder styling */
+  .tiptap p.is-editor-empty:first-child::before {
+    @apply text-muted-foreground pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+  }
+
+  /* TipTap editor focus styling */
+  .tiptap:focus {
+    @apply outline-none;
+  }
+
+  /* Code block styling in editor */
+  .tiptap pre {
+    @apply bg-muted rounded p-3 my-2 overflow-x-auto;
+  }
+
+  .tiptap pre code {
+    @apply bg-transparent p-0 font-mono text-sm;
+  }
+
+  /* Inline code styling in editor */
+  .tiptap code:not(pre code) {
+    @apply bg-muted rounded px-1 py-0.5 font-mono text-sm;
+  }
+
+  /* Blockquote styling in editor */
+  .tiptap blockquote {
+    @apply border-l-4 border-muted-foreground/30 pl-4 italic my-2;
+  }
+
+  /* List styling in editor */
+  .tiptap ul {
+    @apply list-disc list-inside my-2;
+  }
+
+  .tiptap ol {
+    @apply list-decimal list-inside my-2;
   }
 }

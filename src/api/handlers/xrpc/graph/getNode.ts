@@ -17,13 +17,29 @@ import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Convert a value to ISO string, handling both Date objects and strings.
- * This handles dates that have been serialized through JSON (e.g., Redis cache).
+ *
+ * Handles dates that have been serialized through JSON (e.g., Redis cache).
+ * Returns current time as fallback for invalid/malformed dates to prevent
+ * "Invalid date" errors on field pages.
+ *
+ * @param value - Date object, date string, or undefined
+ * @returns ISO 8601 formatted date string
  */
-function toISOString(value: Date | string): string {
+function toISOString(value: Date | string | undefined): string {
+  if (!value) {
+    return new Date().toISOString();
+  }
   if (value instanceof Date) {
+    if (isNaN(value.getTime())) {
+      return new Date().toISOString();
+    }
     return value.toISOString();
   }
-  // Already a string (from JSON deserialization)
+  // String value: validate it parses to a valid date
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    return new Date().toISOString();
+  }
   return value;
 }
 

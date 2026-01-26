@@ -5,10 +5,10 @@
  *
  * @remarks
  * A form component that supports:
- * - Plain text input with character count
+ * - Rich text input with Markdown and LaTeX support
+ * - Preview mode toggle
  * - Optional target span display (for inline annotations)
  * - Parent review reference (for replies)
- * - Markdown preview (future enhancement)
  *
  * @example
  * ```tsx
@@ -26,10 +26,10 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Send, X, MessageSquare, Reply, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import { RichTextEditor, type RichTextContent, createFromPlainText } from '@/components/editor';
 import type { Review, UnifiedTextSpanTarget, AnnotationMotivation } from '@/lib/api/schema';
 
 // =============================================================================
@@ -75,6 +75,12 @@ export interface ReviewFormProps {
 
   /** Additional CSS classes */
   className?: string;
+
+  /** Enable LaTeX support (default: true for reviews) */
+  enableLatex?: boolean;
+
+  /** Show full toolbar (default: true) */
+  showToolbar?: boolean;
 }
 
 /**
@@ -189,41 +195,12 @@ export function ParentReviewPreview({ review, className }: ParentReviewPreviewPr
   );
 }
 
-/**
- * Character count indicator with warning states.
- */
-function CharacterCount({ current, min, max }: { current: number; min?: number; max?: number }) {
-  const isBelowMin = min !== undefined && current < min;
-  const isNearMax = max !== undefined && current > max * 0.9;
-  const isOverMax = max !== undefined && current > max;
-
-  return (
-    <span
-      className={cn(
-        'text-xs tabular-nums',
-        isOverMax
-          ? 'text-destructive font-medium'
-          : isNearMax
-            ? 'text-warning'
-            : isBelowMin
-              ? 'text-muted-foreground'
-              : 'text-muted-foreground'
-      )}
-      aria-live="polite"
-    >
-      {current}
-      {max && `/${max}`}
-      {min && current < min && ` (min ${min})`}
-    </span>
-  );
-}
-
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
 /**
- * Form for creating or editing reviews.
+ * Form for creating or editing reviews with rich text support.
  *
  * @param props - Component props
  * @returns Review form element
@@ -241,17 +218,17 @@ export function ReviewForm({
   maxLength = 10000,
   minLength = 10,
   className,
+  enableLatex = true,
+  showToolbar = true,
 }: ReviewFormProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [content, setContent] = useState(editingReview?.content || '');
-  const [currentTarget, setCurrentTarget] = useState<UnifiedTextSpanTarget | undefined>(target);
-
-  // Focus textarea on mount
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus();
+  const [content, setContent] = useState<RichTextContent>(() => {
+    if (editingReview?.content) {
+      return createFromPlainText(editingReview.content);
     }
-  }, []);
+    return { text: '', html: '', facets: [] };
+  });
+  const [currentTarget, setCurrentTarget] = useState<UnifiedTextSpanTarget | undefined>(target);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   // Update target if prop changes
   useEffect(() => {
@@ -269,9 +246,9 @@ export function ReviewForm({
     return 'commenting';
   }, [isReplying, hasTarget]);
 
+  const textLength = content.text.trim().length;
   const isValid =
-    content.trim().length >= (minLength || 0) &&
-    (maxLength === undefined || content.length <= maxLength);
+    textLength >= (minLength || 0) && (maxLength === undefined || textLength <= maxLength);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -280,7 +257,7 @@ export function ReviewForm({
       if (!isValid || isLoading) return;
 
       const formData: ReviewFormData = {
-        content: content.trim(),
+        content: content.text.trim(),
         eprintUri,
         target: currentTarget,
         parentReviewUri: parentReview?.uri,
@@ -292,18 +269,16 @@ export function ReviewForm({
     [content, eprintUri, currentTarget, parentReview, getMotivation, isValid, isLoading, onSubmit]
   );
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Submit on Ctrl/Cmd + Enter
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        if (isValid && !isLoading) {
-          handleSubmit(e as unknown as React.FormEvent);
-        }
-      }
-    },
-    [handleSubmit, isValid, isLoading]
-  );
+  const handleContentChange = useCallback((newContent: RichTextContent) => {
+    setContent(newContent);
+  }, []);
+
+  // Generate dynamic placeholder
+  const dynamicPlaceholder = isReplying
+    ? 'Write your reply...'
+    : hasTarget
+      ? 'Add your comment on this selection...'
+      : placeholder;
 
   return (
     <form onSubmit={handleSubmit} className={cn('space-y-4', className)} data-testid="review-form">
@@ -314,7 +289,7 @@ export function ReviewForm({
         ) : (
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
         )}
-        <Label htmlFor="review-content" className="text-sm font-medium">
+        <Label className="text-sm font-medium">
           {isEditing
             ? 'Edit your review'
             : isReplying
@@ -341,37 +316,33 @@ export function ReviewForm({
         </Alert>
       )}
 
-      {/* Content textarea */}
-      <div className="space-y-2">
-        <Textarea
-          ref={textareaRef}
-          id="review-content"
+      {/* Rich text editor */}
+      <div ref={editorRef}>
+        <RichTextEditor
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            isReplying
-              ? 'Write your reply...'
-              : hasTarget
-                ? 'Add your comment on this selection...'
-                : placeholder
-          }
-          className="min-h-[120px] resize-y"
+          onChange={handleContentChange}
+          placeholder={dynamicPlaceholder}
+          maxLength={maxLength}
+          minHeight="120px"
+          enablePreview={true}
+          showToolbar={showToolbar}
+          enableLatex={enableLatex}
           disabled={isLoading}
-          aria-describedby="review-char-count review-submit-hint"
-          data-testid="review-content-input"
+          ariaLabel="Review content"
+          testId="review-content-input"
+          autoFocus={true}
         />
+      </div>
 
-        {/* Footer with character count and hint */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span id="review-submit-hint">
-            Press <kbd className="px-1 py-0.5 rounded bg-muted">⌘</kbd>+
-            <kbd className="px-1 py-0.5 rounded bg-muted">Enter</kbd> to submit
-          </span>
-          <span id="review-char-count">
-            <CharacterCount current={content.length} min={minLength} max={maxLength} />
-          </span>
-        </div>
+      {/* Footer with hint */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Press <kbd className="px-1 py-0.5 rounded bg-muted">⌘</kbd>+
+          <kbd className="px-1 py-0.5 rounded bg-muted">Enter</kbd> to submit
+        </span>
+        {minLength && textLength < minLength && (
+          <span className="text-muted-foreground">(min {minLength} characters)</span>
+        )}
       </div>
 
       {/* Action buttons */}
@@ -401,6 +372,10 @@ export function ReviewForm({
 
 /**
  * Compact inline form for quick replies.
+ *
+ * @remarks
+ * A minimal form for quick inline replies without rich text formatting.
+ * Uses a simple text input instead of the full editor.
  */
 export function InlineReplyForm({
   eprintUri,

@@ -9,6 +9,9 @@
 import { BlobRef } from '@atproto/lexicon';
 export { BlobRef };
 
+// Import SemanticVersion for local use in interfaces
+import type { SemanticVersion as _SemanticVersion } from './generated/types/pub/chive/eprint/submission.js';
+
 // =============================================================================
 // EPRINT TYPES
 // =============================================================================
@@ -29,6 +32,7 @@ export type {
   ConferencePresentation,
   TextItem as EprintTextItem,
   NodeRefItem as EprintNodeRefItem,
+  SemanticVersion,
 } from './generated/types/pub/chive/eprint/submission.js';
 
 // Eprint version record (raw lexicon record)
@@ -225,8 +229,8 @@ export interface Eprint {
   topicUris?: string[];
   /** Facet URIs */
   facetUris?: string[];
-  /** Version number */
-  version?: number;
+  /** Semantic version (or legacy number for old records) */
+  version?: _SemanticVersion;
   /** Previous version URI */
   previousVersion?: string;
   /** License URI */
@@ -1290,6 +1294,31 @@ export function convertRichTextFacetsToFacets(
       })
       .filter((f): f is FacetFeature => f !== null),
   }));
+}
+
+// =============================================================================
+// SCHEMA COMPATIBILITY TYPES
+// =============================================================================
+
+/**
+ * Schema hints from API responses.
+ *
+ * @remarks
+ * These hints are included in the `_schemaHints` field of API responses
+ * when a record uses deprecated formats. They inform clients about available
+ * migrations without breaking backward compatibility.
+ *
+ * This mirrors the backend `ApiSchemaHints` type from `src/types/schema-compatibility.ts`.
+ */
+export interface ApiSchemaHints {
+  /** Schema version string (e.g., "0.1.0") */
+  schemaVersion?: string;
+  /** List of field names using deprecated formats */
+  deprecatedFields?: readonly string[];
+  /** Whether a migration is available */
+  migrationAvailable?: boolean;
+  /** URL to migration documentation */
+  migrationUrl?: string;
 }
 
 // =============================================================================

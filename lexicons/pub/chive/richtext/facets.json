@@ -1,0 +1,136 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.richtext.facets",
+  "defs": {
+    "bold": {
+      "type": "object",
+      "description": "Bold text formatting facet",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#bold"
+        }
+      }
+    },
+    "italic": {
+      "type": "object",
+      "description": "Italic text formatting facet",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#italic"
+        }
+      }
+    },
+    "strikethrough": {
+      "type": "object",
+      "description": "Strikethrough text formatting facet",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#strikethrough"
+        }
+      }
+    },
+    "code": {
+      "type": "object",
+      "description": "Inline code formatting facet",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#code"
+        }
+      }
+    },
+    "latex": {
+      "type": "object",
+      "description": "LaTeX math expression facet",
+      "required": ["$type", "displayMode"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#latex"
+        },
+        "displayMode": {
+          "type": "boolean",
+          "description": "True for block display ($$...$$), false for inline ($...$)"
+        }
+      }
+    },
+    "heading": {
+      "type": "object",
+      "description": "Heading formatting facet",
+      "required": ["$type", "level"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#heading"
+        },
+        "level": {
+          "type": "integer",
+          "description": "Heading level (1-6)",
+          "minimum": 1,
+          "maximum": 6
+        }
+      }
+    },
+    "blockquote": {
+      "type": "object",
+      "description": "Blockquote formatting facet",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#blockquote"
+        }
+      }
+    },
+    "codeBlock": {
+      "type": "object",
+      "description": "Code block formatting facet",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#codeBlock"
+        },
+        "language": {
+          "type": "string",
+          "description": "Programming language for syntax highlighting",
+          "maxLength": 50
+        }
+      }
+    },
+    "listItem": {
+      "type": "object",
+      "description": "List item formatting facet",
+      "required": ["$type", "listType"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#listItem"
+        },
+        "listType": {
+          "type": "string",
+          "description": "Type of list",
+          "knownValues": ["bullet", "ordered"]
+        },
+        "depth": {
+          "type": "integer",
+          "description": "Nesting depth (0-indexed)",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "ordinal": {
+          "type": "integer",
+          "description": "Item number for ordered lists",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

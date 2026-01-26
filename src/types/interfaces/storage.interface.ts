@@ -32,6 +32,26 @@ import type {
 import type { Result } from '../result.js';
 
 /**
+ * Semantic version for structured versioning.
+ *
+ * @remarks
+ * Follows SemVer 2.0.0 specification. Use for software or documents
+ * requiring structured versioning with backward compatibility semantics.
+ *
+ * @public
+ */
+export interface SemanticVersion {
+  /** Major version (breaking changes) */
+  readonly major: number;
+  /** Minor version (backward-compatible features) */
+  readonly minor: number;
+  /** Patch version (backward-compatible fixes) */
+  readonly patch: number;
+  /** Pre-release identifier (e.g., "alpha", "beta.1") */
+  readonly prerelease?: string;
+}
+
+/**
  * Stored eprint metadata in Chive's index.
  *
  * @remarks
@@ -145,12 +165,14 @@ export interface StoredEprint {
   readonly previousVersionUri?: AtUri;
 
   /**
-   * Version number (1-indexed).
+   * Version identifier.
    *
    * @remarks
-   * Increments with each new version posted by author.
+   * Can be a simple integer (1-indexed, increments with each revision)
+   * or a semantic version object for more structured versioning.
+   * Integer versioning is recommended for academic eprints.
    */
-  readonly version: number;
+  readonly version: number | SemanticVersion;
 
   /**
    * Changelog describing changes in this version.
@@ -187,6 +209,16 @@ export interface StoredEprint {
    * @example "CC-BY-4.0", "MIT", "Apache-2.0"
    */
   readonly license: string;
+
+  /**
+   * AT-URI to license node in the knowledge graph.
+   *
+   * @remarks
+   * Points to a governance-controlled license node (subkind=license).
+   * Optional; when present, provides canonical license reference.
+   * The `license` field contains the SPDX identifier for fallback.
+   */
+  readonly licenseUri?: AtUri;
 
   /**
    * Current publication status.
@@ -525,6 +557,37 @@ export interface IStorageBackend {
   trackPDSSource(uri: AtUri, pdsUrl: string, lastSynced: Date): Promise<Result<void, Error>>;
 
   /**
+   * Stores an eprint and tracks PDS source in a single transaction.
+   *
+   * @param eprint - Eprint metadata to index
+   * @param pdsUrl - URL of the user's PDS
+   * @param lastSynced - Last successful sync timestamp
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Wraps both store and PDS tracking in a transaction for atomicity.
+   * If either operation fails, both are rolled back.
+   *
+   * **ATProto Compliance:** Ensures consistent PDS source tracking.
+   *
+   * @example
+   * ```typescript
+   * const result = await storage.storeEprintWithPDSTracking(
+   *   eprintData,
+   *   'https://pds.example.com',
+   *   new Date()
+   * );
+   * ```
+   *
+   * @public
+   */
+  storeEprintWithPDSTracking(
+    eprint: StoredEprint,
+    pdsUrl: string,
+    lastSynced: Date
+  ): Promise<Result<void, Error>>;
+
+  /**
    * Checks if an indexed record is stale (PDS has newer version).
    *
    * @param uri - Record URI
@@ -551,4 +614,200 @@ export interface IStorageBackend {
    * @public
    */
   isStale(uri: AtUri): Promise<boolean>;
+
+  /**
+   * Deletes an eprint from the index.
+   *
+   * @param uri - AT URI of the eprint to delete
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Removes the eprint from the local index. Does not delete from PDS.
+   * ATProto compliance: Chive never writes to user PDSes.
+   *
+   * Called when firehose receives a deletion event for an eprint.
+   *
+   * @example
+   * ```typescript
+   * const result = await storage.deleteEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
+   * );
+   *
+   * if (!result.ok) {
+   *   console.error('Failed to delete:', result.error);
+   * }
+   * ```
+   *
+   * @public
+   */
+  deleteEprint(uri: AtUri): Promise<Result<void, Error>>;
+
+  /**
+   * Retrieves a single changelog entry by URI.
+   *
+   * @param uri - AT URI of the changelog record
+   * @returns Changelog view or null if not found
+   *
+   * @remarks
+   * Changelogs are indexed from the firehose and describe changes
+   * between eprint versions.
+   *
+   * @example
+   * ```typescript
+   * const changelog = await storage.getChangelog(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.changelog/xyz')!
+   * );
+   *
+   * if (changelog) {
+   *   console.log('Version:', changelog.version);
+   * }
+   * ```
+   *
+   * @public
+   */
+  getChangelog(uri: AtUri): Promise<StoredChangelog | null>;
+
+  /**
+   * Lists changelogs for a specific eprint with pagination.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset)
+   * @returns Paginated list of changelogs, newest first
+   *
+   * @remarks
+   * Returns changelogs ordered by creation date descending.
+   * Each changelog describes changes introduced in a specific version.
+   *
+   * @example
+   * ```typescript
+   * const result = await storage.listChangelogs(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
+   *   { limit: 10 }
+   * );
+   *
+   * for (const changelog of result.changelogs) {
+   *   console.log(`Version ${changelog.version.major}: ${changelog.summary}`);
+   * }
+   * ```
+   *
+   * @public
+   */
+  listChangelogs(eprintUri: AtUri, options?: ChangelogQueryOptions): Promise<ChangelogListResult>;
+
+  /**
+   * Stores or updates a changelog index record.
+   *
+   * @param changelog - Changelog metadata to index
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Upserts the changelog (insert or update based on URI).
+   * Called when firehose receives a changelog creation or update event.
+   *
+   * **ATProto Compliance:** Stores metadata only, not source data.
+   *
+   * @example
+   * ```typescript
+   * const result = await storage.storeChangelog({
+   *   uri: toAtUri('at://did:plc:abc/pub.chive.eprint.changelog/xyz')!,
+   *   cid: toCID('bafyreib...')!,
+   *   eprintUri: toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
+   *   version: { major: 1, minor: 2, patch: 0 },
+   *   summary: 'Updated methodology section',
+   *   sections: [],
+   *   createdAt: '2024-01-15T10:30:00Z',
+   * });
+   *
+   * if (!result.ok) {
+   *   console.error('Failed to store:', result.error);
+   * }
+   * ```
+   *
+   * @public
+   */
+  storeChangelog(changelog: StoredChangelog): Promise<Result<void, Error>>;
+
+  /**
+   * Deletes a changelog from the index.
+   *
+   * @param uri - AT URI of the changelog to delete
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Called when firehose receives a deletion event for a changelog.
+   *
+   * @public
+   */
+  deleteChangelog(uri: AtUri): Promise<Result<void, Error>>;
+}
+
+/**
+ * Changelog section with category and items.
+ *
+ * @public
+ */
+export interface ChangelogSectionData {
+  readonly category: string;
+  readonly items: readonly ChangelogItemData[];
+}
+
+/**
+ * Individual change item in a changelog section.
+ *
+ * @public
+ */
+export interface ChangelogItemData {
+  readonly description: string;
+  readonly changeType?: string;
+  readonly location?: string;
+  readonly reviewReference?: string;
+}
+
+/**
+ * Semantic version for changelogs.
+ *
+ * @public
+ */
+export interface SemanticVersionData {
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
+  readonly prerelease?: string;
+}
+
+/**
+ * Stored changelog in Chive's index.
+ *
+ * @public
+ */
+export interface StoredChangelog {
+  readonly uri: AtUri;
+  readonly cid: CID;
+  readonly eprintUri: AtUri;
+  readonly version: SemanticVersionData;
+  readonly previousVersion?: SemanticVersionData;
+  readonly summary?: string;
+  readonly sections: readonly ChangelogSectionData[];
+  readonly reviewerResponse?: string;
+  readonly createdAt: string;
+}
+
+/**
+ * Query options for changelog listing.
+ *
+ * @public
+ */
+export interface ChangelogQueryOptions {
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
+/**
+ * Result of listing changelogs.
+ *
+ * @public
+ */
+export interface ChangelogListResult {
+  readonly changelogs: readonly StoredChangelog[];
+  readonly total: number;
 }

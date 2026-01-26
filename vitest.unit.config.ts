@@ -42,7 +42,12 @@ export default defineConfig({
         statements: 70,
       },
     },
-    include: ['src/**/*.test.ts', 'tests/unit/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'tests/unit/**/*.test.ts',
+      'tests/unit/**/*.test.tsx',
+    ],
     exclude: ['node_modules', 'dist', '.turbo'],
   },
   resolve: {

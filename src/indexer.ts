@@ -372,6 +372,7 @@ async function main(): Promise<void> {
       processor,
       concurrency: config.concurrency,
       maxQueueDepth: config.maxQueueDepth,
+      logger,
     });
 
     state.indexingService = indexingService;

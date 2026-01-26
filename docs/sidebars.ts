@@ -21,6 +21,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'user-guide/searching',
         'user-guide/submitting-eprints',
+        'user-guide/editing-eprints',
         'user-guide/peer-review',
         'user-guide/endorsements',
         'user-guide/profiles',
@@ -39,6 +40,7 @@ const sidebars: SidebarsConfig = {
         'developer-guide/authentication-authorization',
         'developer-guide/core-business-services',
         'developer-guide/frontend',
+        'developer-guide/frontend-eprint-lifecycle',
         'developer-guide/observability-monitoring',
         {
           type: 'category',

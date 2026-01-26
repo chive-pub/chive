@@ -13,6 +13,7 @@
 
 import type { Redis } from 'ioredis';
 
+import { APIError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 /**
@@ -220,7 +221,10 @@ export class RelayHostTracker {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch relay hosts: ${response.status} ${response.statusText}`);
+      throw new APIError(
+        `Failed to fetch relay hosts: ${response.status} ${response.statusText}`,
+        response.status
+      );
     }
 
     return (await response.json()) as ListHostsResponse;

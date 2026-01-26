@@ -1,0 +1,106 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.listChangelogs",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List all changelog entries for an eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint to list changelogs for"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of changelogs to return",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["changelogs"],
+          "properties": {
+            "changelogs": {
+              "type": "array",
+              "description": "List of changelog entries, newest first",
+              "items": {
+                "type": "ref",
+                "ref": "#changelogView"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            }
+          }
+        }
+      }
+    },
+    "changelogView": {
+      "type": "object",
+      "description": "A changelog entry view",
+      "required": ["uri", "cid", "eprintUri", "version", "sections", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the changelog record"
+        },
+        "cid": {
+          "type": "string",
+          "format": "cid",
+          "description": "Content ID of the changelog record"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "URI of the eprint this changelog belongs to"
+        },
+        "version": {
+          "type": "ref",
+          "ref": "pub.chive.eprint.submission#semanticVersion",
+          "description": "Semantic version this changelog describes"
+        },
+        "previousVersion": {
+          "type": "ref",
+          "ref": "pub.chive.eprint.submission#semanticVersion",
+          "description": "Previous semantic version"
+        },
+        "summary": {
+          "type": "string",
+          "description": "One-line summary of changes"
+        },
+        "sections": {
+          "type": "array",
+          "description": "Structured changelog sections",
+          "items": {
+            "type": "ref",
+            "ref": "pub.chive.eprint.changelog#changelogSection"
+          }
+        },
+        "reviewerResponse": {
+          "type": "string",
+          "description": "Response to peer review feedback"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When this changelog was created"
+        }
+      }
+    }
+  }
+}

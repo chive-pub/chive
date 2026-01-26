@@ -3,7 +3,7 @@
  *
  * @remarks
  * Tests the 4-tier rate limiting system:
- * - Anonymous: 60 req/min (by IP)
+ * - Anonymous: 120 req/min (by IP)
  * - Authenticated: 300 req/min (by DID)
  * - Premium: 1000 req/min (by DID)
  * - Admin: 5000 req/min (by DID)
@@ -71,7 +71,7 @@ void _TEST_DID_AUTH; // Reserved for authenticated tier tests
 void _TEST_DID_PREMIUM; // Reserved for premium tier tests
 void _TEST_DID_ADMIN; // Reserved for admin tier tests
 
-// Standard endpoints (60 req/min) vs autocomplete endpoints (300 req/min)
+// Standard endpoints (120 req/min) vs autocomplete endpoints (300 req/min)
 const STANDARD_ENDPOINT = '/xrpc/pub.chive.eprint.listByAuthor?did=did:plc:test';
 const AUTOCOMPLETE_ENDPOINT = '/api/v1/search?q=test';
 const AUTOCOMPLETE_ANONYMOUS_LIMIT = AUTOCOMPLETE_RATE_LIMITS.anonymous;
@@ -189,13 +189,13 @@ describe('API Rate Limiting Integration', () => {
       expect(res.status).toBe(200);
     });
 
-    it('applies 60 req/min limit for standard endpoints', async () => {
+    it('applies 120 req/min limit for standard endpoints', async () => {
       const res = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': TEST_IP },
       });
 
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
-      expect(limit).toBe(60);
+      expect(limit).toBe(120);
     });
 
     it('applies higher rate limit for autocomplete endpoints', async () => {
@@ -307,11 +307,11 @@ describe('API Rate Limiting Integration', () => {
       // Clear any existing data
       await redis.del(key);
 
-      // Pre-fill Redis sorted set with 60 entries (at limit) to simulate exceeded limit
+      // Pre-fill Redis sorted set with 120 entries (at limit) to simulate exceeded limit
       // Implementation uses ZADD with timestamp as score
       const now = Date.now();
       const entries: (string | number)[] = [];
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 120; i++) {
         entries.push(now - i * 100, `${now - i * 100}:test${i}`);
       }
       await redis.zadd(key, ...entries);
@@ -334,7 +334,7 @@ describe('API Rate Limiting Integration', () => {
       // Pre-fill Redis sorted set to exceed limit
       const now = Date.now();
       const entries: (string | number)[] = [];
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 120; i++) {
         entries.push(now - i * 100, `${now - i * 100}:test${i}`);
       }
       await redis.zadd(key, ...entries);
@@ -362,7 +362,7 @@ describe('API Rate Limiting Integration', () => {
       // Pre-fill Redis sorted set to exceed limit
       const now = Date.now();
       const entries: (string | number)[] = [];
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 120; i++) {
         entries.push(now - i * 100, `${now - i * 100}:test${i}`);
       }
       await redis.zadd(key, ...entries);
@@ -422,7 +422,7 @@ describe('API Rate Limiting Integration', () => {
       );
 
       expect(autocompleteLimit).toBeGreaterThan(standardLimit);
-      expect(standardLimit).toBe(60);
+      expect(standardLimit).toBe(120);
       expect(autocompleteLimit).toBe(AUTOCOMPLETE_ANONYMOUS_LIMIT);
     });
   });
@@ -447,13 +447,13 @@ describe('API Rate Limiting Integration', () => {
   });
 
   describe('Rate Limit Tier Verification', () => {
-    it('standard endpoints use 60 req/min limit', async () => {
+    it('standard endpoints use 120 req/min limit', async () => {
       const res = await app.request(STANDARD_ENDPOINT, {
         headers: { 'X-Forwarded-For': '10.10.10.1' },
       });
 
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
-      expect(limit).toBe(60);
+      expect(limit).toBe(120);
     });
 
     it('autocomplete endpoints use higher req/min limit', async () => {

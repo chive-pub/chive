@@ -53,7 +53,7 @@
     },
     "textItem": {
       "type": "object",
-      "description": "Plain text content item",
+      "description": "Plain text content item with optional formatting facets",
       "required": ["type", "content"],
       "properties": {
         "type": {
@@ -63,6 +63,132 @@
         "content": {
           "type": "string",
           "maxLength": 10000
+        },
+        "facets": {
+          "type": "array",
+          "description": "ATProto-style facets for rich text formatting",
+          "items": {
+            "type": "ref",
+            "ref": "#facet"
+          },
+          "maxLength": 500
+        }
+      }
+    },
+    "facet": {
+      "type": "object",
+      "description": "ATProto-compatible facet for rich text formatting",
+      "required": ["index", "features"],
+      "properties": {
+        "index": {
+          "type": "ref",
+          "ref": "#byteSlice"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "union",
+            "refs": [
+              "#boldFacet",
+              "#italicFacet",
+              "#strikethroughFacet",
+              "#codeFacet",
+              "#latexFacet",
+              "#linkFacet"
+            ]
+          }
+        }
+      }
+    },
+    "byteSlice": {
+      "type": "object",
+      "description": "Byte range for facet positioning",
+      "required": ["byteStart", "byteEnd"],
+      "properties": {
+        "byteStart": {
+          "type": "integer",
+          "description": "Start byte position (inclusive)",
+          "minimum": 0
+        },
+        "byteEnd": {
+          "type": "integer",
+          "description": "End byte position (exclusive)",
+          "minimum": 0
+        }
+      }
+    },
+    "boldFacet": {
+      "type": "object",
+      "description": "Bold text formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#bold"
+        }
+      }
+    },
+    "italicFacet": {
+      "type": "object",
+      "description": "Italic text formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#italic"
+        }
+      }
+    },
+    "strikethroughFacet": {
+      "type": "object",
+      "description": "Strikethrough text formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#strikethrough"
+        }
+      }
+    },
+    "codeFacet": {
+      "type": "object",
+      "description": "Inline code formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#code"
+        }
+      }
+    },
+    "latexFacet": {
+      "type": "object",
+      "description": "LaTeX math expression",
+      "required": ["$type", "displayMode"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#latex"
+        },
+        "displayMode": {
+          "type": "boolean",
+          "description": "True for block display ($$...$$), false for inline ($...$)"
+        }
+      }
+    },
+    "linkFacet": {
+      "type": "object",
+      "description": "Hyperlink",
+      "required": ["$type", "uri"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "app.bsky.richtext.facet#link"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link target URL"
         }
       }
     },

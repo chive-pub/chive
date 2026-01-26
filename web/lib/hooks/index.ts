@@ -4,7 +4,14 @@ export {
   useEprintsByAuthor,
   usePrefetchEprint,
   eprintKeys,
+  type EprintWithSchemaHints,
 } from './use-eprint';
+
+export {
+  useSchemaMigration,
+  canUserMigrateRecord,
+  SchemaMigrationError,
+} from './use-schema-migration';
 
 export { useSearch, useInstantSearch, searchKeys } from './use-search';
 
@@ -324,3 +331,16 @@ export {
   type HierarchyParams,
   type UseEdgeOptions,
 } from './use-edges';
+
+export {
+  useDeleteEprint,
+  useUpdateEprint,
+  useEprintPermissions,
+  formatVersion,
+  // Changelog hooks and keys
+  changelogKeys,
+  useEprintChangelogs,
+  useChangelog,
+  // Note: PaperSession is exported from @/lib/auth to avoid duplicate exports
+  type VersionBumpType,
+} from './use-eprint-mutations';

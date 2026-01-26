@@ -3,7 +3,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
 import { APIError } from '@/lib/errors';
-import type { Eprint, EprintSummary, EprintAuthorView } from '@/lib/api/schema';
+import type { Eprint, EprintSummary, EprintAuthorView, ApiSchemaHints } from '@/lib/api/schema';
+
+/**
+ * Extended eprint with optional schema hints.
+ */
+export interface EprintWithSchemaHints extends Eprint {
+  /** Schema hints for migration (if available) */
+  _schemaHints?: ApiSchemaHints;
+}
 
 /**
  * Extracts plain text from a rich abstract array.
@@ -144,13 +152,19 @@ interface UseEprintOptions {
 export function useEprint(uri: string, options: UseEprintOptions = {}) {
   return useQuery({
     queryKey: eprintKeys.detail(uri),
-    queryFn: async (): Promise<Eprint> => {
+    queryFn: async (): Promise<EprintWithSchemaHints> => {
       try {
         const response = await api.pub.chive.eprint.getSubmission({ uri });
         const { value: rawValue, ...metadata } = response.data;
 
         // Cast value to SubmissionRecord type (value is unknown per ATProto pattern)
         const value = rawValue as SubmissionRecord;
+
+        // Extract schema hints if present (additive field from backend)
+        const dataWithHints = response.data as typeof response.data & {
+          _schemaHints?: ApiSchemaHints;
+        };
+        const schemaHints = dataWithHints._schemaHints;
 
         // Transform raw record to enriched Eprint view
         const abstractItems = value.abstract as Array<{
@@ -183,6 +197,8 @@ export function useEprint(uri: string, options: UseEprintOptions = {}) {
           doi,
           publicationStatus,
           // fields, metrics, versions would need additional API calls or backend enrichment
+          // Include schema hints if present
+          ...(schemaHints && { _schemaHints: schemaHints }),
         };
       } catch (error) {
         if (error instanceof APIError) throw error;

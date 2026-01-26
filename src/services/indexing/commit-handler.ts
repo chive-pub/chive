@@ -215,13 +215,24 @@ export class CommitHandler {
       throw new ParseError('Event blocks too large - must fetch separately from PDS', event.commit);
     }
 
-    // No blocks provided
+    // No blocks provided but tooBig is false: malformed event
     if (!event.blocks || event.blocks.length === 0) {
-      // Return operations without records (caller must handle)
+      // Delete operations are fine without blocks
+      const hasCreateOrUpdate = event.ops.some(
+        (op) => op.action === 'create' || op.action === 'update'
+      );
+
+      if (hasCreateOrUpdate) {
+        throw new ParseError(
+          'Commit event missing blocks for create/update operations (tooBig is false)',
+          event.commit
+        );
+      }
+
+      // All operations are deletes, return them without record data
       return event.ops.map((op) => ({
-        action: op.action,
+        action: op.action as 'delete',
         path: op.path,
-        cid: op.cid,
       }));
     }
 

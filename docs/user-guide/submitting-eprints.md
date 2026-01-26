@@ -67,17 +67,13 @@ Review all information on the summary page. Click "Submit" to create the eprint 
 
 Your eprint is indexed within minutes. You receive a permanent URL to share with colleagues.
 
-### Editing Metadata
+### Editing and Versioning
 
-You can update metadata at any time from your dashboard. Changes are reflected immediately.
+You can edit your eprint metadata and upload new versions at any time. Each version uses semantic versioning (MAJOR.MINOR.PATCH) and supports structured changelogs. See [Editing Eprints](./editing-eprints.md) for details.
 
-### Uploading New Versions
+### Deleting
 
-Click "New Version" on your eprint page to upload a revision. Include a changelog describing the changes.
-
-### Withdrawing
-
-Click "Withdraw" to remove your eprint from Chive. The record remains in your PDS but is no longer indexed.
+You can delete your eprint from Chive. The deletion propagates from your PDS to all indexers. See [Editing Eprints](./editing-eprints.md) for details.
 
 ## Multi-Author Submissions
 

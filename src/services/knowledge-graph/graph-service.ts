@@ -143,11 +143,7 @@ export interface FacetedBrowseQuery {
  */
 export class KnowledgeGraphService {
   private readonly graph: IGraphDatabase;
-  /**
-   * Storage backend for eprint metadata queries in faceted browsing.
-   * Used when browseFaceted is fully implemented.
-   * @see browseFaceted method for usage context
-   */
+  /** Storage backend for eprint metadata queries in faceted browsing. */
   private readonly _storage: IStorageBackend;
   private readonly logger: ILogger;
 
@@ -170,6 +166,27 @@ export class KnowledgeGraphService {
       return await this.graph.getNodeByUri(uri as AtUri);
     } catch (error) {
       this.logger.error('Failed to get node', error instanceof Error ? error : undefined, { uri });
+      return null;
+    }
+  }
+
+  /**
+   * Gets the hierarchy for a node including all children.
+   *
+   * @param rootUri - Root node AT-URI
+   * @param maxDepth - Maximum depth to traverse (default 3)
+   * @returns Node hierarchy or null if not found
+   *
+   * @public
+   */
+  async getHierarchy(
+    rootUri: string,
+    maxDepth = 3
+  ): Promise<{ node: GraphNode; children: unknown[]; depth: number } | null> {
+    try {
+      return await this.graph.getHierarchy(rootUri as AtUri, maxDepth);
+    } catch (error) {
+      this.logger.warn('Failed to get node hierarchy', { rootUri, error });
       return null;
     }
   }

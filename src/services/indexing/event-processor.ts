@@ -9,6 +9,12 @@
  * 1. Extract record data from ProcessedEvent
  * 2. Store/update record in appropriate storage backend
  * 3. Correlate with pending user activity (if any)
+ * 4. Track failures and send to DLQ for retry
+ *
+ * **Error Handling:**
+ * - Critical operations (eprint indexing) throw on failure
+ * - Non-critical operations log and track failures
+ * - All failures are recorded for DLQ insertion
  *
  * **ATProto Compliance:**
  * - Read-only consumption of firehose
@@ -30,6 +36,7 @@ import type {
   EdgeMetadata,
 } from '../../storage/neo4j/types.js';
 import type { AtUri, CID, DID, NSID } from '../../types/atproto.js';
+import { ChiveError, DatabaseError } from '../../types/errors.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { ActivityService } from '../activity/activity-service.js';
@@ -41,7 +48,83 @@ import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js'
 import type { IPDSRegistry } from '../pds-discovery/pds-registry.js';
 import type { ReviewService, ReviewComment, Endorsement } from '../review/review-service.js';
 
+import type { DeadLetterQueue, DLQEvent } from './dlq-handler.js';
 import type { ProcessedEvent } from './indexing-service.js';
+
+/**
+ * Error thrown when event processing fails.
+ *
+ * @remarks
+ * Captures the collection type, URI, and underlying error for debugging
+ * and DLQ categorization.
+ *
+ * @public
+ */
+export class EventProcessingError extends ChiveError {
+  readonly code = 'EVENT_PROCESSING_ERROR';
+
+  /**
+   * Collection that failed to process.
+   */
+  readonly collection: string;
+
+  /**
+   * URI of the record that failed.
+   */
+  readonly uri: string;
+
+  /**
+   * Whether this is a critical failure that should stop processing.
+   *
+   * @remarks
+   * Critical failures (e.g., eprint indexing) indicate potential data loss
+   * and should be escalated.
+   */
+  readonly critical: boolean;
+
+  /**
+   * Creates a new EventProcessingError.
+   *
+   * @param message - Description of the failure
+   * @param collection - Collection NSID that failed
+   * @param uri - AT URI of the record
+   * @param critical - Whether this is a critical failure
+   * @param cause - Original error
+   */
+  constructor(message: string, collection: string, uri: string, critical: boolean, cause?: Error) {
+    super(message, cause);
+    this.collection = collection;
+    this.uri = uri;
+    this.critical = critical;
+  }
+}
+
+/**
+ * Result of processing a record.
+ *
+ * @public
+ */
+export interface ProcessRecordResult {
+  /**
+   * Whether processing succeeded.
+   */
+  readonly success: boolean;
+
+  /**
+   * URI of the processed record.
+   */
+  readonly uri: string;
+
+  /**
+   * Collection type.
+   */
+  readonly collection: string;
+
+  /**
+   * Error if processing failed.
+   */
+  readonly error?: EventProcessingError;
+}
 
 /**
  * User tag record from lexicon.
@@ -62,6 +145,37 @@ export interface ActorProfileRecord {
   readonly orcid?: string;
   readonly affiliations?: readonly string[];
   readonly fieldIds?: readonly string[];
+}
+
+/**
+ * Changelog record from lexicon.
+ */
+export interface ChangelogRecord {
+  readonly eprintUri: string;
+  readonly version: {
+    readonly major: number;
+    readonly minor: number;
+    readonly patch: number;
+    readonly prerelease?: string;
+  };
+  readonly previousVersion?: {
+    readonly major: number;
+    readonly minor: number;
+    readonly patch: number;
+    readonly prerelease?: string;
+  };
+  readonly summary?: string;
+  readonly sections: readonly {
+    readonly category: string;
+    readonly items: readonly {
+      readonly description: string;
+      readonly changeType?: string;
+      readonly location?: string;
+      readonly reviewReference?: string;
+    }[];
+  }[];
+  readonly reviewerResponse?: string;
+  readonly createdAt: string;
 }
 
 /**
@@ -117,10 +231,24 @@ export interface EventProcessorOptions {
    * When provided, PDSes discovered during DID resolution are automatically registered.
    */
   readonly pdsRegistry?: IPDSRegistry;
+  /**
+   * Optional dead letter queue for failed event processing.
+   * When provided, failed events are sent to the DLQ for later retry.
+   */
+  readonly dlq?: DeadLetterQueue;
 }
 
 /**
  * Creates an event processor with activity correlation.
+ *
+ * @param options - Configuration options
+ * @returns Event processor function
+ *
+ * @remarks
+ * The processor handles failures as follows:
+ * - Critical failures (eprint indexing) throw and send to DLQ
+ * - Non-critical failures log and continue, sending to DLQ
+ * - All errors are tracked for monitoring
  */
 export function createEventProcessor(
   options: EventProcessorOptions
@@ -136,6 +264,7 @@ export function createEventProcessor(
     identity,
     logger,
     pdsRegistry,
+    dlq,
   } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
@@ -164,7 +293,7 @@ export function createEventProcessor(
       }
     }
 
-    await processRecord(
+    const result = await processRecord(
       {
         pool,
         eprintService,
@@ -186,6 +315,36 @@ export function createEventProcessor(
       }
     );
 
+    // Handle processing failure
+    if (!result.success && result.error) {
+      // Send to DLQ for retry
+      if (dlq) {
+        try {
+          await dlq.add(event as DLQEvent, result.error, 0);
+          logger.info('Event sent to DLQ', {
+            uri,
+            collection,
+            error: result.error.message,
+          });
+        } catch (dlqError) {
+          logger.error(
+            'Failed to send event to DLQ',
+            dlqError instanceof Error ? dlqError : undefined,
+            {
+              uri,
+              collection,
+              originalError: result.error.message,
+            }
+          );
+        }
+      }
+
+      // Throw for critical failures to halt processing
+      if (result.error.critical) {
+        throw result.error;
+      }
+    }
+
     if (action === 'create' || action === 'update') {
       await correlateActivity(activity, logger, {
         repo: repo as DID,
@@ -202,6 +361,7 @@ export function createEventProcessor(
       collection,
       rkey,
       action,
+      success: result.success,
     });
   };
 }
@@ -227,7 +387,21 @@ interface RecordData {
   readonly pdsUrl: string;
 }
 
-async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promise<void> {
+/**
+ * Processes a single record from the firehose.
+ *
+ * @param ctx - Processing context with services
+ * @param data - Record data to process
+ * @returns Result indicating success or failure with error details
+ *
+ * @remarks
+ * Critical collections (eprint submissions) are marked as critical failures
+ * when they fail, causing the caller to throw and halt processing.
+ */
+async function processRecord(
+  ctx: ProcessRecordContext,
+  data: RecordData
+): Promise<ProcessRecordResult> {
   const { eprintService, reviewService, graphService, nodeService, edgeService, pool, logger } =
     ctx;
   const { uri, cid, collection, action, record, pdsUrl } = data;
@@ -239,6 +413,25 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
     indexedAt: new Date(),
   };
 
+  /**
+   * Helper to create a success result.
+   */
+  const success = (): ProcessRecordResult => ({
+    success: true,
+    uri,
+    collection,
+  });
+
+  /**
+   * Helper to create a failure result.
+   */
+  const failure = (message: string, critical: boolean, cause?: Error): ProcessRecordResult => ({
+    success: false,
+    uri,
+    collection,
+    error: new EventProcessingError(message, collection, uri, critical, cause),
+  });
+
   switch (collection) {
     case 'pub.chive.eprint.submission': {
       logger.debug('Processing eprint submission', { action, uri });
@@ -246,7 +439,10 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       if (action === 'delete') {
         const result = await eprintService.indexEprintDelete(uri);
         if (!result.ok) {
-          logger.error('Failed to delete eprint', result.error as Error, { uri });
+          const error = result.error as Error;
+          logger.error('Failed to delete eprint', error, { uri });
+          // Eprint operations are critical
+          return failure('Failed to delete eprint', true, error);
         }
       } else if (record) {
         try {
@@ -257,49 +453,142 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
               ? await eprintService.indexEprintUpdate(uri, eprintRecord, metadata)
               : await eprintService.indexEprint(eprintRecord, metadata);
           if (!result.ok) {
-            logger.error('Failed to index eprint', result.error as Error, { uri, action });
+            const error = result.error as Error;
+            logger.error('Failed to index eprint', error, { uri, action });
+            // Eprint operations are critical
+            return failure(`Failed to ${action} eprint`, true, error);
           }
         } catch (transformError) {
-          logger.error(
-            'Failed to transform eprint record',
-            transformError instanceof Error ? transformError : undefined,
-            { uri, action }
+          const error =
+            transformError instanceof Error ? transformError : new Error(String(transformError));
+          logger.error('Failed to transform eprint record', error, { uri, action });
+          // Transform failures are critical (indicates schema mismatch)
+          return failure('Failed to transform eprint record', true, error);
+        }
+      }
+      return success();
+    }
+
+    case 'pub.chive.eprint.changelog': {
+      logger.debug('Processing changelog', { action, uri });
+
+      if (action === 'delete') {
+        try {
+          await pool.query('DELETE FROM changelogs_index WHERE uri = $1', [uri]);
+          logger.info('Deleted changelog from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete changelog', error, { uri });
+          return failure(
+            'Failed to delete changelog',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
+      } else if (record) {
+        try {
+          const changelogRecord = record as ChangelogRecord;
+
+          await pool.query(
+            `INSERT INTO changelogs_index (
+              uri, cid, eprint_uri, version, previous_version, summary,
+              sections, reviewer_response, created_at, pds_url, indexed_at, last_synced_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+            ON CONFLICT (uri) DO UPDATE SET
+              cid = EXCLUDED.cid,
+              version = EXCLUDED.version,
+              previous_version = EXCLUDED.previous_version,
+              summary = EXCLUDED.summary,
+              sections = EXCLUDED.sections,
+              reviewer_response = EXCLUDED.reviewer_response,
+              last_synced_at = NOW()`,
+            [
+              uri,
+              cid ?? '',
+              changelogRecord.eprintUri,
+              JSON.stringify(changelogRecord.version),
+              changelogRecord.previousVersion
+                ? JSON.stringify(changelogRecord.previousVersion)
+                : null,
+              changelogRecord.summary ?? null,
+              JSON.stringify(changelogRecord.sections ?? []),
+              changelogRecord.reviewerResponse ?? null,
+              new Date(changelogRecord.createdAt),
+              pdsUrl,
+            ]
+          );
+          logger.info('Indexed changelog', {
+            uri,
+            eprintUri: changelogRecord.eprintUri,
+            version: changelogRecord.version,
+          });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index changelog', error, { uri, action });
+          return failure(
+            'Failed to index changelog',
+            false,
+            new DatabaseError('INSERT', error.message, error)
           );
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.review.comment': {
       logger.debug('Processing review comment', { action, uri });
 
       if (action === 'delete') {
-        await pool.query('DELETE FROM reviews_index WHERE uri = $1', [uri]);
-        logger.info('Deleted review from index', { uri });
+        try {
+          await pool.query('DELETE FROM reviews_index WHERE uri = $1', [uri]);
+          logger.info('Deleted review from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete review', error, { uri });
+          return failure(
+            'Failed to delete review',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
       } else if (record) {
         const commentRecord = record as ReviewComment;
         const result = await reviewService.indexReview(commentRecord, metadata);
         if (!result.ok) {
-          logger.error('Failed to index review', result.error as Error, { uri, action });
+          const error = result.error as Error;
+          logger.error('Failed to index review', error, { uri, action });
+          return failure('Failed to index review', false, error);
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.review.endorsement': {
       logger.debug('Processing endorsement', { action, uri });
 
       if (action === 'delete') {
-        await pool.query('DELETE FROM endorsements_index WHERE uri = $1', [uri]);
-        logger.info('Deleted endorsement from index', { uri });
+        try {
+          await pool.query('DELETE FROM endorsements_index WHERE uri = $1', [uri]);
+          logger.info('Deleted endorsement from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete endorsement', error, { uri });
+          return failure(
+            'Failed to delete endorsement',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
       } else if (record) {
         const endorsementRecord = record as Endorsement;
         const result = await reviewService.indexEndorsement(endorsementRecord, metadata);
         if (!result.ok) {
-          logger.error('Failed to index endorsement', result.error as Error, { uri, action });
+          const error = result.error as Error;
+          logger.error('Failed to index endorsement', error, { uri, action });
+          return failure('Failed to index endorsement', false, error);
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.eprint.tag':
@@ -307,33 +596,53 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       logger.debug('Processing tag', { action, uri });
 
       if (action === 'delete') {
-        await pool.query('DELETE FROM user_tags_index WHERE uri = $1', [uri]);
-        logger.info('Deleted tag from index', { uri });
+        try {
+          await pool.query('DELETE FROM user_tags_index WHERE uri = $1', [uri]);
+          logger.info('Deleted tag from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete tag', error, { uri });
+          return failure(
+            'Failed to delete tag',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
       } else if (record) {
-        const tagRecord = record as UserTagRecord;
-        const taggerDid = uri.split('/')[2];
+        try {
+          const tagRecord = record as UserTagRecord;
+          const taggerDid = uri.split('/')[2];
 
-        await pool.query(
-          `INSERT INTO user_tags_index (
-            uri, cid, eprint_uri, tagger_did, tag, created_at, pds_url, indexed_at, last_synced_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-          ON CONFLICT (uri) DO UPDATE SET
-            cid = EXCLUDED.cid,
-            tag = EXCLUDED.tag,
-            last_synced_at = NOW()`,
-          [
-            uri,
-            cid ?? '',
-            tagRecord.eprintUri,
-            taggerDid,
-            tagRecord.tag,
-            new Date(tagRecord.createdAt),
-            pdsUrl,
-          ]
-        );
-        logger.info('Indexed tag', { uri, eprintUri: tagRecord.eprintUri, tag: tagRecord.tag });
+          await pool.query(
+            `INSERT INTO user_tags_index (
+              uri, cid, eprint_uri, tagger_did, tag, created_at, pds_url, indexed_at, last_synced_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            ON CONFLICT (uri) DO UPDATE SET
+              cid = EXCLUDED.cid,
+              tag = EXCLUDED.tag,
+              last_synced_at = NOW()`,
+            [
+              uri,
+              cid ?? '',
+              tagRecord.eprintUri,
+              taggerDid,
+              tagRecord.tag,
+              new Date(tagRecord.createdAt),
+              pdsUrl,
+            ]
+          );
+          logger.info('Indexed tag', { uri, eprintUri: tagRecord.eprintUri, tag: tagRecord.tag });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index tag', error, { uri, action });
+          return failure(
+            'Failed to index tag',
+            false,
+            new DatabaseError('INSERT', error.message, error)
+          );
+        }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.graph.node': {
@@ -341,8 +650,14 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
 
       if (action === 'delete') {
         if (nodeService) {
-          await nodeService.deleteNode(uri);
-          logger.info('Deleted node from index', { uri });
+          try {
+            await nodeService.deleteNode(uri);
+            logger.info('Deleted node from index', { uri });
+          } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error('Failed to delete node', err, { uri });
+            return failure('Failed to delete node', false, err);
+          }
         }
       } else if (record && nodeService) {
         const nodeRecord = record as NodeRecord;
@@ -365,13 +680,12 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
           });
           logger.info('Indexed node', { uri, label: nodeRecord.label, kind: nodeRecord.kind });
         } catch (error) {
-          logger.error('Failed to index node', error instanceof Error ? error : undefined, {
-            uri,
-            action,
-          });
+          const err = error instanceof Error ? error : new Error(String(error));
+          logger.error('Failed to index node', err, { uri, action });
+          return failure('Failed to index node', false, err);
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.graph.edge': {
@@ -379,8 +693,14 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
 
       if (action === 'delete') {
         if (edgeService) {
-          await edgeService.deleteEdge(uri);
-          logger.info('Deleted edge from index', { uri });
+          try {
+            await edgeService.deleteEdge(uri);
+            logger.info('Deleted edge from index', { uri });
+          } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error('Failed to delete edge', err, { uri });
+            return failure('Failed to delete edge', false, err);
+          }
         }
       } else if (record && edgeService) {
         const edgeRecord = record as EdgeRecord;
@@ -405,13 +725,12 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
             relationSlug: edgeRecord.relationSlug,
           });
         } catch (error) {
-          logger.error('Failed to index edge', error instanceof Error ? error : undefined, {
-            uri,
-            action,
-          });
+          const err = error instanceof Error ? error : new Error(String(error));
+          logger.error('Failed to index edge', err, { uri, action });
+          return failure('Failed to index edge', false, err);
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.graph.nodeProposal': {
@@ -420,10 +739,12 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       if (action !== 'delete' && record) {
         const result = await graphService.indexNodeProposal(record, metadata);
         if (!result.ok) {
-          logger.error('Failed to index node proposal', result.error as Error, { uri, action });
+          const error = result.error as Error;
+          logger.error('Failed to index node proposal', error, { uri, action });
+          return failure('Failed to index node proposal', false, error);
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.graph.edgeProposal': {
@@ -432,10 +753,12 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       if (action !== 'delete' && record) {
         const result = await graphService.indexEdgeProposal(record, metadata);
         if (!result.ok) {
-          logger.error('Failed to index edge proposal', result.error as Error, { uri, action });
+          const error = result.error as Error;
+          logger.error('Failed to index edge proposal', error, { uri, action });
+          return failure('Failed to index edge proposal', false, error);
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.graph.vote': {
@@ -444,58 +767,80 @@ async function processRecord(ctx: ProcessRecordContext, data: RecordData): Promi
       if (action !== 'delete' && record) {
         const result = await graphService.indexVote(record, metadata);
         if (!result.ok) {
-          logger.error('Failed to index vote', result.error as Error, { uri, action });
+          const error = result.error as Error;
+          logger.error('Failed to index vote', error, { uri, action });
+          return failure('Failed to index vote', false, error);
         }
       }
-      break;
+      return success();
     }
 
     case 'pub.chive.actor.profile': {
       logger.debug('Processing actor profile', { action, uri });
 
       if (action === 'delete') {
-        const did = data.repo;
-        await pool.query('DELETE FROM authors_index WHERE did = $1', [did]);
-        logger.info('Deleted actor profile from index', { did });
+        try {
+          const did = data.repo;
+          await pool.query('DELETE FROM authors_index WHERE did = $1', [did]);
+          logger.info('Deleted actor profile from index', { did });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete actor profile', error, { uri });
+          return failure(
+            'Failed to delete actor profile',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
       } else if (record) {
-        const profileRecord = record as ActorProfileRecord;
-        const did = data.repo;
+        try {
+          const profileRecord = record as ActorProfileRecord;
+          const did = data.repo;
 
-        await pool.query(
-          `INSERT INTO authors_index (
-            did, handle, display_name, bio, avatar_blob_cid, orcid, affiliations, field_ids,
-            pds_url, indexed_at, last_synced_at
-          ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-          ON CONFLICT (did) DO UPDATE SET
-            display_name = EXCLUDED.display_name,
-            bio = EXCLUDED.bio,
-            avatar_blob_cid = EXCLUDED.avatar_blob_cid,
-            orcid = EXCLUDED.orcid,
-            affiliations = EXCLUDED.affiliations,
-            field_ids = EXCLUDED.field_ids,
-            pds_url = EXCLUDED.pds_url,
-            last_synced_at = NOW()`,
-          [
-            did,
-            profileRecord.displayName ?? null,
-            profileRecord.bio ?? null,
-            profileRecord.avatarBlobRef?.ref.$link ?? null,
-            profileRecord.orcid ?? null,
-            profileRecord.affiliations ?? [],
-            profileRecord.fieldIds ?? [],
-            pdsUrl,
-          ]
-        );
-        logger.info('Indexed actor profile', { did, displayName: profileRecord.displayName });
+          await pool.query(
+            `INSERT INTO authors_index (
+              did, handle, display_name, bio, avatar_blob_cid, orcid, affiliations, field_ids,
+              pds_url, indexed_at, last_synced_at
+            ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ON CONFLICT (did) DO UPDATE SET
+              display_name = EXCLUDED.display_name,
+              bio = EXCLUDED.bio,
+              avatar_blob_cid = EXCLUDED.avatar_blob_cid,
+              orcid = EXCLUDED.orcid,
+              affiliations = EXCLUDED.affiliations,
+              field_ids = EXCLUDED.field_ids,
+              pds_url = EXCLUDED.pds_url,
+              last_synced_at = NOW()`,
+            [
+              did,
+              profileRecord.displayName ?? null,
+              profileRecord.bio ?? null,
+              profileRecord.avatarBlobRef?.ref.$link ?? null,
+              profileRecord.orcid ?? null,
+              profileRecord.affiliations ?? [],
+              profileRecord.fieldIds ?? [],
+              pdsUrl,
+            ]
+          );
+          logger.info('Indexed actor profile', { did, displayName: profileRecord.displayName });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index actor profile', error, { uri, action });
+          return failure(
+            'Failed to index actor profile',
+            false,
+            new DatabaseError('INSERT', error.message, error)
+          );
+        }
       }
-      break;
+      return success();
     }
 
     default:
       if (collection.startsWith('pub.chive.')) {
         logger.warn('Unhandled Chive collection', { collection, action });
       }
-      break;
+      return success();
   }
 }
 
@@ -540,11 +885,45 @@ async function correlateActivity(
 }
 
 /**
+ * Result of batch event processing.
+ *
+ * @public
+ */
+export interface BatchProcessResult {
+  /**
+   * Total events processed.
+   */
+  readonly total: number;
+
+  /**
+   * Successfully processed events.
+   */
+  readonly succeeded: number;
+
+  /**
+   * Failed events (non-critical).
+   */
+  readonly failed: number;
+
+  /**
+   * Critical failures (should halt processing).
+   */
+  readonly criticalFailures: readonly ProcessRecordResult[];
+}
+
+/**
  * Creates a batch processor for efficient correlation.
+ *
+ * @param options - Configuration options
+ * @returns Batch processor function
+ *
+ * @remarks
+ * Processes events in batch, tracking failures and sending to DLQ.
+ * Critical failures are collected and thrown at the end if any occur.
  */
 export function createBatchEventProcessor(
   options: EventProcessorOptions
-): (events: readonly ProcessedEvent[]) => Promise<void> {
+): (events: readonly ProcessedEvent[]) => Promise<BatchProcessResult> {
   const {
     pool,
     activity,
@@ -556,9 +935,13 @@ export function createBatchEventProcessor(
     identity,
     logger,
     pdsRegistry,
+    dlq,
   } = options;
 
-  return async (events: readonly ProcessedEvent[]): Promise<void> => {
+  return async (events: readonly ProcessedEvent[]): Promise<BatchProcessResult> => {
+    const results: ProcessRecordResult[] = [];
+    const criticalFailures: ProcessRecordResult[] = [];
+
     for (const event of events) {
       const uri = `at://${event.repo}/${event.collection}/${event.rkey}` as AtUri;
       const pdsUrl = await identity.getPDSEndpoint(event.repo as DID);
@@ -575,7 +958,7 @@ export function createBatchEventProcessor(
         }
       }
 
-      await processRecord(
+      const result = await processRecord(
         { pool, eprintService, reviewService, graphService, nodeService, edgeService, logger },
         {
           uri,
@@ -588,6 +971,38 @@ export function createBatchEventProcessor(
           pdsUrl: pdsUrl ?? 'unknown',
         }
       );
+
+      results.push(result);
+
+      // Handle failures
+      if (!result.success && result.error) {
+        // Send to DLQ
+        if (dlq) {
+          try {
+            await dlq.add(event as DLQEvent, result.error, 0);
+            logger.info('Event sent to DLQ', {
+              uri,
+              collection: event.collection,
+              error: result.error.message,
+            });
+          } catch (dlqError) {
+            logger.error(
+              'Failed to send event to DLQ',
+              dlqError instanceof Error ? dlqError : undefined,
+              {
+                uri,
+                collection: event.collection,
+                originalError: result.error.message,
+              }
+            );
+          }
+        }
+
+        // Track critical failures
+        if (result.error.critical) {
+          criticalFailures.push(result);
+        }
+      }
     }
 
     const createUpdateEvents = events.filter((e) => e.action === 'create' || e.action === 'update');
@@ -617,5 +1032,31 @@ export function createBatchEventProcessor(
         });
       }
     }
+
+    const succeeded = results.filter((r) => r.success).length;
+    const failed = results.filter((r) => !r.success).length;
+
+    const batchResult: BatchProcessResult = {
+      total: events.length,
+      succeeded,
+      failed,
+      criticalFailures,
+    };
+
+    // Throw if there are critical failures
+    if (criticalFailures.length > 0) {
+      const firstCritical = criticalFailures[0];
+      if (firstCritical?.error) {
+        logger.error('Batch processing had critical failures', undefined, {
+          total: events.length,
+          succeeded,
+          failed,
+          criticalCount: criticalFailures.length,
+        });
+        throw firstCritical.error;
+      }
+    }
+
+    return batchResult;
   };
 }

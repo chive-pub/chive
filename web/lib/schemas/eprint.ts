@@ -42,14 +42,21 @@ export const SUPPORTED_DOCUMENT_FORMATS = [
 ] as const;
 
 /**
- * Supported content licenses.
+ * Supported content license slugs (SPDX identifiers).
+ *
+ * @remarks
+ * These are SPDX license identifiers used for display fallback.
+ * The canonical license reference should use licenseUri pointing
+ * to a knowledge graph node with subkind=license.
  */
-export const SUPPORTED_LICENSES = [
-  'cc-by-4.0',
-  'cc-by-sa-4.0',
-  'cc-by-nc-4.0',
-  'cc-by-nc-sa-4.0',
-  'cc0-1.0',
+export const SUPPORTED_LICENSE_SLUGS = [
+  'CC-BY-4.0',
+  'CC-BY-SA-4.0',
+  'CC-BY-NC-4.0',
+  'CC-BY-NC-SA-4.0',
+  'CC0-1.0',
+  'MIT',
+  'Apache-2.0',
   'arxiv-perpetual',
 ] as const;
 
@@ -429,8 +436,11 @@ export const eprintSubmissionSchema = z.object({
   /** Free-text keywords */
   keywords: z.array(z.string().max(100)).max(20).optional(),
 
-  /** Content license */
-  license: z.enum(SUPPORTED_LICENSES).optional(),
+  /** AT-URI to license node (subkind=license) */
+  licenseUri: z.string().optional(),
+
+  /** Content license SPDX slug */
+  licenseSlug: z.string().optional(),
 
   /** DOI if assigned */
   doi: z.string().url().optional(),
@@ -522,7 +532,9 @@ export const stepMetadataSchema = z.object({
 
   keywords: z.array(z.string().max(100)).max(20).optional(),
 
-  license: z.enum(SUPPORTED_LICENSES).default('cc-by-4.0'),
+  licenseUri: z.string().optional(),
+
+  licenseSlug: z.string().default('CC-BY-4.0'),
 
   doi: z.string().url().optional().or(z.literal('')),
 

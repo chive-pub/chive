@@ -41,6 +41,8 @@ const EXCLUDED_DIRS = ['node_modules', '.next', 'dist', '.storybook', 'tests', '
  *   submission workflows). TSDoc examples show ATProto usage patterns.
  * - lib/auth: Contains E2E mock agent for testing (mock PDS operations).
  * - lib/api/generated: Auto-generated ATProto lexicon types (type definitions only).
+ * - components/governance: User-initiated governance proposal writes to user's own PDS.
+ * - components/eprints: User-initiated eprint edit/delete writes to user's own PDS.
  */
 const PDS_WRITE_EXCLUDED_PATHS = [
   'lib/atproto',
@@ -50,6 +52,7 @@ const PDS_WRITE_EXCLUDED_PATHS = [
   'lib/auth',
   'lib/api/generated', // Auto-generated ATProto lexicon type definitions
   'components/governance', // User-initiated governance proposal writes to user's own PDS
+  'components/eprints', // User-initiated eprint edit/delete writes to user's own PDS
 ];
 
 function findTsFiles(dir: string, files: string[] = []): string[] {

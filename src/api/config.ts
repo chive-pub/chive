@@ -44,9 +44,9 @@ export const RATE_LIMITS: Readonly<Record<RateLimitTier, number>> = RATE_LIMITIN
       admin: 999999,
     }
   : {
-      anonymous: 60,
-      authenticated: 300,
-      premium: 1000,
+      anonymous: 120, // Increased from 60 for browse endpoints
+      authenticated: 600, // Increased from 300 for better UX
+      premium: 1500,
       admin: 5000,
     };
 
