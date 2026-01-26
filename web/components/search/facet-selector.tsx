@@ -242,6 +242,7 @@ function FacetSidebar({
                 onSelectionChange={(values) => onFacetChange(facet.slug, values)}
                 collapsible
                 defaultCollapsed
+                searchable
                 maxVisible={5}
               />
             ))}

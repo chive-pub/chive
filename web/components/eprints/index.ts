@@ -125,3 +125,41 @@ export type { FundingPanelProps, FundingSource } from './funding-panel';
 // Citation visualization
 export { CitationVisualization, CitationVisualizationSkeleton } from './citation-visualization';
 export type { CitationVisualizationProps } from './citation-visualization';
+
+// Schema migration banner
+export { SchemaMigrationBanner, SchemaMigrationBannerSkeleton } from './schema-migration-banner';
+export type {
+  SchemaMigrationBannerProps,
+  ApiSchemaHints as SchemaMigrationApiSchemaHints,
+} from './schema-migration-banner';
+
+// Delete dialog
+export { DeleteEprintDialog } from './delete-dialog';
+export type { DeleteEprintDialogProps } from './delete-dialog';
+
+// Edit dialog
+export { EprintEditDialog } from './eprint-edit-dialog';
+export type { EprintEditDialogProps, EprintEditData } from './eprint-edit-dialog';
+
+// Version selector for updates
+export { VersionSelector } from './version-selector';
+export type { VersionSelectorProps } from './version-selector';
+
+// Paper account authentication
+export { PaperAuthGate } from './paper-auth-gate';
+export { PaperAuthPrompt } from './paper-auth-prompt';
+
+// Changelog form for eprint updates
+export { ChangelogForm, CHANGELOG_CATEGORIES, CHANGE_TYPES } from './changelog-form';
+export type {
+  ChangelogFormProps,
+  ChangelogFormData,
+  ChangelogSection,
+  ChangelogItem,
+  ChangelogCategory,
+  ChangeType,
+} from './changelog-form';
+
+// Version history display
+export { VersionHistory, VersionHistorySkeleton, VersionHistoryEmpty } from './version-history';
+export type { VersionHistoryProps } from './version-history';

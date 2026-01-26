@@ -21,6 +21,11 @@ import {
   SupplementaryPanel,
   FundingPanel,
   RepositoriesPanel,
+  SchemaMigrationBanner,
+  DeleteEprintDialog,
+  PaperAuthGate,
+  EprintEditDialog,
+  VersionHistory,
   type SupplementaryCategory,
 } from '@/components/eprints';
 
@@ -55,7 +60,7 @@ import { IntegrationPanel } from '@/components/integrations';
 import { RelatedPapersPanel } from '@/components/discovery';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
-import { ThumbsUp, Sparkles } from 'lucide-react';
+import { ThumbsUp, Sparkles, Pencil, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -67,9 +72,11 @@ import {
   useCreateEndorsement,
 } from '@/lib/hooks/use-endorsement';
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
+import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
 import type { Review, Endorsement } from '@/lib/api/schema';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
+import { toast } from 'sonner';
 
 /**
  * Valid supplementary material categories.
@@ -154,6 +161,13 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const createReview = useCreateReview();
   const createEndorsement = useCreateEndorsement();
 
+  // Eprint permissions and mutations
+  const permissions = useEprintPermissions(
+    eprint ? { submittedBy: eprint.submittedBy, paperDid: eprint.paperDid } : undefined,
+    currentUser?.did
+  );
+  const deleteEprint = useDeleteEprint();
+
   // Get the selected version or latest
   const displayVersion = currentVersion ?? eprint?.versions?.length ?? 1;
 
@@ -205,6 +219,35 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     },
     [uri, createEndorsement]
   );
+
+  const handleDeleteEprint = useCallback(async () => {
+    try {
+      await deleteEprint.mutateAsync({ uri });
+      // TODO: After backend authorization succeeds, make the actual PDS call
+      // await agent?.deleteRecord(uri);
+      toast.success('Eprint deleted successfully');
+      // Redirect to eprints list after deletion
+      window.location.href = '/eprints';
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete eprint');
+    }
+  }, [deleteEprint, uri]);
+
+  /**
+   * Build edit data object from eprint.
+   * Extracts the rkey from the AT-URI for PDS operations.
+   */
+  const eprintEditData = eprint
+    ? {
+        uri: eprint.uri,
+        rkey: eprint.uri.split('/').pop() ?? '',
+        collection: 'pub.chive.eprint.submission',
+        title: eprint.title,
+        keywords: eprint.keywords,
+        version: eprint.version,
+        repo: eprint.paperDid ?? eprint.submittedBy,
+      }
+    : null;
 
   // Annotation handlers
   const handleAnnotationSelect = useCallback((annotationUri: string) => {
@@ -388,6 +431,76 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     <article className="space-y-8 overflow-x-hidden">
       {/* Header with title, authors, metadata */}
       <EprintHeader eprint={eprint} />
+
+      {/* Owner actions (Edit/Delete) - only shown to authorized users */}
+      {permissions.canModify && eprintEditData && (
+        <div className="flex items-center gap-2">
+          {permissions.requiresPaperAuth ? (
+            <PaperAuthGate eprint={{ paperDid: eprint.paperDid }}>
+              <div className="flex items-center gap-2">
+                <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
+                  <Button variant="outline" size="sm">
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </EprintEditDialog>
+                <DeleteEprintDialog
+                  title={eprint.title}
+                  uri={eprint.uri}
+                  canDelete={permissions.canModify}
+                  isPending={deleteEprint.isPending}
+                  onConfirm={handleDeleteEprint}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </DeleteEprintDialog>
+              </div>
+            </PaperAuthGate>
+          ) : (
+            <>
+              <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
+                <Button variant="outline" size="sm">
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </EprintEditDialog>
+              <DeleteEprintDialog
+                title={eprint.title}
+                uri={eprint.uri}
+                canDelete={permissions.canModify}
+                isPending={deleteEprint.isPending}
+                onConfirm={handleDeleteEprint}
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </DeleteEprintDialog>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Schema migration banner (shows when record uses deprecated formats) */}
+      <SchemaMigrationBanner
+        schemaHints={eprint._schemaHints}
+        eprint={{
+          uri: eprint.uri,
+          submittedBy: eprint.submittedBy,
+          paperDid: eprint.paperDid,
+        }}
+        currentUserDid={currentUser?.did}
+      />
 
       {/* Publication status badge */}
       {eprint.publicationStatus &&
@@ -921,12 +1034,13 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
         {/* Versions tab */}
         {eprint.versions && eprint.versions.length > 1 && (
-          <TabsContent value="versions">
+          <TabsContent value="versions" className="space-y-6">
             <EprintVersionTimeline
               versions={eprint.versions}
               currentVersion={displayVersion}
               onVersionClick={handleVersionChange}
             />
+            <VersionHistory eprintUri={eprint.uri} />
           </TabsContent>
         )}
       </Tabs>
