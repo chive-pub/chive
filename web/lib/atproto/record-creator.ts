@@ -107,7 +107,10 @@ export interface EprintRecord {
   }>;
   facets?: FacetValue[];
   keywords?: string[];
-  license?: string;
+  /** AT-URI to license node (subkind=license) */
+  licenseUri?: string;
+  /** SPDX license identifier for display fallback */
+  licenseSlug?: string;
   doi?: string;
   previousVersion?: { uri: string; cid: string };
   externalLinks?: ExternalLink[];
@@ -437,8 +440,11 @@ export async function createEprintRecord(
   if (data.keywords && data.keywords.length > 0) {
     record.keywords = data.keywords;
   }
-  if (data.license) {
-    record.license = data.license;
+  if (data.licenseUri) {
+    record.licenseUri = data.licenseUri;
+  }
+  if (data.licenseSlug) {
+    record.licenseSlug = data.licenseSlug;
   }
   if (data.doi) {
     record.doi = data.doi;

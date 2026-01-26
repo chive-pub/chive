@@ -236,6 +236,31 @@ vi.mock('@tiptap/react', async () => {
     commands: {
       setContent: (content: string) => void;
       clearContent: () => void;
+      focus: () => MockEditor['commands'];
+      toggleBold: () => MockEditor['commands'];
+      toggleItalic: () => MockEditor['commands'];
+      toggleStrike: () => MockEditor['commands'];
+      toggleCode: () => MockEditor['commands'];
+      toggleHeading: (attrs: { level: number }) => MockEditor['commands'];
+      toggleBulletList: () => MockEditor['commands'];
+      toggleOrderedList: () => MockEditor['commands'];
+      toggleBlockquote: () => MockEditor['commands'];
+      setLink: (attrs: { href: string }) => MockEditor['commands'];
+      unsetLink: () => MockEditor['commands'];
+      extendMarkRange: (mark: string) => MockEditor['commands'];
+      insertContent: (content: unknown) => MockEditor['commands'];
+    };
+    chain: () => MockEditor['commands'];
+    isActive: (type: string, attrs?: unknown) => boolean;
+    getAttributes: (type: string) => Record<string, unknown>;
+    state: {
+      doc: {
+        descendants: (callback: (node: unknown, pos: number) => boolean) => void;
+      };
+      selection: {
+        from: number;
+        to: number;
+      };
     };
     on: ReturnType<typeof vi.fn>;
     off: ReturnType<typeof vi.fn>;
@@ -267,8 +292,18 @@ vi.mock('@tiptap/react', async () => {
             setLocalValue(v);
             // Update getText to return the new value
             editor.getText = () => v;
-            // Trigger onUpdate callback
-            registration.onUpdate?.({ editor: { getText: () => v } });
+            editor.getHTML = () => `<p>${v}</p>`;
+            // Trigger onUpdate callback with full mock editor
+            registration.onUpdate?.({
+              editor: {
+                getText: () => v,
+                getHTML: () => `<p>${v}</p>`,
+                state: {
+                  doc: { descendants: () => {} },
+                  selection: { from: 0, to: 0 },
+                },
+              } as unknown as { getText: () => string },
+            });
           };
         }
       }
@@ -282,7 +317,16 @@ vi.mock('@tiptap/react', async () => {
         editor.commands.clearContent = () => {
           setLocalValue('');
           const registration = editor._editorId ? editorRegistry.get(editor._editorId) : null;
-          registration?.onUpdate?.({ editor: { getText: () => '' } });
+          registration?.onUpdate?.({
+            editor: {
+              getText: () => '',
+              getHTML: () => '<p></p>',
+              state: {
+                doc: { descendants: () => {} },
+                selection: { from: 0, to: 0 },
+              },
+            } as unknown as { getText: () => string },
+          });
         };
       }
     }, [editor, localValue]);
@@ -357,28 +401,83 @@ vi.mock('@tiptap/react', async () => {
     }, [options.onUpdate]);
 
     const editor: MockEditor = React.useMemo(
-      () => ({
-        getText: () => content,
-        getHTML: () => `<p>${content}</p>`,
-        commands: {
-          setContent: (newContent: string) => {
-            setContent(newContent);
-            options.onUpdate?.({ editor: { getText: () => newContent } });
+      () => {
+        // Create commands object that returns itself for chaining
+        const createCommands = (): MockEditor['commands'] => {
+          const commands: MockEditor['commands'] = {
+            setContent: (newContent: string) => {
+              setContent(newContent);
+              options.onUpdate?.({
+                editor: {
+                  getText: () => newContent,
+                  getHTML: () => `<p>${newContent}</p>`,
+                  state: {
+                    doc: { descendants: () => {} },
+                    selection: { from: 0, to: 0 },
+                  },
+                } as unknown as MockEditor,
+              });
+              return commands;
+            },
+            clearContent: () => {
+              setContent('');
+              options.onUpdate?.({
+                editor: {
+                  getText: () => '',
+                  getHTML: () => '<p></p>',
+                  state: {
+                    doc: { descendants: () => {} },
+                    selection: { from: 0, to: 0 },
+                  },
+                } as unknown as MockEditor,
+              });
+              return commands;
+            },
+            focus: () => commands,
+            toggleBold: () => commands,
+            toggleItalic: () => commands,
+            toggleStrike: () => commands,
+            toggleCode: () => commands,
+            toggleHeading: () => commands,
+            toggleBulletList: () => commands,
+            toggleOrderedList: () => commands,
+            toggleBlockquote: () => commands,
+            setLink: () => commands,
+            unsetLink: () => commands,
+            extendMarkRange: () => commands,
+            insertContent: () => commands,
+          };
+          return commands;
+        };
+
+        const commands = createCommands();
+
+        return {
+          getText: () => content,
+          getHTML: () => `<p>${content}</p>`,
+          commands,
+          chain: () => commands,
+          isActive: () => false,
+          getAttributes: () => ({}),
+          state: {
+            doc: {
+              descendants: () => {},
+            },
+            selection: {
+              from: 0,
+              to: 0,
+            },
           },
-          clearContent: () => {
-            setContent('');
-            options.onUpdate?.({ editor: { getText: () => '' } });
+          on: vi.fn(),
+          off: vi.fn(),
+          destroy: vi.fn(),
+          isDestroyed: false,
+          options: {
+            editorProps: options.editorProps,
           },
-        },
-        on: vi.fn(),
-        off: vi.fn(),
-        destroy: vi.fn(),
-        isDestroyed: false,
-        options: {
-          editorProps: options.editorProps,
-        },
-        _editorId: editorIdRef.current,
-      }),
+          _editorId: editorIdRef.current,
+        };
+      },
       // Only recreate when editorProps changes, not content
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [options.editorProps]
@@ -404,5 +503,9 @@ vi.mock('@tiptap/extension-placeholder', () => ({
 }));
 
 vi.mock('@tiptap/extension-mention', () => ({
+  default: { configure: vi.fn(() => ({})) },
+}));
+
+vi.mock('@tiptap/extension-link', () => ({
   default: { configure: vi.fn(() => ({})) },
 }));

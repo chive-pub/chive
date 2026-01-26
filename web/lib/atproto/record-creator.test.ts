@@ -196,7 +196,7 @@ describe('createEprintRecord', () => {
       abstract: 'This is a test abstract that is long enough to pass validation.',
       authors: [createTestAuthor()],
       fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
-      license: 'cc-by-4.0',
+      licenseSlug: 'CC-BY-4.0',
     });
 
     expect(result.uri).toContain('pub.chive.eprint.submission');
@@ -219,13 +219,13 @@ describe('createEprintRecord', () => {
       authors: [createTestAuthor()],
       fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
       keywords: ['machine learning', 'ai'],
-      license: 'cc-by-4.0',
+      licenseSlug: 'CC-BY-4.0',
     });
 
     const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
       .calls[0][0];
     expect(createRecordCall.record.keywords).toEqual(['machine learning', 'ai']);
-    expect(createRecordCall.record.license).toBe('cc-by-4.0');
+    expect(createRecordCall.record.licenseSlug).toBe('CC-BY-4.0');
   });
 
   it('creates an eprint record with DOCX document', async () => {
@@ -242,7 +242,7 @@ describe('createEprintRecord', () => {
       abstract: 'This is a test abstract that is long enough to pass validation.',
       authors: [createTestAuthor()],
       fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
-      license: 'cc-by-4.0',
+      licenseSlug: 'CC-BY-4.0',
     });
 
     expect(result.uri).toContain('pub.chive.eprint.submission');
@@ -260,7 +260,7 @@ describe('createEprintRecord', () => {
         abstract: 'This is a test abstract that is long enough to pass validation.',
         authors: [createTestAuthor()],
         fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
-        license: 'cc-by-4.0',
+        licenseSlug: 'CC-BY-4.0',
       })
     ).rejects.toThrow('User agent is not authenticated');
   });
