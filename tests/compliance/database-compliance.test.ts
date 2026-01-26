@@ -599,12 +599,12 @@ describe('ATProto Database Compliance', () => {
         {
           name: 'Index semantics (_index naming)',
           query: `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%_index'`,
-          expected: 8,
+          expected: 9, // eprints, reviews, endorsements, user_tags, relevance_logs, activity_log, authors, coauthor_claims, changelogs
         },
         {
           name: 'PDS source tracking',
           query: `SELECT COUNT(*) as count FROM information_schema.columns WHERE table_schema = 'public' AND table_name LIKE '%_index' AND column_name = 'pds_url'`,
-          expected: 8,
+          expected: 9, // All index tables have pds_url
         },
         {
           name: 'No blob data',

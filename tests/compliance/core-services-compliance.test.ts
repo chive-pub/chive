@@ -117,6 +117,15 @@ function createTrackedStorage(): IStorageBackend & {
       operations.push({ method: 'trackPDSSource', args: [uri, pdsUrl, lastSynced] });
       return Promise.resolve({ ok: true, value: undefined });
     }),
+    storeEprintWithPDSTracking: vi
+      .fn()
+      .mockImplementation((eprint: StoredEprint, pdsUrl: string, lastSynced: Date) => {
+        operations.push({
+          method: 'storeEprintWithPDSTracking',
+          args: [eprint, pdsUrl, lastSynced],
+        });
+        return Promise.resolve({ ok: true, value: undefined });
+      }),
     isStale: vi.fn().mockImplementation((uri: AtUri) => {
       operations.push({ method: 'isStale', args: [uri] });
       return Promise.resolve(false);
@@ -127,6 +136,26 @@ function createTrackedStorage(): IStorageBackend & {
         operations.push({ method: 'findByExternalIds', args: [externalIds] });
         return Promise.resolve(null);
       }),
+    deleteEprint: vi.fn().mockImplementation((uri: AtUri) => {
+      operations.push({ method: 'deleteEprint', args: [uri] });
+      return Promise.resolve({ ok: true, value: undefined });
+    }),
+    getChangelog: vi.fn().mockImplementation((uri: AtUri) => {
+      operations.push({ method: 'getChangelog', args: [uri] });
+      return Promise.resolve(null);
+    }),
+    listChangelogs: vi.fn().mockImplementation((eprintUri: AtUri) => {
+      operations.push({ method: 'listChangelogs', args: [eprintUri] });
+      return Promise.resolve({ changelogs: [], total: 0 });
+    }),
+    storeChangelog: vi.fn().mockImplementation((changelog: unknown) => {
+      operations.push({ method: 'storeChangelog', args: [changelog] });
+      return Promise.resolve({ ok: true, value: undefined });
+    }),
+    deleteChangelog: vi.fn().mockImplementation((uri: AtUri) => {
+      operations.push({ method: 'deleteChangelog', args: [uri] });
+      return Promise.resolve({ ok: true, value: undefined });
+    }),
   };
 }
 
