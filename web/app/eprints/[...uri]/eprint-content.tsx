@@ -565,7 +565,11 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
         {/* Abstract tab */}
         <TabsContent value="abstract" className="space-y-6">
-          <EprintAbstract abstract={eprint.abstract} defaultExpanded />
+          <EprintAbstract
+            abstract={eprint.abstract}
+            abstractItems={eprint.abstractItems}
+            defaultExpanded
+          />
 
           {/* Quick actions */}
           <div className="flex flex-wrap gap-4">
