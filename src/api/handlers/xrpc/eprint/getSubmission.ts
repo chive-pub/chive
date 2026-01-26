@@ -199,6 +199,12 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
         paperDid: result.paperDid,
         keywords: result.keywords ? [...result.keywords] : undefined,
         fieldUris: result.fields?.map((f) => normalizeFieldUri(f.uri)),
+        // Include enriched fields with resolved labels for frontend display
+        fields: result.fields?.map((f) => ({
+          uri: normalizeFieldUri(f.uri),
+          label: f.label,
+          id: f.id ?? normalizeFieldUri(f.uri),
+        })),
         version: result.version,
         licenseUri: result.licenseUri,
         licenseSlug: result.license as
