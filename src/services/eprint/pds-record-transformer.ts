@@ -3,14 +3,19 @@
  *
  * @remarks
  * This module bridges the gap between what the frontend writes to PDSes
- * and what the backend expects. The frontend uses simplified field names
- * and structures that don't match the internal Eprint model.
+ * and what the backend expects. It handles schema evolution by accepting
+ * multiple formats and normalizing to the current internal model.
  *
- * **Key Mismatches Fixed:**
+ * **Key Transformations:**
  * - `document` → `documentBlobRef`
  * - `supplementaryMaterials[].blob` → `supplementaryMaterials[].blobRef`
- * - `abstract` (string) → `abstract` (RichTextBody)
+ * - `abstract` (string OR RichTextItem[]) → `abstract` (RichTextBody)
  * - BlobRef structure: `ref.$link` → `ref` (CID string)
+ *
+ * **Schema Evolution:**
+ * The transformer detects which format was used for each field and includes
+ * compatibility metadata in the result. This enables API responses to include
+ * schema hints for clients using legacy formats.
  *
  * @packageDocumentation
  * @public
@@ -20,7 +25,11 @@ import { toTimestamp } from '../../types/atproto-validators.js';
 import type { AtUri, BlobRef, CID, DID } from '../../types/atproto.js';
 import { ValidationError } from '../../types/errors.js';
 import type { Facet } from '../../types/interfaces/graph.interface.js';
-import type { DocumentFormat, RichTextBody } from '../../types/models/annotation.js';
+import type {
+  AnnotationBodyItem,
+  DocumentFormat,
+  RichTextBody,
+} from '../../types/models/annotation.js';
 import type {
   EprintAuthor,
   EprintAuthorAffiliation,
@@ -31,6 +40,8 @@ import type {
   SupplementaryMaterial,
   SupplementaryCategory,
 } from '../../types/models/eprint.js';
+import type { SchemaDetectionResult } from '../../types/schema-compatibility.js';
+import { SchemaCompatibilityService } from '../schema/schema-compatibility.js';
 
 // =============================================================================
 // PDS RECORD TYPES (what frontend actually writes)
@@ -107,11 +118,31 @@ interface PDSFacetValue {
 }
 
 /**
+ * Rich text item as stored in current lexicon schema.
+ *
+ * @remarks
+ * This is the current format for abstract items (schema >= 1.1.0).
+ */
+interface PDSRichTextItem {
+  type: 'text' | 'nodeRef';
+  content?: string;
+  uri?: string;
+  label?: string;
+  subkind?: string;
+}
+
+/**
  * Eprint record structure as actually written by frontend to PDS.
  *
  * @remarks
  * This differs from both the lexicon schema AND the internal model.
  * The transformer normalizes this to the internal Eprint model.
+ *
+ * **Abstract Field Evolution:**
+ * - Schema 1.0.0: `abstract` is a plain string
+ * - Schema 1.1.0+: `abstract` is an array of RichTextItem
+ *
+ * The transformer accepts both formats for backward compatibility.
  */
 export interface PDSEprintRecord {
   $type: 'pub.chive.eprint.submission';
@@ -124,12 +155,22 @@ export interface PDSEprintRecord {
 
   // OPTIONAL FIELDS
   submittedBy?: string;
-  abstract?: string;
+  /**
+   * Abstract can be either:
+   * - string (legacy, schema 1.0.0)
+   * - PDSRichTextItem[] (current, schema 1.1.0+)
+   */
+  abstract?: string | PDSRichTextItem[];
   documentFormat?: string;
   supplementaryMaterials?: PDSSupplementaryMaterial[];
   fieldNodes?: PDSFieldNode[];
   facets?: PDSFacetValue[];
   keywords?: string[];
+  /** AT-URI to license node (subkind=license) - current format */
+  licenseUri?: string;
+  /** SPDX license identifier for display fallback - current format */
+  licenseSlug?: string;
+  /** Legacy license field (SPDX identifier) - for backward compatibility */
   license?: string;
   paperDid?: string;
   doi?: string;
@@ -146,6 +187,47 @@ export interface PDSEprintRecord {
   }[];
   conflictOfInterest?: string;
   preregistration?: string;
+}
+
+// =============================================================================
+// TRANSFORMATION RESULT WITH SCHEMA METADATA
+// =============================================================================
+
+/**
+ * Result of PDS record transformation.
+ *
+ * @remarks
+ * Includes both the transformed Eprint model and schema compatibility
+ * metadata. The schema metadata can be used to include migration hints
+ * in API responses.
+ *
+ * @public
+ */
+export interface TransformResult {
+  /**
+   * Transformed eprint in internal model format.
+   */
+  readonly eprint: Eprint;
+
+  /**
+   * Schema compatibility detection results.
+   *
+   * @remarks
+   * Includes information about detected legacy formats, deprecated fields,
+   * and available migrations. Use this to generate API schema hints.
+   */
+  readonly schemaDetection: SchemaDetectionResult;
+
+  /**
+   * Detected format of the abstract field.
+   *
+   * @remarks
+   * Indicates whether the source record used:
+   * - 'string': Legacy plain text format (schema 1.0.0)
+   * - 'rich-text-array': Current array format (schema 1.1.0+)
+   * - 'empty': Abstract was missing or null
+   */
+  readonly abstractFormat: 'string' | 'rich-text-array' | 'empty';
 }
 
 // =============================================================================
@@ -179,6 +261,16 @@ function transformBlobRef(pdsBlobRef: PDSBlobRef): BlobRef {
     cidString = pdsBlobRef.ref;
   } else {
     throw new ValidationError('Invalid blob ref structure', 'ref');
+  }
+
+  // Validate mimeType
+  if (typeof pdsBlobRef.mimeType !== 'string') {
+    throw new ValidationError('Invalid blob ref: missing mimeType', 'mimeType');
+  }
+
+  // Validate size
+  if (typeof pdsBlobRef.size !== 'number' || !Number.isFinite(pdsBlobRef.size)) {
+    throw new ValidationError('Invalid blob ref: invalid size', 'size');
   }
 
   return {
@@ -247,26 +339,117 @@ function transformSupplementaryMaterial(
 }
 
 /**
- * Transform abstract string to RichTextBody.
+ * Detected abstract format from PDS record.
+ */
+type DetectedAbstractFormat = 'string' | 'rich-text-array' | 'empty';
+
+/**
+ * Result of abstract transformation.
+ */
+interface AbstractTransformResult {
+  richTextBody: RichTextBody;
+  plainText: string | undefined;
+  detectedFormat: DetectedAbstractFormat;
+}
+
+/**
+ * Transform abstract from PDS format to internal RichTextBody.
  *
  * @remarks
- * The frontend sends abstract as a plain string. The internal model
- * expects a RichTextBody object. For simple strings, we wrap it in
- * a RichTextBody with a single text item.
+ * Handles both legacy string format and current RichTextItem[] format.
+ * This is the key schema evolution point for the abstract field.
+ *
+ * **Format Detection:**
+ * - If `abstract` is undefined/null: returns empty RichTextBody
+ * - If `abstract` is a string: wraps in single text item (legacy format)
+ * - If `abstract` is an array: transforms each item (current format)
+ *
+ * @param abstract - Abstract from PDS record (string or RichTextItem[])
+ * @returns Transformed RichTextBody with format detection
  */
-function transformAbstract(abstract?: string): RichTextBody {
-  if (!abstract) {
+function transformAbstract(abstract: unknown): AbstractTransformResult {
+  // Empty or missing
+  if (abstract === undefined || abstract === null) {
     return {
-      type: 'RichText',
-      items: [],
-      format: 'application/x-chive-gloss+json',
+      richTextBody: {
+        type: 'RichText',
+        items: [],
+        format: 'application/x-chive-gloss+json',
+      },
+      plainText: undefined,
+      detectedFormat: 'empty',
     };
   }
 
+  // Legacy string format (schema 1.0.0)
+  if (typeof abstract === 'string') {
+    return {
+      richTextBody: {
+        type: 'RichText',
+        items: abstract ? [{ type: 'text', content: abstract }] : [],
+        format: 'application/x-chive-gloss+json',
+      },
+      plainText: abstract || undefined,
+      detectedFormat: 'string',
+    };
+  }
+
+  // Current array format (schema 1.1.0+)
+  if (Array.isArray(abstract)) {
+    const items: AnnotationBodyItem[] = [];
+    const plainTextParts: string[] = [];
+
+    for (const item of abstract) {
+      // Skip malformed items (non-objects). This is intentional: we preserve
+      // well-formed items and silently skip invalid ones to maintain forward
+      // compatibility with future item types that may be added to the schema.
+      if (typeof item !== 'object' || item === null) {
+        continue;
+      }
+
+      const typedItem = item as PDSRichTextItem;
+
+      if (typedItem.type === 'text' && typeof typedItem.content === 'string') {
+        items.push({ type: 'text', content: typedItem.content });
+        plainTextParts.push(typedItem.content);
+      } else if (typedItem.type === 'nodeRef' && typeof typedItem.uri === 'string') {
+        items.push({
+          type: 'nodeRef',
+          uri: typedItem.uri as AtUri,
+          label: typedItem.label ?? '',
+          subkind: typedItem.subkind,
+        });
+        // Include label in plain text for node refs
+        if (typedItem.label) {
+          plainTextParts.push(typedItem.label);
+        }
+      }
+      // Unknown item types are silently skipped. This is intentional for forward
+      // compatibility: if future schema versions add new item types, older code
+      // will gracefully ignore them rather than failing. The items array will
+      // contain all recognized types, preserving as much content as possible.
+    }
+
+    return {
+      richTextBody: {
+        type: 'RichText',
+        items,
+        format: 'application/x-chive-gloss+json',
+      },
+      plainText: plainTextParts.length > 0 ? plainTextParts.join('') : undefined,
+      detectedFormat: 'rich-text-array',
+    };
+  }
+
+  // Unknown format, treat as empty
   return {
-    type: 'RichText',
-    items: [{ type: 'text', content: abstract }],
-    format: 'application/x-chive-gloss+json',
+    richTextBody: {
+      type: 'RichText',
+      items: [],
+      format: 'application/x-chive-gloss+json',
+    },
+    plainText: undefined,
+    detectedFormat: 'empty',
   };
 }
 
@@ -308,29 +491,56 @@ function transformFieldNodes(
 }
 
 // =============================================================================
+// SCHEMA COMPATIBILITY SERVICE INSTANCE
+// =============================================================================
+
+const schemaService = new SchemaCompatibilityService();
+
+// =============================================================================
 // MAIN TRANSFORMER
 // =============================================================================
 
 /**
- * Transform a PDS record to internal Eprint model.
+ * Transform a PDS record to internal Eprint model with schema metadata.
  *
  * @param raw - Raw record value from PDS
  * @param uri - AT-URI of the record
  * @param cid - CID of the record
- * @returns Internal Eprint model
+ * @returns Transform result with Eprint model and schema detection
  *
  * @throws ValidationError if required fields are missing
  *
+ * @remarks
+ * This function handles schema evolution by accepting both legacy and current
+ * formats for fields like `abstract`. The returned `schemaDetection` can be
+ * used to generate API hints for clients using legacy formats.
+ *
  * @example
  * ```typescript
- * const record = await fetchRecordFromPds(pdsUrl, did, collection, rkey);
- * const eprint = transformPDSRecord(record.value, uri, cid);
- * await eprintService.indexEprint(eprint, metadata);
+ * const result = transformPDSRecordWithSchema(record.value, uri, cid);
+ *
+ * // Use the transformed eprint
+ * await eprintService.indexEprint(result.eprint, metadata);
+ *
+ * // Check for legacy formats
+ * if (!result.schemaDetection.isCurrentSchema) {
+ *   logger.info('Legacy record format detected', {
+ *     deprecatedFields: result.schemaDetection.compatibility.deprecatedFields,
+ *   });
+ * }
  * ```
  *
  * @public
  */
-export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
+export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID): TransformResult {
+  // ==========================================================================
+  // VALIDATE RECORD STRUCTURE
+  // ==========================================================================
+
+  if (typeof raw !== 'object' || raw === null) {
+    throw new ValidationError('Record must be an object', 'record');
+  }
+
   const record = raw as PDSEprintRecord;
 
   // ==========================================================================
@@ -351,6 +561,12 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
   }
 
   // ==========================================================================
+  // DETECT SCHEMA COMPATIBILITY
+  // ==========================================================================
+
+  const schemaDetection = schemaService.analyzeEprintRecord(raw);
+
+  // ==========================================================================
   // TRANSFORM FIELDS
   // ==========================================================================
 
@@ -365,9 +581,8 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
     transformSupplementaryMaterial(mat, index)
   );
 
-  // Transform abstract (string → RichTextBody)
-  const abstract = transformAbstract(record.abstract);
-  const abstractPlainText = record.abstract;
+  // Transform abstract with format detection
+  const abstractResult = transformAbstract(record.abstract);
 
   // Transform facets
   const facets = transformFacets(record.facets);
@@ -404,7 +619,7 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
   // BUILD EPRINT MODEL
   // ==========================================================================
 
-  return {
+  const eprint: Eprint = {
     uri,
     cid,
 
@@ -415,9 +630,15 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
     authors,
     submittedBy,
     createdAt: toTimestamp(new Date(record.createdAt)),
-    abstract,
-    abstractPlainText,
-    license: record.license ?? 'CC-BY-4.0',
+    abstract: abstractResult.richTextBody,
+    abstractPlainText: abstractResult.plainText,
+    // License field handling with backward compatibility:
+    // 1. Use licenseSlug if present (current format)
+    // 2. Fall back to license if present (legacy format)
+    // 3. Default to CC-BY-4.0 if nothing provided
+    license: record.licenseSlug ?? record.license ?? 'CC-BY-4.0',
+    // Store licenseUri for knowledge graph reference (optional)
+    licenseUri: record.licenseUri as AtUri | undefined,
     keywords: record.keywords ?? [],
     facets,
     fields: fields.length > 0 ? fields : undefined,
@@ -432,6 +653,40 @@ export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
     // Funding
     funding,
   };
+
+  return {
+    eprint,
+    schemaDetection,
+    abstractFormat: abstractResult.detectedFormat,
+  };
+}
+
+/**
+ * Transform a PDS record to internal Eprint model.
+ *
+ * @param raw - Raw record value from PDS
+ * @param uri - AT-URI of the record
+ * @param cid - CID of the record
+ * @returns Internal Eprint model
+ *
+ * @throws ValidationError if required fields are missing
+ *
+ * @remarks
+ * This is the legacy function that returns only the Eprint model without
+ * schema metadata. Use `transformPDSRecordWithSchema` for full schema
+ * evolution support.
+ *
+ * @example
+ * ```typescript
+ * const record = await fetchRecordFromPds(pdsUrl, did, collection, rkey);
+ * const eprint = transformPDSRecord(record.value, uri, cid);
+ * await eprintService.indexEprint(eprint, metadata);
+ * ```
+ *
+ * @public
+ */
+export function transformPDSRecord(raw: unknown, uri: AtUri, cid: CID): Eprint {
+  return transformPDSRecordWithSchema(raw, uri, cid).eprint;
 }
 
 /**

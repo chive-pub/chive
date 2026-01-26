@@ -55,9 +55,12 @@ import type {
   IStorageBackend,
   EprintQueryOptions,
   StoredEprint,
+  ChangelogQueryOptions as StorageChangelogQueryOptions,
+  ChangelogListResult,
 } from '../../types/interfaces/storage.interface.js';
 import type { Eprint, EprintVersion } from '../../types/models/eprint.ts';
 import type { Result } from '../../types/result.js';
+import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
 import { extractPlainText } from '../../utils/rich-text.js';
 
 import { VersionManager } from './version-manager.js';
@@ -123,6 +126,78 @@ export interface EprintList {
 }
 
 /**
+ * Changelog section with category and items.
+ *
+ * @public
+ */
+export interface ChangelogSection {
+  readonly category: string;
+  readonly items: readonly ChangelogItem[];
+}
+
+/**
+ * Individual change item in a changelog section.
+ *
+ * @public
+ */
+export interface ChangelogItem {
+  readonly description: string;
+  readonly changeType?: string;
+  readonly location?: string;
+  readonly reviewReference?: string;
+}
+
+/**
+ * Semantic version for structured versioning.
+ *
+ * @public
+ */
+export interface SemanticVersionView {
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
+  readonly prerelease?: string;
+}
+
+/**
+ * Changelog view with full metadata.
+ *
+ * @public
+ */
+export interface ChangelogView {
+  readonly uri: AtUri;
+  readonly cid: CID;
+  readonly eprintUri: AtUri;
+  readonly version: SemanticVersionView;
+  readonly previousVersion?: SemanticVersionView;
+  readonly summary?: string;
+  readonly sections: readonly ChangelogSection[];
+  readonly reviewerResponse?: string;
+  readonly createdAt: string;
+}
+
+/**
+ * Paginated changelog list.
+ *
+ * @public
+ */
+export interface ChangelogList {
+  readonly changelogs: readonly ChangelogView[];
+  readonly total: number;
+  readonly cursor?: string;
+}
+
+/**
+ * Query options for changelog listing.
+ *
+ * @public
+ */
+export interface ChangelogQueryOptions {
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
+/**
  * Staleness check result.
  *
  * @public
@@ -164,6 +239,9 @@ export class EprintService {
     record: Eprint,
     metadata: RecordMetadata
   ): Promise<Result<void, DatabaseError>> {
+    // Track completed indexing stages for rollback on failure (saga pattern)
+    const completedStages: ('postgres' | 'elasticsearch' | 'neo4j')[] = [];
+
     try {
       const abstractPlainText = extractPlainText(record.abstract);
 
@@ -173,6 +251,7 @@ export class EprintService {
         resolvedFields = await this.resolveFieldLabels(record.fields);
       }
 
+      // Stage 1: PostgreSQL
       const storeResult = await this.storage.storeEprint({
         uri: metadata.uri,
         cid: metadata.cid,
@@ -209,6 +288,7 @@ export class EprintService {
           error: new DatabaseError('INDEX', storeResult.error.message),
         };
       }
+      completedStages.push('postgres');
 
       await this.storage.trackPDSSource(metadata.uri, metadata.pdsUrl, metadata.indexedAt);
 
@@ -218,7 +298,7 @@ export class EprintService {
       const authorDoc = authorDid ? await this.identity.resolveDID(authorDid) : undefined;
       const authorName = authorDoc?.alsoKnownAs?.[0] ?? primaryAuthor?.name ?? record.submittedBy;
 
-      const subjects = record.facets
+      const subjects = (record.facets ?? [])
         .filter((f) => f.dimension === 'matter' || f.dimension === 'personality')
         .map((f) => f.value);
 
@@ -231,46 +311,89 @@ export class EprintService {
           label: f.label,
         }));
 
-      await this.search.indexEprint({
-        uri: metadata.uri,
-        author: authorDid ?? record.submittedBy,
-        authorName,
-        title: record.title,
-        abstract: abstractPlainText,
-        keywords: record.keywords as string[],
-        subjects,
-        fieldNodes,
-        createdAt: new Date(record.createdAt),
-        indexedAt: metadata.indexedAt,
-      });
+      // Stage 2: Elasticsearch
+      try {
+        await this.search.indexEprint({
+          uri: metadata.uri,
+          author: authorDid ?? record.submittedBy,
+          authorName,
+          title: record.title,
+          abstract: abstractPlainText,
+          keywords: record.keywords as string[],
+          subjects,
+          fieldNodes,
+          createdAt: new Date(record.createdAt),
+          indexedAt: metadata.indexedAt,
+        });
+        completedStages.push('elasticsearch');
+      } catch (esError) {
+        // Elasticsearch failed after PostgreSQL succeeded; rollback
+        this.logger.error(
+          'Elasticsearch indexing failed, rolling back',
+          esError instanceof Error ? esError : undefined,
+          { uri: metadata.uri }
+        );
+        await this.rollbackIndexing(metadata.uri, completedStages);
+        return {
+          ok: false,
+          error: new DatabaseError(
+            'INDEX',
+            `Elasticsearch indexing failed: ${esError instanceof Error ? esError.message : String(esError)}`
+          ),
+        };
+      }
 
-      // Auto-generate tags from keywords
+      // Stage 3: Neo4j (tags from keywords)
+      // Track neo4j stage immediately once we start, so partial tags get rolled back on failure
       if (this.tagManager && record.keywords && record.keywords.length > 0) {
         const submitterDid = record.submittedBy;
         let tagsIndexed = 0;
+        // Mark stage as started before any tag operations, so rollback cleans up any partial tags
+        completedStages.push('neo4j');
 
-        for (const keyword of record.keywords) {
-          if (typeof keyword === 'string' && keyword.trim().length > 0) {
-            try {
+        try {
+          const skippedKeywords: string[] = [];
+
+          for (const keyword of record.keywords) {
+            if (typeof keyword === 'string' && keyword.trim().length > 0) {
               await this.tagManager.addTag(metadata.uri, keyword.trim(), submitterDid);
               tagsIndexed++;
-            } catch (tagError) {
-              // Log but don't fail the indexing if tag creation fails
-              this.logger.debug('Failed to create tag from keyword', {
-                keyword,
-                uri: metadata.uri,
-                error: tagError instanceof Error ? tagError.message : String(tagError),
-              });
+            } else {
+              // Track skipped keywords for warning
+              skippedKeywords.push(String(keyword));
             }
           }
-        }
 
-        if (tagsIndexed > 0) {
-          this.logger.debug('Created tags from keywords', {
-            uri: metadata.uri,
-            tagsIndexed,
-            totalKeywords: record.keywords.length,
-          });
+          if (skippedKeywords.length > 0) {
+            this.logger.warn('Skipped invalid keywords during tag indexing', {
+              uri: metadata.uri,
+              skippedCount: skippedKeywords.length,
+              skippedKeywords: skippedKeywords.slice(0, 5), // Limit to avoid log bloat
+            });
+          }
+
+          if (tagsIndexed > 0) {
+            this.logger.debug('Created tags from keywords', {
+              uri: metadata.uri,
+              tagsIndexed,
+              totalKeywords: record.keywords.length,
+            });
+          }
+        } catch (tagError) {
+          // Neo4j failed after PostgreSQL and Elasticsearch succeeded; rollback
+          this.logger.error(
+            'Neo4j tag indexing failed, rolling back',
+            tagError instanceof Error ? tagError : undefined,
+            { uri: metadata.uri }
+          );
+          await this.rollbackIndexing(metadata.uri, completedStages);
+          return {
+            ok: false,
+            error: new DatabaseError(
+              'INDEX',
+              `Neo4j tag indexing failed: ${tagError instanceof Error ? tagError.message : String(tagError)}`
+            ),
+          };
         }
       }
 
@@ -278,14 +401,72 @@ export class EprintService {
 
       return { ok: true, value: undefined };
     } catch (error) {
+      // Unexpected error; rollback any completed stages
       this.logger.error('Failed to index eprint', error instanceof Error ? error : undefined, {
         uri: metadata.uri,
       });
+      if (completedStages.length > 0) {
+        await this.rollbackIndexing(metadata.uri, completedStages);
+      }
       return {
         ok: false,
         error: new DatabaseError('INDEX', error instanceof Error ? error.message : String(error)),
       };
     }
+  }
+
+  /**
+   * Rolls back completed indexing stages on failure (compensation pattern).
+   *
+   * @param uri - AT URI of the eprint to rollback
+   * @param stages - Completed stages to rollback (in order of completion)
+   *
+   * @remarks
+   * This method is best-effort: it logs errors but does not throw.
+   * Rollback proceeds in reverse order of completion to maintain consistency.
+   *
+   * @internal
+   */
+  private async rollbackIndexing(
+    uri: AtUri,
+    stages: ('postgres' | 'elasticsearch' | 'neo4j')[]
+  ): Promise<void> {
+    this.logger.info('Rolling back indexing', { uri, stages });
+
+    // Rollback in reverse order of completion
+    const reversedStages = [...stages].reverse();
+
+    for (const stage of reversedStages) {
+      try {
+        switch (stage) {
+          case 'neo4j':
+            if (this.tagManager) {
+              const removedCount = await this.tagManager.removeAllTagsForRecord(uri);
+              this.logger.debug('Rolled back Neo4j tags', { uri, removedCount });
+            }
+            break;
+
+          case 'elasticsearch':
+            await this.search.deleteDocument(uri);
+            this.logger.debug('Rolled back Elasticsearch document', { uri });
+            break;
+
+          case 'postgres':
+            await this.storage.deleteEprint(uri);
+            this.logger.debug('Rolled back PostgreSQL record', { uri });
+            break;
+        }
+      } catch (rollbackError) {
+        // Log but continue with other rollbacks (best-effort)
+        this.logger.error(
+          `Failed to rollback ${stage}`,
+          rollbackError instanceof Error ? rollbackError : undefined,
+          { uri, stage }
+        );
+      }
+    }
+
+    this.logger.info('Rollback complete', { uri, stages });
   }
 
   async indexEprintUpdate(
@@ -298,7 +479,46 @@ export class EprintService {
 
   async indexEprintDelete(uri: AtUri): Promise<Result<void, DatabaseError>> {
     try {
-      await this.search.deleteDocument(uri);
+      // Delete from PostgreSQL first (source of truth for indexed data)
+      const storageResult = await this.storage.deleteEprint(uri);
+      if (!storageResult.ok) {
+        this.logger.warn('PostgreSQL deletion failed', {
+          uri,
+          error: storageResult.error.message,
+        });
+        // Continue to try Elasticsearch deletion
+      }
+
+      // Delete from Elasticsearch
+      try {
+        await this.search.deleteDocument(uri);
+      } catch (searchError) {
+        this.logger.warn('Elasticsearch deletion failed, PostgreSQL may already be deleted', {
+          uri,
+          error: searchError instanceof Error ? searchError.message : String(searchError),
+        });
+        // Continue; PostgreSQL is the primary index
+      }
+
+      // Clean up Neo4j tag relationships
+      // Errors here should not prevent overall deletion (log and continue)
+      if (this.tagManager) {
+        try {
+          const removedCount = await this.tagManager.removeAllTagsForRecord(uri);
+          if (removedCount > 0) {
+            this.logger.debug('Removed tag relationships from Neo4j', {
+              uri,
+              removedCount,
+            });
+          }
+        } catch (tagError) {
+          this.logger.warn('Neo4j tag cleanup failed, PostgreSQL is source of truth', {
+            uri,
+            error: tagError instanceof Error ? tagError.message : String(tagError),
+          });
+          // Continue; PostgreSQL is the primary index
+        }
+      }
 
       this.logger.info('Deleted eprint from indexes', { uri });
 
@@ -460,10 +680,117 @@ export class EprintService {
   }
 
   /**
+   * Retrieves a single changelog entry by URI.
+   *
+   * @param uri - AT URI of the changelog record
+   * @returns Changelog view or null if not found
+   *
+   * @remarks
+   * Changelogs are indexed from the firehose and describe changes
+   * between eprint versions.
+   *
+   * @example
+   * ```typescript
+   * const changelog = await eprintService.getChangelog(
+   *   'at://did:plc:abc/pub.chive.eprint.changelog/xyz'
+   * );
+   *
+   * if (changelog) {
+   *   console.log('Version:', changelog.version);
+   *   console.log('Summary:', changelog.summary);
+   * }
+   * ```
+   *
+   * @public
+   */
+  async getChangelog(uri: AtUri): Promise<ChangelogView | null> {
+    this.logger.debug('Getting changelog', { uri });
+
+    // Changelogs are stored in PostgreSQL alongside eprints.
+    // This method retrieves a single changelog by its AT-URI.
+    const changelog = await this.storage.getChangelog(uri);
+
+    if (!changelog) {
+      return null;
+    }
+
+    // Convert StoredChangelog to ChangelogView
+    return {
+      uri: changelog.uri,
+      cid: changelog.cid,
+      eprintUri: changelog.eprintUri,
+      version: changelog.version,
+      previousVersion: changelog.previousVersion,
+      summary: changelog.summary,
+      sections: changelog.sections,
+      reviewerResponse: changelog.reviewerResponse,
+      createdAt: changelog.createdAt,
+    };
+  }
+
+  /**
+   * Lists changelogs for a specific eprint with pagination.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset)
+   * @returns Paginated list of changelogs, newest first
+   *
+   * @remarks
+   * Returns changelogs ordered by creation date descending.
+   * Each changelog describes changes introduced in a specific version.
+   *
+   * @example
+   * ```typescript
+   * const result = await eprintService.listChangelogs(
+   *   'at://did:plc:abc/pub.chive.eprint.submission/xyz',
+   *   { limit: 10 }
+   * );
+   *
+   * for (const changelog of result.changelogs) {
+   *   console.log(`v${changelog.version.major}.${changelog.version.minor}: ${changelog.summary}`);
+   * }
+   * ```
+   *
+   * @public
+   */
+  async listChangelogs(eprintUri: AtUri, options?: ChangelogQueryOptions): Promise<ChangelogList> {
+    this.logger.debug('Listing changelogs', { eprintUri, options });
+
+    // Changelogs are stored in PostgreSQL and linked to eprints via eprintUri.
+    // This method retrieves all changelogs for a specific eprint.
+    const result: ChangelogListResult = await this.storage.listChangelogs(
+      eprintUri,
+      options as StorageChangelogQueryOptions
+    );
+
+    // Convert StoredChangelog[] to ChangelogView[]
+    const changelogs: ChangelogView[] = result.changelogs.map((changelog) => ({
+      uri: changelog.uri,
+      cid: changelog.cid,
+      eprintUri: changelog.eprintUri,
+      version: changelog.version,
+      previousVersion: changelog.previousVersion,
+      summary: changelog.summary,
+      sections: changelog.sections,
+      reviewerResponse: changelog.reviewerResponse,
+      createdAt: changelog.createdAt,
+    }));
+
+    return {
+      changelogs,
+      total: result.total,
+    };
+  }
+
+  /**
    * Resolves field URIs to their human-readable labels from the knowledge graph.
    *
    * @param fields - Fields with URIs (labels may be set to URIs by transformer)
    * @returns Fields with resolved labels
+   *
+   * @remarks
+   * Fields may contain either AT-URIs or UUIDs. This method extracts UUIDs
+   * from AT-URIs before querying Neo4j, which stores nodes by UUID.
    *
    * @internal
    */
@@ -474,8 +801,8 @@ export class EprintService {
       return fields;
     }
 
-    // Extract field IDs (URIs are UUIDs in this context)
-    const fieldIds = fields.map((f) => f.uri);
+    // Extract UUIDs from AT-URIs (Neo4j stores nodes by UUID, not full AT-URI)
+    const fieldIds = fields.map((f) => extractRkeyOrPassthrough(f.uri));
 
     try {
       // Batch fetch all field nodes from the knowledge graph
@@ -483,12 +810,13 @@ export class EprintService {
 
       // Map fields with resolved labels
       return fields.map((field) => {
-        const node = nodeMap.get(field.uri);
+        const fieldId = extractRkeyOrPassthrough(field.uri);
+        const node = nodeMap.get(fieldId);
         if (node) {
           return {
             uri: field.uri,
             label: node.label,
-            id: field.id ?? field.uri,
+            id: field.id ?? fieldId,
           };
         }
         // Keep original if node not found (fallback to URI)

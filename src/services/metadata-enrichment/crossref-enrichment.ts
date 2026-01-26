@@ -13,6 +13,14 @@
  * @since 0.2.0
  */
 
+import { createLogger } from '../../observability/logger.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
+
+/**
+ * Module-level logger for CrossRef API operations.
+ */
+const logger: ILogger = createLogger({ service: 'crossref-enrichment' });
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -241,7 +249,11 @@ async function fetchCrossRef<T>(endpoint: string): Promise<T | null> {
       if (response.status === 404) {
         return null;
       }
-      console.error(`CrossRef API error: ${response.status} ${response.statusText}`);
+      logger.error('CrossRef API error', undefined, {
+        status: response.status,
+        statusText: response.statusText,
+        endpoint,
+      });
       return null;
     }
 
@@ -252,7 +264,10 @@ async function fetchCrossRef<T>(endpoint: string): Promise<T | null> {
 
     return data.message;
   } catch (error) {
-    console.error('CrossRef API request failed:', error);
+    logger.error('CrossRef API request failed', error instanceof Error ? error : undefined, {
+      endpoint,
+      details: error instanceof Error ? undefined : String(error),
+    });
     return null;
   }
 }

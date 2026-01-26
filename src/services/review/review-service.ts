@@ -431,7 +431,7 @@ export class ReviewService {
       const buildThread = (reviewUri: string): ReviewThread => {
         const review = reviewMap.get(reviewUri);
         if (!review) {
-          throw new Error(`Review not found in map: ${reviewUri}`);
+          throw new DatabaseError('READ', `Review not found in map: ${reviewUri}`);
         }
         const replies: ReviewThread[] = [];
 

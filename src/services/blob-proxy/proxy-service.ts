@@ -29,6 +29,7 @@
 
 import type { IPolicy } from 'cockatiel';
 
+import { IdentityResolutionError } from '../../atproto/errors/repository-errors.js';
 import type { BlobRef, CID, DID } from '../../types/atproto.js';
 import { DatabaseError } from '../../types/errors.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
@@ -861,7 +862,11 @@ export class BlobProxyService {
 
       // If identity resolver returns null, throw an error
       // Do NOT fall back to a hardcoded PDS - this would break federation
-      throw new Error(`Failed to resolve PDS endpoint for DID: ${did}`);
+      throw new IdentityResolutionError(
+        `Failed to resolve PDS endpoint for DID: ${did}`,
+        did,
+        'no_pds'
+      );
     } catch (error) {
       this.logger.error('DID resolution failed', error instanceof Error ? error : undefined, {
         did,
