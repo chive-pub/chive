@@ -41,7 +41,7 @@ import type { IIdentityResolver } from '../../types/interfaces/identity.interfac
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
-import { transformPDSRecord } from '../eprint/pds-record-transformer.js';
+import { transformPDSRecordWithSchema } from '../eprint/pds-record-transformer.js';
 import type { EdgeService } from '../governance/edge-service.js';
 import type { NodeService } from '../governance/node-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
@@ -447,11 +447,21 @@ async function processRecord(
       } else if (record) {
         try {
           // Transform PDS record format to internal Eprint model
-          const eprintRecord = transformPDSRecord(record, uri, cid ?? ('' as CID));
+          // Also capture whether the source uses legacy abstract format
+          const transformResult = transformPDSRecordWithSchema(record, uri, cid ?? ('' as CID));
+          const eprintRecord = transformResult.eprint;
+          const needsAbstractMigration = transformResult.abstractFormat === 'string';
+
+          // Add migration flag to metadata
+          const enrichedMetadata: RecordMetadata = {
+            ...metadata,
+            needsAbstractMigration,
+          };
+
           const result =
             action === 'update'
-              ? await eprintService.indexEprintUpdate(uri, eprintRecord, metadata)
-              : await eprintService.indexEprint(eprintRecord, metadata);
+              ? await eprintService.indexEprintUpdate(uri, eprintRecord, enrichedMetadata)
+              : await eprintService.indexEprint(eprintRecord, enrichedMetadata);
           if (!result.ok) {
             const error = result.error as Error;
             logger.error('Failed to index eprint', error, { uri, action });

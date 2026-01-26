@@ -279,6 +279,19 @@ export interface StoredEprint {
   readonly conferencePresentation?: ConferencePresentation;
 
   /**
+   * Indicates the source PDS record uses a legacy abstract format.
+   *
+   * @remarks
+   * Set during indexing when the source record has a plain string abstract
+   * instead of the current rich text array format. Used to show migration
+   * hints to users. This is indexing metadata, not a domain concept.
+   *
+   * The knowledge of legacy formats lives only in the normalization code;
+   * this flag simply records whether migration is available.
+   */
+  readonly needsAbstractMigration?: boolean;
+
+  /**
    * URL of the user's PDS where this eprint lives.
    *
    * @remarks

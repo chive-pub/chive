@@ -227,40 +227,19 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
       pdsUrl: result.pdsUrl,
     };
 
-    // Analyze the indexed record for schema compatibility hints
-    // Note: We analyze the stored format, which may differ from the original PDS record
-    // if transformation occurred during indexing. This is intentional: we want to hint
-    // about the source record format, not the normalized internal format.
-    //
-    // Since we store normalized data, we reconstruct what the source format likely was
-    // based on the abstract items structure.
-    //
-    // LIMITATION: This heuristic may produce false positives/negatives. A single-item
-    // RichText array with content equal to abstractPlainText is indistinguishable from
-    // a legacy string abstract that was transformed. The ideal solution would be to
-    // store `abstractSourceFormat` during indexing, but this heuristic is acceptable
-    // for migration hints since it errs on the side of suggesting updates for records
-    // that may already be current.
-    const firstItem = result.abstract.items[0];
-    const wasLikelyStringFormat =
-      result.abstract.items.length === 1 &&
-      firstItem?.type === 'text' &&
-      'content' in firstItem &&
-      result.abstractPlainText === firstItem.content;
+    // Include schema hints only if migration is needed
+    // The needsAbstractMigration flag is set during indexing based on the source
+    // record format. This avoids heuristic-based detection which had false positives.
+    if (result.needsAbstractMigration) {
+      const schemaDetection = schemaService.analyzeEprintRecord({
+        // Pass a string to trigger the legacy format detection
+        abstract: result.abstractPlainText ?? '',
+      });
 
-    const schemaDetection = schemaService.analyzeEprintRecord({
-      // Pass the value object for analysis
-      // Note: Since we always transform to array format internally, we need to check
-      // if this was originally a string by looking at abstractPlainText vs items
-      abstract: wasLikelyStringFormat
-        ? result.abstractPlainText // Was likely a string originally
-        : result.abstract.items, // Array format
-    });
-
-    // Include schema hints only if there are deprecated formats
-    const schemaHints = schemaService.generateApiHints(schemaDetection);
-    if (schemaHints) {
-      response._schemaHints = schemaHints;
+      const schemaHints = schemaService.generateApiHints(schemaDetection);
+      if (schemaHints) {
+        response._schemaHints = schemaHints;
+      }
     }
 
     return { encoding: 'application/json', body: response };

@@ -110,6 +110,7 @@ interface EprintRow extends Record<string, unknown> {
   readonly conference_presentation: string | null; // JSONB
   readonly supplementary_materials: string | null; // JSONB
   readonly fields: string | null; // JSONB
+  readonly needs_abstract_migration: boolean | null;
   readonly pds_url: string;
   readonly indexed_at: Date;
   readonly created_at: Date;
@@ -226,6 +227,7 @@ export class EprintsRepository {
             ? JSON.stringify(eprint.supplementaryMaterials)
             : null,
           fields: eprint.fields ? JSON.stringify(eprint.fields) : null,
+          needs_abstract_migration: eprint.needsAbstractMigration ?? null,
           pds_url: eprint.pdsUrl,
           indexed_at: eprint.indexedAt,
           created_at: eprint.createdAt,
@@ -308,6 +310,7 @@ export class EprintsRepository {
             ? JSON.stringify(eprint.supplementaryMaterials)
             : null,
           fields: eprint.fields ? JSON.stringify(eprint.fields) : null,
+          needs_abstract_migration: eprint.needsAbstractMigration ?? null,
           pds_url: eprint.pdsUrl,
           indexed_at: eprint.indexedAt,
           created_at: eprint.createdAt,
@@ -378,6 +381,7 @@ export class EprintsRepository {
           'conference_presentation',
           'supplementary_materials',
           'fields',
+          'needs_abstract_migration',
           'pds_url',
           'indexed_at',
           'created_at'
@@ -452,7 +456,7 @@ export class EprintsRepository {
           document_blob_size, document_format, version, keywords, license,
           publication_status, published_version, external_ids, related_works,
           repositories, funding, conference_presentation, supplementary_materials,
-          fields, pds_url, indexed_at, created_at
+          fields, needs_abstract_migration, pds_url, indexed_at, created_at
         FROM eprints_index
         WHERE authors @> $1::jsonb
         ORDER BY ${sortColumn} ${sortDirection}
@@ -796,6 +800,7 @@ export class EprintsRepository {
       conferencePresentation,
       supplementaryMaterials,
       fields,
+      needsAbstractMigration: row.needs_abstract_migration ?? undefined,
       pdsUrl: row.pds_url,
       indexedAt: new Date(row.indexed_at),
       createdAt: new Date(row.created_at),
@@ -942,7 +947,8 @@ export class EprintsRepository {
         document_format, version, keywords, license, publication_status,
         previous_version_uri, version_notes, supplementary_materials,
         published_version, external_ids, related_works, repositories,
-        funding, conference_presentation, fields, pds_url, indexed_at, created_at
+        funding, conference_presentation, fields, needs_abstract_migration,
+        pds_url, indexed_at, created_at
       FROM eprints_index
       WHERE ${conditions.join(' OR ')}
       LIMIT 1

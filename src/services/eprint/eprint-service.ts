@@ -75,6 +75,14 @@ export interface RecordMetadata {
   readonly cid: CID;
   readonly pdsUrl: string;
   readonly indexedAt: Date;
+  /**
+   * Indicates the source record uses a legacy abstract format.
+   *
+   * @remarks
+   * Set by the transformer when the source PDS record has a plain string
+   * abstract instead of the current rich text array format.
+   */
+  readonly needsAbstractMigration?: boolean;
 }
 
 /**
@@ -277,6 +285,7 @@ export class EprintService {
         repositories: record.repositories,
         funding: record.funding,
         conferencePresentation: record.conferencePresentation,
+        needsAbstractMigration: metadata.needsAbstractMigration,
         pdsUrl: metadata.pdsUrl,
         indexedAt: metadata.indexedAt,
         createdAt: new Date(record.createdAt),
