@@ -25,6 +25,17 @@ import { EventFilter } from '../../src/services/indexing/event-filter.js';
 import { FirehoseConsumer } from '../../src/services/indexing/firehose-consumer.js';
 import { ReconnectionManager } from '../../src/services/indexing/reconnection-manager.js';
 import type { CID, NSID } from '../../src/types/atproto.js';
+import type { ILogger } from '../../src/types/interfaces/logger.interface.js';
+
+function createMockLogger(): ILogger {
+  return {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  };
+}
 
 // Mock types for test dependencies
 interface MockCursorManager {
@@ -124,6 +135,7 @@ describe('ATProto Firehose Compliance', () => {
         db: mockDb as unknown as Pool,
         redis: mockRedis as unknown as Redis,
         serviceName: 'test-consumer',
+        logger: createMockLogger(),
       });
 
       // Simulate processing events
@@ -159,6 +171,7 @@ describe('ATProto Firehose Compliance', () => {
         redis: mockRedis as unknown as Redis,
         serviceName: 'test-consumer',
         batchSize: 1, // Flush immediately
+        logger: createMockLogger(),
       });
 
       await cursorManager.updateCursor(100);
@@ -191,6 +204,7 @@ describe('ATProto Firehose Compliance', () => {
         db: mockDb as unknown as Pool,
         redis: mockRedis as unknown as Redis,
         serviceName: 'test-consumer',
+        logger: createMockLogger(),
       });
 
       // Simulate restart: read cursor from database
@@ -216,6 +230,7 @@ describe('ATProto Firehose Compliance', () => {
         redis: mockRedis as unknown as Redis,
         serviceName: 'test-consumer',
         batchSize: 100, // Batch 100 events
+        logger: createMockLogger(),
       });
 
       // Process 50 events (below batch size)
@@ -456,6 +471,7 @@ describe('ATProto Firehose Compliance', () => {
         redis: mockRedis as unknown as Redis,
         serviceName: 'test-consumer',
         batchSize: 100, // Large batch
+        logger: createMockLogger(),
       });
 
       // Queue some cursor updates
@@ -489,6 +505,7 @@ describe('ATProto Firehose Compliance', () => {
           serviceName: 'test-consumer',
           batchSize: 1000, // High batch size
           flushInterval: 5000, // 5 seconds
+          logger: createMockLogger(),
         });
 
         // Queue cursor update

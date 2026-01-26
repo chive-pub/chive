@@ -161,7 +161,7 @@ describe('CommitHandler', () => {
       await expect(handler.parseCommit(event)).rejects.toThrow('Event blocks too large');
     });
 
-    it('handles events with no blocks', async () => {
+    it('throws ParseError for create/update ops with no blocks', async () => {
       const event = {
         $type: 'com.atproto.sync.subscribeRepos#commit' as const,
         repo: 'did:plc:abc123' as DID,
@@ -177,14 +177,10 @@ describe('CommitHandler', () => {
         time: '2024-01-01T00:00:00Z',
       };
 
-      const result = await handler.parseCommit(event);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
-        action: 'create',
-        path: 'pub.chive.eprint.submission/xyz',
-        cid: 'bafyreidef456',
-      });
+      await expect(handler.parseCommit(event)).rejects.toThrow(ParseError);
+      await expect(handler.parseCommit(event)).rejects.toThrow(
+        'Commit event missing blocks for create/update operations'
+      );
     });
 
     it('handles empty blocks array', async () => {
@@ -227,16 +223,16 @@ describe('CommitHandler', () => {
       });
     });
 
-    it('returns ops with CID when no blocks provided', async () => {
-      // When blocks are missing, ops are returned as-is with their CIDs
-      // (no record data can be decoded without blocks)
+    it('throws ParseError for update ops when no blocks provided', async () => {
+      // Create/update operations require blocks to decode record data
+      // Missing blocks is a malformed event that should fail fast
       const event = {
         $type: 'com.atproto.sync.subscribeRepos#commit' as const,
         repo: 'did:plc:abc123' as DID,
         commit: 'bafyreiabc123' as CID,
         ops: [
           {
-            action: 'create' as const,
+            action: 'update' as const,
             path: 'pub.chive.eprint.submission/xyz',
             cid: 'bafyreixyz123' as CID,
           },
@@ -245,14 +241,10 @@ describe('CommitHandler', () => {
         time: '2024-01-01T00:00:00Z',
       };
 
-      const result = await handler.parseCommit(event);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
-        action: 'create',
-        path: 'pub.chive.eprint.submission/xyz',
-        cid: 'bafyreixyz123',
-      });
+      await expect(handler.parseCommit(event)).rejects.toThrow(ParseError);
+      await expect(handler.parseCommit(event)).rejects.toThrow(
+        'Commit event missing blocks for create/update operations'
+      );
     });
 
     // Note: Testing actual CAR parsing requires creating valid CAR files,
