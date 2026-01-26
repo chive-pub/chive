@@ -21,17 +21,25 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/eprint/searchSubmissions.js';
+import type { KnowledgeGraphService } from '../../../../services/knowledge-graph/graph-service.js';
 import { TaxonomyCategoryMatcher } from '../../../../services/search/category-matcher.js';
 import type { LTRFeatureVector } from '../../../../services/search/relevance-logger.js';
 import { AcademicTextScorer } from '../../../../services/search/text-scorer.js';
 import type { DID } from '../../../../types/atproto.js';
+import type { GraphNode } from '../../../../types/interfaces/graph.interface.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
  * Computes recency score from publication date.
  *
  * @param dateStr - ISO date string
- * @returns Score from 0 (old) to 1 (recent)
+ * @returns score from 0 (old) to 1 (recent)
+ *
+ * @example
+ * ```typescript
+ * computeRecencyScore('2024-01-15T00:00:00Z'); // ~0.97 for a recent date
+ * computeRecencyScore('2020-01-15T00:00:00Z'); // ~0.37 for an older date
+ * ```
  */
 function computeRecencyScore(dateStr: string): number {
   const date = new Date(dateStr);
@@ -41,14 +49,116 @@ function computeRecencyScore(dateStr: string): number {
 }
 
 /**
+ * Hierarchy type returned by KnowledgeGraphService.getHierarchy.
+ *
+ * @internal
+ */
+interface HierarchyNode {
+  node: GraphNode;
+  children: HierarchyNode[];
+  depth: number;
+}
+
+/**
+ * Flattens a hierarchy to extract all URIs including children.
+ *
+ * @param hierarchy - the node hierarchy to flatten
+ * @returns array of all node URIs in the hierarchy
+ *
+ * @example
+ * ```typescript
+ * const uris = flattenHierarchy(hierarchy);
+ * // ['at://did:plc:abc/pub.chive.graph.node/root', 'at://did:plc:abc/pub.chive.graph.node/child1']
+ * ```
+ */
+function flattenHierarchy(hierarchy: HierarchyNode): string[] {
+  const uris: string[] = [];
+  if (hierarchy.node.uri) {
+    uris.push(hierarchy.node.uri);
+  }
+  for (const child of hierarchy.children) {
+    uris.push(...flattenHierarchy(child));
+  }
+  return uris;
+}
+
+/**
+ * Expands field URIs to include narrower (child) fields.
+ *
+ * @param graph - the knowledge graph service
+ * @param fieldUris - array of field URIs to expand
+ * @param maxDepth - maximum depth to traverse (default: 3)
+ * @returns expanded array including original and child field URIs
+ *
+ * @example
+ * ```typescript
+ * const expanded = await expandFieldsWithNarrower(graph, ['at://did/col/cs'], 2);
+ * // ['at://did/col/cs', 'at://did/col/cs.ai', 'at://did/col/cs.ml']
+ * ```
+ */
+async function expandFieldsWithNarrower(
+  graph: KnowledgeGraphService | undefined,
+  fieldUris: readonly string[] | undefined,
+  maxDepth = 3
+): Promise<string[]> {
+  if (!graph || !fieldUris || fieldUris.length === 0) {
+    return fieldUris ? [...fieldUris] : [];
+  }
+
+  const expanded = new Set<string>(fieldUris);
+
+  const expansionPromises = fieldUris.map(async (uri) => {
+    try {
+      const hierarchy = await graph.getHierarchy(uri, maxDepth);
+      if (!hierarchy) {
+        return [uri];
+      }
+      const childUris = flattenHierarchy(hierarchy as HierarchyNode);
+      return childUris;
+    } catch {
+      // If hierarchy lookup fails, just use the original URI
+      return [uri];
+    }
+  });
+
+  const results = await Promise.all(expansionPromises);
+  for (const uris of results) {
+    for (const uri of uris) {
+      expanded.add(uri);
+    }
+  }
+
+  return Array.from(expanded);
+}
+
+/**
  * XRPC method for pub.chive.eprint.searchSubmissions.
+ *
+ * @remarks
+ * Performs full-text search with optional faceted filtering.
+ * Supports browsing mode (no query) which returns all indexed eprints.
+ * Logs impressions for LTR training when a text query is provided.
+ *
+ * @example
+ * ```http
+ * GET /xrpc/pub.chive.eprint.searchSubmissions?q=neural+networks&limit=20
+ *
+ * Response:
+ * {
+ *   "hits": [
+ *     { "uri": "at://did:plc:abc/pub.chive.eprint.submission/xyz", "score": 1500, "title": "..." }
+ *   ],
+ *   "total": 42,
+ *   "cursor": "20"
+ * }
+ * ```
  *
  * @public
  */
 export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
-    const { search, eprint, relevanceLogger, ranking } = c.get('services');
+    const { search, eprint, relevanceLogger, ranking, graph } = c.get('services');
     const logger = c.get('logger');
     const user = c.get('user');
 
@@ -67,10 +177,15 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
     // Use '*' as the query string for browsing mode (returns all documents)
     const queryString = params.q ?? '*';
 
+    // Expand fieldUris to include narrower (child) fields
+    const expandedFieldUris = await expandFieldsWithNarrower(graph, params.fieldUris);
+
     logger.debug('Searching eprints', {
       query: queryString,
       limit: params.limit,
       fieldUris: params.fieldUris,
+      expandedFieldUris:
+        expandedFieldUris.length > (params.fieldUris?.length ?? 0) ? expandedFieldUris : undefined,
       author: params.author,
       browsingMode: !params.q,
     });
@@ -81,7 +196,7 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
       offset: params.cursor ? parseInt(params.cursor, 10) : 0,
       filters: {
         author: params.author as DID | undefined,
-        subjects: params.fieldUris,
+        subjects: expandedFieldUris.length > 0 ? expandedFieldUris : undefined,
         dateFrom: params.dateFrom ? new Date(params.dateFrom) : undefined,
         dateTo: params.dateTo ? new Date(params.dateTo) : undefined,
       },
