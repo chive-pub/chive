@@ -4,9 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 import { singleton } from 'tsyringe';
 
+import { createLogger } from '../../observability/logger.js';
 import { DatabaseError } from '../../types/errors.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 import { Neo4jConnection } from './connection.js';
+
+/**
+ * Module-level logger for Neo4j setup operations.
+ */
+const logger: ILogger = createLogger({ service: 'neo4j-setup' });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -189,7 +196,7 @@ export class Neo4jSetupManager {
       } catch (err) {
         // Log but don't fail on duplicate data (MERGE should handle)
         const error = err instanceof Error ? err : new Error(String(err));
-        console.warn(`Warning during initial data load: ${error.message}`);
+        logger.warn('Warning during initial data load', { error: error.message });
       }
     }
   }

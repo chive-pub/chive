@@ -233,6 +233,25 @@ export const firehoseMetrics = {
     help: 'Number of active firehose connections',
     registers: [prometheusRegistry],
   } satisfies GaugeConfiguration<string>),
+
+  /**
+   * Total firehose parse errors counter.
+   *
+   * @remarks
+   * Counts events that failed to parse from the Jetstream JSON format.
+   * Labels: error_type (json_parse, validation, unknown)
+   *
+   * @example
+   * ```typescript
+   * firehoseMetrics.parseErrorsTotal.inc({ error_type: 'json_parse' });
+   * ```
+   */
+  parseErrorsTotal: new Counter({
+    name: 'chive_firehose_parse_errors_total',
+    help: 'Total number of firehose events that failed to parse',
+    labelNames: ['error_type'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'error_type'>),
 };
 
 /**

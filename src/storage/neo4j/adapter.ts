@@ -73,6 +73,13 @@ export class Neo4jAdapter implements IGraphDatabase {
 
   /**
    * Upserts a node.
+   *
+   * @param node - Node data to upsert
+   * @throws {DatabaseError} If the Neo4j operation fails after retries
+   *
+   * @remarks
+   * Errors are thrown (not returned as Result) to match the IGraphDatabase interface.
+   * The underlying Neo4jConnection handles retry logic and wraps errors in DatabaseError.
    */
   async upsertNode(node: NodeInput): Promise<void> {
     const kindLabel = node.kind === 'type' ? 'Type' : 'Object';

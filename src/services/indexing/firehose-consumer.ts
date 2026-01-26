@@ -56,6 +56,7 @@ import type {
   RepoOp,
   SubscriptionOptions,
 } from '../../types/interfaces/event-stream.interface.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 import type { CursorManager } from './cursor-manager.js';
 import { ReconnectionManager } from './reconnection-manager.js';
@@ -106,6 +107,14 @@ export interface FirehoseConsumerOptions {
    * If not provided, creates default manager with 10 max attempts.
    */
   readonly reconnectionManager?: ReconnectionManager;
+
+  /**
+   * Logger instance for structured logging.
+   *
+   * @remarks
+   * If not provided, logging is silently skipped.
+   */
+  readonly logger?: ILogger;
 }
 
 /**
@@ -192,6 +201,7 @@ interface EventBuffer {
 export class FirehoseConsumer implements IEventStreamConsumer {
   private readonly cursorManager: CursorManager;
   private readonly reconnectionManager: ReconnectionManager;
+  private readonly logger: ILogger | null;
 
   private ws: WebSocket | null = null;
   private state: ConnectionState = ConnectionState.DISCONNECTED;
@@ -214,6 +224,7 @@ export class FirehoseConsumer implements IEventStreamConsumer {
         maxDelay: 30000,
         enableJitter: true,
       });
+    this.logger = options.logger ?? null;
   }
 
   /**
@@ -566,7 +577,9 @@ export class FirehoseConsumer implements IEventStreamConsumer {
       // Add to buffer
       this.bufferEvent(event);
     } catch (error) {
-      console.error('Failed to parse Jetstream event:', error);
+      // Track parse failures
+      const errorType = error instanceof SyntaxError ? 'json_parse' : 'unknown';
+      firehoseMetrics.parseErrorsTotal.inc({ error_type: errorType });
     }
   }
 
@@ -576,7 +589,7 @@ export class FirehoseConsumer implements IEventStreamConsumer {
    * @internal
    */
   private onError(error: Error): void {
-    console.error('WebSocket error:', error);
+    this.logger?.error('WebSocket error', error, { state: this.state });
     this.state = ConnectionState.FAILED;
   }
 
@@ -603,9 +616,11 @@ export class FirehoseConsumer implements IEventStreamConsumer {
     // Attempt reconnection
     if (this.reconnectionManager.shouldRetry()) {
       const delay = this.reconnectionManager.calculateDelay();
-      console.warn(
-        `Reconnecting in ${delay}ms (attempt ${this.reconnectionManager.getAttempts() + 1})`
-      );
+      const attempt = this.reconnectionManager.getAttempts() + 1;
+      this.logger?.warn('Scheduling firehose reconnection', {
+        delayMs: delay,
+        attempt,
+      });
 
       await this.sleep(delay);
       this.reconnectionManager.recordAttempt();
@@ -613,7 +628,11 @@ export class FirehoseConsumer implements IEventStreamConsumer {
       try {
         await this.connect();
       } catch (error) {
-        console.error('Reconnection failed:', error);
+        this.logger?.error(
+          'Reconnection failed',
+          error instanceof Error ? error : new Error(String(error)),
+          { attempt }
+        );
 
         if (!this.reconnectionManager.shouldRetry()) {
           // Max retries exceeded: terminate stream

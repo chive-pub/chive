@@ -269,7 +269,12 @@ export class TagManager {
     const paperCount = Number(record?.get('paperCount')) || 0;
 
     // Update unique users and paper counts asynchronously
-    void this.updateTagStatistics(normalized);
+    this.updateTagStatistics(normalized).catch((error) => {
+      this.logger?.warn('Failed to update tag statistics', {
+        tag: normalized,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 
     // Record usage to facet history for trending calculation
     if (this.facetHistoryRepository) {
@@ -288,6 +293,34 @@ export class TagManager {
       normalizedForm: normalized,
       existed,
     };
+  }
+
+  /**
+   * Remove all tags from a record.
+   *
+   * Used when deleting an eprint to clean up all tag relationships.
+   *
+   * @param recordUri - Record AT-URI
+   * @returns Number of tag relationships removed
+   */
+  async removeAllTagsForRecord(recordUri: AtUri): Promise<number> {
+    const query = `
+      MATCH (record {uri: $recordUri})-[r:TAGGED_WITH]->(tag:UserTag)
+      WITH r, tag
+      DELETE r
+      WITH tag
+      SET tag.usageCount = CASE WHEN tag.usageCount > 0 THEN tag.usageCount - 1 ELSE 0 END,
+          tag.updatedAt = datetime()
+      RETURN count(tag) as removedCount
+    `;
+
+    const result = await this.connection.executeQuery<{ removedCount: number }>(query, {
+      recordUri,
+    });
+
+    const removedCount = Number(result.records[0]?.get('removedCount')) || 0;
+
+    return removedCount;
   }
 
   /**
@@ -316,7 +349,12 @@ export class TagManager {
     const paperCount = Number(record?.get('paperCount')) || 0;
 
     // Update statistics
-    void this.updateTagStatistics(normalizedTag);
+    this.updateTagStatistics(normalizedTag).catch((error) => {
+      this.logger?.warn('Failed to update tag statistics after removal', {
+        tag: normalizedTag,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 
     // Record updated usage to facet history for trending calculation
     if (this.facetHistoryRepository) {
@@ -647,7 +685,12 @@ export class TagManager {
     await this.connection.executeQuery(query, { normalizedTag });
 
     // Update quality score based on usage patterns
-    void this.updateQualityScore(normalizedTag);
+    this.updateQualityScore(normalizedTag).catch((error) => {
+      this.logger?.warn('Failed to update tag quality score', {
+        tag: normalizedTag,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
   /**
@@ -819,7 +862,12 @@ export class TagManager {
     });
 
     // Update canonical tag statistics
-    void this.updateTagStatistics(canonicalNorm);
+    this.updateTagStatistics(canonicalNorm).catch((error) => {
+      this.logger?.warn('Failed to update canonical tag statistics', {
+        tag: canonicalNorm,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
   /**

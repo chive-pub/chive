@@ -49,10 +49,14 @@
  * @since 0.1.0
  */
 
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 import type { AtUri, CID, DID } from '../../types/atproto.js';
-import type { EprintQueryOptions, StoredEprint } from '../../types/interfaces/storage.interface.js';
+import type {
+  EprintQueryOptions,
+  SemanticVersion,
+  StoredEprint,
+} from '../../types/interfaces/storage.interface.js';
 import type { AnnotationBody } from '../../types/models/annotation.js';
 import type { EprintAuthor } from '../../types/models/author.js';
 import type {
@@ -69,6 +73,7 @@ import type {
 import { Err, Ok, type Result } from '../../types/result.js';
 
 import { InsertBuilder, SelectBuilder, UpdateBuilder } from './query-builder.js';
+import { withTransaction } from './transaction.js';
 
 /**
  * Database row representation of eprint index record.
@@ -93,7 +98,7 @@ interface EprintRow extends Record<string, unknown> {
   readonly document_blob_mime_type: string;
   readonly document_blob_size: number;
   readonly document_format: string;
-  readonly version: number;
+  readonly version: string | number; // JSONB (SemanticVersion) or integer
   readonly keywords: string[] | null;
   readonly license: string;
   readonly publication_status: string;
@@ -202,7 +207,8 @@ export class EprintsRepository {
           document_blob_mime_type: eprint.documentBlobRef.mimeType,
           document_blob_size: eprint.documentBlobRef.size,
           document_format: eprint.documentFormat,
-          version: eprint.version,
+          version:
+            typeof eprint.version === 'number' ? eprint.version : JSON.stringify(eprint.version),
           keywords: eprint.keywords ? [...eprint.keywords] : null,
           license: eprint.license,
           publication_status: eprint.publicationStatus,
@@ -230,12 +236,95 @@ export class EprintsRepository {
       await this.pool.query(query.sql, [...query.params]);
       return Ok(undefined);
     } catch (error) {
-      // Temporary debug logging for test failure investigation
-      console.error('DEBUG eprints-repository store error:', error);
       return Err(
         error instanceof Error ? error : new Error(`Failed to store eprint: ${String(error)}`)
       );
     }
+  }
+
+  /**
+   * Stores an eprint and tracks PDS source in a single transaction.
+   *
+   * @param eprint - Eprint metadata to index
+   * @param pdsUrl - URL of the user's PDS
+   * @param lastSynced - Last successful sync timestamp
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Wraps both store and PDS tracking in a transaction for atomicity.
+   * If either operation fails, both are rolled back.
+   *
+   * **ATProto Compliance:** Ensures consistent PDS source tracking.
+   *
+   * @example
+   * ```typescript
+   * const result = await repo.storeWithPDSTracking(
+   *   eprintData,
+   *   'https://pds.example.com',
+   *   new Date()
+   * );
+   * ```
+   *
+   * @public
+   */
+  async storeWithPDSTracking(
+    eprint: StoredEprint,
+    pdsUrl: string,
+    lastSynced: Date
+  ): Promise<Result<void, Error>> {
+    return withTransaction(this.pool, async (client: PoolClient) => {
+      // Build insert query
+      const query = new InsertBuilder<EprintRow>()
+        .into('eprints_index')
+        .values({
+          uri: eprint.uri,
+          cid: eprint.cid,
+          authors: JSON.stringify(eprint.authors),
+          submitted_by: eprint.submittedBy,
+          paper_did: eprint.paperDid ?? null,
+          title: eprint.title,
+          abstract: JSON.stringify(eprint.abstract),
+          abstract_plain_text: eprint.abstractPlainText ?? null,
+          document_blob_cid: eprint.documentBlobRef.ref,
+          document_blob_mime_type: eprint.documentBlobRef.mimeType,
+          document_blob_size: eprint.documentBlobRef.size,
+          document_format: eprint.documentFormat,
+          version:
+            typeof eprint.version === 'number' ? eprint.version : JSON.stringify(eprint.version),
+          keywords: eprint.keywords ? [...eprint.keywords] : null,
+          license: eprint.license,
+          publication_status: eprint.publicationStatus,
+          published_version: eprint.publishedVersion
+            ? JSON.stringify(eprint.publishedVersion)
+            : null,
+          external_ids: eprint.externalIds ? JSON.stringify(eprint.externalIds) : null,
+          related_works: eprint.relatedWorks ? JSON.stringify(eprint.relatedWorks) : null,
+          repositories: eprint.repositories ? JSON.stringify(eprint.repositories) : null,
+          funding: eprint.funding ? JSON.stringify(eprint.funding) : null,
+          conference_presentation: eprint.conferencePresentation
+            ? JSON.stringify(eprint.conferencePresentation)
+            : null,
+          supplementary_materials: eprint.supplementaryMaterials
+            ? JSON.stringify(eprint.supplementaryMaterials)
+            : null,
+          fields: eprint.fields ? JSON.stringify(eprint.fields) : null,
+          pds_url: eprint.pdsUrl,
+          indexed_at: eprint.indexedAt,
+          created_at: eprint.createdAt,
+        })
+        .onConflict('uri', 'update')
+        .build();
+
+      // Execute eprint upsert
+      await client.query(query.sql, [...query.params]);
+
+      // Update PDS tracking in same transaction
+      await client.query(`UPDATE eprints_index SET pds_url = $1, indexed_at = $2 WHERE uri = $3`, [
+        pdsUrl,
+        lastSynced,
+        eprint.uri,
+      ]);
+    });
   }
 
   /**
@@ -695,7 +784,7 @@ export class EprintsRepository {
         size: row.document_blob_size,
       },
       documentFormat: row.document_format as DocumentFormat,
-      version: row.version ?? 1,
+      version: this.parseVersion(row.version),
       keywords: row.keywords ?? undefined,
       license: row.license,
       publicationStatus: row.publication_status as PublicationStatus,
@@ -714,6 +803,40 @@ export class EprintsRepository {
   }
 
   /**
+   * Parses version from database format.
+   *
+   * @param version - Version from database (number or JSON string)
+   * @returns Parsed version (number or SemanticVersion)
+   *
+   * @internal
+   */
+  private parseVersion(version: string | number | null | undefined): number | SemanticVersion {
+    if (version === null || version === undefined) {
+      return 1;
+    }
+    if (typeof version === 'number') {
+      return version;
+    }
+    // Try to parse as SemanticVersion JSON
+    try {
+      const parsed = JSON.parse(version) as SemanticVersion;
+      if (
+        typeof parsed === 'object' &&
+        typeof parsed.major === 'number' &&
+        typeof parsed.minor === 'number' &&
+        typeof parsed.patch === 'number'
+      ) {
+        return parsed;
+      }
+      // Invalid semantic version structure, treat as integer
+      return parseInt(version, 10) || 1;
+    } catch {
+      // Not valid JSON, try to parse as integer
+      return parseInt(version, 10) || 1;
+    }
+  }
+
+  /**
    * Finds an eprint by external identifiers.
    *
    * @param externalIds - External service identifiers to search
@@ -721,7 +844,17 @@ export class EprintsRepository {
    *
    * @remarks
    * Searches in priority order: DOI, arXiv, Semantic Scholar, OpenAlex, DBLP,
-   * OpenReview, PubMed, SSRN. Uses the GIN index on external_ids JSONB column.
+   * OpenReview, PubMed, SSRN.
+   *
+   * **Index Requirements:**
+   * This method queries JSONB paths on `external_ids` and `published_version` columns.
+   * Performance depends on the following GIN indexes from migration 1732910000000:
+   * - `idx_eprints_external_ids_gin` - GIN index on `external_ids` JSONB
+   *
+   * Note: The `->>` operator extracts text values; GIN indexes support this
+   * efficiently when using expression indexes or when combined with `@>` containment.
+   * For high-volume lookups, consider adding expression indexes on frequently
+   * queried paths (e.g., `CREATE INDEX ON eprints_index ((external_ids->>'doi'))`).
    *
    * @example
    * ```typescript

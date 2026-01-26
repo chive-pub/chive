@@ -47,6 +47,8 @@
 import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
 
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
+
 /**
  * Cursor manager configuration.
  *
@@ -111,6 +113,11 @@ export interface CursorManagerOptions {
    * @defaultValue 3600 (1 hour)
    */
   readonly redisTTL?: number;
+
+  /**
+   * Logger instance.
+   */
+  readonly logger: ILogger;
 }
 
 /**
@@ -166,6 +173,7 @@ export class CursorManager {
   private readonly flushInterval: number;
   private readonly redisKeyPrefix: string;
   private readonly redisTTL: number;
+  private readonly logger: ILogger;
 
   private pendingCursor: number | null = null;
   private lastSavedCursor: number | null = null;
@@ -185,6 +193,7 @@ export class CursorManager {
     this.flushInterval = options.flushInterval ?? 5000;
     this.redisKeyPrefix = options.redisKeyPrefix ?? 'cursor:';
     this.redisTTL = options.redisTTL ?? 3600;
+    this.logger = options.logger;
 
     // Start periodic flush timer
     this.startFlushTimer();
@@ -434,7 +443,10 @@ export class CursorManager {
           await this.flush();
         } catch (error) {
           // Log error but don't crash timer
-          console.error('Cursor flush failed:', error);
+          this.logger.error('Cursor flush failed', error instanceof Error ? error : undefined, {
+            serviceName: this.serviceName,
+            details: error instanceof Error ? undefined : String(error),
+          });
         }
       })();
     }, this.flushInterval);

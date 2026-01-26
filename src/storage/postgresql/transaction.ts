@@ -17,7 +17,14 @@
 
 import type { Pool, PoolClient } from 'pg';
 
+import { createLogger } from '../../observability/logger.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
+
+/**
+ * Module-level logger for transaction operations.
+ */
+const logger: ILogger = createLogger({ service: 'postgresql-transaction' });
 
 /**
  * Transaction isolation level.
@@ -201,9 +208,11 @@ export async function withTransaction<T>(
         await client.query('ROLLBACK');
       } catch (rollbackError) {
         // Log rollback failure but don't throw
-        console.error('Failed to rollback transaction', {
-          error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
-        });
+        logger.error(
+          'Failed to rollback transaction',
+          rollbackError instanceof Error ? rollbackError : undefined,
+          { details: rollbackError instanceof Error ? undefined : String(rollbackError) }
+        );
       }
 
       // Check if error is deadlock (PostgreSQL error code 40P01)
@@ -213,9 +222,11 @@ export async function withTransaction<T>(
       if (isDeadlock && attempt < maxRetries) {
         // Retry after exponential backoff delay
         const delay = retryDelay * Math.pow(2, attempt - 1);
-        console.warn(
-          `Deadlock detected, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`
-        );
+        logger.warn('Deadlock detected, retrying', {
+          delayMs: delay,
+          attempt,
+          maxRetries,
+        });
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
@@ -308,10 +319,14 @@ export async function withSavepoint<T>(
     try {
       await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
     } catch (rollbackError) {
-      console.error('Failed to rollback to savepoint', {
-        savepoint: name,
-        error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
-      });
+      logger.error(
+        'Failed to rollback to savepoint',
+        rollbackError instanceof Error ? rollbackError : undefined,
+        {
+          savepoint: name,
+          details: rollbackError instanceof Error ? undefined : String(rollbackError),
+        }
+      );
     }
 
     return Err(error instanceof Error ? error : new Error(String(error)));

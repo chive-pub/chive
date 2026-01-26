@@ -53,6 +53,7 @@ import type { Pool } from 'pg';
 import type { NSID } from '../../types/atproto.js';
 import { ValidationError } from '../../types/errors.js';
 import type { RepoEvent } from '../../types/interfaces/event-stream.interface.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 import { CommitHandler } from './commit-handler.js';
 import { CursorManager } from './cursor-manager.js';
@@ -131,6 +132,11 @@ export interface IndexingServiceOptions {
    * Alert service for notifications.
    */
   readonly alerts?: AlertService;
+
+  /**
+   * Logger instance.
+   */
+  readonly logger: ILogger;
 
   /**
    * Queue concurrency.
@@ -352,6 +358,7 @@ export class IndexingService {
   private readonly relays: readonly string[];
   private readonly collections?: readonly NSID[];
   private readonly processor: EventProcessor;
+  private readonly logger: ILogger;
 
   private readonly relayStates = new Map<string, RelayConsumerState>();
   private readonly filter: EventFilter;
@@ -384,6 +391,7 @@ export class IndexingService {
 
     this.collections = options.collections;
     this.processor = options.processor;
+    this.logger = options.logger;
 
     const baseServiceName = options.serviceName ?? 'firehose-consumer';
 
@@ -428,6 +436,7 @@ export class IndexingService {
         serviceName,
         batchSize: options.cursorBatchSize ?? 100,
         flushInterval: options.cursorFlushInterval ?? 5000,
+        logger: this.logger,
       });
 
       const reconnectionManager = new ReconnectionManager({
@@ -544,7 +553,7 @@ export class IndexingService {
     this.running = true;
     this.startedAt = new Date();
 
-    console.warn(`Starting indexing service with ${this.relays.length} relay(s)...`);
+    this.logger.info('Starting indexing service', { relayCount: this.relays.length });
 
     // Start consuming from all relays in parallel
     const relayPromises: Promise<void>[] = [];
@@ -568,11 +577,11 @@ export class IndexingService {
     const cursor = cursorInfo?.seq;
 
     const relayName = this.getRelayName(relay);
-    console.warn(
-      cursor
-        ? `[${relayName}] Starting from cursor: ${cursor}`
-        : `[${relayName}] Starting from latest events`
-    );
+    if (cursor) {
+      this.logger.info('Starting from cursor', { relay: relayName, cursor });
+    } else {
+      this.logger.info('Starting from latest events', { relay: relayName });
+    }
 
     // Subscribe to firehose
     const events = state.consumer.subscribe({
@@ -597,7 +606,10 @@ export class IndexingService {
           await this.handleEvent(event, state);
         } catch (error) {
           this.errors++;
-          console.error(`[${relayName}] Event handling failed:`, error);
+          this.logger.error('Event handling failed', error instanceof Error ? error : undefined, {
+            relay: relayName,
+            details: error instanceof Error ? undefined : String(error),
+          });
 
           // Send to DLQ
           const repo =
@@ -613,7 +625,10 @@ export class IndexingService {
       }
     } catch (error) {
       state.connected = false;
-      console.error(`[${relayName}] Fatal error in event stream:`, error);
+      this.logger.error('Fatal error in event stream', error instanceof Error ? error : undefined, {
+        relay: relayName,
+        details: error instanceof Error ? undefined : String(error),
+      });
       // Don't throw - let other relays continue
     } finally {
       state.connected = false;
@@ -650,25 +665,25 @@ export class IndexingService {
       return;
     }
 
-    console.warn('Stopping indexing service...');
+    this.logger.info('Stopping indexing service');
     this.running = false;
 
     // Disconnect all relay consumers
-    console.warn('Disconnecting from relays...');
+    this.logger.debug('Disconnecting from relays');
     const disconnectPromises: Promise<void>[] = [];
     for (const [relay, state] of this.relayStates) {
       const relayName = this.getRelayName(relay);
-      console.warn(`[${relayName}] Disconnecting...`);
+      this.logger.debug('Disconnecting from relay', { relay: relayName });
       disconnectPromises.push(state.consumer.disconnect());
     }
     await Promise.all(disconnectPromises);
 
     // Drain queue (process pending jobs)
-    console.warn('Draining event queue...');
+    this.logger.debug('Draining event queue');
     await this.queue.drain();
 
     // Flush cursors for all relays
-    console.warn('Flushing cursors...');
+    this.logger.debug('Flushing cursors');
     const flushPromises: Promise<void>[] = [];
     for (const state of this.relayStates.values()) {
       flushPromises.push(state.cursorManager.flush());
@@ -685,7 +700,7 @@ export class IndexingService {
     }
     await Promise.all(closePromises);
 
-    console.warn('Indexing service stopped');
+    this.logger.info('Indexing service stopped');
   }
 
   /**
@@ -778,7 +793,9 @@ export class IndexingService {
     try {
       ops = await this.commitHandler.parseCommit(commitEvent);
     } catch (error) {
-      console.error('Failed to parse commit:', error);
+      this.logger.error('Failed to parse commit', error instanceof Error ? error : undefined, {
+        details: error instanceof Error ? undefined : String(error),
+      });
       this.errors++;
 
       // Send to DLQ
@@ -841,7 +858,7 @@ export class IndexingService {
       } catch (error) {
         if (error instanceof BackpressureError) {
           // Backpressure detected: pause and retry
-          console.warn('Backpressure detected, pausing...');
+          this.logger.warn('Backpressure detected, pausing', { delayMs: 1000 });
           await this.sleep(1000);
 
           // Retry once
@@ -849,7 +866,7 @@ export class IndexingService {
             await this.queue.add(processedEvent);
           } catch (retryError) {
             // Still failing after retry: send to DLQ
-            console.error('Failed to queue event after backpressure retry');
+            this.logger.error('Failed to queue event after backpressure retry');
             await this.dlq.add(
               processedEvent,
               retryError instanceof Error ? retryError : new Error(String(retryError))
