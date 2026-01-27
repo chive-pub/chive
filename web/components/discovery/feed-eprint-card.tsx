@@ -7,6 +7,7 @@ import { X } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RecommendationBadge } from './recommendation-badge';
+import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
 import type { RecommendedEprint } from '@/lib/api/schema';
@@ -112,7 +113,9 @@ export function FeedEprintCard({
           className="block font-semibold leading-tight hover:text-primary hover:underline"
           onClick={handleClick}
         >
-          <h3 className="line-clamp-2 pr-8">{eprint.title}</h3>
+          <h3 className="line-clamp-2 pr-8">
+            <RichTextRenderer items={eprint.titleItems} mode="inline" />
+          </h3>
         </Link>
 
         {/* Author and date */}
@@ -131,9 +134,9 @@ export function FeedEprintCard({
 
       <CardContent className="space-y-3">
         {/* Abstract */}
-        {eprint.abstract && (
-          <p className="line-clamp-3 text-sm text-muted-foreground">{eprint.abstract}</p>
-        )}
+        <div className="line-clamp-3 text-sm text-muted-foreground">
+          <RichTextRenderer items={eprint.abstractItems} mode="inline" />
+        </div>
 
         {/* Categories */}
         {eprint.categories && eprint.categories.length > 0 && (

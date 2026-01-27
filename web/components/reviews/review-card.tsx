@@ -50,8 +50,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
-import { RichTextRenderer } from './rich-text-renderer';
-import { convertRichTextFacetsToFacets as convertFacets } from '@/lib/api/schema';
+import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 import type { Review, AnnotationMotivation } from '@/lib/api/schema';
 
 // =============================================================================
@@ -206,9 +205,8 @@ export function ReviewCard({
   const isCompact = variant === 'compact';
   const hasTarget = !!review.target;
 
-  // Truncate long content
-  const shouldTruncate = !isCompact && review.content.length > 500 && !isExpanded;
-  const displayContent = shouldTruncate ? review.content.slice(0, 500) + '...' : review.content;
+  // Use line-clamp for truncation instead of string slicing
+  const showFullContent = isCompact || isExpanded;
 
   return (
     <article
@@ -312,21 +310,21 @@ export function ReviewCard({
       )}
 
       {/* Content */}
-      <div className={cn('mt-3', isCompact ? 'text-sm' : 'text-base')}>
-        {review.body ? (
-          /* Rich text body with facets - convert to ATProto format */
-          <RichTextRenderer text={review.body.text} facets={convertFacets(review.body.facets)} />
-        ) : (
-          /* Plain text content fallback */
-          <p className="whitespace-pre-wrap">{displayContent}</p>
+      <div
+        className={cn(
+          'mt-3',
+          isCompact ? 'text-sm' : 'text-base',
+          !showFullContent && 'line-clamp-6'
         )}
-
-        {shouldTruncate && !review.body && (
-          <Button variant="link" className="h-auto p-0 text-sm" onClick={() => setIsExpanded(true)}>
-            Read more
-          </Button>
-        )}
+      >
+        <RichTextRenderer items={review.bodyItems} mode="block" />
       </div>
+
+      {!showFullContent && (
+        <Button variant="link" className="h-auto p-0 text-sm" onClick={() => setIsExpanded(true)}>
+          Read more
+        </Button>
+      )}
 
       {/* Quick reply button (inline, not in dropdown) */}
       {!isCompact && onReply && (

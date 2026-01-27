@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 import { useAuthorReviews } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
@@ -60,15 +61,13 @@ function formatEprintLink(eprintUri: string): string {
  */
 function AuthorReviewItem({ review }: { review: Review }) {
   const hasTarget = !!review.target;
-  const truncatedContent =
-    review.content.length > 200 ? review.content.slice(0, 200) + '...' : review.content;
 
   return (
     <Card className="transition-colors hover:bg-accent/50" data-testid="author-review-item">
       <CardContent className="p-4">
         {/* Review content */}
-        <div className="mb-3">
-          <p className="text-sm text-foreground">{truncatedContent}</p>
+        <div className="mb-3 text-sm text-foreground line-clamp-4">
+          <RichTextRenderer items={review.bodyItems} mode="inline" />
         </div>
 
         {/* Target span excerpt */}

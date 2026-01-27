@@ -747,28 +747,30 @@ export function SubmissionWizard({
         targetAgent
       );
 
-      // Trigger indexing in Chive's AppView
-      // The Bluesky relay doesn't broadcast pub.chive.* records,
-      // so we need to manually trigger indexing after PDS write
+      // Request immediate indexing as a UX optimization.
+      // The firehose is the primary indexing mechanism (Jetstream broadcasts all
+      // pub.chive.* records), but there may be latency. This call ensures the
+      // record appears immediately in Chive's index for a better user experience.
+      // If this fails, the firehose will eventually index the record.
       try {
         const indexResult = await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
 
         // Check if indexing succeeded (API returns { indexed: false, error: "..." } on failure)
         if (!indexResult.data.indexed) {
-          submitLogger.warn('Indexing failed but record saved to PDS', {
+          submitLogger.warn('Immediate indexing failed; firehose will retry', {
             error: indexResult.data.error,
           });
           toast.info('Your paper was saved to your PDS.', {
-            description: 'It may take a moment to appear in search results.',
+            description: 'It will appear in search results shortly via the firehose.',
           });
         }
       } catch (syncError) {
-        // Log but don't fail - the record exists in the target PDS
-        submitLogger.warn('Sync indexing failed (record saved to PDS)', {
+        // Log but don't fail; the firehose will index the record
+        submitLogger.warn('Immediate indexing request failed; firehose will handle', {
           error: syncError instanceof Error ? syncError.message : String(syncError),
         });
         toast.info('Your paper was saved to your PDS.', {
-          description: 'It may take a moment to appear in search results.',
+          description: 'It will appear in search results shortly via the firehose.',
         });
       }
 
