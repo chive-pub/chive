@@ -11,8 +11,16 @@
 
 import type { Pool } from 'pg';
 
+import {
+  isRecord as isCommentRecord,
+  type Main as CommentRecord,
+} from '../../lexicons/generated/types/pub/chive/review/comment.js';
+import {
+  isRecord as isEndorsementRecord,
+  type Main as EndorsementRecord,
+} from '../../lexicons/generated/types/pub/chive/review/endorsement.js';
 import type { AtUri, DID } from '../../types/atproto.js';
-import { DatabaseError } from '../../types/errors.js';
+import { DatabaseError, ValidationError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
@@ -56,40 +64,11 @@ export interface TextSpanTarget {
 }
 
 /**
- * Review comment record from lexicon.
+ * Re-export generated lexicon types for external use.
  *
  * @public
  */
-export interface ReviewComment {
-  readonly $type: 'pub.chive.review.comment';
-  readonly subject: { readonly uri: AtUri; readonly cid: string };
-  readonly text: string;
-  readonly reviewType?: string;
-  readonly parent?: AtUri;
-  readonly createdAt: string;
-  /**
-   * Text span target for precise inline annotations.
-   * Follows W3C Web Annotation data model.
-   */
-  readonly target?: TextSpanTarget;
-}
-
-/**
- * Endorsement record from lexicon.
- *
- * @remarks
- * Aligned with pub.chive.review.endorsement lexicon.
- * Uses `contributions` array for CRediT taxonomy roles.
- *
- * @public
- */
-export interface Endorsement {
-  readonly $type: 'pub.chive.review.endorsement';
-  readonly eprintUri: AtUri;
-  readonly contributions: readonly string[];
-  readonly comment?: string;
-  readonly createdAt: string;
-}
+export type { CommentRecord as ReviewComment, EndorsementRecord as Endorsement };
 
 /**
  * Extracts DID from AT URI.
@@ -268,19 +247,33 @@ export class ReviewService {
   /**
    * Indexes review comment from firehose.
    *
-   * @param record - Review comment record
+   * @param record - Review comment record (unknown, validated internally)
    * @param metadata - Record metadata
    * @returns Result indicating success or failure
    *
    * @public
    */
   async indexReview(
-    record: ReviewComment,
+    record: unknown,
     metadata: RecordMetadata
-  ): Promise<Result<void, DatabaseError>> {
+  ): Promise<Result<void, DatabaseError | ValidationError>> {
+    // Validate record against lexicon schema
+    if (!isCommentRecord(record)) {
+      const validationError = new ValidationError(
+        'Record does not match pub.chive.review.comment schema',
+        'record',
+        'schema'
+      );
+      this.logger.warn('Invalid review comment record', { uri: metadata.uri });
+      return Err(validationError);
+    }
+
+    // Cast to the validated type (isCommentRecord validates schema compliance)
+    const comment = record as CommentRecord;
+
     try {
-      // Convert text to rich text body format
-      const body = JSON.stringify([{ type: 'text', content: record.text }]);
+      // Body is already a rich text array from the lexicon
+      const body = JSON.stringify(comment.body);
 
       await this.pool.query(
         `INSERT INTO reviews_index (
@@ -295,19 +288,19 @@ export class ReviewService {
         [
           metadata.uri,
           metadata.cid,
-          record.subject.uri,
+          comment.eprintUri,
           extractDidFromUri(metadata.uri),
           body,
-          record.parent ?? null,
-          new Date(record.createdAt),
+          comment.parentComment ?? null,
+          new Date(comment.createdAt),
           metadata.pdsUrl,
         ]
       );
 
       this.logger.info('Indexed review', {
         uri: metadata.uri,
-        eprintUri: record.subject.uri,
-        hasParent: !!record.parent,
+        eprintUri: comment.eprintUri,
+        hasParent: !!comment.parentComment,
       });
 
       return Ok(undefined);
@@ -324,16 +317,30 @@ export class ReviewService {
   /**
    * Indexes endorsement from firehose.
    *
-   * @param record - Endorsement record
+   * @param record - Endorsement record (unknown, validated internally)
    * @param metadata - Record metadata
    * @returns Result indicating success or failure
    *
    * @public
    */
   async indexEndorsement(
-    record: Endorsement,
+    record: unknown,
     metadata: RecordMetadata
-  ): Promise<Result<void, DatabaseError>> {
+  ): Promise<Result<void, DatabaseError | ValidationError>> {
+    // Validate record against lexicon schema
+    if (!isEndorsementRecord(record)) {
+      const validationError = new ValidationError(
+        'Record does not match pub.chive.review.endorsement schema',
+        'record',
+        'schema'
+      );
+      this.logger.warn('Invalid endorsement record', { uri: metadata.uri });
+      return Err(validationError);
+    }
+
+    // Cast to the validated type (isEndorsementRecord validates schema compliance)
+    const endorsement = record as EndorsementRecord;
+
     try {
       await this.pool.query(
         `INSERT INTO endorsements_index (
@@ -348,19 +355,19 @@ export class ReviewService {
         [
           metadata.uri,
           metadata.cid,
-          record.eprintUri,
+          endorsement.eprintUri,
           extractDidFromUri(metadata.uri),
-          record.contributions,
-          record.comment ?? null,
-          new Date(record.createdAt),
+          endorsement.contributions,
+          endorsement.comment ?? null,
+          new Date(endorsement.createdAt),
           metadata.pdsUrl,
         ]
       );
 
       this.logger.info('Indexed endorsement', {
         uri: metadata.uri,
-        eprintUri: record.eprintUri,
-        contributions: record.contributions,
+        eprintUri: endorsement.eprintUri,
+        contributions: endorsement.contributions,
       });
 
       return Ok(undefined);
