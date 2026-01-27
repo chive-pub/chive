@@ -47,6 +47,15 @@ import { ValidationError } from '../../types/errors.js';
 import type { RepoOp } from '../../types/interfaces/event-stream.interface.js';
 
 /**
+ * Extended RepoOp with pre-decoded record (from Jetstream).
+ *
+ * @internal
+ */
+interface RepoOpWithRecord extends RepoOp {
+  record?: unknown;
+}
+
+/**
  * Commit event from firehose.
  *
  * @remarks
@@ -215,9 +224,26 @@ export class CommitHandler {
       throw new ParseError('Event blocks too large - must fetch separately from PDS', event.commit);
     }
 
-    // No blocks provided but tooBig is false: malformed event
+    // No blocks provided: check if records are pre-decoded (Jetstream events)
     if (!event.blocks || event.blocks.length === 0) {
-      // Delete operations are fine without blocks
+      // Jetstream events have records already decoded and attached to ops
+      // Check if any create/update ops have pre-attached records
+      const opsWithRecords = event.ops as readonly RepoOpWithRecord[];
+      const hasPreDecodedRecords = opsWithRecords.some(
+        (op) => (op.action === 'create' || op.action === 'update') && op.record !== undefined
+      );
+
+      if (hasPreDecodedRecords) {
+        // Jetstream event: return ops with pre-decoded records
+        return opsWithRecords.map((op) => ({
+          action: op.action,
+          path: op.path,
+          cid: op.cid,
+          record: op.record,
+        }));
+      }
+
+      // No pre-decoded records: check if all ops are deletes (which is fine)
       const hasCreateOrUpdate = event.ops.some(
         (op) => op.action === 'create' || op.action === 'update'
       );
