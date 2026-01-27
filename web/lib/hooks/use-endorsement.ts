@@ -93,8 +93,12 @@ export const endorsementKeys = {
   userEndorsement: (eprintUri: string, userDid: string) =>
     [...endorsementKeys.forEprint(eprintUri), 'user', userDid] as const,
 
-  /** Key for endorsements by a specific user */
+  /** Key for endorsements by a specific user (endorsements given) */
   byUser: (did: string) => [...endorsementKeys.all, 'user', did] as const,
+
+  /** Key for endorsements received on an author's papers */
+  forAuthorPapers: (authorDid: string) =>
+    [...endorsementKeys.all, 'authorPapers', authorDid] as const,
 };
 
 // =============================================================================
@@ -513,6 +517,176 @@ export function usePrefetchEndorsements() {
       staleTime: 2 * 60 * 1000,
     });
   };
+}
+
+// =============================================================================
+// USER ENDORSEMENTS (GIVEN)
+// =============================================================================
+
+/**
+ * Options for the useMyEndorsements hook.
+ */
+export interface UseMyEndorsementsOptions {
+  /** Maximum number of results per page */
+  limit?: number;
+  /** Pagination cursor */
+  cursor?: string;
+  /** Whether the query is enabled */
+  enabled?: boolean;
+}
+
+/**
+ * Endorsement view with eprint title for display.
+ */
+export interface EndorsementWithEprint {
+  uri: string;
+  cid: string;
+  eprintUri: string;
+  eprintTitle?: string;
+  endorser: {
+    did: string;
+    handle?: string;
+    displayName?: string;
+    avatar?: string;
+  };
+  contributions: ContributionType[];
+  comment?: string;
+  createdAt: string;
+}
+
+/**
+ * Response type for listing endorsements.
+ */
+export interface ListUserEndorsementsResponse {
+  endorsements: EndorsementWithEprint[];
+  cursor?: string;
+  hasMore: boolean;
+  total?: number;
+}
+
+/**
+ * Fetches endorsements given by a specific user.
+ *
+ * @remarks
+ * Returns all endorsements the user has made, ordered by most recent first.
+ * Includes the eprint title for display purposes.
+ *
+ * @example
+ * ```tsx
+ * const { data, isLoading } = useMyEndorsements(userDid);
+ *
+ * if (isLoading) return <EndorsementListSkeleton />;
+ *
+ * return (
+ *   <EndorsementList
+ *     endorsements={data?.endorsements ?? []}
+ *     hasMore={data?.hasMore}
+ *   />
+ * );
+ * ```
+ *
+ * @param endorserDid - DID of the user whose endorsements to fetch
+ * @param options - Query options
+ * @returns Query result with paginated endorsements
+ */
+export function useMyEndorsements(endorserDid: string, options: UseMyEndorsementsOptions = {}) {
+  const { limit = 20, cursor, enabled = true } = options;
+
+  return useQuery({
+    queryKey: [...endorsementKeys.byUser(endorserDid), { limit, cursor }],
+    queryFn: async (): Promise<ListUserEndorsementsResponse> => {
+      try {
+        const response = await api.pub.chive.endorsement.listForUser({
+          endorserDid,
+          limit,
+          cursor,
+        });
+        return response.data as unknown as ListUserEndorsementsResponse;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch user endorsements',
+          undefined,
+          'pub.chive.endorsement.listForUser'
+        );
+      }
+    },
+    enabled: !!endorserDid && enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+// =============================================================================
+// AUTHOR PAPER ENDORSEMENTS (RECEIVED)
+// =============================================================================
+
+/**
+ * Options for the useAuthorPaperEndorsements hook.
+ */
+export interface UseAuthorPaperEndorsementsOptions {
+  /** Maximum number of results per page */
+  limit?: number;
+  /** Pagination cursor */
+  cursor?: string;
+  /** Whether the query is enabled */
+  enabled?: boolean;
+}
+
+/**
+ * Fetches endorsements received on an author's papers.
+ *
+ * @remarks
+ * Returns all endorsements that have been made on eprints authored by
+ * the specified user. This shows recognition received, not endorsements given.
+ *
+ * @example
+ * ```tsx
+ * const { data, isLoading } = useAuthorPaperEndorsements(authorDid);
+ *
+ * if (isLoading) return <EndorsementListSkeleton />;
+ *
+ * return (
+ *   <ReceivedEndorsementsList
+ *     endorsements={data?.endorsements ?? []}
+ *     total={data?.total}
+ *   />
+ * );
+ * ```
+ *
+ * @param authorDid - DID of the author whose papers' endorsements to fetch
+ * @param options - Query options
+ * @returns Query result with paginated endorsements
+ */
+export function useAuthorPaperEndorsements(
+  authorDid: string,
+  options: UseAuthorPaperEndorsementsOptions = {}
+) {
+  const { limit = 20, cursor, enabled = true } = options;
+
+  return useQuery({
+    queryKey: [...endorsementKeys.forAuthorPapers(authorDid), { limit, cursor }],
+    queryFn: async (): Promise<ListUserEndorsementsResponse> => {
+      try {
+        const response = await api.pub.chive.endorsement.listForAuthorPapers({
+          authorDid,
+          limit,
+          cursor,
+        });
+        return response.data as unknown as ListUserEndorsementsResponse;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch author paper endorsements',
+          undefined,
+          'pub.chive.endorsement.listForAuthorPapers'
+        );
+      }
+    },
+    enabled: !!authorDid && enabled,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    placeholderData: (previousData) => previousData,
+  });
 }
 
 // =============================================================================

@@ -753,6 +753,97 @@ export class ReviewService {
   }
 
   /**
+   * Lists endorsements given by a specific user.
+   *
+   * @param endorserDid - DID of the endorser
+   * @param options - Pagination options
+   * @returns Paginated endorsement results
+   *
+   * @public
+   */
+  async listEndorsementsByUser(
+    endorserDid: DID,
+    options: PaginationOptions = {}
+  ): Promise<PaginatedResult<EndorsementView>> {
+    const limit = Math.min(options.limit ?? 50, 100);
+
+    try {
+      // Get total count
+      const countResult = await this.pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count
+         FROM endorsements_index
+         WHERE endorser_did = $1`,
+        [endorserDid]
+      );
+      const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+      // Build query with cursor support
+      let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+         FROM endorsements_index
+         WHERE endorser_did = $1`;
+      const params: unknown[] = [endorserDid];
+
+      if (options.cursor) {
+        // Cursor is the created_at timestamp + uri for stable pagination
+        const parts = options.cursor.split('::');
+        const timestamp = parts[0] ?? new Date().toISOString();
+        const cursorUri = parts[1] ?? '';
+        query += ` AND (created_at, uri) < ($2, $3)`;
+        params.push(new Date(timestamp), cursorUri);
+      }
+
+      query += ` ORDER BY created_at DESC, uri DESC LIMIT $${params.length + 1}`;
+      params.push(limit + 1); // Fetch one extra to check hasMore
+
+      const result = await this.pool.query<{
+        uri: string;
+        endorser_did: string;
+        eprint_uri: string;
+        contributions: string[];
+        comment: string | null;
+        created_at: Date;
+      }>(query, params);
+
+      const hasMore = result.rows.length > limit;
+      const items = result.rows.slice(0, limit);
+
+      // Generate next cursor from last item
+      let cursor: string | undefined;
+      const lastItem = items[items.length - 1];
+      if (hasMore && lastItem) {
+        cursor = `${lastItem.created_at.toISOString()}::${lastItem.uri}`;
+      }
+
+      return {
+        items: items.map((row) => ({
+          uri: row.uri as AtUri,
+          endorser: row.endorser_did as DID,
+          eprintUri: row.eprint_uri as AtUri,
+          contributions: row.contributions ?? [],
+          comment: row.comment ?? undefined,
+          createdAt: new Date(row.created_at),
+        })),
+        cursor,
+        hasMore,
+        total,
+      };
+    } catch (error) {
+      this.logger.error(
+        'Failed to list endorsements by user',
+        error instanceof Error ? error : undefined,
+        {
+          endorserDid,
+        }
+      );
+      return {
+        items: [],
+        hasMore: false,
+        total: 0,
+      };
+    }
+  }
+
+  /**
    * Gets a review by URI.
    *
    * @param uri - Review AT-URI

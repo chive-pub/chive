@@ -1,0 +1,167 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.endorsement.listForUser",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List endorsements given by a specific user",
+      "parameters": {
+        "type": "params",
+        "required": ["endorserDid"],
+        "properties": {
+          "endorserDid": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the endorser"
+          },
+          "contributionType": {
+            "type": "string",
+            "knownValues": [
+              "methodological",
+              "analytical",
+              "theoretical",
+              "empirical",
+              "conceptual",
+              "technical",
+              "data",
+              "replication",
+              "reproducibility",
+              "synthesis",
+              "interdisciplinary",
+              "pedagogical",
+              "visualization",
+              "societal-impact",
+              "clinical"
+            ],
+            "description": "Filter by contribution type"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["endorsements", "hasMore"],
+          "properties": {
+            "endorsements": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#endorsementView"
+              },
+              "description": "List of endorsements given by the user"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of endorsements"
+            }
+          }
+        }
+      },
+      "errors": []
+    },
+    "endorsementView": {
+      "type": "object",
+      "description": "View of an endorsement",
+      "required": ["uri", "cid", "eprintUri", "endorser", "contributions", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Endorsement AT-URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Endorsed eprint AT-URI"
+        },
+        "eprintTitle": {
+          "type": "string",
+          "description": "Title of the endorsed eprint"
+        },
+        "endorser": {
+          "type": "ref",
+          "ref": "#authorRef"
+        },
+        "contributions": {
+          "type": "array",
+          "minLength": 1,
+          "items": {
+            "type": "string",
+            "knownValues": [
+              "methodological",
+              "analytical",
+              "theoretical",
+              "empirical",
+              "conceptual",
+              "technical",
+              "data",
+              "replication",
+              "reproducibility",
+              "synthesis",
+              "interdisciplinary",
+              "pedagogical",
+              "visualization",
+              "societal-impact",
+              "clinical"
+            ]
+          },
+          "description": "Contribution types being endorsed"
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Optional comment"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        }
+      }
+    },
+    "authorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

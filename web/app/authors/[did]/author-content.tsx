@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import { notFound } from 'next/navigation';
 
-import { ThumbsUp } from 'lucide-react';
 import {
   AuthorHeader,
   AuthorHeaderSkeleton,
@@ -12,8 +11,8 @@ import {
   AuthorEprints,
   AuthorEprintsSkeleton,
 } from '@/components/eprints';
+import { AuthorEndorsements } from '@/components/authors/author-endorsements';
 import { AuthorReviews } from '@/components/authors/author-reviews';
-import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthor } from '@/lib/hooks/use-author';
@@ -27,47 +26,6 @@ import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 export interface AuthorPageContentProps {
   /** Author's DID */
   did: string;
-}
-
-/**
- * Placeholder component for author endorsements.
- *
- * @remarks
- * Shows total endorsements received until a dedicated API endpoint
- * for listing endorsements by author is available.
- */
-function AuthorEndorsementsPlaceholder({ totalEndorsements }: { totalEndorsements: number }) {
-  if (totalEndorsements === 0) {
-    return (
-      <div className="rounded-lg border bg-muted/50 p-8 text-center">
-        <ThumbsUp className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 font-medium">No endorsements yet</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          This author&apos;s eprints haven&apos;t received any endorsements.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <ThumbsUp className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <p className="text-3xl font-bold">{totalEndorsements}</p>
-            <p className="text-muted-foreground">Total endorsements received across all eprints</p>
-          </div>
-        </div>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Detailed endorsement listings for each eprint are available on the individual eprint
-          pages.
-        </p>
-      </CardContent>
-    </Card>
-  );
 }
 
 /**
@@ -203,7 +161,7 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
         </TabsContent>
 
         <TabsContent value="endorsements">
-          <AuthorEndorsementsPlaceholder totalEndorsements={data.metrics.totalEndorsements} />
+          <AuthorEndorsements did={did} />
         </TabsContent>
       </Tabs>
 
