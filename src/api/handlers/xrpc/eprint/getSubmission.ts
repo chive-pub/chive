@@ -181,12 +181,12 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
           orcid: author.orcid,
           email: author.email,
           order: author.order,
-          affiliations: author.affiliations.map((aff) => ({
+          affiliations: (author.affiliations ?? []).map((aff) => ({
             name: aff.name,
             rorId: aff.rorId,
             department: aff.department,
           })),
-          contributions: author.contributions.map((contrib) => ({
+          contributions: (author.contributions ?? []).map((contrib) => ({
             typeUri: contrib.typeUri,
             typeId: contrib.typeId,
             typeLabel: contrib.typeLabel,

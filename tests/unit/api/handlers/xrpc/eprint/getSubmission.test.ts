@@ -401,6 +401,38 @@ describe('XRPC getSubmission Handler', () => {
   });
 
   describe('Author Transformation', () => {
+    it('handles authors with missing optional fields (affiliations, contributions)', async () => {
+      // This tests the edge case where authors in the database lack affiliations/contributions
+      // fields entirely (not just empty arrays). This can happen with external submissions.
+      const minimalAuthor: Partial<EprintAuthor> & { name: string; order: number } = {
+        name: 'Minimal Author',
+        order: 1,
+        // Note: no did, affiliations, contributions, email, orcid, etc.
+      };
+
+      const eprint = createMockEprint({
+        authors: [minimalAuthor as EprintAuthor],
+      });
+      mockEprintService.getEprint.mockResolvedValue(eprint);
+
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      const value = result.body.value as Record<string, unknown>;
+      const authors = value.authors as Record<string, unknown>[];
+      const author = authors[0];
+
+      expect(author).toBeDefined();
+      expect(author?.name).toBe('Minimal Author');
+      // Should default to empty arrays, not throw TypeError
+      expect(author?.affiliations).toEqual([]);
+      expect(author?.contributions).toEqual([]);
+    });
+
     it('transforms authors with all fields', async () => {
       const authorWithAll: EprintAuthor = {
         did: SUBMITTER_DID,
