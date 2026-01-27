@@ -549,3 +549,48 @@ vi.mock('tippy.js', () => ({
     setProps: vi.fn(),
   })),
 }));
+
+// Mock @uiw/react-md-editor for tests
+// The library uses dynamic import and doesn't work in jsdom
+vi.mock('@uiw/react-md-editor', async () => {
+  const React = await import('react');
+
+  interface MDEditorProps {
+    value?: string;
+    onChange?: (value: string | undefined) => void;
+    preview?: 'edit' | 'preview' | 'live';
+    hideToolbar?: boolean;
+    height?: number;
+    textareaProps?: {
+      placeholder?: string;
+      disabled?: boolean;
+      'aria-label'?: string;
+      autoFocus?: boolean;
+    };
+    visibleDragbar?: boolean;
+  }
+
+  const MockMDEditor: React.FC<MDEditorProps> & { displayName?: string } = ({
+    value,
+    onChange,
+    textareaProps,
+    height,
+  }) => {
+    return React.createElement('textarea', {
+      value: value ?? '',
+      onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onChange?.(e.target.value);
+      },
+      placeholder: textareaProps?.placeholder,
+      disabled: textareaProps?.disabled,
+      'aria-label': textareaProps?.['aria-label'],
+      autoFocus: textareaProps?.autoFocus,
+      style: { minHeight: height ? `${height}px` : '150px', width: '100%' },
+    });
+  };
+  MockMDEditor.displayName = 'MockMDEditor';
+
+  return {
+    default: MockMDEditor,
+  };
+});
