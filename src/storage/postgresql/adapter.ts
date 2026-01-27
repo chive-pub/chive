@@ -240,6 +240,26 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Lists eprint URIs filtered by field URIs.
+   *
+   * @param fieldUris - Field URIs to filter by (OR semantics)
+   * @param options - Query options including limit
+   * @returns Array of eprint URIs that have any of the specified fields
+   *
+   * @remarks
+   * Delegates to EprintsRepository for the JSONB field query.
+   * Used for discipline/field-based filtering in browse pages.
+   *
+   * @public
+   */
+  async listEprintUrisByFieldUri(
+    fieldUris: readonly string[],
+    options: { limit?: number } = {}
+  ): Promise<readonly string[]> {
+    return this.eprintsRepo.listUrisByFieldUri(fieldUris, options);
+  }
+
+  /**
    * Tracks PDS source for staleness detection.
    *
    * @param uri - Record URI

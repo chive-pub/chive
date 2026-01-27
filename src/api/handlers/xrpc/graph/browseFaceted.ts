@@ -100,30 +100,25 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
 
       // Fetch target nodes for each edge to get value labels (deduplicated)
       const values: { value: string; label?: string; count: number }[] = [];
-      const seenSlugs = new Set<string>();
+      const seenUris = new Set<string>();
 
       for (const edge of valueEdges.edges) {
         // Get the target node (the value node)
         const valueNode = await nodeService.getNode(edge.targetUri);
-        if (valueNode) {
-          // Use slug from node if available, otherwise generate from label
-          const valueSlug =
-            valueNode.slug ??
-            valueNode.label
-              .toLowerCase()
-              .replace(/\s+/g, '-')
-              .replace(/[^a-z0-9-]/g, '');
+        if (valueNode?.uri) {
+          const valueUri = valueNode.uri as string;
 
           // Skip duplicates
-          if (seenSlugs.has(valueSlug)) {
+          if (seenUris.has(valueUri)) {
             continue;
           }
-          seenSlugs.add(valueSlug);
+          seenUris.add(valueUri);
 
+          // Use URI as the value for matching; label is for display
           values.push({
-            value: valueSlug,
+            value: valueUri,
             label: valueNode.label,
-            count: countMap.get(valueSlug) ?? 0,
+            count: countMap.get(valueUri) ?? 0,
           });
         }
       }

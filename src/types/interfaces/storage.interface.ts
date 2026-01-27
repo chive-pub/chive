@@ -509,6 +509,33 @@ export interface IStorageBackend {
   listEprintUris(options?: { limit?: number; cursor?: string }): Promise<readonly string[]>;
 
   /**
+   * Lists eprint URIs filtered by field URIs.
+   *
+   * @param fieldUris - Field URIs to filter by (OR semantics)
+   * @param options - Query options including limit
+   * @returns Array of eprint URIs that have any of the specified fields
+   *
+   * @remarks
+   * Used for discipline/field-based filtering in browse pages.
+   * Returns eprints where the `fields` array contains objects matching any
+   * of the provided field URIs.
+   *
+   * @example
+   * ```typescript
+   * const uris = await storage.listEprintUrisByFieldUri(
+   *   ['at://did:plc:governance/pub.chive.graph.node/formal-semantics'],
+   *   { limit: 100 }
+   * );
+   * ```
+   *
+   * @public
+   */
+  listEprintUrisByFieldUri(
+    fieldUris: readonly string[],
+    options?: { limit?: number }
+  ): Promise<readonly string[]>;
+
+  /**
    * Finds an eprint by external identifiers.
    *
    * @param externalIds - External service identifiers to search

@@ -842,6 +842,63 @@ export class EprintsRepository {
   }
 
   /**
+   * Finds eprint URIs by field URI.
+   *
+   * @param fieldUris - Field URIs to filter by (OR semantics)
+   * @param options - Query options including limit
+   * @returns Array of eprint URIs that have any of the specified fields
+   *
+   * @remarks
+   * Searches the `fields` JSONB column for eprints whose fields array
+   * contains any object with a matching URI. Uses JSONB containment
+   * queries for efficient filtering.
+   *
+   * @example
+   * ```typescript
+   * const uris = await repo.listUrisByFieldUri(
+   *   ['at://did:plc:governance/pub.chive.graph.node/formal-semantics'],
+   *   { limit: 100 }
+   * );
+   * ```
+   *
+   * @public
+   */
+  async listUrisByFieldUri(
+    fieldUris: readonly string[],
+    options: { limit?: number } = {}
+  ): Promise<readonly string[]> {
+    if (fieldUris.length === 0) {
+      return [];
+    }
+
+    const limit = Math.min(options.limit ?? 1000, 5000);
+
+    // Build OR conditions for each field URI
+    // Use JSONB @> containment operator for efficient querying
+    const conditions = fieldUris.map((_, i) => `fields @> $${i + 1}::jsonb`);
+
+    const query = `
+      SELECT uri
+      FROM eprints_index
+      WHERE ${conditions.join(' OR ')}
+      ORDER BY created_at DESC
+      LIMIT $${fieldUris.length + 1}
+    `;
+
+    // Each param is a JSONB array with one object containing the URI
+    const params = [...fieldUris.map((uri) => JSON.stringify([{ uri }])), limit];
+
+    try {
+      const result = await this.pool.query<{ uri: string }>(query, params);
+      return result.rows.map((row) => row.uri);
+    } catch (error) {
+      throw error instanceof Error
+        ? error
+        : new Error(`Failed to list eprints by field URI: ${String(error)}`);
+    }
+  }
+
+  /**
    * Finds an eprint by external identifiers.
    *
    * @param externalIds - External service identifiers to search

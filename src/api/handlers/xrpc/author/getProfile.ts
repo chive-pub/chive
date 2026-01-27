@@ -265,30 +265,22 @@ async function aggregateAuthorDownloads(
 
 /**
  * Counts total endorsements received by author's eprints.
+ *
+ * @remarks
+ * Uses the same query logic as listEndorsementsOnAuthorPapers to ensure
+ * the count matches what is displayed in the Endorsements tab. Excludes
+ * self-endorsements (endorsements where the author endorsed their own paper).
  */
 async function countAuthorEndorsements(did: DID, c: Context<ChiveEnv>): Promise<number> {
   try {
-    const { review, eprint } = c.get('services');
+    const { review } = c.get('services');
 
-    const result = await eprint.getEprintsByAuthor(did, { limit: 100 });
+    // Use listEndorsementsOnAuthorPapers with limit=0 to get total count only.
+    // This ensures the count matches what the Endorsements tab shows
+    // (excludes self-endorsements).
+    const result = await review.listEndorsementsOnAuthorPapers(did, { limit: 1 });
 
-    if (result.eprints.length === 0) {
-      return 0;
-    }
-
-    // Get endorsement summaries for each eprint
-    const endorsementCounts = await Promise.all(
-      result.eprints.map(async (p) => {
-        try {
-          const summary = await review.getEndorsementSummary(p.uri);
-          return summary.total;
-        } catch {
-          return 0;
-        }
-      })
-    );
-
-    return endorsementCounts.reduce((sum: number, count: number) => sum + count, 0);
+    return result.total;
   } catch (error) {
     const logger = c.get('logger');
     logger.debug('Failed to count author endorsements', {

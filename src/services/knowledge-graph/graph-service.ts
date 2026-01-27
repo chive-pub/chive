@@ -19,6 +19,7 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import type { EprintAuthor } from '../../types/models/author.js';
 import type { Result } from '../../types/result.js';
+import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
 import { extractPlainText } from '../../utils/rich-text.js';
 import type { RecordMetadata } from '../eprint/eprint-service.js';
 
@@ -465,8 +466,22 @@ export class KnowledgeGraphService {
         matchingEprintUris = await this._storage.listEprintUris({ limit: 1000 });
         this.logger.info('Storage returned URIs', { uris: matchingEprintUris });
       } else {
-        // Facets specified: filter by facets in graph
-        matchingEprintUris = await this.graph.queryByFacets(facets);
+        // Facet values are field AT-URIs; extract rkeys (UUIDs) for PostgreSQL query
+        // PostgreSQL stores field references as UUIDs, not full AT-URIs
+        const fieldIds = facets
+          .map((f) => f.value)
+          .filter((v) => v.startsWith('at://'))
+          .map((uri) => extractRkeyOrPassthrough(uri));
+
+        if (fieldIds.length > 0) {
+          this.logger.info('Querying by field IDs', { fieldIds });
+          matchingEprintUris = await this._storage.listEprintUrisByFieldUri(fieldIds, {
+            limit: 1000,
+          });
+        } else {
+          this.logger.warn('No valid field URIs in facet values', { facets });
+          matchingEprintUris = [];
+        }
       }
 
       this.logger.info('Found matching eprints', {
