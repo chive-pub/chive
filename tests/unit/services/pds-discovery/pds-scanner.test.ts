@@ -11,6 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { EprintService } from '@/services/eprint/eprint-service.js';
 import type { IPDSRegistry } from '@/services/pds-discovery/pds-registry.js';
 import { PDSScanner } from '@/services/pds-discovery/pds-scanner.js';
+import type { ReviewService } from '@/services/review/review-service.js';
 import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -49,6 +50,13 @@ function createMockEprintService(): Partial<EprintService> {
   };
 }
 
+function createMockReviewService(): Partial<ReviewService> {
+  return {
+    indexReview: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    indexEndorsement: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+  };
+}
+
 // Mock AtpAgent as a class
 vi.mock('@atproto/api', () => {
   return {
@@ -79,19 +87,27 @@ describe('PDSScanner', () => {
   let scanner: PDSScanner;
   let mockRegistry: IPDSRegistry;
   let mockEprintService: Partial<EprintService>;
+  let mockReviewService: Partial<ReviewService>;
   let mockLogger: ILogger;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockRegistry = createMockRegistry();
     mockEprintService = createMockEprintService();
+    mockReviewService = createMockReviewService();
     mockLogger = createMockLogger();
 
-    scanner = new PDSScanner(mockRegistry, mockEprintService as EprintService, mockLogger, {
-      requestsPerMinute: 60, // Fast for tests
-      scanTimeoutMs: 5000,
-      maxRecordsPerPDS: 100,
-    });
+    scanner = new PDSScanner(
+      mockRegistry,
+      mockEprintService as EprintService,
+      mockReviewService as ReviewService,
+      mockLogger,
+      {
+        requestsPerMinute: 60, // Fast for tests
+        scanTimeoutMs: 5000,
+        maxRecordsPerPDS: 100,
+      }
+    );
   });
 
   afterEach(() => {
@@ -191,6 +207,7 @@ describe('PDSScanner', () => {
       const scannerWithDefaults = new PDSScanner(
         mockRegistry,
         mockEprintService as EprintService,
+        mockReviewService as ReviewService,
         mockLogger
       );
 
@@ -202,6 +219,7 @@ describe('PDSScanner', () => {
       const customScanner = new PDSScanner(
         mockRegistry,
         mockEprintService as EprintService,
+        mockReviewService as ReviewService,
         mockLogger,
         { requestsPerMinute: 30 }
       );
