@@ -12,7 +12,9 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/graph/getNode.js';
+import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
+import { isAtUri } from '../../../../utils/at-uri.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -114,7 +116,11 @@ export const getNode: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     logger.debug('Getting node', { id: params.id, includeEdges: params.includeEdges });
 
-    const node = await nodeService.getNodeById(params.id);
+    // Support both AT-URI and UUID formats for the id parameter
+    // Frontend may pass full AT-URIs, backend stores nodes by UUID
+    const node = isAtUri(params.id)
+      ? await nodeService.getNode(params.id as AtUri)
+      : await nodeService.getNodeById(params.id);
 
     if (!node) {
       throw new NotFoundError('Node', params.id);
