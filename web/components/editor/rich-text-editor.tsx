@@ -162,6 +162,8 @@ export function RichTextEditor({
         heading: {
           levels: [1, 2, 3],
         },
+        // Disable link from StarterKit since we configure it separately
+        link: false,
       }),
       Placeholder.configure({
         placeholder,

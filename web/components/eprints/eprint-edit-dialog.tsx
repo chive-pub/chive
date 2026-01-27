@@ -43,6 +43,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PlainMarkdownEditor } from '@/components/editor';
 import { useAgent } from '@/lib/auth/auth-context';
 import {
   formatVersion,
@@ -351,7 +352,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Title field */}
+            {/* Title field with Markdown/LaTeX support */}
             <FormField
               control={form.control}
               name="title"
@@ -359,8 +360,19 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Enter eprint title" disabled={isSubmitting} />
+                    <PlainMarkdownEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Enter eprint title. Use $...$ for LaTeX math symbols."
+                      maxLength={500}
+                      minHeight="60px"
+                      enablePreview={true}
+                      showToolbar={false}
+                      disabled={isSubmitting}
+                      ariaLabel="Title editor"
+                    />
                   </FormControl>
+                  <FormDescription>Supports LaTeX: $H_2O$, $E=mc^2$</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

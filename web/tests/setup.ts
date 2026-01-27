@@ -502,10 +502,50 @@ vi.mock('@tiptap/extension-placeholder', () => ({
   default: { configure: vi.fn(() => ({})) },
 }));
 
-vi.mock('@tiptap/extension-mention', () => ({
-  default: { configure: vi.fn(() => ({})) },
-}));
+// Mock TipTap Mention extension with extend method
+vi.mock('@tiptap/extension-mention', () => {
+  const createExtension = () => ({
+    configure: vi.fn(() => createExtension()),
+    extend: vi.fn(() => createExtension()),
+  });
+  return {
+    default: createExtension(),
+    Mention: createExtension(),
+  };
+});
 
 vi.mock('@tiptap/extension-link', () => ({
   default: { configure: vi.fn(() => ({})) },
+}));
+
+// Mock additional TipTap extensions used by MarkdownEditor
+vi.mock('@tiptap/extension-document', () => ({
+  default: {},
+}));
+
+vi.mock('@tiptap/extension-paragraph', () => ({
+  default: {},
+}));
+
+vi.mock('@tiptap/extension-text', () => ({
+  default: {},
+}));
+
+vi.mock('@tiptap/extension-history', () => ({
+  default: {},
+}));
+
+// Mock @tiptap/markdown extension
+vi.mock('@tiptap/markdown', () => ({
+  Markdown: { configure: vi.fn(() => ({})) },
+}));
+
+// Mock tippy.js for suggestion popups
+vi.mock('tippy.js', () => ({
+  default: vi.fn(() => ({
+    show: vi.fn(),
+    hide: vi.fn(),
+    destroy: vi.fn(),
+    setProps: vi.fn(),
+  })),
 }));
