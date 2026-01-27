@@ -13,7 +13,6 @@
  * @packageDocumentation
  */
 
-import { useCallback } from 'react';
 import { UseFormReturn, Controller } from 'react-hook-form';
 
 import { Input } from '@/components/ui/input';
@@ -26,7 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
-import { RichTextEditor, type RichTextContent, createFromPlainText } from '@/components/editor';
+import { PlainMarkdownEditor } from '@/components/editor';
 import { ConceptAutocomplete } from '@/components/forms/concept-autocomplete';
 import type { EprintFormValues } from './submission-wizard';
 
@@ -59,54 +58,51 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
   const abstractLength = typeof abstract === 'string' ? abstract.length : 0;
   const keywords = form.watch('keywords') ?? [];
 
-  // Convert string value to RichTextContent for the editor
-  const getAbstractContent = useCallback((value: string | undefined): RichTextContent => {
-    if (!value) {
-      return { text: '', html: '', facets: [] };
-    }
-    return createFromPlainText(value);
-  }, []);
-
   return (
     <div className={cn('space-y-6', className)}>
-      {/* Title */}
-      <FormField
+      {/* Title with Markdown support */}
+      <Controller
         control={form.control}
         name="title"
-        render={({ field }) => (
+        render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Title *</FormLabel>
-            <FormControl>
-              <Input {...field} placeholder="Enter the title of your eprint" maxLength={500} />
-            </FormControl>
+            <PlainMarkdownEditor
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              placeholder="Enter the title of your eprint. Use $...$ for LaTeX math symbols."
+              maxLength={500}
+              minHeight="60px"
+              enablePreview={true}
+              showToolbar={false}
+              ariaLabel="Title editor"
+            />
             <FormDescription>
-              A clear, descriptive title for your eprint (max 500 characters)
+              A clear, descriptive title for your eprint (max 500 characters). Supports LaTeX:
+              $H_2O$, $E=mc^2$
             </FormDescription>
-            <FormMessage />
+            {fieldState.error && (
+              <p className="text-sm text-destructive">{fieldState.error.message}</p>
+            )}
           </FormItem>
         )}
       />
 
-      {/* Abstract with Rich Text Editor */}
+      {/* Abstract with Plain Markdown Editor */}
       <Controller
         control={form.control}
         name="abstract"
         render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Abstract *</FormLabel>
-            <RichTextEditor
-              value={getAbstractContent(field.value)}
-              onChange={(content) => {
-                // Store plain text for the abstract field
-                // The lexicon currently expects plain text or an array of items
-                field.onChange(content.text);
-              }}
+            <PlainMarkdownEditor
+              value={field.value ?? ''}
+              onChange={field.onChange}
               placeholder="Enter your abstract. Use Markdown for formatting and $...$ for inline LaTeX, $$...$$ for display equations."
               maxLength={10000}
               minHeight="200px"
               enablePreview={true}
               showToolbar={true}
-              enableLatex={true}
               ariaLabel="Abstract editor"
             />
             <FormDescription>
