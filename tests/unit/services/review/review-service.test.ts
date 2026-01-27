@@ -9,7 +9,6 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 
 import type { RecordMetadata } from '@/services/eprint/eprint-service.js';
 import { ReviewService } from '@/services/review/review-service.js';
-import type { ReviewComment, Endorsement } from '@/services/review/review-service.js';
 import type { AtUri, CID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '@/types/interfaces/storage.interface.js';
@@ -57,20 +56,34 @@ const createMockStorage = (): IStorageBackend =>
     isStale: vi.fn(),
   }) as unknown as IStorageBackend;
 
-const createMockReviewComment = (overrides?: Partial<ReviewComment>): ReviewComment => ({
+/**
+ * Creates a valid review comment record matching the lexicon schema.
+ *
+ * @remarks
+ * The lexicon schema uses `eprintUri` and `body` (rich text array),
+ * not the legacy `subject` and `text` format.
+ */
+const createMockReviewComment = (overrides?: Record<string, unknown>): Record<string, unknown> => ({
   $type: 'pub.chive.review.comment',
-  subject: {
-    uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
-    cid: 'bafyreicid123',
-  },
-  text: 'The treatment of clause-embedding predicates here is thorough, but consider how this analysis extends to control predicates like "try" and "persuade".',
+  eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
+  body: [
+    {
+      $type: 'pub.chive.review.comment#textItem',
+      type: 'text',
+      content:
+        'The treatment of clause-embedding predicates here is thorough, but consider how this analysis extends to control predicates like "try" and "persuade".',
+    },
+  ],
   createdAt: new Date('2020-01-01T00:00:00Z').toISOString(),
   ...overrides,
 });
 
-const createMockEndorsement = (overrides?: Partial<Endorsement>): Endorsement => ({
+/**
+ * Creates a valid endorsement record matching the lexicon schema.
+ */
+const createMockEndorsement = (overrides?: Record<string, unknown>): Record<string, unknown> => ({
   $type: 'pub.chive.review.endorsement',
-  eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123' as AtUri,
+  eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
   contributions: ['methodological'],
   createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
   ...overrides,
@@ -110,14 +123,14 @@ describe('ReviewService', () => {
       expect(pool.query).toHaveBeenCalledTimes(1);
       expect(pool.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO reviews_index'),
-        expect.arrayContaining([metadata.uri, metadata.cid, comment.subject.uri])
+        expect.arrayContaining([metadata.uri, metadata.cid, comment.eprintUri])
       );
       expect(logger.infoMock).toHaveBeenCalledWith('Indexed review', expect.any(Object));
     });
 
     it('handles review with parent comment', async () => {
       const parentUri = 'at://did:plc:other/pub.chive.review.comment/parent123' as AtUri;
-      const comment = createMockReviewComment({ parent: parentUri });
+      const comment = createMockReviewComment({ parentComment: parentUri });
       const metadata = createMockMetadata();
 
       pool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
