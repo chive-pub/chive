@@ -57,6 +57,7 @@ import type {
   StoredEprint,
   ChangelogQueryOptions as StorageChangelogQueryOptions,
   ChangelogListResult,
+  IndexedUserTag,
 } from '../../types/interfaces/storage.interface.js';
 import type { Eprint, EprintVersion } from '../../types/models/eprint.ts';
 import type { Result } from '../../types/result.js';
@@ -795,11 +796,14 @@ export class EprintService {
    * Resolves field URIs to their human-readable labels from the knowledge graph.
    *
    * @param fields - Fields with URIs (labels may be set to URIs by transformer)
-   * @returns Fields with resolved labels
+   * @returns Fields with resolved labels and normalized IDs
    *
    * @remarks
    * Fields may contain either AT-URIs or UUIDs. This method extracts UUIDs
    * from AT-URIs before querying Neo4j, which stores nodes by UUID.
+   *
+   * The `id` field is always set to the extracted UUID (from uri or existing id),
+   * ensuring Elasticsearch indexing uses UUIDs consistently.
    *
    * @internal
    */
@@ -807,7 +811,12 @@ export class EprintService {
     fields: readonly { uri: string; label: string; id?: string }[]
   ): Promise<readonly { uri: string; label: string; id?: string }[]> {
     if (!this.graph) {
-      return fields;
+      // Even without graph, ensure id is normalized to UUID
+      return fields.map((field) => ({
+        uri: field.uri,
+        label: field.label,
+        id: extractRkeyOrPassthrough(field.id ?? field.uri),
+      }));
     }
 
     // Extract UUIDs from AT-URIs (Neo4j stores nodes by UUID, not full AT-URI)
@@ -817,7 +826,7 @@ export class EprintService {
       // Batch fetch all field nodes from the knowledge graph
       const nodeMap = await this.graph.getNodesByIds(fieldIds, 'field');
 
-      // Map fields with resolved labels
+      // Map fields with resolved labels and normalized IDs
       return fields.map((field) => {
         const fieldId = extractRkeyOrPassthrough(field.uri);
         const node = nodeMap.get(fieldId);
@@ -825,18 +834,52 @@ export class EprintService {
           return {
             uri: field.uri,
             label: node.label,
-            id: field.id ?? fieldId,
+            // Always use the extracted UUID, not any potentially malformed field.id
+            id: fieldId,
           };
         }
-        // Keep original if node not found (fallback to URI)
-        return field;
+        // Node not found: use extracted UUID for id, keep original label
+        return {
+          uri: field.uri,
+          label: field.label,
+          id: fieldId,
+        };
       });
     } catch (error) {
       this.logger.warn('Failed to resolve field labels, using URIs as fallback', {
         fieldCount: fields.length,
         error: error instanceof Error ? error.message : String(error),
       });
-      return fields;
+      // On error, still ensure id is normalized to UUID
+      return fields.map((field) => ({
+        uri: field.uri,
+        label: field.label,
+        id: extractRkeyOrPassthrough(field.id ?? field.uri),
+      }));
     }
+  }
+
+  /**
+   * Retrieves user tags for an eprint from the PostgreSQL index.
+   *
+   * @param eprintUri - AT-URI of the eprint
+   * @returns Array of indexed user tags
+   *
+   * @remarks
+   * Returns individual user tag records indexed from the firehose.
+   * Each tag includes the tagger's DID, original tag text, and creation time.
+   *
+   * @example
+   * ```typescript
+   * const tags = await eprintService.getTagsForEprint(uri);
+   * for (const tag of tags) {
+   *   console.log(`${tag.taggerDid} tagged: ${tag.tag}`);
+   * }
+   * ```
+   *
+   * @public
+   */
+  async getTagsForEprint(eprintUri: AtUri): Promise<readonly IndexedUserTag[]> {
+    return this.storage.getTagsForEprint(eprintUri);
   }
 }
