@@ -178,6 +178,8 @@ Located in `components/eprints/`:
 | `PDFAnnotationOverlay`    | Text selection and annotation layer                                                                |
 | `PDFSelectionPopover`     | Context menu for PDF text selection                                                                |
 | `PDFTextSelectionHandler` | Captures text selections in PDF                                                                    |
+| `EprintAbstract`          | Expandable rich text abstract display                                                              |
+| `StaticAbstract`          | Non-expandable truncated abstract for lists                                                        |
 
 Example:
 
@@ -303,6 +305,16 @@ Located in `components/tags/`:
 | `TagCloud` | Tag visualization by frequency |
 | `TagInput` | Autocomplete tag entry         |
 | `TagList`  | Horizontal tag list            |
+
+### Editor components
+
+Located in `components/editor/`:
+
+| Component          | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `RichTextRenderer` | Renders rich text items with entity references |
+
+See [Frontend Rich Text](./frontend-rich-text.md) for detailed documentation on the rich text system.
 
 ### Adding new components
 
@@ -840,6 +852,13 @@ export function Counter() {
 | `pnpm openapi:generate` | Regenerate API types     |
 
 ## Related documentation
+
+**Chive frontend guides:**
+
+- [Rich Text System](./frontend-rich-text.md): RichTextRenderer, type definitions, schema migration
+- [Eprint Lifecycle](./frontend-eprint-lifecycle.md): Edit, version, and delete components
+
+**External resources:**
 
 - [ATProto Specification](https://atproto.com/specs)
 - [Next.js Documentation](https://nextjs.org/docs)

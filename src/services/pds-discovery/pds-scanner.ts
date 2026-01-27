@@ -25,6 +25,7 @@ import type { AtUri, DID, CID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecord } from '../eprint/pds-record-transformer.js';
+import type { ReviewService } from '../review/review-service.js';
 
 import type { IPDSRegistry, ScanResult } from './pds-registry.js';
 
@@ -54,7 +55,7 @@ const DEFAULT_CONFIG: PDSScannerConfig = {
 interface ListRecordsRecord {
   uri: string;
   cid: string;
-  value: Record<string, unknown>;
+  value: unknown;
 }
 
 /**
@@ -70,6 +71,7 @@ interface ListRecordsRecord {
 export class PDSScanner {
   private readonly registry: IPDSRegistry;
   private readonly eprintService: EprintService;
+  private readonly reviewService: ReviewService;
   private readonly logger: ILogger;
   private readonly config: PDSScannerConfig;
 
@@ -82,11 +84,13 @@ export class PDSScanner {
   constructor(
     registry: IPDSRegistry,
     eprintService: EprintService,
+    reviewService: ReviewService,
     logger: ILogger,
     config?: Partial<PDSScannerConfig>
   ) {
     this.registry = registry;
     this.eprintService = eprintService;
+    this.reviewService = reviewService;
     this.logger = logger;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
@@ -315,6 +319,8 @@ export class PDSScanner {
       'pub.chive.eprint.submission',
       'pub.chive.review.comment',
       'pub.chive.review.endorsement',
+      'pub.chive.eprint.userTag',
+      'pub.chive.eprint.tag',
     ];
 
     let totalIndexed = 0;
@@ -439,6 +445,13 @@ export class PDSScanner {
   /**
    * Indexes a single record via the existing pipeline.
    *
+   * @remarks
+   * Handles all pub.chive.* collection types:
+   * - `pub.chive.eprint.submission`: Indexed via EprintService
+   * - `pub.chive.review.comment`: Indexed via ReviewService
+   * - `pub.chive.review.endorsement`: Indexed via ReviewService
+   * - `pub.chive.eprint.userTag` and `pub.chive.eprint.tag`: Logged for now
+   *
    * @param pdsUrl - PDS endpoint URL
    * @param did - Repo DID
    * @param collection - Collection NSID
@@ -447,7 +460,7 @@ export class PDSScanner {
    */
   private async indexRecord(
     pdsUrl: string,
-    _did: DID,
+    did: DID,
     collection: string,
     record: ListRecordsRecord
   ): Promise<boolean> {
@@ -462,54 +475,128 @@ export class PDSScanner {
 
         const endTimer = pdsMetrics.recordIndexDuration.startTimer({ collection });
 
+        // Build metadata (shared across all collection types)
+        const metadata: RecordMetadata = {
+          uri: record.uri as AtUri,
+          cid: record.cid as CID,
+          pdsUrl,
+          indexedAt: new Date(),
+        };
+
         try {
-          // Only handle eprint submissions for now
-          if (collection !== 'pub.chive.eprint.submission') {
-            pdsMetrics.scansTotal.inc({ status: 'skipped' });
-            endTimer({ status: 'skipped' });
-            return false;
-          }
+          switch (collection) {
+            case 'pub.chive.eprint.submission': {
+              // Transform PDS record to our format
+              let transformed;
+              try {
+                transformed = transformPDSRecord(
+                  record.value,
+                  record.uri as AtUri,
+                  record.cid as CID
+                );
+              } catch (err) {
+                this.logger.debug('Record transformation failed', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                if (err instanceof Error) {
+                  recordSpanError(err, 'Record transformation failed');
+                }
+                return false;
+              }
 
-          // Transform the PDS record to our format
-          let transformed;
-          try {
-            transformed = transformPDSRecord(record.value, record.uri as AtUri, record.cid as CID);
-          } catch (err) {
-            this.logger.debug('Record transformation failed', { uri: record.uri });
-            pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-            endTimer({ status: 'error' });
-            if (err instanceof Error) {
-              recordSpanError(err, 'Record transformation failed');
+              const result = await this.eprintService.indexEprint(transformed, metadata);
+
+              if (result.ok) {
+                this.logger.info('Indexed eprint from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index eprint', {
+                  uri: record.uri,
+                  error: result.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': result.error.message,
+                });
+                return false;
+              }
             }
-            return false;
-          }
 
-          // Build metadata
-          const metadata: RecordMetadata = {
-            uri: record.uri as AtUri,
-            cid: record.cid as CID,
-            pdsUrl,
-            indexedAt: new Date(),
-          };
+            case 'pub.chive.review.comment': {
+              // Pass record.value as-is; service validates internally
+              const result = await this.reviewService.indexReview(record.value, metadata);
 
-          // Index via existing pipeline
-          const result = await this.eprintService.indexEprint(transformed, metadata);
+              if (result.ok) {
+                this.logger.info('Indexed review comment from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index review comment', {
+                  uri: record.uri,
+                  error: result.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': result.error.message,
+                });
+                return false;
+              }
+            }
 
-          if (result.ok) {
-            this.logger.info('Indexed record from PDS scan', { uri: record.uri });
-            pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
-            endTimer({ status: 'success' });
-            addSpanAttributes({ 'record.indexed': true });
-            return true;
-          } else {
-            this.logger.debug('Failed to index record', {
-              uri: record.uri,
-              error: result.error.message,
-            });
-            pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-            endTimer({ status: 'error' });
-            addSpanAttributes({ 'record.indexed': false, 'record.error': result.error.message });
-            return false;
+            case 'pub.chive.review.endorsement': {
+              // Pass record.value as-is; service validates internally
+              const result = await this.reviewService.indexEndorsement(record.value, metadata);
+
+              if (result.ok) {
+                this.logger.info('Indexed endorsement from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index endorsement', {
+                  uri: record.uri,
+                  error: result.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': result.error.message,
+                });
+                return false;
+              }
+            }
+
+            case 'pub.chive.eprint.userTag':
+            case 'pub.chive.eprint.tag': {
+              // User tags are indexed via firehose and TagManager
+              // For backfill, we log for now; full tag indexing requires TagManager integration
+              this.logger.debug('Scanned user tag record', {
+                uri: record.uri,
+                did,
+                collection,
+              });
+              pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+              endTimer({ status: 'skipped' });
+              return false;
+            }
+
+            default: {
+              this.logger.debug('Unknown collection in PDS scan', { collection, uri: record.uri });
+              pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+              endTimer({ status: 'skipped' });
+              return false;
+            }
           }
         } catch (error) {
           this.logger.debug('Record indexing error', {

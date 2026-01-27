@@ -56,11 +56,12 @@ All services return `Result<T, Error>` types for explicit error handling.
 
 ### Infrastructure
 
-| Service                | Purpose               | Key operations                         |
-| ---------------------- | --------------------- | -------------------------------------- |
-| BlobProxyService       | Blob fetching         | `getBlob()`, `proxyBlob()`             |
-| BacklinkService        | ATProto backlinks     | `createBacklink()`, `getCounts()`      |
-| GovernancePDSConnector | Governance PDS access | `getAuthorityRecord()`, `listFacets()` |
+| Service                                                 | Purpose               | Key operations                               |
+| ------------------------------------------------------- | --------------------- | -------------------------------------------- |
+| BlobProxyService                                        | Blob fetching         | `getBlob()`, `proxyBlob()`                   |
+| BacklinkService                                         | ATProto backlinks     | `createBacklink()`, `getCounts()`            |
+| GovernancePDSConnector                                  | Governance PDS access | `getAuthorityRecord()`, `listFacets()`       |
+| [SchemaCompatibilityService](./schema-compatibility.md) | Schema evolution      | `detectAbstractFormat()`, `needsMigration()` |
 
 ## Service initialization order
 
@@ -180,3 +181,4 @@ describe('EprintService', () => {
 - [DiscoveryService](./discovery.md): Recommendation engine
 - [ClaimingService](./claiming.md): Authorship verification
 - [PDSDiscoveryService](./pds-discovery.md): PDS registration and scanning
+- [SchemaCompatibilityService](./schema-compatibility.md): Schema evolution and migration hints

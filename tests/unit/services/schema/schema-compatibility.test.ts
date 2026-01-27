@@ -228,6 +228,7 @@ describe('SchemaCompatibilityService', () => {
   describe('generateApiHints', () => {
     it('returns undefined for current schema', () => {
       const currentRecord = {
+        title: 'Simple Title',
         abstract: [{ type: 'text', content: 'Rich text abstract' }],
       };
 
@@ -239,6 +240,7 @@ describe('SchemaCompatibilityService', () => {
 
     it('generates hints for legacy schema', () => {
       const legacyRecord = {
+        title: 'Simple Title',
         abstract: 'Plain text abstract',
       };
 
@@ -253,21 +255,102 @@ describe('SchemaCompatibilityService', () => {
     });
   });
 
+  describe('detectTitleFormat', () => {
+    it('detects empty title', () => {
+      const result = service.detectTitleFormat(undefined, undefined);
+      expect(result.format).toBe('empty');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('detects null title as empty', () => {
+      const result = service.detectTitleFormat(null, undefined);
+      expect(result.format).toBe('empty');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('detects plain title without special formatting', () => {
+      const result = service.detectTitleFormat('A Simple Title', undefined);
+      expect(result.format).toBe('plain');
+      expect(result.isCurrent).toBe(true);
+    });
+
+    it('detects title with inline LaTeX as needing rich text', () => {
+      const result = service.detectTitleFormat('Study of $\\alpha$-decay in nuclei', undefined);
+      expect(result.format).toBe('plain-needs-rich');
+      expect(result.isCurrent).toBe(false);
+      expect(result.metadata).toHaveProperty('hasLatex', true);
+    });
+
+    it('detects title with display LaTeX as needing rich text', () => {
+      const result = service.detectTitleFormat('The equation $$E=mc^2$$ explained', undefined);
+      expect(result.format).toBe('plain-needs-rich');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('detects title with LaTeX commands as needing rich text', () => {
+      const result = service.detectTitleFormat('Analysis of \\textbf{bold} claims', undefined);
+      expect(result.format).toBe('plain-needs-rich');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('detects title with subscript notation as needing rich text', () => {
+      const result = service.detectTitleFormat('Properties of H_{2}O molecules', undefined);
+      expect(result.format).toBe('plain-needs-rich');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('detects title with superscript notation as needing rich text', () => {
+      const result = service.detectTitleFormat('The O(n^{2}) complexity problem', undefined);
+      expect(result.format).toBe('plain-needs-rich');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('detects title with accompanying titleRich as current', () => {
+      const titleRich = [
+        { type: 'text', content: 'Study of ' },
+        { type: 'latex', content: '\\alpha' },
+      ];
+      const result = service.detectTitleFormat('Study of alpha-decay', titleRich);
+      expect(result.format).toBe('with-rich');
+      expect(result.isCurrent).toBe(true);
+    });
+
+    it('handles non-string title as invalid', () => {
+      const result = service.detectTitleFormat(123, undefined);
+      expect(result.format).toBe('invalid');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('handles empty string title', () => {
+      const result = service.detectTitleFormat('', undefined);
+      expect(result.format).toBe('empty');
+      expect(result.isCurrent).toBe(false);
+    });
+
+    it('handles whitespace-only title as plain', () => {
+      // Whitespace-only is technically a valid plain string
+      const result = service.detectTitleFormat('   ', undefined);
+      expect(result.format).toBe('plain');
+      expect(result.isCurrent).toBe(true);
+    });
+  });
+
   describe('needsMigration', () => {
     it('returns true for legacy format', () => {
-      expect(service.needsMigration({ abstract: 'string' })).toBe(true);
+      expect(service.needsMigration({ title: 'Test', abstract: 'string' })).toBe(true);
     });
 
     it('returns false for current format', () => {
       expect(
         service.needsMigration({
+          title: 'Test',
           abstract: [{ type: 'text', content: 'array' }],
         })
       ).toBe(false);
     });
 
     it('returns false for empty abstract', () => {
-      expect(service.needsMigration({ abstract: undefined })).toBe(false);
+      expect(service.needsMigration({ title: 'Test', abstract: undefined })).toBe(false);
     });
   });
 

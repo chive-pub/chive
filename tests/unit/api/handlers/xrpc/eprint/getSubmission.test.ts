@@ -275,6 +275,9 @@ describe('XRPC getSubmission Handler', () => {
       const eprint = createMockEprint({
         abstract: createMockAbstract(plainText),
         abstractPlainText: plainText,
+        // The needsAbstractMigration flag is set during indexing when the source
+        // record had a plain string abstract
+        needsAbstractMigration: true,
       });
       mockEprintService.getEprint.mockResolvedValue(eprint);
 

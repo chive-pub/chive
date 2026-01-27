@@ -64,6 +64,7 @@ import type {
   ChangelogListResult,
   SemanticVersionData,
   ChangelogSectionData,
+  IndexedUserTag,
 } from '../../types/interfaces/storage.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
 
@@ -528,6 +529,39 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Retrieves user tags for an eprint.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @returns Array of indexed user tags
+   *
+   * @remarks
+   * Returns individual user tag records indexed from the firehose.
+   * Ordered by creation time descending (newest first).
+   *
+   * @public
+   */
+  async getTagsForEprint(eprintUri: AtUri): Promise<readonly IndexedUserTag[]> {
+    const result = await this.pool.query<UserTagRow>(
+      `SELECT uri, cid, eprint_uri, tagger_did, tag, created_at, pds_url, indexed_at
+       FROM user_tags_index
+       WHERE eprint_uri = $1
+       ORDER BY created_at DESC`,
+      [eprintUri]
+    );
+
+    return result.rows.map((row) => ({
+      uri: row.uri as AtUri,
+      cid: row.cid as CID,
+      eprintUri: row.eprint_uri as AtUri,
+      taggerDid: row.tagger_did as DID,
+      tag: row.tag,
+      createdAt: row.created_at,
+      pdsUrl: row.pds_url,
+      indexedAt: row.indexed_at,
+    }));
+  }
+
+  /**
    * Maps a changelog database row to StoredChangelog.
    *
    * @param row - Database row
@@ -565,4 +599,20 @@ interface ChangelogRow {
   readonly sections: unknown; // JSONB array
   readonly reviewer_response: string | null;
   readonly created_at: Date;
+}
+
+/**
+ * Database row representation of user tag index record.
+ *
+ * @internal
+ */
+interface UserTagRow {
+  readonly uri: string;
+  readonly cid: string;
+  readonly eprint_uri: string;
+  readonly tagger_did: string;
+  readonly tag: string;
+  readonly created_at: Date;
+  readonly pds_url: string;
+  readonly indexed_at: Date;
 }

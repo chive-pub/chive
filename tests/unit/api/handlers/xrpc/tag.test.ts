@@ -64,6 +64,7 @@ const createMockTagData = (overrides?: Partial<MockTagData>): MockTagData => ({
 describe('XRPC Tag Handlers', () => {
   let mockLogger: ILogger;
   let mockTagManager: MockTagManager;
+  let mockEprintService: { getTagsForEprint: ReturnType<typeof vi.fn> };
   let mockContext: {
     get: ReturnType<typeof vi.fn>;
     set: ReturnType<typeof vi.fn>;
@@ -72,6 +73,9 @@ describe('XRPC Tag Handlers', () => {
   beforeEach(() => {
     mockLogger = createMockLogger();
     mockTagManager = createMockTagManager();
+    mockEprintService = {
+      getTagsForEprint: vi.fn().mockResolvedValue([]),
+    };
 
     mockContext = {
       get: vi.fn((key: string) => {
@@ -79,6 +83,7 @@ describe('XRPC Tag Handlers', () => {
           case 'services':
             return {
               tagManager: mockTagManager,
+              eprint: mockEprintService,
             };
           case 'logger':
             return mockLogger;
@@ -231,11 +236,28 @@ describe('XRPC Tag Handlers', () => {
 
   describe('listForEprint', () => {
     it('returns tags for a specific eprint', async () => {
-      const eprintTags: MockTagData[] = [
-        createMockTagData({ normalizedForm: 'quantum-computing', rawForm: 'quantum computing' }),
-        createMockTagData({ normalizedForm: 'algorithms', rawForm: 'algorithms' }),
+      // Mock indexed tags from PostgreSQL
+      const indexedTags = [
+        {
+          uri: 'at://did:plc:user1/pub.chive.eprint.userTag/tag1',
+          eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
+          tag: 'quantum computing',
+          normalizedTag: 'quantum-computing',
+          authorDid: 'did:plc:user1',
+          createdAt: new Date(),
+          indexedAt: new Date(),
+        },
+        {
+          uri: 'at://did:plc:user2/pub.chive.eprint.userTag/tag2',
+          eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz',
+          tag: 'algorithms',
+          normalizedTag: 'algorithms',
+          authorDid: 'did:plc:user2',
+          createdAt: new Date(),
+          indexedAt: new Date(),
+        },
       ];
-      mockTagManager.getTagsForRecord.mockResolvedValue(eprintTags);
+      mockEprintService.getTagsForEprint.mockResolvedValue(indexedTags);
       mockTagManager.getTagSuggestions.mockResolvedValue([
         {
           tag: createMockTagData({ normalizedForm: 'cryptography', rawForm: 'cryptography' }),
@@ -252,11 +274,14 @@ describe('XRPC Tag Handlers', () => {
 
       expect(result.body.tags).toHaveLength(2);
       expect(result.body.suggestions).toHaveLength(1);
-      expect(mockTagManager.getTagsForRecord).toHaveBeenCalled();
+      expect(mockEprintService.getTagsForEprint).toHaveBeenCalledWith(
+        'at://did:plc:abc/pub.chive.eprint.submission/xyz'
+      );
     });
 
     it('returns empty arrays when no tags exist', async () => {
-      mockTagManager.getTagsForRecord.mockResolvedValue([]);
+      mockEprintService.getTagsForEprint.mockResolvedValue([]);
+      mockTagManager.getTagSuggestions.mockResolvedValue([]);
 
       const result = await listForEprint.handler({
         params: { eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/xyz' },

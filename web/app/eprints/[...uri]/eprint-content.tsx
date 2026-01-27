@@ -58,6 +58,7 @@ import { LoginPrompt } from '@/components/auth';
 import { TagManager } from '@/components/tags';
 import { IntegrationPanel } from '@/components/integrations';
 import { RelatedPapersPanel } from '@/components/discovery';
+import type { RichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
 import { ThumbsUp, Sparkles, Pencil, Trash2 } from 'lucide-react';
@@ -210,12 +211,19 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
   const handleSubmitEndorsement = useCallback(
     async (data: EndorsementFormData) => {
-      await createEndorsement.mutateAsync({
-        eprintUri: uri,
-        contributions: data.contributions,
-        comment: data.comment,
-      });
-      setShowEndorsementForm(false);
+      try {
+        await createEndorsement.mutateAsync({
+          eprintUri: uri,
+          contributions: data.contributions,
+          comment: data.comment,
+        });
+        setShowEndorsementForm(false);
+        toast.success('Endorsement submitted successfully');
+      } catch (error) {
+        // Error is displayed in the form via error prop
+        // Don't close the form so user can see the error and retry
+        toast.error(error instanceof Error ? error.message : 'Failed to submit endorsement');
+      }
     },
     [uri, createEndorsement]
   );
@@ -566,8 +574,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         {/* Abstract tab */}
         <TabsContent value="abstract" className="space-y-6">
           <EprintAbstract
-            abstract={eprint.abstract}
-            abstractItems={eprint.abstractItems}
+            abstractItems={(eprint.abstractItems ?? []) as RichTextItem[]}
             defaultExpanded
           />
 
@@ -938,6 +945,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             onOpenChange={setShowEndorsementForm}
             onSubmit={handleSubmitEndorsement}
             isLoading={createEndorsement.isPending}
+            error={createEndorsement.error?.message}
           />
         </TabsContent>
 

@@ -46,7 +46,7 @@ import type { EdgeService } from '../governance/edge-service.js';
 import type { NodeService } from '../governance/node-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
 import type { IPDSRegistry } from '../pds-discovery/pds-registry.js';
-import type { ReviewService, ReviewComment, Endorsement } from '../review/review-service.js';
+import type { ReviewService } from '../review/review-service.js';
 
 import type { DeadLetterQueue, DLQEvent } from './dlq-handler.js';
 import type { ProcessedEvent } from './indexing-service.js';
@@ -562,8 +562,8 @@ async function processRecord(
           );
         }
       } else if (record) {
-        const commentRecord = record as ReviewComment;
-        const result = await reviewService.indexReview(commentRecord, metadata);
+        // Pass record as-is; service validates internally
+        const result = await reviewService.indexReview(record, metadata);
         if (!result.ok) {
           const error = result.error as Error;
           logger.error('Failed to index review', error, { uri, action });
@@ -590,8 +590,8 @@ async function processRecord(
           );
         }
       } else if (record) {
-        const endorsementRecord = record as Endorsement;
-        const result = await reviewService.indexEndorsement(endorsementRecord, metadata);
+        // Pass record as-is; service validates internally
+        const result = await reviewService.indexEndorsement(record, metadata);
         if (!result.ok) {
           const error = result.error as Error;
           logger.error('Failed to index endorsement', error, { uri, action });

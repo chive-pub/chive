@@ -1,35 +1,67 @@
 /**
- * Commit event handler for firehose operations.
+ * Commit event handler for firehose and Jetstream operations.
  *
  * @remarks
- * Parses commit events from the firehose, extracting operations and
- * decoding records from CAR (Content Addressable aRchive) files.
+ * Parses commit events from two sources:
  *
- * Commit events contain CAR files with IPLD blocks encoded as DAG-CBOR.
- * This handler decodes those blocks to extract the actual record data.
+ * 1. **Jetstream events**: Records are pre-decoded as JSON and attached
+ *    directly to operations. No CAR/CBOR parsing required.
  *
- * **ATProto Commit Format:**
+ * 2. **Full firehose events**: Records are encoded in CAR files as
+ *    DAG-CBOR blocks. This handler decodes those blocks to extract
+ *    the actual record data.
+ *
+ * The handler automatically detects which format is in use by checking
+ * whether operations have pre-attached `record` fields (Jetstream) or
+ * require CAR block parsing (full firehose).
+ *
+ * **Jetstream Format (preferred):**
+ * - Events arrive as JSON via WebSocket
+ * - Records are already decoded and attached to ops
+ * - Lower CPU overhead, simpler processing
+ * - No cryptographic verification available
+ *
+ * **Full Firehose Format:**
  * - Events contain binary CAR data
- * - CAR files contain multiple blocks (commit, record data, etc.)
+ * - CAR files contain multiple IPLD blocks
  * - Blocks are CBOR-encoded
- * - CIDs are content-addressed hashes
+ * - CIDs enable content verification
  *
  * @example
  * ```typescript
  * const handler = new CommitHandler();
  *
- * // Parse commit event
- * const ops = await handler.parseCommit({
+ * // Jetstream event (record pre-attached)
+ * const jetstreamOps = await handler.parseCommit({
+ *   $type: 'com.atproto.sync.subscribeRepos#commit',
+ *   repo: 'did:plc:abc123',
+ *   commit: 'bafyrei...',
+ *   ops: [
+ *     {
+ *       action: 'create',
+ *       path: 'pub.chive.eprint.submission/xyz',
+ *       cid: 'bafyrei...',
+ *       record: { title: 'My Paper', authors: [...] }
+ *     }
+ *   ],
+ *   seq: 123456,
+ *   time: '2024-01-15T12:00:00Z'
+ * });
+ *
+ * // Full firehose event (CAR blocks)
+ * const firehoseOps = await handler.parseCommit({
  *   $type: 'com.atproto.sync.subscribeRepos#commit',
  *   repo: 'did:plc:abc123',
  *   commit: 'bafyrei...',
  *   blocks: Uint8Array(...),  // CAR file bytes
  *   ops: [
  *     { action: 'create', path: 'pub.chive.eprint.submission/xyz', cid: 'bafyrei...' }
- *   ]
+ *   ],
+ *   seq: 123456,
+ *   time: '2024-01-15T12:00:00Z'
  * });
  *
- * for (const op of ops) {
+ * for (const op of jetstreamOps) {
  *   console.log(op.action, op.path, op.record);
  * }
  * ```
@@ -45,6 +77,36 @@ import { CID } from 'multiformats/cid';
 import type { CID as BrandedCID, DID } from '../../types/atproto.js';
 import { ValidationError } from '../../types/errors.js';
 import type { RepoOp } from '../../types/interfaces/event-stream.interface.js';
+
+/**
+ * Extended RepoOp with pre-decoded record from Jetstream.
+ *
+ * @remarks
+ * Jetstream events include records that are already decoded from CBOR
+ * to JSON. This interface extends the base RepoOp to include the
+ * optional `record` field that Jetstream attaches.
+ *
+ * When processing Jetstream events, the CommitHandler checks for the
+ * presence of this field to determine whether CAR block parsing is
+ * needed. If `record` is present on create/update operations, the
+ * handler returns the operations directly without CAR parsing.
+ *
+ * @example
+ * ```typescript
+ * // Jetstream attaches decoded records to ops
+ * const op: RepoOpWithRecord = {
+ *   action: 'create',
+ *   path: 'pub.chive.eprint.submission/xyz',
+ *   cid: 'bafyrei...',
+ *   record: { title: 'My Paper', authors: [...] }
+ * };
+ * ```
+ *
+ * @internal
+ */
+interface RepoOpWithRecord extends RepoOp {
+  record?: unknown;
+}
 
 /**
  * Commit event from firehose.
@@ -164,14 +226,21 @@ export class CommitHandler {
   /**
    * Parses a commit event and extracts operations with decoded records.
    *
-   * @param event - Commit event from firehose
-   * @returns Array of parsed operations
+   * @param event - commit event from firehose or Jetstream
+   * @returns array of parsed operations with decoded records
    *
    * @throws {@link ParseError}
    * Thrown when CAR parsing or CBOR decoding fails.
    *
    * @remarks
-   * Processing steps:
+   * Supports two event formats:
+   *
+   * **Jetstream events (pre-decoded records):**
+   * 1. Check if operations have pre-attached `record` fields
+   * 2. If yes, return operations directly (no CAR parsing needed)
+   * 3. Jetstream provides records already decoded from CBOR to JSON
+   *
+   * **Full firehose events (CAR blocks):**
    * 1. Check for tooBig flag (blocks must be fetched separately)
    * 2. Parse CAR file from blocks bytes
    * 3. For each operation:
@@ -193,6 +262,7 @@ export class CommitHandler {
    * const handler = new CommitHandler();
    *
    * try {
+   *   // Works with both Jetstream and full firehose events
    *   const ops = await handler.parseCommit(event);
    *
    *   for (const op of ops) {
@@ -215,9 +285,26 @@ export class CommitHandler {
       throw new ParseError('Event blocks too large - must fetch separately from PDS', event.commit);
     }
 
-    // No blocks provided but tooBig is false: malformed event
+    // No blocks provided: check if records are pre-decoded (Jetstream events)
     if (!event.blocks || event.blocks.length === 0) {
-      // Delete operations are fine without blocks
+      // Jetstream events have records already decoded and attached to ops
+      // Check if any create/update ops have pre-attached records
+      const opsWithRecords = event.ops as readonly RepoOpWithRecord[];
+      const hasPreDecodedRecords = opsWithRecords.some(
+        (op) => (op.action === 'create' || op.action === 'update') && op.record !== undefined
+      );
+
+      if (hasPreDecodedRecords) {
+        // Jetstream event: return ops with pre-decoded records
+        return opsWithRecords.map((op) => ({
+          action: op.action,
+          path: op.path,
+          cid: op.cid,
+          record: op.record,
+        }));
+      }
+
+      // No pre-decoded records: check if all ops are deletes (which is fine)
       const hasCreateOrUpdate = event.ops.some(
         (op) => op.action === 'create' || op.action === 'update'
       );

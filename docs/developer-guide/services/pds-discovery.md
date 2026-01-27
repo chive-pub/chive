@@ -16,11 +16,11 @@ Without proactive discovery, records on these PDSes would never appear in Chive'
 
 The PDS Discovery system consists of three main components:
 
-| Component             | Purpose                                 | Source                                            |
-| --------------------- | --------------------------------------- | ------------------------------------------------- |
-| `PDSRegistry`         | Tracks known PDSes and their scan state | `src/services/pds-discovery/pds-registry.ts`      |
-| `PDSDiscoveryService` | Discovers PDSes from various sources    | `src/services/pds-discovery/discovery-service.ts` |
-| `PDSScanner`          | Scans PDSes for Chive records           | `src/services/pds-discovery/pds-scanner.ts`       |
+| Component             | Purpose                                       | Source                                            |
+| --------------------- | --------------------------------------------- | ------------------------------------------------- |
+| `PDSRegistry`         | Tracks known PDSes and their scan state       | `src/services/pds-discovery/pds-registry.ts`      |
+| `PDSDiscoveryService` | Discovers PDSes from various sources          | `src/services/pds-discovery/discovery-service.ts` |
+| `PDSScanner`          | Scans PDSes for all `pub.chive.*` collections | `src/services/pds-discovery/pds-scanner.ts`       |
 
 ### PDSRegistry
 
@@ -104,10 +104,18 @@ const pdses = await discoveryService.discoverFromDIDMentions(authorDids);
 
 ### PDSScanner
 
-Scans PDSes for `pub.chive.*` records and indexes them:
+Scans PDSes for all `pub.chive.*` records and indexes them via the appropriate services.
+
+#### Instantiation
+
+The scanner requires both `EprintService` and `ReviewService` dependencies to handle the different collection types:
 
 ```typescript
-const scanner = new PDSScanner(registry, eprintService, logger, {
+import { PDSScanner } from '@/services/pds-discovery/pds-scanner.js';
+import { EprintService } from '@/services/eprint/eprint-service.js';
+import { ReviewService } from '@/services/review/review-service.js';
+
+const scanner = new PDSScanner(registry, eprintService, reviewService, logger, {
   requestsPerMinute: 10,
   scanTimeoutMs: 60000,
   maxRecordsPerPDS: 1000,
@@ -121,11 +129,96 @@ console.log(`Found ${result.chiveRecordCount} records`);
 const results = await scanner.scanMultiplePDSes(pdsUrls, 2);
 ```
 
-The scanner checks these collections:
+#### Supported collections
 
-- `pub.chive.eprint.submission`
-- `pub.chive.review.comment`
-- `pub.chive.review.endorsement`
+The scanner indexes records from the following collections:
+
+| Collection                     | Indexed via     | Description                          |
+| ------------------------------ | --------------- | ------------------------------------ |
+| `pub.chive.eprint.submission`  | `EprintService` | Core eprint submissions              |
+| `pub.chive.review.comment`     | `ReviewService` | Review comments with threading       |
+| `pub.chive.review.endorsement` | `ReviewService` | Endorsements with contribution types |
+| `pub.chive.eprint.userTag`     | (logged only)   | User-assigned tags on eprints        |
+| `pub.chive.eprint.tag`         | (logged only)   | Legacy tag records                   |
+
+User tags (`userTag` and `tag`) are logged during scans but not fully indexed. Tag indexing via `TagManager` integration is planned for a future release.
+
+#### Record routing
+
+The scanner routes records to the appropriate service based on collection type:
+
+```typescript
+// Simplified routing logic in indexRecord()
+switch (collection) {
+  case 'pub.chive.eprint.submission':
+    // Transform and index via EprintService
+    const transformed = transformPDSRecord(record.value, uri, cid);
+    await this.eprintService.indexEprint(transformed, metadata);
+    break;
+
+  case 'pub.chive.review.comment':
+    // Index directly via ReviewService (validates internally)
+    await this.reviewService.indexReview(record.value, metadata);
+    break;
+
+  case 'pub.chive.review.endorsement':
+    // Index directly via ReviewService (validates internally)
+    await this.reviewService.indexEndorsement(record.value, metadata);
+    break;
+
+  case 'pub.chive.eprint.userTag':
+  case 'pub.chive.eprint.tag':
+    // Logged but not indexed yet
+    this.logger.debug('Scanned user tag record', { uri, collection });
+    break;
+}
+```
+
+#### Runtime validation
+
+Records are validated at runtime using generated lexicon type guards before indexing. This approach avoids unsafe type assertions and ensures schema compliance.
+
+**For eprint submissions**, the scanner uses `transformPDSRecord()` which performs structural validation:
+
+```typescript
+import { transformPDSRecord } from '@/services/eprint/pds-record-transformer.js';
+
+// Throws ValidationError if record is malformed
+const eprint = transformPDSRecord(record.value, uri, cid);
+```
+
+**For reviews and endorsements**, `ReviewService` uses the generated `isRecord` type guards from the lexicon types:
+
+```typescript
+// In ReviewService.indexReview()
+import {
+  isRecord as isCommentRecord,
+  type Main as CommentRecord,
+} from '@/lexicons/generated/types/pub/chive/review/comment.js';
+
+async indexReview(record: unknown, metadata: RecordMetadata): Promise<Result<void, ValidationError>> {
+  // Runtime validation using generated type guard
+  if (!isCommentRecord(record)) {
+    return Err(new ValidationError(
+      'Record does not match pub.chive.review.comment schema',
+      'record',
+      'schema'
+    ));
+  }
+
+  // TypeScript now knows record is CommentRecord
+  const comment = record as CommentRecord;
+  // ... proceed with indexing
+}
+```
+
+The generated `isRecord` function checks that:
+
+1. The record is a non-null object
+2. The `$type` field matches the expected lexicon ID (e.g., `pub.chive.review.comment`)
+3. Required fields are present with correct types
+
+This pattern provides type safety without relying on `as` casts or `any` types
 
 ## User registration endpoint
 
@@ -254,11 +347,31 @@ console.log(`Discovered ${result.discovered} PDSes`);
 ```typescript
 import { PDSScanner } from '@/services/pds-discovery/pds-scanner.js';
 
-const scanner = new PDSScanner(registry, eprintService, logger);
+const scanner = new PDSScanner(registry, eprintService, reviewService, logger);
 
 // Scan a specific DID on a known PDS
 const recordsIndexed = await scanner.scanDID('https://pds.example.com', 'did:plc:abc123');
 ```
+
+The `scanDID` method scans all supported collections for the given DID and returns the total number of records indexed.
+
+## Metrics
+
+The PDSScanner exposes Prometheus metrics for observability:
+
+| Metric                            | Type      | Labels                 | Description                     |
+| --------------------------------- | --------- | ---------------------- | ------------------------------- |
+| `chive_pds_scan_duration_seconds` | Histogram | `status`               | Duration of PDS scan operations |
+| `chive_pds_scans_total`           | Counter   | `status`               | Total scan operations by status |
+| `chive_pds_records_scanned`       | Counter   | `collection`           | Records scanned by collection   |
+| `chive_pds_records_indexed`       | Counter   | `collection`, `status` | Records indexed by status       |
+| `chive_pds_record_index_duration` | Histogram | `collection`           | Duration of record indexing     |
+
+Status values for `chive_pds_records_indexed`:
+
+- `success`: Record indexed successfully
+- `error`: Indexing failed (validation or database error)
+- `skipped`: Record type not yet supported (e.g., user tags)
 
 ## Related documentation
 

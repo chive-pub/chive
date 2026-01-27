@@ -511,7 +511,7 @@ function createServices(
   // Create PDS Discovery services
   const pdsRegistry = new PDSRegistry(pgPool, logger);
 
-  const pdsScanner = new PDSScanner(pdsRegistry, eprintService, logger);
+  const pdsScanner = new PDSScanner(pdsRegistry, eprintService, reviewService, logger);
 
   // Create index retry worker for failed indexRecord calls
   const redisUrl = new URL(config.redisUrl);

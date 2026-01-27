@@ -6,6 +6,7 @@
 
 export { RichTextEditor, type RichTextEditorProps } from './rich-text-editor';
 export { MarkdownPreview, type MarkdownPreviewProps } from './markdown-preview';
+export { RichTextRenderer, type RichTextRendererProps } from './rich-text-renderer';
 export { LatexExtension } from './extensions/latex-extension';
 export {
   type RichTextContent,

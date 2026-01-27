@@ -232,8 +232,11 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
     // record format. This avoids heuristic-based detection which had false positives.
     if (result.needsAbstractMigration) {
       const schemaDetection = schemaService.analyzeEprintRecord({
-        // Pass a string to trigger the legacy format detection
+        // Pass a string to trigger the legacy abstract format detection
         abstract: result.abstractPlainText ?? '',
+        // Include title to avoid false positive deprecation warnings
+        title: result.title,
+        titleRich: result.titleRich,
       });
 
       const schemaHints = schemaService.generateApiHints(schemaDetection);

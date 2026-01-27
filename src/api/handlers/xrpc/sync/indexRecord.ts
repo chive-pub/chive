@@ -3,8 +3,17 @@
  *
  * @remarks
  * Fetches a record from a user's PDS and indexes it in Chive.
- * This is used to manually trigger indexing when the firehose
- * doesn't deliver events (e.g., non-Bluesky relays).
+ *
+ * This endpoint serves as a UX optimization and fallback mechanism:
+ * - **Immediate indexing**: Provides instant visibility after submission
+ *   instead of waiting for firehose propagation latency
+ * - **Missed records**: Recovers records that the firehose may have
+ *   missed due to temporary disconnection or backpressure
+ * - **Re-indexing**: Allows users to request re-indexing if data
+ *   appears stale
+ *
+ * The firehose (via Jetstream with `wantedCollections=pub.chive.*`) remains
+ * the primary indexing mechanism. This endpoint supplements it for better UX.
  *
  * @packageDocumentation
  * @public

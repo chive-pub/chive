@@ -807,8 +807,10 @@ describe('transformPDSRecordWithSchema', () => {
       const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
 
       expect(result.schemaDetection).toBeDefined();
-      expect(result.schemaDetection.fieldDetections).toHaveLength(1);
+      // Now includes both abstract and title field detection
+      expect(result.schemaDetection.fieldDetections).toHaveLength(2);
       expect(result.schemaDetection.fieldDetections[0]?.field).toBe('abstract');
+      expect(result.schemaDetection.fieldDetections[1]?.field).toBe('title');
       expect(result.schemaDetection.compatibility).toBeDefined();
     });
 

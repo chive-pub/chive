@@ -51,6 +51,7 @@ const PDS_WRITE_EXCLUDED_PATHS = [
   'lib/hooks',
   'lib/auth',
   'lib/api/generated', // Auto-generated ATProto lexicon type definitions
+  'lib/api/schema.generated.ts', // Auto-generated OpenAPI type definitions
   'components/governance', // User-initiated governance proposal writes to user's own PDS
   'components/eprints', // User-initiated eprint edit/delete writes to user's own PDS
 ];

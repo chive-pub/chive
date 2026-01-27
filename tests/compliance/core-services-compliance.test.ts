@@ -25,11 +25,7 @@ import type { Pool } from 'pg';
 import { describe, it, expect, vi } from 'vitest';
 
 import { EprintService, type RecordMetadata } from '../../src/services/eprint/eprint-service.js';
-import {
-  ReviewService,
-  type ReviewComment,
-  type Endorsement,
-} from '../../src/services/review/review-service.js';
+import { ReviewService } from '../../src/services/review/review-service.js';
 import type { AtUri, CID, DID, Timestamp } from '../../src/types/atproto.js';
 import type { IIdentityResolver } from '../../src/types/interfaces/identity.interface.js';
 import type { ILogger } from '../../src/types/interfaces/logger.interface.js';
@@ -155,6 +151,10 @@ function createTrackedStorage(): IStorageBackend & {
     deleteChangelog: vi.fn().mockImplementation((uri: AtUri) => {
       operations.push({ method: 'deleteChangelog', args: [uri] });
       return Promise.resolve({ ok: true, value: undefined });
+    }),
+    getTagsForEprint: vi.fn().mockImplementation((eprintUri: AtUri) => {
+      operations.push({ method: 'getTagsForEprint', args: [eprintUri] });
+      return Promise.resolve([]);
     }),
   };
 }
@@ -467,10 +467,12 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      const review: ReviewComment = {
+      const review = {
         $type: 'pub.chive.review.comment',
-        subject: { uri: TEST_URI, cid: TEST_CID },
-        text: 'Test review',
+        eprintUri: TEST_URI,
+        body: [
+          { $type: 'pub.chive.review.comment#textItem', type: 'text', content: 'Test review' },
+        ],
         createdAt: new Date().toISOString(),
       };
 
@@ -492,7 +494,7 @@ describe('ATProto Core Services Compliance', () => {
         logger,
       });
 
-      const endorsement: Endorsement = {
+      const endorsement = {
         $type: 'pub.chive.review.endorsement',
         eprintUri: TEST_URI,
         contributions: ['methodological'],

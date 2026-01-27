@@ -5,33 +5,16 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { AnnotationBodyRenderer } from '@/components/reviews/annotation-body-renderer';
-
-/**
- * Rich abstract item type matching the API response format.
- *
- * @remarks
- * This uses a loose type to match what the Eprint interface returns.
- * The AnnotationBodyRenderer handles unknown types gracefully.
- */
-export interface AbstractItem {
-  type?: string;
-  content?: string;
-  uri?: string;
-  label?: string;
-  qid?: string;
-  url?: string;
-  subkind?: string;
-}
+import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
+import { extractPlainText } from '@/lib/types/rich-text';
+import type { RichTextItem } from '@/lib/types/rich-text';
 
 /**
  * Props for the EprintAbstract component.
  */
 export interface EprintAbstractProps {
-  /** Plain text abstract for display (used when abstractItems not provided) */
-  abstract: string;
-  /** Rich text abstract items for rendering with entity links */
-  abstractItems?: AbstractItem[];
+  /** Rich text abstract items */
+  abstractItems: RichTextItem[];
   /** Maximum characters to show when collapsed */
   maxLength?: number;
   /** Whether the abstract is initially expanded */
@@ -50,7 +33,7 @@ export interface EprintAbstractProps {
  * @example
  * ```tsx
  * <EprintAbstract
- *   abstract={eprint.abstract}
+ *   abstractItems={eprint.abstractItems}
  *   maxLength={300}
  * />
  * ```
@@ -59,7 +42,6 @@ export interface EprintAbstractProps {
  * @returns React element displaying the abstract
  */
 export function EprintAbstract({
-  abstract,
   abstractItems,
   maxLength = 300,
   defaultExpanded = false,
@@ -67,24 +49,20 @@ export function EprintAbstract({
 }: EprintAbstractProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  const needsTruncation = abstract.length > maxLength;
-
-  // If we have rich text items and are expanded (or don't need truncation), use the rich renderer
-  const shouldRenderRich =
-    abstractItems && abstractItems.length > 0 && (isExpanded || !needsTruncation);
+  // Extract plain text for truncation calculation
+  const plainText = extractPlainText(abstractItems);
+  const needsTruncation = plainText.length > maxLength;
 
   return (
     <section role="region" aria-label="Abstract" className={cn('space-y-2', className)}>
-      {shouldRenderRich ? (
-        <div className="text-sm leading-relaxed text-muted-foreground">
-          <AnnotationBodyRenderer body={abstractItems} mode="block" />
-        </div>
-      ) : (
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          {isExpanded || !needsTruncation ? abstract : truncateText(abstract, maxLength)}
-          {!isExpanded && needsTruncation && '...'}
-        </p>
-      )}
+      <div
+        className={cn(
+          'text-sm leading-relaxed text-muted-foreground',
+          !isExpanded && needsTruncation && 'line-clamp-4'
+        )}
+      >
+        <RichTextRenderer items={abstractItems} mode="block" />
+      </div>
 
       {needsTruncation && (
         <Button
@@ -109,30 +87,15 @@ export function EprintAbstract({
 }
 
 /**
- * Truncates text at a word boundary.
- */
-function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-
-  // Find the last space before maxLength
-  const truncated = text.slice(0, maxLength);
-  const lastSpace = truncated.lastIndexOf(' ');
-
-  if (lastSpace > maxLength * 0.8) {
-    return truncated.slice(0, lastSpace);
-  }
-
-  return truncated;
-}
-
-/**
  * Props for the StaticAbstract component.
  */
 export interface StaticAbstractProps {
-  /** The abstract text */
-  abstract: string;
-  /** Maximum characters to show */
-  maxLength?: number;
+  /** Rich text abstract items (takes precedence over text) */
+  abstractItems?: RichTextItem[];
+  /** Plain text abstract (used if abstractItems not provided) */
+  text?: string;
+  /** Maximum lines to show (uses CSS line-clamp) */
+  maxLines?: number;
   /** Additional CSS classes */
   className?: string;
 }
@@ -141,19 +104,42 @@ export interface StaticAbstractProps {
  * Displays a static (non-expandable) truncated abstract.
  *
  * @remarks
- * Server component for displaying abstracts in list views
- * where expansion is not needed.
+ * For displaying abstracts in list views where expansion is not needed.
+ * Uses CSS line-clamp for truncation to preserve rich text rendering.
+ * Accepts either rich text items or plain text.
  *
  * @example
  * ```tsx
- * <StaticAbstract abstract={eprint.abstract} maxLength={200} />
+ * <StaticAbstract abstractItems={eprint.abstractItems} maxLines={3} />
+ * <StaticAbstract text={eprint.abstract} maxLines={3} />
  * ```
  */
-export function StaticAbstract({ abstract, maxLength = 200, className }: StaticAbstractProps) {
-  const displayText =
-    abstract.length > maxLength ? truncateText(abstract, maxLength) + '...' : abstract;
+export function StaticAbstract({
+  abstractItems,
+  text,
+  maxLines = 3,
+  className,
+}: StaticAbstractProps) {
+  // Early return if no content
+  if (!abstractItems && !text) {
+    return null;
+  }
 
   return (
-    <p className={cn('text-sm leading-relaxed text-muted-foreground', className)}>{displayText}</p>
+    <div
+      className={cn('text-sm leading-relaxed text-muted-foreground', className)}
+      style={{
+        display: '-webkit-box',
+        WebkitLineClamp: maxLines,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
+      }}
+    >
+      {abstractItems ? (
+        <RichTextRenderer items={abstractItems} mode="inline" />
+      ) : (
+        <RichTextRenderer text={text} mode="inline" />
+      )}
+    </div>
   );
 }

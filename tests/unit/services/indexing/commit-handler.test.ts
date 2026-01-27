@@ -247,6 +247,76 @@ describe('CommitHandler', () => {
       );
     });
 
+    it('handles Jetstream events with pre-decoded records', async () => {
+      // Jetstream events have records pre-decoded and attached to ops
+      // No blocks are provided since parsing is done server-side
+      const event = {
+        $type: 'com.atproto.sync.subscribeRepos#commit' as const,
+        repo: 'did:plc:abc123' as DID,
+        commit: 'bafyreiabc123' as CID,
+        ops: [
+          {
+            action: 'create' as const,
+            path: 'pub.chive.review.endorsement/xyz',
+            cid: 'bafyreidef456' as CID,
+            record: {
+              $type: 'pub.chive.review.endorsement',
+              eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc',
+              contributions: ['methodology', 'analysis'],
+              createdAt: '2024-01-15T12:00:00Z',
+            },
+          },
+        ],
+        seq: 1725911162329308,
+        time: '2024-01-01T00:00:00Z',
+      };
+
+      const result = await handler.parseCommit(event);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        action: 'create',
+        path: 'pub.chive.review.endorsement/xyz',
+        cid: 'bafyreidef456',
+        record: {
+          $type: 'pub.chive.review.endorsement',
+          eprintUri: 'at://did:plc:test/pub.chive.eprint.submission/abc',
+          contributions: ['methodology', 'analysis'],
+          createdAt: '2024-01-15T12:00:00Z',
+        },
+      });
+    });
+
+    it('handles mixed Jetstream events with create and update', async () => {
+      const event = {
+        $type: 'com.atproto.sync.subscribeRepos#commit' as const,
+        repo: 'did:plc:abc123' as DID,
+        commit: 'bafyreiabc123' as CID,
+        ops: [
+          {
+            action: 'create' as const,
+            path: 'pub.chive.eprint.submission/abc',
+            cid: 'bafyreidef456' as CID,
+            record: { title: 'New Paper' },
+          },
+          {
+            action: 'update' as const,
+            path: 'pub.chive.eprint.submission/xyz',
+            cid: 'bafyreixyz789' as CID,
+            record: { title: 'Updated Paper' },
+          },
+        ],
+        seq: 1,
+        time: '2024-01-01T00:00:00Z',
+      };
+
+      const result = await handler.parseCommit(event);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]?.record).toEqual({ title: 'New Paper' });
+      expect(result[1]?.record).toEqual({ title: 'Updated Paper' });
+    });
+
     // Note: Testing actual CAR parsing requires creating valid CAR files,
     // which is complex. These tests cover the error paths and edge cases.
     // Integration tests should cover full CAR parsing with real data.

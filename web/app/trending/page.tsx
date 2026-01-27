@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 
 type TimeWindow = '24h' | '7d' | '30d';
 
@@ -103,11 +104,13 @@ export default function TrendingPage() {
                     ))}
                   </div>
 
-                  <h3 className="font-semibold mt-1 line-clamp-2">{eprint.title}</h3>
+                  <h3 className="font-semibold mt-1 line-clamp-2">
+                    <RichTextRenderer text={eprint.title} mode="inline" />
+                  </h3>
 
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                    {eprint.abstract}
-                  </p>
+                  <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                    <RichTextRenderer text={eprint.abstract} mode="inline" />
+                  </div>
 
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">

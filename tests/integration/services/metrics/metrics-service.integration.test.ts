@@ -82,6 +82,7 @@ function createMockStorage(): IStorageBackend {
     listChangelogs: vi.fn().mockResolvedValue({ changelogs: [], total: 0 }),
     storeChangelog: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     deleteChangelog: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+    getTagsForEprint: vi.fn().mockResolvedValue([]),
   };
 }
 

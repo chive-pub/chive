@@ -239,7 +239,6 @@ export class TagManager {
       WITH tag
       MERGE (record {uri: $recordUri})
       WITH tag, record
-      // Check if relationship already exists before creating
       OPTIONAL MATCH (record)-[existing:TAGGED_WITH]->(tag)
       WITH tag, record, existing IS NULL as isNewRelationship
       FOREACH (_ IN CASE WHEN isNewRelationship THEN [1] ELSE [] END |
@@ -248,7 +247,6 @@ export class TagManager {
           r.addedBy = $userDid,
           r.addedAt = datetime()
       )
-      // Only increment usageCount if this is a new relationship
       SET tag.usageCount = tag.usageCount + CASE WHEN isNewRelationship THEN 1 ELSE 0 END
       RETURN NOT isNewRelationship as existed, tag.usageCount as usageCount, tag.paperCount as paperCount
     `;
