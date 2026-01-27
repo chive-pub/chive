@@ -51,6 +51,7 @@ import type {
   EprintTagsResponse,
   TrendingTagsResponse,
   TagSearchResponse,
+  TagEprintsResponse,
 } from '@/lib/api/schema';
 
 // =============================================================================
@@ -537,4 +538,59 @@ export function usePrefetchTags() {
       staleTime: 2 * 60 * 1000,
     });
   };
+}
+
+/**
+ * Fetches eprints that have a specific tag.
+ *
+ * @remarks
+ * Returns eprints that have been tagged with the specified normalized tag form.
+ * Results include eprint summaries with title, authors, abstract, and timestamps.
+ * Supports pagination via cursor.
+ *
+ * @example
+ * ```tsx
+ * const { data, isLoading, hasNextPage } = useTagEprints('machine-learning');
+ *
+ * return (
+ *   <EprintList
+ *     eprints={data?.eprints ?? []}
+ *     total={data?.total ?? 0}
+ *     hasMore={hasNextPage}
+ *   />
+ * );
+ * ```
+ *
+ * @param normalizedForm - Normalized form of the tag
+ * @param params - Query parameters (limit, cursor)
+ * @param options - Hook options
+ * @returns Query result with eprints for the tag
+ */
+export function useTagEprints(
+  normalizedForm: string,
+  params: TagEprintParams = {},
+  options: UseTagsOptions = {}
+) {
+  return useQuery({
+    queryKey: tagKeys.eprintsWithTag(normalizedForm, params),
+    queryFn: async (): Promise<TagEprintsResponse> => {
+      try {
+        const response = await api.pub.chive.tag.listEprints({
+          tag: normalizedForm,
+          limit: params.limit ?? 25,
+          cursor: params.cursor,
+        });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch eprints for tag',
+          undefined,
+          'pub.chive.tag.listEprints'
+        );
+      }
+    },
+    enabled: !!normalizedForm && (options.enabled ?? true),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 }

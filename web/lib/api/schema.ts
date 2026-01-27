@@ -836,6 +836,13 @@ export type { OutputSchema as TrendingTagsResponse } from './generated/types/pub
 // Tag search response
 export type { OutputSchema as TagSearchResponse } from './generated/types/pub/chive/tag/search.js';
 
+// List eprints by tag response
+export type {
+  OutputSchema as TagEprintsResponse,
+  EprintSummary as TagEprintSummary,
+  AuthorSummary as TagEprintAuthorSummary,
+} from './generated/types/pub/chive/tag/listEprints.js';
+
 // =============================================================================
 // DISCOVERY TYPES
 // =============================================================================

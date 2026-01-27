@@ -1,0 +1,116 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.tag.listEprints",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List eprints that have a specific tag applied",
+      "parameters": {
+        "type": "params",
+        "required": ["tag"],
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "Normalized tag form to look up"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum number of results"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprints", "total"],
+          "properties": {
+            "eprints": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#eprintSummary"
+              },
+              "description": "Eprints with this tag"
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of eprints with this tag"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "TagNotFound"
+        }
+      ]
+    },
+    "eprintSummary": {
+      "type": "object",
+      "description": "Summary of an eprint for list display",
+      "required": ["uri", "title", "indexedAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Eprint AT-URI"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#authorSummary"
+          },
+          "description": "Author list"
+        },
+        "abstract": {
+          "type": "string",
+          "description": "Abstract text (truncated)"
+        },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was indexed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was created"
+        }
+      }
+    },
+    "authorSummary": {
+      "type": "object",
+      "description": "Minimal author info",
+      "required": ["name"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID if known"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name"
+        }
+      }
+    }
+  }
+}
