@@ -16,7 +16,7 @@
  */
 
 import type { AtUri, BlobRef, CID, DID } from '../atproto.js';
-import type { AnnotationBody } from '../models/annotation.js';
+import type { AnnotationBody, RichTextBody } from '../models/annotation.js';
 import type { EprintAuthor } from '../models/author.js';
 import type {
   ConferencePresentation,
@@ -104,12 +104,23 @@ export interface StoredEprint {
   readonly paperDid?: DID;
 
   /**
-   * Eprint title.
+   * Eprint title (plain text).
    *
    * @remarks
+   * Used for search indexing and fallback display.
    * Indexed for full-text search and faceted filtering.
    */
   readonly title: string;
+
+  /**
+   * Rich title with formatting and entity references.
+   *
+   * @remarks
+   * Optional rich text body for titles containing LaTeX, subscripts,
+   * superscripts, or entity references. When present, clients should use
+   * this for display and fall back to `title` for search and simple contexts.
+   */
+  readonly titleRich?: RichTextBody;
 
   /**
    * Rich text abstract with embedded knowledge graph references.
@@ -752,6 +763,55 @@ export interface IStorageBackend {
    * @public
    */
   deleteChangelog(uri: AtUri): Promise<Result<void, Error>>;
+
+  /**
+   * Retrieves user tags for an eprint.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @returns Array of indexed user tags
+   *
+   * @remarks
+   * Returns individual user tag records indexed from the firehose.
+   * Each tag includes the tagger's DID, original tag text, and creation time.
+   *
+   * @example
+   * ```typescript
+   * const tags = await storage.getTagsForEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!
+   * );
+   *
+   * for (const tag of tags) {
+   *   console.log(`${tag.taggerDid} tagged: ${tag.tag}`);
+   * }
+   * ```
+   *
+   * @public
+   */
+  getTagsForEprint(eprintUri: AtUri): Promise<readonly IndexedUserTag[]>;
+}
+
+/**
+ * Indexed user tag from the user_tags_index table.
+ *
+ * @public
+ */
+export interface IndexedUserTag {
+  /** Tag record AT-URI */
+  readonly uri: AtUri;
+  /** Record CID */
+  readonly cid: CID;
+  /** Tagged eprint AT-URI */
+  readonly eprintUri: AtUri;
+  /** DID of user who applied the tag */
+  readonly taggerDid: DID;
+  /** Tag text (original form from user) */
+  readonly tag: string;
+  /** When the tag was created */
+  readonly createdAt: Date;
+  /** PDS URL for the tag record */
+  readonly pdsUrl: string;
+  /** When the tag was indexed */
+  readonly indexedAt: Date;
 }
 
 /**

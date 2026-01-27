@@ -752,9 +752,23 @@ export interface Eprint {
   readonly paperDid?: DID;
 
   /**
-   * Eprint title.
+   * Eprint title (plain text).
+   *
+   * @remarks
+   * Used for search indexing and fallback display.
+   * Always present even if titleRich is available.
    */
   readonly title: string;
+
+  /**
+   * Rich title with formatting and entity references.
+   *
+   * @remarks
+   * Optional rich text array for titles containing LaTeX, subscripts,
+   * superscripts, or entity references. When present, clients should use
+   * this for display and fall back to `title` for search and simple contexts.
+   */
+  readonly titleRich?: RichTextBody;
 
   /**
    * Eprint abstract (rich text with embedded references).
