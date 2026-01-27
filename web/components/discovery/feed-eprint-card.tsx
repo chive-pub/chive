@@ -114,7 +114,7 @@ export function FeedEprintCard({
           onClick={handleClick}
         >
           <h3 className="line-clamp-2 pr-8">
-            <RichTextRenderer items={eprint.titleItems} mode="inline" />
+            <RichTextRenderer text={eprint.title} mode="inline" />
           </h3>
         </Link>
 
@@ -135,7 +135,7 @@ export function FeedEprintCard({
       <CardContent className="space-y-3">
         {/* Abstract */}
         <div className="line-clamp-3 text-sm text-muted-foreground">
-          <RichTextRenderer items={eprint.abstractItems} mode="inline" />
+          <RichTextRenderer text={eprint.abstract} mode="inline" />
         </div>
 
         {/* Categories */}

@@ -105,11 +105,11 @@ export default function TrendingPage() {
                   </div>
 
                   <h3 className="font-semibold mt-1 line-clamp-2">
-                    <RichTextRenderer items={eprint.titleItems} mode="inline" />
+                    <RichTextRenderer text={eprint.title} mode="inline" />
                   </h3>
 
                   <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                    <RichTextRenderer items={eprint.abstractItems} mode="inline" />
+                    <RichTextRenderer text={eprint.abstract} mode="inline" />
                   </div>
 
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">

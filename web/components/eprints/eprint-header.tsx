@@ -49,7 +49,7 @@ export function EprintHeader({ eprint, className }: EprintHeaderProps) {
 
       {/* Title */}
       <h1 className="text-2xl font-bold leading-tight tracking-tight break-words md:text-4xl">
-        <RichTextRenderer items={eprint.titleItems} mode="inline" />
+        <RichTextRenderer text={eprint.title} mode="inline" />
       </h1>
 
       {/* Authors */}
@@ -191,7 +191,7 @@ export function CompactEprintHeader({ eprint, className }: CompactEprintHeaderPr
   return (
     <header className={cn('space-y-3', className)}>
       <h2 className="text-xl font-semibold leading-tight">
-        <RichTextRenderer items={eprint.titleItems} mode="inline" />
+        <RichTextRenderer text={eprint.title} mode="inline" />
       </h2>
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">

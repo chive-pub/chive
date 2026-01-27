@@ -90,8 +90,10 @@ export function EprintAbstract({
  * Props for the StaticAbstract component.
  */
 export interface StaticAbstractProps {
-  /** Rich text abstract items */
-  abstractItems: RichTextItem[];
+  /** Rich text abstract items (takes precedence over text) */
+  abstractItems?: RichTextItem[];
+  /** Plain text abstract (used if abstractItems not provided) */
+  text?: string;
   /** Maximum lines to show (uses CSS line-clamp) */
   maxLines?: number;
   /** Additional CSS classes */
@@ -104,13 +106,25 @@ export interface StaticAbstractProps {
  * @remarks
  * For displaying abstracts in list views where expansion is not needed.
  * Uses CSS line-clamp for truncation to preserve rich text rendering.
+ * Accepts either rich text items or plain text.
  *
  * @example
  * ```tsx
  * <StaticAbstract abstractItems={eprint.abstractItems} maxLines={3} />
+ * <StaticAbstract text={eprint.abstract} maxLines={3} />
  * ```
  */
-export function StaticAbstract({ abstractItems, maxLines = 3, className }: StaticAbstractProps) {
+export function StaticAbstract({
+  abstractItems,
+  text,
+  maxLines = 3,
+  className,
+}: StaticAbstractProps) {
+  // Early return if no content
+  if (!abstractItems && !text) {
+    return null;
+  }
+
   return (
     <div
       className={cn('text-sm leading-relaxed text-muted-foreground', className)}
@@ -121,7 +135,11 @@ export function StaticAbstract({ abstractItems, maxLines = 3, className }: Stati
         overflow: 'hidden',
       }}
     >
-      <RichTextRenderer items={abstractItems} mode="inline" />
+      {abstractItems ? (
+        <RichTextRenderer items={abstractItems} mode="inline" />
+      ) : (
+        <RichTextRenderer text={text} mode="inline" />
+      )}
     </div>
   );
 }

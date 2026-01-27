@@ -67,7 +67,7 @@ function AuthorReviewItem({ review }: { review: Review }) {
       <CardContent className="p-4">
         {/* Review content */}
         <div className="mb-3 text-sm text-foreground line-clamp-4">
-          <RichTextRenderer items={review.bodyItems} mode="inline" />
+          <RichTextRenderer text={review.body?.text ?? review.content} mode="inline" />
         </div>
 
         {/* Target span excerpt */}

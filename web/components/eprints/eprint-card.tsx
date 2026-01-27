@@ -183,7 +183,7 @@ export function EprintCard({
               className="block font-semibold leading-tight hover:text-primary hover:underline"
             >
               <h3 className="line-clamp-2">
-                <RichTextRenderer items={eprint.titleItems} mode="inline" />
+                <RichTextRenderer text={eprint.title} mode="inline" />
               </h3>
             </Link>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -199,7 +199,7 @@ export function EprintCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
-        <StaticAbstract abstractItems={eprint.abstractItems} maxLines={3} />
+        <StaticAbstract text={eprint.abstract} maxLines={3} />
 
         {fields.length > 0 && <FieldBadgeList fields={fields} max={3} />}
 
@@ -243,7 +243,7 @@ function CompactEprintCard({ eprint, className }: CompactEprintCardProps) {
           className="font-medium leading-tight hover:text-primary hover:underline"
         >
           <h4 className="line-clamp-1">
-            <RichTextRenderer items={eprint.titleItems} mode="inline" />
+            <RichTextRenderer text={eprint.title} mode="inline" />
           </h4>
         </Link>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -296,7 +296,7 @@ function FeaturedEprintCard({ eprint, onPrefetch, className }: FeaturedEprintCar
           className="block text-xl font-semibold leading-tight hover:text-primary hover:underline"
         >
           <h3 className="line-clamp-2">
-            <RichTextRenderer items={eprint.titleItems} mode="inline" />
+            <RichTextRenderer text={eprint.title} mode="inline" />
           </h3>
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -306,7 +306,7 @@ function FeaturedEprintCard({ eprint, onPrefetch, className }: FeaturedEprintCar
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <StaticAbstract abstractItems={eprint.abstractItems} maxLines={4} />
+        <StaticAbstract text={eprint.abstract} maxLines={4} />
 
         {fields.length > 0 && <FieldBadgeList fields={fields} max={5} />}
 
