@@ -19,12 +19,7 @@ import { Pool } from 'pg';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 import type { RecordMetadata } from '@/services/eprint/eprint-service.js';
-import {
-  ReviewService,
-  type ReviewComment,
-  type Endorsement,
-  type ReviewView,
-} from '@/services/review/review-service.js';
+import { ReviewService, type ReviewView } from '@/services/review/review-service.js';
 import { ThreadingHandler } from '@/services/review/threading-handler.js';
 import { PostgreSQLAdapter } from '@/storage/postgresql/adapter.js';
 import { getDatabaseConfig } from '@/storage/postgresql/config.js';
@@ -59,23 +54,28 @@ function createTestMetadata(uri: AtUri, cid: CID): RecordMetadata {
 }
 
 /**
- * Creates test review comment.
+ * Creates test review comment matching the lexicon schema.
  */
-function createTestReviewComment(overrides: Partial<ReviewComment> = {}): ReviewComment {
+function createTestReviewComment(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     $type: 'pub.chive.review.comment',
-    subject: { uri: TEST_EPRINT_URI, cid: 'bafysubject' },
-    text: 'This is a test review comment.',
-    reviewType: 'general',
+    eprintUri: TEST_EPRINT_URI,
+    body: [
+      {
+        $type: 'pub.chive.review.comment#textItem',
+        type: 'text',
+        content: 'This is a test review comment.',
+      },
+    ],
     createdAt: new Date().toISOString(),
     ...overrides,
   };
 }
 
 /**
- * Creates test endorsement.
+ * Creates test endorsement matching the lexicon schema.
  */
-function createTestEndorsement(overrides: Partial<Endorsement> = {}): Endorsement {
+function createTestEndorsement(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     $type: 'pub.chive.review.endorsement',
     eprintUri: TEST_EPRINT_URI,
