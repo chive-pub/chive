@@ -109,6 +109,10 @@ function createTrackedStorage(): IStorageBackend & {
       operations.push({ method: 'listEprintUris', args: [] });
       return Promise.resolve([]);
     }),
+    listEprintUrisByFieldUri: vi.fn().mockImplementation((fieldUris: readonly string[]) => {
+      operations.push({ method: 'listEprintUrisByFieldUri', args: [fieldUris] });
+      return Promise.resolve([]);
+    }),
     trackPDSSource: vi.fn().mockImplementation((uri: AtUri, pdsUrl: string, lastSynced: Date) => {
       operations.push({ method: 'trackPDSSource', args: [uri, pdsUrl, lastSynced] });
       return Promise.resolve({ ok: true, value: undefined });
