@@ -4,6 +4,7 @@ import { AuthorChipList, type EprintAuthor } from './author-chip';
 import { FieldBadgeList } from './field-badge';
 import { EprintMetrics } from './eprint-metrics';
 import { LicenseBadge, DoiLink } from './eprint-metadata';
+import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
 import type { Eprint } from '@/lib/api/schema';
@@ -48,7 +49,7 @@ export function EprintHeader({ eprint, className }: EprintHeaderProps) {
 
       {/* Title */}
       <h1 className="text-2xl font-bold leading-tight tracking-tight break-words md:text-4xl">
-        {eprint.title}
+        <RichTextRenderer items={eprint.titleItems} mode="inline" />
       </h1>
 
       {/* Authors */}
@@ -189,7 +190,9 @@ export interface CompactEprintHeaderProps {
 export function CompactEprintHeader({ eprint, className }: CompactEprintHeaderProps) {
   return (
     <header className={cn('space-y-3', className)}>
-      <h2 className="text-xl font-semibold leading-tight">{eprint.title}</h2>
+      <h2 className="text-xl font-semibold leading-tight">
+        <RichTextRenderer items={eprint.titleItems} mode="inline" />
+      </h2>
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         {eprint.authors.map((author, index) => (

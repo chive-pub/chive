@@ -8,6 +8,7 @@ import { AuthorChipList } from './author-chip';
 import { FieldBadgeList } from './field-badge';
 import { StaticAbstract } from './eprint-abstract';
 import { EprintSource } from './eprint-source';
+import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
 import type { EprintCardData, EprintAuthor, FieldRef, TrendingEntry } from '@/lib/api/schema';
@@ -181,7 +182,9 @@ export function EprintCard({
               href={eprintUrl}
               className="block font-semibold leading-tight hover:text-primary hover:underline"
             >
-              <h3 className="line-clamp-2">{eprint.title}</h3>
+              <h3 className="line-clamp-2">
+                <RichTextRenderer items={eprint.titleItems} mode="inline" />
+              </h3>
             </Link>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {authors.length > 0 && (
@@ -196,7 +199,7 @@ export function EprintCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
-        <StaticAbstract abstract={eprint.abstract ?? ''} maxLength={200} />
+        <StaticAbstract abstractItems={eprint.abstractItems} maxLines={3} />
 
         {fields.length > 0 && <FieldBadgeList fields={fields} max={3} />}
 
@@ -239,7 +242,9 @@ function CompactEprintCard({ eprint, className }: CompactEprintCardProps) {
           href={eprintUrl}
           className="font-medium leading-tight hover:text-primary hover:underline"
         >
-          <h4 className="line-clamp-1">{eprint.title}</h4>
+          <h4 className="line-clamp-1">
+            <RichTextRenderer items={eprint.titleItems} mode="inline" />
+          </h4>
         </Link>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <span>{authors[0]?.name ?? 'Unknown'}</span>
@@ -290,7 +295,9 @@ function FeaturedEprintCard({ eprint, onPrefetch, className }: FeaturedEprintCar
           href={eprintUrl}
           className="block text-xl font-semibold leading-tight hover:text-primary hover:underline"
         >
-          <h3 className="line-clamp-2">{eprint.title}</h3>
+          <h3 className="line-clamp-2">
+            <RichTextRenderer items={eprint.titleItems} mode="inline" />
+          </h3>
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {authors.length > 0 && <AuthorChipList authors={authors} max={5} showBadges />}
@@ -299,7 +306,7 @@ function FeaturedEprintCard({ eprint, onPrefetch, className }: FeaturedEprintCar
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <StaticAbstract abstract={eprint.abstract ?? ''} maxLength={300} />
+        <StaticAbstract abstractItems={eprint.abstractItems} maxLines={4} />
 
         {fields.length > 0 && <FieldBadgeList fields={fields} max={5} />}
 

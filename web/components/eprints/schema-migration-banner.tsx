@@ -285,6 +285,13 @@ export function SchemaMigrationBanner({
  *
  * @param fields - Array of field names
  * @returns Formatted string for display
+ *
+ * @remarks
+ * Maps internal field names to user-friendly labels:
+ * - `title` or `titleRich` -> "Title formatting"
+ * - `abstract` -> "Abstract format"
+ * - `license` -> "License reference"
+ * - `reviewBody` or `body` -> "Review body format" (for future use)
  */
 function formatDeprecatedFields(fields?: readonly string[]): string | null {
   if (!fields || fields.length === 0) {
@@ -292,8 +299,12 @@ function formatDeprecatedFields(fields?: readonly string[]): string | null {
   }
 
   const fieldLabels: Record<string, string> = {
+    title: 'Title formatting',
+    titleRich: 'Title formatting',
     abstract: 'Abstract format',
     license: 'License reference',
+    reviewBody: 'Review body format',
+    body: 'Review body format',
   };
 
   return fields.map((field) => fieldLabels[field] ?? field).join(', ');
