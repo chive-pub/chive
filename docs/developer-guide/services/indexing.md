@@ -70,7 +70,84 @@ const CHIVE_COLLECTIONS = [
 
 ### Commit parsing
 
-CAR files are parsed to extract individual records:
+The CommitHandler supports two event formats: full firehose events (with CAR blocks) and Jetstream events (with pre-decoded records).
+
+#### Event format detection
+
+CommitHandler automatically detects the event format:
+
+1. **Jetstream events**: Operations have `record` fields already attached. No CAR block parsing required.
+2. **Full firehose events**: Operations reference CIDs; records must be decoded from CAR blocks.
+
+```typescript
+// Jetstream event detection
+const opsWithRecords = event.ops as readonly RepoOpWithRecord[];
+const hasPreDecodedRecords = opsWithRecords.some(
+  (op) => (op.action === 'create' || op.action === 'update') && op.record !== undefined
+);
+
+if (hasPreDecodedRecords) {
+  // Return ops with pre-decoded records directly (Jetstream path)
+  return opsWithRecords.map((op) => ({
+    action: op.action,
+    path: op.path,
+    cid: op.cid,
+    record: op.record,
+  }));
+}
+
+// Fall through to CAR block parsing (full firehose path)
+```
+
+#### Jetstream events
+
+Jetstream provides events with records pre-decoded as JSON. This eliminates the need for:
+
+- CAR (Content Addressable aRchive) file parsing
+- CBOR (Concise Binary Object Representation) decoding
+- CID-based block lookups
+
+The FirehoseConsumer transforms Jetstream's JSON format into the standard RepoEvent format, attaching records directly to operations:
+
+```typescript
+// Jetstream JSON format
+{
+  "did": "did:plc:abc123",
+  "time_us": 1725911162329308,
+  "kind": "commit",
+  "commit": {
+    "rev": "...",
+    "operation": "create",
+    "collection": "pub.chive.eprint.submission",
+    "rkey": "3kj5h2k3j5h",
+    "record": { /* decoded record data */ },
+    "cid": "bafyrei..."
+  }
+}
+
+// Transformed to RepoEvent with attached record
+{
+  "$type": "com.atproto.sync.subscribeRepos#commit",
+  "repo": "did:plc:abc123",
+  "commit": "bafyrei...",
+  "ops": [{
+    "action": "create",
+    "path": "pub.chive.eprint.submission/3kj5h2k3j5h",
+    "cid": "bafyrei...",
+    "record": { /* decoded record data */ }  // Pre-attached
+  }],
+  "seq": 1725911162329308,
+  "time": "2024-09-09T..."
+}
+```
+
+#### Full firehose events
+
+Full firehose events include binary CAR files containing IPLD blocks. CommitHandler decodes these using:
+
+1. `@ipld/car` for CAR file parsing
+2. `@ipld/dag-cbor` for CBOR decoding
+3. `multiformats/cid` for CID parsing
 
 ```typescript
 interface ParsedCommit {
@@ -87,6 +164,41 @@ interface Operation {
   record?: unknown; // Decoded record (null for deletes)
 }
 ```
+
+#### RepoOpWithRecord interface
+
+For Jetstream events, operations include pre-decoded records:
+
+```typescript
+/**
+ * Extended RepoOp with pre-decoded record (from Jetstream).
+ */
+interface RepoOpWithRecord extends RepoOp {
+  record?: unknown;
+}
+```
+
+This interface extends the base `RepoOp` to include the optional `record` field that Jetstream populates.
+
+#### Performance comparison
+
+| Operation                  | Full Firehose         | Jetstream    |
+| -------------------------- | --------------------- | ------------ |
+| Format                     | Binary CBOR           | JSON         |
+| Record decoding            | Required (CAR + CBOR) | Not required |
+| Block lookups              | Required (by CID)     | Not required |
+| Network overhead           | Higher (binary)       | Lower (text) |
+| CPU usage                  | Higher                | Lower        |
+| Cryptographic verification | Possible              | Not possible |
+
+Jetstream is the default for Chive because:
+
+1. Lower CPU overhead (no CBOR decoding)
+2. Simpler processing (records already decoded)
+3. JSON format easier to debug
+4. Sufficient for indexing (cryptographic verification not required for read-only AppView)
+
+Use the full firehose only when cryptographic verification of record content is required.
 
 ## Event processing
 

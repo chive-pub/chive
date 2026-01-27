@@ -63,15 +63,18 @@ Plugins extend functionality through a hybrid DI + EventEmitter2 architecture. P
 
 ## Guide sections
 
-| Section                                             | Description                           |
-| --------------------------------------------------- | ------------------------------------- |
-| [API layer](./api-layer.md)                         | XRPC and REST endpoint implementation |
-| [Authentication](./authentication-authorization.md) | OAuth, sessions, and authorization    |
-| [Core services](./core-business-services.md)        | Business logic services               |
-| [Frontend](./frontend.md)                           | Next.js architecture and components   |
-| [Plugin system](./plugin-system.md)                 | Creating and managing plugins         |
-| [Advanced features](./advanced-features.md)         | Knowledge graph, discovery, and more  |
-| [Observability](./observability-monitoring.md)      | Logging, metrics, and tracing         |
+| Section                                                     | Description                               |
+| ----------------------------------------------------------- | ----------------------------------------- |
+| [API layer](./api-layer.md)                                 | XRPC and REST endpoint implementation     |
+| [Authentication](./authentication-authorization.md)         | OAuth, sessions, and authorization        |
+| [Core services](./core-business-services.md)                | Business logic services                   |
+| [Lexicon type validation](./lexicon-type-validation.md)     | Generated types and runtime validation    |
+| [Frontend](./frontend.md)                                   | Next.js architecture and components       |
+| [Frontend rich text](./frontend-rich-text.md)               | Rich text rendering and schema migrations |
+| [Frontend eprint lifecycle](./frontend-eprint-lifecycle.md) | Edit, version, and delete components      |
+| [Plugin system](./plugin-system.md)                         | Creating and managing plugins             |
+| [Advanced features](./advanced-features.md)                 | Knowledge graph, discovery, and more      |
+| [Observability](./observability-monitoring.md)              | Logging, metrics, and tracing             |
 
 ### Subdirectories
 

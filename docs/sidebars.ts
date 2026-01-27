@@ -39,7 +39,9 @@ const sidebars: SidebarsConfig = {
         'developer-guide/api-layer',
         'developer-guide/authentication-authorization',
         'developer-guide/core-business-services',
+        'developer-guide/lexicon-type-validation',
         'developer-guide/frontend',
+        'developer-guide/frontend-rich-text',
         'developer-guide/frontend-eprint-lifecycle',
         'developer-guide/observability-monitoring',
         {

@@ -351,7 +351,27 @@ See [PDS Discovery](./services/pds-discovery.md) for detailed documentation.
 
 ## ReviewService
 
-Indexes reviews and endorsements with support for threaded discussions.
+Indexes reviews and endorsements with support for threaded discussions. ReviewService uses generated lexicon types with runtime validation (see [Lexicon type validation](./lexicon-type-validation.md) for the pattern).
+
+### Type imports
+
+ReviewService imports generated types from the lexicon code generator:
+
+```typescript
+import {
+  isRecord as isCommentRecord,
+  type Main as CommentRecord,
+} from '../../lexicons/generated/types/pub/chive/review/comment.js';
+import {
+  isRecord as isEndorsementRecord,
+  type Main as EndorsementRecord,
+} from '../../lexicons/generated/types/pub/chive/review/endorsement.js';
+
+// Re-export for external use
+export type { CommentRecord as ReviewComment, EndorsementRecord as Endorsement };
+```
+
+The `isRecord` type guards validate records at runtime, and the service re-exports types with domain names (`ReviewComment`, `Endorsement`) for external consumers.
 
 ### Indexing reviews
 
