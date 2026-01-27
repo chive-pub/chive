@@ -1,0 +1,371 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.richtext.defs",
+  "description": "Shared definitions for unified rich text in Chive.",
+  "defs": {
+    "textFormat": {
+      "type": "object",
+      "description": "Text formatting options.",
+      "properties": {
+        "bold": {
+          "type": "boolean",
+          "description": "Bold text"
+        },
+        "italic": {
+          "type": "boolean",
+          "description": "Italic text"
+        },
+        "strikethrough": {
+          "type": "boolean",
+          "description": "Strikethrough text"
+        },
+        "code": {
+          "type": "boolean",
+          "description": "Inline code formatting"
+        }
+      }
+    },
+    "textItem": {
+      "type": "object",
+      "description": "Plain text item with optional formatting.",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "text"
+        },
+        "content": {
+          "type": "string",
+          "description": "Text content",
+          "maxLength": 100000,
+          "maxGraphemes": 50000
+        },
+        "format": {
+          "type": "ref",
+          "ref": "#textFormat"
+        }
+      }
+    },
+    "mentionItem": {
+      "type": "object",
+      "description": "ATProto mention item (@handle).",
+      "required": ["type", "did"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "mention"
+        },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "User DID"
+        },
+        "handle": {
+          "type": "string",
+          "format": "handle",
+          "description": "User handle for display"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name",
+          "maxLength": 256,
+          "maxGraphemes": 64
+        }
+      }
+    },
+    "linkItem": {
+      "type": "object",
+      "description": "URL link item.",
+      "required": ["type", "url"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "link"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display text",
+          "maxLength": 1000,
+          "maxGraphemes": 500
+        }
+      }
+    },
+    "tagItem": {
+      "type": "object",
+      "description": "Hashtag item.",
+      "required": ["type", "tag"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "tag"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Tag value without #",
+          "maxLength": 256,
+          "maxGraphemes": 64
+        }
+      }
+    },
+    "nodeRefItem": {
+      "type": "object",
+      "description": "Knowledge graph node reference.",
+      "required": ["type", "uri", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "nodeRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label",
+          "maxLength": 256,
+          "maxGraphemes": 64
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Node subkind (field, institution, person, etc.)",
+          "maxLength": 64
+        }
+      }
+    },
+    "wikidataRefItem": {
+      "type": "object",
+      "description": "Wikidata entity reference.",
+      "required": ["type", "qid", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "wikidataRef"
+        },
+        "qid": {
+          "type": "string",
+          "description": "Wikidata QID (e.g., Q123456)",
+          "maxLength": 20
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label",
+          "maxLength": 256,
+          "maxGraphemes": 64
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Optional direct URL override"
+        }
+      }
+    },
+    "fieldRefItem": {
+      "type": "object",
+      "description": "Academic field reference.",
+      "required": ["type", "uri", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "fieldRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the field node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label",
+          "maxLength": 256,
+          "maxGraphemes": 64
+        }
+      }
+    },
+    "facetRefItem": {
+      "type": "object",
+      "description": "Facet classification reference.",
+      "required": ["type", "dimension", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "facetRef"
+        },
+        "dimension": {
+          "type": "string",
+          "description": "Facet dimension (e.g., time, space)",
+          "maxLength": 64
+        },
+        "value": {
+          "type": "string",
+          "description": "Facet value",
+          "maxLength": 256,
+          "maxGraphemes": 64
+        }
+      }
+    },
+    "eprintRefItem": {
+      "type": "object",
+      "description": "Eprint reference.",
+      "required": ["type", "uri", "title"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "eprintRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the eprint"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title",
+          "maxLength": 1000,
+          "maxGraphemes": 300
+        }
+      }
+    },
+    "annotationRefItem": {
+      "type": "object",
+      "description": "Annotation reference.",
+      "required": ["type", "uri", "excerpt"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "annotationRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the annotation"
+        },
+        "excerpt": {
+          "type": "string",
+          "description": "Text excerpt for preview",
+          "maxLength": 500,
+          "maxGraphemes": 200
+        }
+      }
+    },
+    "authorRefItem": {
+      "type": "object",
+      "description": "Author reference.",
+      "required": ["type", "did"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "authorRef"
+        },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name",
+          "maxLength": 256,
+          "maxGraphemes": 64
+        },
+        "handle": {
+          "type": "string",
+          "format": "handle",
+          "description": "Author handle"
+        }
+      }
+    },
+    "latexItem": {
+      "type": "object",
+      "description": "LaTeX math expression.",
+      "required": ["type", "content", "displayMode"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "latex"
+        },
+        "content": {
+          "type": "string",
+          "description": "LaTeX source",
+          "maxLength": 10000
+        },
+        "displayMode": {
+          "type": "boolean",
+          "description": "True for display mode (block), false for inline"
+        }
+      }
+    },
+    "codeItem": {
+      "type": "object",
+      "description": "Code block or inline code.",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "code"
+        },
+        "content": {
+          "type": "string",
+          "description": "Code content",
+          "maxLength": 50000
+        },
+        "language": {
+          "type": "string",
+          "description": "Programming language for syntax highlighting",
+          "maxLength": 50
+        },
+        "block": {
+          "type": "boolean",
+          "description": "True for code block, false for inline code"
+        }
+      }
+    },
+    "richText": {
+      "type": "object",
+      "description": "Unified rich text content structure.",
+      "required": ["text", "items"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Plain text representation for search and accessibility",
+          "maxLength": 100000,
+          "maxGraphemes": 50000
+        },
+        "items": {
+          "type": "array",
+          "description": "Rich text items for rendering",
+          "items": {
+            "type": "union",
+            "refs": [
+              "#textItem",
+              "#mentionItem",
+              "#linkItem",
+              "#tagItem",
+              "#nodeRefItem",
+              "#wikidataRefItem",
+              "#fieldRefItem",
+              "#facetRefItem",
+              "#eprintRefItem",
+              "#annotationRefItem",
+              "#authorRefItem",
+              "#latexItem",
+              "#codeItem"
+            ]
+          },
+          "maxLength": 10000
+        },
+        "html": {
+          "type": "string",
+          "description": "Optional HTML representation for fast preview rendering",
+          "maxLength": 200000
+        }
+      }
+    }
+  }
+}
