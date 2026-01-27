@@ -72,6 +72,16 @@
           "description": "Author display name (required even if DID present)",
           "maxLength": 200
         },
+        "handle": {
+          "type": "string",
+          "description": "ATProto handle resolved from DID (AppView-enriched)",
+          "maxLength": 253
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Avatar URL resolved from author's PDS profile (AppView-enriched)"
+        },
         "orcid": {
           "type": "string",
           "description": "ORCID identifier (format: 0000-0000-0000-000X)",

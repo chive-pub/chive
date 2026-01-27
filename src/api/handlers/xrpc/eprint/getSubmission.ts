@@ -178,6 +178,8 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
           $type: 'pub.chive.eprint.authorContribution' as const,
           did: author.did,
           name: author.name,
+          handle: author.handle,
+          avatarUrl: author.avatarUrl,
           orcid: author.orcid,
           email: author.email,
           order: author.order,

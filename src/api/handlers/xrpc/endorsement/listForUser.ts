@@ -8,6 +8,7 @@
  * @public
  */
 
+import { DIDResolver } from '../../../../auth/did/did-resolver.js';
 import type {
   QueryParams,
   OutputSchema,
@@ -24,7 +25,9 @@ export const listForUser: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: false,
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const logger = c.get('logger');
+    const redis = c.get('redis');
     const { review, eprint } = c.get('services');
+    const didResolver = new DIDResolver({ redis, logger });
 
     logger.debug('Listing endorsements for user', {
       endorserDid: params.endorserDid,
@@ -38,6 +41,52 @@ export const listForUser: XRPCMethod<QueryParams, void, OutputSchema> = {
       limit: params.limit,
       cursor: params.cursor,
     });
+
+    // Resolve handle and avatar for the endorser (same user for all results)
+    let endorserHandle = params.endorserDid;
+    let endorserAvatar: string | undefined;
+
+    try {
+      const [didDoc, pdsEndpoint] = await Promise.all([
+        didResolver.resolveDID(params.endorserDid as DID),
+        didResolver.getPDSEndpoint(params.endorserDid as DID),
+      ]);
+
+      if (didDoc?.alsoKnownAs) {
+        const handleEntry = didDoc.alsoKnownAs.find((aka: string) => aka.startsWith('at://'));
+        if (handleEntry) {
+          endorserHandle = handleEntry.replace('at://', '');
+        }
+      }
+
+      if (pdsEndpoint) {
+        try {
+          const profileResponse = await fetch(
+            `${pdsEndpoint}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(params.endorserDid)}&collection=app.bsky.actor.profile&rkey=self`,
+            {
+              headers: { Accept: 'application/json' },
+              signal: AbortSignal.timeout(3000),
+            }
+          );
+
+          if (profileResponse.ok) {
+            const profileData = (await profileResponse.json()) as {
+              value?: {
+                avatar?: { ref?: { $link?: string } };
+              };
+            };
+
+            if (profileData.value?.avatar?.ref?.$link) {
+              endorserAvatar = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(params.endorserDid)}&cid=${profileData.value.avatar.ref.$link}`;
+            }
+          }
+        } catch {
+          // Profile fetch failed, continue without avatar
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to resolve handle for endorser', { did: params.endorserDid, error });
+    }
 
     // Fetch eprint titles for each endorsement
     const endorsementsWithTitles = await Promise.all(
@@ -57,7 +106,8 @@ export const listForUser: XRPCMethod<QueryParams, void, OutputSchema> = {
           eprintTitle,
           endorser: {
             did: item.endorser,
-            handle: 'unknown', // Handle would need DID resolution
+            handle: endorserHandle,
+            avatar: endorserAvatar,
           },
           contributions: [...item.contributions],
           comment: item.comment,
