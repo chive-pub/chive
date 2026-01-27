@@ -14,6 +14,7 @@ import { createResiliencePolicy } from '../src/services/common/resilience.js';
 import { EprintService } from '../src/services/eprint/eprint-service.js';
 import { PDSRegistry } from '../src/services/pds-discovery/pds-registry.js';
 import { PDSScanner } from '../src/services/pds-discovery/pds-scanner.js';
+import { ReviewService } from '../src/services/review/review-service.js';
 import { ElasticsearchAdapter } from '../src/storage/elasticsearch/adapter.js';
 import { ElasticsearchConnectionPool } from '../src/storage/elasticsearch/connection.js';
 import { Neo4jConnection } from '../src/storage/neo4j/connection.js';
@@ -117,8 +118,14 @@ async function main() {
     tagManager,
   });
 
+  const reviewService = new ReviewService({
+    pool: pgPool,
+    storage: storageAdapter,
+    logger,
+  });
+
   const pdsRegistry = new PDSRegistry(pgPool, logger);
-  const scanner = new PDSScanner(pdsRegistry, eprintService, logger);
+  const scanner = new PDSScanner(pdsRegistry, eprintService, reviewService, logger);
 
   try {
     const recordsIndexed = await scanner.scanDID(pdsUrl, did);
