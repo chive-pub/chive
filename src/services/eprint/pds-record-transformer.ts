@@ -142,6 +142,11 @@ interface PDSRichTextItem {
  * - Schema 1.0.0: `abstract` is a plain string
  * - Schema 1.1.0+: `abstract` is an array of RichTextItem
  *
+ * **Title Field Evolution:**
+ * - `title` is always a plain string (required)
+ * - `titleRich` is an optional array of RichTextItem for formatted titles
+ *   (contains LaTeX, entity references, etc.)
+ *
  * The transformer accepts both formats for backward compatibility.
  */
 export interface PDSEprintRecord {
@@ -149,6 +154,14 @@ export interface PDSEprintRecord {
 
   // REQUIRED FIELDS
   title: string;
+  /**
+   * Optional rich title array for formatted display.
+   *
+   * @remarks
+   * Used when title contains LaTeX, subscripts, superscripts, or entity references.
+   * The plain `title` field is kept for search indexing and fallback display.
+   */
+  titleRich?: PDSRichTextItem[];
   document: PDSBlobRef;
   authors: PDSAuthorRef[];
   createdAt: string;
@@ -228,6 +241,18 @@ export interface TransformResult {
    * - 'empty': Abstract was missing or null
    */
   readonly abstractFormat: 'string' | 'rich-text-array' | 'empty';
+
+  /**
+   * Detected format of the title field.
+   *
+   * @remarks
+   * Indicates whether the source record:
+   * - 'plain': Plain title with no special formatting needed
+   * - 'plain-needs-rich': Plain title with special characters that would benefit from titleRich
+   * - 'with-rich': Title has accompanying titleRich array
+   * - 'empty': Title was missing (invalid record)
+   */
+  readonly titleFormat: 'plain' | 'plain-needs-rich' | 'with-rich' | 'empty';
 }
 
 // =============================================================================
@@ -353,6 +378,38 @@ interface AbstractTransformResult {
 }
 
 /**
+ * Detected title format from PDS record.
+ */
+type DetectedTitleFormat = 'plain' | 'plain-needs-rich' | 'with-rich' | 'empty';
+
+/**
+ * Result of title transformation.
+ */
+interface TitleTransformResult {
+  /**
+   * Plain text title for search and display.
+   */
+  title: string;
+  /**
+   * Rich text body for formatted display (if titleRich is present).
+   */
+  titleRich: RichTextBody | undefined;
+  /**
+   * Detected format.
+   */
+  detectedFormat: DetectedTitleFormat;
+}
+
+/**
+ * Regular expression patterns for detecting special formatting in titles.
+ */
+const LATEX_INLINE_PATTERN = /\$[^$]+\$/;
+const LATEX_DISPLAY_PATTERN = /\$\$[^$]+\$\$/;
+const LATEX_COMMAND_PATTERN = /\\[a-zA-Z]+(\{[^}]*\}|\[[^\]]*\])*/;
+const SUBSCRIPT_PATTERN = /_\{[^}]+\}|_[a-zA-Z0-9]/;
+const SUPERSCRIPT_PATTERN = /\^\{[^}]+\}|\^[a-zA-Z0-9]/;
+
+/**
  * Transform abstract from PDS format to internal RichTextBody.
  *
  * @remarks
@@ -454,6 +511,119 @@ function transformAbstract(abstract: unknown): AbstractTransformResult {
 }
 
 /**
+ * Check if a title contains special formatting that would benefit from rich text.
+ *
+ * @param title - Plain text title
+ * @returns True if title contains LaTeX, subscripts, superscripts, etc.
+ */
+function titleContainsSpecialFormatting(title: string): boolean {
+  return (
+    LATEX_INLINE_PATTERN.test(title) ||
+    LATEX_DISPLAY_PATTERN.test(title) ||
+    LATEX_COMMAND_PATTERN.test(title) ||
+    SUBSCRIPT_PATTERN.test(title) ||
+    SUPERSCRIPT_PATTERN.test(title)
+  );
+}
+
+/**
+ * Transform title from PDS format to internal representation.
+ *
+ * @remarks
+ * Handles both plain titles and titles with rich formatting.
+ *
+ * **Format Detection:**
+ * - If `titleRich` is present and valid: returns with-rich format
+ * - If `title` contains special chars but no `titleRich`: returns plain-needs-rich
+ * - If `title` is plain text: returns plain format
+ *
+ * @param title - Plain text title string
+ * @param titleRich - Optional rich text array for formatted title
+ * @returns Transformed title with format detection
+ */
+function transformTitle(title: unknown, titleRich: unknown): TitleTransformResult {
+  // Handle missing or invalid title
+  if (title === undefined || title === null || title === '') {
+    return {
+      title: '',
+      titleRich: undefined,
+      detectedFormat: 'empty',
+    };
+  }
+
+  if (typeof title !== 'string') {
+    return {
+      title: '', // Invalid title type; treat as empty
+      titleRich: undefined,
+      detectedFormat: 'empty',
+    };
+  }
+
+  // Check if titleRich is present and valid
+  if (titleRich !== undefined && titleRich !== null && Array.isArray(titleRich)) {
+    const items: AnnotationBodyItem[] = [];
+
+    for (const item of titleRich) {
+      if (typeof item !== 'object' || item === null) {
+        continue;
+      }
+
+      const typedItem = item as PDSRichTextItem;
+
+      // Type the item as a generic rich text item for type checking
+      const itemType = (typedItem as { type: string }).type;
+
+      if (itemType === 'text' && typeof typedItem.content === 'string') {
+        items.push({ type: 'text', content: typedItem.content });
+      } else if (itemType === 'nodeRef' && typeof typedItem.uri === 'string') {
+        items.push({
+          type: 'nodeRef',
+          uri: typedItem.uri as AtUri,
+          label: typedItem.label ?? '',
+          subkind: typedItem.subkind,
+        });
+      } else if (itemType === 'latex') {
+        // Handle latex items by converting to text with LaTeX delimiters
+        const latexContent = (typedItem as { content?: string }).content;
+        if (typeof latexContent === 'string') {
+          items.push({
+            type: 'text',
+            content: `$${latexContent}$`,
+          });
+        }
+      }
+      // Unknown item types are silently skipped for forward compatibility
+    }
+
+    return {
+      title,
+      titleRich: {
+        type: 'RichText',
+        items,
+        format: 'application/x-chive-gloss+json',
+      },
+      detectedFormat: 'with-rich',
+    };
+  }
+
+  // No titleRich, check if title contains special formatting
+  if (titleContainsSpecialFormatting(title)) {
+    return {
+      title,
+      titleRich: undefined,
+      detectedFormat: 'plain-needs-rich',
+    };
+  }
+
+  // Plain title with no special formatting needed
+  return {
+    title,
+    titleRich: undefined,
+    detectedFormat: 'plain',
+  };
+}
+
+/**
  * Transform PDS facets to internal Facet model.
  */
 function transformFacets(pdsFacets?: PDSFacetValue[]): readonly Facet[] {
@@ -475,6 +645,10 @@ function transformFacets(pdsFacets?: PDSFacetValue[]): readonly Facet[] {
  * @remarks
  * Field nodes are knowledge graph nodes representing research fields.
  * They are stored directly as field references, not as facets.
+ *
+ * The `id` field is extracted from the AT-URI to get the UUID/rkey,
+ * which is used for Elasticsearch filtering. The full AT-URI is kept
+ * in `uri` for knowledge graph lookups.
  */
 function transformFieldNodes(
   fieldNodes?: PDSFieldNode[]
@@ -483,11 +657,15 @@ function transformFieldNodes(
     return [];
   }
 
-  return fieldNodes.map((f) => ({
-    uri: f.uri,
-    label: f.uri, // Label should be resolved from knowledge graph
-    id: f.uri,
-  }));
+  return fieldNodes.map((f) => {
+    // Extract UUID from AT-URI: at://did:plc:xyz/collection/UUID -> UUID
+    const rkey = f.uri.split('/').pop() ?? f.uri;
+    return {
+      uri: f.uri,
+      label: f.uri, // Label should be resolved from knowledge graph
+      id: rkey,
+    };
+  });
 }
 
 // =============================================================================
@@ -584,6 +762,9 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
   // Transform abstract with format detection
   const abstractResult = transformAbstract(record.abstract);
 
+  // Transform title with format detection
+  const titleResult = transformTitle(record.title, record.titleRich);
+
   // Transform facets
   const facets = transformFacets(record.facets);
 
@@ -624,7 +805,8 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
     cid,
 
     // Required fields
-    title: record.title,
+    title: titleResult.title,
+    titleRich: titleResult.titleRich,
     documentBlobRef,
     documentFormat: (record.documentFormat ?? 'pdf') as DocumentFormat,
     authors,
@@ -658,6 +840,7 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
     eprint,
     schemaDetection,
     abstractFormat: abstractResult.detectedFormat,
+    titleFormat: titleResult.detectedFormat,
   };
 }
 
