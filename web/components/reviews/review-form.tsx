@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import { RichTextEditor, type RichTextContent, createFromPlainText } from '@/components/editor';
+import { PlainMarkdownEditor } from '@/components/editor';
 import type { Review, UnifiedTextSpanTarget, AnnotationMotivation } from '@/lib/api/schema';
 
 // =============================================================================
@@ -218,14 +218,14 @@ export function ReviewForm({
   maxLength = 10000,
   minLength = 10,
   className,
-  enableLatex = true,
+  enableLatex: _enableLatex = true,
   showToolbar = true,
 }: ReviewFormProps) {
-  const [content, setContent] = useState<RichTextContent>(() => {
+  const [content, setContent] = useState<string>(() => {
     if (editingReview?.content) {
-      return createFromPlainText(editingReview.content);
+      return editingReview.content;
     }
-    return { text: '', html: '', facets: [] };
+    return '';
   });
   const [currentTarget, setCurrentTarget] = useState<UnifiedTextSpanTarget | undefined>(target);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -246,7 +246,7 @@ export function ReviewForm({
     return 'commenting';
   }, [isReplying, hasTarget]);
 
-  const textLength = content.text.trim().length;
+  const textLength = content.trim().length;
   const isValid =
     textLength >= (minLength || 0) && (maxLength === undefined || textLength <= maxLength);
 
@@ -257,7 +257,7 @@ export function ReviewForm({
       if (!isValid || isLoading) return;
 
       const formData: ReviewFormData = {
-        content: content.text.trim(),
+        content: content.trim(),
         eprintUri,
         target: currentTarget,
         parentReviewUri: parentReview?.uri,
@@ -269,7 +269,7 @@ export function ReviewForm({
     [content, eprintUri, currentTarget, parentReview, getMotivation, isValid, isLoading, onSubmit]
   );
 
-  const handleContentChange = useCallback((newContent: RichTextContent) => {
+  const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
   }, []);
 
@@ -316,9 +316,9 @@ export function ReviewForm({
         </Alert>
       )}
 
-      {/* Rich text editor */}
+      {/* Markdown editor */}
       <div ref={editorRef}>
-        <RichTextEditor
+        <PlainMarkdownEditor
           value={content}
           onChange={handleContentChange}
           placeholder={dynamicPlaceholder}
@@ -326,7 +326,6 @@ export function ReviewForm({
           minHeight="120px"
           enablePreview={true}
           showToolbar={showToolbar}
-          enableLatex={enableLatex}
           disabled={isLoading}
           ariaLabel="Review content"
           testId="review-content-input"
