@@ -28,6 +28,11 @@
  * @packageDocumentation
  */
 
+import type { RichTextFacet } from '@/lib/api/schema';
+
+// Re-export for convenience
+export type { RichTextFacet };
+
 // =============================================================================
 // ITEM TYPES
 // =============================================================================
@@ -556,25 +561,6 @@ export function isLatexItem(item: RichTextItem): item is LatexItem {
 // =============================================================================
 
 /**
- * ATProto facet feature types.
- */
-export type AtprotoFacetFeature =
-  | { $type: 'app.bsky.richtext.facet#mention'; did: string }
-  | { $type: 'app.bsky.richtext.facet#link'; uri: string }
-  | { $type: 'app.bsky.richtext.facet#tag'; tag: string };
-
-/**
- * ATProto facet structure.
- */
-export interface AtprotoFacet {
-  index: {
-    byteStart: number;
-    byteEnd: number;
-  };
-  features: AtprotoFacetFeature[];
-}
-
-/**
  * Converts byte index to string index.
  *
  * @remarks
@@ -615,7 +601,7 @@ function byteToStringIndex(text: string, byteIndex: number): number {
  * @param facets - ATProto facets array
  * @returns Unified rich text items
  */
-export function fromAtprotoRichText(text: string, facets?: AtprotoFacet[] | null): RichTextItem[] {
+export function fromAtprotoRichText(text: string, facets?: RichTextFacet[] | null): RichTextItem[] {
   if (!facets || facets.length === 0) {
     return [{ type: 'text', content: text }];
   }
@@ -646,24 +632,36 @@ export function fromAtprotoRichText(text: string, facets?: AtprotoFacet[] | null
     if (feature) {
       switch (feature.$type) {
         case 'app.bsky.richtext.facet#mention':
-          items.push({
-            type: 'mention',
-            did: feature.did,
-            handle: facetText.startsWith('@') ? facetText.slice(1) : facetText,
-          });
+          if (feature.did) {
+            items.push({
+              type: 'mention',
+              did: feature.did,
+              handle: facetText.startsWith('@') ? facetText.slice(1) : facetText,
+            });
+          } else {
+            items.push({ type: 'text', content: facetText });
+          }
           break;
         case 'app.bsky.richtext.facet#link':
-          items.push({
-            type: 'link',
-            url: feature.uri,
-            label: facetText,
-          });
+          if (feature.uri) {
+            items.push({
+              type: 'link',
+              url: feature.uri,
+              label: facetText,
+            });
+          } else {
+            items.push({ type: 'text', content: facetText });
+          }
           break;
         case 'app.bsky.richtext.facet#tag':
-          items.push({
-            type: 'tag',
-            tag: feature.tag,
-          });
+          if (feature.tag) {
+            items.push({
+              type: 'tag',
+              tag: feature.tag,
+            });
+          } else {
+            items.push({ type: 'text', content: facetText });
+          }
           break;
         default:
           // Unknown facet type, just add as text

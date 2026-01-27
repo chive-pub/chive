@@ -47,9 +47,9 @@ import type {
   LatexItem,
   CodeItem,
   LegacyAnnotationItem,
-  AtprotoFacet,
 } from '@/lib/types/rich-text';
 import { fromLegacyAnnotationItems, fromAtprotoRichText } from '@/lib/types/rich-text';
+import type { RichTextFacet } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES
@@ -72,7 +72,7 @@ export interface RichTextRendererProps {
   text?: string;
 
   /** ATProto facets (used with text prop) */
-  facets?: AtprotoFacet[] | null;
+  facets?: RichTextFacet[] | null;
 
   /** Render mode */
   mode?: 'inline' | 'block';
