@@ -85,12 +85,12 @@ export function TagDetailContent({ tag }: TagDetailContentProps) {
         <CardContent>
           <div className="text-sm">
             <p className="text-muted-foreground">Quality Score</p>
-            <p className="font-medium">{(tagSummary.qualityScore * 100).toFixed(0)}%</p>
+            <p className="font-medium">{tagSummary.qualityScore}%</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Browse eprints with this tag */}
+      {/* Search eprints with this tag */}
       <Card>
         <CardContent className="py-6 text-center">
           <p className="text-muted-foreground mb-4">
@@ -98,9 +98,11 @@ export function TagDetailContent({ tag }: TagDetailContentProps) {
             {tagSummary.displayForms[0] ?? tagSummary.normalizedForm}&quot;
           </p>
           <Button asChild>
-            <Link href={`/browse?tags=${encodeURIComponent(tagSummary.normalizedForm)}`}>
+            <Link
+              href={`/search?q=${encodeURIComponent(tagSummary.displayForms[0] ?? tagSummary.normalizedForm)}`}
+            >
               <Search className="mr-2 h-4 w-4" />
-              Browse Eprints
+              Search Eprints
             </Link>
           </Button>
         </CardContent>
