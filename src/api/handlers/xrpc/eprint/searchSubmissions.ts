@@ -309,6 +309,9 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
             ...(a.did ? { did: a.did } : {}),
             name: a.name,
           })),
+          // Include dates for frontend display
+          indexedAt: eprintData?.indexedAt?.toISOString(),
+          createdAt: eprintData?.createdAt?.toISOString(),
           highlight: hit.highlight
             ? {
                 title: hit.highlight.title ? [...hit.highlight.title] : undefined,

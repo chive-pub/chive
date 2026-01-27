@@ -130,6 +130,16 @@
           },
           "description": "Author summaries for display"
         },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was indexed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was created"
+        },
         "highlight": {
           "type": "ref",
           "ref": "#highlightResult"
