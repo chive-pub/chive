@@ -6,6 +6,7 @@
  * These transformations are performed client-side before writing back to the PDS.
  *
  * Currently handles:
+ * - `title` -> `titleRich`: when title contains LaTeX or special formatting
  * - `abstract`: string -> RichTextBody array
  * - `license`: plain string -> licenseUri + licenseSlug
  *
@@ -15,6 +16,7 @@
 import type {
   TextItem as EprintTextItem,
   NodeRefItem as EprintNodeRefItem,
+  LatexItem as EprintLatexItem,
 } from './generated/types/pub/chive/eprint/submission';
 
 // =============================================================================
@@ -24,7 +26,15 @@ import type {
 /**
  * Rich text body array item type.
  */
-export type RichTextBodyItem = EprintTextItem | EprintNodeRefItem;
+export type RichTextBodyItem = EprintTextItem | EprintNodeRefItem | EprintLatexItem;
+
+/**
+ * Title rich text array item type.
+ *
+ * @remarks
+ * Titles support a subset of rich text items (text, LaTeX, node references).
+ */
+export type TitleRichItem = EprintTextItem | EprintNodeRefItem | EprintLatexItem;
 
 /**
  * License mapping entry.
@@ -79,9 +89,11 @@ export interface SchemaMigrationResult {
  * and migration. Actual records may have additional fields.
  */
 export interface MigratableEprintRecord {
-  /** Title (required, not migrated) */
+  /** Title (required) */
   title: string;
-  /** Abstract - may be string (legacy) or RichTextBodyItem[] (current) */
+  /** Rich title with LaTeX and entity references (optional, current format) */
+  titleRich?: TitleRichItem[];
+  /** Abstract, may be string (legacy) or RichTextBodyItem[] (current) */
   abstract: string | RichTextBodyItem[];
   /** Plain text abstract (auto-generated) */
   abstractPlainText?: string;
@@ -199,6 +211,154 @@ export function isCurrentAbstractFormat(abstract: unknown): abstract is RichText
 }
 
 // =============================================================================
+// TITLE MIGRATION
+// =============================================================================
+
+/**
+ * Regular expressions for detecting LaTeX markers in titles.
+ *
+ * @remarks
+ * These patterns detect common LaTeX constructs that indicate a title
+ * would benefit from rich text formatting.
+ */
+const LATEX_PATTERNS = [
+  /\$[^$]+\$/, // Inline math: $...$
+  /\$\$[^$]+\$\$/, // Display math: $$...$$
+  /\\frac\{/, // Fractions
+  /\\sum/, // Summation
+  /\\int/, // Integral
+  /\\prod/, // Product
+  /\\lim/, // Limit
+  /\\sqrt/, // Square root
+  /\\[a-zA-Z]+\{/, // Generic LaTeX commands with braces
+  /\\alpha|\\beta|\\gamma|\\delta|\\epsilon|\\theta|\\lambda|\\mu|\\pi|\\sigma|\\omega/, // Greek letters
+  /\\infty/, // Infinity
+  /\\partial/, // Partial derivative
+  /\\nabla/, // Nabla/del operator
+  /\^{[^}]+}/, // Superscript with braces
+  /_{[^}]+}/, // Subscript with braces
+  /\\mathbb\{/, // Blackboard bold
+  /\\mathcal\{/, // Calligraphic
+  /\\mathrm\{/, // Roman text in math
+  /\\text\{/, // Text in math mode
+];
+
+/**
+ * Checks if a title contains LaTeX or special formatting markers.
+ *
+ * @param title - Plain text title string
+ * @returns True if the title contains LaTeX or formatting that should be preserved
+ *
+ * @example
+ * ```typescript
+ * isLegacyTitleFormat('Simple Title'); // false
+ * isLegacyTitleFormat('Analysis of $\\alpha$-decay'); // true
+ * isLegacyTitleFormat('A \\frac{1}{2} approach'); // true
+ * ```
+ */
+export function isLegacyTitleFormat(title: string, titleRich?: TitleRichItem[]): boolean {
+  // If titleRich already exists, no migration needed
+  if (titleRich && Array.isArray(titleRich) && titleRich.length > 0) {
+    return false;
+  }
+
+  // Check if title contains any LaTeX markers
+  if (!title || typeof title !== 'string') {
+    return false;
+  }
+
+  return LATEX_PATTERNS.some((pattern) => pattern.test(title));
+}
+
+/**
+ * Converts a plain title with LaTeX to a rich text array.
+ *
+ * @param title - Plain text title with potential LaTeX content
+ * @returns TitleRichItem array with text and LaTeX items separated
+ *
+ * @remarks
+ * This function parses the title and separates LaTeX expressions into
+ * dedicated `latexItem` elements. Text outside LaTeX delimiters becomes
+ * `textItem` elements.
+ *
+ * @example
+ * ```typescript
+ * const richTitle = migrateTitleToRichText('Study of $\\alpha$-particles');
+ * // Returns: [
+ * //   { type: 'text', content: 'Study of ' },
+ * //   { type: 'latex', content: '\\alpha', displayMode: false },
+ * //   { type: 'text', content: '-particles' }
+ * // ]
+ * ```
+ */
+export function migrateTitleToRichText(title: string): TitleRichItem[] {
+  if (!title || typeof title !== 'string') {
+    return [];
+  }
+
+  const result: TitleRichItem[] = [];
+
+  // Pattern to match both inline ($...$) and display ($$...$$) math
+  // Display mode must be matched first to avoid partial matches
+  const mathPattern = /\$\$([^$]+)\$\$|\$([^$]+)\$/g;
+
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mathPattern.exec(title)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      const textContent = title.slice(lastIndex, match.index);
+      if (textContent) {
+        result.push({
+          $type: 'pub.chive.eprint.submission#textItem',
+          type: 'text',
+          content: textContent,
+        } as EprintTextItem);
+      }
+    }
+
+    // Determine if display or inline mode and get the content
+    const isDisplayMode = match[1] !== undefined;
+    const latexContent = isDisplayMode ? match[1] : match[2];
+
+    if (latexContent) {
+      result.push({
+        $type: 'pub.chive.eprint.submission#latexItem',
+        type: 'latex',
+        content: latexContent,
+        displayMode: isDisplayMode,
+      } as EprintLatexItem);
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text after last match
+  if (lastIndex < title.length) {
+    const textContent = title.slice(lastIndex);
+    if (textContent) {
+      result.push({
+        $type: 'pub.chive.eprint.submission#textItem',
+        type: 'text',
+        content: textContent,
+      } as EprintTextItem);
+    }
+  }
+
+  // If no LaTeX was found, return a single text item
+  if (result.length === 0) {
+    result.push({
+      $type: 'pub.chive.eprint.submission#textItem',
+      type: 'text',
+      content: title,
+    } as EprintTextItem);
+  }
+
+  return result;
+}
+
+// =============================================================================
 // LICENSE MIGRATION
 // =============================================================================
 
@@ -294,6 +454,29 @@ export function transformToCurrentSchema(record: MigratableEprintRecord): Schema
   const fields: FieldMigrationResult[] = [];
   const migratedRecord = { ...record };
 
+  // Migrate title if it contains LaTeX but has no titleRich
+  if (isLegacyTitleFormat(record.title, record.titleRich)) {
+    try {
+      const migratedTitle = migrateTitleToRichText(record.title);
+      migratedRecord.titleRich = migratedTitle;
+
+      fields.push({
+        field: 'title',
+        originalFormat: 'plain-string-with-latex',
+        newFormat: 'TitleRichItem[]',
+        success: true,
+      });
+    } catch (err) {
+      fields.push({
+        field: 'title',
+        originalFormat: 'plain-string-with-latex',
+        newFormat: 'TitleRichItem[]',
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  }
+
   // Migrate abstract if in legacy string format
   if (isLegacyAbstractFormat(record.abstract)) {
     try {
@@ -372,11 +555,16 @@ export function transformToCurrentSchema(record: MigratableEprintRecord): Schema
  * @example
  * ```typescript
  * const fieldsToMigrate = detectFieldsNeedingMigration(record);
- * // Returns: ['abstract', 'license']
+ * // Returns: ['title', 'abstract', 'license']
  * ```
  */
 export function detectFieldsNeedingMigration(record: MigratableEprintRecord): string[] {
   const fields: string[] = [];
+
+  // Check title format (LaTeX in plain title without titleRich)
+  if (isLegacyTitleFormat(record.title, record.titleRich)) {
+    fields.push('title');
+  }
 
   // Check abstract format
   if (isLegacyAbstractFormat(record.abstract)) {

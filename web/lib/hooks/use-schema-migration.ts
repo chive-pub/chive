@@ -21,7 +21,6 @@ import {
   type SchemaMigrationResult,
   type MigratableEprintRecord,
 } from '@/lib/api/schema-migration';
-import { APIError } from '@/lib/errors';
 import { logger } from '@/lib/observability';
 
 import { eprintKeys } from './use-eprint';
@@ -196,6 +195,8 @@ export function useSchemaMigration() {
 
         migrationLogger.debug('Fetched current record', {
           uri,
+          hasTitle: !!currentRecord.title,
+          hasTitleRich: !!currentRecord.titleRich,
           hasAbstract: !!currentRecord.abstract,
           abstractType: typeof currentRecord.abstract,
           hasLicenseUri: !!currentRecord.licenseUri,
