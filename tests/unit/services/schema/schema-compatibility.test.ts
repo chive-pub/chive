@@ -228,6 +228,7 @@ describe('SchemaCompatibilityService', () => {
   describe('generateApiHints', () => {
     it('returns undefined for current schema', () => {
       const currentRecord = {
+        title: 'Simple Title',
         abstract: [{ type: 'text', content: 'Rich text abstract' }],
       };
 
@@ -239,6 +240,7 @@ describe('SchemaCompatibilityService', () => {
 
     it('generates hints for legacy schema', () => {
       const legacyRecord = {
+        title: 'Simple Title',
         abstract: 'Plain text abstract',
       };
 
@@ -255,19 +257,20 @@ describe('SchemaCompatibilityService', () => {
 
   describe('needsMigration', () => {
     it('returns true for legacy format', () => {
-      expect(service.needsMigration({ abstract: 'string' })).toBe(true);
+      expect(service.needsMigration({ title: 'Test', abstract: 'string' })).toBe(true);
     });
 
     it('returns false for current format', () => {
       expect(
         service.needsMigration({
+          title: 'Test',
           abstract: [{ type: 'text', content: 'array' }],
         })
       ).toBe(false);
     });
 
     it('returns false for empty abstract', () => {
-      expect(service.needsMigration({ abstract: undefined })).toBe(false);
+      expect(service.needsMigration({ title: 'Test', abstract: undefined })).toBe(false);
     });
   });
 
