@@ -109,10 +109,13 @@ describe('StaticAbstract', () => {
   it('applies CSS line-clamp for truncation', () => {
     render(<StaticAbstract text={longAbstract} maxLines={3} />);
     // The component uses CSS line-clamp, so we just verify it renders
-    const container = screen.getByText(longAbstract);
-    expect(container).toBeInTheDocument();
-    // Check that maxLines style is applied (via inline styles)
-    expect(container).toHaveStyle({ WebkitLineClamp: '3' });
+    const textElement = screen.getByText(longAbstract);
+    expect(textElement).toBeInTheDocument();
+    // The style is on the wrapper div, not the inner text element from RichTextRenderer
+    const wrapperDiv = textElement.closest('div[style]');
+    expect(wrapperDiv).toBeInTheDocument();
+    // Verify the inline style attribute contains the line-clamp value
+    expect(wrapperDiv?.getAttribute('style')).toContain('-webkit-line-clamp: 3');
   });
 
   it('does not show expand button (static component)', () => {
@@ -123,7 +126,9 @@ describe('StaticAbstract', () => {
   it('applies custom className', () => {
     render(<StaticAbstract text={shortAbstract} className="custom-static-class" />);
     const text = screen.getByText(shortAbstract);
-    expect(text).toHaveClass('custom-static-class');
+    // The className is on the wrapper div, not the inner text element from RichTextRenderer
+    const wrapperDiv = text.closest('.custom-static-class');
+    expect(wrapperDiv).toBeInTheDocument();
   });
 
   it('returns null when no content provided', () => {

@@ -55,8 +55,8 @@ describe('ReviewCard', () => {
 
       expect(screen.getByTestId('review-card')).toBeInTheDocument();
       expect(screen.getByText('Dr. Reviewer')).toBeInTheDocument();
-      // Rich body contains text and Wikidata reference
-      expect(screen.getByTestId('annotation-body')).toBeInTheDocument();
+      // Rich body is rendered via RichTextRenderer
+      expect(screen.getByTestId('rich-text')).toBeInTheDocument();
       expect(screen.getByText('Machine Learning')).toBeInTheDocument();
     });
 
@@ -173,13 +173,13 @@ describe('ReviewCard', () => {
   });
 
   describe('content truncation', () => {
-    it('truncates long plain text content in default variant', () => {
+    it('shows Read more button for long plain text content in default variant', () => {
       const longContent = 'A'.repeat(600);
       const longReview = createMockReview({ content: longContent, body: undefined });
 
       render(<ReviewCard review={longReview} />);
 
-      expect(screen.getByText(/\.\.\.$/)).toBeInTheDocument();
+      // CSS line-clamp handles visual truncation; we just verify the Read more button exists
       expect(screen.getByRole('button', { name: /read more/i })).toBeInTheDocument();
     });
 

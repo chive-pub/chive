@@ -111,7 +111,10 @@ describe('EprintCard', () => {
     it('shows title with single line truncation', () => {
       const eprint = createMockEprintSummary({ title: 'A Very Long Title' });
       render(<EprintCard eprint={eprint} variant="compact" />);
-      expect(screen.getByText('A Very Long Title')).toHaveClass('line-clamp-1');
+      // The text is rendered via RichTextRenderer inside an h4 with line-clamp-1
+      const titleText = screen.getByText('A Very Long Title');
+      const h4Element = titleText.closest('h4');
+      expect(h4Element).toHaveClass('line-clamp-1');
     });
   });
 

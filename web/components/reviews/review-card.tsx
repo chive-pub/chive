@@ -317,7 +317,11 @@ export function ReviewCard({
           !showFullContent && 'line-clamp-6'
         )}
       >
-        <RichTextRenderer text={review.body?.text ?? review.content} mode="block" />
+        <RichTextRenderer
+          text={review.body?.text ?? review.content}
+          facets={review.body?.facets}
+          mode="block"
+        />
       </div>
 
       {!showFullContent && (
