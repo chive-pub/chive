@@ -553,6 +553,7 @@ async function listConcepts(category: ConceptCategory): Promise<ConceptSuggestio
     const params = new URLSearchParams({
       subkind,
       kind,
+      status: 'established',
       limit: '50',
     });
 
