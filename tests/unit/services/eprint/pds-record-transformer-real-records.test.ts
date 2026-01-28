@@ -471,8 +471,13 @@ describe('PDS record transformer with real records', () => {
       expect(result.fields).toHaveLength(1);
 
       const field = result.fields![0]!;
-      expect(field.uri).toBe('6fe7359e-8b24-5fce-8bd4-0225a10c899e');
-      expect(field.label).toBe('6fe7359e-8b24-5fce-8bd4-0225a10c899e'); // Label defaults to URI
+      // URI should be normalized to AT-URI format
+      expect(field.uri).toBe(
+        'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e'
+      );
+      expect(field.label).toBe(
+        'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e'
+      ); // Label defaults to normalized URI
       expect(field.id).toBe('6fe7359e-8b24-5fce-8bd4-0225a10c899e');
     });
   });

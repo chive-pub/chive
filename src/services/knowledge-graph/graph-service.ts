@@ -19,7 +19,7 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import type { EprintAuthor } from '../../types/models/author.js';
 import type { Result } from '../../types/result.js';
-import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
+import { extractRkeyOrPassthrough, normalizeFieldUri } from '../../utils/at-uri.js';
 import { extractPlainText } from '../../utils/rich-text.js';
 import type { RecordMetadata } from '../eprint/eprint-service.js';
 
@@ -185,7 +185,9 @@ export class KnowledgeGraphService {
     maxDepth = 3
   ): Promise<{ node: GraphNode; children: unknown[]; depth: number } | null> {
     try {
-      return await this.graph.getHierarchy(rootUri as AtUri, maxDepth);
+      // Normalize URI to AT-URI format before hierarchy lookup
+      const normalizedUri = normalizeFieldUri(rootUri);
+      return await this.graph.getHierarchy(normalizedUri, maxDepth);
     } catch (error) {
       this.logger.warn('Failed to get node hierarchy', { rootUri, error });
       return null;

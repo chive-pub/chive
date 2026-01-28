@@ -27,6 +27,7 @@ import type { LTRFeatureVector } from '../../../../services/search/relevance-log
 import { AcademicTextScorer } from '../../../../services/search/text-scorer.js';
 import type { DID } from '../../../../types/atproto.js';
 import type { GraphNode } from '../../../../types/interfaces/graph.interface.js';
+import { normalizeFieldUri } from '../../../../utils/at-uri.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -105,9 +106,11 @@ async function expandFieldsWithNarrower(
     return fieldUris ? [...fieldUris] : [];
   }
 
-  const expanded = new Set<string>(fieldUris);
+  // Normalize all field URIs to AT-URI format before hierarchy lookup
+  const normalizedUris = fieldUris.map((uri) => normalizeFieldUri(uri));
+  const expanded = new Set<string>(normalizedUris);
 
-  const expansionPromises = fieldUris.map(async (uri) => {
+  const expansionPromises = normalizedUris.map(async (uri) => {
     try {
       const hierarchy = await graph.getHierarchy(uri, maxDepth);
       if (!hierarchy) {
@@ -308,7 +311,10 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
           authors: eprintData?.authors?.map((a) => ({
             ...(a.did ? { did: a.did } : {}),
             name: a.name,
+            handle: a.handle,
+            avatarUrl: a.avatarUrl,
           })),
+          abstract: eprintData?.abstractPlainText,
           // Include dates for frontend display
           indexedAt: eprintData?.indexedAt?.toISOString(),
           createdAt: eprintData?.createdAt?.toISOString(),
