@@ -54,10 +54,20 @@ function getAuthors(eprint: EprintCardData): EprintAuthor[] {
 
   // EprintSummary or EnrichedSearchHit has lean author refs
   return eprint.authors.map(
-    (a: { did?: string; handle?: string; displayName?: string; name?: string }, idx: number) => ({
+    (
+      a: {
+        did?: string;
+        handle?: string;
+        displayName?: string;
+        name?: string;
+        avatarUrl?: string;
+      },
+      idx: number
+    ) => ({
       did: a.did ?? '',
       name: a.name ?? a.displayName ?? a.handle ?? 'Unknown',
       handle: a.handle,
+      avatar: a.avatarUrl,
       order: idx + 1,
       isCorrespondingAuthor: false,
       isHighlighted: false,

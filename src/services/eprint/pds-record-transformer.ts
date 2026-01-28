@@ -41,6 +41,7 @@ import type {
   SupplementaryCategory,
 } from '../../types/models/eprint.js';
 import type { SchemaDetectionResult } from '../../types/schema-compatibility.js';
+import { normalizeFieldUri } from '../../utils/at-uri.js';
 import { SchemaCompatibilityService } from '../schema/schema-compatibility.js';
 
 // =============================================================================
@@ -658,11 +659,13 @@ function transformFieldNodes(
   }
 
   return fieldNodes.map((f) => {
-    // Extract UUID from AT-URI: at://did:plc:xyz/collection/UUID -> UUID
-    const rkey = f.uri.split('/').pop() ?? f.uri;
+    // Normalize URI to AT-URI format (PDS records may contain UUIDs)
+    const normalizedUri = normalizeFieldUri(f.uri);
+    // Extract UUID from normalized AT-URI: at://did:plc:xyz/collection/UUID -> UUID
+    const rkey = normalizedUri.split('/').pop() ?? normalizedUri;
     return {
-      uri: f.uri,
-      label: f.uri, // Label should be resolved from knowledge graph
+      uri: normalizedUri,
+      label: normalizedUri, // Label should be resolved from knowledge graph
       id: rkey,
     };
   });

@@ -113,6 +113,11 @@
         },
         "displayName": {
           "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Author avatar URL"
         }
       }
     },

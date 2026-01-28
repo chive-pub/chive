@@ -415,12 +415,22 @@ export function useFieldEprints(fieldUri: string, options: UseFieldEprintsOption
           cursor: pageParam as string | undefined,
         });
         const data = response.data;
-        // SearchHit only contains uri and score - map to minimal EprintSummary
+        // Map all available fields from SearchHit to EprintSummary
         const hasMore = !!data.cursor;
         return {
           eprints: (data.hits ?? []).map((hit) => ({
             uri: hit.uri,
-            // Other fields require separate getSubmission calls to hydrate
+            title: hit.title,
+            abstract: hit.abstract,
+            indexedAt: hit.indexedAt,
+            createdAt: hit.createdAt,
+            authors: hit.authors?.map((a) => ({
+              did: a.did,
+              name: a.name,
+              handle: a.handle,
+              displayName: a.name,
+              avatarUrl: a.avatarUrl,
+            })),
           })) as EprintSummary[],
           cursor: data.cursor,
           hasMore,

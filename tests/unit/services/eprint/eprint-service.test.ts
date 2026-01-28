@@ -234,12 +234,20 @@ describe('EprintService', () => {
         expect(result.ok).toBe(true);
         expect(graph.getNodesByIds).toHaveBeenCalledWith(['field-uuid-1', 'field-uuid-2'], 'field');
 
-        // Verify storeEprint was called with resolved labels
+        // Verify storeEprint was called with resolved labels (URIs normalized)
         expect(storage.storeEprint).toHaveBeenCalledTimes(1);
         const storeCall = storage.storeEprint.mock.calls[0]?.[0] as { fields: unknown };
         expect(storeCall.fields).toEqual([
-          { uri: 'field-uuid-1', label: 'Computational Linguistics', id: 'field-uuid-1' },
-          { uri: 'field-uuid-2', label: 'Natural Language Processing', id: 'field-uuid-2' },
+          {
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-1',
+            label: 'Computational Linguistics',
+            id: 'field-uuid-1',
+          },
+          {
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-2',
+            label: 'Natural Language Processing',
+            id: 'field-uuid-2',
+          },
         ]);
       });
 
@@ -269,12 +277,20 @@ describe('EprintService', () => {
 
         expect(result.ok).toBe(true);
 
-        // Verify storeEprint was called (found field gets resolved, unknown keeps URI)
+        // Verify storeEprint was called (found field gets resolved, unknown keeps normalized URI)
         expect(storage.storeEprint).toHaveBeenCalledTimes(1);
         const storeCall = storage.storeEprint.mock.calls[0]?.[0] as { fields: unknown };
         expect(storeCall.fields).toEqual([
-          { uri: 'field-uuid-1', label: 'Computational Linguistics', id: 'field-uuid-1' },
-          { uri: 'field-uuid-unknown', label: 'field-uuid-unknown', id: 'field-uuid-unknown' },
+          {
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-1',
+            label: 'Computational Linguistics',
+            id: 'field-uuid-1',
+          },
+          {
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-unknown',
+            label: 'field-uuid-unknown',
+            id: 'field-uuid-unknown',
+          },
         ]);
       });
 
@@ -294,10 +310,16 @@ describe('EprintService', () => {
           expect.objectContaining({ fieldCount: 1 })
         );
 
-        // Verify storeEprint was still called with original fields
+        // Verify storeEprint was still called with normalized fields (URIs normalized even on error)
         expect(storage.storeEprint).toHaveBeenCalledTimes(1);
         const storeCall = storage.storeEprint.mock.calls[0]?.[0] as { fields: unknown };
-        expect(storeCall.fields).toEqual(fields);
+        expect(storeCall.fields).toEqual([
+          {
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-1',
+            label: 'field-uuid-1',
+            id: 'field-uuid-1',
+          },
+        ]);
       });
 
       it('works without graph service configured', async () => {

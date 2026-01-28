@@ -75,8 +75,9 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
         authors: (p.authors ?? []).map((author) => ({
           // Only include did if it's a valid DID (not empty string)
           ...(author.did ? { did: author.did } : {}),
-          handle: undefined,
+          handle: author.handle,
           displayName: author.name,
+          avatarUrl: author.avatarUrl,
         })),
         fields: p.fields?.map((f) => ({
           uri: normalizeFieldUri(f.uri),

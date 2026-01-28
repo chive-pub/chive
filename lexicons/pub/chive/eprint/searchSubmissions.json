@@ -140,6 +140,10 @@
           "format": "datetime",
           "description": "When the eprint was created"
         },
+        "abstract": {
+          "type": "string",
+          "description": "Eprint abstract plain text for display"
+        },
         "highlight": {
           "type": "ref",
           "ref": "#highlightResult"
@@ -159,6 +163,15 @@
         "name": {
           "type": "string",
           "description": "Display name"
+        },
+        "handle": {
+          "type": "string",
+          "description": "Author handle (e.g., alice.bsky.social)"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Author avatar URL"
         }
       }
     },

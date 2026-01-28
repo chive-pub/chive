@@ -61,7 +61,7 @@ import type {
 } from '../../types/interfaces/storage.interface.js';
 import type { Eprint, EprintVersion } from '../../types/models/eprint.ts';
 import type { Result } from '../../types/result.js';
-import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
+import { extractRkeyOrPassthrough, normalizeFieldUri } from '../../utils/at-uri.js';
 import { extractPlainText } from '../../utils/rich-text.js';
 
 import { VersionManager } from './version-manager.js';
@@ -810,52 +810,53 @@ export class EprintService {
   private async resolveFieldLabels(
     fields: readonly { uri: string; label: string; id?: string }[]
   ): Promise<readonly { uri: string; label: string; id?: string }[]> {
-    if (!this.graph) {
-      // Even without graph, ensure id is normalized to UUID
-      return fields.map((field) => ({
-        uri: field.uri,
+    // Normalize all field URIs to AT-URI format before processing
+    const normalizedFields = fields.map((field) => {
+      const normalizedUri = normalizeFieldUri(field.uri);
+      const fieldId = extractRkeyOrPassthrough(normalizedUri);
+      return {
+        uri: normalizedUri,
         label: field.label,
-        id: extractRkeyOrPassthrough(field.id ?? field.uri),
-      }));
+        id: fieldId,
+      };
+    });
+
+    if (!this.graph) {
+      // Even without graph, ensure URIs are normalized and id is set to UUID
+      return normalizedFields;
     }
 
-    // Extract UUIDs from AT-URIs (Neo4j stores nodes by UUID, not full AT-URI)
-    const fieldIds = fields.map((f) => extractRkeyOrPassthrough(f.uri));
+    // Extract UUIDs from normalized AT-URIs (Neo4j stores nodes by UUID, not full AT-URI)
+    const fieldIds = normalizedFields.map((f) => f.id);
 
     try {
       // Batch fetch all field nodes from the knowledge graph
       const nodeMap = await this.graph.getNodesByIds(fieldIds, 'field');
 
-      // Map fields with resolved labels and normalized IDs
-      return fields.map((field) => {
-        const fieldId = extractRkeyOrPassthrough(field.uri);
-        const node = nodeMap.get(fieldId);
+      // Map fields with resolved labels and normalized URIs
+      return normalizedFields.map((field) => {
+        const node = nodeMap.get(field.id);
         if (node) {
           return {
             uri: field.uri,
             label: node.label,
-            // Always use the extracted UUID, not any potentially malformed field.id
-            id: fieldId,
+            id: field.id,
           };
         }
-        // Node not found: use extracted UUID for id, keep original label
+        // Node not found: use normalized URI, keep original label
         return {
           uri: field.uri,
           label: field.label,
-          id: fieldId,
+          id: field.id,
         };
       });
     } catch (error) {
       this.logger.warn('Failed to resolve field labels, using URIs as fallback', {
-        fieldCount: fields.length,
+        fieldCount: normalizedFields.length,
         error: error instanceof Error ? error.message : String(error),
       });
-      // On error, still ensure id is normalized to UUID
-      return fields.map((field) => ({
-        uri: field.uri,
-        label: field.label,
-        id: extractRkeyOrPassthrough(field.id ?? field.uri),
-      }));
+      // On error, return normalized fields with original labels
+      return normalizedFields;
     }
   }
 

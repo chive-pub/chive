@@ -34,7 +34,7 @@ import neo4j, { Driver } from 'neo4j-driver';
 import { transformPDSRecord } from '../src/services/eprint/pds-record-transformer.js';
 import { mapEprintToDocument } from '../src/storage/elasticsearch/document-mapper.js';
 import { setupElasticsearch } from '../src/storage/elasticsearch/setup.js';
-import { extractRkeyOrPassthrough } from '../src/utils/at-uri.js';
+import { extractRkeyOrPassthrough, normalizeFieldUri } from '../src/utils/at-uri.js';
 import type { AtUri, CID } from '../src/types/atproto.js';
 
 // =============================================================================
@@ -256,8 +256,10 @@ async function reindexSingleRecord(
   if (eprint.fields && eprint.fields.length > 0) {
     fieldsWithLabels = await Promise.all(
       eprint.fields.map(async (f) => {
-        const label = await fieldLabelCache.resolveLabel(f.uri);
-        return { ...f, label };
+        // Normalize URI to AT-URI format before resolving label
+        const normalizedUri = normalizeFieldUri(f.uri);
+        const label = await fieldLabelCache.resolveLabel(normalizedUri);
+        return { ...f, uri: normalizedUri, label };
       })
     );
   }
