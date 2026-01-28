@@ -134,24 +134,25 @@ class FieldLabelCache {
 
     const session = this.driver.session();
     try {
-      // Try multiple node types that might contain field labels
+      // Query with Field label filter to match normal indexing behavior
+      // This matches the query pattern used by getNodesByIds in node-repository.ts
       const result = await session.run(
         `
-        MATCH (n)
-        WHERE n.id = $id OR n.uri ENDS WITH $id
-        RETURN n.label as label, n.name as name
+        MATCH (n:Node:Field)
+        WHERE n.id = $id
+        RETURN n.label as label
         LIMIT 1
         `,
         { id: fieldId }
       );
 
       const record = result.records[0];
-      const label = record?.get('label') ?? record?.get('name') ?? fieldId;
+      const label = record?.get('label') ?? fieldId;
       this.cache.set(fieldId, label);
       return label;
     } catch (error) {
       // Log but don't fail - use ID as fallback
-      console.warn(`  Warning: Failed to resolve field label for ${fieldId}`);
+      console.warn(`  Warning: Failed to resolve field label for ${fieldId}:`, error);
       this.cache.set(fieldId, fieldId);
       return fieldId;
     } finally {
