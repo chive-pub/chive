@@ -29,6 +29,8 @@ import { PinoLogger } from './observability/logger.js';
 import { ActivityService } from './services/activity/activity-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { EprintService } from './services/eprint/eprint-service.js';
+import { AutomaticProposalService } from './services/governance/automatic-proposal-service.js';
+import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
 import { createEventProcessor } from './services/indexing/event-processor.js';
 import { IndexingService } from './services/indexing/indexing-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
@@ -42,6 +44,7 @@ import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
 import { getDatabaseConfig } from './storage/postgresql/config.js';
 import { closePool, createPool } from './storage/postgresql/connection.js';
+import type { DID } from './types/atproto.js';
 
 /**
  * Indexer configuration loaded from environment variables.
@@ -75,6 +78,11 @@ interface IndexerConfig {
 
   // PLC Directory
   readonly plcDirectoryUrl: string;
+
+  // Graph PDS (optional for automatic proposals)
+  readonly graphPdsUrl?: string;
+  readonly graphPdsDid?: string;
+  readonly graphPdsSigningKey?: string;
 
   // Indexer settings
   readonly concurrency: number;
@@ -114,6 +122,11 @@ function loadConfig(): IndexerConfig {
 
     // PLC Directory
     plcDirectoryUrl: process.env.PLC_DIRECTORY_URL ?? 'https://plc.directory',
+
+    // Graph PDS (optional)
+    graphPdsUrl: process.env.GRAPH_PDS_URL,
+    graphPdsDid: process.env.GRAPH_PDS_DID,
+    graphPdsSigningKey: process.env.GRAPH_PDS_SIGNING_KEY,
 
     // Indexer settings
     concurrency: parseInt(process.env.INDEXER_CONCURRENCY ?? '10', 10),
@@ -350,6 +363,34 @@ async function main(): Promise<void> {
     // Create PDS registry for automatic PDS discovery
     const pdsRegistry = new PDSRegistry(pgPool, logger);
 
+    // Create automatic proposal service if graph PDS is configured
+    let automaticProposalService: AutomaticProposalService | undefined;
+    if (config.graphPdsUrl && config.graphPdsDid && config.graphPdsSigningKey) {
+      const graphPdsWriter = new GovernancePDSWriter({
+        graphPdsDid: config.graphPdsDid as DID,
+        pdsUrl: config.graphPdsUrl,
+        signingKey: config.graphPdsSigningKey,
+        pool: pgPool,
+        cache: redis,
+        logger,
+      });
+
+      automaticProposalService = new AutomaticProposalService({
+        pool: pgPool,
+        graph: graphAdapter,
+        logger,
+        governancePdsWriter: graphPdsWriter,
+        graphPdsDid: config.graphPdsDid as DID,
+      });
+
+      logger.info('Automatic proposal service initialized', {
+        graphPdsDid: config.graphPdsDid,
+        graphPdsUrl: config.graphPdsUrl,
+      });
+    } else {
+      logger.info('Automatic proposal service disabled (graph PDS not configured)');
+    }
+
     // Create event processor with PDS auto-discovery
     const processor = createEventProcessor({
       pool: pgPool,
@@ -357,6 +398,7 @@ async function main(): Promise<void> {
       eprintService,
       reviewService,
       graphService,
+      automaticProposalService,
       identity: identityResolver,
       logger,
       pdsRegistry, // Auto-register PDSes discovered during indexing

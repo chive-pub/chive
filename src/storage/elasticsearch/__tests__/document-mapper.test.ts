@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { TEST_GRAPH_PDS_DID } from '../../../../tests/test-constants.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../../../types/atproto.js';
 import type { Facet } from '../../../types/interfaces/graph.interface.js';
 import type { AnnotationBody } from '../../../types/models/annotation.js';
@@ -45,7 +46,7 @@ describe('mapEprintToDocument', () => {
     {
       dimension: 'topical',
       value: 'Natural Language Processing',
-      nodeUri: 'at://did:plc:governance/pub.chive.graph.node/sh2007002463',
+      nodeUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/9a0b1c2d-3e4f-5678-9abc-def012345678`,
     },
   ];
 
@@ -59,7 +60,8 @@ describe('mapEprintToDocument', () => {
       affiliations: [{ name: 'University of Example', rorId: 'https://ror.org/02mhbdp94' }],
       contributions: [
         {
-          typeUri: 'at://did:plc:governance/pub.chive.graph.concept/conceptualization' as AtUri,
+          typeUri:
+            `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85` as AtUri,
           typeId: 'conceptualization',
           typeLabel: 'Conceptualization',
           degree: 'lead',
@@ -332,7 +334,7 @@ describe('mapEprintToDocument', () => {
 
       expect(document.authority_uris).toBeDefined();
       expect(document.authority_uris).toContain(
-        'at://did:plc:governance/pub.chive.graph.node/sh2007002463'
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/9a0b1c2d-3e4f-5678-9abc-def012345678`
       );
     });
 

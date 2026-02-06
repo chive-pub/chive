@@ -14,6 +14,7 @@ import type {
   OutputSchema,
   KeywordSuggestion,
 } from '../../../../lexicons/generated/types/pub/chive/actor/autocompleteKeyword.js';
+import { APIError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 // Use generated types from lexicons
@@ -61,7 +62,11 @@ async function searchFast(query: string, limit: number): Promise<KeywordSuggesti
   });
 
   if (!response.ok) {
-    throw new Error(`FAST API returned ${response.status}`);
+    throw new APIError(
+      `FAST API error`,
+      response.status,
+      'https://fast.oclc.org/searchfast/fastsuggest'
+    );
   }
 
   const data = (await response.json()) as FastApiResponse;
@@ -96,7 +101,7 @@ async function searchWikidata(query: string, limit: number): Promise<KeywordSugg
   });
 
   if (!response.ok) {
-    throw new Error(`Wikidata API returned ${response.status}`);
+    throw new APIError(`Wikidata API error`, response.status, 'https://www.wikidata.org/w/api.php');
   }
 
   const data = (await response.json()) as WikidataApiResponse;

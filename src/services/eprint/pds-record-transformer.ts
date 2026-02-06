@@ -12,10 +12,6 @@
  * - `abstract` (string OR RichTextItem[]) → `abstract` (RichTextBody)
  * - BlobRef structure: `ref.$link` → `ref` (CID string)
  *
- * **Schema Evolution:**
- * The transformer detects which format was used for each field and includes
- * compatibility metadata in the result. This enables API responses to include
- * schema hints for clients using legacy formats.
  *
  * @packageDocumentation
  * @public
@@ -40,9 +36,7 @@ import type {
   SupplementaryMaterial,
   SupplementaryCategory,
 } from '../../types/models/eprint.js';
-import type { SchemaDetectionResult } from '../../types/schema-compatibility.js';
 import { normalizeFieldUri } from '../../utils/at-uri.js';
-import { SchemaCompatibilityService } from '../schema/schema-compatibility.js';
 
 // =============================================================================
 // PDS RECORD TYPES (what frontend actually writes)
@@ -148,7 +142,6 @@ interface PDSRichTextItem {
  * - `titleRich` is an optional array of RichTextItem for formatted titles
  *   (contains LaTeX, entity references, etc.)
  *
- * The transformer accepts both formats for backward compatibility.
  */
 export interface PDSEprintRecord {
   $type: 'pub.chive.eprint.submission';
@@ -180,12 +173,10 @@ export interface PDSEprintRecord {
   fieldNodes?: PDSFieldNode[];
   facets?: PDSFacetValue[];
   keywords?: string[];
-  /** AT-URI to license node (subkind=license) - current format */
+  /** AT-URI to license node (subkind=license) */
   licenseUri?: string;
-  /** SPDX license identifier for display fallback - current format */
+  /** SPDX license identifier for display */
   licenseSlug?: string;
-  /** Legacy license field (SPDX identifier) - for backward compatibility */
-  license?: string;
   paperDid?: string;
   doi?: string;
   previousVersion?: { uri: string; cid: string };
@@ -210,11 +201,6 @@ export interface PDSEprintRecord {
 /**
  * Result of PDS record transformation.
  *
- * @remarks
- * Includes both the transformed Eprint model and schema compatibility
- * metadata. The schema metadata can be used to include migration hints
- * in API responses.
- *
  * @public
  */
 export interface TransformResult {
@@ -224,30 +210,12 @@ export interface TransformResult {
   readonly eprint: Eprint;
 
   /**
-   * Schema compatibility detection results.
-   *
-   * @remarks
-   * Includes information about detected legacy formats, deprecated fields,
-   * and available migrations. Use this to generate API schema hints.
-   */
-  readonly schemaDetection: SchemaDetectionResult;
-
-  /**
    * Detected format of the abstract field.
-   *
-   * @remarks
-   * Indicates whether the source record used:
-   * - 'string': Legacy plain text format (schema 1.0.0)
-   * - 'rich-text-array': Current array format (schema 1.1.0+)
-   * - 'empty': Abstract was missing or null
    */
   readonly abstractFormat: 'string' | 'rich-text-array' | 'empty';
 
   /**
    * Detected format of the title field.
-   *
-   * @remarks
-   * Indicates whether the source record:
    * - 'plain': Plain title with no special formatting needed
    * - 'plain-needs-rich': Plain title with special characters that would benefit from titleRich
    * - 'with-rich': Title has accompanying titleRich array
@@ -439,7 +407,7 @@ function transformAbstract(abstract: unknown): AbstractTransformResult {
     };
   }
 
-  // Legacy string format (schema 1.0.0)
+  // String format (converted to single text item)
   if (typeof abstract === 'string') {
     return {
       richTextBody: {
@@ -672,43 +640,23 @@ function transformFieldNodes(
 }
 
 // =============================================================================
-// SCHEMA COMPATIBILITY SERVICE INSTANCE
-// =============================================================================
-
-const schemaService = new SchemaCompatibilityService();
-
-// =============================================================================
 // MAIN TRANSFORMER
 // =============================================================================
 
 /**
- * Transform a PDS record to internal Eprint model with schema metadata.
+ * Transform a PDS record to internal Eprint model.
  *
  * @param raw - Raw record value from PDS
  * @param uri - AT-URI of the record
  * @param cid - CID of the record
- * @returns Transform result with Eprint model and schema detection
+ * @returns Transform result with Eprint model and format metadata
  *
  * @throws ValidationError if required fields are missing
- *
- * @remarks
- * This function handles schema evolution by accepting both legacy and current
- * formats for fields like `abstract`. The returned `schemaDetection` can be
- * used to generate API hints for clients using legacy formats.
  *
  * @example
  * ```typescript
  * const result = transformPDSRecordWithSchema(record.value, uri, cid);
- *
- * // Use the transformed eprint
  * await eprintService.indexEprint(result.eprint, metadata);
- *
- * // Check for legacy formats
- * if (!result.schemaDetection.isCurrentSchema) {
- *   logger.info('Legacy record format detected', {
- *     deprecatedFields: result.schemaDetection.compatibility.deprecatedFields,
- *   });
- * }
  * ```
  *
  * @public
@@ -740,12 +688,6 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
   if (!record.createdAt) {
     throw new ValidationError('Missing required field: createdAt', 'createdAt');
   }
-
-  // ==========================================================================
-  // DETECT SCHEMA COMPATIBILITY
-  // ==========================================================================
-
-  const schemaDetection = schemaService.analyzeEprintRecord(raw);
 
   // ==========================================================================
   // TRANSFORM FIELDS
@@ -817,11 +759,7 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
     createdAt: toTimestamp(new Date(record.createdAt)),
     abstract: abstractResult.richTextBody,
     abstractPlainText: abstractResult.plainText,
-    // License field handling with backward compatibility:
-    // 1. Use licenseSlug if present (current format)
-    // 2. Fall back to license if present (legacy format)
-    // 3. Default to CC-BY-4.0 if nothing provided
-    license: record.licenseSlug ?? record.license ?? 'CC-BY-4.0',
+    license: record.licenseSlug ?? 'CC-BY-4.0',
     // Store licenseUri for knowledge graph reference (optional)
     licenseUri: record.licenseUri as AtUri | undefined,
     keywords: record.keywords ?? [],
@@ -841,7 +779,6 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
 
   return {
     eprint,
-    schemaDetection,
     abstractFormat: abstractResult.detectedFormat,
     titleFormat: titleResult.detectedFormat,
   };
@@ -858,9 +795,7 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
  * @throws ValidationError if required fields are missing
  *
  * @remarks
- * This is the legacy function that returns only the Eprint model without
- * schema metadata. Use `transformPDSRecordWithSchema` for full schema
- * evolution support.
+ * Convenience wrapper that returns only the Eprint model.
  *
  * @example
  * ```typescript

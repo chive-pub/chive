@@ -14,6 +14,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import type { NodeSavedSession, NodeSavedSessionStore } from '@atproto/oauth-client-node';
 import type { Redis } from 'ioredis';
 
+import { ValidationError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 /**
@@ -126,7 +127,11 @@ export class RedisSessionStore implements NodeSavedSessionStore {
     if (options.config?.encryptionKey) {
       this.encryptionKey = Buffer.from(options.config.encryptionKey, 'hex');
       if (this.encryptionKey.length !== 32) {
-        throw new Error('Encryption key must be 32 bytes (64 hex characters)');
+        throw new ValidationError(
+          'Encryption key must be 32 bytes (64 hex characters)',
+          'encryptionKey',
+          'length'
+        );
       }
     }
   }

@@ -12,7 +12,7 @@ import type {
   InputSchema,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/backlink/create.js';
-import { AuthenticationError } from '../../../../types/errors.js';
+import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -32,7 +32,7 @@ export const create: XRPCMethod<void, InputSchema, OutputSchema> = {
     }
 
     if (!input) {
-      throw new Error('Input required');
+      throw new ValidationError('Request body is required', 'input', 'required');
     }
 
     logger.debug('Creating backlink', {

@@ -53,17 +53,17 @@ interface GraphConfig {
 const DEFAULT_GRAPHS: readonly GraphConfig[] = [
   {
     name: 'fields-graph',
-    nodeLabels: ['FieldNode'],
+    nodeLabels: ['Field'],
     relationshipTypes: ['RELATED_TO', 'SUBFIELD_OF'],
   },
   {
     name: 'papers-graph',
-    nodeLabels: ['EprintSubmission'],
+    nodeLabels: ['Eprint'],
     relationshipTypes: ['CITES'],
   },
   {
     name: 'knowledge-graph',
-    nodeLabels: ['FieldNode', 'EprintSubmission', 'Author'],
+    nodeLabels: ['Field', 'Eprint', 'Person'],
     relationshipTypes: ['RELATED_TO', 'CLASSIFIED_AS', 'AUTHORED', 'COAUTHORED_WITH'],
   },
 ] as const;
@@ -389,7 +389,7 @@ export class GraphAlgorithmJob {
       // Create projection for community detection
       await this.algorithms.projectGraph({
         name: graphName,
-        nodeLabels: ['FieldNode', 'EprintSubmission'],
+        nodeLabels: ['Field', 'Eprint'],
         relationshipTypes: ['RELATED_TO', 'CLASSIFIED_AS', 'CITES'],
       });
 
