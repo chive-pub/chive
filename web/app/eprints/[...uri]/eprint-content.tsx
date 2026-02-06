@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { logger } from '@/lib/observability';
 
@@ -66,15 +67,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useEprint } from '@/lib/hooks/use-eprint';
-import { useReviews, useCreateReview } from '@/lib/hooks/use-review';
+import {
+  useReviews,
+  useCreateReview,
+  useUpdateReview,
+  useDeleteReview,
+} from '@/lib/hooks/use-review';
 import {
   useEndorsementSummary,
   useUserEndorsement,
   useCreateEndorsement,
+  useUpdateEndorsement,
+  useDeleteEndorsement,
 } from '@/lib/hooks/use-endorsement';
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
 import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
-import type { Review, Endorsement } from '@/lib/api/schema';
+import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { toast } from 'sonner';
@@ -128,7 +136,9 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const [currentVersion, setCurrentVersion] = useState<number | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Review | null>(null);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [showEndorsementForm, setShowEndorsementForm] = useState(false);
+  const [editingEndorsement, setEditingEndorsement] = useState<Endorsement | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
 
   // Review/endorsement sharing state
@@ -160,7 +170,11 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     enabled: isAuthenticated,
   });
   const createReview = useCreateReview();
+  const updateReview = useUpdateReview();
+  const deleteReview = useDeleteReview();
   const createEndorsement = useCreateEndorsement();
+  const updateEndorsement = useUpdateEndorsement();
+  const deleteEndorsement = useDeleteEndorsement();
 
   // Eprint permissions and mutations
   const permissions = useEprintPermissions(
@@ -193,53 +207,129 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
   const handleReply = useCallback((review: Review) => {
     setReplyingTo(review);
+    setEditingReview(null);
     setShowReviewForm(true);
   }, []);
 
+  const handleEditReview = useCallback((review: Review) => {
+    setEditingReview(review);
+    setReplyingTo(null);
+    setShowReviewForm(true);
+  }, []);
+
+  const handleDeleteReview = useCallback(
+    async (review: Review) => {
+      try {
+        await deleteReview.mutateAsync({ uri: review.uri, eprintUri: uri });
+        toast.success('Review deleted successfully');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to delete review');
+      }
+    },
+    [deleteReview, uri]
+  );
+
   const handleSubmitReview = useCallback(
     async (data: ReviewFormData) => {
-      await createReview.mutateAsync({
-        eprintUri: uri,
-        content: data.content,
-        parentReviewUri: data.parentReviewUri,
-      });
+      if (editingReview) {
+        await updateReview.mutateAsync({
+          uri: editingReview.uri,
+          eprintUri: uri,
+          content: data.content,
+        });
+        toast.success('Review updated successfully');
+      } else {
+        await createReview.mutateAsync({
+          eprintUri: uri,
+          content: data.content,
+          parentReviewUri: data.parentReviewUri,
+        });
+        toast.success('Review posted successfully');
+      }
       setShowReviewForm(false);
       setReplyingTo(null);
+      setEditingReview(null);
     },
-    [uri, createReview]
+    [uri, createReview, updateReview, editingReview]
   );
 
   const handleSubmitEndorsement = useCallback(
     async (data: EndorsementFormData) => {
       try {
-        await createEndorsement.mutateAsync({
-          eprintUri: uri,
-          contributions: data.contributions,
-          comment: data.comment,
-        });
-        setShowEndorsementForm(false);
-        toast.success('Endorsement submitted successfully');
+        if (editingEndorsement) {
+          await updateEndorsement.mutateAsync({
+            uri: editingEndorsement.uri,
+            eprintUri: uri,
+            contributions: data.contributions,
+            comment: data.comment,
+          });
+          setEditingEndorsement(null);
+          setShowEndorsementForm(false);
+          toast.success('Endorsement updated successfully');
+        } else {
+          await createEndorsement.mutateAsync({
+            eprintUri: uri,
+            contributions: data.contributions,
+            comment: data.comment,
+          });
+          setShowEndorsementForm(false);
+          toast.success('Endorsement submitted successfully');
+        }
       } catch (error) {
         // Error is displayed in the form via error prop
         // Don't close the form so user can see the error and retry
         toast.error(error instanceof Error ? error.message : 'Failed to submit endorsement');
       }
     },
-    [uri, createEndorsement]
+    [uri, createEndorsement, updateEndorsement, editingEndorsement]
+  );
+
+  const handleEditEndorsement = useCallback((endorsement: Endorsement) => {
+    setEditingEndorsement(endorsement);
+    setShowEndorsementForm(true);
+  }, []);
+
+  const handleDeleteEndorsement = useCallback(
+    async (endorsement: Endorsement) => {
+      try {
+        await deleteEndorsement.mutateAsync({ uri: endorsement.uri, eprintUri: uri });
+        toast.success('Endorsement deleted successfully');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to delete endorsement');
+      }
+    },
+    [deleteEndorsement, uri]
   );
 
   const handleDeleteEprint = useCallback(async () => {
     try {
+      // Step 1: Validate authorization via backend
       await deleteEprint.mutateAsync({ uri });
-      // TODO: After backend authorization succeeds, make the actual PDS call
-      // await agent?.deleteRecord(uri);
+
+      // Step 2: Delete record from PDS via ATProto client
+      // The record lives in either the user's PDS or the paper's PDS
+      if (agent) {
+        const uriParts = uri.split('/');
+        const rkey = uriParts.pop() ?? '';
+        const collection = uriParts.pop() ?? 'pub.chive.eprint.submission';
+        const repo = eprint?.paperDid ?? eprint?.submittedBy ?? agent.did;
+
+        if (repo) {
+          await agent.com.atproto.repo.deleteRecord({
+            repo,
+            collection,
+            rkey,
+          });
+        }
+      }
+
       toast.success('Eprint deleted successfully');
       // Redirect to eprints list after deletion
       window.location.href = '/eprints';
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete eprint');
     }
-  }, [deleteEprint, uri]);
+  }, [deleteEprint, uri, agent, eprint?.paperDid, eprint?.submittedBy]);
 
   /**
    * Build edit data object from eprint.
@@ -251,6 +341,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         rkey: eprint.uri.split('/').pop() ?? '',
         collection: 'pub.chive.eprint.submission',
         title: eprint.title,
+        abstract: eprint.abstract,
         keywords: eprint.keywords,
         version: eprint.version,
         repo: eprint.paperDid ?? eprint.submittedBy,
@@ -449,9 +540,15 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
                   <Button variant="outline" size="sm">
                     <Pencil className="h-4 w-4 mr-2" />
-                    Edit
+                    Quick Edit
                   </Button>
                 </EprintEditDialog>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/eprints/edit/${encodeURIComponent(uri)}`}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit All
+                  </Link>
+                </Button>
                 <DeleteEprintDialog
                   title={eprint.title}
                   uri={eprint.uri}
@@ -475,9 +572,15 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
                 <Button variant="outline" size="sm">
                   <Pencil className="h-4 w-4 mr-2" />
-                  Edit
+                  Quick Edit
                 </Button>
               </EprintEditDialog>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/eprints/edit/${encodeURIComponent(uri)}`}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit All
+                </Link>
+              </Button>
               <DeleteEprintDialog
                 title={eprint.title}
                 uri={eprint.uri}
@@ -677,9 +780,15 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
         {/* PDF viewer tab with annotation split view */}
         <TabsContent value="pdf">
-          <div className="flex gap-4">
+          <div className="flex gap-4 w-full overflow-hidden">
             {/* Main PDF viewer */}
-            <div className={showAnnotationSidebar ? 'flex-1' : 'w-full'}>
+            <div
+              className={
+                showAnnotationSidebar
+                  ? 'flex-1 w-0 min-w-0 overflow-hidden'
+                  : 'w-full overflow-hidden'
+              }
+            >
               <div className="mb-2 flex items-center justify-between">
                 <Button
                   variant="outline"
@@ -757,6 +866,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               </div>
               <ReviewForm
                 eprintUri={uri}
+                target={inlineReviewTarget.target}
                 onSubmit={handleSubmitInlineReview}
                 onCancel={() => {
                   setShowReviewForm(false);
@@ -833,26 +943,13 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   content: entityContent,
                   target: entityLinkSelection.target,
                   motivation: 'linking',
-                  body: {
-                    text: entityContent,
-                    facets: [
-                      {
-                        index: {
-                          byteStart: 'Linked to: '.length,
-                          byteEnd: entityContent.length,
-                        },
-                        features: [
-                          {
-                            $type: 'pub.chive.review.listForEprint#linkFacet',
-                            uri: entityUrl,
-                          } satisfies LinkFacet,
-                        ],
-                      },
-                    ],
-                  },
                 });
+                toast.success('Entity linked successfully');
               } catch (error) {
                 eprintLogger.error('Failed to create entity link annotation', error);
+                toast.error(
+                  error instanceof Error ? error.message : 'Failed to create entity link'
+                );
               }
 
               setEntityLinkDialogOpen(false);
@@ -868,13 +965,15 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             showReviewForm ? (
               <ReviewForm
                 eprintUri={uri}
+                editingReview={editingReview ?? undefined}
                 parentReview={replyingTo ?? undefined}
                 onSubmit={handleSubmitReview}
                 onCancel={() => {
                   setShowReviewForm(false);
                   setReplyingTo(null);
+                  setEditingReview(null);
                 }}
-                isLoading={createReview.isPending}
+                isLoading={createReview.isPending || updateReview.isPending}
               />
             ) : (
               <Button onClick={() => setShowReviewForm(true)}>Write a review</Button>
@@ -893,7 +992,10 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               reviews={reviewsData.reviews}
               layout="threaded"
               onReply={isAuthenticated ? handleReply : undefined}
+              onEdit={isAuthenticated ? handleEditReview : undefined}
+              onDelete={isAuthenticated ? handleDeleteReview : undefined}
               onShare={isAuthenticated ? handleShareReview : undefined}
+              currentUserDid={currentUser?.did}
               showTargets
             />
           ) : (
@@ -908,12 +1010,34 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           {/* User endorsement status */}
           {isAuthenticated && userEndorsement && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-              <p className="text-sm text-muted-foreground">
-                You have endorsed this eprint for:{' '}
-                <span className="font-medium text-foreground">
-                  {userEndorsement.contributions.join(', ')}
-                </span>
-              </p>
+              <div className="flex items-start justify-between">
+                <p className="text-sm text-muted-foreground">
+                  You have endorsed this eprint for:{' '}
+                  <span className="font-medium text-foreground">
+                    {userEndorsement.contributions.join(', ')}
+                  </span>
+                </p>
+                <div className="flex items-center gap-2 ml-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditEndorsement(userEndorsement)}
+                  >
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteEndorsement(userEndorsement)}
+                    disabled={deleteEndorsement.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -936,16 +1060,25 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               isAuthenticated && !userEndorsement ? () => setShowEndorsementForm(true) : undefined
             }
             onShareEndorsement={isAuthenticated ? handleShareEndorsement : undefined}
+            onEditEndorsement={isAuthenticated ? handleEditEndorsement : undefined}
+            onDeleteEndorsement={isAuthenticated ? handleDeleteEndorsement : undefined}
           />
 
           {/* Endorsement form dialog */}
           <EndorsementForm
             eprintUri={uri}
             open={showEndorsementForm}
-            onOpenChange={setShowEndorsementForm}
+            onOpenChange={(open) => {
+              setShowEndorsementForm(open);
+              if (!open) setEditingEndorsement(null);
+            }}
             onSubmit={handleSubmitEndorsement}
-            isLoading={createEndorsement.isPending}
-            error={createEndorsement.error?.message}
+            isLoading={createEndorsement.isPending || updateEndorsement.isPending}
+            error={createEndorsement.error?.message ?? updateEndorsement.error?.message}
+            initialContributions={
+              editingEndorsement?.contributions as ContributionType[] | undefined
+            }
+            initialComment={editingEndorsement?.comment}
           />
         </TabsContent>
 

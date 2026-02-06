@@ -20,7 +20,9 @@ import { FileText, FileCheck } from 'lucide-react';
 import { FileDropzone, type SelectedFile } from '@/components/forms';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { EprintFormValues, DocumentFormatValue } from './submission-wizard';
+import { useDocumentFormats } from '@/lib/hooks/use-nodes';
+import type { EprintFormValues } from './submission-wizard';
+import type { DocumentFormat } from '@/lib/api/generated/types/pub/chive/defs';
 
 // =============================================================================
 // TYPES
@@ -70,7 +72,7 @@ const MAX_DOCUMENT_SIZE = 52428800; // 50MB
 /**
  * Maps file extensions to document formats.
  */
-const EXTENSION_TO_FORMAT: Record<string, DocumentFormatValue> = {
+const EXTENSION_TO_FORMAT: Record<string, DocumentFormat> = {
   pdf: 'pdf',
   docx: 'docx',
   html: 'html',
@@ -86,22 +88,6 @@ const EXTENSION_TO_FORMAT: Record<string, DocumentFormatValue> = {
   txt: 'txt',
 };
 
-/**
- * Format display labels.
- */
-const FORMAT_LABELS: Record<DocumentFormatValue, string> = {
-  pdf: 'PDF',
-  docx: 'Word Document',
-  html: 'HTML',
-  markdown: 'Markdown',
-  latex: 'LaTeX',
-  jupyter: 'Jupyter Notebook',
-  odt: 'OpenDocument',
-  rtf: 'Rich Text',
-  epub: 'EPUB',
-  txt: 'Plain Text',
-};
-
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -109,7 +95,7 @@ const FORMAT_LABELS: Record<DocumentFormatValue, string> = {
 /**
  * Detects document format from filename.
  */
-function detectFormatFromFilename(filename: string): DocumentFormatValue | undefined {
+function detectFormatFromFilename(filename: string): DocumentFormat | undefined {
   const ext = filename.split('.').pop()?.toLowerCase();
   return ext ? EXTENSION_TO_FORMAT[ext] : undefined;
 }
@@ -127,6 +113,15 @@ function detectFormatFromFilename(filename: string): DocumentFormatValue | undef
 export function StepFiles({ form, className }: StepFilesProps) {
   const documentFile = form.watch('documentFile');
   const documentFormat = form.watch('documentFormat');
+
+  // Fetch document formats from knowledge graph
+  const { data: formatsData } = useDocumentFormats();
+  const formatLabels: Record<string, string> =
+    formatsData?.nodes.reduce<Record<string, string>>((acc, node) => {
+      const slug = node.metadata?.slug ?? node.label.toLowerCase().replace(/\s+/g, '_');
+      acc[slug] = node.label;
+      return acc;
+    }, {}) ?? {};
 
   // Auto-detect format when file changes
   useEffect(() => {
@@ -193,7 +188,7 @@ export function StepFiles({ form, className }: StepFilesProps) {
           <div className="flex items-center gap-2">
             <FileCheck className="h-4 w-4 text-green-500" />
             <span className="text-sm text-muted-foreground">Detected format:</span>
-            <Badge variant="secondary">{FORMAT_LABELS[documentFormat]}</Badge>
+            <Badge variant="secondary">{formatLabels[documentFormat] ?? documentFormat}</Badge>
           </div>
         )}
 

@@ -637,7 +637,7 @@ export function AnnotatedPDFViewer({
     <div
       ref={containerRef}
       className={cn(
-        'flex flex-col overflow-hidden rounded-lg border bg-muted/50',
+        'flex flex-col w-full overflow-hidden rounded-lg border bg-muted/50',
         isFullscreen && 'fixed inset-0 z-50 rounded-none',
         className
       )}
@@ -686,7 +686,7 @@ export function AnnotatedPDFViewer({
 
       {/* PDF Viewer */}
       <div
-        className="flex-1 overflow-hidden"
+        className="flex-1 w-full overflow-hidden relative"
         style={{ height: isFullscreen ? 'calc(100vh - 56px)' : '600px' }}
       >
         <PdfLoader

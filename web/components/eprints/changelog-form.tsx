@@ -36,6 +36,10 @@ import { cn } from '@/lib/utils';
 
 /**
  * Known category values for changelog sections.
+ *
+ * @remarks
+ * These are fallback display options. In the future, changelog categories
+ * could be fetched from the knowledge graph to allow community governance.
  */
 export const CHANGELOG_CATEGORIES = [
   'methodology',
@@ -58,18 +62,27 @@ export const CHANGELOG_CATEGORIES = [
 
 /**
  * Changelog category type.
+ *
+ * @remarks
+ * Uses string to allow for extensibility through knowledge graph governance.
  */
-export type ChangelogCategory = (typeof CHANGELOG_CATEGORIES)[number];
+export type ChangelogCategory = string;
 
 /**
  * Known change type values.
+ *
+ * @remarks
+ * Based on Keep a Changelog conventions. These are fallback display options.
  */
 export const CHANGE_TYPES = ['added', 'changed', 'removed', 'fixed', 'deprecated'] as const;
 
 /**
  * Change type for individual items.
+ *
+ * @remarks
+ * Uses string to allow for extensibility through knowledge graph governance.
  */
-export type ChangeType = (typeof CHANGE_TYPES)[number];
+export type ChangeType = string;
 
 /**
  * Individual change item within a section.
@@ -125,8 +138,11 @@ export interface ChangelogFormProps {
 
 /**
  * Human-readable labels for categories.
+ *
+ * @remarks
+ * Uses Record<string, string> to allow safe indexing with governance-controlled values.
  */
-const CATEGORY_LABELS: Record<ChangelogCategory, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
   methodology: 'Methodology',
   results: 'Results',
   analysis: 'Analysis',
@@ -146,15 +162,38 @@ const CATEGORY_LABELS: Record<ChangelogCategory, string> = {
 };
 
 /**
- * Human-readable labels for change types.
+ * Get label for a category, with fallback to kebab-to-title case conversion.
  */
-const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
+function getCategoryLabel(category: string): string {
+  return (
+    CATEGORY_LABELS[category] ??
+    category
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  );
+}
+
+/**
+ * Human-readable labels for change types.
+ *
+ * @remarks
+ * Uses Record<string, string> to allow safe indexing with governance-controlled values.
+ */
+const CHANGE_TYPE_LABELS: Record<string, string> = {
   added: 'Added',
   changed: 'Changed',
   removed: 'Removed',
   fixed: 'Fixed',
   deprecated: 'Deprecated',
 };
+
+/**
+ * Get label for a change type, with fallback to title case conversion.
+ */
+function getChangeTypeLabel(changeType: string): string {
+  return CHANGE_TYPE_LABELS[changeType] ?? changeType.charAt(0).toUpperCase() + changeType.slice(1);
+}
 
 /**
  * Creates an empty changelog item.
@@ -321,7 +360,7 @@ export function ChangelogForm({
               <SelectContent>
                 {availableCategories.map((category) => (
                   <SelectItem key={category} value={category}>
-                    {CATEGORY_LABELS[category]}
+                    {getCategoryLabel(category)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -350,7 +389,7 @@ export function ChangelogForm({
               >
                 <AccordionTrigger className="px-4 hover:no-underline">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{CATEGORY_LABELS[section.category]}</span>
+                    <span className="font-medium">{getCategoryLabel(section.category)}</span>
                     <span className="text-xs text-muted-foreground">
                       ({section.items.length} {section.items.length === 1 ? 'item' : 'items'})
                     </span>
@@ -427,7 +466,7 @@ export function ChangelogForm({
                                 <SelectItem value="none">None</SelectItem>
                                 {CHANGE_TYPES.map((type) => (
                                   <SelectItem key={type} value={type}>
-                                    {CHANGE_TYPE_LABELS[type]}
+                                    {getChangeTypeLabel(type)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

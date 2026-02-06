@@ -40,22 +40,8 @@ import { cn } from '@/lib/utils';
 // TYPES
 // =============================================================================
 
-/**
- * Supplementary material category.
- */
-export type SupplementaryCategory =
-  | 'appendix'
-  | 'figure'
-  | 'table'
-  | 'dataset'
-  | 'code'
-  | 'notebook'
-  | 'video'
-  | 'audio'
-  | 'presentation'
-  | 'protocol'
-  | 'questionnaire'
-  | 'other';
+import type { SupplementaryCategory } from '@/lib/api/generated/types/pub/chive/defs';
+export type { SupplementaryCategory };
 
 /**
  * Supplementary material item.

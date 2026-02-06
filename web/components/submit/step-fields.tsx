@@ -50,7 +50,7 @@ export function StepFields({ form, className }: StepFieldsProps) {
   // Handle field addition
   const handleFieldAdd = useCallback(
     (field: FieldSelection) => {
-      form.setValue('fieldNodes', [...fieldNodes, { id: field.id, name: field.name }], {
+      form.setValue('fieldNodes', [...fieldNodes, { uri: field.uri, label: field.label }], {
         shouldValidate: true,
       });
     },
@@ -60,7 +60,7 @@ export function StepFields({ form, className }: StepFieldsProps) {
   // Handle field removal
   const handleFieldRemove = useCallback(
     (field: FieldSelection) => {
-      const updated = fieldNodes.filter((f) => f.id !== field.id);
+      const updated = fieldNodes.filter((f) => f.uri !== field.uri);
       form.setValue('fieldNodes', updated, { shouldValidate: true });
     },
     [form, fieldNodes]
@@ -68,8 +68,8 @@ export function StepFields({ form, className }: StepFieldsProps) {
 
   // Convert form field format to FieldSelection
   const selectedFields: FieldSelection[] = fieldNodes.map((f) => ({
-    id: f.id,
-    name: f.name,
+    uri: f.uri,
+    label: f.label,
   }));
 
   return (

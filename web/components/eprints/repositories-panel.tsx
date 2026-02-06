@@ -14,15 +14,8 @@ import { ExternalLink, Github, Database, Code, Box, FlaskConical, FileText } fro
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type {
-  Repositories,
-  CodeRepository,
-  DataRepository,
-  Preregistration,
-  Protocol,
-} from '@/lib/api/schema';
+import type { Repositories, Preregistration } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES

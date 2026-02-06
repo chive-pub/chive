@@ -46,14 +46,17 @@ import {
   ArxivAutocomplete,
   PubmedAutocomplete,
   ConferenceAutocomplete,
-  ConceptAutocomplete,
+  NodeAutocomplete,
+  LocationAutocomplete,
   type CrossRefWork,
-  type CrossRefFunder,
+  type FunderResult,
   type ArxivEntry,
   type PubmedEntry,
   type Conference,
-  type ConceptSuggestion,
+  type NodeSuggestion,
+  type LocationResult,
 } from '@/components/forms';
+import { usePublicationStatuses } from '@/lib/hooks/use-nodes';
 import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
@@ -70,25 +73,8 @@ export interface StepPublicationProps {
   className?: string;
 }
 
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-/**
- * Publication status options.
- */
-const PUBLICATION_STATUS_OPTIONS = [
-  { value: 'eprint', label: 'Eprint' },
-  { value: 'under_review', label: 'Under Review' },
-  { value: 'revision_requested', label: 'Revision Requested' },
-  { value: 'accepted', label: 'Accepted' },
-  { value: 'in_press', label: 'In Press' },
-  { value: 'published', label: 'Published' },
-  { value: 'retracted', label: 'Retracted' },
-] as const;
-
 // Platform and presentation type options are now sourced from the knowledge graph
-// via ConceptAutocomplete with category constraints:
+// via NodeAutocomplete with category constraints:
 // - Code platforms: category='platform-code'
 // - Data repositories: category='platform-data'
 // - Preregistration: category='platform-preregistration'
@@ -105,6 +91,14 @@ const PUBLICATION_STATUS_OPTIONS = [
  * @returns Publication metadata step element
  */
 export function StepPublication({ form, className }: StepPublicationProps) {
+  // Fetch publication statuses from knowledge graph
+  const { data: statusesData } = usePublicationStatuses();
+  const publicationStatusOptions =
+    statusesData?.nodes.map((node) => ({
+      value: node.metadata?.slug ?? node.label.toLowerCase().replace(/\s+/g, '_'),
+      label: node.label,
+    })) ?? [];
+
   // Field arrays for repeatable sections
   const codeReposArray = useFieldArray({
     control: form.control,
@@ -143,9 +137,9 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
   // Handle code platform selection
   const handleCodePlatformSelect = useCallback(
-    (concept: ConceptSuggestion, index: number) => {
-      form.setValue(`codeRepositories.${index}.platformUri`, concept.uri, { shouldValidate: true });
-      form.setValue(`codeRepositories.${index}.platformName`, concept.name, {
+    (node: NodeSuggestion, index: number) => {
+      form.setValue(`codeRepositories.${index}.platformUri`, node.uri, { shouldValidate: true });
+      form.setValue(`codeRepositories.${index}.platformName`, node.label, {
         shouldValidate: true,
       });
     },
@@ -163,9 +157,9 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
   // Handle data platform selection
   const handleDataPlatformSelect = useCallback(
-    (concept: ConceptSuggestion, index: number) => {
-      form.setValue(`dataRepositories.${index}.platformUri`, concept.uri, { shouldValidate: true });
-      form.setValue(`dataRepositories.${index}.platformName`, concept.name, {
+    (node: NodeSuggestion, index: number) => {
+      form.setValue(`dataRepositories.${index}.platformUri`, node.uri, { shouldValidate: true });
+      form.setValue(`dataRepositories.${index}.platformName`, node.label, {
         shouldValidate: true,
       });
     },
@@ -183,9 +177,9 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
   // Handle preregistration platform selection
   const handlePreregPlatformSelect = useCallback(
-    (concept: ConceptSuggestion) => {
-      form.setValue('preregistration.platformUri', concept.uri, { shouldValidate: true });
-      form.setValue('preregistration.platformName', concept.name, { shouldValidate: true });
+    (node: NodeSuggestion) => {
+      form.setValue('preregistration.platformUri', node.uri, { shouldValidate: true });
+      form.setValue('preregistration.platformName', node.label, { shouldValidate: true });
     },
     [form]
   );
@@ -198,11 +192,11 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
   // Handle presentation type selection
   const handlePresentationTypeSelect = useCallback(
-    (concept: ConceptSuggestion) => {
-      form.setValue('conferencePresentation.presentationTypeUri', concept.uri, {
+    (node: NodeSuggestion) => {
+      form.setValue('conferencePresentation.presentationTypeUri', node.uri, {
         shouldValidate: true,
       });
-      form.setValue('conferencePresentation.presentationTypeName', concept.name, {
+      form.setValue('conferencePresentation.presentationTypeName', node.label, {
         shouldValidate: true,
       });
     },
@@ -251,8 +245,16 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
   // Handle funder selection with auto-fill
   const handleFunderSelect = useCallback(
-    (funder: CrossRefFunder, index: number) => {
+    (funder: FunderResult, index: number) => {
       form.setValue(`funding.${index}.funderName`, funder.name, { shouldValidate: true });
+      if (funder.type === 'chive') {
+        form.setValue(`funding.${index}.funderUri`, funder.uri, { shouldValidate: true });
+        if (funder.rorId) {
+          form.setValue(`funding.${index}.funderRor`, funder.rorId, { shouldValidate: true });
+        }
+      } else {
+        form.setValue(`funding.${index}.funderDoi`, funder.doi, { shouldValidate: true });
+      }
     },
     [form]
   );
@@ -289,7 +291,11 @@ export function StepPublication({ form, className }: StepPublicationProps) {
       form.setValue('conferencePresentation.conferenceName', conference.name, {
         shouldValidate: true,
       });
-      if (conference.url) {
+      if (conference.type === 'chive') {
+        form.setValue('conferencePresentation.conferenceUri', conference.uri, {
+          shouldValidate: true,
+        });
+      } else if (conference.url) {
         form.setValue('conferencePresentation.conferenceUrl', conference.url, {
           shouldValidate: true,
         });
@@ -301,6 +307,22 @@ export function StepPublication({ form, className }: StepPublicationProps) {
   // Handle conference clear
   const handleConferenceClear = useCallback(() => {
     form.setValue('conferencePresentation.conferenceName', '', { shouldValidate: true });
+    form.setValue('conferencePresentation.conferenceUri', '', { shouldValidate: true });
+  }, [form]);
+
+  // Handle location selection
+  const handleLocationSelect = useCallback(
+    (location: LocationResult) => {
+      form.setValue('conferencePresentation.conferenceLocation', location.displayName, {
+        shouldValidate: true,
+      });
+    },
+    [form]
+  );
+
+  // Handle location clear
+  const handleLocationClear = useCallback(() => {
+    form.setValue('conferencePresentation.conferenceLocation', '', { shouldValidate: true });
   }, [form]);
 
   return (
@@ -325,7 +347,7 @@ export function StepPublication({ form, className }: StepPublicationProps) {
               onValueChange={(value) =>
                 form.setValue(
                   'publicationStatus',
-                  value as (typeof PUBLICATION_STATUS_OPTIONS)[number]['value']
+                  value as (typeof publicationStatusOptions)[number]['value']
                 )
               }
             >
@@ -333,7 +355,7 @@ export function StepPublication({ form, className }: StepPublicationProps) {
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                {PUBLICATION_STATUS_OPTIONS.map((option) => (
+                {publicationStatusOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -503,11 +525,13 @@ export function StepPublication({ form, className }: StepPublicationProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`codeRepo-platform-${index}`}>Platform</Label>
-                    <ConceptAutocomplete
+                    <NodeAutocomplete
                       id={`codeRepo-platform-${index}`}
-                      category="platform-code"
+                      kind="object"
+                      subkind="platform-code"
+                      label="Code Platform"
                       value={form.watch(`codeRepositories.${index}.platformUri`)}
-                      onSelect={(concept) => handleCodePlatformSelect(concept, index)}
+                      onSelect={(node) => handleCodePlatformSelect(node, index)}
                       onClear={() => handleCodePlatformClear(index)}
                       placeholder="Search platforms..."
                     />
@@ -570,11 +594,13 @@ export function StepPublication({ form, className }: StepPublicationProps) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`dataRepo-platform-${index}`}>Platform</Label>
-                    <ConceptAutocomplete
+                    <NodeAutocomplete
                       id={`dataRepo-platform-${index}`}
-                      category="platform-data"
+                      kind="object"
+                      subkind="platform-data"
+                      label="Data Repository"
                       value={form.watch(`dataRepositories.${index}.platformUri`)}
-                      onSelect={(concept) => handleDataPlatformSelect(concept, index)}
+                      onSelect={(node) => handleDataPlatformSelect(node, index)}
                       onClear={() => handleDataPlatformClear(index)}
                       placeholder="Search data repositories..."
                     />
@@ -628,9 +654,11 @@ export function StepPublication({ form, className }: StepPublicationProps) {
 
           <div className="space-y-2">
             <Label htmlFor="preregPlatform">Platform</Label>
-            <ConceptAutocomplete
+            <NodeAutocomplete
               id="preregPlatform"
-              category="platform-preregistration"
+              kind="object"
+              subkind="platform-preregistration"
+              label="Preregistration Platform"
               value={form.watch('preregistration.platformUri')}
               onSelect={handlePreregPlatformSelect}
               onClear={handlePreregPlatformClear}
@@ -723,19 +751,45 @@ export function StepPublication({ form, className }: StepPublicationProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="conferenceLocation">Location</Label>
+            <Label htmlFor="conferenceIteration">Conference Iteration</Label>
             <Input
+              id="conferenceIteration"
+              placeholder="e.g., NeurIPS 2024"
+              {...form.register('conferencePresentation.conferenceIteration')}
+            />
+            <p className="text-xs text-muted-foreground">
+              Specific year or iteration of the conference
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="conferenceLocation">Location</Label>
+            <LocationAutocomplete
               id="conferenceLocation"
-              placeholder="Vancouver, Canada"
-              {...form.register('conferencePresentation.conferenceLocation')}
+              value={form.watch('conferencePresentation.conferenceLocation')}
+              placeholder="Search locations (e.g., Vancouver, Canada)..."
+              onSelect={handleLocationSelect}
+              onClear={handleLocationClear}
             />
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="presentationDate">Presentation Date</Label>
+            <Input
+              id="presentationDate"
+              type="date"
+              {...form.register('conferencePresentation.presentationDate')}
+            />
+            <p className="text-xs text-muted-foreground">Date when the work was presented</p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="presentationType">Presentation Type</Label>
-            <ConceptAutocomplete
+            <NodeAutocomplete
               id="presentationType"
-              category="presentation-type"
+              kind="type"
+              subkind="presentation-type"
+              label="Presentation Type"
               value={form.watch('conferencePresentation.presentationTypeUri')}
               onSelect={handlePresentationTypeSelect}
               onClear={handlePresentationTypeClear}

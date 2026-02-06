@@ -1,4 +1,4 @@
-import { ExternalLink, Globe, Building2, Tag, GraduationCap, BookOpen, Users } from 'lucide-react';
+import { ExternalLink, Globe, Building2, Tag, GraduationCap, BookOpen } from 'lucide-react';
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';

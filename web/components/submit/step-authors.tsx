@@ -65,7 +65,7 @@ export function StepAuthors({ form, isImportMode = false, className }: StepAutho
   const { data: submitterProfile } = useAuthor(user?.did ?? '', { enabled: !!user?.did });
 
   // Contribution types would be fetched from API in production
-  const [contributionTypes, setContributionTypes] = useState<ContributionType[] | undefined>();
+  const [contributionTypes] = useState<ContributionType[] | undefined>();
 
   // Track if we've already added the initial author
   const [initialAuthorAdded, setInitialAuthorAdded] = useState(false);
