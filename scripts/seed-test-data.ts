@@ -273,12 +273,22 @@ const TEST_FIELDS = [
 ];
 
 /**
+ * UUID lookup for proposals.
+ * Generated using nodeUuid('proposal', slug) for deterministic URIs.
+ */
+const PROPOSAL_UUIDS: Record<string, string> = {
+  'proposal-test-001': 'b3cf7184-4628-5967-b4ce-496b4329dfb9',
+  'proposal-test-002': '882a9ca0-7ca5-578c-875c-9fcb5d760995',
+  'proposal-test-003': 'c96cc0af-be6f-5d0c-9767-93834431a3ab',
+};
+
+/**
  * Test governance proposals.
  */
 const TEST_PROPOSALS = [
   {
     id: 'proposal-test-001',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-001',
+    uri: `at://did:plc:chive-governance/pub.chive.graph.proposal/${PROPOSAL_UUIDS['proposal-test-001']}`,
     category: 'field' as const,
     fieldName: 'Quantum Semantics',
     alternateNames: ['Quantum Linguistics', 'QS'],
@@ -306,7 +316,7 @@ const TEST_PROPOSALS = [
   },
   {
     id: 'proposal-test-002',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-002',
+    uri: `at://did:plc:chive-governance/pub.chive.graph.proposal/${PROPOSAL_UUIDS['proposal-test-002']}`,
     category: 'field' as const,
     fieldName: 'Computational Pragmatics',
     alternateNames: ['Pragmatic NLP'],
@@ -328,7 +338,7 @@ const TEST_PROPOSALS = [
   },
   {
     id: 'proposal-test-003',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-003',
+    uri: `at://did:plc:chive-governance/pub.chive.graph.proposal/${PROPOSAL_UUIDS['proposal-test-003']}`,
     category: 'contribution-type' as const,
     fieldName: 'Data Stewardship',
     alternateNames: ['Data Curation', 'Data Management'],
