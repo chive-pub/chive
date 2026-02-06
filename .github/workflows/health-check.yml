@@ -1,0 +1,548 @@
+name: Health Check
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      alert_on_failure:
+        description: 'Create GitHub issue on failure'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  # Thresholds
+  CURSOR_STALE_MINUTES: 30
+  QUEUE_DEPTH_WARNING: 100
+  QUEUE_DEPTH_CRITICAL: 500
+  DLQ_WARNING: 10
+  DLQ_CRITICAL: 50
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    environment: production
+
+    outputs:
+      overall_status: ${{ steps.summary.outputs.status }}
+      failures: ${{ steps.summary.outputs.failures }}
+
+    steps:
+      - name: Check API Health
+        id: api_health
+        continue-on-error: true
+        run: |
+          domain="${{ vars.DOMAIN }}"
+          echo "Checking API health at https://$domain/api/health..."
+
+          response=$(curl -sf --max-time 30 "https://$domain/api/health" 2>&1) || {
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "error=API health endpoint unreachable" >> $GITHUB_OUTPUT
+            exit 1
+          }
+
+          echo "Response: $response"
+          echo "status=healthy" >> $GITHUB_OUTPUT
+
+      - name: Check Web Frontend
+        id: web_health
+        continue-on-error: true
+        run: |
+          domain="${{ vars.DOMAIN }}"
+          echo "Checking web frontend at https://$domain/..."
+
+          if curl -sf --max-time 30 "https://$domain/" > /dev/null 2>&1; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "error=Web frontend unreachable" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Check Indexer Status
+        id: indexer_health
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 2m
+          script: |
+            set -e
+
+            echo "=== Indexer Health Check ==="
+
+            # Check if indexer container is running
+            if ! docker ps --format '{{.Names}}' | grep -q 'chive-indexer'; then
+              echo "::error::Indexer container not running"
+              echo "INDEXER_STATUS=not_running" >> /tmp/health_output
+              exit 1
+            fi
+
+            # Check container health
+            health=$(docker inspect --format='{{.State.Health.Status}}' chive-indexer 2>/dev/null || echo "unknown")
+            echo "Container health: $health"
+
+            if [ "$health" = "unhealthy" ]; then
+              echo "::error::Indexer container unhealthy"
+              docker logs chive-indexer --tail 50
+              echo "INDEXER_STATUS=unhealthy" >> /tmp/health_output
+              exit 1
+            fi
+
+            # Check cursor freshness
+            cursor_data=$(docker exec chive-postgres psql -U chive -t -c "
+              SELECT
+                cursor_seq,
+                last_updated,
+                EXTRACT(EPOCH FROM (NOW() - last_updated)) / 60 as minutes_stale
+              FROM firehose_cursor
+              WHERE service_name = 'chive-indexer'
+            " 2>/dev/null | tr -d ' ')
+
+            if [ -n "$cursor_data" ]; then
+              minutes_stale=$(echo "$cursor_data" | cut -d'|' -f3 | tr -d ' ')
+              cursor_seq=$(echo "$cursor_data" | cut -d'|' -f1 | tr -d ' ')
+              last_updated=$(echo "$cursor_data" | cut -d'|' -f2 | tr -d ' ')
+
+              echo "Cursor: $cursor_seq"
+              echo "Last updated: $last_updated"
+              echo "Minutes stale: $minutes_stale"
+
+              # Check if cursor is stale (no updates in 30 minutes)
+              if [ "$(echo "$minutes_stale > ${{ env.CURSOR_STALE_MINUTES }}" | bc -l)" = "1" ]; then
+                echo "::error::Indexer cursor stale for ${minutes_stale} minutes"
+                echo "INDEXER_STATUS=cursor_stale" >> /tmp/health_output
+                echo "CURSOR_STALE_MINUTES=${minutes_stale}" >> /tmp/health_output
+                exit 1
+              fi
+            fi
+
+            echo "INDEXER_STATUS=healthy" >> /tmp/health_output
+            echo "Indexer is healthy"
+
+      - name: Check Database Connectivity
+        id: db_health
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 2m
+          script: |
+            set -e
+
+            echo "=== Database Health Check ==="
+
+            # PostgreSQL
+            echo "Checking PostgreSQL..."
+            if docker exec chive-postgres pg_isready -U chive > /dev/null 2>&1; then
+              echo "✓ PostgreSQL is ready"
+
+              # Check connection count
+              conn_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT count(*) FROM pg_stat_activity WHERE datname = 'chive'" 2>/dev/null | tr -d ' ')
+              echo "  Active connections: $conn_count"
+            else
+              echo "::error::PostgreSQL not ready"
+              exit 1
+            fi
+
+            # Redis
+            echo "Checking Redis..."
+            if docker exec chive-redis redis-cli ping | grep -q PONG; then
+              echo "✓ Redis is ready"
+
+              # Check memory usage
+              memory=$(docker exec chive-redis redis-cli info memory | grep used_memory_human | cut -d: -f2 | tr -d '\r')
+              echo "  Memory usage: $memory"
+            else
+              echo "::error::Redis not ready"
+              exit 1
+            fi
+
+            # Elasticsearch
+            echo "Checking Elasticsearch..."
+            es_health=$(docker exec chive-api curl -sf http://elasticsearch:9200/_cluster/health 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            if [ "$es_health" = "green" ] || [ "$es_health" = "yellow" ]; then
+              echo "✓ Elasticsearch is $es_health"
+            else
+              echo "::warning::Elasticsearch status: $es_health"
+            fi
+
+            # Neo4j
+            echo "Checking Neo4j..."
+            if docker exec chive-neo4j cypher-shell -u neo4j -p "${{ secrets.NEO4J_PASSWORD }}" "RETURN 1" > /dev/null 2>&1; then
+              echo "✓ Neo4j is ready"
+            else
+              echo "::warning::Neo4j not responding (may be expected during maintenance)"
+            fi
+
+            echo "All databases healthy"
+
+      - name: Check Job Queue Health
+        id: queue_health
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 2m
+          script: |
+            set -e
+
+            echo "=== Job Queue Health Check ==="
+
+            # Check BullMQ queues via Redis
+            waiting=$(docker exec chive-redis redis-cli LLEN bull:firehose-events:wait 2>/dev/null || echo "0")
+            active=$(docker exec chive-redis redis-cli LLEN bull:firehose-events:active 2>/dev/null || echo "0")
+            failed=$(docker exec chive-redis redis-cli ZCARD bull:firehose-events:failed 2>/dev/null || echo "0")
+
+            echo "Queue status:"
+            echo "  Waiting: $waiting"
+            echo "  Active: $active"
+            echo "  Failed: $failed"
+
+            # Check DLQ in PostgreSQL
+            dlq_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM firehose_dlq WHERE processed_at IS NULL" 2>/dev/null | tr -d ' ' || echo "0")
+            echo "  DLQ entries: $dlq_count"
+
+            # Alert on high queue depth
+            total_queue=$((waiting + active))
+            if [ "$total_queue" -gt ${{ env.QUEUE_DEPTH_CRITICAL }} ]; then
+              echo "::error::Queue depth critical: $total_queue events"
+              exit 1
+            elif [ "$total_queue" -gt ${{ env.QUEUE_DEPTH_WARNING }} ]; then
+              echo "::warning::Queue depth high: $total_queue events"
+            fi
+
+            # Alert on DLQ entries
+            if [ "$dlq_count" -gt ${{ env.DLQ_CRITICAL }} ]; then
+              echo "::error::DLQ critical: $dlq_count unprocessed entries"
+              exit 1
+            elif [ "$dlq_count" -gt ${{ env.DLQ_WARNING }} ]; then
+              echo "::warning::DLQ warning: $dlq_count unprocessed entries"
+            fi
+
+            echo "Queue health OK"
+
+      - name: Check Container Status
+        id: container_health
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 2m
+          script: |
+            set -e
+
+            echo "=== Container Health Check ==="
+
+            cd /opt/chive/docker
+
+            # List all containers and their status
+            docker compose -f docker-compose.prod.yml --profile observability ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
+
+            # Check for unhealthy or exited containers
+            unhealthy=$(docker ps --filter "health=unhealthy" --format "{{.Names}}" | grep chive || true)
+            if [ -n "$unhealthy" ]; then
+              echo "::error::Unhealthy containers: $unhealthy"
+              for container in $unhealthy; do
+                echo "--- Logs for $container ---"
+                docker logs "$container" --tail 20
+              done
+              exit 1
+            fi
+
+            # Check for recently restarted containers (restart loop detection)
+            for container in chive-api chive-indexer chive-web; do
+              restart_count=$(docker inspect --format='{{.RestartCount}}' "$container" 2>/dev/null || echo "0")
+              if [ "$restart_count" -gt 5 ]; then
+                echo "::warning::$container has restarted $restart_count times"
+              fi
+            done
+
+            echo "All containers healthy"
+
+      - name: Check Disk Space
+        id: disk_health
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 1m
+          script: |
+            set -e
+
+            echo "=== Disk Space Check ==="
+
+            df -h / /var/lib/docker 2>/dev/null || df -h /
+
+            # Check if disk usage is above 85%
+            usage=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
+            echo "Root disk usage: ${usage}%"
+
+            if [ "$usage" -gt 90 ]; then
+              echo "::error::Disk usage critical: ${usage}%"
+              exit 1
+            elif [ "$usage" -gt 85 ]; then
+              echo "::warning::Disk usage high: ${usage}%"
+            fi
+
+            # Check Docker disk usage
+            docker system df
+
+            echo "Disk space OK"
+
+      - name: Collect Metrics Summary
+        id: metrics
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 2m
+          script: |
+            echo "=== Metrics Summary ==="
+
+            # Eprint count
+            eprint_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM eprints_index" 2>/dev/null | tr -d ' ' || echo "unknown")
+            echo "Total eprints indexed: $eprint_count"
+
+            # Review count
+            review_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM reviews_index" 2>/dev/null | tr -d ' ' || echo "unknown")
+            echo "Total reviews indexed: $review_count"
+
+            # Author count
+            author_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM authors_index" 2>/dev/null | tr -d ' ' || echo "unknown")
+            echo "Total authors indexed: $author_count"
+
+            # Neo4j node count
+            node_count=$(docker exec chive-neo4j cypher-shell -u neo4j -p "${{ secrets.NEO4J_PASSWORD }}" "MATCH (n) RETURN count(n)" --format plain 2>/dev/null | tail -1 || echo "unknown")
+            echo "Total Neo4j nodes: $node_count"
+
+            # Recent activity (last hour)
+            recent=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM eprints_index WHERE indexed_at > NOW() - INTERVAL '1 hour'" 2>/dev/null | tr -d ' ' || echo "0")
+            echo "Eprints indexed in last hour: $recent"
+
+      - name: Generate Summary
+        id: summary
+        run: |
+          echo "## Health Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          failures=""
+
+          if [ "${{ steps.api_health.outcome }}" = "success" ]; then
+            echo "| API Health | :white_check_mark: Healthy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| API Health | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}API,"
+          fi
+
+          if [ "${{ steps.web_health.outcome }}" = "success" ]; then
+            echo "| Web Frontend | :white_check_mark: Healthy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Web Frontend | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}Web,"
+          fi
+
+          if [ "${{ steps.indexer_health.outcome }}" = "success" ]; then
+            echo "| Indexer | :white_check_mark: Healthy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Indexer | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}Indexer,"
+          fi
+
+          if [ "${{ steps.db_health.outcome }}" = "success" ]; then
+            echo "| Databases | :white_check_mark: Healthy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Databases | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}Databases,"
+          fi
+
+          if [ "${{ steps.queue_health.outcome }}" = "success" ]; then
+            echo "| Job Queue | :white_check_mark: Healthy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Job Queue | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}Queue,"
+          fi
+
+          if [ "${{ steps.container_health.outcome }}" = "success" ]; then
+            echo "| Containers | :white_check_mark: Healthy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Containers | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}Containers,"
+          fi
+
+          if [ "${{ steps.disk_health.outcome }}" = "success" ]; then
+            echo "| Disk Space | :white_check_mark: OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Disk Space | :warning: Warning |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}Disk,"
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+
+          # Set outputs
+          if [ -n "$failures" ]; then
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "failures=${failures%,}" >> $GITHUB_OUTPUT
+          else
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "failures=" >> $GITHUB_OUTPUT
+          fi
+
+  create-issue-on-failure:
+    needs: health-check
+    if: ${{ needs.health-check.outputs.overall_status == 'failed' && (github.event.inputs.alert_on_failure != 'false') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check for existing issue
+        id: check_issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'health-check-failure',
+              per_page: 1
+            });
+
+            if (issues.data.length > 0) {
+              core.setOutput('issue_exists', 'true');
+              core.setOutput('issue_number', issues.data[0].number);
+            } else {
+              core.setOutput('issue_exists', 'false');
+            }
+
+      - name: Create or update issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const failures = '${{ needs.health-check.outputs.failures }}'.split(',').filter(f => f);
+            const timestamp = new Date().toISOString();
+
+            const body = `## Health Check Failure
+
+            **Timestamp:** ${timestamp}
+            **Failed checks:** ${failures.join(', ')}
+
+            ### Action Required
+
+            Please investigate the following issues:
+            ${failures.map(f => `- [ ] ${f}`).join('\n')}
+
+            ### Debug Steps
+
+            1. SSH to server: \`ssh -i ~/.ssh/chive-key.pem ubuntu@3.229.192.194\`
+            2. Check container status: \`docker ps\`
+            3. Check indexer logs: \`docker logs chive-indexer --tail 100\`
+            4. Check API logs: \`docker logs chive-api --tail 100\`
+            5. Check cursor: \`docker exec chive-postgres psql -U chive -c "SELECT * FROM firehose_cursor"\`
+
+            ### Workflow Run
+
+            [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ---
+            *This issue was automatically created by the health check workflow.*
+            `;
+
+            if ('${{ steps.check_issue.outputs.issue_exists }}' === 'true') {
+              // Update existing issue with new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ steps.check_issue.outputs.issue_number || 0 }},
+                body: `### Health Check Update\n\n**Timestamp:** ${timestamp}\n**Failed checks:** ${failures.join(', ')}\n\n[View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+              });
+              console.log('Updated existing issue #${{ steps.check_issue.outputs.issue_number }}');
+            } else {
+              // Create new issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `[Health Check] Service degradation detected: ${failures.join(', ')}`,
+                body: body,
+                labels: ['health-check-failure', 'ops', 'priority:high']
+              });
+              console.log(`Created issue #${issue.data.number}`);
+            }
+
+  auto-recover-indexer:
+    needs: health-check
+    if: ${{ contains(needs.health-check.outputs.failures, 'Indexer') }}
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Attempt indexer recovery
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.APP_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 5m
+          script: |
+            echo "=== Attempting Indexer Auto-Recovery ==="
+
+            # Check if cursor is stale
+            stale_minutes=$(docker exec chive-postgres psql -U chive -t -c "
+              SELECT EXTRACT(EPOCH FROM (NOW() - last_updated)) / 60
+              FROM firehose_cursor
+              WHERE service_name = 'chive-indexer'
+            " 2>/dev/null | tr -d ' ')
+
+            echo "Cursor stale for ${stale_minutes} minutes"
+
+            # If cursor is very stale (>60 minutes), reset it
+            if [ "$(echo "$stale_minutes > 60" | bc -l)" = "1" ]; then
+              echo "Cursor is very stale, resetting to recent events..."
+
+              # Clear Redis cursor cache
+              docker exec chive-redis redis-cli DEL 'cursor:chive-indexer'
+
+              # Reset cursor to 5 minutes ago
+              docker exec chive-postgres psql -U chive -c "
+                UPDATE firehose_cursor
+                SET cursor_seq = (EXTRACT(EPOCH FROM NOW()) * 1000000)::bigint - 300000000,
+                    last_updated = NOW()
+                WHERE service_name = 'chive-indexer'
+              "
+
+              echo "Cursor reset complete"
+            fi
+
+            # Restart the indexer container
+            echo "Restarting indexer container..."
+            docker restart chive-indexer
+
+            # Wait for it to come up
+            sleep 30
+
+            # Verify it's running
+            if docker ps --format '{{.Names}}' | grep -q 'chive-indexer'; then
+              echo "✓ Indexer restarted successfully"
+              docker logs chive-indexer --tail 20
+            else
+              echo "::error::Indexer failed to restart"
+              exit 1
+            fi
+
+            echo "=== Recovery attempt complete ==="
