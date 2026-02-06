@@ -67,7 +67,10 @@ const legacyResult = service.detectAbstractFormat('Plain text abstract');
 // Current rich text format
 const currentResult = service.detectAbstractFormat([
   { type: 'text', content: 'Rich text abstract with ' },
-  { type: 'nodeRef', uri: 'at://did:plc:.../pub.chive.graph.field/physics' },
+  {
+    type: 'nodeRef',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/8e31479f-01c0-5c1e-aae4-bd28b7cb0a7b',
+  },
 ]);
 // {
 //   field: 'abstract',

@@ -909,7 +909,8 @@ const edgeProposal = await service.createEdgeProposal({
   proposalType: 'create',
   proposedEdge: {
     sourceUri: nodeProposal.uri,
-    targetUri: 'at://did:plc:chive-governance/pub.chive.graph.node/cs.AI',
+    targetUri:
+      'at://did:plc:chive-governance/pub.chive.graph.node/726c5017-723e-5ae5-a1e2-f12e636eb709',
     relationSlug: 'broader',
   },
   rationale: 'QML is a subfield of AI',

@@ -185,7 +185,7 @@ All changes include provenance:
   "record": { ... },
   "sig": "z...",
   "provenance": {
-    "proposal": "at://did:plc:.../pub.chive.graph.proposal/abc",
+    "proposal": "at://did:plc:.../pub.chive.graph.proposal/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "approvedAt": "2025-01-15T10:30:00Z",
     "approvedBy": "did:plc:admin..."
   }

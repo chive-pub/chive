@@ -6,13 +6,13 @@ Neo4j stores Chive's knowledge graph: field taxonomy, authority records, citatio
 
 ### Node types
 
-| Label            | Description                    | Key Properties                                     |
-| ---------------- | ------------------------------ | -------------------------------------------------- |
-| `GraphNode`      | Knowledge graph node           | `id`, `kind`, `subkind`, `label`, `status`         |
-| `GraphEdge`      | Relationship between nodes     | `sourceUri`, `targetUri`, `relationSlug`, `weight` |
-| `WikidataEntity` | Wikidata Q-IDs for linking     | `qid`, `label`, `description`                      |
-| `Eprint`         | Eprint nodes for graph queries | `uri`, `title`                                     |
-| `Author`         | Author nodes for collaboration | `did`, `name`                                      |
+| Label                | Description                    | Key Properties                                     |
+| -------------------- | ------------------------------ | -------------------------------------------------- |
+| `Node`               | Knowledge graph node           | `id`, `kind`, `subkind`, `label`, `status`         |
+| `GraphEdge`          | Relationship between nodes     | `sourceUri`, `targetUri`, `relationSlug`, `weight` |
+| `WikidataEntity`     | Wikidata Q-IDs for linking     | `qid`, `label`, `description`                      |
+| `Node:Object:Eprint` | Eprint nodes for graph queries | `uri`, `label`, `subkind`                          |
+| `Node:Object:Person` | Author nodes for collaboration | `metadata.did`, `label`, `subkind`                 |
 
 GraphNode `subkind` values:
 
@@ -41,20 +41,14 @@ GraphNode `subkind` values:
 ### Uniqueness constraints
 
 ```cypher
-CREATE CONSTRAINT field_id_unique
-FOR (f:Field) REQUIRE f.id IS UNIQUE;
+CREATE CONSTRAINT node_id_unique
+FOR (n:Node) REQUIRE n.id IS UNIQUE;
 
-CREATE CONSTRAINT authority_id_unique
-FOR (a:AuthorityRecord) REQUIRE a.id IS UNIQUE;
+CREATE CONSTRAINT node_uri_unique
+FOR (n:Node) REQUIRE n.uri IS UNIQUE;
 
 CREATE CONSTRAINT wikidata_qid_unique
 FOR (w:WikidataEntity) REQUIRE w.qid IS UNIQUE;
-
-CREATE CONSTRAINT eprint_uri_unique
-FOR (p:Eprint) REQUIRE p.uri IS UNIQUE;
-
-CREATE CONSTRAINT author_did_unique
-FOR (a:Author) REQUIRE a.did IS UNIQUE;
 ```
 
 ### Performance indexes
@@ -186,13 +180,13 @@ const ranked = await algorithms.fieldPageRank({
 });
 
 // Louvain community detection
-const communities = await algorithms.detectCommunities('Author', 'COLLABORATES_WITH');
+const communities = await algorithms.detectCommunities('Person', 'COAUTHORED_WITH');
 
 // Shortest path between fields
 const path = await algorithms.shortestPath('cs.AI', 'physics.comp-ph');
 
 // Node similarity
-const similar = await algorithms.nodeSimilarity('Eprint', 'TAGGED_WITH', {
+const similar = await algorithms.nodeSimilarity('Eprint', 'CLASSIFIED_AS', {
   topK: 10,
 });
 ```
@@ -317,8 +311,10 @@ const nodeProposal = await proposals.createNodeProposal({
 const edgeProposal = await proposals.createEdgeProposal({
   proposalType: 'create',
   proposedEdge: {
-    sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.node/cs.QML',
-    targetUri: 'at://did:plc:chive-governance/pub.chive.graph.node/cs.AI',
+    sourceUri:
+      'at://did:plc:chive-governance/pub.chive.graph.node/c1d2e3f4-a5b6-7890-1234-567890abcdef',
+    targetUri:
+      'at://did:plc:chive-governance/pub.chive.graph.node/726c5017-723e-5ae5-a1e2-f12e636eb709',
     relationSlug: 'broader',
     weight: 1.0,
   },

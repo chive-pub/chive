@@ -444,7 +444,7 @@ import { migrateLicenseToNode } from '@/lib/api/schema-migration';
 const license = migrateLicenseToNode('CC-BY-4.0');
 // Returns: {
 //   licenseSlug: 'CC-BY-4.0',
-//   licenseUri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-cc-by-4.0'
+//   licenseUri: 'at://did:plc:chive-governance/pub.chive.graph.node/fc58b045-e186-5081-b7eb-abc5c47ea8a3'
 // }
 ```
 

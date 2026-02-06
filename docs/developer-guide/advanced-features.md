@@ -247,15 +247,15 @@ events.addEventListener('ping', () => {
 
 ## Governance PDS connector
 
-Read community authority records from the Governance PDS (`did:plc:chive-governance`).
+Read community authority records from the Graph PDS (`did:plc:chive-governance`).
 
 ### Fetching authority records
 
 ```typescript
 import { GovernancePDSConnector } from '@chive/services/governance';
 
-const governance = new GovernancePDSConnector({
-  governanceDid: 'did:plc:chive-governance' as DID,
+const connector = new GovernancePDSConnector({
+  graphPdsDid: 'did:plc:chive-governance' as DID,
   repository,
   identity,
   logger,
@@ -371,7 +371,7 @@ await metrics.batchIncrement([
 | `REDIS_MAX_BLOB_SIZE_MB`   | Max blob size for L1 cache   | `100`                      |
 | `R2_BUCKET_NAME`           | Cloudflare R2 bucket         | -                          |
 | `R2_CACHE_TTL_SECONDS`     | L2 CDN cache TTL             | `86400`                    |
-| `GOVERNANCE_DID`           | Governance PDS DID           | `did:plc:chive-governance` |
+| `GRAPH_PDS_DID`            | Graph PDS DID                | `did:plc:chive-governance` |
 | `NOTIFICATION_TTL_SECONDS` | Notification storage TTL     | `2592000`                  |
 | `WS_PING_INTERVAL_MS`      | WebSocket keepalive interval | `30000`                    |
 | `WS_CONNECTION_TIMEOUT_MS` | WebSocket inactivity timeout | `60000`                    |

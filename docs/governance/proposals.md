@@ -108,8 +108,8 @@ To establish parent-child relationships, submit separate edge proposals:
   "$type": "pub.chive.graph.edgeProposal",
   "proposalType": "create",
   "proposedEdge": {
-    "sourceUri": "at://did:plc:chive-governance/pub.chive.graph.node/cs.QML",
-    "targetUri": "at://did:plc:chive-governance/pub.chive.graph.node/cs.QC",
+    "sourceUri": "at://did:plc:chive-governance/pub.chive.graph.node/c1d2e3f4-a5b6-7890-1234-567890abcdef",
+    "targetUri": "at://did:plc:chive-governance/pub.chive.graph.node/d2e3f4a5-b6c7-8901-2345-6789abcdef01",
     "relationSlug": "broader",
     "weight": 1.0
   },
