@@ -254,18 +254,29 @@ export function NodeMentionAutocomplete({
   }
 
   // Calculate position - keep dropdown in viewport
+  const dropdownWidth = 320; // w-80 = 20rem = 320px
+  const viewportPadding = 16; // 1rem padding from edge
+  const maxLeft =
+    typeof window !== 'undefined'
+      ? Math.max(
+          viewportPadding,
+          Math.min(position.left, window.innerWidth - dropdownWidth - viewportPadding)
+        )
+      : position.left;
+
   const dropdownStyle: React.CSSProperties = {
     position: 'fixed',
     top: position.top,
-    left: position.left,
+    left: maxLeft,
     zIndex,
+    maxWidth: `calc(100vw - ${viewportPadding * 2}px)`,
   };
 
   const content = (
     <div
       ref={listRef}
       style={dropdownStyle}
-      className="w-80 rounded-md border bg-popover shadow-lg"
+      className="w-80 max-w-[calc(100vw-2rem)] rounded-md border bg-popover shadow-lg"
       data-testid="node-mention-autocomplete"
     >
       <Command className="rounded-md">
