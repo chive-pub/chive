@@ -1,18 +1,18 @@
 /**
- * Governance PDS Connector for reading community authority records.
+ * Graph PDS Connector for reading community authority records.
  *
  * @remarks
- * Connects to the Chive Governance PDS (`did:plc:chive-governance`) to read
+ * Connects to the Chive Graph PDS (`did:plc:chive-governance`) to read
  * community-approved authority records, facets, and organizations.
  *
  * **ATProto Compliance**:
- * - READ-ONLY: This connector never writes to the Governance PDS
+ * - READ-ONLY: This connector never writes to the Graph PDS
  * - Reads via standard `IRepository.getRecord` and `listRecords`
  * - Caches locally for performance (Redis) but never becomes source of truth
  * - Tracks source PDS URL for all indexed records
  *
  * **Architecture**:
- * - Governance records live in a dedicated PDS (`did:plc:chive-governance`)
+ * - Graph records live in a dedicated PDS (`did:plc:chive-governance`)
  * - Records are published to firehose for interoperability
  * - Trusted editors create records via delegated signing authority
  * - AppView reads and indexes, community votes via their own PDSes
@@ -53,7 +53,7 @@ export interface GovernancePDSConnectorOptions {
    *
    * @example "did:plc:chive-governance"
    */
-  readonly governanceDid: DID;
+  readonly graphPdsDid: DID;
 
   /**
    * Repository interface for reading records.
@@ -193,7 +193,7 @@ const COLLECTIONS = {
  * @example
  * ```typescript
  * const connector = new GovernancePDSConnector({
- *   governanceDid: 'did:plc:chive-governance' as DID,
+ *   graphPdsDid: 'did:plc:chive-governance' as DID,
  *   repository,
  *   identity,
  *   logger,
@@ -215,7 +215,7 @@ const COLLECTIONS = {
  * @public
  */
 export class GovernancePDSConnector {
-  private readonly governanceDid: DID;
+  private readonly graphPdsDid: DID;
   private readonly repository: IRepository;
   private readonly identity: IIdentityResolver;
   private readonly logger: ILogger;
@@ -227,7 +227,7 @@ export class GovernancePDSConnector {
   private governancePdsUrl?: string;
 
   constructor(options: GovernancePDSConnectorOptions) {
-    this.governanceDid = options.governanceDid;
+    this.graphPdsDid = options.graphPdsDid;
     this.repository = options.repository;
     this.identity = options.identity;
     this.logger = options.logger;
@@ -251,9 +251,9 @@ export class GovernancePDSConnector {
       return this.governancePdsUrl;
     }
 
-    const pdsUrl = await this.identity.getPDSEndpoint(this.governanceDid);
+    const pdsUrl = await this.identity.getPDSEndpoint(this.graphPdsDid);
     if (!pdsUrl) {
-      throw new DatabaseError('READ', `Failed to resolve PDS endpoint for ${this.governanceDid}`);
+      throw new DatabaseError('READ', `Failed to resolve PDS endpoint for ${this.graphPdsDid}`);
     }
 
     this.governancePdsUrl = pdsUrl;
@@ -347,7 +347,7 @@ export class GovernancePDSConnector {
   ): AsyncIterable<GovernanceAuthorityRecord> {
     const pdsUrl = await this.getPdsUrl();
     const records = this.repository.listRecords<RawAuthorityRecord>(
-      this.governanceDid,
+      this.graphPdsDid,
       COLLECTIONS.AUTHORITY_RECORD,
       { limit: options?.limit, cursor: options?.cursor }
     );
@@ -433,7 +433,7 @@ export class GovernancePDSConnector {
   ): AsyncIterable<GovernanceFacet> {
     const pdsUrl = await this.getPdsUrl();
     const records = this.repository.listRecords<RawFacetRecord>(
-      this.governanceDid,
+      this.graphPdsDid,
       COLLECTIONS.FACET,
       { limit: options?.limit, cursor: options?.cursor }
     );
@@ -514,7 +514,7 @@ export class GovernancePDSConnector {
   async *listOrganizations(options?: GovernanceListOptions): AsyncIterable<GovernanceOrganization> {
     const pdsUrl = await this.getPdsUrl();
     const records = this.repository.listRecords<RawOrganizationRecord>(
-      this.governanceDid,
+      this.graphPdsDid,
       COLLECTIONS.ORGANIZATION,
       { limit: options?.limit, cursor: options?.cursor }
     );

@@ -97,12 +97,13 @@ const DEFAULT_CONFIG: Required<AuthorizationServiceConfig> = {
  * Role hierarchy for permission inheritance.
  */
 const ROLE_HIERARCHY: Record<Role, readonly Role[]> = {
-  admin: ['admin', 'moderator', 'graph-editor', 'author', 'reader', 'alpha-tester'],
+  admin: ['admin', 'moderator', 'graph-editor', 'author', 'reader', 'alpha-tester', 'premium'],
   moderator: ['moderator', 'graph-editor', 'author', 'reader'],
   'graph-editor': ['graph-editor', 'author', 'reader'],
   author: ['author', 'reader'],
   reader: ['reader'],
   'alpha-tester': ['alpha-tester', 'author', 'reader'],
+  premium: ['premium', 'author', 'reader'],
 };
 
 /**
@@ -170,6 +171,22 @@ const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'user:read',
   ],
   'alpha-tester': [
+    'eprint:read',
+    'eprint:create',
+    'eprint:update',
+    'review:read',
+    'review:create',
+    'endorsement:read',
+    'endorsement:create',
+    'tag:read',
+    'tag:create',
+    'field_node:read',
+    'authority:read',
+    'facet:read',
+    'user:read',
+    'user:update',
+  ],
+  premium: [
     'eprint:read',
     'eprint:create',
     'eprint:update',
