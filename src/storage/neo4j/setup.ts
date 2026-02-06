@@ -69,24 +69,6 @@ export function getNeo4jConfig(): Neo4jConfig {
 }
 
 /**
- * Loads Chive Governance DID from environment.
- *
- * @returns Governance DID for community-approved authority records
- *
- * @remarks
- * Environment variable:
- * - `CHIVE_GOVERNANCE_DID` - DID for governance PDS (default: did:plc:chive-governance)
- *
- * The governance DID represents the community-controlled PDS where approved
- * authority records, field proposals, and other governance data are stored.
- *
- * @public
- */
-export function getGovernanceDid(): string {
-  return process.env.CHIVE_GOVERNANCE_DID ?? 'did:plc:chive-governance';
-}
-
-/**
  * Creates Neo4j driver instance.
  *
  * @returns Configured Neo4j driver

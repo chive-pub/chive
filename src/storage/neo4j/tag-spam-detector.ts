@@ -385,7 +385,8 @@ export class TagSpamDetector {
   private async getTagStats(normalizedTag: string): Promise<TagUsageStats | null> {
     const query = `
       MATCH (tag:UserTag {normalizedForm: $normalizedTag})
-      OPTIONAL MATCH (tag)<-[:TAGGED_WITH]-(p:Eprint)
+      OPTIONAL MATCH (tag)<-[:TAGGED_WITH]-(p:Node:Object:Eprint)
+      WHERE p.subkind = 'eprint'
       OPTIONAL MATCH (u:User)-[:CREATED_TAG]->(tag)
       WITH tag,
            count(DISTINCT p) as uniqueEprints,

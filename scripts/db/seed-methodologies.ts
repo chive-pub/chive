@@ -29,7 +29,7 @@ const METHODOLOGIES = [
     description: 'Research methodology focused on collecting and analyzing numerical data.',
     externalIds: [
       { system: 'fast', identifier: '1916262', uri: 'https://id.worldcat.org/fast/1916262' },
-      { system: 'wikidata', identifier: 'Q4288191', uri: 'https://www.wikidata.org/wiki/Q4288191' },
+      { system: 'wikidata', identifier: 'Q730675', uri: 'https://www.wikidata.org/wiki/Q730675' },
     ],
   },
   {
@@ -38,7 +38,6 @@ const METHODOLOGIES = [
     description: 'Research combining qualitative and quantitative approaches in a single study.',
     externalIds: [
       { system: 'fast', identifier: '1762526', uri: 'https://id.worldcat.org/fast/1762526' },
-      { system: 'wikidata', identifier: 'Q6884052', uri: 'https://www.wikidata.org/wiki/Q6884052' },
     ],
   },
   {
@@ -73,7 +72,7 @@ const METHODOLOGIES = [
       'Experimental study randomly assigning participants to treatment and control groups.',
     externalIds: [
       { system: 'fast', identifier: '1089997', uri: 'https://id.worldcat.org/fast/1089997' },
-      { system: 'wikidata', identifier: 'Q1640296', uri: 'https://www.wikidata.org/wiki/Q1640296' },
+      { system: 'wikidata', identifier: 'Q1436668', uri: 'https://www.wikidata.org/wiki/Q1436668' },
     ],
   },
   {
@@ -82,7 +81,7 @@ const METHODOLOGIES = [
     description: 'Research following subjects over an extended period of time.',
     externalIds: [
       { system: 'fast', identifier: '1002387', uri: 'https://id.worldcat.org/fast/1002387' },
-      { system: 'wikidata', identifier: 'Q1781912', uri: 'https://www.wikidata.org/wiki/Q1781912' },
+      { system: 'wikidata', identifier: 'Q1758614', uri: 'https://www.wikidata.org/wiki/Q1758614' },
     ],
   },
   {
@@ -91,7 +90,7 @@ const METHODOLOGIES = [
     description: 'Research analyzing data from a population at a single point in time.',
     externalIds: [
       { system: 'fast', identifier: '884677', uri: 'https://id.worldcat.org/fast/884677' },
-      { system: 'wikidata', identifier: 'Q1569581', uri: 'https://www.wikidata.org/wiki/Q1569581' },
+      { system: 'wikidata', identifier: 'Q954027', uri: 'https://www.wikidata.org/wiki/Q954027' },
     ],
   },
   {
@@ -110,7 +109,7 @@ const METHODOLOGIES = [
     description: 'Methodology developing theory from systematically gathered and analyzed data.',
     externalIds: [
       { system: 'fast', identifier: '1738512', uri: 'https://id.worldcat.org/fast/1738512' },
-      { system: 'wikidata', identifier: 'Q1546201', uri: 'https://www.wikidata.org/wiki/Q1546201' },
+      { system: 'wikidata', identifier: 'Q1152864', uri: 'https://www.wikidata.org/wiki/Q1152864' },
     ],
   },
   {
@@ -119,7 +118,6 @@ const METHODOLOGIES = [
     description: 'Systematic analysis of text, images, or other content for patterns and meaning.',
     externalIds: [
       { system: 'fast', identifier: '876592', uri: 'https://id.worldcat.org/fast/876592' },
-      { system: 'wikidata', identifier: 'Q1424019', uri: 'https://www.wikidata.org/wiki/Q1424019' },
     ],
   },
   {
@@ -128,7 +126,7 @@ const METHODOLOGIES = [
     description: 'Analysis of language use in texts, conversations, and social contexts.',
     externalIds: [
       { system: 'fast', identifier: '894930', uri: 'https://id.worldcat.org/fast/894930' },
-      { system: 'wikidata', identifier: 'Q1226939', uri: 'https://www.wikidata.org/wiki/Q1226939' },
+      { system: 'wikidata', identifier: 'Q1129466', uri: 'https://www.wikidata.org/wiki/Q1129466' },
     ],
   },
   {
@@ -137,7 +135,6 @@ const METHODOLOGIES = [
     description: 'Data collection through structured questionnaires administered to samples.',
     externalIds: [
       { system: 'fast', identifier: '1139696', uri: 'https://id.worldcat.org/fast/1139696' },
-      { system: 'wikidata', identifier: 'Q814881', uri: 'https://www.wikidata.org/wiki/Q814881' },
     ],
   },
   {
@@ -146,7 +143,6 @@ const METHODOLOGIES = [
     description: 'Methodology involving controlled manipulation of variables to test hypotheses.',
     externalIds: [
       { system: 'fast', identifier: '918523', uri: 'https://id.worldcat.org/fast/918523' },
-      { system: 'wikidata', identifier: 'Q841718', uri: 'https://www.wikidata.org/wiki/Q841718' },
     ],
   },
   {
@@ -174,7 +170,7 @@ const METHODOLOGIES = [
     description: 'Use of computational models to simulate real-world systems and processes.',
     externalIds: [
       { system: 'fast', identifier: '872389', uri: 'https://id.worldcat.org/fast/872389' },
-      { system: 'wikidata', identifier: 'Q600032', uri: 'https://www.wikidata.org/wiki/Q600032' },
+      { system: 'wikidata', identifier: 'Q925667', uri: 'https://www.wikidata.org/wiki/Q925667' },
     ],
   },
   {
@@ -183,7 +179,6 @@ const METHODOLOGIES = [
     description: 'Research conducted outside the laboratory in natural settings.',
     externalIds: [
       { system: 'fast', identifier: '923632', uri: 'https://id.worldcat.org/fast/923632' },
-      { system: 'wikidata', identifier: 'Q909552', uri: 'https://www.wikidata.org/wiki/Q909552' },
     ],
   },
   {
@@ -192,7 +187,7 @@ const METHODOLOGIES = [
     description: 'Research using historical documents and records from archives.',
     externalIds: [
       { system: 'fast', identifier: '813501', uri: 'https://id.worldcat.org/fast/813501' },
-      { system: 'wikidata', identifier: 'Q1753271', uri: 'https://www.wikidata.org/wiki/Q1753271' },
+      { system: 'wikidata', identifier: 'Q4787243', uri: 'https://www.wikidata.org/wiki/Q4787243' },
     ],
   },
 ] as const;

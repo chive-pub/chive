@@ -85,7 +85,7 @@ export interface BatchAssignmentResult {
  * // Create a facet value
  * const uri = await facetManager.createFacet({
  *   id: 'neural-networks',
- *   uri: 'at://did:plc:gov/pub.chive.graph.facet/nn',
+ *   uri: 'at://did:plc:graph-pds/pub.chive.graph.facet/a220560e-1a2e-503e-b03b-cbb731dcfaed',
  *   facetType: 'matter',
  *   value: 'Neural Networks',
  *   level: 1,
@@ -94,9 +94,9 @@ export interface BatchAssignmentResult {
  * });
  *
  * // Assign facets to an eprint
- * await facetManager.assignFacets('at://did:plc:user/pub.chive.eprint/123', [
+ * await facetManager.assignFacets('at://did:plc:example/pub.chive.eprint.submission/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6', [
  *   { facetType: 'matter', facetUri: uri, confidence: 0.95 }
- * ], 'did:plc:user');
+ * ], 'did:plc:example');
  *
  * // Search by facets
  * const records = await facetManager.findRecordsByFacets([
@@ -299,7 +299,7 @@ export class FacetManager {
    * ```typescript
    * const uri = await facetManager.createFacet({
    *   id: 'deep-learning',
-   *   uri: 'at://did:plc:gov/pub.chive.graph.facet/dl',
+   *   uri: 'at://did:plc:graph-pds/pub.chive.graph.facet/20ae35a2-12d2-5dc6-a82e-5061ca583a17',
    *   facetType: 'energy',
    *   value: 'Deep Learning',
    *   level: 1,
@@ -573,8 +573,8 @@ export class FacetManager {
    * ```typescript
    * // "Deep Learning" is subtype of "Machine Learning"
    * await facetManager.addFacetHierarchy(
-   *   'at://did:plc:gov/pub.chive.graph.facet/dl',
-   *   'at://did:plc:gov/pub.chive.graph.facet/ml'
+   *   'at://did:plc:graph-pds/pub.chive.graph.facet/20ae35a2-12d2-5dc6-a82e-5061ca583a17',
+   *   'at://did:plc:graph-pds/pub.chive.graph.facet/9370fd5f-ca90-530e-b7a7-e6d9ae4d556c'
    * );
    * ```
    */
@@ -660,20 +660,20 @@ export class FacetManager {
    * @example
    * ```typescript
    * await facetManager.assignFacets(
-   *   'at://did:plc:user/pub.chive.eprint/123',
+   *   'at://did:plc:example/pub.chive.eprint.submission/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6',
    *   [
    *     {
    *       facetType: 'matter',
-   *       facetUri: 'at://did:plc:gov/pub.chive.graph.facet/ml',
+   *       facetUri: 'at://did:plc:graph-pds/pub.chive.graph.facet/9370fd5f-ca90-530e-b7a7-e6d9ae4d556c',
    *       confidence: 0.95
    *     },
    *     {
    *       facetType: 'energy',
-   *       facetUri: 'at://did:plc:gov/pub.chive.graph.facet/dl',
+   *       facetUri: 'at://did:plc:graph-pds/pub.chive.graph.facet/20ae35a2-12d2-5dc6-a82e-5061ca583a17',
    *       confidence: 0.90
    *     }
    *   ],
-   *   'did:plc:user'
+   *   'did:plc:example'
    * );
    * ```
    */

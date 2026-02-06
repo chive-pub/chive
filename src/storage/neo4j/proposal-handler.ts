@@ -1,12 +1,12 @@
 import neo4j from 'neo4j-driver';
 import { singleton } from 'tsyringe';
 
+import { getGraphPdsDid } from '../../config/graph.js';
 import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError } from '../../types/errors.js';
 
 import { Neo4jConnection } from './connection.js';
 import { ModerationService } from './moderation-service.js';
-import { getGovernanceDid } from './setup.js';
 import type {
   EvidenceItem,
   GraphNode,
@@ -115,7 +115,7 @@ export interface DiscussionComment {
  *       confidence: 0.9
  *     }
  *   ],
- *   proposerDid: 'did:plc:user'
+ *   proposerDid: 'did:plc:example'
  * });
  *
  * // Move to discussion
@@ -165,13 +165,13 @@ export class ProposalHandler {
    *       title: 'Survey of XAI Methods'
    *     }
    *   ],
-   *   proposerDid: 'did:plc:user'
+   *   proposerDid: 'did:plc:example'
    * });
    * ```
    */
   async createProposal(params: CreateProposalParams): Promise<AtUri> {
     const id = `proposal-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const governanceDid = getGovernanceDid();
+    const governanceDid = getGraphPdsDid();
     const uri = `at://${governanceDid}/pub.chive.graph.proposal/${id}` as AtUri;
 
     const query = `
@@ -422,7 +422,7 @@ export class ProposalHandler {
       };
     }
 
-    await this.updateProposalStatus(uri, 'in-discussion', getGovernanceDid() as DID);
+    await this.updateProposalStatus(uri, 'in-discussion', getGraphPdsDid());
 
     return {
       success: true,

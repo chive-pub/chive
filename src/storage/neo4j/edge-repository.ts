@@ -54,15 +54,15 @@ interface Neo4jEdgeRecord {
  * // Create an edge
  * await repo.createEdge({
  *   id: crypto.randomUUID(),
- *   uri: 'at://did:plc:gov/pub.chive.graph.edge/abc123',
- *   sourceUri: 'at://did:plc:gov/pub.chive.graph.node/ml',
- *   targetUri: 'at://did:plc:gov/pub.chive.graph.node/cs',
+ *   uri: 'at://did:plc:graph-pds/pub.chive.graph.edge/0b1c2d3e-4f5a-6b7c-8d9e-0f1a2b3c4d5e',
+ *   sourceUri: 'at://did:plc:graph-pds/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71',
+ *   targetUri: 'at://did:plc:graph-pds/pub.chive.graph.node/1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f',
  *   relationSlug: 'broader',
  *   status: 'established',
  * });
  *
  * // List edges from a node
- * const edges = await repo.listEdges({ sourceUri: 'at://did:plc:gov/pub.chive.graph.node/ml' });
+ * const edges = await repo.listEdges({ sourceUri: 'at://did:plc:graph-pds/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71' });
  * ```
  *
  * @public

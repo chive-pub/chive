@@ -76,16 +76,12 @@ type Neo4jValue = string | number | boolean | null | string[];
  *
  * **Schema**:
  * ```cypher
- * (:Eprint {uri: string})-[:CITES {
+ * (:Node:Object:Eprint {uri: string})-[:CITES {
  *   isInfluential: boolean,
  *   source: string,
  *   discoveredAt: datetime
- * }]->(:Eprint {uri: string})
+ * }]->(:Node:Object:Eprint {uri: string})
  * ```
- *
- * **Indexes** (created by setup.ts):
- * - `CREATE INDEX eprint_uri FOR (p:Eprint) ON (p.uri)`
- * - `CREATE INDEX eprint_doi FOR (p:Eprint) ON (p.doi)`
  *
  * @example
  * Batch upsert citations:
@@ -151,8 +147,10 @@ export class CitationGraph implements ICitationGraph {
     // Only create edge if BOTH eprints exist in Chive
     const query = `
       UNWIND $citations AS citation
-      MATCH (citing:Eprint {uri: citation.citingUri})
-      MATCH (cited:Eprint {uri: citation.citedUri})
+      MATCH (citing:Node:Object:Eprint {uri: citation.citingUri})
+      WHERE citing.subkind = 'eprint'
+      MATCH (cited:Node:Object:Eprint {uri: citation.citedUri})
+      WHERE cited.subkind = 'eprint'
       MERGE (citing)-[r:CITES]->(cited)
       SET r.isInfluential = citation.isInfluential,
           r.source = citation.source,
@@ -212,8 +210,9 @@ export class CitationGraph implements ICitationGraph {
     const influentialFilter = options?.onlyInfluential ? 'AND r.isInfluential = true' : '';
 
     const query = `
-      MATCH (citing:Eprint)-[r:CITES]->(cited:Eprint {uri: $paperUri})
-      WHERE true ${influentialFilter}
+      MATCH (citing:Node:Object:Eprint)-[r:CITES]->(cited:Node:Object:Eprint {uri: $paperUri})
+      WHERE citing.subkind = 'eprint' AND cited.subkind = 'eprint'
+        ${influentialFilter}
       WITH citing, r, cited
       ORDER BY r.discoveredAt DESC
       SKIP $offset
@@ -226,8 +225,9 @@ export class CitationGraph implements ICitationGraph {
     `;
 
     const countQuery = `
-      MATCH (citing:Eprint)-[r:CITES]->(cited:Eprint {uri: $paperUri})
-      WHERE true ${influentialFilter}
+      MATCH (citing:Node:Object:Eprint)-[r:CITES]->(cited:Node:Object:Eprint {uri: $paperUri})
+      WHERE citing.subkind = 'eprint' AND cited.subkind = 'eprint'
+        ${influentialFilter}
       RETURN count(r) AS total
     `;
 
@@ -284,8 +284,9 @@ export class CitationGraph implements ICitationGraph {
     const influentialFilter = options?.onlyInfluential ? 'AND r.isInfluential = true' : '';
 
     const query = `
-      MATCH (citing:Eprint {uri: $paperUri})-[r:CITES]->(cited:Eprint)
-      WHERE true ${influentialFilter}
+      MATCH (citing:Node:Object:Eprint {uri: $paperUri})-[r:CITES]->(cited:Node:Object:Eprint)
+      WHERE citing.subkind = 'eprint' AND cited.subkind = 'eprint'
+        ${influentialFilter}
       WITH citing, r, cited
       ORDER BY r.discoveredAt DESC
       SKIP $offset
@@ -298,8 +299,9 @@ export class CitationGraph implements ICitationGraph {
     `;
 
     const countQuery = `
-      MATCH (citing:Eprint {uri: $paperUri})-[r:CITES]->(cited:Eprint)
-      WHERE true ${influentialFilter}
+      MATCH (citing:Node:Object:Eprint {uri: $paperUri})-[r:CITES]->(cited:Node:Object:Eprint)
+      WHERE citing.subkind = 'eprint' AND cited.subkind = 'eprint'
+        ${influentialFilter}
       RETURN count(r) AS total
     `;
 
@@ -360,13 +362,15 @@ export class CitationGraph implements ICitationGraph {
     // Find papers that share citing papers with the query paper
     // This is co-citation analysis: papers frequently cited together
     const query = `
-      MATCH (q:Eprint {uri: $paperUri})<-[:CITES]-(citingPaper:Eprint)-[:CITES]->(coCited:Eprint)
-      WHERE q <> coCited
+      MATCH (q:Node:Object:Eprint {uri: $paperUri})<-[:CITES]-(citingPaper:Node:Object:Eprint)-[:CITES]->(coCited:Node:Object:Eprint)
+      WHERE q.subkind = 'eprint' AND citingPaper.subkind = 'eprint' AND coCited.subkind = 'eprint'
+        AND q <> coCited
       WITH coCited, count(DISTINCT citingPaper) AS coCitationCount
       WHERE coCitationCount >= $minCoCitations
 
       // Get citation counts for normalization
-      OPTIONAL MATCH (q:Eprint {uri: $paperUri})<-[qCites:CITES]-()
+      OPTIONAL MATCH (q:Node:Object:Eprint {uri: $paperUri})<-[qCites:CITES]-()
+      WHERE q.subkind = 'eprint'
       WITH coCited, coCitationCount, count(DISTINCT qCites) AS qCitedBy
 
       OPTIONAL MATCH (coCited)<-[cCites:CITES]-()
@@ -431,7 +435,8 @@ export class CitationGraph implements ICitationGraph {
     readonly influentialCitedByCount: number;
   }> {
     const query = `
-      MATCH (p:Eprint {uri: $paperUri})
+      MATCH (p:Node:Object:Eprint {uri: $paperUri})
+      WHERE p.subkind = 'eprint'
       OPTIONAL MATCH (p)<-[citedBy:CITES]-()
       OPTIONAL MATCH (p)-[refs:CITES]->()
       OPTIONAL MATCH (p)<-[influential:CITES {isInfluential: true}]-()
@@ -485,7 +490,8 @@ export class CitationGraph implements ICitationGraph {
    */
   async deleteCitationsForPaper(paperUri: AtUri): Promise<void> {
     const query = `
-      MATCH (p:Eprint {uri: $paperUri})
+      MATCH (p:Node:Object:Eprint {uri: $paperUri})
+      WHERE p.subkind = 'eprint'
       OPTIONAL MATCH (p)-[r:CITES]-()
       DELETE r
     `;

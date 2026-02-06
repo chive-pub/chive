@@ -197,7 +197,7 @@ export class GraphAlgorithms {
    * ```typescript
    * await algorithms.projectGraph({
    *   name: 'knowledge-graph',
-   *   nodeLabels: ['FieldNode', 'EprintSubmission'],
+   *   nodeLabels: ['Field', 'Eprint'],
    *   relationshipTypes: ['RELATED_TO', 'CLASSIFIED_AS'],
    *   relationshipProperties: ['weight']
    * });
@@ -450,8 +450,8 @@ export class GraphAlgorithms {
    * ```typescript
    * const path = await algorithms.shortestPath(
    *   'fields-graph',
-   *   'at://did:plc:gov/pub.chive.graph.field/ml',
-   *   'at://did:plc:gov/pub.chive.graph.field/ai'
+   *   'at://did:plc:graph-pds/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71',
+   *   'at://did:plc:graph-pds/pub.chive.graph.node/e42c83de-6d16-5876-b276-38712ac4112a'
    * );
    * console.log(`Path length: ${path.length}`);
    * ```
@@ -612,7 +612,7 @@ export class GraphAlgorithms {
    * @example
    * ```typescript
    * const recommendations = await algorithms.recommendFields(
-   *   'did:plc:user123',
+   *   'did:plc:example123',
    *   10
    * );
    * ```
@@ -768,7 +768,7 @@ export class GraphAlgorithms {
    * @example
    * ```typescript
    * const similar = await algorithms.paperSimilarity(
-   *   'at://did:plc:user/pub.chive.eprint.submission/abc',
+   *   'at://did:plc:example/pub.chive.eprint.submission/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6',
    *   10
    * );
    * ```
@@ -776,12 +776,14 @@ export class GraphAlgorithms {
   async paperSimilarity(paperUri: AtUri, limit = 10): Promise<PaperSimilarity[]> {
     // Co-citation similarity: papers that cite the same papers
     const query = `
-      MATCH (paper:EprintSubmission {uri: $paperUri})-[:CITES]->(cited:EprintSubmission)
+      MATCH (paper:Node:Object:Eprint {uri: $paperUri})-[:CITES]->(cited:Node:Object:Eprint)
+      WHERE paper.subkind = 'eprint' AND cited.subkind = 'eprint'
       WITH paper, collect(cited) AS paperCitations
 
       // Find papers that cite the same works
-      MATCH (similar:EprintSubmission)-[:CITES]->(sharedCitation)
-      WHERE similar <> paper AND sharedCitation IN paperCitations
+      MATCH (similar:Node:Object:Eprint)-[:CITES]->(sharedCitation)
+      WHERE similar.subkind = 'eprint'
+        AND similar <> paper AND sharedCitation IN paperCitations
 
       WITH similar, count(sharedCitation) AS coCitationCount, size(paperCitations) AS totalCitations
 
@@ -890,20 +892,19 @@ export class GraphAlgorithms {
    */
   async collaborationPrediction(authorDid: DID, limit = 10): Promise<CollaborationPrediction[]> {
     const query = `
-      MATCH (author:Author {did: $authorDid})
+      MATCH (author:Node:Object:Person)
+      WHERE author.subkind = 'author' AND author.metadata.did = $authorDid
 
-      // Find co-authors of author's co-authors (2-hop)
-      MATCH (author)-[:COAUTHORED_WITH]-(coauthor:Author)-[:COAUTHORED_WITH]-(candidate:Author)
-      WHERE candidate <> author
+      MATCH (author)-[:COAUTHORED_WITH]-(coauthor:Node:Object:Person)-[:COAUTHORED_WITH]-(candidate:Node:Object:Person)
+      WHERE coauthor.subkind = 'author' AND candidate.subkind = 'author'
+        AND candidate <> author
         AND NOT (author)-[:COAUTHORED_WITH]-(candidate)
 
       WITH author, candidate, count(DISTINCT coauthor) AS commonCoauthors
 
-      // Find common fields
-      OPTIONAL MATCH (author)-[:EXPERT_IN]->(field:FieldNode)<-[:EXPERT_IN]-(candidate)
+      OPTIONAL MATCH (author)-[:EXPERT_IN]->(field:Node:Field)<-[:EXPERT_IN]-(candidate)
       WITH author, candidate, commonCoauthors, count(DISTINCT field) AS commonFields
 
-      // Calculate collaboration score
       WITH candidate,
            commonCoauthors,
            commonFields,
@@ -914,8 +915,8 @@ export class GraphAlgorithms {
       RETURN
         $authorDid AS author1Did,
         '' AS author1Name,
-        candidate.did AS author2Did,
-        candidate.name AS author2Name,
+        candidate.metadata.did AS author2Did,
+        candidate.label AS author2Name,
         score,
         commonCoauthors,
         commonFields
