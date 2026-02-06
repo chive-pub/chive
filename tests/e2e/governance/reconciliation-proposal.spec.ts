@@ -15,6 +15,8 @@
 
 import { test, expect } from '@playwright/test';
 
+import { TEST_GRAPH_PDS_DID } from '../../test-constants.js';
+
 test.describe('Reconciliation Proposal - Category Selection', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/governance/proposals/new');
@@ -358,7 +360,7 @@ test.describe('Reconciliation Proposal - Form Submission', () => {
     const sourceUriField = page.getByLabel(/entity uri/i);
     if (await sourceUriField.isVisible({ timeout: 3000 }).catch(() => false)) {
       await sourceUriField.fill(
-        'at://did:plc:chive-governance/pub.chive.graph.field/machine-learning'
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/f39a6280-d70a-5e59-9022-1ce485cc5bf4`
       );
     }
 
@@ -576,7 +578,7 @@ test.describe('Reconciliation Proposal - Wikidata Flow', () => {
 
     await page
       .getByLabel(/entity uri/i)
-      .fill('at://did:plc:gov/pub.chive.graph.field/deep-learning');
+      .fill(`at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/c3d4e5f6-a7b8-9012-cdef-123456789012`);
     await page.getByLabel(/entity label/i).fill('Deep Learning');
 
     const allSelects = page.locator('[role="combobox"]');
@@ -619,7 +621,11 @@ test.describe('Reconciliation Proposal - ROR Flow', () => {
       await page.getByRole('option', { name: /organization/i }).click();
     }
 
-    await page.getByLabel(/entity uri/i).fill('at://did:plc:gov/pub.chive.graph.organization/mit');
+    await page
+      .getByLabel(/entity uri/i)
+      .fill(
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.organization/eb866be0-070c-5a2c-9a46-dd066b371fd7`
+      );
     await page.getByLabel(/entity label/i).fill('Massachusetts Institute of Technology');
 
     const allSelects = page.locator('[role="combobox"]');

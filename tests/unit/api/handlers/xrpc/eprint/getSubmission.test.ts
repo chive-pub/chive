@@ -22,6 +22,8 @@ import type { ILogger } from '@/types/interfaces/logger.interface.js';
 import type { AnnotationBody } from '@/types/models/annotation.js';
 import type { EprintAuthor } from '@/types/models/author.js';
 
+import { TEST_GRAPH_PDS_DID } from '../../../../../test-constants.js';
+
 /** Creates a mock rich text abstract from plain text. */
 function createMockAbstract(text: string): AnnotationBody {
   return {
@@ -39,7 +41,7 @@ function createRichAbstract(): AnnotationBody {
       { type: 'text', content: 'This paper explores ' },
       {
         type: 'nodeRef',
-        uri: 'at://did:plc:gov/pub.chive.graph.node/quantum' as AtUri,
+        uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/d6e7f8a9-b0c1-2345-6789-0abcdef12345` as AtUri,
         label: 'quantum',
       },
       { type: 'text', content: ' computing advances.' },
@@ -209,7 +211,7 @@ describe('XRPC getSubmission Handler', () => {
       expect(abstractItems[1]).toEqual({
         $type: 'pub.chive.eprint.submission#nodeRefItem',
         type: 'nodeRef',
-        uri: 'at://did:plc:gov/pub.chive.graph.node/quantum',
+        uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/d6e7f8a9-b0c1-2345-6789-0abcdef12345`,
         label: 'quantum',
         subkind: 'field',
       });
@@ -267,17 +269,12 @@ describe('XRPC getSubmission Handler', () => {
     });
   });
 
-  describe('Schema Hints for Legacy Formats', () => {
-    it('includes _schemaHints for legacy string abstract format', async () => {
-      // When stored, legacy string abstracts appear as single-item arrays
-      // where the content matches abstractPlainText exactly
-      const plainText = 'This is a plain text abstract from legacy format.';
+  describe('Abstract formats', () => {
+    it('returns eprint with plain text abstract', async () => {
+      const plainText = 'This is a plain text abstract.';
       const eprint = createMockEprint({
         abstract: createMockAbstract(plainText),
         abstractPlainText: plainText,
-        // The needsAbstractMigration flag is set during indexing when the source
-        // record had a plain string abstract
-        needsAbstractMigration: true,
       });
       mockEprintService.getEprint.mockResolvedValue(eprint);
 
@@ -288,16 +285,11 @@ describe('XRPC getSubmission Handler', () => {
         c: mockContext as never,
       });
 
-      // The handler detects this pattern as likely legacy
-      expect(result.body._schemaHints).toBeDefined();
-      expect(result.body._schemaHints?.schemaVersion).toBe('0.0.0');
-      expect(result.body._schemaHints?.deprecatedFields).toContain('abstract');
-      expect(result.body._schemaHints?.migrationAvailable).toBe(true);
-      expect(result.body._schemaHints?.migrationUrl).toContain('abstract-richtext');
+      expect(result.body.uri).toBe(eprint.uri);
+      expect(result.body.value.abstractPlainText).toBe(plainText);
     });
 
-    it('omits _schemaHints for current rich text format', async () => {
-      // Rich text with multiple items or nodeRefs is clearly current format
+    it('returns eprint with rich text abstract', async () => {
       const eprint = createMockEprint({
         abstract: createRichAbstract(),
         abstractPlainText: 'This paper explores quantum computing advances.',
@@ -311,10 +303,10 @@ describe('XRPC getSubmission Handler', () => {
         c: mockContext as never,
       });
 
-      expect(result.body._schemaHints).toBeUndefined();
+      expect(result.body.uri).toBe(eprint.uri);
     });
 
-    it('omits _schemaHints for empty abstract', async () => {
+    it('returns eprint with empty abstract', async () => {
       const eprint = createMockEprint({
         abstract: {
           type: 'RichText',
@@ -332,7 +324,7 @@ describe('XRPC getSubmission Handler', () => {
         c: mockContext as never,
       });
 
-      expect(result.body._schemaHints).toBeUndefined();
+      expect(result.body.uri).toBe(eprint.uri);
     });
   });
 
@@ -449,7 +441,8 @@ describe('XRPC getSubmission Handler', () => {
         ],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/conceptualization' as AtUri,
+            typeUri:
+              `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85` as AtUri,
             typeId: 'conceptualization',
             typeLabel: 'Conceptualization',
             degree: 'lead',

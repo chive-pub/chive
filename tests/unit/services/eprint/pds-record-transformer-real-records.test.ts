@@ -22,6 +22,8 @@ import {
 } from '@/services/eprint/pds-record-transformer.js';
 import type { AtUri, CID } from '@/types/atproto.js';
 
+import { TEST_GRAPH_PDS_DID } from '../../../test-constants.js';
+
 // =============================================================================
 // REAL PRODUCTION RECORDS
 // =============================================================================
@@ -59,7 +61,7 @@ const realRecordStringAbstract = {
           degree: 'lead',
           typeId: 'conceptualization',
           typeUri:
-            'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-conceptualization',
+            'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85',
           typeLabel: 'Conceptualization',
         },
       ],
@@ -67,7 +69,7 @@ const realRecordStringAbstract = {
       isCorrespondingAuthor: true,
     },
   ],
-  license: 'cc-by-4.0',
+  licenseSlug: 'cc-by-4.0',
   abstract:
     'We introduce the framework of Probabilistic Dynamic Semantics (PDS), which provides a foundation for probabilistic models of pragmatic interpretation. PDS combines dynamic semantics with probability theory to model how listeners update their beliefs based on linguistic input.',
   document: {
@@ -78,7 +80,9 @@ const realRecordStringAbstract = {
   },
   keywords: ['dynamic semantics', 'probabilistic models', 'pragmatics', 'Bayesian inference'],
   createdAt: '2026-01-18T16:00:08.522Z',
-  fieldNodes: [{ uri: '6fe7359e-8b24-5fce-8bd4-0225a10c899e' }],
+  fieldNodes: [
+    { uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e` },
+  ],
   documentFormat: 'pdf',
 };
 
@@ -96,7 +100,7 @@ const realRecordWithSupplementary = {
       isCorrespondingAuthor: true,
     },
   ],
-  license: 'cc-by-4.0',
+  licenseSlug: 'cc-by-4.0',
   abstract: 'This study examines the neural basis of language comprehension.',
   document: {
     $type: 'blob',
@@ -148,12 +152,12 @@ const realRecordRichTextAbstract = {
       isCorrespondingAuthor: true,
     },
   ],
-  license: 'cc-by-4.0',
+  licenseSlug: 'cc-by-4.0',
   abstract: [
     { type: 'text', content: 'This paper explores advances in ' },
     {
       type: 'nodeRef',
-      uri: 'at://did:plc:gov/pub.chive.graph.node/transformer-architecture',
+      uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/d69ec744-15b1-5316-b310-65512e43c405`,
       label: 'transformer architectures',
     },
     { type: 'text', content: ' for natural language processing tasks.' },
@@ -219,7 +223,7 @@ describe('PDS record transformer with real records', () => {
       );
     });
 
-    it('detects legacy format (schema 0.0.0) in schema detection', () => {
+    it('detects string abstract format', () => {
       const result = transformPDSRecordWithSchema(
         realRecordStringAbstract,
         stringAbstractUri,
@@ -227,27 +231,6 @@ describe('PDS record transformer with real records', () => {
       );
 
       expect(result.abstractFormat).toBe('string');
-      expect(result.schemaDetection.isCurrentSchema).toBe(false);
-      expect(result.schemaDetection.compatibility.detectedFormat).toBe('legacy');
-      expect(result.schemaDetection.compatibility.schemaVersion).toEqual({
-        major: 0,
-        minor: 0,
-        patch: 0,
-      });
-    });
-
-    it('provides deprecation info for string abstract', () => {
-      const result = transformPDSRecordWithSchema(
-        realRecordStringAbstract,
-        stringAbstractUri,
-        stringAbstractCid
-      );
-
-      expect(result.schemaDetection.compatibility.deprecatedFields).toHaveLength(1);
-      const deprecatedField = result.schemaDetection.compatibility.deprecatedFields[0];
-      expect(deprecatedField?.field).toBe('abstract');
-      expect(deprecatedField?.detectedFormat).toBe('string');
-      expect(deprecatedField?.currentFormat).toBe('RichTextItem[]');
     });
 
     it('correctly transforms all other fields', () => {
@@ -285,7 +268,8 @@ describe('PDS record transformer with real records', () => {
       );
 
       expect(result.authors).toHaveLength(1);
-      const author = result.authors[0]!;
+      const author = result.authors[0];
+      if (!author) throw new Error('Expected author at index 0');
 
       expect(author.did).toBe('did:plc:mgcfy7hmflw4zuvc27caz2wn');
       expect(author.name).toBe('Julian Grove');
@@ -345,14 +329,17 @@ describe('PDS record transformer with real records', () => {
       );
 
       expect(result.supplementaryMaterials).toHaveLength(2);
+      if (!result.supplementaryMaterials) throw new Error('Expected supplementary materials');
 
-      const firstMaterial = result.supplementaryMaterials![0]!;
+      const firstMaterial = result.supplementaryMaterials[0];
+      if (!firstMaterial) throw new Error('Expected first supplementary material');
       expect(firstMaterial.blobRef).toBeDefined();
       expect(firstMaterial.blobRef.ref).toBe('bafkreisupplementarydata456');
       expect(firstMaterial.blobRef.mimeType).toBe('text/csv');
       expect(firstMaterial.blobRef.size).toBe(25000);
 
-      const secondMaterial = result.supplementaryMaterials![1]!;
+      const secondMaterial = result.supplementaryMaterials[1];
+      if (!secondMaterial) throw new Error('Expected second supplementary material');
       expect(secondMaterial.blobRef.ref).toBe('bafkreianalysisscript789');
       expect(secondMaterial.blobRef.mimeType).toBe('application/x-python');
     });
@@ -364,12 +351,15 @@ describe('PDS record transformer with real records', () => {
         supplementaryCid
       );
 
-      const firstMaterial = result.supplementaryMaterials![0]!;
+      if (!result.supplementaryMaterials) throw new Error('Expected supplementary materials');
+      const firstMaterial = result.supplementaryMaterials[0];
+      if (!firstMaterial) throw new Error('Expected first supplementary material');
       // UUID category falls through as-is (cast to SupplementaryCategory type)
       expect(firstMaterial.category).toBe('550e8400-e29b-41d4-a716-446655440000');
 
       // Valid category is preserved
-      const secondMaterial = result.supplementaryMaterials![1]!;
+      const secondMaterial = result.supplementaryMaterials[1];
+      if (!secondMaterial) throw new Error('Expected second supplementary material');
       expect(secondMaterial.category).toBe('code');
     });
 
@@ -380,7 +370,9 @@ describe('PDS record transformer with real records', () => {
         supplementaryCid
       );
 
-      const firstMaterial = result.supplementaryMaterials![0]!;
+      if (!result.supplementaryMaterials) throw new Error('Expected supplementary materials');
+      const firstMaterial = result.supplementaryMaterials[0];
+      if (!firstMaterial) throw new Error('Expected first supplementary material');
       expect(firstMaterial.label).toBe('Experimental Data');
       expect(firstMaterial.description).toBe('Raw data from fMRI experiments');
     });
@@ -392,8 +384,12 @@ describe('PDS record transformer with real records', () => {
         supplementaryCid
       );
 
-      expect(result.supplementaryMaterials![0]!.order).toBe(1);
-      expect(result.supplementaryMaterials![1]!.order).toBe(2);
+      if (!result.supplementaryMaterials) throw new Error('Expected supplementary materials');
+      const first = result.supplementaryMaterials[0];
+      const second = result.supplementaryMaterials[1];
+      if (!first || !second) throw new Error('Expected supplementary materials at indices 0 and 1');
+      expect(first.order).toBe(1);
+      expect(second.order).toBe(2);
     });
   });
 
@@ -410,7 +406,8 @@ describe('PDS record transformer with real records', () => {
       );
 
       expect(result.facets).toHaveLength(1);
-      const facet = result.facets[0]!;
+      const facet = result.facets[0];
+      if (!facet) throw new Error('Expected facet at index 0');
 
       // `type: 'form-genre'` should become `dimension: 'form-genre'`
       expect(facet.dimension).toBe('form-genre');
@@ -435,7 +432,9 @@ describe('PDS record transformer with real records', () => {
 
       const result = transformPDSRecord(recordWithBoth, stringAbstractUri, stringAbstractCid);
 
-      expect(result.facets[0]!.dimension).toBe('correct-dimension');
+      const facet = result.facets[0];
+      if (!facet) throw new Error('Expected facet at index 0');
+      expect(facet.dimension).toBe('correct-dimension');
     });
 
     it('falls back to unknown when neither type nor dimension is present', () => {
@@ -451,7 +450,9 @@ describe('PDS record transformer with real records', () => {
 
       const result = transformPDSRecord(recordNoType, stringAbstractUri, stringAbstractCid);
 
-      expect(result.facets[0]!.dimension).toBe('unknown');
+      const facet = result.facets[0];
+      if (!facet) throw new Error('Expected facet at index 0');
+      expect(facet.dimension).toBe('unknown');
     });
   });
 
@@ -470,14 +471,16 @@ describe('PDS record transformer with real records', () => {
       expect(result.fields).toBeDefined();
       expect(result.fields).toHaveLength(1);
 
-      const field = result.fields![0]!;
-      // URI should be normalized to AT-URI format
+      if (!result.fields) throw new Error('Expected fields');
+      const field = result.fields[0];
+      if (!field) throw new Error('Expected field at index 0');
+      // URI should be preserved as provided
       expect(field.uri).toBe(
-        'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e'
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e`
       );
       expect(field.label).toBe(
-        'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e'
-      ); // Label defaults to normalized URI
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e`
+      ); // Label defaults to URI when not provided
       expect(field.id).toBe('6fe7359e-8b24-5fce-8bd4-0225a10c899e');
     });
   });
@@ -500,7 +503,7 @@ describe('PDS record transformer with real records', () => {
 
       expect(result.abstract.items[1]).toEqual({
         type: 'nodeRef',
-        uri: 'at://did:plc:gov/pub.chive.graph.node/transformer-architecture',
+        uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/d69ec744-15b1-5316-b310-65512e43c405`,
         label: 'transformer architectures',
         subkind: undefined,
       });
@@ -519,7 +522,7 @@ describe('PDS record transformer with real records', () => {
       );
     });
 
-    it('detects current schema format', () => {
+    it('detects rich text array format', () => {
       const result = transformPDSRecordWithSchema(
         realRecordRichTextAbstract,
         richTextUri,
@@ -527,9 +530,6 @@ describe('PDS record transformer with real records', () => {
       );
 
       expect(result.abstractFormat).toBe('rich-text-array');
-      expect(result.schemaDetection.isCurrentSchema).toBe(true);
-      expect(result.schemaDetection.compatibility.detectedFormat).toBe('current');
-      expect(result.schemaDetection.compatibility.deprecatedFields).toHaveLength(0);
     });
   });
 

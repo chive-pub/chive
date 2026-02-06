@@ -43,6 +43,8 @@ import type {
   CreditContributionType,
 } from '@/lib/hooks/use-contribution-types';
 
+import { TEST_GRAPH_PDS_DID } from './test-constants';
+
 // =============================================================================
 // LOCAL TYPE DEFINITIONS
 // =============================================================================
@@ -271,7 +273,7 @@ export function createMockBlobRef(overrides: Partial<BlobRef> = {}): BlobRef {
 export function createMockFieldRef(overrides: Partial<FieldRef> = {}): FieldRef {
   return {
     id: 'computer-science',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
     label: 'Computer Science',
     kind: 'object' as const,
     status: 'established' as const,
@@ -388,7 +390,7 @@ export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}):
     authors: [{ did: 'did:plc:test123', handle: 'testuser.bsky.social', displayName: 'Test User' }],
     fields: [
       {
-        uri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
+        uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
         label: 'Computer Science',
       },
     ],
@@ -460,7 +462,11 @@ export function createMockFacetedEprintSummary(
     ],
     submittedBy: 'did:plc:test123',
     fields: [
-      { id: 'cs', uri: 'at://did:plc:chive/pub.chive.graph.field/cs', label: 'Computer Science' },
+      {
+        id: 'cs',
+        uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['cs']}`,
+        label: 'Computer Science',
+      },
     ],
     keywords: ['machine learning', 'neural networks'],
     license: 'CC-BY-4.0',
@@ -523,13 +529,13 @@ export function createMockSearchResults(
         label: 'Personality',
         values: [
           {
-            uri: 'at://gov/pub.chive.graph.node/computer-science',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
             slug: 'computer-science',
             label: 'Computer Science',
             count: 15,
           },
           {
-            uri: 'at://gov/pub.chive.graph.node/physics',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['physics']}`,
             slug: 'physics',
             label: 'Physics',
             count: 10,
@@ -638,7 +644,7 @@ export function createMockAuthorProfileResponse(
 export function createMockFieldSummary(overrides: Partial<FieldSummary> = {}): FieldSummary {
   return {
     id: 'computer-science',
-    uri: 'at://did:plc:governance/pub.chive.graph.field/computer-science',
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
     label: 'Computer Science',
     description: 'The study of computation and information processing.',
     eprintCount: 250,
@@ -681,7 +687,7 @@ export function createMockFieldRelationship(
 export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): FieldDetail {
   return {
     id: 'machine-learning',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.field/machine-learning',
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['machine-learning']}`,
     label: 'Machine Learning',
     description: 'A subset of artificial intelligence that enables systems to learn from data.',
     status: 'established',
@@ -714,24 +720,24 @@ export function createMockFieldDetail(overrides: Partial<FieldDetail> = {}): Fie
     children: [
       {
         id: 'deep-learning',
-        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/deep-learning',
+        uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['deep-learning']}`,
         label: 'Deep Learning',
       },
       {
         id: 'reinforcement-learning',
-        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/reinforcement-learning',
+        uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['reinforcement-learning']}`,
         label: 'Reinforcement Learning',
       },
     ],
     ancestors: [
       {
         id: 'computer-science',
-        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/computer-science',
+        uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
         label: 'Computer Science',
       },
       {
         id: 'artificial-intelligence',
-        uri: 'at://did:plc:chive-governance/pub.chive.graph.node/artificial-intelligence',
+        uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['artificial-intelligence']}`,
         label: 'Artificial Intelligence',
       },
     ],
@@ -763,7 +769,7 @@ export function createMockSearchFacetValue(
   overrides: Partial<SearchFacetValue> = {}
 ): SearchFacetValue {
   return {
-    uri: 'at://gov/pub.chive.graph.node/computer-science',
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
     slug: 'computer-science',
     count: 42,
     label: 'Computer Science',
@@ -826,13 +832,13 @@ export function createMockFacetedSearchResponse(
         label: 'Personality',
         values: [
           createMockSearchFacetValue({
-            uri: 'at://gov/pub.chive.graph.node/research',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${PAPER_TYPE_UUIDS['research']}`,
             slug: 'research',
             count: 50,
             label: 'Research',
           }),
           createMockSearchFacetValue({
-            uri: 'at://gov/pub.chive.graph.node/review',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${PAPER_TYPE_UUIDS['review']}`,
             slug: 'review',
             count: 30,
             label: 'Review',
@@ -844,13 +850,13 @@ export function createMockFacetedSearchResponse(
         label: 'Matter',
         values: [
           createMockSearchFacetValue({
-            uri: 'at://gov/pub.chive.graph.node/physics',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['physics']}`,
             slug: 'physics',
             count: 40,
             label: 'Physics',
           }),
           createMockSearchFacetValue({
-            uri: 'at://gov/pub.chive.graph.node/computer-science',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
             slug: 'computer-science',
             count: 35,
             label: 'Computer Science',
@@ -862,7 +868,7 @@ export function createMockFacetedSearchResponse(
         label: 'Energy',
         values: [
           createMockSearchFacetValue({
-            uri: 'at://gov/pub.chive.graph.node/classification',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${METHODOLOGY_UUIDS['classification']}`,
             slug: 'classification',
             count: 25,
             label: 'Classification',
@@ -874,7 +880,7 @@ export function createMockFacetedSearchResponse(
         label: 'Space',
         values: [
           createMockSearchFacetValue({
-            uri: 'at://gov/pub.chive.graph.node/north-america',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${LOCATION_UUIDS['north-america']}`,
             slug: 'north-america',
             count: 45,
             label: 'North America',
@@ -886,7 +892,7 @@ export function createMockFacetedSearchResponse(
         label: 'Time',
         values: [
           createMockSearchFacetValue({
-            uri: 'at://gov/pub.chive.graph.node/2024',
+            uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${TIME_PERIOD_UUIDS['2024']}`,
             slug: '2024',
             count: 60,
             label: '2024',
@@ -1280,7 +1286,8 @@ export function createMockAuthorContribution(
   > = {}
 ): EprintAuthorView['contributions'] extends (infer T)[] | undefined ? T : never {
   return {
-    typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization',
+    typeUri:
+      'at://did:plc:chive-governance/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85',
     degreeSlug: 'lead',
     ...overrides,
   } as EprintAuthorView['contributions'] extends (infer T)[] | undefined ? T : never;
@@ -1306,7 +1313,8 @@ export function createMockEprintAuthorWithDid(
     contributions: [
       createMockAuthorContribution(),
       createMockAuthorContribution({
-        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/writing-original-draft',
+        typeUri:
+          'at://did:plc:chive-governance/pub.chive.graph.node/829cce56-857a-5abb-be9d-9e6b29f51198',
         degreeSlug: 'lead',
       }),
     ],
@@ -1342,7 +1350,8 @@ export function createMockExternalAuthor(
     ],
     contributions: [
       createMockAuthorContribution({
-        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/investigation',
+        typeUri:
+          'at://did:plc:chive-governance/pub.chive.graph.node/5d67f57c-9d4c-59e3-b3b1-d7205b33f6c8',
         degreeSlug: 'equal',
       }),
     ],
@@ -1359,7 +1368,7 @@ export function createMockContributionType(
   overrides: Partial<CreditContributionType> = {}
 ): CreditContributionType {
   return {
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85',
     id: 'conceptualization',
     label: 'Conceptualization',
     description: 'Ideas; formulation or evolution of overarching research goals and aims',
@@ -1385,7 +1394,7 @@ export function createMockContributionTypeProposal(
   overrides: Partial<ContributionTypeProposal> = {}
 ): ContributionTypeProposal {
   return {
-    uri: 'at://did:plc:user123/pub.chive.graph.conceptProposal/abc',
+    uri: 'at://did:plc:user123/pub.chive.graph.nodeProposal/abc',
     proposerDid: 'did:plc:user123',
     proposerName: 'Test User',
     proposalType: 'create',
@@ -1495,6 +1504,92 @@ export function createMockPaperCentricEprint(overrides: Partial<Eprint> = {}): E
 }
 
 /**
+ * UUID lookup for CRediT contribution types.
+ * Generated using nodeUuid('contribution-type', slug) for deterministic URIs.
+ */
+const CONTRIBUTION_TYPE_UUIDS: Record<string, string> = {
+  conceptualization: 'e1612645-6a62-59b7-a13a-8d618637be85',
+  'data-curation': 'fa5c6fc7-2202-5e45-8364-7740ae534f7c',
+  'formal-analysis': '8d456593-b60d-5544-8e1b-ac831b29267c',
+  'funding-acquisition': '3f571c23-ddb4-5638-b363-6d597950c3af',
+  investigation: '5d67f57c-9d4c-59e3-b3b1-d7205b33f6c8',
+  methodology: '052bfbce-9b15-55fd-8efc-99e82f7abeb2',
+  'project-administration': '65f27cc7-1e90-5d45-b987-3c6b4676822e',
+  resources: 'b320849e-5d28-5da7-9341-b960616b549a',
+  software: '13bbd687-3112-52b3-9a8d-7bd93b74a21f',
+  supervision: '7f57ae9f-d8f8-5dc8-a155-e5243de9fd8c',
+  validation: '197483f2-41cc-57a7-aed9-e6c6a01522e5',
+  visualization: 'e209ced9-b3bd-53d7-ab2f-a072942142c9',
+  'writing-original-draft': '829cce56-857a-5abb-be9d-9e6b29f51198',
+  'writing-review-editing': '728c728b-b7c8-548a-aa5e-8906d1e61cce',
+};
+
+/**
+ * UUID lookup for academic fields.
+ * Generated using nodeUuid('field', slug) for deterministic URIs.
+ */
+const FIELD_UUIDS: Record<string, string> = {
+  'computer-science': '674c8948-af59-5bfd-9edd-f30a6f4ee057',
+  physics: '8e31479f-01c0-5c1e-aae4-bd28b7cb0a7b',
+  biology: '509b9a1a-8c80-57f7-9d6e-d666bd0f23f8',
+  'machine-learning': 'f39a6280-d70a-5e59-9022-1ce485cc5bf4',
+  'deep-learning': '1b475fb7-ecd8-570b-ae1b-2b1eaa41b9cc',
+  'reinforcement-learning': 'b2f04bac-b150-5f0d-a5e6-f704e89ae1b1',
+  'artificial-intelligence': '726c5017-723e-5ae5-a1e2-f12e636eb709',
+  'data-science': 'c9109664-efea-5bf3-ae2c-b25947f7025b',
+  science: '81e0ee19-177d-5344-aa89-0d45d4d7166e',
+  cs: 'f3354b9d-4e28-5fd3-a5ca-587d97c3bbc3',
+};
+
+/**
+ * UUID lookup for paper types (personality facet).
+ * Generated using nodeUuid('paper-type', slug) for deterministic URIs.
+ */
+const PAPER_TYPE_UUIDS: Record<string, string> = {
+  research: '98e5da40-9679-59bd-9ed1-f90adb37d185',
+  review: '242cb8f5-b93d-5fa9-8d70-9652d18180ee',
+};
+
+/**
+ * UUID lookup for methodologies (energy facet).
+ * Generated using nodeUuid('methodology', slug) for deterministic URIs.
+ */
+const METHODOLOGY_UUIDS: Record<string, string> = {
+  classification: 'fe651b59-a94c-5e83-962b-b5aeb2d11303',
+};
+
+/**
+ * UUID lookup for locations (space facet).
+ * Generated using nodeUuid('location', slug) for deterministic URIs.
+ */
+const LOCATION_UUIDS: Record<string, string> = {
+  'north-america': '3851af3a-9db6-59de-aea1-c822517d296f',
+  europe: '852cc1e5-58ad-5064-9195-246ed7f97b08',
+};
+
+/**
+ * UUID lookup for time periods (time facet).
+ * Generated using nodeUuid('time-period', slug) for deterministic URIs.
+ */
+const TIME_PERIOD_UUIDS: Record<string, string> = {
+  '2024': '6218634d-797c-5f10-8fd3-0657e70ff6b8',
+  '21st-century': '823ee7d6-a5a4-5f2e-9d61-5a1ac65dd88e',
+};
+
+/**
+ * UUID lookup for organizations.
+ * Generated using nodeUuid('organization', slug) for deterministic URIs.
+ */
+const ORGANIZATION_UUIDS: Record<string, string> = {
+  mit: 'eb866be0-070c-5a2c-9a46-dd066b371fd7',
+  stanford: '0ee2502c-b04d-5e9b-8d43-9ae63aa47fb8',
+  nih: 'b143def2-0389-5048-a3d5-1135c78f5ed1',
+};
+
+/** Standard graph PDS DID for mock data. */
+const GRAPH_PDS_DID = TEST_GRAPH_PDS_DID;
+
+/**
  * Creates a list of all 14 CRediT contribution types.
  */
 export function createMockCreditContributionTypes(): CreditContributionType[] {
@@ -1574,7 +1669,7 @@ export function createMockCreditContributionTypes(): CreditContributionType[] {
 
   return creditRoles.map((role) =>
     createMockContributionType({
-      uri: `at://did:plc:chive-governance/pub.chive.graph.concept/${role.id}`,
+      uri: `at://did:plc:chive-governance/pub.chive.graph.node/${CONTRIBUTION_TYPE_UUIDS[role.id]}`,
       id: role.id,
       label: role.label,
       description: role.description,
@@ -1746,7 +1841,7 @@ export interface MockOrganizationProposal {
 export function createMockOrganization(overrides: Partial<Organization> = {}): Organization {
   return {
     id: 'mit',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.organization/mit',
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS['mit']}`,
     name: 'Massachusetts Institute of Technology',
     type: 'university',
     rorId: 'https://ror.org/042nb2s44',
@@ -1805,7 +1900,7 @@ export function createMockOrganizations(): Organization[] {
     createMockOrganization(),
     createMockOrganization({
       id: 'stanford',
-      uri: 'at://did:plc:chive-governance/pub.chive.graph.organization/stanford',
+      uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS['stanford']}`,
       name: 'Stanford University',
       type: 'university',
       rorId: 'https://ror.org/00f54p054',
@@ -1817,7 +1912,7 @@ export function createMockOrganizations(): Organization[] {
     }),
     createMockOrganization({
       id: 'nih',
-      uri: 'at://did:plc:chive-governance/pub.chive.graph.organization/nih',
+      uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS['nih']}`,
       name: 'National Institutes of Health',
       type: 'funding-body',
       rorId: 'https://ror.org/01cwqze88',
@@ -1870,9 +1965,9 @@ export interface MockReconciliationProposal {
 export function createMockReconciliation(overrides: Partial<Reconciliation> = {}): Reconciliation {
   return {
     id: 'ml-wikidata',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.reconciliation/ml-wikidata',
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.reconciliation/ml-wikidata`,
     sourceType: 'field',
-    sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.field/machine-learning',
+    sourceUri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['machine-learning']}`,
     sourceLabel: 'Machine Learning',
     targetSystem: 'wikidata',
     targetId: 'Q2539',
@@ -1899,7 +1994,7 @@ export function createMockReconciliationProposal(
     proposer: 'did:plc:user123',
     proposalType: 'create',
     sourceType: 'field',
-    sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.field/deep-learning',
+    sourceUri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['deep-learning']}`,
     sourceLabel: 'Deep Learning',
     targetSystem: 'wikidata',
     targetId: 'Q197536',
@@ -1931,9 +2026,9 @@ export function createMockReconciliations(): Reconciliation[] {
     createMockReconciliation(),
     createMockReconciliation({
       id: 'mit-ror',
-      uri: 'at://did:plc:chive-governance/pub.chive.graph.reconciliation/mit-ror',
+      uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.reconciliation/mit-ror`,
       sourceType: 'organization',
-      sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.organization/mit',
+      sourceUri: `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS['mit']}`,
       sourceLabel: 'Massachusetts Institute of Technology',
       targetSystem: 'ror',
       targetId: '042nb2s44',
@@ -1944,9 +2039,9 @@ export function createMockReconciliations(): Reconciliation[] {
     }),
     createMockReconciliation({
       id: 'cs-lcsh',
-      uri: 'at://did:plc:chive-governance/pub.chive.graph.reconciliation/cs-lcsh',
+      uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.reconciliation/cs-lcsh`,
       sourceType: 'field',
-      sourceUri: 'at://did:plc:chive-governance/pub.chive.graph.field/computer-science',
+      sourceUri: `at://${GRAPH_PDS_DID}/pub.chive.graph.node/${FIELD_UUIDS['computer-science']}`,
       sourceLabel: 'Computer Science',
       targetSystem: 'lcsh',
       targetId: 'sh85029552',

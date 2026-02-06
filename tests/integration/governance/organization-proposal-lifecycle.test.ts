@@ -17,6 +17,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import type { AtUri, DID, Timestamp } from '@/types/atproto.js';
 
+import { TEST_GRAPH_PDS_DID, TEST_USER_DIDS } from '../../test-constants.js';
+
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -134,10 +136,33 @@ const ORGANIZATION_TYPES: readonly { id: OrganizationType; label: string; descri
 // Test Fixtures
 // =============================================================================
 
-const GOVERNANCE_DID = 'did:plc:chive-governance' as DID;
-const TEST_USER_1 = 'did:plc:testuser1' as DID;
-const TEST_USER_2 = 'did:plc:testuser2' as DID;
-const TEST_USER_3 = 'did:plc:testuser3' as DID;
+const GRAPH_PDS_DID = TEST_GRAPH_PDS_DID;
+const TEST_USER_1 = TEST_USER_DIDS.USER_1;
+const TEST_USER_2 = TEST_USER_DIDS.USER_2;
+const TEST_USER_3 = TEST_USER_DIDS.USER_3;
+
+/**
+ * UUID lookup for organizations.
+ * Generated using nodeUuid('organization', slug) for deterministic URIs.
+ */
+const ORGANIZATION_UUIDS: Record<string, string> = {
+  stanford: '0ee2502c-b04d-5e9b-8d43-9ae63aa47fb8',
+  mit: 'eb866be0-070c-5a2c-9a46-dd066b371fd7',
+  nih: 'b143def2-0389-5048-a3d5-1135c78f5ed1',
+  cern: '90e2a739-2079-5b8c-9135-da0b75f1acc2',
+  'nature-portfolio': 'a8c89e43-5b20-5e4a-97c1-1f6d3c4d2b1e',
+};
+
+/**
+ * Gets or generates a UUID for an organization ID.
+ * Uses pre-computed UUIDs for known IDs, generates random UUIDs for others.
+ */
+function getOrganizationUuid(id: string): string {
+  return (
+    ORGANIZATION_UUIDS[id] ??
+    `${id.slice(0, 8).padEnd(8, '0')}-0000-5000-8000-${Date.now().toString(16).slice(-12)}`
+  );
+}
 
 /**
  * Creates an organization for testing.
@@ -149,7 +174,7 @@ function createTestOrganization(
   overrides: Partial<Organization> = {}
 ): Organization {
   return {
-    uri: `at://${GOVERNANCE_DID}/pub.chive.graph.organization/${id}` as AtUri,
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${getOrganizationUuid(id)}` as AtUri,
     id,
     name,
     type,
@@ -355,7 +380,7 @@ class MockOrganizationManager {
 
     const id = proposal.proposedName.toLowerCase().replace(/\s+/g, '-');
     const org: Organization = {
-      uri: `at://${GOVERNANCE_DID}/pub.chive.graph.organization/${id}` as AtUri,
+      uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${id}` as AtUri,
       id,
       name: proposal.proposedName,
       type: proposal.proposedType,
@@ -527,7 +552,8 @@ describe('Organization Proposal Lifecycle Integration', () => {
     });
 
     it('can create proposal with parent organization', () => {
-      const stanfordUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/stanford` as AtUri;
+      const stanfordUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.stanford}` as AtUri;
       const proposal = createTestOrganizationProposal('Stanford AI Lab', 'research-lab', {
         proposedParent: stanfordUri,
         proposedAliases: ['SAIL'],
@@ -644,7 +670,7 @@ describe('Organization Proposal Lifecycle Integration', () => {
       expect(org.name).toBe('Approved Org');
       expect(org.status).toBe('established');
       expect(org.proposalUri).toBe(proposal.uri);
-      expect(org.uri).toContain(GOVERNANCE_DID);
+      expect(org.uri).toContain(GRAPH_PDS_DID);
       expect(org.type).toBe('research-lab');
       expect(org.rorId).toBe('https://ror.org/test123');
     });
@@ -723,8 +749,10 @@ describe('Organization Proposal Lifecycle Integration', () => {
 
   describe('Organization Merge Flow', () => {
     it('can create merge proposal', () => {
-      const sourceUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/stanford` as AtUri;
-      const targetUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/mit` as AtUri;
+      const sourceUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.stanford}` as AtUri;
+      const targetUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.mit}` as AtUri;
 
       const proposal = createTestOrganizationProposal('Merge Result', 'university', {
         proposalType: 'merge',
@@ -804,7 +832,7 @@ describe('Organization Proposal Lifecycle Integration', () => {
 
       manager.deprecateOrganization(
         'deprecated-retrievable-org',
-        `at://${GOVERNANCE_DID}/pub.chive.graph.organization/stanford` as AtUri
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.stanford}` as AtUri
       );
 
       const org = manager.getOrganization('deprecated-retrievable-org');

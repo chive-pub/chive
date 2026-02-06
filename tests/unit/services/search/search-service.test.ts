@@ -80,7 +80,7 @@ const createMockIndexableDocument = (
     title: 'Test Eprint',
     abstract: 'Test abstract content',
     keywords: ['test', 'eprint'],
-    subjects: ['Computer Science'],
+    fieldNodes: [{ id: 'cs-uuid', label: 'Computer Science' }],
     createdAt: new Date('2024-01-01T00:00:00Z'),
     indexedAt: new Date('2024-01-02T00:00:00Z'),
     ...overrides,
