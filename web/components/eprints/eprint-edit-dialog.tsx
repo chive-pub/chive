@@ -43,7 +43,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { PlainMarkdownEditor } from '@/components/editor';
+import { MarkdownEditor } from '@/components/editor';
 import { useAgent } from '@/lib/auth/auth-context';
 import {
   formatVersion,
@@ -71,6 +71,8 @@ export interface EprintEditData {
   collection: string;
   /** Current title */
   title: string;
+  /** Current abstract (plain text) */
+  abstract?: string;
   /** Current keywords */
   keywords?: string[];
   /** Current version */
@@ -101,7 +103,8 @@ export interface EprintEditDialogProps {
  * to allow the structured ChangelogForm component to handle its own updates.
  */
 const editFormSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(500, 'Title must be 500 characters or fewer'),
+  title: z.string().min(1, 'Title is required').max(300, 'Title must be 300 characters or fewer'),
+  abstract: z.string().max(10000, 'Abstract must be 10,000 characters or fewer').optional(),
   keywords: z.string().optional(),
   versionBump: z.enum(['major', 'minor', 'patch']),
   document: z.instanceof(File).optional(),
@@ -152,10 +155,13 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
   const agent = useAgent();
   const { mutateAsync: updateEprint } = useUpdateEprint();
 
+  const [abstractExpanded, setAbstractExpanded] = useState(false);
+
   const form = useForm<EditFormValues>({
     resolver: zodResolver(editFormSchema),
     defaultValues: {
       title: eprint.title,
+      abstract: eprint.abstract ?? '',
       keywords: eprint.keywords?.join(', ') ?? '',
       versionBump: 'patch',
       document: undefined,
@@ -167,6 +173,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
     if (open) {
       form.reset({
         title: eprint.title,
+        abstract: eprint.abstract ?? '',
         keywords: eprint.keywords?.join(', ') ?? '',
         versionBump: 'patch',
         document: undefined,
@@ -174,8 +181,9 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
       setSelectedFile(null);
       setChangelog(EMPTY_CHANGELOG);
       setChangelogExpanded(false);
+      setAbstractExpanded(false);
     }
-  }, [open, eprint.title, eprint.keywords, form]);
+  }, [open, eprint.title, eprint.abstract, eprint.keywords, form]);
 
   /**
    * Handles file selection for document replacement.
@@ -280,10 +288,12 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         });
 
         // Step 4: Build updated record
+        const currentRecordValue = currentRecord.data.value as Record<string, unknown>;
         const updatedRecord = {
-          ...currentRecord.data.value,
+          ...currentRecordValue,
           title: values.title,
-          keywords: keywords ?? (currentRecord.data.value as Record<string, unknown>).keywords,
+          abstract: values.abstract ?? currentRecordValue.abstract,
+          keywords: keywords ?? currentRecordValue.keywords,
           version: authResult.version,
           ...(documentBlobRef && { document: documentBlobRef }),
         };
@@ -360,23 +370,72 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <PlainMarkdownEditor
+                    <MarkdownEditor
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Enter eprint title. Use $...$ for LaTeX math symbols."
-                      maxLength={500}
+                      maxLength={300}
                       minHeight="60px"
                       enablePreview={true}
                       showToolbar={false}
+                      showPreviewToggle={true}
+                      enableMentions={true}
+                      enableTags={true}
                       disabled={isSubmitting}
                       ariaLabel="Title editor"
                     />
                   </FormControl>
-                  <FormDescription>Supports LaTeX: $H_2O$, $E=mc^2$</FormDescription>
+                  <FormDescription>Supports LaTeX, @ mentions, and # tags</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Abstract field (collapsible) */}
+            <Collapsible open={abstractExpanded} onOpenChange={setAbstractExpanded}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex w-full items-center justify-between"
+                >
+                  <span>Edit Abstract</span>
+                  <ChevronDown
+                    className={cn('h-4 w-4 transition-transform', abstractExpanded && 'rotate-180')}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-4">
+                <FormField
+                  control={form.control}
+                  name="abstract"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Abstract</FormLabel>
+                      <FormControl>
+                        <MarkdownEditor
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          placeholder="Enter the abstract. Use $...$ for inline LaTeX and $$...$$ for display equations."
+                          maxLength={10000}
+                          minHeight="200px"
+                          enablePreview={true}
+                          showToolbar={true}
+                          enableMentions={true}
+                          enableTags={true}
+                          disabled={isSubmitting}
+                          ariaLabel="Abstract editor"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Supports Markdown, LaTeX, @ mentions, and # tags.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Keywords field */}
             <FormField

@@ -466,23 +466,30 @@ describe('EprintEditDialog', () => {
 
     await user.click(screen.getByRole('button', { name: /edit/i }));
 
-    // Enter very long title
+    // Enter very long title using fireEvent.change to avoid slow character-by-character typing
     const titleInput = screen.getByLabelText('Title editor');
-    await user.clear(titleInput);
-    // Type a long string (501 characters) - PlainMarkdownEditor enforces maxLength
-    // so we need to bypass by setting value directly and then blurring
-    await user.type(titleInput, 'A'.repeat(501));
+    const longTitle = 'A'.repeat(501);
+
+    // Use fireEvent.change for long strings instead of user.type() which is extremely slow
+    // for 501 characters (each char triggers full event cycle)
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      'value'
+    )?.set;
+    nativeInputValueSetter?.call(titleInput, longTitle);
+    titleInput.dispatchEvent(new Event('input', { bubbles: true }));
 
     // Submit
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-    // Since PlainMarkdownEditor enforces maxLength, the value will be truncated to 500 chars
-    // The form validation will pass because the editor limits the length
-    // We should test that the editor properly limits the length instead
+    // MarkdownEditor displays character count but doesn't enforce maxLength,
+    // so form validation will catch the over-limit title and show an error
     await waitFor(() => {
-      // The mutation should be called because PlainMarkdownEditor enforces maxLength
-      expect(mockMutateAsync).toHaveBeenCalled();
+      expect(screen.getByText(/title must be 300 characters or fewer/i)).toBeInTheDocument();
     });
+
+    // The mutation should NOT be called because validation failed
+    expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
   it('parses keywords correctly from comma-separated input', async () => {
