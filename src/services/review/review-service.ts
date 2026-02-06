@@ -114,6 +114,20 @@ export interface EndorsementView {
  *
  * @public
  */
+/**
+ * Anchor data for inline annotations (W3C Web Annotation format).
+ */
+export interface ReviewAnchor {
+  readonly source?: string;
+  readonly selector?: {
+    readonly type: string;
+    readonly exact?: string;
+    readonly prefix?: string;
+    readonly suffix?: string;
+  };
+  readonly pageNumber?: number;
+}
+
 export interface ReviewView {
   readonly uri: AtUri;
   readonly author: string;
@@ -122,6 +136,10 @@ export interface ReviewView {
   readonly parent?: AtUri;
   readonly createdAt: Date;
   readonly replyCount: number;
+  /** Anchor for inline annotations */
+  readonly anchor?: ReviewAnchor;
+  /** W3C motivation type */
+  readonly motivation?: string;
 }
 
 /**
@@ -275,14 +293,34 @@ export class ReviewService {
       // Body is already a rich text array from the lexicon
       const body = JSON.stringify(comment.body);
 
+      // Convert target to anchor format for storage
+      const anchor = comment.target
+        ? JSON.stringify({
+            source: comment.target.versionUri ?? comment.eprintUri,
+            selector: comment.target.selector,
+            pageNumber:
+              comment.target.selector &&
+              '$type' in comment.target.selector &&
+              comment.target.selector.$type === 'pub.chive.review.comment#fragmentSelector'
+                ? parseInt((comment.target.selector as { value: string }).value, 10)
+                : undefined,
+          })
+        : null;
+
+      // Get motivation (prefer fallback, URI would need resolution)
+      const motivation = comment.motivationFallback ?? null;
+
       await this.pool.query(
         `INSERT INTO reviews_index (
           uri, cid, eprint_uri, reviewer_did, body, parent_comment,
+          anchor, motivation,
           created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           body = EXCLUDED.body,
+          anchor = EXCLUDED.anchor,
+          motivation = EXCLUDED.motivation,
           updated_at = NOW(),
           last_synced_at = NOW()`,
         [
@@ -292,6 +330,8 @@ export class ReviewService {
           extractDidFromUri(metadata.uri),
           body,
           comment.parentComment ?? null,
+          anchor,
+          motivation,
           new Date(comment.createdAt),
           metadata.pdsUrl,
         ]
@@ -399,10 +439,13 @@ export class ReviewService {
         text: string;
         parent_comment: string | null;
         created_at: Date;
+        anchor: ReviewAnchor | null;
+        motivation: string | null;
       }>(
         `SELECT uri, reviewer_did,
                 COALESCE(body->0->>'content', '') as text,
-                parent_comment, created_at
+                parent_comment, created_at,
+                anchor, motivation
          FROM reviews_index
          WHERE eprint_uri = $1
          ORDER BY created_at ASC`,
@@ -431,6 +474,8 @@ export class ReviewService {
           createdAt: new Date(row.created_at),
           replyCount: replyCounts.get(row.uri) ?? 0,
           parentUri: row.parent_comment ?? undefined,
+          anchor: row.anchor ?? undefined,
+          motivation: row.motivation ?? undefined,
         });
       }
 
@@ -467,6 +512,8 @@ export class ReviewService {
             parent: review.parent,
             createdAt: review.createdAt,
             replyCount: review.replyCount,
+            anchor: review.anchor,
+            motivation: review.motivation,
           },
           replies,
           totalReplies: countReplies(replies),
@@ -1255,5 +1302,49 @@ export class ReviewService {
       );
       return { items: [], hasMore: false, total: 0 };
     }
+  }
+
+  /**
+   * Looks up author info for a set of DIDs.
+   *
+   * @param dids - Set of DIDs to look up
+   * @returns Map of DID to author info
+   *
+   * @public
+   */
+  async getAuthorInfoByDids(
+    dids: Set<string>
+  ): Promise<Map<string, { handle?: string; displayName?: string; avatar?: string }>> {
+    const result = new Map<string, { handle?: string; displayName?: string; avatar?: string }>();
+
+    if (dids.size === 0) {
+      return result;
+    }
+
+    try {
+      const queryResult = await this.pool.query<{
+        did: string;
+        handle: string | null;
+        display_name: string | null;
+        avatar_blob_cid: string | null;
+      }>(
+        `SELECT did, handle, display_name, avatar_blob_cid
+         FROM authors_index
+         WHERE did = ANY($1)`,
+        [Array.from(dids)]
+      );
+
+      for (const row of queryResult.rows) {
+        result.set(row.did, {
+          handle: row.handle ?? undefined,
+          displayName: row.display_name ?? undefined,
+          avatar: row.avatar_blob_cid ?? undefined,
+        });
+      }
+    } catch (error) {
+      this.logger.warn('Failed to lookup author info', { error, didCount: dids.size });
+    }
+
+    return result;
   }
 }
