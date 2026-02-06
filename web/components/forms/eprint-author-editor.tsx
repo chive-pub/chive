@@ -28,15 +28,14 @@ import { useState, useCallback, useMemo } from 'react';
 import {
   Plus,
   X,
-  GripVertical,
   User,
   Mail,
   ExternalLink,
-  Star,
   ChevronDown,
   ChevronUp,
   AlertCircle,
   HelpCircle,
+  CheckCircle2,
 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -44,7 +43,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -587,7 +585,16 @@ function AuthorCard({
         {/* Author info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium">{author.name}</span>
+            {author.did ? (
+              <a
+                href={`/authors/${encodeURIComponent(author.did)}`}
+                className="font-medium hover:text-primary hover:underline"
+              >
+                {author.name}
+              </a>
+            ) : (
+              <span className="font-medium">{author.name}</span>
+            )}
 
             {/* Badges */}
             {isSubmitter && (
@@ -695,7 +702,8 @@ function AuthorCard({
               <div className="flex flex-wrap gap-1">
                 {author.contributions.map((contrib) => (
                   <span key={contrib.typeId} className="rounded bg-muted px-2 py-0.5 text-xs">
-                    {contrib.typeLabel} ({contrib.degree})
+                    {contrib.typeLabel} (
+                    {contrib.degree.charAt(0).toUpperCase() + contrib.degree.slice(1)})
                   </span>
                 ))}
               </div>
