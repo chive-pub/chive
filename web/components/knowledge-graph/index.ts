@@ -90,14 +90,14 @@ export type {
   InstitutionIdSource,
 } from './institution-external-ids';
 
-// Concept external IDs
-export { ConceptExternalIds, ConceptExternalIdsSkeleton } from './concept-external-ids';
+// Node external IDs
+export { NodeExternalIds, NodeExternalIdsSkeleton } from './node-external-ids';
 export type {
-  ConceptExternalIdsProps,
-  ConceptExternalIdsSkeletonProps,
-  ConceptExternalId,
-  ConceptIdSource,
-} from './concept-external-ids';
+  NodeExternalIdsProps,
+  NodeExternalIdsSkeletonProps,
+  NodeExternalId,
+  NodeIdSource,
+} from './node-external-ids';
 
 // Author external IDs
 export { AuthorExternalIds, AuthorExternalIdsSkeleton } from './author-external-ids';

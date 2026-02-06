@@ -36,6 +36,8 @@ export {
 export {
   FunderAutocomplete,
   type FunderAutocompleteProps,
+  type FunderResult,
+  type ChiveInstitutionFunder,
   type CrossRefFunder,
 } from './funder-autocomplete';
 
@@ -80,6 +82,8 @@ export {
   ConferenceAutocomplete,
   type ConferenceAutocompleteProps,
   type Conference,
+  type ChiveEventConference,
+  type DblpConference,
 } from './conference-autocomplete';
 
 export {
@@ -131,9 +135,16 @@ export {
 } from './facet-autocomplete';
 
 export {
-  ConceptAutocomplete,
-  type ConceptAutocompleteProps,
-  type ConceptSuggestion,
-  type ConceptCategory,
-  type ConceptStatus,
-} from './concept-autocomplete';
+  NodeAutocomplete,
+  type NodeAutocompleteProps,
+  type NodeSuggestion,
+  type NodeKind,
+  type NodeStatus,
+  type NodeExternalId,
+} from './node-autocomplete';
+
+export {
+  LocationAutocomplete,
+  type LocationAutocompleteProps,
+  type LocationResult,
+} from './location-autocomplete';

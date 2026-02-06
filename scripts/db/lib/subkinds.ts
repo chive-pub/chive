@@ -189,13 +189,6 @@ export const SUBKINDS: readonly SubkindDefinition[] = [
     displayOrder: 42,
   },
   {
-    slug: 'endorsement-contribution',
-    label: 'Endorsement Contribution',
-    description: 'Scholarly contribution qualities for endorsements',
-    kind: 'type',
-    displayOrder: 43,
-  },
-  {
     slug: 'endorsement-type',
     label: 'Endorsement Type',
     description: 'Endorsement types (methodological, analytical, etc.)',
