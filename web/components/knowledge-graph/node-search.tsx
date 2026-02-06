@@ -37,7 +37,6 @@ import {
   getSubkindColorClasses,
   getSubkindIcon,
   getSubkindLabel,
-  SUBKIND_ICONS,
 } from '@/lib/constants/subkind-colors';
 
 // =============================================================================
@@ -272,8 +271,8 @@ export function NodeSearch({
   }, [results]);
 
   return (
-    <Command className={cn('', className)} data-testid="node-search">
-      <CommandList>
+    <Command className={cn('w-full overflow-hidden', className)} data-testid="node-search">
+      <CommandList className="max-h-none overflow-visible">
         {isLoading && (
           <div className="flex items-center justify-center py-6" role="status" aria-label="Loading">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -304,10 +303,10 @@ export function NodeSearch({
                   key={node.uri}
                   value={`${node.label}-${node.id}`}
                   onSelect={() => onSelect(node)}
-                  className="cursor-pointer"
+                  className="cursor-pointer overflow-hidden"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium truncate">{node.label}</span>
                       {showSubkind && (

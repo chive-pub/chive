@@ -5,12 +5,7 @@ import Link from 'next/link';
 import { ChevronRight, ChevronDown, FolderTree, Home } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import {
-  useFieldChildren,
-  type FieldNode,
-  type FieldSummaryNode,
-  type RelatedField,
-} from '@/lib/hooks';
+import { useFieldChildren, type FieldSummaryNode } from '@/lib/hooks';
 
 /**
  * Ancestor reference in breadcrumb.
