@@ -15,6 +15,9 @@ export {
   type EprintRecord,
   type FieldProposalRecord,
   type VoteRecord,
+  type StandardDocumentRecord,
+  type CreateStandardDocumentInput,
+  type UpdateStandardDocumentInput,
   // Blob upload
   uploadBlob,
   uploadDocument,
@@ -23,6 +26,9 @@ export {
   // Governance records
   createFieldProposalRecord,
   createVoteRecord,
+  // Standard.site records
+  createStandardDocument,
+  updateStandardDocument,
   // Record management
   deleteRecord,
   // Utilities

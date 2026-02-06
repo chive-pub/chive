@@ -7,10 +7,40 @@ import { FileText, MessageSquare, ThumbsUp, Plus } from 'lucide-react';
 import { useCurrentUser } from '@/lib/auth';
 import { useEprintsByAuthor } from '@/lib/hooks/use-eprint';
 import { useUserClaims } from '@/lib/hooks/use-claiming';
+import { useAuthorProfile } from '@/lib/hooks/use-author';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ForYouFeed } from '@/components/discovery/for-you-feed';
+
+/**
+ * Check if an author profile has any linked external accounts.
+ *
+ * @param profile - the author profile to check
+ * @returns true if any external account ID is present
+ */
+function hasAnyLinkedAccount(profile?: {
+  orcid?: string;
+  semanticScholarId?: string;
+  openAlexId?: string;
+  googleScholarId?: string;
+  arxivAuthorId?: string;
+  openReviewId?: string;
+  dblpId?: string;
+  scopusAuthorId?: string;
+}): boolean {
+  if (!profile) return false;
+  return !!(
+    profile.orcid ||
+    profile.semanticScholarId ||
+    profile.openAlexId ||
+    profile.googleScholarId ||
+    profile.arxivAuthorId ||
+    profile.openReviewId ||
+    profile.dblpId ||
+    profile.scopusAuthorId
+  );
+}
 
 /**
  * Dashboard overview page.
@@ -22,14 +52,14 @@ export default function DashboardPage() {
   const user = useCurrentUser();
   const { data: eprints, isLoading } = useEprintsByAuthor({ did: user?.did ?? '' });
   const { data: claims } = useUserClaims();
+  const { data: authorProfile } = useAuthorProfile(user?.did ?? '');
 
   const eprintCount = eprints?.eprints?.length ?? 0;
 
   // Check if user has claimed papers (from API or localStorage for testing)
   const hasClaimedPapersFromApi = (claims?.pages?.[0]?.claims?.length ?? 0) > 0;
-  // Check if user has linked accounts (ORCID, Semantic Scholar, etc.)
-  // TODO: Add orcid/semanticScholarId to ChiveUser type when implementing account linking
-  const hasLinkedAccountsFromApi = false;
+  // Check if user has linked accounts (ORCID, Semantic Scholar, etc.) from their author profile
+  const hasLinkedAccountsFromApi = hasAnyLinkedAccount(authorProfile);
 
   // Support localStorage override for E2E testing
   const [hasLinkedAccounts, setHasLinkedAccounts] = useState(hasLinkedAccountsFromApi);

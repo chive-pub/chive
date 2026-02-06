@@ -6,13 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useProposals, STATUS_LABELS, TYPE_LABELS } from '@/lib/hooks/use-governance';
 import { useCurrentUser } from '@/lib/auth';
-import { cn } from '@/lib/utils';
 import type { ProposalStatus } from '@/lib/api/schema';
 
 /**
  * Type guard for ProposalStatus.
  */
-function isProposalStatus(status: string): status is ProposalStatus {
+function _isProposalStatus(status: string): status is ProposalStatus {
   return ['open', 'approved', 'rejected', 'withdrawn', 'pending', 'expired'].includes(status);
 }
 

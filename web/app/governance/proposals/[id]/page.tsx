@@ -18,7 +18,6 @@ import {
   VOTE_WEIGHTS,
   CONSENSUS_THRESHOLD,
   MINIMUM_VOTES,
-  type VoteAction,
   type VoteValue,
 } from '@/lib/hooks/use-governance';
 import { Button } from '@/components/ui/button';

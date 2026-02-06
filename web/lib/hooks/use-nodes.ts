@@ -59,6 +59,8 @@ export interface ExternalId {
  * Node metadata for subkind-specific fields.
  */
 export interface NodeMetadata {
+  /** Slug identifier for the node */
+  slug?: string;
   /** Country code (ISO 3166-1 alpha-2) */
   country?: string;
   /** City name */
@@ -484,6 +486,10 @@ export const NODE_STATUS_LABELS: Record<NodeStatus, string> = {
   established: 'Established',
   deprecated: 'Deprecated',
 };
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
 /**
  * Node kind labels.

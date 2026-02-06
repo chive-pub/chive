@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createWrapper } from '@/tests/test-utils';
 import { createMockBlobRef, createMockEprintSummary } from '@/tests/mock-data';
+import { TEST_GRAPH_PDS_DID } from '@/tests/test-constants';
 
 import {
   eprintKeys,
@@ -92,7 +93,9 @@ describe('useEprint', () => {
         ],
         submittedBy: 'did:plc:test123',
         keywords: ['machine learning'],
-        fieldUris: ['at://did:plc:chive-governance/pub.chive.graph.field/computer-science'],
+        fieldUris: [
+          `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b`,
+        ],
         licenseSlug: 'CC-BY-4.0',
         publicationStatusSlug: 'preprint',
         createdAt: '2024-01-15T10:30:00Z',

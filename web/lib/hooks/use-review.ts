@@ -27,8 +27,10 @@ import { APIError } from '@/lib/errors';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
   createReviewRecord,
+  updateReviewRecord,
   deleteRecord,
   type CreateReviewInput as RecordCreatorReviewInput,
+  type UpdateReviewInput as RecordCreatorUpdateReviewInput,
 } from '@/lib/atproto/record-creator';
 import type {
   Review,
@@ -336,6 +338,8 @@ export function useCreateReview() {
         eprintUri: input.eprintUri,
         content: input.content,
         parentReviewUri: input.parentReviewUri,
+        target: input.target,
+        motivation: input.motivation,
       } as RecordCreatorReviewInput);
 
       // Return a Review-like object for cache management
@@ -405,6 +409,78 @@ export function useDeleteReview() {
       await deleteRecord(agent, uri);
     },
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: reviewKeys.forEprint(variables.eprintUri),
+      });
+    },
+  });
+}
+
+/**
+ * Input for updating a review.
+ */
+export interface UpdateReviewInput {
+  /** AT-URI of the review to update */
+  uri: string;
+  /** AT-URI of the eprint (for cache invalidation) */
+  eprintUri: string;
+  /** New content for the review */
+  content: string;
+}
+
+/**
+ * Mutation hook for updating a review.
+ *
+ * @remarks
+ * Updates a review in the user's PDS. Only the review creator
+ * can update their own reviews. The eprintUri, parentComment,
+ * and createdAt are preserved from the original record.
+ *
+ * @example
+ * ```tsx
+ * const updateReview = useUpdateReview();
+ *
+ * const handleUpdate = async () => {
+ *   await updateReview.mutateAsync({
+ *     uri: review.uri,
+ *     eprintUri: review.eprintUri,
+ *     content: newContent,
+ *   });
+ * };
+ * ```
+ *
+ * @returns Mutation object for updating reviews
+ */
+export function useUpdateReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateReviewInput): Promise<Review> => {
+      // Update directly in PDS using the authenticated agent
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'updateReview');
+      }
+
+      const result = await updateReviewRecord(agent, {
+        uri: input.uri,
+        content: input.content,
+      } as RecordCreatorUpdateReviewInput);
+
+      // Return a Review-like object for cache management
+      return {
+        uri: result.uri,
+        cid: result.cid,
+        author: { did: '' },
+        eprintUri: input.eprintUri,
+        content: input.content,
+        replyCount: 0,
+        createdAt: new Date().toISOString(),
+        indexedAt: new Date().toISOString(),
+      } as unknown as Review;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate reviews for the eprint
       queryClient.invalidateQueries({
         queryKey: reviewKeys.forEprint(variables.eprintUri),
       });
