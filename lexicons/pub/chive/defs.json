@@ -1,0 +1,56 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.defs",
+  "description": "Shared type definitions for reusable enum-like values",
+  "defs": {
+    "documentFormat": {
+      "type": "string",
+      "description": "Document format slug",
+      "knownValues": [
+        "pdf",
+        "docx",
+        "html",
+        "markdown",
+        "latex",
+        "jupyter",
+        "odt",
+        "rtf",
+        "epub",
+        "txt"
+      ]
+    },
+    "publicationStatus": {
+      "type": "string",
+      "description": "Publication status slug",
+      "knownValues": [
+        "eprint",
+        "preprint",
+        "under_review",
+        "revision_requested",
+        "accepted",
+        "in_press",
+        "published",
+        "retracted",
+        "withdrawn"
+      ]
+    },
+    "supplementaryCategory": {
+      "type": "string",
+      "description": "Supplementary material category slug",
+      "knownValues": [
+        "appendix",
+        "figure",
+        "table",
+        "dataset",
+        "code",
+        "notebook",
+        "video",
+        "audio",
+        "presentation",
+        "protocol",
+        "questionnaire",
+        "other"
+      ]
+    }
+  }
+}
