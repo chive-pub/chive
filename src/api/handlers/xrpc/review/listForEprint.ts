@@ -44,6 +44,25 @@ function flattenThreads(
     // Map anchor to target format expected by frontend
     let target: ReviewView['target'] = undefined;
     if (root.anchor) {
+      // Use stored refinedBy if available (contains boundingRect for accurate positioning)
+      // Fall back to constructing from pageNumber for backwards compatibility
+      const refinedBy = root.anchor.refinedBy
+        ? {
+            type: 'TextPositionSelector' as const,
+            start: root.anchor.refinedBy.start ?? 0,
+            end: root.anchor.refinedBy.end ?? 0,
+            pageNumber: root.anchor.refinedBy.pageNumber ?? root.anchor.pageNumber,
+            boundingRect: root.anchor.refinedBy.boundingRect,
+          }
+        : root.anchor.pageNumber
+          ? {
+              type: 'TextPositionSelector' as const,
+              start: 0,
+              end: 0,
+              pageNumber: root.anchor.pageNumber,
+            }
+          : undefined;
+
       target = {
         source: root.anchor.source ?? root.subject,
         // TextQuoteSelector requires type literal and exact string
@@ -55,23 +74,68 @@ function flattenThreads(
               suffix: root.anchor.selector.suffix,
             }
           : undefined,
-        // TextPositionSelector requires type, start, end - pageNumber is optional
-        // Use page field for backwards compatibility, or embed in refinedBy
-        refinedBy: root.anchor.pageNumber
-          ? {
-              type: 'TextPositionSelector' as const,
-              start: 0,
-              end: 0,
-              pageNumber: root.anchor.pageNumber,
-            }
-          : undefined,
+        refinedBy,
         // Deprecated page field for backwards compatibility
-        page: root.anchor.pageNumber,
+        page: root.anchor.refinedBy?.pageNumber ?? root.anchor.pageNumber,
       };
     }
 
     // Resolve author info from map
     const authorInfo = authorMap.get(root.author);
+
+    // Build body object from stored body array
+    // The body is stored as: [{ type: 'text', content: '...', facets: [...] }, ...]
+    let body: ReviewView['body'] = undefined;
+    if (root.body && Array.isArray(root.body) && root.body.length > 0 && !root.deleted) {
+      // Concatenate all text items to get the full text
+      const textParts: string[] = [];
+      const allFacets: {
+        index: { byteStart: number; byteEnd: number };
+        features: { $type: string; uri?: string }[];
+      }[] = [];
+
+      let currentByteOffset = 0;
+      for (const item of root.body as {
+        type?: string;
+        content?: string;
+        facets?: {
+          index: { byteStart: number; byteEnd: number };
+          features: { $type: string; uri?: string }[];
+        }[];
+      }[]) {
+        if (item.type === 'text' && item.content) {
+          textParts.push(item.content);
+          // Adjust facet byte offsets if there are multiple text items
+          if (item.facets) {
+            for (const facet of item.facets) {
+              allFacets.push({
+                index: {
+                  byteStart: facet.index.byteStart + currentByteOffset,
+                  byteEnd: facet.index.byteEnd + currentByteOffset,
+                },
+                features: facet.features,
+              });
+            }
+          }
+          currentByteOffset += new TextEncoder().encode(item.content).length;
+        }
+      }
+
+      const fullText = textParts.join('');
+      if (fullText) {
+        // Use facets from body items OR from the separate facets field
+        const facetsToUse =
+          allFacets.length > 0
+            ? allFacets
+            : root.facets && Array.isArray(root.facets)
+              ? (root.facets as typeof allFacets)
+              : undefined;
+        body = {
+          text: fullText,
+          facets: facetsToUse,
+        };
+      }
+    }
 
     reviews.push({
       uri: root.uri,
@@ -83,14 +147,15 @@ function flattenThreads(
         avatar: authorInfo?.avatar,
       },
       eprintUri: root.subject,
-      content: root.text,
-      body: undefined,
+      content: root.deleted ? '' : root.text,
+      body,
       target,
       motivation: (root.motivation as ReviewView['motivation']) ?? 'commenting',
       parentReviewUri: root.parent ?? undefined,
       replyCount: root.replyCount,
       createdAt: root.createdAt.toISOString(),
       indexedAt: root.createdAt.toISOString(), // Use createdAt as proxy
+      deleted: root.deleted ?? false,
     });
 
     // Process replies recursively

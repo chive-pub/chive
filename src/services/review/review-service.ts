@@ -125,6 +125,20 @@ export interface ReviewAnchor {
     readonly prefix?: string;
     readonly suffix?: string;
   };
+  readonly refinedBy?: {
+    readonly type?: string;
+    readonly pageNumber?: number;
+    readonly start?: number;
+    readonly end?: number;
+    readonly boundingRect?: {
+      readonly x1: number;
+      readonly y1: number;
+      readonly x2: number;
+      readonly y2: number;
+      readonly width: number;
+      readonly height: number;
+    };
+  };
   readonly pageNumber?: number;
 }
 
@@ -133,6 +147,10 @@ export interface ReviewView {
   readonly author: string;
   readonly subject: AtUri;
   readonly text: string;
+  /** Rich text body array */
+  readonly body?: readonly unknown[];
+  /** ATProto-style facets for links, mentions, etc. */
+  readonly facets?: readonly unknown[];
   readonly parent?: AtUri;
   readonly createdAt: Date;
   readonly replyCount: number;
@@ -140,6 +158,8 @@ export interface ReviewView {
   readonly anchor?: ReviewAnchor;
   /** W3C motivation type */
   readonly motivation?: string;
+  /** Whether this review has been soft-deleted */
+  readonly deleted?: boolean;
 }
 
 /**
@@ -293,17 +313,32 @@ export class ReviewService {
       // Body is already a rich text array from the lexicon
       const body = JSON.stringify(comment.body);
 
+      // Extract facets from body items (if present)
+      const facets: unknown[] = [];
+      if (Array.isArray(comment.body)) {
+        for (const item of comment.body) {
+          if (item && typeof item === 'object' && 'facets' in item && Array.isArray(item.facets)) {
+            facets.push(...item.facets);
+          }
+        }
+      }
+      const facetsJson = facets.length > 0 ? JSON.stringify(facets) : null;
+
       // Convert target to anchor format for storage
+      // Include refinedBy for position data (pageNumber, boundingRect)
       const anchor = comment.target
         ? JSON.stringify({
             source: comment.target.versionUri ?? comment.eprintUri,
             selector: comment.target.selector,
+            refinedBy: comment.target.refinedBy,
             pageNumber:
-              comment.target.selector &&
+              // Get pageNumber from refinedBy if available, otherwise from fragment selector
+              comment.target.refinedBy?.pageNumber ??
+              (comment.target.selector &&
               '$type' in comment.target.selector &&
               comment.target.selector.$type === 'pub.chive.review.comment#fragmentSelector'
                 ? parseInt((comment.target.selector as { value: string }).value, 10)
-                : undefined,
+                : undefined),
           })
         : null;
 
@@ -313,14 +348,15 @@ export class ReviewService {
       await this.pool.query(
         `INSERT INTO reviews_index (
           uri, cid, eprint_uri, reviewer_did, body, parent_comment,
-          anchor, motivation,
+          anchor, motivation, facets,
           created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           body = EXCLUDED.body,
           anchor = EXCLUDED.anchor,
           motivation = EXCLUDED.motivation,
+          facets = EXCLUDED.facets,
           updated_at = NOW(),
           last_synced_at = NOW()`,
         [
@@ -332,6 +368,7 @@ export class ReviewService {
           comment.parentComment ?? null,
           anchor,
           motivation,
+          facetsJson,
           new Date(comment.createdAt),
           metadata.pdsUrl,
         ]
@@ -424,6 +461,10 @@ export class ReviewService {
   /**
    * Gets threaded reviews for eprint.
    *
+   * @remarks
+   * Includes soft-deleted reviews if they have replies to preserve thread structure.
+   * Deleted reviews are marked with `deleted: true` and have empty text.
+   *
    * @param eprintUri - Eprint URI
    * @returns Review threads
    *
@@ -432,23 +473,34 @@ export class ReviewService {
   async getReviews(eprintUri: AtUri): Promise<readonly ReviewThread[]> {
     try {
       // Fetch all reviews for this eprint
+      // Include deleted reviews that have replies to preserve thread structure
       // Extract text from body JSONB (body is array of {type, content} objects)
       const result = await this.pool.query<{
         uri: string;
         reviewer_did: string;
         text: string;
+        body: unknown[] | null;
+        facets: unknown[] | null;
         parent_comment: string | null;
         created_at: Date;
         anchor: ReviewAnchor | null;
         motivation: string | null;
+        deleted_at: Date | null;
       }>(
-        `SELECT uri, reviewer_did,
-                COALESCE(body->0->>'content', '') as text,
-                parent_comment, created_at,
-                anchor, motivation
-         FROM reviews_index
-         WHERE eprint_uri = $1
-         ORDER BY created_at ASC`,
+        `SELECT r.uri, r.reviewer_did,
+                CASE WHEN r.deleted_at IS NOT NULL THEN '' ELSE COALESCE(r.body->0->>'content', '') END as text,
+                CASE WHEN r.deleted_at IS NOT NULL THEN NULL ELSE r.body END as body,
+                CASE WHEN r.deleted_at IS NOT NULL THEN NULL ELSE r.facets END as facets,
+                r.parent_comment, r.created_at,
+                r.anchor, r.motivation, r.deleted_at
+         FROM reviews_index r
+         WHERE r.eprint_uri = $1
+           AND (r.deleted_at IS NULL OR EXISTS (
+             SELECT 1 FROM reviews_index r2
+             WHERE r2.parent_comment = r.uri
+               AND r2.deleted_at IS NULL
+           ))
+         ORDER BY r.created_at ASC`,
         [eprintUri]
       );
 
@@ -456,9 +508,9 @@ export class ReviewService {
       const reviewMap = new Map<string, ReviewView & { parentUri?: string }>();
       const replyCounts = new Map<string, number>();
 
-      // First pass: count replies for each review
+      // First pass: count replies for each review (only non-deleted replies)
       for (const row of result.rows) {
-        if (row.parent_comment) {
+        if (row.parent_comment && !row.deleted_at) {
           replyCounts.set(row.parent_comment, (replyCounts.get(row.parent_comment) ?? 0) + 1);
         }
       }
@@ -470,12 +522,15 @@ export class ReviewService {
           author: row.reviewer_did,
           subject: eprintUri,
           text: row.text,
+          body: row.body ?? undefined,
+          facets: row.facets ?? undefined,
           parent: (row.parent_comment as AtUri) ?? undefined,
           createdAt: new Date(row.created_at),
           replyCount: replyCounts.get(row.uri) ?? 0,
           parentUri: row.parent_comment ?? undefined,
           anchor: row.anchor ?? undefined,
           motivation: row.motivation ?? undefined,
+          deleted: row.deleted_at !== null,
         });
       }
 
@@ -509,11 +564,14 @@ export class ReviewService {
             author: review.author,
             subject: review.subject,
             text: review.text,
+            body: review.body,
+            facets: review.facets,
             parent: review.parent,
             createdAt: review.createdAt,
             replyCount: review.replyCount,
             anchor: review.anchor,
             motivation: review.motivation,
+            deleted: review.deleted,
           },
           replies,
           totalReplies: countReplies(replies),
@@ -1327,24 +1385,196 @@ export class ReviewService {
         handle: string | null;
         display_name: string | null;
         avatar_blob_cid: string | null;
+        pds_url: string;
       }>(
-        `SELECT did, handle, display_name, avatar_blob_cid
+        `SELECT did, handle, display_name, avatar_blob_cid, pds_url
          FROM authors_index
          WHERE did = ANY($1)`,
         [Array.from(dids)]
       );
 
       for (const row of queryResult.rows) {
+        // Construct avatar URL from PDS URL and blob CID
+        let avatarUrl: string | undefined;
+        if (row.avatar_blob_cid && row.pds_url) {
+          avatarUrl = `${row.pds_url}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(row.did)}&cid=${row.avatar_blob_cid}`;
+        }
+
         result.set(row.did, {
           handle: row.handle ?? undefined,
           displayName: row.display_name ?? undefined,
-          avatar: row.avatar_blob_cid ?? undefined,
+          avatar: avatarUrl,
         });
+      }
+
+      // For DIDs not found in authors_index OR without avatars, fetch from Bluesky public API
+      const didsNeedingProfiles = Array.from(dids).filter((did) => {
+        const info = result.get(did);
+        return !info?.avatar;
+      });
+      if (didsNeedingProfiles.length > 0) {
+        await this.fetchBlueskyProfiles(didsNeedingProfiles, result);
       }
     } catch (error) {
       this.logger.warn('Failed to lookup author info', { error, didCount: dids.size });
     }
 
     return result;
+  }
+
+  /**
+   * Fetches profiles from Bluesky public API for DIDs not in authors_index.
+   *
+   * @param dids - DIDs to fetch profiles for
+   * @param result - Map to populate with results
+   *
+   * @internal
+   */
+  private async fetchBlueskyProfiles(
+    dids: string[],
+    result: Map<string, { handle?: string; displayName?: string; avatar?: string }>
+  ): Promise<void> {
+    // Batch fetch up to 25 profiles at a time (API limit)
+    const batchSize = 25;
+    for (let i = 0; i < dids.length; i += batchSize) {
+      const batch = dids.slice(i, i + batchSize);
+      try {
+        const params = new URLSearchParams();
+        for (const did of batch) {
+          params.append('actors', did);
+        }
+        const response = await fetch(
+          `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${params.toString()}`,
+          {
+            headers: { Accept: 'application/json' },
+            signal: AbortSignal.timeout(5000),
+          }
+        );
+
+        if (response.ok) {
+          const data = (await response.json()) as {
+            profiles: {
+              did: string;
+              handle: string;
+              displayName?: string;
+              avatar?: string;
+            }[];
+          };
+          for (const profile of data.profiles) {
+            result.set(profile.did, {
+              handle: profile.handle,
+              displayName: profile.displayName,
+              avatar: profile.avatar,
+            });
+          }
+        }
+      } catch (error) {
+        this.logger.debug('Failed to fetch Bluesky profiles', {
+          error: error instanceof Error ? error.message : String(error),
+          batchSize: batch.length,
+        });
+      }
+    }
+  }
+
+  /**
+   * Soft-deletes a review by setting the deleted_at timestamp.
+   *
+   * @remarks
+   * Instead of removing the review from the database, this marks it as deleted.
+   * Deleted reviews with replies are kept to preserve thread structure, displayed
+   * as tombstones with "This comment has been deleted" placeholder text.
+   *
+   * @param uri - AT-URI of the review to delete
+   * @param source - Source of the deletion ('firehose_tombstone' | 'admin' | 'pds_404')
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async softDeleteReview(
+    uri: AtUri,
+    source: 'firehose_tombstone' | 'admin' | 'pds_404' = 'firehose_tombstone'
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query(
+        `UPDATE reviews_index
+         SET deleted_at = NOW(),
+             deletion_source = $2
+         WHERE uri = $1`,
+        [uri, source]
+      );
+
+      this.logger.info('Soft-deleted review', { uri, source });
+
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'UPDATE',
+        `Failed to soft-delete review: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to soft-delete review', dbError, { uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Checks if a review has replies.
+   *
+   * @param uri - AT-URI of the review
+   * @returns True if the review has replies
+   *
+   * @public
+   */
+  async hasReplies(uri: AtUri): Promise<boolean> {
+    try {
+      const result = await this.pool.query<{ count: string }>(
+        `SELECT COUNT(*) as count
+         FROM reviews_index
+         WHERE parent_comment = $1
+           AND deleted_at IS NULL`,
+        [uri]
+      );
+      return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
+    } catch (error) {
+      this.logger.error('Failed to check for replies', error instanceof Error ? error : undefined, {
+        uri,
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Soft-deletes an endorsement by setting the deleted_at timestamp.
+   *
+   * @param uri - AT-URI of the endorsement to delete
+   * @param source - Source of the deletion ('firehose_tombstone' | 'admin' | 'pds_404')
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async softDeleteEndorsement(
+    uri: AtUri,
+    source: 'firehose_tombstone' | 'admin' | 'pds_404' = 'firehose_tombstone'
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query(
+        `UPDATE endorsements_index
+         SET deleted_at = NOW(),
+             deletion_source = $2
+         WHERE uri = $1`,
+        [uri, source]
+      );
+
+      this.logger.info('Soft-deleted endorsement', { uri, source });
+
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'UPDATE',
+        `Failed to soft-delete endorsement: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to soft-delete endorsement', dbError, { uri });
+      return Err(dbError);
+    }
   }
 }
