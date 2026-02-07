@@ -112,6 +112,48 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
       };
     });
 
+    // Fetch avatars for authors who don't have one
+    const authorsNeedingAvatars = result.authors.filter((a) => a.did && !a.avatarUrl);
+    const avatarMap = new Map<string, string>();
+
+    if (authorsNeedingAvatars.length > 0) {
+      const dids = authorsNeedingAvatars.map((a) => a.did).filter(Boolean) as string[];
+      // Batch fetch up to 25 profiles at a time (API limit)
+      const batchSize = 25;
+      for (let i = 0; i < dids.length; i += batchSize) {
+        const batch = dids.slice(i, i + batchSize);
+        try {
+          const params = new URLSearchParams();
+          for (const did of batch) {
+            params.append('actors', did);
+          }
+          const response = await fetch(
+            `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${params.toString()}`,
+            {
+              headers: { Accept: 'application/json' },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
+
+          if (response.ok) {
+            const data = (await response.json()) as {
+              profiles: { did: string; avatar?: string }[];
+            };
+            for (const profile of data.profiles) {
+              if (profile.avatar) {
+                avatarMap.set(profile.did, profile.avatar);
+              }
+            }
+          }
+        } catch (error) {
+          logger.debug('Failed to fetch Bluesky profiles for authors', {
+            error: error instanceof Error ? error.message : String(error),
+            batchSize: batch.length,
+          });
+        }
+      }
+    }
+
     // Build the submission value in lexicon format
     const response: OutputSchema = {
       uri: result.uri,
@@ -149,7 +191,7 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
           did: author.did,
           name: author.name,
           handle: author.handle,
-          avatarUrl: author.avatarUrl,
+          avatarUrl: author.avatarUrl ?? (author.did ? avatarMap.get(author.did) : undefined),
           orcid: author.orcid,
           email: author.email,
           order: author.order,
