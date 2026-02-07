@@ -109,12 +109,23 @@ async function searchWikidata(
 
   const data: WikidataSearchResult = await response.json();
 
-  return data.search.map((item) => ({
-    qid: item.id,
-    label: item.label,
-    description: item.description,
-    url: item.url || `https://www.wikidata.org/wiki/${item.id}`,
-  }));
+  return data.search.map((item) => {
+    // Normalize URL to ensure it has https:// protocol
+    // Wikidata API may return protocol-relative URLs (//www.wikidata.org/...)
+    // or URLs without any protocol
+    let url = item.url || `https://www.wikidata.org/wiki/${item.id}`;
+    if (url.startsWith('//')) {
+      url = `https:${url}`;
+    } else if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
+    return {
+      qid: item.id,
+      label: item.label,
+      description: item.description,
+      url,
+    };
+  });
 }
 
 // =============================================================================

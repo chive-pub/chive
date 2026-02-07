@@ -339,6 +339,24 @@ function MentionRenderer({
 }
 
 /**
+ * Normalizes a URL to ensure it has a protocol.
+ * Handles protocol-relative URLs (//www...) and URLs without any protocol.
+ */
+function normalizeUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  if (url.startsWith('//')) {
+    return `https:${url}`;
+  }
+  // URL without protocol (e.g., "www.wikidata.org/...")
+  if (url.includes('.') && !url.startsWith('/')) {
+    return `https://${url}`;
+  }
+  return url;
+}
+
+/**
  * Renders a link.
  */
 function LinkRenderer({ item, disableLinks = false }: { item: LinkItem; disableLinks?: boolean }) {
@@ -347,12 +365,15 @@ function LinkRenderer({ item, disableLinks = false }: { item: LinkItem; disableL
     return <span className="text-blue-600 dark:text-blue-400">{item.label ?? item.url}</span>;
   }
 
+  // Normalize URL to ensure it has https:// protocol for external links
+  const normalizedUrl = normalizeUrl(item.url);
+
   // Check if this is a Wikidata link
-  const wikidataMatch = item.url.match(/wikidata\.org\/wiki\/(Q\d+)/);
+  const wikidataMatch = normalizedUrl.match(/wikidata\.org\/wiki\/(Q\d+)/);
   if (wikidataMatch) {
     return (
       <a
-        href={item.url}
+        href={normalizedUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1"
@@ -369,8 +390,8 @@ function LinkRenderer({ item, disableLinks = false }: { item: LinkItem; disableL
   }
 
   // Check if this is an internal link
-  if (item.url.includes('chive.pub') || item.url.startsWith('/')) {
-    const internalPath = item.url.replace(/^https?:\/\/[^/]+/, '');
+  if (normalizedUrl.includes('chive.pub') || normalizedUrl.startsWith('/')) {
+    const internalPath = normalizedUrl.replace(/^https?:\/\/[^/]+/, '');
     return (
       <Link href={internalPath} className="text-blue-600 hover:underline dark:text-blue-400">
         {item.label ?? item.url}
@@ -381,7 +402,7 @@ function LinkRenderer({ item, disableLinks = false }: { item: LinkItem; disableL
   // External link
   return (
     <a
-      href={item.url}
+      href={normalizedUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="text-blue-600 hover:underline dark:text-blue-400"

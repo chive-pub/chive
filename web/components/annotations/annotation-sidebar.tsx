@@ -275,7 +275,7 @@ function PageAnnotationGroup({
               <ChevronRight className="h-4 w-4" />
             )}
             <FileText className="h-4 w-4 text-muted-foreground" />
-            Page {pageNumber}
+            Page {pageNumber + 1}
           </span>
           <Badge variant="outline" className="text-xs">
             {annotations.length}
