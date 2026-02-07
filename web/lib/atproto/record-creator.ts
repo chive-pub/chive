@@ -926,6 +926,8 @@ export async function updateEndorsementRecord(
 
 /**
  * Text span target for inline annotations (lexicon format).
+ * Note: boundingRect coordinates are stored as strings to preserve floating-point precision
+ * since ATProto Lexicon only supports integer type.
  */
 export interface ReviewTextSpanTarget {
   versionUri?: string;
@@ -938,6 +940,23 @@ export interface ReviewTextSpanTarget {
     start?: number;
     end?: number;
     value?: string;
+  };
+  refinedBy?: {
+    $type?: string;
+    type?: string;
+    pageNumber?: number;
+    start?: number;
+    end?: number;
+    boundingRect?: {
+      $type?: string;
+      x1: string;
+      y1: string;
+      x2: string;
+      y2: string;
+      width: string;
+      height: string;
+      pageNumber: number;
+    };
   };
 }
 
@@ -954,7 +973,19 @@ export interface InputTextSpanTarget {
     suffix?: string;
   };
   refinedBy?: {
+    type?: string;
     pageNumber?: number;
+    start?: number;
+    end?: number;
+    boundingRect?: {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      width: number;
+      height: number;
+      pageNumber?: number;
+    };
   };
   page?: number;
 }
@@ -968,9 +999,27 @@ export interface ReviewCommentRecord {
   eprintUri: string;
   body: Array<{ $type?: string; type: string; content: string; facets?: unknown[] }>;
   parentComment?: string;
-  target?: ReviewTextSpanTarget;
+  target?: ReviewTextSpanTarget & {
+    refinedBy?: ReviewTextSpanTarget['refinedBy'];
+  };
   motivationFallback?: string;
   createdAt: string;
+}
+
+/**
+ * Facet for rich text formatting in reviews.
+ */
+export interface ReviewFacet {
+  /** Byte range for the facet */
+  index: {
+    byteStart: number;
+    byteEnd: number;
+  };
+  /** Features (e.g., link) */
+  features: Array<{
+    $type: string;
+    uri?: string;
+  }>;
 }
 
 /**
@@ -982,6 +1031,8 @@ export interface CreateReviewInput {
   parentReviewUri?: string;
   target?: InputTextSpanTarget;
   motivation?: string;
+  /** Optional facets for rich text (links, etc.) */
+  facets?: ReviewFacet[];
 }
 
 /**
@@ -1009,13 +1060,26 @@ export async function createReviewRecord(
   }
 
   // Build the body array (lexicon requires body, not content)
-  const body: ReviewCommentRecord['body'] = [
-    {
-      $type: 'pub.chive.review.comment#textItem',
-      type: 'text',
-      content: input.content,
-    },
-  ];
+  const textItem: {
+    $type: string;
+    type: string;
+    content: string;
+    facets?: Array<{
+      index: { byteStart: number; byteEnd: number };
+      features: Array<{ $type: string; uri?: string }>;
+    }>;
+  } = {
+    $type: 'pub.chive.review.comment#textItem',
+    type: 'text',
+    content: input.content,
+  };
+
+  // Add facets if provided
+  if (input.facets && input.facets.length > 0) {
+    textItem.facets = input.facets;
+  }
+
+  const body: ReviewCommentRecord['body'] = [textItem];
 
   const record: ReviewCommentRecord = {
     $type: 'pub.chive.review.comment',
@@ -1039,6 +1103,33 @@ export async function createReviewRecord(
         suffix: input.target.selector.suffix,
       },
     };
+
+    // Include refinedBy for position data (pageNumber, boundingRect)
+    if (input.target.refinedBy) {
+      const inputBoundingRect = input.target.refinedBy.boundingRect;
+      record.target.refinedBy = {
+        $type: 'pub.chive.review.comment#positionRefinement',
+        type: 'TextPositionSelector',
+        pageNumber: input.target.refinedBy.pageNumber,
+        start: input.target.refinedBy.start,
+        end: input.target.refinedBy.end,
+        // Serialize boundingRect coordinates to strings for ATProto storage
+        // (ATProto Lexicon only supports integer type, not float)
+        boundingRect: inputBoundingRect
+          ? {
+              $type: 'pub.chive.review.comment#boundingRect',
+              x1: String(inputBoundingRect.x1),
+              y1: String(inputBoundingRect.y1),
+              x2: String(inputBoundingRect.x2),
+              y2: String(inputBoundingRect.y2),
+              width: String(inputBoundingRect.width),
+              height: String(inputBoundingRect.height),
+              pageNumber:
+                inputBoundingRect.pageNumber ?? (input.target.refinedBy.pageNumber ?? 0) + 1,
+            }
+          : undefined,
+      };
+    }
   }
 
   if (input.motivation) {
