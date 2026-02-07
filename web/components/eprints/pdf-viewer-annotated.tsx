@@ -41,6 +41,7 @@ import {
   type ScaledPosition,
   type PdfHighlighterUtils,
   type ViewportHighlight,
+  scaledPositionToViewport,
 } from 'react-pdf-highlighter-extended';
 import 'react-pdf-highlighter-extended/dist/esm/style/PdfHighlighter.css';
 import 'react-pdf-highlighter-extended/dist/esm/style/AreaHighlight.css';
@@ -66,9 +67,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
+import { createLogger } from '@/lib/observability/logger';
 import { useInlineReviews } from '@/lib/hooks/use-review';
 import { useIsAuthenticated } from '@/lib/auth';
 import type { BlobRef, UnifiedTextSpanTarget, Review } from '@/lib/api/schema';
+
+const logger = createLogger({ context: { component: 'pdf-viewer-annotated' } });
 
 // Configure PDF.js worker to match the pdfjs-dist version used by react-pdf-highlighter-extended
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -211,11 +215,12 @@ function scaledPositionToW3CTarget(
 
   // Build refinedBy with optional boundingRect for visual positioning.
   // The boundingRect is stored for internal use but is not part of the W3C spec.
+  // The library provides 1-indexed page numbers, but we store as 0-indexed for consistency
   const refinedBy = {
     type: 'TextPositionSelector' as const,
     start: approximateStart,
     end: approximateEnd,
-    pageNumber: position.boundingRect.pageNumber,
+    pageNumber: position.boundingRect.pageNumber - 1, // Convert to 0-indexed for storage
     // Store scaled coordinates for precise visual positioning (internal extension)
     boundingRect: {
       x1: position.boundingRect.x1,
@@ -224,6 +229,7 @@ function scaledPositionToW3CTarget(
       y2: position.boundingRect.y2,
       width: position.boundingRect.width,
       height: position.boundingRect.height,
+      pageNumber: position.boundingRect.pageNumber, // 1-indexed as the library expects
     },
   };
 
@@ -257,61 +263,66 @@ function scaledPositionToW3CTarget(
  */
 function w3cTargetToScaledPosition(target: UnifiedTextSpanTarget): ScaledPosition | null {
   const refinedBy = target.refinedBy;
-  if (!refinedBy?.pageNumber) return null;
 
-  // Priority 1: Use stored bounding rect coordinates (most accurate)
-  const boundingRect = (refinedBy as { boundingRect?: ScaledPosition['boundingRect'] })
-    .boundingRect;
+  // Only create highlights when we have accurate boundingRect data
+  // Without boundingRect, we can't reliably position the highlight
+  const storedBoundingRect = (
+    refinedBy as
+      | {
+          boundingRect?: {
+            x1: number | string;
+            y1: number | string;
+            x2: number | string;
+            y2: number | string;
+            width: number | string;
+            height: number | string;
+            pageNumber?: number;
+          };
+        }
+      | undefined
+  )?.boundingRect;
 
-  if (boundingRect) {
-    return {
-      boundingRect: {
-        ...boundingRect,
-        pageNumber: refinedBy.pageNumber,
-      },
-      rects: [
-        {
-          ...boundingRect,
-          pageNumber: refinedBy.pageNumber,
-        },
-      ],
-    };
+  if (!storedBoundingRect) {
+    // No position data available - can't create an accurate highlight
+    return null;
   }
 
-  // Priority 2: Estimate position from TextPositionSelector start/end.
-  // The start value is an approximate character offset on the page.
-  // Convert back to normalized Y position using the same estimation factor.
-  const estimatedCharsPerPage = 5000;
-  const approximateY = refinedBy.start
-    ? Math.min(refinedBy.start / estimatedCharsPerPage, 0.95)
-    : 0.1;
+  // The stored value is 0-indexed, but the library expects 1-indexed page numbers
+  const storedPageNumber = refinedBy?.pageNumber ?? 0;
+  const pageNumber = storedPageNumber + 1; // Convert to 1-indexed for the library
 
-  // Estimate width based on text length (approximate)
-  const textLength = target.selector?.exact?.length ?? 50;
-  const estimatedWidth = Math.min(0.9, textLength * 0.01);
-  const lineHeight = 0.025;
+  // Parse coordinates - they may be strings (from ATProto storage) or numbers (from local cache)
+  const parsedBoundingRect: ScaledPosition['boundingRect'] = {
+    x1:
+      typeof storedBoundingRect.x1 === 'string'
+        ? parseFloat(storedBoundingRect.x1)
+        : storedBoundingRect.x1,
+    y1:
+      typeof storedBoundingRect.y1 === 'string'
+        ? parseFloat(storedBoundingRect.y1)
+        : storedBoundingRect.y1,
+    x2:
+      typeof storedBoundingRect.x2 === 'string'
+        ? parseFloat(storedBoundingRect.x2)
+        : storedBoundingRect.x2,
+    y2:
+      typeof storedBoundingRect.y2 === 'string'
+        ? parseFloat(storedBoundingRect.y2)
+        : storedBoundingRect.y2,
+    width:
+      typeof storedBoundingRect.width === 'string'
+        ? parseFloat(storedBoundingRect.width)
+        : storedBoundingRect.width,
+    height:
+      typeof storedBoundingRect.height === 'string'
+        ? parseFloat(storedBoundingRect.height)
+        : storedBoundingRect.height,
+    pageNumber, // 1-indexed (use the pageNumber from refinedBy, not from boundingRect)
+  };
 
   return {
-    boundingRect: {
-      x1: 0.05,
-      y1: approximateY,
-      x2: 0.05 + estimatedWidth,
-      y2: approximateY + lineHeight,
-      width: 1,
-      height: 1,
-      pageNumber: refinedBy.pageNumber,
-    },
-    rects: [
-      {
-        x1: 0.05,
-        y1: approximateY,
-        x2: 0.05 + estimatedWidth,
-        y2: approximateY + lineHeight,
-        width: 1,
-        height: 1,
-        pageNumber: refinedBy.pageNumber,
-      },
-    ],
+    boundingRect: parsedBoundingRect,
+    rects: [parsedBoundingRect],
   };
 }
 
@@ -322,10 +333,17 @@ function reviewsToHighlights(reviews: Review[]): ChiveHighlight[] {
   const highlights: ChiveHighlight[] = [];
 
   for (const review of reviews) {
-    if (!review.target) continue;
+    // Skip reviews without a target
+    if (!review.target) {
+      continue;
+    }
 
     const position = w3cTargetToScaledPosition(review.target);
-    if (!position) continue;
+    if (!position) {
+      // Log for debugging - should not happen with the fallback logic
+      logger.warn('Could not create position for review', { reviewUri: review.uri });
+      continue;
+    }
 
     highlights.push({
       id: review.uri,
@@ -341,6 +359,10 @@ function reviewsToHighlights(reviews: Review[]): ChiveHighlight[] {
     });
   }
 
+  logger.debug('Created highlights from reviews', {
+    highlightsCount: highlights.length,
+    reviewsCount: reviews.length,
+  });
   return highlights;
 }
 
@@ -492,12 +514,14 @@ export function AnnotatedPDFViewer({
   // State
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [currentSelection, setCurrentSelection] = useState<PdfSelection | null>(null);
   const [scale, setScale] = useState<number>(1.0);
+  const [pdfReady, setPdfReady] = useState(false);
 
   // Refs
   const highlighterUtilsRef = useRef<PdfHighlighterUtils | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Use ref for selection to avoid async state timing issues with the tip
+  const currentSelectionRef = useRef<PdfSelection | null>(null);
 
   // Fetch inline reviews
   const { data: inlineReviewsData } = useInlineReviews(eprintUri, {
@@ -529,14 +553,74 @@ export function AnnotatedPDFViewer({
   const pdfUrl = `${pdsEndpoint}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 
   // Handle scroll to annotation
+  // Use a ref to track the last scrolled URI to avoid duplicate scrolls
+  const lastScrolledUriRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (scrollToAnnotationUri && highlighterUtilsRef.current) {
-      const highlight = highlights.find((h) => h.reviewUri === scrollToAnnotationUri);
-      if (highlight) {
-        highlighterUtilsRef.current.scrollToHighlight(highlight);
-      }
+    logger.debug('Scroll effect triggered', {
+      scrollToAnnotationUri,
+      highlightsCount: highlights.length,
+      pdfReady,
+      lastScrolledUri: lastScrolledUriRef.current,
+    });
+
+    if (!scrollToAnnotationUri) {
+      lastScrolledUriRef.current = null;
+      return;
     }
-  }, [scrollToAnnotationUri, highlights]);
+
+    // Wait until PDF is ready
+    if (!pdfReady || !highlighterUtilsRef.current) {
+      logger.debug('PDF not ready yet, waiting');
+      return;
+    }
+
+    // Don't scroll again if we already scrolled to this URI
+    if (lastScrolledUriRef.current === scrollToAnnotationUri) {
+      logger.debug('Already scrolled to this URI, skipping');
+      return;
+    }
+
+    const highlight = highlights.find((h) => h.reviewUri === scrollToAnnotationUri);
+    logger.debug('Looking for highlight', {
+      targetUri: scrollToAnnotationUri,
+      found: !!highlight,
+      highlightId: highlight?.id,
+      availableHighlights: highlights.map((h) => h.reviewUri),
+    });
+
+    if (highlight) {
+      // Small delay to ensure the PDF is fully rendered
+      const timeoutId = setTimeout(() => {
+        try {
+          logger.info('Scrolling to highlight', {
+            highlightId: highlight.id,
+            position: highlight.position,
+          });
+          highlighterUtilsRef.current?.scrollToHighlight(highlight);
+          lastScrolledUriRef.current = scrollToAnnotationUri;
+        } catch (error) {
+          logger.error('Failed to scroll to highlight', {
+            highlightId: highlight.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Fallback: try to scroll to the page using the library's internal viewer
+          const pageNumber = highlight.position?.boundingRect?.pageNumber;
+          if (pageNumber !== undefined && highlighterUtilsRef.current) {
+            logger.info('Attempting fallback scroll to page', { pageNumber: pageNumber + 1 });
+            // The library might expose a way to scroll to page, or we need another approach
+          }
+        }
+      }, 150);
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      logger.warn('Highlight not found for annotation', {
+        targetUri: scrollToAnnotationUri,
+        availableCount: highlights.length,
+      });
+    }
+  }, [scrollToAnnotationUri, highlights, pdfReady]);
 
   // Handle highlight click
   const handleHighlightClick = useCallback(
@@ -548,13 +632,14 @@ export function AnnotatedPDFViewer({
 
   // Handle adding comment from selection
   const handleAddComment = useCallback(() => {
-    if (!currentSelection || !onAddReview) return;
+    const selection = currentSelectionRef.current;
+    if (!selection || !onAddReview) return;
 
     // Extract context BEFORE clearing selection for W3C TextQuoteSelector anchoring
     const context = extractSelectionContext();
 
-    const selectedText = currentSelection.content.text || '';
-    const ghostHighlight = currentSelection.makeGhostHighlight();
+    const selectedText = selection.content.text || '';
+    const ghostHighlight = selection.makeGhostHighlight();
     const w3cTarget = scaledPositionToW3CTarget(
       ghostHighlight.position,
       selectedText,
@@ -563,19 +648,20 @@ export function AnnotatedPDFViewer({
     );
 
     onAddReview(w3cTarget, selectedText);
-    setCurrentSelection(null);
+    currentSelectionRef.current = null;
     highlighterUtilsRef.current?.setTip(null);
-  }, [currentSelection, onAddReview, eprintUri]);
+  }, [onAddReview, eprintUri]);
 
   // Handle linking entity from selection
   const handleLinkEntity = useCallback(() => {
-    if (!currentSelection || !onLinkEntity) return;
+    const selection = currentSelectionRef.current;
+    if (!selection || !onLinkEntity) return;
 
     // Extract context BEFORE clearing selection for W3C TextQuoteSelector anchoring
     const context = extractSelectionContext();
 
-    const selectedText = currentSelection.content.text || '';
-    const ghostHighlight = currentSelection.makeGhostHighlight();
+    const selectedText = selection.content.text || '';
+    const ghostHighlight = selection.makeGhostHighlight();
     const w3cTarget = scaledPositionToW3CTarget(
       ghostHighlight.position,
       selectedText,
@@ -584,13 +670,13 @@ export function AnnotatedPDFViewer({
     );
 
     onLinkEntity(w3cTarget, selectedText);
-    setCurrentSelection(null);
+    currentSelectionRef.current = null;
     highlighterUtilsRef.current?.setTip(null);
-  }, [currentSelection, onLinkEntity, eprintUri]);
+  }, [onLinkEntity, eprintUri]);
 
   // Handle cancel selection
   const handleCancelSelection = useCallback(() => {
-    setCurrentSelection(null);
+    currentSelectionRef.current = null;
     highlighterUtilsRef.current?.setTip(null);
   }, []);
 
@@ -613,25 +699,39 @@ export function AnnotatedPDFViewer({
     setIsFullscreen((prev) => !prev);
   }, []);
 
-  // Selection tip render (library handles positioning internally).
-  const selectionTipContent = useMemo(() => {
-    if (!currentSelection || !isAuthenticated) return null;
+  // Handle selection - use setTip directly to show tip immediately
+  const handleSelection = useCallback(
+    (selection: PdfSelection) => {
+      if (!isAuthenticated) return;
 
-    return (
-      <SelectionTip
-        selection={currentSelection}
-        onAddComment={handleAddComment}
-        onLinkEntity={handleLinkEntity}
-        onCancel={handleCancelSelection}
-      />
-    );
-  }, [
-    currentSelection,
-    isAuthenticated,
-    handleAddComment,
-    handleLinkEntity,
-    handleCancelSelection,
-  ]);
+      // Store in ref for handlers to access
+      currentSelectionRef.current = selection;
+
+      // Get viewer for position conversion
+      const viewer = highlighterUtilsRef.current?.getViewer();
+      if (!viewer) {
+        logger.warn('PDF viewer not available for tip positioning');
+        return;
+      }
+
+      // Convert scaled position to viewport position for the tip
+      const viewportPosition = scaledPositionToViewport(selection.position, viewer);
+
+      // Show tip immediately using setTip (synchronous, bypasses React render cycle)
+      highlighterUtilsRef.current?.setTip({
+        position: viewportPosition,
+        content: (
+          <SelectionTip
+            selection={selection}
+            onAddComment={handleAddComment}
+            onLinkEntity={handleLinkEntity}
+            onCancel={handleCancelSelection}
+          />
+        ),
+      });
+    },
+    [isAuthenticated, handleAddComment, handleLinkEntity, handleCancelSelection]
+  );
 
   return (
     <div
@@ -705,14 +805,13 @@ export function AnnotatedPDFViewer({
               highlights={highlights}
               pdfScaleValue={scale}
               enableAreaSelection={(event) => event.altKey}
-              onSelection={(selection) => {
-                if (isAuthenticated) {
-                  setCurrentSelection(selection);
-                }
-              }}
-              selectionTip={selectionTipContent}
+              onSelection={handleSelection}
               utilsRef={(utils) => {
                 highlighterUtilsRef.current = utils;
+                if (utils && !pdfReady) {
+                  logger.debug('PDF highlighter utils ready');
+                  setPdfReady(true);
+                }
               }}
               style={{
                 height: '100%',
