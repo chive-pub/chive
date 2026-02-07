@@ -247,8 +247,17 @@ function createMentionSuggestion(enabled: boolean) {
     }: {
       editor: Editor;
       range: { from: number; to: number };
-      props: { id: string; label: string; itemType?: string; subkind?: string; uri?: string };
+      props: {
+        id: string | null;
+        label: string | null;
+        itemType?: string;
+        subkind?: string;
+        uri?: string;
+      };
     }) => {
+      // Guard against null id (shouldn't happen in practice)
+      if (!props.id || !props.label) return;
+
       // Select the trigger text range, then insert to replace it
       editor
         .chain()
@@ -355,7 +364,13 @@ function createMentionSuggestion(enabled: boolean) {
       return {
         onStart: (props: {
           clientRect?: (() => DOMRect | null) | null;
-          command: (item: { id: string; label: string }) => void;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
           editor: Editor;
         }) => {
@@ -396,7 +411,13 @@ function createMentionSuggestion(enabled: boolean) {
 
         onUpdate: (props: {
           clientRect?: (() => DOMRect | null) | null;
-          command: (item: { id: string; label: string }) => void;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
         }) => {
           // Update both items AND command - command contains the updated range
@@ -466,8 +487,11 @@ function createTagSuggestion(enabled: boolean) {
     }: {
       editor: Editor;
       range: { from: number; to: number };
-      props: { id: string; label: string; itemType?: string; subkind?: string };
+      props: { id: string | null; label: string | null; itemType?: string; subkind?: string };
     }) => {
+      // Guard against null id (shouldn't happen in practice)
+      if (!props.id || !props.label) return;
+
       // Select the trigger text range, then insert to replace it
       editor
         .chain()
@@ -541,7 +565,13 @@ function createTagSuggestion(enabled: boolean) {
       return {
         onStart: (props: {
           clientRect?: (() => DOMRect | null) | null;
-          command: (item: { id: string; label: string }) => void;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
           editor: Editor;
         }) => {
@@ -581,7 +611,13 @@ function createTagSuggestion(enabled: boolean) {
 
         onUpdate: (props: {
           clientRect?: (() => DOMRect | null) | null;
-          command: (item: { id: string; label: string }) => void;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
         }) => {
           // Update both items AND command - command contains the updated range
@@ -741,7 +777,9 @@ export function MarkdownEditor({
       if (mentionSuggestion) {
         exts.push(
           MarkdownMention.configure({
-            suggestion: mentionSuggestion,
+            // Type assertion needed because our custom suggestion props extend the base type
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            suggestion: mentionSuggestion as any,
           })
         );
       }
@@ -753,7 +791,9 @@ export function MarkdownEditor({
       if (tagSuggestion) {
         exts.push(
           MarkdownTag.configure({
-            suggestion: tagSuggestion,
+            // Type assertion needed because our custom suggestion props extend the base type
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            suggestion: tagSuggestion as any,
           })
         );
       }

@@ -1178,10 +1178,19 @@ export async function updateReviewRecord(
 
   const existing = existingResponse.data.value as ReviewCommentRecord;
 
+  // Build the body array with the new content
+  const body: ReviewCommentRecord['body'] = [
+    {
+      $type: 'pub.chive.review.comment#textItem',
+      type: 'text',
+      content: input.content,
+    },
+  ];
+
   const record: ReviewCommentRecord = {
     $type: 'pub.chive.review.comment',
     eprintUri: existing.eprintUri,
-    content: input.content,
+    body,
     createdAt: existing.createdAt,
   };
 

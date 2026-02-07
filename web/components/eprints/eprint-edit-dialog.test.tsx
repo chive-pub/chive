@@ -4,33 +4,37 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EprintEditDialog, type EprintEditData } from './eprint-edit-dialog';
 
-// Mock sonner toast
-vi.mock('sonner', () => ({
-  toast: {
+// Hoist mock functions for proper module factory access
+const { mockMutateAsync, mockAgent, mockToast } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
+  mockAgent: {
+    uploadBlob: vi.fn(),
+    com: {
+      atproto: {
+        repo: {
+          getRecord: vi.fn(),
+          putRecord: vi.fn(),
+        },
+      },
+    },
+  },
+  mockToast: {
     success: vi.fn(),
     error: vi.fn(),
   },
 }));
 
-// Mock the auth context
-const mockAgent = {
-  uploadBlob: vi.fn(),
-  com: {
-    atproto: {
-      repo: {
-        getRecord: vi.fn(),
-        putRecord: vi.fn(),
-      },
-    },
-  },
-};
+// Mock sonner toast
+vi.mock('sonner', () => ({
+  toast: mockToast,
+}));
 
+// Mock the auth context
 vi.mock('@/lib/auth/auth-context', () => ({
   useAgent: () => mockAgent,
 }));
 
 // Mock the update mutation
-const mockMutateAsync = vi.fn();
 vi.mock('@/lib/hooks/use-eprint-mutations', () => ({
   useUpdateEprint: () => ({
     mutateAsync: mockMutateAsync,
@@ -46,6 +50,19 @@ vi.mock('@/lib/observability', () => ({
       info: vi.fn(),
       error: vi.fn(),
     }),
+  },
+}));
+
+// Mock API client
+vi.mock('@/lib/api/client', () => ({
+  authApi: {
+    pub: {
+      chive: {
+        sync: {
+          indexRecord: vi.fn().mockResolvedValue({}),
+        },
+      },
+    },
   },
 }));
 
@@ -287,7 +304,7 @@ describe('EprintEditDialog', () => {
   );
 
   it('shows success toast after successful submission', async () => {
-    const { toast } = await import('sonner');
+    // Use hoisted mockToast instead of importing
     const user = userEvent.setup();
 
     render(<EprintEditDialog eprint={mockEprint} canEdit={true} />, {
@@ -298,12 +315,15 @@ describe('EprintEditDialog', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('Eprint updated successfully', expect.anything());
+      expect(mockToast.success).toHaveBeenCalledWith(
+        'Eprint updated successfully',
+        expect.anything()
+      );
     });
   });
 
   it('shows error toast when mutation fails', async () => {
-    const { toast } = await import('sonner');
+    // Use hoisted mockToast instead of importing
     mockMutateAsync.mockRejectedValue(new Error('Authorization failed'));
 
     const user = userEvent.setup();
@@ -316,12 +336,12 @@ describe('EprintEditDialog', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Failed to update eprint', expect.anything());
+      expect(mockToast.error).toHaveBeenCalledWith('Failed to update eprint', expect.anything());
     });
   });
 
   it('shows specific error for unauthorized access', async () => {
-    const { toast } = await import('sonner');
+    // Use hoisted mockToast instead of importing
     mockMutateAsync.mockRejectedValue(new Error('Unauthorized'));
 
     const user = userEvent.setup();
@@ -334,12 +354,12 @@ describe('EprintEditDialog', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Not authorized to edit this eprint');
+      expect(mockToast.error).toHaveBeenCalledWith('Not authorized to edit this eprint');
     });
   });
 
   it('shows specific error for swap record conflict', async () => {
-    const { toast } = await import('sonner');
+    // Use hoisted mockToast instead of importing
     mockAgent.com.atproto.repo.putRecord.mockRejectedValue(
       new Error('swapRecord check failed: expected bafyreiabc123')
     );
@@ -354,7 +374,7 @@ describe('EprintEditDialog', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Update conflict', expect.anything());
+      expect(mockToast.error).toHaveBeenCalledWith('Update conflict', expect.anything());
     });
   });
 
@@ -577,7 +597,7 @@ describe('EprintEditDialog', () => {
   });
 
   it('shows error toast when agent is not available', async () => {
-    const { toast } = await import('sonner');
+    // Use hoisted mockToast instead of importing
 
     // Temporarily mock useAgent to return null
     vi.mocked(await import('@/lib/auth/auth-context')).useAgent = vi.fn().mockReturnValue(null);
@@ -592,7 +612,9 @@ describe('EprintEditDialog', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Not authenticated. Please log in and try again.');
+      expect(mockToast.error).toHaveBeenCalledWith(
+        'Not authenticated. Please log in and try again.'
+      );
     });
 
     // Reset the mock

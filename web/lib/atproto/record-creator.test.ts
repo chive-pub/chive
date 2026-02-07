@@ -627,7 +627,8 @@ describe('updateReviewRecord', () => {
       'at://did:plc:author/pub.chive.eprint.submission/paper123'
     );
     expect(putRecordCall.record.createdAt).toBe('2024-01-15T00:00:00.000Z');
-    expect(putRecordCall.record.content).toBe('Updated content');
+    // Content is now stored in the body array
+    expect(putRecordCall.record.body[0].content).toBe('Updated content');
   });
 
   it('preserves parentComment when present', async () => {

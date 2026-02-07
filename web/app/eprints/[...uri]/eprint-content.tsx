@@ -39,11 +39,7 @@ const AnnotatedPDFViewer = dynamic(
   }
 );
 import { AnnotationSidebar, EntityLinkDialog } from '@/components/annotations';
-import type {
-  UnifiedTextSpanTarget,
-  EprintSource as EprintSourceType,
-  LinkFacet,
-} from '@/lib/api/schema';
+import type { UnifiedTextSpanTarget, EprintSource as EprintSourceType } from '@/lib/api/schema';
 import {
   ReviewList,
   ReviewListSkeleton,
@@ -63,7 +59,7 @@ import { RelatedPapersPanel } from '@/components/discovery';
 import type { RichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
-import { ThumbsUp, Sparkles, Pencil, Trash2 } from 'lucide-react';
+import { Sparkles, Pencil, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';

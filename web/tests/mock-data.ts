@@ -910,6 +910,11 @@ export function createMockFacetedSearchResponse(
 
 /**
  * Creates a mock TextSpanTarget.
+ *
+ * @remarks
+ * Includes `boundingRect` in `refinedBy` for PDF highlight positioning.
+ * The boundingRect uses scaled coordinates (0-1 range) as expected by
+ * react-pdf-highlighter-extended.
  */
 export function createMockTextSpanTarget(
   overrides: Partial<UnifiedTextSpanTarget> = {}
@@ -927,7 +932,17 @@ export function createMockTextSpanTarget(
       start: 1250,
       end: 1275,
       pageNumber: 3,
-    },
+      // BoundingRect is needed for PDF highlight positioning
+      boundingRect: {
+        x1: 0.1,
+        y1: 0.2,
+        x2: 0.5,
+        y2: 0.25,
+        width: 1,
+        height: 1,
+        pageNumber: 4, // 1-indexed as the library expects
+      },
+    } as UnifiedTextSpanTarget['refinedBy'],
     ...overrides,
   };
 }

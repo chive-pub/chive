@@ -86,7 +86,8 @@ export function AnnotationSidebar({
   className,
 }: AnnotationSidebarProps) {
   const [sortBy, setSortBy] = useState<SortOption>('page');
-  const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([1]));
+  // Expand the first page (pageNumber=0) by default
+  const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([0]));
 
   const { data, isLoading, error } = useInlineReviews(eprintUri);
 

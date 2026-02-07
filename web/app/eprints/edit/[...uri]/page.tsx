@@ -10,10 +10,10 @@
  * @packageDocumentation
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export default function EprintEditPage() {
   const { data: eprint, isLoading, error } = useEprint(uri);
   const isAuthenticated = useIsAuthenticated();
   const currentUser = useCurrentUser();
-  const agent = useAgent();
+  const _agent = useAgent();
   const permissions = useEprintPermissions(eprint ?? undefined, currentUser?.did);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -122,7 +122,7 @@ export default function EprintEditPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Permission Denied</h1>
           <p className="mt-2 text-muted-foreground">
-            You don't have permission to edit this eprint.
+            You do not have permission to edit this eprint.
           </p>
           <Button asChild className="mt-4">
             <Link href={`/eprints/${encodeURIComponent(uri)}`}>Back to Eprint</Link>
@@ -145,7 +145,7 @@ export default function EprintEditPage() {
         </Link>
         <h1 className="text-3xl font-bold">Edit Eprint</h1>
         <p className="mt-2 text-muted-foreground">
-          Click on any section to expand and edit. Changes are saved when you click "Save Changes".
+          Click on any section to expand and edit. Changes are saved when you click Save Changes.
         </p>
       </div>
 

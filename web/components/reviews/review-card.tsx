@@ -249,6 +249,7 @@ export function ReviewCard({
       className={cn(
         'group relative',
         isCompact ? 'py-3' : 'rounded-lg border bg-card p-4',
+        depth > 0 && 'ml-4 border-l-2 border-l-muted pl-4',
         className
       )}
       data-testid="review-card"
