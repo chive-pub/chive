@@ -22,7 +22,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '@/lib/api/client';
+import { api, authApi } from '@/lib/api/client';
+import { createLogger } from '@/lib/observability/logger';
+
+const logger = createLogger({ context: { component: 'use-review' } });
 import { APIError } from '@/lib/errors';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
@@ -116,6 +119,22 @@ export interface UseReviewsOptions {
 }
 
 /**
+ * Facet for rich text formatting in reviews.
+ */
+export interface ReviewFacet {
+  /** Byte range for the facet */
+  index: {
+    byteStart: number;
+    byteEnd: number;
+  };
+  /** Features (e.g., link) */
+  features: Array<{
+    $type: string;
+    uri?: string;
+  }>;
+}
+
+/**
  * Input for creating a new review.
  */
 export interface CreateReviewInput {
@@ -131,6 +150,8 @@ export interface CreateReviewInput {
   motivation?: AnnotationMotivation;
   /** Parent review URI for replies */
   parentReviewUri?: string;
+  /** Optional facets for rich text (links, etc.) */
+  facets?: ReviewFacet[];
 }
 
 // =============================================================================
@@ -340,7 +361,33 @@ export function useCreateReview() {
         parentReviewUri: input.parentReviewUri,
         target: input.target,
         motivation: input.motivation,
+        facets: input.facets,
       } as RecordCreatorReviewInput);
+
+      // Request immediate indexing as a UX optimization.
+      // The firehose is the primary indexing mechanism, but there may be latency.
+      // This call ensures the record appears immediately in Chive's index.
+      // If this fails, the firehose will eventually index the record.
+      try {
+        const indexResult = await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        if (indexResult.data && !indexResult.data.indexed) {
+          logger.warn('Immediate indexing returned failure', {
+            uri: result.uri,
+            error: indexResult.data.error,
+          });
+        } else {
+          logger.info('Immediate indexing succeeded', { uri: result.uri });
+        }
+        // Small delay to ensure the database transaction is fully committed
+        // before the query invalidation triggers a refetch
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (indexError) {
+        // Log with details but don't throw; firehose will index eventually
+        logger.warn('Immediate indexing failed; firehose will handle', {
+          uri: result.uri,
+          error: indexError instanceof Error ? indexError.message : String(indexError),
+        });
+      }
 
       // Return a Review-like object for cache management
       return {
@@ -378,8 +425,13 @@ export function useCreateReview() {
  * Mutation hook for deleting a review.
  *
  * @remarks
- * Deletes a review from the user's PDS. Only the review creator
- * can delete their own reviews.
+ * Deletes a review from the user's PDS and marks it as deleted in Chive's index.
+ * Only the review creator can delete their own reviews.
+ *
+ * The deletion flow:
+ * 1. Delete from user's PDS via ATProto
+ * 2. Call sync.deleteRecord to mark as deleted in Chive's index immediately
+ * 3. Firehose will eventually also process the deletion
  *
  * @example
  * ```tsx
@@ -407,6 +459,17 @@ export function useDeleteReview() {
       }
 
       await deleteRecord(agent, uri);
+
+      // Request immediate deletion indexing as a UX optimization.
+      // The firehose is the primary deletion mechanism, but there may be latency.
+      // This call ensures the deletion appears immediately in Chive's index.
+      // If this fails, the firehose will eventually process the deletion.
+      try {
+        await authApi.pub.chive.sync.deleteRecord({ uri });
+      } catch {
+        // Silently ignore; firehose will handle the deletion eventually
+        logger.warn('Immediate deletion indexing failed; firehose will handle', { uri });
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -466,6 +529,14 @@ export function useUpdateReview() {
         uri: input.uri,
         content: input.content,
       } as RecordCreatorUpdateReviewInput);
+
+      // Request immediate re-indexing as a UX optimization.
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+      } catch {
+        // Silently ignore; firehose will index the record eventually
+        logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
 
       // Return a Review-like object for cache management
       return {

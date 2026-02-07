@@ -38,6 +38,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
 import { api, authApi } from '@/lib/api/client';
+import { createLogger } from '@/lib/observability/logger';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
   createEndorsementRecord,
@@ -52,6 +53,8 @@ import type {
   ListEndorsementsResponse,
   EndorsementSummaryResponse,
 } from '@/lib/api/schema';
+
+const logger = createLogger({ context: { component: 'use-endorsement' } });
 
 // =============================================================================
 // QUERY KEY FACTORY
@@ -355,6 +358,16 @@ export function useCreateEndorsement() {
 
       const result = await createEndorsementRecord(agent, input as RecordCreatorEndorsementInput);
 
+      // Request immediate indexing as a UX optimization.
+      // The firehose is the primary indexing mechanism, but there may be latency.
+      // This call ensures the record appears immediately in Chive's index.
+      // If this fails, the firehose will eventually index the record.
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+      } catch {
+        logger.warn('Immediate indexing failed; firehose will handle', { uri: result.uri });
+      }
+
       // Return an Endorsement-like object for cache management
       return {
         uri: result.uri,
@@ -416,6 +429,13 @@ export function useUpdateEndorsement() {
         contributions: input.contributions,
         comment: input.comment,
       } as RecordCreatorUpdateEndorsementInput);
+
+      // Request immediate re-indexing as a UX optimization.
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+      } catch {
+        logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
 
       // Return an Endorsement-like object for cache management
       return {

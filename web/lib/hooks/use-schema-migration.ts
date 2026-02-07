@@ -16,6 +16,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import { authApi } from '@/lib/api/client';
 import {
   transformToCurrentSchema,
   type SchemaMigrationResult,
@@ -255,6 +256,15 @@ export function useSchemaMigration() {
           cid,
           migratedFields: migrationResult.fields.map((f) => f.field),
         });
+
+        // Request immediate re-indexing as a UX optimization.
+        // The firehose is the primary indexing mechanism, but there may be latency.
+        // This call ensures the record appears immediately in Chive's index.
+        try {
+          await authApi.pub.chive.sync.indexRecord({ uri });
+        } catch {
+          migrationLogger.warn('Immediate re-indexing failed; firehose will handle', { uri });
+        }
       } catch (err) {
         migrationLogger.error('Failed to update record in PDS', err as Error, { uri });
         throw new SchemaMigrationError(
