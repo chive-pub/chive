@@ -31,7 +31,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import History from '@tiptap/extension-history';
 import Placeholder from '@tiptap/extension-placeholder';
-import Mention from '@tiptap/extension-mention';
+import Mention, { type MentionOptions } from '@tiptap/extension-mention';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import {
   Bold,
@@ -778,8 +778,7 @@ export function MarkdownEditor({
         exts.push(
           MarkdownMention.configure({
             // Type assertion needed because our custom suggestion props extend the base type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            suggestion: mentionSuggestion as any,
+            suggestion: mentionSuggestion as MentionOptions['suggestion'],
           })
         );
       }
@@ -792,8 +791,7 @@ export function MarkdownEditor({
         exts.push(
           MarkdownTag.configure({
             // Type assertion needed because our custom suggestion props extend the base type
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            suggestion: tagSuggestion as any,
+            suggestion: tagSuggestion as MentionOptions['suggestion'],
           })
         );
       }
