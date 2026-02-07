@@ -89,7 +89,8 @@ const adapter = new Neo4jAdapter(driver, logger);
 // Get node by ID
 const node = await adapter.getNode('cs.AI');
 
-// Get children (nodes with broader edge pointing to this node)
+// Get children (nodes with narrower edge pointing from this node)
+// Note: hierarchy uses 'narrower' edges for parent-to-child relationships
 const children = await adapter.getNodeChildren('cs');
 
 // Get ancestors (path to root via broader edges)
@@ -111,10 +112,23 @@ const related = await adapter.getRelatedNodes('cs.AI', {
 
 // Get edges for a node
 const edges = await adapter.getEdges('cs.AI', {
-  relationSlug: 'broader',
+  relationSlug: 'narrower', // for children, use 'narrower'
   direction: 'outgoing',
 });
 ```
+
+### Edge direction conventions
+
+The knowledge graph uses SKOS-style relationship naming:
+
+| Relation   | Direction        | Description                       |
+| ---------- | ---------------- | --------------------------------- |
+| `broader`  | Child to parent  | Points to the broader/parent node |
+| `narrower` | Parent to child  | Points to the narrower/child node |
+| `related`  | Bidirectional    | Associative relationship          |
+| `sameAs`   | Node to external | Equivalence to external entity    |
+
+When querying for children, use `narrower` edges with `outgoing` direction. When querying for parents, use `broader` edges with `outgoing` direction.
 
 ### Authority records
 

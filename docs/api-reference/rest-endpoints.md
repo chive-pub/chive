@@ -32,7 +32,7 @@ GET /api/v1/eprints
 
 Search and filter eprints.
 
-**Query parameters**
+#### Query parameters
 
 | Name     | Type    | Description                            |
 | -------- | ------- | -------------------------------------- |
@@ -45,7 +45,7 @@ Search and filter eprints.
 | `limit`  | integer | Results per page (max 100)             |
 | `cursor` | string  | Pagination cursor                      |
 
-**Example**
+#### Example
 
 ```bash
 curl "https://api.chive.pub/api/v1/eprints?q=quantum+computing&field=cs.QC&limit=10"
@@ -59,7 +59,7 @@ GET /api/v1/eprints/:uri
 
 Retrieve an eprint by its AT URI.
 
-**Path parameters**
+#### Path parameters
 
 | Name  | Type   | Description        |
 | ----- | ------ | ------------------ |
@@ -85,7 +85,7 @@ GET /api/v1/authors/:did/eprints
 
 List eprints by an author.
 
-**Path parameters**
+#### Path parameters
 
 | Name  | Type   | Description |
 | ----- | ------ | ----------- |
@@ -156,6 +156,34 @@ Rate limits apply per IP or per user:
 ## Additional functionality
 
 For full API functionality including reviews, endorsements, governance, backlinks, and discovery, use the [XRPC endpoints](./xrpc-endpoints.md).
+
+## Health endpoints
+
+Health check endpoints for monitoring and orchestration:
+
+### Liveness probe
+
+```http
+GET /health/liveness
+```
+
+Returns 200 if the service is running.
+
+### Readiness probe
+
+```http
+GET /health/readiness
+```
+
+Returns 200 if the service is ready to handle requests. Checks database connections and cache availability.
+
+### Well-known endpoints
+
+```http
+GET /.well-known/did.json
+```
+
+Returns the service DID document for ATProto identity verification.
 
 ## OpenAPI specification
 

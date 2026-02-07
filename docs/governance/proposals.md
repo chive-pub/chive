@@ -6,7 +6,7 @@ Proposals are the primary mechanism for changing the knowledge graph, authority 
 
 ### Node proposals
 
-Changes to knowledge graph nodes (fields, facets, authorities). All node types use `pub.chive.graph.nodeProposal`:
+Changes to knowledge graph nodes. All node types use `pub.chive.graph.nodeProposal`:
 
 | Type          | Description                                     | Threshold     |
 | ------------- | ----------------------------------------------- | ------------- |
@@ -17,13 +17,31 @@ Changes to knowledge graph nodes (fields, facets, authorities). All node types u
 
 The `kind` and `subkind` fields determine what type of node is being proposed:
 
-| subkind       | Description                   | Examples                         |
-| ------------- | ----------------------------- | -------------------------------- |
-| `field`       | Academic discipline or topic  | "Machine Learning", "Physics"    |
-| `facet`       | PMEST classification value    | "Arctic", "Holocene"             |
-| `institution` | Research organization         | "MIT CSAIL", "CERN"              |
-| `person`      | Individual (authority record) | Named researcher entries         |
-| `concept`     | General concept               | "Reproducibility", "Open Access" |
+| kind     | subkind            | Description                    | Examples                         |
+| -------- | ------------------ | ------------------------------ | -------------------------------- |
+| `type`   | `endorsement-kind` | Endorsement contribution types | "Methodology", "Reproducibility" |
+| `type`   | `license`          | License types                  | "CC-BY-4.0", "MIT"               |
+| `type`   | `methodology`      | Research methodologies         | "Qualitative", "Experimental"    |
+| `type`   | `paper-type`       | Paper types                    | "Research Article", "Review"     |
+| `object` | `field`            | Academic discipline or topic   | "Machine Learning", "Physics"    |
+| `object` | `facet`            | PMEST classification value     | "Arctic", "Holocene"             |
+| `object` | `institution`      | Research organization          | "MIT CSAIL", "CERN"              |
+| `object` | `author`           | Individual researcher          | Named researcher entries         |
+| `object` | `eprint`           | Eprint in the knowledge graph  | Published papers                 |
+
+### Automatic proposals
+
+Certain events trigger automatic proposal creation through the `AutomaticProposalService`:
+
+| Trigger                 | Proposal Type    | Description                                          |
+| ----------------------- | ---------------- | ---------------------------------------------------- |
+| First eprint submission | Author node      | Creates proposal for authors with ATProto identities |
+| Eprint submission       | Eprint node      | Creates proposal immediately upon submission         |
+| Author affiliation      | Institution node | Creates proposal for new institutions                |
+| Profile update          | Institution node | Creates proposal for new affiliations                |
+| Citation discovery      | Citation edge    | Creates proposal for citation relationships          |
+
+Automatic proposals are marked as system-generated and follow the standard voting process.
 
 ### Edge proposals
 

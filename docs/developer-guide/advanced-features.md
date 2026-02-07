@@ -245,6 +245,47 @@ events.addEventListener('ping', () => {
 });
 ```
 
+## Immediate indexing hooks
+
+Reviews and endorsements support immediate indexing after creation to provide instant feedback to users.
+
+### Review indexing
+
+When a user creates a review, the frontend can trigger immediate indexing:
+
+```typescript
+import { useReview } from '@/lib/hooks/use-review';
+
+const { createReview } = useReview();
+
+const handleSubmit = async (reviewData) => {
+  // Create review in user's PDS
+  const result = await createReview(reviewData);
+
+  // The hook automatically triggers indexing via pub.chive.sync.indexRecord
+  // No additional action needed; the review appears immediately
+};
+```
+
+### Endorsement indexing
+
+Endorsements follow the same pattern:
+
+```typescript
+import { useEndorsement } from '@/lib/hooks/use-endorsement';
+
+const { createEndorsement } = useEndorsement();
+
+const handleEndorse = async (endorsementData) => {
+  // Create endorsement in user's PDS
+  const result = await createEndorsement(endorsementData);
+
+  // Immediate indexing is triggered automatically
+};
+```
+
+This provides a better user experience than waiting for firehose propagation, which can take several seconds.
+
 ## Governance PDS connector
 
 Read community authority records from the Graph PDS (`did:plc:chive-governance`).

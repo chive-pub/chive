@@ -87,6 +87,7 @@ const createMockGraph = () => ({
   calculateConsensus: vi.fn(),
   createProposal: vi.fn(),
   deleteNode: vi.fn(),
+  getFieldAncestors: vi.fn().mockResolvedValue(new Map()),
 });
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

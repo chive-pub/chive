@@ -23,10 +23,32 @@ For traditional eprints, only the submitter can edit. For paper-centric eprints 
 
 1. Navigate to your eprint
 2. Click the **Edit** button (visible only if you have permission)
-3. Modify the fields you want to change
-4. Select a version bump type
-5. Optionally add changelog details
-6. Click **Save Changes**
+3. The section-based edit page opens with collapsible sections
+4. Modify the fields in each section as needed
+5. Select a version bump type in the Review section
+6. Optionally add changelog details
+7. Click **Save Changes**
+
+### Quick Title Editing
+
+For quick title changes, click the pencil icon next to the title on the eprint page. This opens an inline editor without navigating to the full edit page.
+
+### Section-Based Edit Page
+
+The edit page organizes fields into logical sections:
+
+| Section       | Fields                            |
+| ------------- | --------------------------------- |
+| Metadata      | Title, abstract, keywords         |
+| Authors       | Author list, affiliations, ORCID  |
+| Fields        | Academic field classifications    |
+| Publication   | Publication status, DOI, journal  |
+| Files         | PDF document, supplementary files |
+| Supplementary | Code, data, appendices            |
+| Facets        | PMEST classification values       |
+| Review        | Version bump, changelog           |
+
+Sections with unsaved changes display a badge indicator. Expand or collapse sections to focus on what you need to edit.
 
 ### Editable Fields
 
@@ -35,6 +57,10 @@ For traditional eprints, only the submitter can edit. For paper-centric eprints 
 | Title    | Eprint title (max 500 chars) |
 | Keywords | Comma-separated keyword list |
 | Document | Replace the manuscript file  |
+
+### Schema Migration
+
+If your eprint uses an older record format, you may see a migration banner prompting you to update. Click "Update to Latest Format" to migrate your record to the latest schema. This is a one-time operation that preserves all your content.
 
 ## Semantic Versioning
 

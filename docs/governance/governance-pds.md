@@ -50,7 +50,7 @@ interface GraphNodeDocument {
   $type: 'pub.chive.graph.node';
   id: string;
   kind: 'type' | 'object';
-  subkind: string; // 'field', 'facet', 'institution', 'person', 'concept'
+  subkind: string;
   label: string;
   alternateLabels: string[];
   description: string;
@@ -65,6 +65,13 @@ interface ExternalId {
   value: string;
 }
 ```
+
+Subkind values by kind:
+
+| Kind     | Subkinds                                                   |
+| -------- | ---------------------------------------------------------- |
+| `type`   | `endorsement-kind`, `license`, `methodology`, `paper-type` |
+| `object` | `field`, `facet`, `institution`, `author`, `eprint`        |
 
 ### Graph edges
 
