@@ -45,6 +45,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/editor';
 import { useAgent } from '@/lib/auth/auth-context';
+import { authApi } from '@/lib/api/client';
 import {
   formatVersion,
   useUpdateEprint,
@@ -306,6 +307,17 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
           record: updatedRecord,
           swapRecord: authResult.expectedCid,
         });
+
+        // Request immediate re-indexing as a UX optimization.
+        // The firehose is the primary indexing mechanism, but there may be latency.
+        // This call ensures the record appears immediately in Chive's index.
+        try {
+          await authApi.pub.chive.sync.indexRecord({ uri: eprint.uri });
+        } catch {
+          editLogger.warn('Immediate re-indexing failed; firehose will handle', {
+            uri: eprint.uri,
+          });
+        }
 
         toast.success('Eprint updated successfully', {
           description: `Version ${formatVersion(authResult.version)}`,

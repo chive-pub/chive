@@ -48,6 +48,7 @@ import {
   ReviewList,
   ReviewListSkeleton,
   ReviewForm,
+  DeleteReviewDialog,
   type ReviewFormData,
 } from '@/components/reviews';
 import {
@@ -86,6 +87,32 @@ import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { toast } from 'sonner';
+
+/**
+ * Map document format to display label for the document tab.
+ */
+function getDocumentTabLabel(format: string | undefined): string {
+  switch (format?.toLowerCase()) {
+    case 'pdf':
+      return 'PDF';
+    case 'html':
+      return 'HTML';
+    case 'markdown':
+    case 'md':
+      return 'Markdown';
+    case 'jupyter':
+    case 'ipynb':
+      return 'Notebook';
+    case 'latex':
+    case 'tex':
+      return 'LaTeX';
+    case 'txt':
+    case 'text':
+      return 'Text';
+    default:
+      return format?.toUpperCase() || 'Document';
+  }
+}
 
 /**
  * Valid supplementary material categories.
@@ -134,6 +161,7 @@ export interface EprintDetailContentProps {
 export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const { data: eprint, isLoading, error } = useEprint(uri);
   const [currentVersion, setCurrentVersion] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('abstract');
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Review | null>(null);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
@@ -144,6 +172,9 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   // Review/endorsement sharing state
   const [reviewToShare, setReviewToShare] = useState<Review | null>(null);
   const [endorsementToShare, setEndorsementToShare] = useState<Endorsement | null>(null);
+
+  // Delete review confirmation state
+  const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null);
 
   // Annotation state
   const [showAnnotationSidebar, setShowAnnotationSidebar] = useState(true);
@@ -217,17 +248,20 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     setShowReviewForm(true);
   }, []);
 
-  const handleDeleteReview = useCallback(
-    async (review: Review) => {
-      try {
-        await deleteReview.mutateAsync({ uri: review.uri, eprintUri: uri });
-        toast.success('Review deleted successfully');
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to delete review');
-      }
-    },
-    [deleteReview, uri]
-  );
+  const handleDeleteReview = useCallback((review: Review) => {
+    setReviewToDelete(review);
+  }, []);
+
+  const handleConfirmDeleteReview = useCallback(async () => {
+    if (!reviewToDelete) return;
+    try {
+      await deleteReview.mutateAsync({ uri: reviewToDelete.uri, eprintUri: uri });
+      toast.success('Review deleted successfully');
+      setReviewToDelete(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete review');
+    }
+  }, [deleteReview, reviewToDelete, uri]);
 
   const handleSubmitReview = useCallback(
     async (data: ReviewFormData) => {
@@ -387,12 +421,25 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
    */
   const handleSidebarAnnotationClick = useCallback(
     (annotationUri: string, _pageNumber?: number) => {
+      eprintLogger.info('Sidebar annotation clicked', { annotationUri, pageNumber: _pageNumber });
       setSelectedAnnotationUri(annotationUri);
       // The AnnotatedPDFViewer component automatically scrolls to the annotation
       // when scrollToAnnotationUri prop changes via its useEffect hook
     },
     []
   );
+
+  /**
+   * Handle "Go to location" click from review cards.
+   * Switches to PDF tab and scrolls to the annotation.
+   */
+  const handleGoToLocation = useCallback((reviewUri: string) => {
+    eprintLogger.info('Go to location clicked', { reviewUri });
+    // Switch to PDF tab (works for PDF documents; text formats would use 'document' tab)
+    setActiveTab('pdf');
+    // Set the annotation URI to trigger scrolling in the PDF viewer
+    setSelectedAnnotationUri(reviewUri);
+  }, []);
 
   // Handle review share button click
   const handleShareReview = useCallback((review: Review) => {
@@ -471,13 +518,14 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   );
 
   // Build share content for the dialog
+  // Use default OG image (Chive logo/branding) for all shares
   const shareContent: ShareContent | null = eprint
     ? {
         type: 'eprint',
         url: `${typeof window !== 'undefined' ? window.location.origin : ''}/eprints/${encodeURIComponent(uri)}`,
         title: eprint.title,
         description: eprint.abstract.slice(0, 200),
-        ogImageUrl: `/api/og?type=eprint&uri=${encodeURIComponent(uri)}&title=${encodeURIComponent(eprint.title.slice(0, 200))}&author=${encodeURIComponent(eprint.authors[0]?.name ?? '')}&handle=${encodeURIComponent(eprint.authors[0]?.handle ?? '')}`,
+        ogImageUrl: '/api/og?type=default',
       }
     : null;
 
@@ -489,7 +537,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           url: `${typeof window !== 'undefined' ? window.location.origin : ''}/eprints/${encodeURIComponent(uri)}#review-${encodeURIComponent(reviewToShare.uri)}`,
           title: `Review by ${reviewToShare.author.displayName || reviewToShare.author.handle}`,
           description: reviewToShare.content.slice(0, 200),
-          ogImageUrl: `/api/og?type=review&uri=${encodeURIComponent(reviewToShare.uri)}&content=${encodeURIComponent(reviewToShare.content.slice(0, 200))}&reviewer=${encodeURIComponent(reviewToShare.author.displayName || '')}&reviewerHandle=${encodeURIComponent(reviewToShare.author.handle || '')}&eprintTitle=${encodeURIComponent(eprint.title)}`,
+          ogImageUrl: '/api/og?type=default',
         }
       : null;
 
@@ -501,7 +549,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           url: `${typeof window !== 'undefined' ? window.location.origin : ''}/eprints/${encodeURIComponent(uri)}#endorsement-${encodeURIComponent(endorsementToShare.uri)}`,
           title: `Endorsement by ${endorsementToShare.endorser.displayName || endorsementToShare.endorser.handle}`,
           description: endorsementToShare.contributions.join(', '),
-          ogImageUrl: `/api/og?type=endorsement&uri=${encodeURIComponent(endorsementToShare.uri)}&contributions=${encodeURIComponent(endorsementToShare.contributions.join(','))}&comment=${encodeURIComponent(endorsementToShare.comment || '')}&endorser=${encodeURIComponent(endorsementToShare.endorser.displayName || '')}&endorserHandle=${encodeURIComponent(endorsementToShare.endorser.handle || '')}&eprintTitle=${encodeURIComponent(eprint.title)}`,
+          ogImageUrl: '/api/og?type=default',
         }
       : null;
 
@@ -526,10 +574,30 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     notFound();
   }
 
+  // Quick edit pencil icon for the title (shown to owners)
+  const titleEditAction =
+    permissions.canModify && eprintEditData ? (
+      permissions.requiresPaperAuth ? (
+        <PaperAuthGate eprint={{ paperDid: eprint.paperDid }}>
+          <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="Quick edit">
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </EprintEditDialog>
+        </PaperAuthGate>
+      ) : (
+        <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="Quick edit">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </EprintEditDialog>
+      )
+    ) : undefined;
+
   return (
     <article className="space-y-8 overflow-x-hidden">
       {/* Header with title, authors, metadata */}
-      <EprintHeader eprint={eprint} />
+      <EprintHeader eprint={eprint} titleAction={titleEditAction} />
 
       {/* Owner actions (Edit/Delete) - only shown to authorized users */}
       {permissions.canModify && eprintEditData && (
@@ -537,16 +605,10 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           {permissions.requiresPaperAuth ? (
             <PaperAuthGate eprint={{ paperDid: eprint.paperDid }}>
               <div className="flex items-center gap-2">
-                <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
-                  <Button variant="outline" size="sm">
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Quick Edit
-                  </Button>
-                </EprintEditDialog>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/eprints/edit/${encodeURIComponent(uri)}`}>
                     <Pencil className="h-4 w-4 mr-2" />
-                    Edit All
+                    Edit
                   </Link>
                 </Button>
                 <DeleteEprintDialog
@@ -569,16 +631,10 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             </PaperAuthGate>
           ) : (
             <>
-              <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
-                <Button variant="outline" size="sm">
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Quick Edit
-                </Button>
-              </EprintEditDialog>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/eprints/edit/${encodeURIComponent(uri)}`}>
                   <Pencil className="h-4 w-4 mr-2" />
-                  Edit All
+                  Edit
                 </Link>
               </Button>
               <DeleteEprintDialog
@@ -644,10 +700,10 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
       <Separator />
 
       {/* Main content tabs */}
-      <Tabs defaultValue="abstract" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="abstract">Abstract</TabsTrigger>
-          <TabsTrigger value="pdf">PDF</TabsTrigger>
+          <TabsTrigger value="pdf">{getDocumentTabLabel(eprint.documentFormatUri)}</TabsTrigger>
           <TabsTrigger value="reviews" className="gap-1.5">
             Reviews
             {reviewsData?.reviews && reviewsData.reviews.length > 0 && (
@@ -690,23 +746,6 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 did={eprint.paperDid ?? eprint.submittedBy}
                 filename={`${eprint.title}.pdf`}
               />
-            )}
-
-            {/* Endorse button */}
-            {isAuthenticated ? (
-              !userEndorsement && (
-                <Button variant="outline" onClick={() => setShowEndorsementForm(true)}>
-                  <ThumbsUp className="mr-2 h-4 w-4" />
-                  Endorse
-                </Button>
-              )
-            ) : (
-              <Button variant="outline" asChild>
-                <a href="/login">
-                  <ThumbsUp className="mr-2 h-4 w-4" />
-                  Endorse
-                </a>
-              </Button>
             )}
 
             {/* Share menu */}
@@ -935,14 +974,35 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 }
 
                 // Create text content with the entity reference
-                const entityContent = `Linked to: ${entityLabel}`;
+                const prefix = 'Linked to: ';
+                const entityContent = `${prefix}${entityLabel}`;
 
-                // Create the review with entity link annotation using Bluesky facet format
+                // Calculate byte positions for the facet (the label portion should be the link)
+                const prefixBytes = new TextEncoder().encode(prefix).length;
+                const labelBytes = new TextEncoder().encode(entityLabel).length;
+
+                // Create the review with entity link annotation using facets
                 await createReview.mutateAsync({
                   eprintUri: uri,
                   content: entityContent,
                   target: entityLinkSelection.target,
                   motivation: 'linking',
+                  facets: [
+                    {
+                      index: {
+                        byteStart: prefixBytes,
+                        byteEnd: prefixBytes + labelBytes,
+                      },
+                      features: [
+                        {
+                          $type: 'app.bsky.richtext.facet#link',
+                          uri: entityUrl.startsWith('/')
+                            ? `${window.location.origin}${entityUrl}`
+                            : entityUrl,
+                        },
+                      ],
+                    },
+                  ],
                 });
                 toast.success('Entity linked successfully');
               } catch (error) {
@@ -997,6 +1057,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               onShare={isAuthenticated ? handleShareReview : undefined}
               currentUserDid={currentUser?.did}
               showTargets
+              documentFormat={eprint?.documentFormatUri}
+              onGoToLocation={handleGoToLocation}
             />
           ) : (
             <p className="text-muted-foreground text-center py-8">
@@ -1189,6 +1251,15 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Delete review confirmation dialog */}
+      <DeleteReviewDialog
+        open={reviewToDelete !== null}
+        onOpenChange={(open) => !open && setReviewToDelete(null)}
+        hasReplies={(reviewToDelete?.replyCount ?? 0) > 0}
+        isPending={deleteReview.isPending}
+        onConfirm={handleConfirmDeleteReview}
+      />
     </article>
   );
 }
