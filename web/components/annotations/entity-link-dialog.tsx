@@ -143,7 +143,7 @@ export function EntityLinkDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 w-full min-w-0 overflow-hidden">
+        <div className="space-y-4 w-full min-w-0 px-0.5">
           {/* Search input */}
           <div className="space-y-2">
             <Label htmlFor="entity-search">Search</Label>
