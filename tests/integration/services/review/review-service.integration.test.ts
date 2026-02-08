@@ -103,6 +103,7 @@ function createTestReviewView(
 ): ReviewView {
   return {
     uri,
+    cid: 'bafyreiabc123',
     author: 'did:plc:reviewer',
     subject: TEST_EPRINT_URI,
     text: text ?? `Review ${uri}`,

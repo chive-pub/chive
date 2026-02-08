@@ -144,6 +144,7 @@ export interface ReviewAnchor {
 
 export interface ReviewView {
   readonly uri: AtUri;
+  readonly cid: string;
   readonly author: string;
   readonly subject: AtUri;
   readonly text: string;
@@ -478,6 +479,7 @@ export class ReviewService {
       // Extract text from body JSONB (body is array of {type, content} objects)
       const result = await this.pool.query<{
         uri: string;
+        cid: string;
         reviewer_did: string;
         text: string;
         body: unknown[] | null;
@@ -488,7 +490,7 @@ export class ReviewService {
         motivation: string | null;
         deleted_at: Date | null;
       }>(
-        `SELECT r.uri, r.reviewer_did,
+        `SELECT r.uri, r.cid, r.reviewer_did,
                 CASE WHEN r.deleted_at IS NOT NULL THEN '' ELSE COALESCE(r.body->0->>'content', '') END as text,
                 CASE WHEN r.deleted_at IS NOT NULL THEN NULL ELSE r.body END as body,
                 CASE WHEN r.deleted_at IS NOT NULL THEN NULL ELSE r.facets END as facets,
@@ -520,6 +522,7 @@ export class ReviewService {
       for (const row of result.rows) {
         reviewMap.set(row.uri, {
           uri: row.uri as AtUri,
+          cid: row.cid,
           author: row.reviewer_did,
           subject: eprintUri,
           text: row.text,
@@ -562,6 +565,7 @@ export class ReviewService {
         return {
           root: {
             uri: review.uri,
+            cid: review.cid,
             author: review.author,
             subject: review.subject,
             text: review.text,
@@ -961,6 +965,7 @@ export class ReviewService {
     try {
       const result = await this.pool.query<{
         uri: string;
+        cid: string;
         reviewer_did: string;
         eprint_uri: string;
         text: string;
@@ -968,7 +973,7 @@ export class ReviewService {
         created_at: Date;
         reply_count: number;
       }>(
-        `SELECT uri, reviewer_did, eprint_uri,
+        `SELECT uri, cid, reviewer_did, eprint_uri,
                 COALESCE(body->0->>'content', '') as text,
                 parent_comment, created_at,
                 COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_comment = reviews_index.uri), 0)::int as reply_count
@@ -984,6 +989,7 @@ export class ReviewService {
 
       return {
         uri: row.uri as AtUri,
+        cid: row.cid,
         author: row.reviewer_did,
         subject: row.eprint_uri as AtUri,
         text: row.text,
@@ -1013,6 +1019,7 @@ export class ReviewService {
       // Use recursive CTE to get thread
       const result = await this.pool.query<{
         uri: string;
+        cid: string;
         reviewer_did: string;
         eprint_uri: string;
         text: string;
@@ -1021,18 +1028,18 @@ export class ReviewService {
         depth: number;
       }>(
         `WITH RECURSIVE thread AS (
-           SELECT uri, reviewer_did, eprint_uri, COALESCE(body->0->>'content', '') as text, parent_comment, created_at, 0 AS depth
+           SELECT uri, cid, reviewer_did, eprint_uri, COALESCE(body->0->>'content', '') as text, parent_comment, created_at, 0 AS depth
            FROM reviews_index
            WHERE uri = $1
 
            UNION ALL
 
-           SELECT r.uri, r.reviewer_did, r.eprint_uri, COALESCE(r.body->0->>'content', '') as text, r.parent_comment, r.created_at, t.depth + 1
+           SELECT r.uri, r.cid, r.reviewer_did, r.eprint_uri, COALESCE(r.body->0->>'content', '') as text, r.parent_comment, r.created_at, t.depth + 1
            FROM reviews_index r
            INNER JOIN thread t ON r.parent_comment = t.uri
            WHERE t.depth < $2
          )
-         SELECT uri, reviewer_did, eprint_uri, text, parent_comment, created_at, depth
+         SELECT uri, cid, reviewer_did, eprint_uri, text, parent_comment, created_at, depth
          FROM thread
          ORDER BY depth ASC, created_at ASC`,
         [rootUri, maxDepth]
@@ -1058,6 +1065,7 @@ export class ReviewService {
 
       return result.rows.map((row) => ({
         uri: row.uri as AtUri,
+        cid: row.cid,
         author: row.reviewer_did,
         subject: row.eprint_uri as AtUri,
         text: row.text,
@@ -1100,6 +1108,7 @@ export class ReviewService {
       // Get reviews with reply counts
       const result = await this.pool.query<{
         uri: string;
+        cid: string;
         reviewer_did: string;
         eprint_uri: string;
         text: string;
@@ -1107,7 +1116,7 @@ export class ReviewService {
         created_at: Date;
         reply_count: number;
       }>(
-        `SELECT r.uri, r.reviewer_did, r.eprint_uri,
+        `SELECT r.uri, r.cid, r.reviewer_did, r.eprint_uri,
                 COALESCE(r.body->0->>'content', '') as text,
                 r.parent_comment, r.created_at,
                 COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_comment = r.uri), 0)::int as reply_count
@@ -1120,6 +1129,7 @@ export class ReviewService {
 
       const items: ReviewView[] = result.rows.map((row) => ({
         uri: row.uri as AtUri,
+        cid: row.cid,
         author: row.reviewer_did,
         subject: row.eprint_uri as AtUri,
         text: row.text,

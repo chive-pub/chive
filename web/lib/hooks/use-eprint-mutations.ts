@@ -177,11 +177,13 @@ export function useUpdateEprint() {
   const queryClient = useQueryClient();
 
   return useMutation<UpdateOutput, APIError, UpdateEprintParams>({
-    mutationFn: async ({ uri, versionBump, fieldUris, authors, changelog }) => {
+    mutationFn: async ({ uri, versionBump, title, keywords, fieldUris, authors, changelog }) => {
       try {
         const response = await authApi.pub.chive.eprint.updateSubmission({
           uri,
           versionBump,
+          title,
+          keywords,
           fieldUris,
           // Authors already match the generated AuthorContribution type
           authors,

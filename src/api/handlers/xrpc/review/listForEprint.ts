@@ -139,7 +139,7 @@ function flattenThreads(
 
     reviews.push({
       uri: root.uri,
-      cid: '', // CID is not stored in the service layer
+      cid: root.cid,
       author: {
         did: root.author,
         handle: authorInfo?.handle ?? root.author.split(':').pop() ?? 'unknown',
