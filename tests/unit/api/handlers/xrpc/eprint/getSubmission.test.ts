@@ -81,6 +81,7 @@ const createMockEprint = (overrides?: Partial<EprintView>): EprintView => ({
   authors: [mockAuthor],
   submittedBy: SUBMITTER_DID,
   license: 'CC-BY-4.0',
+  licenseUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/license-cc-by-4` as AtUri,
   pdsUrl: 'https://bsky.social',
   documentBlobRef: {
     $type: 'blob',
@@ -479,6 +480,117 @@ describe('XRPC getSubmission Handler', () => {
       expect(contributions).toHaveLength(1);
       expect(contributions[0]?.degreeSlug).toBe('lead');
       expect(author?.isCorrespondingAuthor).toBe(true);
+    });
+  });
+
+  describe('Schema Hints', () => {
+    it('includes _schemaHints when abstract needs migration', async () => {
+      const eprint = createMockEprint({
+        needsAbstractMigration: true,
+      });
+      mockEprintService.getEprint.mockResolvedValue(eprint);
+
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      const body = result.body as unknown as Record<string, unknown>;
+      expect(body._schemaHints).toBeDefined();
+      const hints = body._schemaHints as Record<string, unknown>;
+      expect(hints.migrationAvailable).toBe(true);
+      expect(hints.deprecatedFields).toContain('abstract');
+      expect(hints.schemaVersion).toBe('0.1.0');
+    });
+
+    it('includes _schemaHints when license needs migration', async () => {
+      const eprint = createMockEprint({
+        license: 'CC-BY-4.0',
+        licenseUri: undefined,
+      });
+      mockEprintService.getEprint.mockResolvedValue(eprint);
+
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      const body = result.body as unknown as Record<string, unknown>;
+      expect(body._schemaHints).toBeDefined();
+      const hints = body._schemaHints as Record<string, unknown>;
+      expect(hints.migrationAvailable).toBe(true);
+      expect(hints.deprecatedFields).toContain('license');
+    });
+
+    it('includes _schemaHints when title contains LaTeX', async () => {
+      const eprint = createMockEprint({
+        title: 'Analysis of $\\alpha$-particles',
+        titleRich: undefined,
+      });
+      mockEprintService.getEprint.mockResolvedValue(eprint);
+
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      const body = result.body as unknown as Record<string, unknown>;
+      expect(body._schemaHints).toBeDefined();
+      const hints = body._schemaHints as Record<string, unknown>;
+      expect(hints.migrationAvailable).toBe(true);
+      expect(hints.deprecatedFields).toContain('title');
+    });
+
+    it('omits _schemaHints when no migration needed', async () => {
+      const eprint = createMockEprint({
+        needsAbstractMigration: false,
+        licenseUri: 'at://did:plc:governance/pub.chive.graph.node/license-123' as AtUri,
+        title: 'Simple Title Without LaTeX',
+      });
+      mockEprintService.getEprint.mockResolvedValue(eprint);
+
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      const body = result.body as unknown as Record<string, unknown>;
+      expect(body._schemaHints).toBeUndefined();
+    });
+
+    it('includes multiple deprecated fields when needed', async () => {
+      const eprint = createMockEprint({
+        needsAbstractMigration: true,
+        license: 'CC-BY-4.0',
+        licenseUri: undefined,
+        title: 'Study of $\\beta$-decay',
+        titleRich: undefined,
+      });
+      mockEprintService.getEprint.mockResolvedValue(eprint);
+
+      const result = await getSubmission.handler({
+        params: { uri: eprint.uri },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      const body = result.body as unknown as Record<string, unknown>;
+      expect(body._schemaHints).toBeDefined();
+      const hints = body._schemaHints as Record<string, unknown>;
+      const deprecatedFields = hints.deprecatedFields as string[];
+      expect(deprecatedFields).toContain('abstract');
+      expect(deprecatedFields).toContain('license');
+      expect(deprecatedFields).toContain('title');
+      expect(deprecatedFields).toHaveLength(3);
     });
   });
 

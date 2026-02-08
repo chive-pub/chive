@@ -154,10 +154,38 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
       }
     }
 
+    // Generate schema hints if migration is available
+    // The indexer tracks which records use deprecated formats
+    const deprecatedFields: string[] = [];
+    if (result.needsAbstractMigration) {
+      deprecatedFields.push('abstract');
+    }
+    // Check for title containing LaTeX that could benefit from rich text format
+    // Patterns: $...$ (inline math), $$...$$ (display math), \command{ (LaTeX commands)
+    const latexPattern = /\$[^$]+\$|\$\$[^$]+\$\$|\\[a-zA-Z]+\{/;
+    if (result.title && latexPattern.test(result.title) && !result.titleRich) {
+      deprecatedFields.push('title');
+    }
+    // Check for license needing migration (has slug but no URI)
+    if (result.license && !result.licenseUri) {
+      deprecatedFields.push('license');
+    }
+
+    const schemaHints =
+      deprecatedFields.length > 0
+        ? {
+            schemaVersion: '0.1.0',
+            deprecatedFields,
+            migrationAvailable: true,
+            migrationUrl: 'https://docs.chive.pub/guides/schema-migration',
+          }
+        : undefined;
+
     // Build the submission value in lexicon format
-    const response: OutputSchema = {
+    const response: OutputSchema & { _schemaHints?: typeof schemaHints } = {
       uri: result.uri,
       cid: result.cid,
+      ...(schemaHints && { _schemaHints: schemaHints }),
       value: {
         $type: 'pub.chive.eprint.submission',
         title: result.title,
