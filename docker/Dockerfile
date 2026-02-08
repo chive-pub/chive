@@ -47,7 +47,7 @@ RUN apk add --no-cache bash
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy source code and scripts
-COPY package.json pnpm-lock.yaml tsconfig.json ./
+COPY package.json pnpm-lock.yaml tsconfig.json tsconfig.build.json ./
 COPY src ./src
 COPY scripts ./scripts
 COPY lexicons ./lexicons
@@ -55,8 +55,8 @@ COPY lexicons ./lexicons
 # Generate lexicon types from JSON schemas
 RUN pnpm lexicons:generate
 
-# Build TypeScript to JavaScript
-RUN pnpm exec tsc --project tsconfig.json
+# Build TypeScript to JavaScript (use build config that excludes tests)
+RUN pnpm exec tsc --project tsconfig.build.json
 
 # Copy config files that TypeScript doesn't handle
 # Elasticsearch templates, ILM policies, and ingest pipelines
