@@ -119,27 +119,27 @@ export interface MigratableEprintRecord {
 const LICENSE_MAPPINGS: Record<string, LicenseMapping> = {
   'CC-BY-4.0': {
     slug: 'CC-BY-4.0',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-cc-by-4.0',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/fc58b045-e186-5081-b7eb-abc5c47ea8a3',
     displayName: 'Creative Commons Attribution 4.0',
   },
   'CC-BY-SA-4.0': {
     slug: 'CC-BY-SA-4.0',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-cc-by-sa-4.0',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/f841cd13-ec16-50c7-afa2-852f784ca28c',
     displayName: 'Creative Commons Attribution ShareAlike 4.0',
   },
   'CC0-1.0': {
     slug: 'CC0-1.0',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-cc0-1.0',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/509414c0-d77f-5053-a774-61fe1bf97dca',
     displayName: 'Creative Commons Zero 1.0',
   },
   MIT: {
     slug: 'MIT',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-mit',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/c8989feb-d5a7-587c-bb34-64c80013d5e3',
     displayName: 'MIT License',
   },
   'Apache-2.0': {
     slug: 'Apache-2.0',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-apache-2.0',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/bd157693-3e6f-5ae4-ac1a-c924e86efca3',
     displayName: 'Apache License 2.0',
   },
 };
@@ -373,7 +373,7 @@ export function migrateTitleToRichText(title: string): TitleRichItem[] {
  * const license = migrateLicenseToNode('CC-BY-4.0');
  * // Returns: {
  * //   licenseSlug: 'CC-BY-4.0',
- * //   licenseUri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-cc-by-4.0'
+ * //   licenseUri: 'at://did:plc:chive-governance/pub.chive.graph.node/fc58b045-e186-5081-b7eb-abc5c47ea8a3'
  * // }
  * ```
  */

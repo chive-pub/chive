@@ -24,14 +24,14 @@
  * @packageDocumentation
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, ReactRenderer, Editor } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import History from '@tiptap/extension-history';
 import Placeholder from '@tiptap/extension-placeholder';
-import Mention from '@tiptap/extension-mention';
+import Mention, { type MentionOptions } from '@tiptap/extension-mention';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import {
   Bold,
@@ -56,9 +56,13 @@ import { Toggle } from '@/components/ui/toggle';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/observability';
+import { api } from '@/lib/api/client';
 import type { SuggestionItem } from './suggestion-list';
 import { MentionList, TagList } from './suggestion-list';
 import { MarkdownPreviewPane } from './markdown-preview-pane';
+
+const editorLogger = logger.child({ component: 'markdown-editor' });
 
 // =============================================================================
 // TYPES
@@ -84,6 +88,8 @@ export interface MarkdownEditorProps {
   enablePreview?: boolean;
   /** Show toolbar */
   showToolbar?: boolean;
+  /** Show preview toggle without toolbar (useful when showToolbar=false) */
+  showPreviewToggle?: boolean;
   /** Additional CSS classes */
   className?: string;
   /** Whether to show LaTeX toolbar button */
@@ -135,6 +141,28 @@ function ToolbarButton({ onClick, disabled = false, tooltip, children }: Toolbar
 // =============================================================================
 // MARKDOWN INSERTION UTILITIES
 // =============================================================================
+
+/**
+ * Counts visible characters in markdown text, excluding syntax.
+ *
+ * @remarks
+ * Used for character limit validation to count only user-visible text.
+ */
+function countVisibleCharacters(markdown: string): number {
+  let text = markdown;
+  // Remove encoded mentions/tags - keep only label (strip @/# prefix from count)
+  text = text.replace(/\[@([^\]]+)\]\([^)]+\)/g, '@$1');
+  text = text.replace(/\[#([^\]]+)\]\([^)]+\)/g, '#$1');
+  // Remove standard markdown links - keep only label
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  // Remove formatting markers
+  text = text.replace(/\*\*\*(.+?)\*\*\*/g, '$1');
+  text = text.replace(/\*\*(.+?)\*\*/g, '$1');
+  text = text.replace(/\*(.+?)\*/g, '$1');
+  text = text.replace(/~~(.+?)~~/g, '$1');
+  text = text.replace(/`([^`]+)`/g, '$1');
+  return text.length;
+}
 
 /**
  * Inserts markdown syntax around selected text or at cursor.
@@ -200,6 +228,7 @@ function insertLinePrefix(editor: Editor, prefix: string): void {
 
 /**
  * Creates mention suggestion configuration for TipTap.
+ * @ mentions support both Bluesky users and object nodes from the knowledge graph.
  */
 function createMentionSuggestion(enabled: boolean) {
   if (!enabled) {
@@ -211,39 +240,121 @@ function createMentionSuggestion(enabled: boolean) {
     allowSpaces: false,
     startOfLine: false,
 
+    command: ({
+      editor,
+      range,
+      props,
+    }: {
+      editor: Editor;
+      range: { from: number; to: number };
+      props: {
+        id: string | null;
+        label: string | null;
+        itemType?: string;
+        subkind?: string;
+        uri?: string;
+      };
+    }) => {
+      // Guard against null id (shouldn't happen in practice)
+      if (!props.id || !props.label) return;
+
+      // Select the trigger text range, then insert to replace it
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(range)
+        .insertContent([
+          {
+            type: 'markdownMention',
+            attrs: {
+              id: props.id,
+              label: props.label,
+              itemType: props.itemType,
+              subkind: props.subkind,
+              uri: props.uri,
+            },
+          },
+          { type: 'text', text: ' ' },
+        ])
+        .run();
+    },
+
     items: async ({ query }: { query: string }): Promise<SuggestionItem[]> => {
+      editorLogger.debug('Mention items called', { query });
+
       if (!query || query.length < 1) {
         return [];
       }
 
-      try {
-        const response = await fetch(
-          `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=${encodeURIComponent(query)}&limit=8`
-        );
+      const results: SuggestionItem[] = [];
 
-        if (response.ok) {
-          const data = (await response.json()) as {
-            actors: Array<{
-              did: string;
-              handle: string;
-              displayName?: string;
-              avatar?: string;
-            }>;
-          };
-          return (
-            data.actors?.map((actor) => ({
-              id: actor.did,
-              label: actor.handle,
-              displayName: actor.displayName,
-              avatar: actor.avatar,
-            })) ?? []
-          );
-        }
-      } catch {
-        // Silently fail on network errors
+      // Fetch both Bluesky users and knowledge graph object nodes in parallel
+      const [usersResult, nodesResult] = await Promise.allSettled([
+        // Fetch Bluesky users
+        fetch(
+          `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=${encodeURIComponent(query)}&limit=5`
+        ).then(async (response) => {
+          if (response.ok) {
+            const data = (await response.json()) as {
+              actors: Array<{
+                did: string;
+                handle: string;
+                displayName?: string;
+                avatar?: string;
+              }>;
+            };
+            return data.actors ?? [];
+          }
+          return [];
+        }),
+
+        // Fetch knowledge graph object nodes (institutions, people, etc.)
+        api.pub.chive.graph
+          .searchNodes({
+            query,
+            kind: 'object',
+            status: 'established',
+            limit: 5,
+          })
+          .then((response) => response.data.nodes ?? []),
+      ]);
+
+      // Add users to results
+      if (usersResult.status === 'fulfilled') {
+        results.push(
+          ...usersResult.value.map((actor) => ({
+            id: actor.did,
+            label: actor.handle,
+            displayName: actor.displayName,
+            avatar: actor.avatar,
+            itemType: 'user' as const,
+          }))
+        );
+        editorLogger.debug('Mention actors received', { count: usersResult.value.length });
+      } else {
+        editorLogger.error('Mention user fetch failed', { error: usersResult.reason });
       }
 
-      return [];
+      // Add graph nodes to results
+      if (nodesResult.status === 'fulfilled') {
+        results.push(
+          ...nodesResult.value.map((node) => ({
+            id: node.id,
+            label: node.label,
+            displayName: node.label,
+            itemType: 'node' as const,
+            kind: node.kind as 'type' | 'object',
+            subkind: node.subkind,
+            uri: node.uri,
+            description: node.description,
+          }))
+        );
+        editorLogger.debug('Mention nodes received', { count: nodesResult.value.length });
+      } else {
+        editorLogger.error('Mention node fetch failed', { error: nodesResult.reason });
+      }
+
+      return results;
     },
 
     render: () => {
@@ -253,16 +364,29 @@ function createMentionSuggestion(enabled: boolean) {
       return {
         onStart: (props: {
           clientRect?: (() => DOMRect | null) | null;
-          command: (item: { id: string; label: string }) => void;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
           editor: Editor;
         }) => {
+          editorLogger.debug('Mention suggestion started', { itemCount: props.items.length });
           component = new ReactRenderer(MentionList, {
             props: {
               items: props.items,
               command: (item: SuggestionItem) => {
-                // Insert the markdown mention text
-                props.command({ id: item.id, label: item.label });
+                // Insert the markdown mention text with metadata
+                props.command({
+                  id: item.id,
+                  label: item.label,
+                  itemType: item.itemType,
+                  subkind: item.subkind,
+                  uri: item.uri,
+                });
               },
             },
             editor: props.editor,
@@ -281,15 +405,33 @@ function createMentionSuggestion(enabled: boolean) {
             interactive: true,
             trigger: 'manual',
             placement: 'bottom-start',
+            hideOnClick: false,
           });
         },
 
         onUpdate: (props: {
           clientRect?: (() => DOMRect | null) | null;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
         }) => {
+          // Update both items AND command - command contains the updated range
           component?.updateProps({
             items: props.items,
+            command: (item: SuggestionItem) => {
+              props.command({
+                id: item.id,
+                label: item.label,
+                itemType: item.itemType,
+                subkind: item.subkind,
+                uri: item.uri,
+              });
+            },
           });
 
           if (!props.clientRect) return;
@@ -326,6 +468,7 @@ function createMentionSuggestion(enabled: boolean) {
 
 /**
  * Creates tag suggestion configuration for TipTap.
+ * # tags support both knowledge graph type nodes (fields, facets) and plain tags.
  */
 function createTagSuggestion(enabled: boolean) {
   if (!enabled) {
@@ -337,19 +480,82 @@ function createTagSuggestion(enabled: boolean) {
     allowSpaces: false,
     startOfLine: false,
 
+    command: ({
+      editor,
+      range,
+      props,
+    }: {
+      editor: Editor;
+      range: { from: number; to: number };
+      props: { id: string | null; label: string | null; itemType?: string; subkind?: string };
+    }) => {
+      // Guard against null id (shouldn't happen in practice)
+      if (!props.id || !props.label) return;
+
+      // Select the trigger text range, then insert to replace it
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(range)
+        .insertContent([
+          {
+            type: 'markdownTag',
+            attrs: {
+              id: props.id,
+              label: props.label,
+              itemType: props.itemType,
+              subkind: props.subkind,
+            },
+          },
+          { type: 'text', text: ' ' },
+        ])
+        .run();
+    },
+
     items: async ({ query }: { query: string }): Promise<SuggestionItem[]> => {
+      editorLogger.debug('Tag items called', { query });
+
       if (!query || query.length < 1) {
         return [];
       }
 
-      // For tags, we could query a tag API or just return the typed query as a suggestion
-      // For now, return the query itself as the primary suggestion
-      return [
-        {
-          id: query.toLowerCase(),
-          label: query.toLowerCase(),
-        },
-      ];
+      const results: SuggestionItem[] = [];
+
+      // Fetch knowledge graph type nodes (fields, facets, topics, etc.)
+      try {
+        const response = await api.pub.chive.graph.searchNodes({
+          query,
+          kind: 'type',
+          status: 'established',
+          limit: 8,
+        });
+
+        if (response.data.nodes) {
+          results.push(
+            ...response.data.nodes.map((node) => ({
+              id: node.id,
+              label: node.label,
+              itemType: 'node' as const,
+              kind: node.kind as 'type' | 'object',
+              subkind: node.subkind,
+              uri: node.uri,
+              description: node.description,
+            }))
+          );
+          editorLogger.debug('Tag nodes received', { count: response.data.nodes.length });
+        }
+      } catch (err) {
+        editorLogger.error('Tag node fetch failed', { error: err });
+      }
+
+      // Always add the typed query as a plain tag option at the end
+      results.push({
+        id: query.toLowerCase(),
+        label: query.toLowerCase(),
+        itemType: 'tag' as const,
+      });
+
+      return results;
     },
 
     render: () => {
@@ -359,15 +565,28 @@ function createTagSuggestion(enabled: boolean) {
       return {
         onStart: (props: {
           clientRect?: (() => DOMRect | null) | null;
-          command: (item: { id: string; label: string }) => void;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
           editor: Editor;
         }) => {
+          editorLogger.debug('Tag suggestion started', { itemCount: props.items.length });
           component = new ReactRenderer(TagList, {
             props: {
               items: props.items,
               command: (item: SuggestionItem) => {
-                props.command({ id: item.id, label: item.label });
+                // Insert the markdown tag with metadata
+                props.command({
+                  id: item.id,
+                  label: item.label,
+                  itemType: item.itemType,
+                  subkind: item.subkind,
+                });
               },
             },
             editor: props.editor,
@@ -386,15 +605,32 @@ function createTagSuggestion(enabled: boolean) {
             interactive: true,
             trigger: 'manual',
             placement: 'bottom-start',
+            hideOnClick: false,
           });
         },
 
         onUpdate: (props: {
           clientRect?: (() => DOMRect | null) | null;
+          command: (item: {
+            id: string;
+            label: string;
+            itemType?: string;
+            subkind?: string;
+            uri?: string;
+          }) => void;
           items: SuggestionItem[];
         }) => {
+          // Update both items AND command - command contains the updated range
           component?.updateProps({
             items: props.items,
+            command: (item: SuggestionItem) => {
+              props.command({
+                id: item.id,
+                label: item.label,
+                itemType: item.itemType,
+                subkind: item.subkind,
+              });
+            },
           });
 
           if (!props.clientRect) return;
@@ -434,6 +670,7 @@ function createTagSuggestion(enabled: boolean) {
 
 /**
  * Custom mention extension that outputs plain markdown text instead of nodes.
+ * Encodes metadata for chip rendering in preview.
  */
 const MarkdownMention = Mention.extend({
   name: 'markdownMention',
@@ -442,6 +679,9 @@ const MarkdownMention = Mention.extend({
     return {
       id: { default: null },
       label: { default: null },
+      itemType: { default: null },
+      subkind: { default: null },
+      uri: { default: null },
     };
   },
 
@@ -451,12 +691,19 @@ const MarkdownMention = Mention.extend({
   },
 
   renderText({ node }) {
+    // Encode metadata in markdown link format for parsing in preview
+    if (node.attrs.itemType === 'user') {
+      return `[@${node.attrs.label}](user:${node.attrs.id})`;
+    } else if (node.attrs.itemType === 'node') {
+      return `[@${node.attrs.label}](node:${node.attrs.id}#${node.attrs.subkind || 'default'})`;
+    }
     return `@${node.attrs.label}`;
   },
 });
 
 /**
  * Custom tag extension that outputs plain markdown text instead of nodes.
+ * Encodes metadata for chip rendering in preview.
  */
 const MarkdownTag = Mention.extend({
   name: 'markdownTag',
@@ -465,6 +712,8 @@ const MarkdownTag = Mention.extend({
     return {
       id: { default: null },
       label: { default: null },
+      itemType: { default: null },
+      subkind: { default: null },
     };
   },
 
@@ -473,6 +722,10 @@ const MarkdownTag = Mention.extend({
   },
 
   renderText({ node }) {
+    // Encode metadata in markdown link format for parsing in preview
+    if (node.attrs.itemType === 'node') {
+      return `[#${node.attrs.label}](type:${node.attrs.id}#${node.attrs.subkind || 'default'})`;
+    }
     return `#${node.attrs.label}`;
   },
 });
@@ -493,6 +746,7 @@ export function MarkdownEditor({
   minHeight = '150px',
   enablePreview = true,
   showToolbar = true,
+  showPreviewToggle = false,
   className,
   enableLatex = true,
   enableMentions = true,
@@ -505,40 +759,46 @@ export function MarkdownEditor({
   const [isMounted, setIsMounted] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
-  // Build extensions array
-  const extensions = [
-    Document,
-    Paragraph,
-    Text,
-    History,
-    Placeholder.configure({
-      placeholder,
-    }),
-  ];
+  // Build extensions array - memoized to prevent re-creation on every render
+  const extensions = useMemo(() => {
+    const exts = [
+      Document,
+      Paragraph,
+      Text,
+      History,
+      Placeholder.configure({
+        placeholder,
+      }),
+    ];
 
-  // Add mention extension if enabled
-  if (enableMentions) {
-    const mentionSuggestion = createMentionSuggestion(true);
-    if (mentionSuggestion) {
-      extensions.push(
-        MarkdownMention.configure({
-          suggestion: mentionSuggestion,
-        })
-      );
+    // Add mention extension if enabled
+    if (enableMentions) {
+      const mentionSuggestion = createMentionSuggestion(true);
+      if (mentionSuggestion) {
+        exts.push(
+          MarkdownMention.configure({
+            // Type assertion needed because our custom suggestion props extend the base type
+            suggestion: mentionSuggestion as MentionOptions['suggestion'],
+          })
+        );
+      }
     }
-  }
 
-  // Add tag extension if enabled
-  if (enableTags) {
-    const tagSuggestion = createTagSuggestion(true);
-    if (tagSuggestion) {
-      extensions.push(
-        MarkdownTag.configure({
-          suggestion: tagSuggestion,
-        })
-      );
+    // Add tag extension if enabled
+    if (enableTags) {
+      const tagSuggestion = createTagSuggestion(true);
+      if (tagSuggestion) {
+        exts.push(
+          MarkdownTag.configure({
+            // Type assertion needed because our custom suggestion props extend the base type
+            suggestion: tagSuggestion as MentionOptions['suggestion'],
+          })
+        );
+      }
     }
-  }
+
+    return exts;
+  }, [placeholder, enableMentions, enableTags]);
 
   // Initialize TipTap editor for plaintext
   const editor = useEditor({
@@ -680,8 +940,8 @@ export function MarkdownEditor({
     }
   }, [editor]);
 
-  // Calculate character count
-  const charCount = value?.length || 0;
+  // Calculate character count (visible characters only, excluding markdown syntax)
+  const charCount = value ? countVisibleCharacters(value) : 0;
   const isOverLimit = maxLength !== undefined && charCount > maxLength;
 
   // Don't render editor on server
@@ -840,7 +1100,13 @@ export function MarkdownEditor({
 
             {/* Preview toggle */}
             {enablePreview && (
-              <Button variant="ghost" size="sm" onClick={togglePreview} className="gap-1 h-8">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={togglePreview}
+                className="gap-1 h-8"
+              >
                 {isPreviewMode ? (
                   <>
                     <Edit3 className="h-4 w-4" />
@@ -854,6 +1120,31 @@ export function MarkdownEditor({
                 )}
               </Button>
             )}
+          </div>
+        )}
+
+        {/* Standalone preview toggle when toolbar is hidden */}
+        {!showToolbar && showPreviewToggle && enablePreview && (
+          <div className="flex items-center justify-end border-b px-2 py-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={togglePreview}
+              className="gap-1 h-8"
+            >
+              {isPreviewMode ? (
+                <>
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Preview
+                </>
+              )}
+            </Button>
           </div>
         )}
 

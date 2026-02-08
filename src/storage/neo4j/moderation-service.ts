@@ -99,15 +99,15 @@ export interface ConsensusConfig {
  *
  * // Cast a vote
  * await modService.castVote({
- *   proposalUri: 'at://did:plc:gov/pub.chive.graph.proposal/123',
- *   voterDid: 'did:plc:user',
+ *   proposalUri: 'at://did:plc:graph-pds/pub.chive.graph.proposal/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6',
+ *   voterDid: 'did:plc:example',
  *   vote: 'approve',
  *   rationale: 'Well-researched proposal with strong evidence'
  * });
  *
  * // Check consensus
  * const summary = await modService.getVotingSummary(
- *   'at://did:plc:gov/pub.chive.graph.proposal/123'
+ *   'at://did:plc:graph-pds/pub.chive.graph.proposal/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6'
  * );
  * console.log(`Consensus: ${summary.consensusReached}`);
  * ```
@@ -153,8 +153,8 @@ export class ModerationService {
    * @example
    * ```typescript
    * const voteId = await modService.castVote({
-   *   proposalUri: 'at://did:plc:gov/pub.chive.graph.proposal/123',
-   *   voterDid: 'did:plc:user',
+   *   proposalUri: 'at://did:plc:graph-pds/pub.chive.graph.proposal/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6',
+   *   voterDid: 'did:plc:example',
    *   vote: 'approve',
    *   rationale: 'Strong bibliometric evidence supports this field structure'
    * });
@@ -574,7 +574,7 @@ export class ModerationService {
    * ```typescript
    * // Promote user to trusted editor
    * await modService.updateUserRole(
-   *   'did:plc:user',
+   *   'did:plc:example',
    *   'trusted-editor',
    *   2.0
    * );
@@ -680,8 +680,8 @@ export class ModerationService {
    *
    * @example
    * ```typescript
-   * await modService.awardBadge('did:plc:user', 'helpful-reviewer');
-   * await modService.awardBadge('did:plc:user', 'consensus-builder');
+   * await modService.awardBadge('did:plc:example', 'helpful-reviewer');
+   * await modService.awardBadge('did:plc:example', 'consensus-builder');
    * ```
    */
   async awardBadge(did: DID, badge: string): Promise<void> {

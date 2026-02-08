@@ -21,7 +21,7 @@
  */
 
 import Link from 'next/link';
-import { Share2 } from 'lucide-react';
+import { Share2, Pencil, Trash2 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +58,15 @@ export interface EndorsementListProps {
   /** Callback when share button is clicked for an endorsement */
   onShareEndorsement?: (endorsement: Endorsement) => void;
 
+  /** Callback when edit button is clicked for an endorsement */
+  onEditEndorsement?: (endorsement: Endorsement) => void;
+
+  /** Callback when delete button is clicked for an endorsement */
+  onDeleteEndorsement?: (endorsement: Endorsement) => void;
+
+  /** Current user's DID for ownership checks */
+  currentUserDid?: string;
+
   /** Additional CSS classes */
   className?: string;
 }
@@ -80,6 +89,15 @@ export interface EndorsementItemProps {
 
   /** Callback when share button is clicked */
   onShare?: () => void;
+
+  /** Callback when edit button is clicked */
+  onEdit?: () => void;
+
+  /** Callback when delete button is clicked */
+  onDelete?: () => void;
+
+  /** Whether the current user owns this endorsement */
+  isOwner?: boolean;
 
   /** Additional CSS classes */
   className?: string;
@@ -115,6 +133,9 @@ export function EndorsementItem({
   variant = 'list',
   maxBadges = 3,
   onShare,
+  onEdit,
+  onDelete,
+  isOwner = false,
   className,
 }: EndorsementItemProps) {
   const isCompact = variant === 'compact';
@@ -198,6 +219,30 @@ export function EndorsementItem({
               aria-label="Share endorsement"
             >
               <Share2 className="h-3 w-3" />
+            </Button>
+          )}
+
+          {isOwner && onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={onEdit}
+              aria-label="Edit endorsement"
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          )}
+
+          {isOwner && onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+              onClick={onDelete}
+              aria-label="Delete endorsement"
+            >
+              <Trash2 className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -300,6 +345,9 @@ export function EndorsementList({
   showComments = true,
   variant = 'list',
   onShareEndorsement,
+  onEditEndorsement,
+  onDeleteEndorsement,
+  currentUserDid,
   className,
 }: EndorsementListProps) {
   // Filter by contribution type if specified
@@ -338,6 +386,9 @@ export function EndorsementList({
           showComment={showComments}
           variant={variant === 'compact' ? 'compact' : 'list'}
           onShare={onShareEndorsement ? () => onShareEndorsement(endorsement) : undefined}
+          onEdit={onEditEndorsement ? () => onEditEndorsement(endorsement) : undefined}
+          onDelete={onDeleteEndorsement ? () => onDeleteEndorsement(endorsement) : undefined}
+          isOwner={currentUserDid === endorsement.endorser.did}
         />
       ))}
 

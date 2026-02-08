@@ -351,7 +351,7 @@ See [PDS Discovery](./services/pds-discovery.md) for detailed documentation.
 
 ## ReviewService
 
-Indexes reviews and endorsements with support for threaded discussions. ReviewService uses generated lexicon types with runtime validation (see [Lexicon type validation](./lexicon-type-validation.md) for the pattern).
+Indexes reviews and endorsements with support for threaded discussions and soft deletion. ReviewService uses generated lexicon types with runtime validation (see [Lexicon type validation](./lexicon-type-validation.md) for the pattern).
 
 ### Type imports
 
@@ -405,6 +405,32 @@ const endorsement: Endorsement = {
 
 await service.indexEndorsement(endorsement, metadata);
 ```
+
+### Soft deletion
+
+Reviews support soft deletion to preserve thread integrity while hiding content. The `deleted` field indicates whether a review has been soft-deleted:
+
+```typescript
+// Check if review is deleted
+if (review.deleted) {
+  // Show "[deleted]" placeholder instead of content
+}
+
+// The API response includes the deleted flag
+interface ReviewResponse {
+  uri: string;
+  author: AuthorView;
+  record: ReviewRecord;
+  deleted: boolean; // true if soft-deleted
+  indexedAt: string;
+}
+```
+
+Soft-deleted reviews:
+
+- Remain in the thread structure to preserve reply context
+- Have their content hidden from display
+- Can be identified by the `deleted: true` flag in API responses
 
 ### Threading with ThreadingHandler
 
@@ -859,6 +885,21 @@ await service.sendBatch([
 
 Manages the knowledge graph nodes, edges, and governance proposals.
 
+### Terminology
+
+The knowledge graph uses "node" as the universal term for all graph entities. Node types are distinguished by their `kind` and `subkind` properties:
+
+| Kind     | Subkind            | Description                    |
+| -------- | ------------------ | ------------------------------ |
+| `type`   | `endorsement-kind` | Endorsement contribution types |
+| `type`   | `license`          | License types                  |
+| `type`   | `methodology`      | Research methodologies         |
+| `type`   | `paper-type`       | Paper types                    |
+| `object` | `field`            | Academic fields                |
+| `object` | `institution`      | Research institutions          |
+| `object` | `author`           | Individual researchers         |
+| `object` | `eprint`           | Eprint nodes                   |
+
 ### Node operations
 
 ```typescript
@@ -909,7 +950,8 @@ const edgeProposal = await service.createEdgeProposal({
   proposalType: 'create',
   proposedEdge: {
     sourceUri: nodeProposal.uri,
-    targetUri: 'at://did:plc:chive-governance/pub.chive.graph.node/cs.AI',
+    targetUri:
+      'at://did:plc:chive-governance/pub.chive.graph.node/726c5017-723e-5ae5-a1e2-f12e636eb709',
     relationSlug: 'broader',
   },
   rationale: 'QML is a subfield of AI',

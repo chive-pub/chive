@@ -46,6 +46,7 @@ import type { ConnectionOptions } from 'bullmq';
 import type { EventEmitter2 as EventEmitter2Type } from 'eventemitter2';
 
 import type { AtUri } from '../types/atproto.js';
+import { APIError } from '../types/errors.js';
 import type {
   IDiscoveryService,
   EnrichmentResult,
@@ -338,7 +339,7 @@ export class EnrichmentWorker {
     });
 
     if (!result.success) {
-      throw new Error(result.error ?? 'Enrichment failed');
+      throw new APIError(result.error ?? 'Enrichment failed', undefined, 'enrichment');
     }
 
     return result;

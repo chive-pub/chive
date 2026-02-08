@@ -111,7 +111,8 @@ describe('Pre-Deployment Service Verification', () => {
       const mapping = await esClient.indices.getMapping({ index: 'eprints' });
       const indexName = Object.keys(mapping)[0] as string | undefined;
       expect(indexName).toBeDefined();
-      const fieldNodesMapping = mapping[indexName!]?.mappings?.properties?.field_nodes as
+      if (!indexName) throw new Error('No index found in mapping');
+      const fieldNodesMapping = mapping[indexName]?.mappings?.properties?.field_nodes as
         | { type: string; properties?: Record<string, { type: string }> }
         | undefined;
 

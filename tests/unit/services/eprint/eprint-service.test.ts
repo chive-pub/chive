@@ -87,6 +87,7 @@ const createMockGraph = () => ({
   calculateConsensus: vi.fn(),
   createProposal: vi.fn(),
   deleteNode: vi.fn(),
+  getFieldAncestors: vi.fn().mockResolvedValue(new Map()),
 });
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -201,16 +202,24 @@ describe('EprintService', () => {
 
       it('resolves field labels from knowledge graph when fields are present', async () => {
         const fields = [
-          { uri: 'field-uuid-1', label: 'field-uuid-1', id: 'field-uuid-1' },
-          { uri: 'field-uuid-2', label: 'field-uuid-2', id: 'field-uuid-2' },
+          {
+            uri: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            label: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+          },
+          {
+            uri: 'f8a9b0c1-d2e3-4567-8901-bcdef1234567',
+            label: 'f8a9b0c1-d2e3-4567-8901-bcdef1234567',
+            id: 'f8a9b0c1-d2e3-4567-8901-bcdef1234567',
+          },
         ];
         const eprint = createMockEprint({ fields });
         const metadata = createMockMetadata();
 
         // Mock graph to return resolved labels
         const nodeMap = new Map<string, GraphNode>();
-        nodeMap.set('field-uuid-1', {
-          id: 'field-uuid-1',
+        nodeMap.set('e7f8a9b0-c1d2-3456-7890-abcdef123456', {
+          id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
           uri: 'at://graph/field/1' as AtUri,
           kind: 'type',
           subkind: 'field',
@@ -218,8 +227,8 @@ describe('EprintService', () => {
           status: 'established',
           createdAt: new Date(),
         });
-        nodeMap.set('field-uuid-2', {
-          id: 'field-uuid-2',
+        nodeMap.set('f8a9b0c1-d2e3-4567-8901-bcdef1234567', {
+          id: 'f8a9b0c1-d2e3-4567-8901-bcdef1234567',
           uri: 'at://graph/field/2' as AtUri,
           kind: 'type',
           subkind: 'field',
@@ -232,37 +241,48 @@ describe('EprintService', () => {
         const result = await service.indexEprint(eprint, metadata);
 
         expect(result.ok).toBe(true);
-        expect(graph.getNodesByIds).toHaveBeenCalledWith(['field-uuid-1', 'field-uuid-2'], 'field');
+        expect(graph.getNodesByIds).toHaveBeenCalledWith(
+          ['e7f8a9b0-c1d2-3456-7890-abcdef123456', 'f8a9b0c1-d2e3-4567-8901-bcdef1234567'],
+          'field'
+        );
 
         // Verify storeEprint was called with resolved labels (URIs normalized)
         expect(storage.storeEprint).toHaveBeenCalledTimes(1);
         const storeCall = storage.storeEprint.mock.calls[0]?.[0] as { fields: unknown };
         expect(storeCall.fields).toEqual([
           {
-            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-1',
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/e7f8a9b0-c1d2-3456-7890-abcdef123456',
             label: 'Computational Linguistics',
-            id: 'field-uuid-1',
+            id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
           },
           {
-            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-2',
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/f8a9b0c1-d2e3-4567-8901-bcdef1234567',
             label: 'Natural Language Processing',
-            id: 'field-uuid-2',
+            id: 'f8a9b0c1-d2e3-4567-8901-bcdef1234567',
           },
         ]);
       });
 
       it('falls back to URI as label when field not found in graph', async () => {
         const fields = [
-          { uri: 'field-uuid-1', label: 'field-uuid-1', id: 'field-uuid-1' },
-          { uri: 'field-uuid-unknown', label: 'field-uuid-unknown', id: 'field-uuid-unknown' },
+          {
+            uri: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            label: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+          },
+          {
+            uri: 'a9b0c1d2-e3f4-5678-9012-cdef12345678',
+            label: 'a9b0c1d2-e3f4-5678-9012-cdef12345678',
+            id: 'a9b0c1d2-e3f4-5678-9012-cdef12345678',
+          },
         ];
         const eprint = createMockEprint({ fields });
         const metadata = createMockMetadata();
 
         // Mock graph to return only one field
         const nodeMap = new Map<string, GraphNode>();
-        nodeMap.set('field-uuid-1', {
-          id: 'field-uuid-1',
+        nodeMap.set('e7f8a9b0-c1d2-3456-7890-abcdef123456', {
+          id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
           uri: 'at://graph/field/1' as AtUri,
           kind: 'type',
           subkind: 'field',
@@ -270,7 +290,7 @@ describe('EprintService', () => {
           status: 'established',
           createdAt: new Date(),
         });
-        // field-uuid-unknown is NOT in the map
+        // a9b0c1d2-e3f4-5678-9012-cdef12345678 is NOT in the map
         graph.getNodesByIds.mockResolvedValue(nodeMap);
 
         const result = await service.indexEprint(eprint, metadata);
@@ -282,20 +302,26 @@ describe('EprintService', () => {
         const storeCall = storage.storeEprint.mock.calls[0]?.[0] as { fields: unknown };
         expect(storeCall.fields).toEqual([
           {
-            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-1',
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/e7f8a9b0-c1d2-3456-7890-abcdef123456',
             label: 'Computational Linguistics',
-            id: 'field-uuid-1',
+            id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
           },
           {
-            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-unknown',
-            label: 'field-uuid-unknown',
-            id: 'field-uuid-unknown',
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/a9b0c1d2-e3f4-5678-9012-cdef12345678',
+            label: 'a9b0c1d2-e3f4-5678-9012-cdef12345678',
+            id: 'a9b0c1d2-e3f4-5678-9012-cdef12345678',
           },
         ]);
       });
 
       it('handles graph errors gracefully and falls back to URIs', async () => {
-        const fields = [{ uri: 'field-uuid-1', label: 'field-uuid-1', id: 'field-uuid-1' }];
+        const fields = [
+          {
+            uri: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            label: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+          },
+        ];
         const eprint = createMockEprint({ fields });
         const metadata = createMockMetadata();
 
@@ -315,9 +341,9 @@ describe('EprintService', () => {
         const storeCall = storage.storeEprint.mock.calls[0]?.[0] as { fields: unknown };
         expect(storeCall.fields).toEqual([
           {
-            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/field-uuid-1',
-            label: 'field-uuid-1',
-            id: 'field-uuid-1',
+            uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            label: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
           },
         ]);
       });
@@ -334,7 +360,13 @@ describe('EprintService', () => {
           // no graph
         });
 
-        const fields = [{ uri: 'field-uuid-1', label: 'field-uuid-1', id: 'field-uuid-1' }];
+        const fields = [
+          {
+            uri: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            label: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+            id: 'e7f8a9b0-c1d2-3456-7890-abcdef123456',
+          },
+        ];
         const eprint = createMockEprint({ fields });
         const metadata = createMockMetadata();
 

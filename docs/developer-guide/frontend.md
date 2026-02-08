@@ -232,12 +232,17 @@ import { SearchInputWithParams } from '@/components/search/search-input';
 
 Located in `components/knowledge-graph/`:
 
-| Component            | Description                    |
-| -------------------- | ------------------------------ |
-| `FieldCard`          | Field node display with stats  |
-| `FieldExternalIds`   | Links to Wikidata, LCSH, etc.  |
-| `FieldEprints`       | Eprints in a field             |
-| `FieldRelationships` | Broader/narrower/related terms |
+| Component              | Description                      |
+| ---------------------- | -------------------------------- |
+| `FieldCard`            | Field node display with stats    |
+| `FieldHierarchy`       | Hierarchical field tree view     |
+| `NodeExternalIds`      | Links to Wikidata, LCSH, etc.    |
+| `FieldEprints`         | Eprints in a field               |
+| `FieldRelationships`   | Broader/narrower/related terms   |
+| `NodeSearch`           | Search for knowledge graph nodes |
+| `KnowledgeGraphViewer` | Interactive graph visualization  |
+
+The `KnowledgeGraphViewer` supports pagination for large graphs to prevent performance issues.
 
 ### Endorsement components
 
@@ -269,16 +274,18 @@ import { EndorsementPanel } from '@/components/endorsements/endorsement-panel';
 
 Located in `components/reviews/`:
 
-| Component                | Description                             |
-| ------------------------ | --------------------------------------- |
-| `ReviewForm`             | Create/edit review with character count |
-| `InlineReplyForm`        | Compact reply form                      |
-| `ReviewList`             | Paginated reviews                       |
-| `ReviewThread`           | Threaded discussion display             |
-| `ReviewCard`             | Single review with actions              |
-| `AnnotationBodyRenderer` | Renders annotation content              |
-| `TargetSpanPreview`      | Shows selected text being annotated     |
-| `ParentReviewPreview`    | Shows parent review when replying       |
+| Component                | Description                                    |
+| ------------------------ | ---------------------------------------------- |
+| `ReviewForm`             | Create/edit review with character count        |
+| `InlineReplyForm`        | Compact reply form                             |
+| `ReviewList`             | Paginated reviews                              |
+| `ReviewThread`           | Threaded discussion display                    |
+| `ReviewCard`             | Single review with actions                     |
+| `AnnotationBodyRenderer` | Renders annotation content                     |
+| `TargetSpanPreview`      | Shows selected text being annotated            |
+| `ParentReviewPreview`    | Shows parent review when replying              |
+| `DeleteReviewDialog`     | Confirmation dialog for soft-deleting a review |
+| `DocumentLocationCard`   | Shows annotation context in document           |
 
 Example:
 
@@ -305,6 +312,46 @@ Located in `components/tags/`:
 | `TagCloud` | Tag visualization by frequency |
 | `TagInput` | Autocomplete tag entry         |
 | `TagList`  | Horizontal tag list            |
+
+### Form components
+
+Located in `components/forms/`:
+
+| Component                  | Description                                     |
+| -------------------------- | ----------------------------------------------- |
+| `NodeAutocomplete`         | Flexible autocomplete for knowledge graph nodes |
+| `FieldSearch`              | Search and select academic fields               |
+| `CreditAutocomplete`       | Select contribution credit types                |
+| `ConferenceAutocomplete`   | Search conferences                              |
+| `JournalAutocomplete`      | Search journals                                 |
+| `FunderAutocomplete`       | Search funders/funding bodies                   |
+| `DOIAutocomplete`          | Search by DOI                                   |
+| `LocationAutocomplete`     | Geographic location search                      |
+| `EprintAuthorEditor`       | Edit author metadata                            |
+| `ContributionTypeSelector` | Select contribution types for endorsements      |
+
+The `NodeAutocomplete` component is the primary autocomplete for governance-controlled nodes. It supports filtering by `kind` and `subkind`:
+
+```tsx
+import { NodeAutocomplete } from '@/components/forms/node-autocomplete';
+
+// Select a license
+<NodeAutocomplete
+  kind="object"
+  subkind="license"
+  label="License"
+  value={selectedLicenseUri}
+  onSelect={(node) => setValue('licenseUri', node.uri)}
+/>
+
+// Select an endorsement type
+<NodeAutocomplete
+  kind="type"
+  subkind="endorsement-kind"
+  label="Contribution Type"
+  onSelect={(node) => setContributionType(node)}
+/>
+```
 
 ### Editor components
 

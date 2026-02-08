@@ -66,19 +66,66 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     const hasMore = offset + results.eprints.length < results.total;
 
+    // Collect all unique author DIDs that need avatar fetching
+    const allAuthorDids = new Set<string>();
+    for (const p of results.eprints) {
+      for (const author of p.authors ?? []) {
+        if (author.did && !author.avatarUrl) {
+          allAuthorDids.add(author.did);
+        }
+      }
+    }
+
+    // Fetch avatars from Bluesky API
+    const avatarMap = new Map<string, { handle?: string; avatar?: string }>();
+    if (allAuthorDids.size > 0) {
+      const dids = Array.from(allAuthorDids);
+      const batchSize = 25;
+      for (let i = 0; i < dids.length; i += batchSize) {
+        const batch = dids.slice(i, i + batchSize);
+        try {
+          const urlParams = new URLSearchParams();
+          for (const did of batch) {
+            urlParams.append('actors', did);
+          }
+          const profileResponse = await fetch(
+            `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${urlParams.toString()}`,
+            {
+              headers: { Accept: 'application/json' },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
+
+          if (profileResponse.ok) {
+            const data = (await profileResponse.json()) as {
+              profiles: { did: string; handle?: string; avatar?: string }[];
+            };
+            for (const profile of data.profiles) {
+              avatarMap.set(profile.did, { handle: profile.handle, avatar: profile.avatar });
+            }
+          }
+        } catch {
+          // Silently ignore avatar fetch failures
+        }
+      }
+    }
+
     const response: OutputSchema = {
       eprints: results.eprints.map((p) => ({
         uri: p.uri,
         cid: p.cid,
         title: p.title,
         abstract: p.abstractPlainText,
-        authors: (p.authors ?? []).map((author) => ({
-          // Only include did if it's a valid DID (not empty string)
-          ...(author.did ? { did: author.did } : {}),
-          handle: author.handle,
-          displayName: author.name,
-          avatarUrl: author.avatarUrl,
-        })),
+        authors: (p.authors ?? []).map((author) => {
+          const profile = author.did ? avatarMap.get(author.did) : undefined;
+          return {
+            // Only include did if it's a valid DID (not empty string)
+            ...(author.did ? { did: author.did } : {}),
+            handle: author.handle ?? profile?.handle,
+            displayName: author.name,
+            avatarUrl: author.avatarUrl ?? profile?.avatar,
+          };
+        }),
         fields: p.fields?.map((f) => ({
           uri: normalizeFieldUri(f.uri),
           label: f.label,

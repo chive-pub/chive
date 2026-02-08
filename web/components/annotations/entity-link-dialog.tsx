@@ -132,7 +132,7 @@ export function EntityLinkDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={cn('sm:max-w-lg', className)}>
+      <DialogContent className={cn('sm:max-w-lg overflow-hidden', className)}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5" />
@@ -143,7 +143,7 @@ export function EntityLinkDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 w-full min-w-0 px-0.5">
           {/* Search input */}
           <div className="space-y-2">
             <Label htmlFor="entity-search">Search</Label>
@@ -174,21 +174,25 @@ export function EntityLinkDialog({
 
             <TabsContent
               value="wikidata"
-              className="mt-4 max-h-[250px] overflow-y-auto border rounded-md"
+              className="mt-4 max-h-[250px] w-full overflow-y-auto overflow-x-hidden border rounded-md"
             >
-              <WikidataSearch query={query} onSelect={handleWikidataSelect} />
+              <div className="w-full overflow-hidden">
+                <WikidataSearch query={query} onSelect={handleWikidataSelect} />
+              </div>
             </TabsContent>
 
             <TabsContent
               value="graph"
-              className="mt-4 max-h-[250px] overflow-y-auto border rounded-md"
+              className="mt-4 max-h-[250px] w-full overflow-y-auto overflow-x-hidden border rounded-md"
             >
-              <NodeSearch
-                query={query}
-                onSelect={handleNodeSelect}
-                showSubkind
-                emptyMessage="No nodes found. Try a different search term."
-              />
+              <div className="w-full overflow-hidden [&_.flex-wrap]:flex-nowrap [&_span.truncate]:flex-1 [&_span.truncate]:min-w-0">
+                <NodeSearch
+                  query={query}
+                  onSelect={handleNodeSelect}
+                  showSubkind
+                  emptyMessage="No nodes found. Try a different search term."
+                />
+              </div>
             </TabsContent>
           </Tabs>
 

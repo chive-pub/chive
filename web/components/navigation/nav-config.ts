@@ -20,7 +20,6 @@ import {
   TrendingUp,
   Tag,
   Vote,
-  Info,
   MessageCircle,
 } from 'lucide-react';
 

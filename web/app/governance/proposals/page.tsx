@@ -10,7 +10,6 @@ import {
   useProposals,
   STATUS_LABELS,
   TYPE_LABELS,
-  CATEGORY_LABELS,
   type ProposalStatus,
   type ProposalType,
   type ProposalCategory,

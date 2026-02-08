@@ -7,7 +7,7 @@ CREATE INDEX node_kind_idx IF NOT EXISTS
 FOR (n:Node) ON (n.kind);
 
 CREATE INDEX node_subkind_idx IF NOT EXISTS
-FOR (n:Node) ON (n.subkindSlug);
+FOR (n:Node) ON (n.subkind);
 
 CREATE INDEX node_status_idx IF NOT EXISTS
 FOR (n:Node) ON (n.status);
@@ -91,14 +91,3 @@ FOR (t:UserTag) ON (t.usageCount);
 // Full-text search index for tags
 CREATE FULLTEXT INDEX tagTextIndex IF NOT EXISTS
 FOR (t:UserTag) ON EACH [t.normalizedForm, t.rawForm];
-
-// Author indexes
-CREATE INDEX author_name_idx IF NOT EXISTS
-FOR (a:Author) ON (a.displayName);
-
-// Eprint indexes
-CREATE INDEX eprint_title_idx IF NOT EXISTS
-FOR (p:Eprint) ON (p.title);
-
-CREATE INDEX eprint_created_idx IF NOT EXISTS
-FOR (p:Eprint) ON (p.createdAt);

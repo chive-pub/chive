@@ -75,10 +75,13 @@ export {
 
 // Transports
 export {
-  createBatchingTransport,
-  createConsoleTransport,
-  createOfflineTransport,
-  createRetryTransport,
+  logToConsole,
+  storeOfflineItem,
+  getOfflineItems,
+  clearOfflineItems,
+  isOnline,
+  calculateBackoff,
+  withRetry,
 } from './transports';
 
 // Custom events

@@ -158,10 +158,7 @@ export const getRecommendations: XRPCMethod<QueryParams, void, OutputSchema> = {
     // Add graph-based recommendations if requested and service available
     if (includeGraph && recommendationService) {
       try {
-        const graphRecs = await recommendationService.getPersonalized(
-          did as never,
-          params.limit ?? 20
-        );
+        const graphRecs = await recommendationService.getPersonalized(did, params.limit ?? 20);
 
         // Add graph recommendations that aren't already in the list
         const existingUris = new Set(recommendations.map((r) => r.uri));

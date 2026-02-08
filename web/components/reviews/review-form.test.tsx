@@ -1,12 +1,6 @@
 import { render, screen, waitFor } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
-import {
-  ReviewForm,
-  InlineReplyForm,
-  TargetSpanPreview,
-  ParentReviewPreview,
-  type ReviewFormData,
-} from './review-form';
+import { ReviewForm, InlineReplyForm, TargetSpanPreview, ParentReviewPreview } from './review-form';
 import {
   createMockReview,
   createMockTextSpanTarget,

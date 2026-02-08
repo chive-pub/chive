@@ -2,6 +2,24 @@
 
 This page documents all XRPC endpoints available in the Chive API. Endpoints are organized by namespace.
 
+## Shared definitions
+
+The `pub.chive.defs` lexicon defines shared type definitions used across multiple endpoints:
+
+| Definition              | Type   | Values                                                                                                                               |
+| ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `documentFormat`        | string | `pdf`, `docx`, `html`, `markdown`, `latex`, `jupyter`, `odt`, `rtf`, `epub`, `txt`                                                   |
+| `publicationStatus`     | string | `eprint`, `preprint`, `under_review`, `revision_requested`, `accepted`, `in_press`, `published`, `retracted`, `withdrawn`            |
+| `supplementaryCategory` | string | `appendix`, `figure`, `table`, `dataset`, `code`, `notebook`, `video`, `audio`, `presentation`, `protocol`, `questionnaire`, `other` |
+
+These definitions are referenced by other lexicons using the `ref` type, for example:
+
+```json
+{
+  "documentFormatSlug": { "type": "ref", "ref": "pub.chive.defs#documentFormat" }
+}
+```
+
 ## Eprint namespace
 
 Endpoints for querying eprint submissions.
@@ -15,13 +33,13 @@ Retrieve a single eprint by its AT URI.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description          |
 | ----- | ------ | -------- | -------------------- |
 | `uri` | string | Yes      | AT URI of the eprint |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -63,7 +81,7 @@ Search for eprints by query string.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name       | Type     | Required | Description                                  |
 | ---------- | -------- | -------- | -------------------------------------------- |
@@ -76,7 +94,7 @@ Search for eprints by query string.
 | `limit`    | integer  | No       | Results per page (default: 25, max: 100)     |
 | `cursor`   | string   | No       | Pagination cursor                            |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -103,7 +121,7 @@ List eprints by a specific author.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description                    |
 | -------- | ------- | -------- | ------------------------------ |
@@ -126,14 +144,14 @@ Get a review thread for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name    | Type    | Required | Description                      |
 | ------- | ------- | -------- | -------------------------------- |
 | `uri`   | string  | Yes      | URI of the eprint or root review |
 | `depth` | integer | No       | Thread depth (default: 6)        |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -162,7 +180,7 @@ List all reviews for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description               |
 | -------- | ------- | -------- | ------------------------- |
@@ -170,6 +188,34 @@ List all reviews for an eprint.
 | `sortBy` | string  | No       | Sort: `recent`, `helpful` |
 | `limit`  | integer | No       | Results per page          |
 | `cursor` | string  | No       | Pagination cursor         |
+
+#### Response
+
+```json
+{
+  "reviews": [
+    {
+      "uri": "at://did:plc:reviewer.../pub.chive.review.comment/abc...",
+      "author": {
+        "did": "did:plc:reviewer...",
+        "handle": "bob.bsky.social",
+        "displayName": "Bob Jones",
+        "avatar": "https://cdn.bsky.app/..."
+      },
+      "record": {
+        "text": "The methodology section...",
+        "subject": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+        "createdAt": "2025-01-16T14:00:00Z"
+      },
+      "deleted": false,
+      "indexedAt": "2025-01-16T14:01:00Z"
+    }
+  ],
+  "cursor": "eyJvZmZzZXQiOjI1fQ=="
+}
+```
+
+The `deleted` field indicates whether a review has been soft-deleted. Soft-deleted reviews remain in the response to preserve thread structure but their content should be hidden in the UI.
 
 ---
 
@@ -186,13 +232,13 @@ Get endorsement summary for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
 | `uri` | string | Yes      | Eprint URI  |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -223,7 +269,7 @@ List all endorsements for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description       |
 | -------- | ------- | -------- | ----------------- |
@@ -240,7 +286,7 @@ Get a specific user's endorsement for an eprint.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description                               |
 | ----- | ------ | -------- | ----------------------------------------- |
@@ -262,13 +308,13 @@ Get details for a specific field.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name | Type   | Required | Description      |
 | ---- | ------ | -------- | ---------------- |
 | `id` | string | Yes      | Field identifier |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -301,7 +347,7 @@ List all fields with optional filtering.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description            |
 | -------- | ------- | -------- | ---------------------- |
@@ -319,13 +365,13 @@ Get a specific knowledge graph node.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name | Type   | Required | Description |
 | ---- | ------ | -------- | ----------- |
 | `id` | string | Yes      | Node ID     |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -350,7 +396,7 @@ List knowledge graph nodes with optional filtering.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name      | Type    | Required | Description                               |
 | --------- | ------- | -------- | ----------------------------------------- |
@@ -369,7 +415,7 @@ Search knowledge graph nodes by label.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name      | Type    | Required | Description                               |
 | --------- | ------- | -------- | ----------------------------------------- |
@@ -387,7 +433,7 @@ List edges for a node.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name           | Type    | Required | Description                              |
 | -------------- | ------- | -------- | ---------------------------------------- |
@@ -405,7 +451,7 @@ Browse eprints using PMEST facets.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name          | Type     | Required | Description       |
 | ------------- | -------- | -------- | ----------------- |
@@ -426,7 +472,7 @@ Get eprints in a specific field.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name              | Type    | Required | Description          |
 | ----------------- | ------- | -------- | -------------------- |
@@ -445,7 +491,7 @@ Get reconciliation history for an authority record.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name | Type   | Required | Description         |
 | ---- | ------ | -------- | ------------------- |
@@ -466,7 +512,7 @@ Search tags.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name    | Type    | Required | Description      |
 | ------- | ------- | -------- | ---------------- |
@@ -482,7 +528,7 @@ List tags on an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -497,7 +543,7 @@ Get trending tags.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description                         |
 | -------- | ------- | -------- | ----------------------------------- |
@@ -513,7 +559,7 @@ Get tag suggestions based on content.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name   | Type   | Required | Description     |
 | ------ | ------ | -------- | --------------- |
@@ -529,7 +575,7 @@ Get details for a specific tag.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -550,7 +596,7 @@ List governance proposals.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description                                         |
 | -------- | ------- | -------- | --------------------------------------------------- |
@@ -568,13 +614,13 @@ Get details for a specific proposal.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name | Type   | Required | Description |
 | ---- | ------ | -------- | ----------- |
 | `id` | string | Yes      | Proposal ID |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -612,7 +658,7 @@ List votes on a proposal.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name         | Type    | Required | Description       |
 | ------------ | ------- | -------- | ----------------- |
@@ -629,7 +675,7 @@ Get the authenticated user's vote on a proposal.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-**Parameters**
+#### Parameters
 
 | Name         | Type   | Required | Description |
 | ------------ | ------ | -------- | ----------- |
@@ -659,13 +705,13 @@ Get metrics for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
 | `uri` | string | Yes      | Eprint URI  |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -694,7 +740,7 @@ Get view count for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -709,7 +755,7 @@ Get trending eprints.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description                         |
 | -------- | ------- | -------- | ----------------------------------- |
@@ -726,7 +772,7 @@ Record a view event.
 | Method   | Procedure (POST) |
 | Auth     | Optional         |
 
-**Input**
+#### Input
 
 ```json
 {
@@ -744,7 +790,7 @@ Record a download event.
 | Method   | Procedure (POST) |
 | Auth     | Optional         |
 
-**Input**
+#### Input
 
 ```json
 {
@@ -762,7 +808,7 @@ Record a search result click.
 | Method   | Procedure (POST) |
 | Auth     | Optional         |
 
-**Input**
+#### Input
 
 ```json
 {
@@ -781,7 +827,7 @@ Record time spent on an eprint.
 | Method   | Procedure (POST) |
 | Auth     | Optional         |
 
-**Input**
+#### Input
 
 ```json
 {
@@ -805,14 +851,14 @@ Get personalized recommendations for the authenticated user.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type    | Required | Description               |
 | -------- | ------- | -------- | ------------------------- |
 | `limit`  | integer | No       | Number of recommendations |
 | `cursor` | string  | No       | Pagination cursor         |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -837,7 +883,7 @@ Get eprints similar to a given eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name    | Type    | Required | Description       |
 | ------- | ------- | -------- | ----------------- |
@@ -853,7 +899,7 @@ Get citation graph for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name        | Type    | Required | Description               |
 | ----------- | ------- | -------- | ------------------------- |
@@ -870,7 +916,7 @@ Get enriched metadata for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -885,7 +931,7 @@ Record a user interaction for recommendation training.
 | Method   | Procedure (POST) |
 | Auth     | Required         |
 
-**Input**
+#### Input
 
 ```json
 {
@@ -910,7 +956,7 @@ Start a new authorship claim.
 | Method   | Procedure (POST) |
 | Auth     | Required         |
 
-**Input**
+#### Input
 
 ```json
 {
@@ -929,7 +975,7 @@ Get details of a claim.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-**Parameters**
+#### Parameters
 
 | Name | Type   | Required | Description |
 | ---- | ------ | -------- | ----------- |
@@ -953,7 +999,7 @@ Get prefilled submission data for external claiming.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-**Parameters**
+#### Parameters
 
 | Name         | Type   | Required | Description         |
 | ------------ | ------ | -------- | ------------------- |
@@ -1101,7 +1147,7 @@ List backlinks for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type   | Required | Description          |
 | -------- | ------ | -------- | -------------------- |
@@ -1135,7 +1181,7 @@ Get backlink counts for an eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -1198,7 +1244,7 @@ Search external sources for eprints.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-**Parameters**
+#### Parameters
 
 | Name     | Type   | Required | Description                                    |
 | -------- | ------ | -------- | ---------------------------------------------- |
@@ -1214,7 +1260,7 @@ Check if an external eprint already exists.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name         | Type   | Required | Description                         |
 | ------------ | ------ | -------- | ----------------------------------- |
@@ -1229,7 +1275,7 @@ Get details for an external eprint.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name         | Type   | Required | Description         |
 | ------------ | ------ | -------- | ------------------- |
@@ -1250,7 +1296,7 @@ Get the authenticated user's profile.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
-**Response**
+#### Response
 
 ```json
 {
@@ -1274,7 +1320,7 @@ Autocomplete ORCID lookup.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name    | Type   | Required | Description           |
 | ------- | ------ | -------- | --------------------- |
@@ -1298,7 +1344,7 @@ Autocomplete institution names.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name    | Type   | Required | Description              |
 | ------- | ------ | -------- | ------------------------ |
@@ -1313,7 +1359,7 @@ Autocomplete research keywords.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name    | Type   | Required | Description     |
 | ------- | ------ | -------- | --------------- |
@@ -1334,7 +1380,7 @@ Get a public author profile.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -1355,7 +1401,7 @@ Check if indexed data is stale.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -1370,7 +1416,7 @@ Verify a record against PDS.
 | Method   | Query (GET) |
 | Auth     | Optional    |
 
-**Parameters**
+#### Parameters
 
 | Name  | Type   | Required | Description |
 | ----- | ------ | -------- | ----------- |
@@ -1385,13 +1431,43 @@ Force refresh a record from PDS.
 | Method   | Procedure (POST)   |
 | Auth     | Required (service) |
 
-**Input**
+#### Input
 
 ```json
 {
   "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5..."
 }
 ```
+
+### pub.chive.sync.deleteRecord
+
+Notify the AppView that a record has been deleted from a PDS.
+
+| Property | Value              |
+| -------- | ------------------ |
+| Method   | Procedure (POST)   |
+| Auth     | Required (service) |
+
+#### Input
+
+```json
+{
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+  "collection": "pub.chive.eprint.submission"
+}
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+  "deletedAt": "2025-01-15T10:30:00Z"
+}
+```
+
+This endpoint is used by PDS operators to notify the AppView of record deletions when firehose delivery is delayed or unreliable. The AppView removes the record from its index.
 
 ---
 

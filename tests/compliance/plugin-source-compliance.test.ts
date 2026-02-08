@@ -110,9 +110,9 @@ describe('Plugin Source Identifier Compliance', () => {
 
           if (!result.success) {
             // Provide helpful error message
-            const errors = result
-              .error!.issues.map((i: { message: string }) => i.message)
-              .join(', ');
+            const errors = result.error
+              ? result.error.issues.map((i: { message: string }) => i.message).join(', ')
+              : 'Unknown error';
             throw new Error(
               `Plugin "${file}" uses source "${source}" which fails schema validation: ${errors}\n` +
                 `Source identifiers must be lowercase alphanumeric (a-z, 0-9), 2-50 characters.`

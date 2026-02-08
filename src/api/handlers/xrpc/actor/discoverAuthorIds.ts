@@ -15,7 +15,7 @@ import type {
   AuthorMatch,
   ExternalIds,
 } from '../../../../lexicons/generated/types/pub/chive/actor/discoverAuthorIds.js';
-import { AuthenticationError } from '../../../../types/errors.js';
+import { APIError, AuthenticationError, ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 // Use generated types from lexicons
@@ -69,7 +69,11 @@ async function searchOpenAlex(query: string, limit: number): Promise<AuthorMatch
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAlex API returned ${response.status}`);
+    throw new APIError(
+      `OpenAlex API error`,
+      response.status,
+      'https://api.openalex.org/autocomplete/authors'
+    );
   }
 
   const data = (await response.json()) as OpenAlexAutocompleteResponse;
@@ -104,7 +108,11 @@ async function searchSemanticScholar(query: string, limit: number): Promise<Auth
   });
 
   if (!response.ok) {
-    throw new Error(`Semantic Scholar API returned ${response.status}`);
+    throw new APIError(
+      `Semantic Scholar API error`,
+      response.status,
+      'https://api.semanticscholar.org/graph/v1/author/search'
+    );
   }
 
   const data = (await response.json()) as S2AuthorSearchResponse;
@@ -145,7 +153,7 @@ export const discoverAuthorIds: XRPCMethod<QueryParams, void, OutputSchema> = {
     if (!searchName) {
       // Try to get displayName from profile
       // For now, require explicit name parameter
-      throw new AuthenticationError('Name parameter required');
+      throw new ValidationError('Name parameter required', 'name', 'required');
     }
 
     logger.debug('Author ID discovery request', {

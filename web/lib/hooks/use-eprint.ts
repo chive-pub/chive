@@ -39,6 +39,8 @@ function extractPlainTextAbstract(
 function transformAuthor(author: {
   did?: string;
   name: string;
+  handle?: string;
+  avatarUrl?: string;
   orcid?: string;
   email?: string;
   order: number;
@@ -60,8 +62,8 @@ function transformAuthor(author: {
   return {
     did: author.did,
     name: author.name,
-    handle: undefined, // Would need profile resolution
-    avatar: undefined, // Would need profile resolution
+    handle: author.handle,
+    avatar: author.avatarUrl,
     displayName: author.name,
     orcid: author.orcid,
     order: author.order,

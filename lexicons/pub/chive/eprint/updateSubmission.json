@@ -75,6 +75,16 @@
               },
               "maxLength": 10
             },
+            "authors": {
+              "type": "array",
+              "description": "Updated authors with contributions, affiliations, and metadata",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.eprint.authorContribution"
+              },
+              "minLength": 1,
+              "maxLength": 100
+            },
             "changelog": {
               "type": "ref",
               "ref": "#changelogInput",

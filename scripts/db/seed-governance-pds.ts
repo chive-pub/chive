@@ -13,7 +13,7 @@
  * 2. Form type nodes: licenses, document-formats, publication-statuses, etc.
  * 3. Platform type nodes: code, data, preprint, etc.
  * 4. Hierarchical type nodes: fields (with edges), facets
- * 5. Other type nodes: paper-types, motivations, endorsement-contributions
+ * 5. Other type nodes: paper-types, motivations, endorsement-types
  *
  * **ATProto Compliance**: All records are written to the Governance PDS as
  * ATProto records. The AppView indexes these from the firehose into Neo4j.
@@ -40,7 +40,10 @@ import { seedPresentationTypes } from './seed-presentation-types.js';
 import { seedMotivations } from './seed-motivations.js';
 import { seedPaperTypes } from './seed-paper-types.js';
 import { seedLicenses } from './seed-licenses.js';
-import { seedEndorsementContributions } from './seed-endorsement-contributions.js';
+import { seedEndorsementTypes } from './seed-endorsement-contributions.js';
+import { seedEndorsementKinds } from './seed-endorsement-kinds.js';
+import { seedEndorsementCreditEdges } from './seed-endorsement-credit-edges.js';
+import { seedEndorsementTypeKindEdges } from './seed-endorsement-type-kind-edges.js';
 import { seedFields } from './seed-fields.js';
 import { seedFacets } from './seed-facets.js';
 import { seedGeographicRegions } from './seed-geographic-regions.js';
@@ -53,30 +56,30 @@ import { seedFacetValueEdges, FACET_VALUE_COUNTS } from './seed-facet-values.js'
 // =============================================================================
 
 interface SeedConfig {
-  /** Governance PDS endpoint */
+  /** Graph PDS endpoint */
   pdsUrl: string;
-  /** Governance DID */
-  governanceDid: DID;
-  /** Governance PDS handle */
+  /** Graph PDS DID */
+  graphPdsDid: DID;
+  /** Graph PDS handle */
   handle: string;
-  /** Governance PDS password (for seeding only) */
+  /** Graph PDS password (for seeding only) */
   password: string;
   /** Dry run mode (log but don't write) */
   dryRun: boolean;
 }
 
 function getConfig(): SeedConfig {
-  const pdsUrl = process.env.GOVERNANCE_PDS_URL ?? 'https://governance.chive.pub';
-  const governanceDid = (process.env.GOVERNANCE_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd') as DID;
-  const handle = process.env.GOVERNANCE_HANDLE ?? 'chive-governance.governance.chive.pub';
-  const password = process.env.GOVERNANCE_PASSWORD;
+  const pdsUrl = process.env.GRAPH_PDS_URL ?? 'https://governance.chive.pub';
+  const graphPdsDid = (process.env.GRAPH_PDS_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd') as DID;
+  const handle = process.env.GRAPH_PDS_HANDLE ?? 'chive-governance.governance.chive.pub';
+  const password = process.env.GRAPH_PDS_PASSWORD;
   const dryRun = process.env.DRY_RUN === 'true';
 
   if (!password && !dryRun) {
-    throw new Error('GOVERNANCE_PASSWORD environment variable required (or set DRY_RUN=true)');
+    throw new Error('GRAPH_PDS_PASSWORD environment variable required (or set DRY_RUN=true)');
   }
 
-  return { pdsUrl, governanceDid, handle, password: password ?? '', dryRun };
+  return { pdsUrl, graphPdsDid, handle, password: password ?? '', dryRun };
 }
 
 // =============================================================================
@@ -86,7 +89,7 @@ function getConfig(): SeedConfig {
 /**
  * Creates a PDS writer adapter from an authenticated AtpAgent.
  */
-function createPdsWriter(agent: AtpAgent, governanceDid: DID) {
+function createPdsWriter(agent: AtpAgent, graphPdsDid: DID) {
   return {
     async createNode(
       collection: string,
@@ -94,12 +97,12 @@ function createPdsWriter(agent: AtpAgent, governanceDid: DID) {
       record: Record<string, unknown>
     ): Promise<{ uri: string }> {
       await agent.com.atproto.repo.createRecord({
-        repo: governanceDid,
+        repo: graphPdsDid,
         collection,
         rkey,
         record,
       });
-      return { uri: `at://${governanceDid}/${collection}/${rkey}` };
+      return { uri: `at://${graphPdsDid}/${collection}/${rkey}` };
     },
 
     async createEdge(
@@ -108,12 +111,12 @@ function createPdsWriter(agent: AtpAgent, governanceDid: DID) {
       record: Record<string, unknown>
     ): Promise<{ uri: string }> {
       await agent.com.atproto.repo.createRecord({
-        repo: governanceDid,
+        repo: graphPdsDid,
         collection,
         rkey,
         record,
       });
-      return { uri: `at://${governanceDid}/${collection}/${rkey}` };
+      return { uri: `at://${graphPdsDid}/${collection}/${rkey}` };
     },
   };
 }
@@ -156,10 +159,10 @@ async function main(): Promise<void> {
   const config = getConfig();
 
   console.log('===========================================');
-  console.log('Governance PDS Unified Node Seed Script');
+  console.log('Graph PDS Unified Node Seed Script');
   console.log('===========================================');
   console.log(`PDS URL: ${config.pdsUrl}`);
-  console.log(`Governance DID: ${config.governanceDid}`);
+  console.log(`Graph PDS DID: ${config.graphPdsDid}`);
   console.log(`Dry Run: ${config.dryRun}`);
   console.log();
 
@@ -176,19 +179,19 @@ async function main(): Promise<void> {
     });
     console.log('Authenticated successfully.\n');
 
-    pdsWriter = createPdsWriter(agent, config.governanceDid);
+    pdsWriter = createPdsWriter(agent, config.graphPdsDid);
   }
 
   // Create node and edge creators
   const nodeCreator = new NodeCreator({
-    governanceDid: config.governanceDid,
+    graphPdsDid: config.graphPdsDid,
     pdsWriter,
     logger,
     dryRun: config.dryRun,
   });
 
   const edgeCreator = new EdgeCreator({
-    governanceDid: config.governanceDid,
+    graphPdsDid: config.graphPdsDid,
     pdsWriter,
     logger,
     dryRun: config.dryRun,
@@ -270,9 +273,13 @@ async function main(): Promise<void> {
   const motivationCount = await seedMotivations(nodeCreator);
   console.log(`  Created ${motivationCount} motivation nodes.\n`);
 
-  console.log('Seeding endorsement contributions...');
-  const endorseCount = await seedEndorsementContributions(nodeCreator);
-  console.log(`  Created ${endorseCount} endorsement contribution nodes.\n`);
+  console.log('Seeding endorsement types...');
+  const endorseTypeCount = await seedEndorsementTypes(nodeCreator);
+  console.log(`  Created ${endorseTypeCount} endorsement type nodes.\n`);
+
+  console.log('Seeding endorsement kinds...');
+  const endorseKindCount = await seedEndorsementKinds(nodeCreator);
+  console.log(`  Created ${endorseKindCount} endorsement kind nodes.\n`);
 
   // ==========================================================================
   // Phase 5: Hierarchical type nodes with edges
@@ -318,6 +325,19 @@ async function main(): Promise<void> {
   console.log(`  form-genre → ${FACET_VALUE_COUNTS['form-genre']} paper types`);
   const facetEdgeCount = await seedFacetValueEdges(nodeCreator, edgeCreator);
   console.log(`  Created ${facetEdgeCount} facet-value edges.\n`);
+
+  // ==========================================================================
+  // Phase 8: Endorsement edges
+  // ==========================================================================
+  console.log('=== Phase 8: Endorsement Edges ===\n');
+
+  console.log('Seeding endorsement-type to contribution-type edges...');
+  const endorseCreditEdgeCount = await seedEndorsementCreditEdges(edgeCreator, nodeCreator);
+  console.log(`  Created ${endorseCreditEdgeCount} endorsement-to-credit edges.\n`);
+
+  console.log('Seeding endorsement-type to endorsement-kind edges...');
+  const endorseKindEdgeCount = await seedEndorsementTypeKindEdges(edgeCreator, nodeCreator);
+  console.log(`  Created ${endorseKindEdgeCount} endorsement-type-to-kind edges.\n`);
 
   // ==========================================================================
   // Summary

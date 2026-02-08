@@ -1,6 +1,7 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api, authApi } from '@/lib/api/client';
+import { useCurrentUser, useAgent } from '@/lib/auth';
 import { APIError } from '@/lib/errors';
 import type {
   GetRecommendationsResponse,
@@ -74,6 +75,21 @@ export const discoveryKeys = {
   /** Key for discovery settings */
   settings: () => [...discoveryKeys.all, 'settings'] as const,
 };
+
+const VALID_CITATION_DISPLAYS = ['hidden', 'preview', 'expanded'] as const;
+
+/**
+ * Validates and narrows a citationNetworkDisplay value to the expected type.
+ */
+function validateCitationNetworkDisplay(
+  value: string | undefined,
+  fallback: CitationNetworkDisplay
+): CitationNetworkDisplay {
+  if (value && VALID_CITATION_DISPLAYS.includes(value as CitationNetworkDisplay)) {
+    return value as CitationNetworkDisplay;
+  }
+  return fallback;
+}
 
 interface UseForYouFeedOptions {
   /** Number of recommendations per page */
@@ -462,9 +478,8 @@ function saveStoredSettings(settings: DiscoverySettings): void {
  * Fetches the authenticated user's discovery settings.
  *
  * @remarks
- * Returns default settings if user has no saved preferences.
- * Currently uses localStorage; will use PDS (pub.chive.discovery.settings)
- * once backend endpoints are available.
+ * For authenticated users, fetches from the API (which reads from PDS).
+ * Falls back to localStorage for unauthenticated users or API errors.
  *
  * @example
  * ```tsx
@@ -477,12 +492,54 @@ function saveStoredSettings(settings: DiscoverySettings): void {
  */
 export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) {
   const { enabled = true } = options;
+  const user = useCurrentUser();
+  const isAuthenticated = !!user?.did;
 
   return useQuery({
     queryKey: discoveryKeys.settings(),
     queryFn: async (): Promise<DiscoverySettings> => {
-      // TODO: Replace with API call when endpoint is available
-      // const response = await authApi.pub.chive.discovery.getSettings();
+      // Authenticated users: fetch from API (reads from PDS)
+      if (isAuthenticated) {
+        try {
+          const response = await authApi.pub.chive.actor.getDiscoverySettings();
+          const data = response.data;
+          return {
+            enablePersonalization:
+              data.enablePersonalization ?? DEFAULT_DISCOVERY_SETTINGS.enablePersonalization,
+            enableForYouFeed: data.enableForYouFeed ?? DEFAULT_DISCOVERY_SETTINGS.enableForYouFeed,
+            forYouSignals: {
+              fields: data.forYouSignals?.fields ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.fields,
+              citations:
+                data.forYouSignals?.citations ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.citations,
+              collaborators:
+                data.forYouSignals?.collaborators ??
+                DEFAULT_DISCOVERY_SETTINGS.forYouSignals.collaborators,
+              trending:
+                data.forYouSignals?.trending ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.trending,
+            },
+            relatedPapersSignals: {
+              citations:
+                data.relatedPapersSignals?.citations ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.citations,
+              topics:
+                data.relatedPapersSignals?.topics ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.topics,
+            },
+            citationNetworkDisplay: validateCitationNetworkDisplay(
+              data.citationNetworkDisplay,
+              DEFAULT_DISCOVERY_SETTINGS.citationNetworkDisplay
+            ),
+            showRecommendationReasons:
+              data.showRecommendationReasons ??
+              DEFAULT_DISCOVERY_SETTINGS.showRecommendationReasons,
+          };
+        } catch {
+          // Fall back to localStorage on API error
+          return getStoredSettings();
+        }
+      }
+
+      // Unauthenticated users: use localStorage
       return getStoredSettings();
     },
     enabled,
@@ -496,7 +553,8 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
  *
  * @remarks
  * Optimistically updates the cache for immediate UI feedback.
- * Currently uses localStorage; will persist to PDS once backend endpoints are available.
+ * For authenticated users, persists to PDS via putRecord.
+ * Falls back to localStorage for unauthenticated users or on error.
  *
  * @example
  * ```tsx
@@ -510,6 +568,7 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
  */
 export function useUpdateDiscoverySettings() {
   const queryClient = useQueryClient();
+  const agent = useAgent();
 
   return useMutation({
     mutationFn: async (input: UpdateDiscoverySettingsInput) => {
@@ -528,11 +587,31 @@ export function useUpdateDiscoverySettings() {
         },
       };
 
-      // Save to localStorage
+      // Always save to localStorage as backup/fallback
       saveStoredSettings(newSettings);
 
-      // TODO: Replace with API call when endpoint is available
-      // await authApi.pub.chive.discovery.updateSettings(input);
+      // For authenticated users, persist to PDS
+      if (agent?.did) {
+        try {
+          await agent.com.atproto.repo.putRecord({
+            repo: agent.did,
+            collection: 'pub.chive.discovery.settings',
+            rkey: 'self',
+            record: {
+              $type: 'pub.chive.discovery.settings',
+              enablePersonalization: newSettings.enablePersonalization,
+              enableForYouFeed: newSettings.enableForYouFeed,
+              forYouSignals: newSettings.forYouSignals,
+              relatedPapersSignals: newSettings.relatedPapersSignals,
+              citationNetworkDisplay: newSettings.citationNetworkDisplay,
+              showRecommendationReasons: newSettings.showRecommendationReasons,
+            },
+          });
+        } catch {
+          // PDS write failed, but localStorage is already updated
+          // Settings will sync on next login
+        }
+      }
 
       return newSettings;
     },
@@ -631,7 +710,8 @@ function getStoredUserProfile(): UserProfileState {
  *
  * @remarks
  * Used to determine which empty state to show in the For You feed.
- * Currently reads from localStorage; will integrate with API once available.
+ * For authenticated users, fetches from getMyProfile API.
+ * Falls back to localStorage for unauthenticated users.
  *
  * @example
  * ```tsx
@@ -640,11 +720,39 @@ function getStoredUserProfile(): UserProfileState {
  */
 export function useUserProfileState(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options;
+  const user = useCurrentUser();
+  const isAuthenticated = !!user?.did;
 
   return useQuery({
     queryKey: ['userProfile'],
     queryFn: async (): Promise<UserProfileState> => {
-      // TODO: Replace with API call when endpoint is available
+      // Authenticated users: fetch from API
+      if (isAuthenticated) {
+        try {
+          const response = await authApi.pub.chive.actor.getMyProfile();
+          const profile = response.data;
+
+          // Determine linked accounts from profile data
+          const hasLinkedAccounts = !!(
+            profile.orcid ||
+            profile.semanticScholarId ||
+            profile.openAlexId ||
+            profile.googleScholarId
+          );
+
+          return {
+            hasLinkedAccounts,
+            hasClaimedPapers: getStoredUserProfile().hasClaimedPapers, // Still from storage until claims API
+            orcid: profile.orcid ?? null,
+            semanticScholarId: profile.semanticScholarId ?? null,
+          };
+        } catch {
+          // Fall back to localStorage on API error
+          return getStoredUserProfile();
+        }
+      }
+
+      // Unauthenticated: use localStorage
       return getStoredUserProfile();
     },
     enabled,

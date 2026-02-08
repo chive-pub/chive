@@ -16,14 +16,13 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import dynamic from 'next/dynamic';
+import DOMPurify from 'dompurify';
 import { FileText, Code, Eye, Download, Maximize2, Minimize2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { AnnotatedPDFViewerSkeleton } from '@/components/eprints';
 
 // Note: PDF viewer is handled separately via AnnotatedPDFViewer from @/components/eprints
 // This component focuses on text-based format rendering
@@ -32,20 +31,8 @@ import { AnnotatedPDFViewerSkeleton } from '@/components/eprints';
 // TYPES
 // =============================================================================
 
-/**
- * Supported document formats.
- */
-export type DocumentFormat =
-  | 'pdf'
-  | 'docx'
-  | 'html'
-  | 'markdown'
-  | 'latex'
-  | 'jupyter'
-  | 'odt'
-  | 'rtf'
-  | 'epub'
-  | 'txt';
+import type { DocumentFormat } from '@/lib/api/generated/types/pub/chive/defs';
+export type { DocumentFormat };
 
 /**
  * Document content source.
@@ -179,7 +166,7 @@ function HtmlViewer({
         className
       )}
       onMouseUp={handleMouseUp}
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
     />
   );
 }
@@ -229,7 +216,7 @@ function MarkdownViewer({
  */
 function SourceCodeViewer({
   content,
-  language,
+  language: _language,
   onTextSelect,
   className,
 }: {

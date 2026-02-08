@@ -1,0 +1,61 @@
+{
+  "lexicon": 1,
+  "id": "site.standard.document",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "A document record for long-form content discovery.",
+      "record": {
+        "type": "object",
+        "required": ["title", "createdAt"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Title of the document"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Brief description or abstract"
+          },
+          "content": {
+            "type": "ref",
+            "ref": "#contentRef",
+            "description": "Reference to platform-specific content record"
+          },
+          "visibility": {
+            "type": "string",
+            "knownValues": ["public", "private", "unlisted"],
+            "default": "public"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "contentRef": {
+      "type": "object",
+      "required": ["uri"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the platform-specific content record"
+        },
+        "cid": {
+          "type": "string",
+          "format": "cid",
+          "description": "CID of the content record for verification"
+        }
+      }
+    }
+  }
+}

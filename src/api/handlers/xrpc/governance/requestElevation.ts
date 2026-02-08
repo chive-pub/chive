@@ -13,7 +13,11 @@ import type {
   InputSchema,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/governance/requestElevation.js';
-import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
+import {
+  AuthenticationError,
+  ServiceUnavailableError,
+  ValidationError,
+} from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -34,12 +38,12 @@ export const requestElevation: XRPCMethod<void, InputSchema, OutputSchema> = {
     }
 
     if (!input) {
-      throw new Error('Input required');
+      throw new ValidationError('Request body is required', 'input', 'required');
     }
 
     const trustedEditorService = c.get('services').trustedEditor;
     if (!trustedEditorService) {
-      throw new Error('Trusted editor service not configured');
+      throw new ServiceUnavailableError('Trusted editor service not configured', 'trustedEditor');
     }
 
     const userDid = user.did;

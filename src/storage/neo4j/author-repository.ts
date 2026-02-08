@@ -13,6 +13,7 @@
 import neo4j from 'neo4j-driver';
 import { singleton } from 'tsyringe';
 
+import { nodeUuid } from '../../../scripts/db/lib/deterministic-uuid.js';
 import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError } from '../../types/errors.js';
 
@@ -138,40 +139,51 @@ export class AuthorRepository {
    * @returns Author DID
    */
   async upsertAuthor(author: AuthorInput): Promise<DID> {
+    const uuid = nodeUuid('author', author.did);
+    // Note: URI should be set by the governance system when creating the node
+    // This method is for updating existing nodes or creating them outside governance
     const query = `
-      MERGE (a:Author {did: $did})
+      MERGE (a:Node:Object:Person {id: $id})
       ON CREATE SET
-        a.name = $name,
-        a.orcid = $orcid,
-        a.googleScholarId = $googleScholarId,
-        a.semanticScholarId = $semanticScholarId,
-        a.scopusId = $scopusId,
-        a.dblpId = $dblpId,
-        a.viafId = $viafId,
-        a.isni = $isni,
-        a.openAlexId = $openAlexId,
-        a.bio = $bio,
-        a.website = $website,
-        a.primaryAffiliationUri = $primaryAffiliationUri,
+        a.subkind = 'author',
+        a.kind = 'object',
+        a.label = $name,
+        a.description = $bio,
+        a.metadata = {
+          did: $did,
+          orcid: $orcid,
+          googleScholarId: $googleScholarId,
+          semanticScholarId: $semanticScholarId,
+          scopusId: $scopusId,
+          dblpId: $dblpId,
+          viafId: $viafId,
+          isni: $isni,
+          openAlexId: $openAlexId,
+          website: $website,
+          primaryAffiliationUri: $primaryAffiliationUri
+        },
+        a.status = 'established',
         a.createdAt = datetime()
       ON MATCH SET
-        a.name = $name,
-        a.orcid = COALESCE($orcid, a.orcid),
-        a.googleScholarId = COALESCE($googleScholarId, a.googleScholarId),
-        a.semanticScholarId = COALESCE($semanticScholarId, a.semanticScholarId),
-        a.scopusId = COALESCE($scopusId, a.scopusId),
-        a.dblpId = COALESCE($dblpId, a.dblpId),
-        a.viafId = COALESCE($viafId, a.viafId),
-        a.isni = COALESCE($isni, a.isni),
-        a.openAlexId = COALESCE($openAlexId, a.openAlexId),
-        a.bio = COALESCE($bio, a.bio),
-        a.website = COALESCE($website, a.website),
-        a.primaryAffiliationUri = COALESCE($primaryAffiliationUri, a.primaryAffiliationUri),
+        a.label = $name,
+        a.description = COALESCE($bio, a.description),
+        a.metadata.did = $did,
+        a.metadata.orcid = COALESCE($orcid, a.metadata.orcid),
+        a.metadata.googleScholarId = COALESCE($googleScholarId, a.metadata.googleScholarId),
+        a.metadata.semanticScholarId = COALESCE($semanticScholarId, a.metadata.semanticScholarId),
+        a.metadata.scopusId = COALESCE($scopusId, a.metadata.scopusId),
+        a.metadata.dblpId = COALESCE($dblpId, a.metadata.dblpId),
+        a.metadata.viafId = COALESCE($viafId, a.metadata.viafId),
+        a.metadata.isni = COALESCE($isni, a.metadata.isni),
+        a.metadata.openAlexId = COALESCE($openAlexId, a.metadata.openAlexId),
+        a.metadata.website = COALESCE($website, a.metadata.website),
+        a.metadata.primaryAffiliationUri = COALESCE($primaryAffiliationUri, a.metadata.primaryAffiliationUri),
         a.updatedAt = datetime()
-      RETURN a.did AS did
+      RETURN a.metadata.did AS did
     `;
 
     const result = await this.connection.executeQuery<{ did: DID }>(query, {
+      id: uuid,
       did: author.did,
       name: author.name,
       orcid: author.orcid ?? null,
@@ -189,7 +201,10 @@ export class AuthorRepository {
 
     const record = result.records[0];
     if (!record) {
-      throw new Error('Failed to upsert author');
+      throw new DatabaseError(
+        'UPSERT',
+        'Failed to upsert author: no record returned from database'
+      );
     }
 
     return record.get('did');
@@ -203,7 +218,8 @@ export class AuthorRepository {
    */
   async getAuthor(did: DID): Promise<AuthorNode | null> {
     const query = `
-      MATCH (a:Author {did: $did})
+      MATCH (a:Node:Object:Person)
+      WHERE a.subkind = 'author' AND a.metadata.did = $did
       RETURN a
     `;
 
@@ -217,7 +233,10 @@ export class AuthorRepository {
     }
 
     const node = record.get('a');
-    const props = (node.properties ?? node) as Record<string, string | number | Date | null>;
+    const props = (node.properties ?? node) as Record<
+      string,
+      string | number | Date | null | Record<string, unknown>
+    >;
     return this.mapRecordToAuthor(props);
   }
 
@@ -232,7 +251,8 @@ export class AuthorRepository {
     const normalizedOrcid = orcid.replace(/^https?:\/\/orcid\.org\//, '');
 
     const query = `
-      MATCH (a:Author {orcid: $orcid})
+      MATCH (a:Node:Object:Person)
+      WHERE a.subkind = 'author' AND a.metadata.orcid = $orcid
       RETURN a
     `;
 
@@ -246,7 +266,10 @@ export class AuthorRepository {
     }
 
     const node = record.get('a');
-    const props = (node.properties ?? node) as Record<string, string | number | Date | null>;
+    const props = (node.properties ?? node) as Record<
+      string,
+      string | number | Date | null | Record<string, unknown>
+    >;
     return this.mapRecordToAuthor(props);
   }
 
@@ -262,37 +285,38 @@ export class AuthorRepository {
     const params: Record<string, string | null> = { did };
 
     if (updates.name !== undefined) {
-      setClauses.push('a.name = $name');
+      setClauses.push('a.label = $name');
       params.name = updates.name;
     }
 
     if (updates.orcid !== undefined) {
-      setClauses.push('a.orcid = $orcid');
+      setClauses.push('a.metadata.orcid = $orcid');
       params.orcid = updates.orcid ?? null;
     }
 
     if (updates.googleScholarId !== undefined) {
-      setClauses.push('a.googleScholarId = $googleScholarId');
+      setClauses.push('a.metadata.googleScholarId = $googleScholarId');
       params.googleScholarId = updates.googleScholarId ?? null;
     }
 
     if (updates.semanticScholarId !== undefined) {
-      setClauses.push('a.semanticScholarId = $semanticScholarId');
+      setClauses.push('a.metadata.semanticScholarId = $semanticScholarId');
       params.semanticScholarId = updates.semanticScholarId ?? null;
     }
 
     if (updates.bio !== undefined) {
-      setClauses.push('a.bio = $bio');
+      setClauses.push('a.description = $bio');
       params.bio = updates.bio ?? null;
     }
 
     if (updates.website !== undefined) {
-      setClauses.push('a.website = $website');
+      setClauses.push('a.metadata.website = $website');
       params.website = updates.website ?? null;
     }
 
     const query = `
-      MATCH (a:Author {did: $did})
+      MATCH (a:Node:Object:Person)
+      WHERE a.subkind = 'author' AND a.metadata.did = $did
       SET ${setClauses.join(', ')}
       RETURN a
     `;
@@ -317,9 +341,9 @@ export class AuthorRepository {
   async searchAuthors(searchText: string, limit = 50): Promise<AuthorSearchResult> {
     // Try full-text search first
     const fullTextQuery = `
-      CALL db.index.fulltext.queryNodes('authorTextIndex', $searchText)
+      CALL db.index.fulltext.queryNodes('nodeTextIndex', $searchText)
       YIELD node, score
-      WHERE node:Author
+      WHERE node:Node:Object:Person AND node.subkind = 'author'
       WITH node AS a, score
       ORDER BY score DESC
       LIMIT $limit
@@ -337,7 +361,10 @@ export class AuthorRepository {
 
       const authors = result.records.map((record) => {
         const node = record.get('a');
-        const props = (node.properties ?? node) as Record<string, string | number | Date | null>;
+        const props = (node.properties ?? node) as Record<
+          string,
+          string | number | Date | null | Record<string, unknown>
+        >;
         return this.mapRecordToAuthor(props);
       });
 
@@ -348,11 +375,12 @@ export class AuthorRepository {
     } catch {
       // Fall back to CONTAINS if full-text index not available
       const fallbackQuery = `
-        MATCH (a:Author)
-        WHERE toLower(a.name) CONTAINS toLower($searchText)
-           OR a.orcid = $searchText
+        MATCH (a:Node:Object:Person)
+        WHERE a.subkind = 'author'
+          AND (toLower(a.label) CONTAINS toLower($searchText)
+           OR a.metadata.orcid = $searchText)
         RETURN a
-        ORDER BY a.name
+        ORDER BY a.label
         LIMIT $limit
       `;
 
@@ -366,7 +394,10 @@ export class AuthorRepository {
 
       const authors = result.records.map((record) => {
         const node = record.get('a');
-        const props = (node.properties ?? node) as Record<string, string | number | Date | null>;
+        const props = (node.properties ?? node) as Record<
+          string,
+          string | number | Date | null | Record<string, unknown>
+        >;
         return this.mapRecordToAuthor(props);
       });
 
@@ -386,16 +417,18 @@ export class AuthorRepository {
    */
   async getCollaborators(did: DID, limit = 20): Promise<Collaborator[]> {
     const query = `
-      MATCH (author:Author {did: $did})-[r:COAUTHORED_WITH]-(collaborator:Author)
+      MATCH (author:Node:Object:Person)-[r:COAUTHORED_WITH]-(collaborator:Node:Object:Person)
+      WHERE author.subkind = 'author' AND author.metadata.did = $did
+        AND collaborator.subkind = 'author'
       WITH collaborator, count(r) AS collabCount
       ORDER BY collabCount DESC
       LIMIT $limit
-      OPTIONAL MATCH (collaborator)-[:EXPERT_IN]->(field:Field)
+      OPTIONAL MATCH (collaborator)-[:EXPERT_IN]->(field:Node:Field)
       WITH collaborator, collabCount, collect(DISTINCT field.label) AS fields
       RETURN
-        collaborator.did AS did,
-        collaborator.name AS name,
-        collaborator.orcid AS orcid,
+        collaborator.metadata.did AS did,
+        collaborator.label AS name,
+        collaborator.metadata.orcid AS orcid,
         collabCount AS collaborationCount,
         fields
     `;
@@ -428,7 +461,8 @@ export class AuthorRepository {
    */
   async getAuthorFields(did: DID): Promise<GraphNode[]> {
     const query = `
-      MATCH (a:Author {did: $did})-[:EXPERT_IN]->(f:Node:Field)
+      MATCH (a:Node:Object:Person)-[:EXPERT_IN]->(f:Node:Field)
+      WHERE a.subkind = 'author' AND a.metadata.did = $did
       RETURN f
       ORDER BY f.label
     `;
@@ -533,7 +567,8 @@ export class AuthorRepository {
    */
   async getAuthorAffiliations(did: DID): Promise<GraphNode[]> {
     const query = `
-      MATCH (a:Author {did: $did})-[:AFFILIATED_WITH]->(i:Node:Institution)
+      MATCH (a:Node:Object:Person)-[:AFFILIATED_WITH]->(i:Node:Institution)
+      WHERE a.subkind = 'author' AND a.metadata.did = $did
       RETURN i
       ORDER BY i.label
     `;
@@ -560,8 +595,9 @@ export class AuthorRepository {
    */
   async linkAuthorToField(did: DID, fieldUri: AtUri): Promise<void> {
     const query = `
-      MATCH (a:Author {did: $did})
-      MATCH (f:Field {uri: $fieldUri})
+      MATCH (a:Node:Object:Person)
+      WHERE a.subkind = 'author' AND a.metadata.did = $did
+      MATCH (f:Node:Field {uri: $fieldUri})
       MERGE (a)-[:EXPERT_IN]->(f)
     `;
 
@@ -577,8 +613,10 @@ export class AuthorRepository {
    */
   async createCoauthorship(author1Did: DID, author2Did: DID, eprintUri: AtUri): Promise<void> {
     const query = `
-      MATCH (a1:Author {did: $author1Did})
-      MATCH (a2:Author {did: $author2Did})
+      MATCH (a1:Node:Object:Person)
+      WHERE a1.subkind = 'author' AND a1.metadata.did = $author1Did
+      MATCH (a2:Node:Object:Person)
+      WHERE a2.subkind = 'author' AND a2.metadata.did = $author2Did
       WHERE a1 <> a2
       MERGE (a1)-[r:COAUTHORED_WITH]-(a2)
       ON CREATE SET r.eprints = [$eprintUri], r.count = 1, r.createdAt = datetime()
@@ -604,7 +642,9 @@ export class AuthorRepository {
    */
   async getPaperCount(did: DID): Promise<number> {
     const query = `
-      MATCH (a:Author {did: $did})-[:AUTHORED]->(e:Eprint)
+      MATCH (a:Node:Object:Person)-[:AUTHORED]->(e:Node:Object:Eprint)
+      WHERE a.subkind = 'author' AND a.metadata.did = $did
+        AND e.subkind = 'eprint'
       RETURN count(e) AS count
     `;
 
@@ -617,10 +657,13 @@ export class AuthorRepository {
   /**
    * Map Neo4j node properties to AuthorNode.
    */
-  private mapRecordToAuthor(node: Record<string, string | number | Date | null>): AuthorNode {
+  private mapRecordToAuthor(
+    node: Record<string, string | number | Date | null | Record<string, unknown>>
+  ): AuthorNode {
+    const metadata = (node.metadata as Record<string, unknown>) ?? {};
     const missing: string[] = [];
-    if (!node.did) missing.push('did');
-    if (!node.name) missing.push('name');
+    if (!metadata.did) missing.push('metadata.did');
+    if (!node.label) missing.push('label');
     if (!node.createdAt) missing.push('createdAt');
 
     if (missing.length > 0) {
@@ -631,20 +674,22 @@ export class AuthorRepository {
     }
 
     return {
-      did: node.did as DID,
-      name: node.name as string,
-      orcid: node.orcid ? (node.orcid as string) : undefined,
-      googleScholarId: node.googleScholarId ? (node.googleScholarId as string) : undefined,
-      semanticScholarId: node.semanticScholarId ? (node.semanticScholarId as string) : undefined,
-      scopusId: node.scopusId ? (node.scopusId as string) : undefined,
-      dblpId: node.dblpId ? (node.dblpId as string) : undefined,
-      viafId: node.viafId ? (node.viafId as string) : undefined,
-      isni: node.isni ? (node.isni as string) : undefined,
-      openAlexId: node.openAlexId ? (node.openAlexId as string) : undefined,
-      bio: node.bio ? (node.bio as string) : undefined,
-      website: node.website ? (node.website as string) : undefined,
-      primaryAffiliationUri: node.primaryAffiliationUri
-        ? (node.primaryAffiliationUri as AtUri)
+      did: metadata.did as DID,
+      name: node.label as string,
+      orcid: metadata.orcid ? (metadata.orcid as string) : undefined,
+      googleScholarId: metadata.googleScholarId ? (metadata.googleScholarId as string) : undefined,
+      semanticScholarId: metadata.semanticScholarId
+        ? (metadata.semanticScholarId as string)
+        : undefined,
+      scopusId: metadata.scopusId ? (metadata.scopusId as string) : undefined,
+      dblpId: metadata.dblpId ? (metadata.dblpId as string) : undefined,
+      viafId: metadata.viafId ? (metadata.viafId as string) : undefined,
+      isni: metadata.isni ? (metadata.isni as string) : undefined,
+      openAlexId: metadata.openAlexId ? (metadata.openAlexId as string) : undefined,
+      bio: node.description ? (node.description as string) : undefined,
+      website: metadata.website ? (metadata.website as string) : undefined,
+      primaryAffiliationUri: metadata.primaryAffiliationUri
+        ? (metadata.primaryAffiliationUri as AtUri)
         : undefined,
       createdAt: new Date(node.createdAt as string | Date),
       updatedAt: node.updatedAt ? new Date(node.updatedAt as string | Date) : undefined,

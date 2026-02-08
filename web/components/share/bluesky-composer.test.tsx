@@ -87,6 +87,19 @@ describe('BlueskyComposer', () => {
     });
   });
 
+  it('displays initial content in the editor', async () => {
+    const onChange = vi.fn();
+    render(<BlueskyComposer value="Initial text" onChange={onChange} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Post composer')).toBeInTheDocument();
+    });
+
+    // The textarea should display the initial value
+    const editor = screen.getByLabelText('Post composer') as HTMLTextAreaElement;
+    expect(editor.value).toBe('Initial text');
+  });
+
   it('clears content when value is reset to empty', async () => {
     const onChange = vi.fn();
     const { rerender } = render(<BlueskyComposer value="Initial text" onChange={onChange} />);
@@ -95,13 +108,17 @@ describe('BlueskyComposer', () => {
       expect(screen.getByLabelText('Post composer')).toBeInTheDocument();
     });
 
+    // Verify initial content is displayed
+    const editorBefore = screen.getByLabelText('Post composer') as HTMLTextAreaElement;
+    expect(editorBefore.value).toBe('Initial text');
+
     // Rerender with empty value (simulating reset)
     rerender(<BlueskyComposer value="" onChange={onChange} />);
 
     await waitFor(() => {
-      const editor = screen.getByLabelText('Post composer');
+      const editor = screen.getByLabelText('Post composer') as HTMLTextAreaElement;
       // TipTap clears content when value becomes empty
-      expect(editor.textContent).toBe('');
+      expect(editor.value).toBe('');
     });
   });
 

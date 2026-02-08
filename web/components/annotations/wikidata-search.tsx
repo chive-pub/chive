@@ -109,12 +109,23 @@ async function searchWikidata(
 
   const data: WikidataSearchResult = await response.json();
 
-  return data.search.map((item) => ({
-    qid: item.id,
-    label: item.label,
-    description: item.description,
-    url: item.url || `https://www.wikidata.org/wiki/${item.id}`,
-  }));
+  return data.search.map((item) => {
+    // Normalize URL to ensure it has https:// protocol
+    // Wikidata API may return protocol-relative URLs (//www.wikidata.org/...)
+    // or URLs without any protocol
+    let url = item.url || `https://www.wikidata.org/wiki/${item.id}`;
+    if (url.startsWith('//')) {
+      url = `https:${url}`;
+    } else if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
+    return {
+      qid: item.id,
+      label: item.label,
+      description: item.description,
+      url,
+    };
+  });
 }
 
 // =============================================================================
@@ -154,8 +165,8 @@ export function WikidataSearch({
   });
 
   return (
-    <Command className={cn('', className)} data-testid="wikidata-search">
-      <CommandList>
+    <Command className={cn('w-full overflow-hidden', className)} data-testid="wikidata-search">
+      <CommandList className="max-h-none overflow-visible">
         {isLoading && (
           <div className="flex items-center justify-center py-6" role="status" aria-label="Loading">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -181,11 +192,11 @@ export function WikidataSearch({
                 key={entity.qid}
                 value={entity.qid}
                 onSelect={() => onSelect(entity)}
-                className="cursor-pointer"
+                className="cursor-pointer overflow-hidden"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate">{entity.label}</span>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium truncate min-w-0 flex-1">{entity.label}</span>
                     <span className="text-xs text-muted-foreground shrink-0">{entity.qid}</span>
                   </div>
                   {entity.description && (

@@ -3,25 +3,25 @@ import { ExternalLink, Globe, BookOpen, Database, Beaker, Palette } from 'lucide
 import { cn } from '@/lib/utils';
 
 /**
- * Concept external ID sources.
+ * Node external ID sources.
  */
-export type ConceptIdSource = 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'aat' | 'getty';
+export type NodeIdSource = 'wikidata' | 'lcsh' | 'fast' | 'mesh' | 'aat' | 'getty';
 
 /**
- * Concept external ID.
+ * Node external ID.
  */
-export interface ConceptExternalId {
-  source: ConceptIdSource;
+export interface NodeExternalId {
+  source: NodeIdSource;
   id: string;
   url?: string;
 }
 
 /**
- * Props for the ConceptExternalIds component.
+ * Props for the NodeExternalIds component.
  */
-export interface ConceptExternalIdsProps {
+export interface NodeExternalIdsProps {
   /** Array of external IDs */
-  externalIds: ConceptExternalId[];
+  externalIds: NodeExternalId[];
   /** Display variant */
   variant?: 'list' | 'badges' | 'compact';
   /** Additional CSS classes */
@@ -29,7 +29,7 @@ export interface ConceptExternalIdsProps {
 }
 
 /**
- * Displays external identifiers for a concept.
+ * Displays external identifiers for a node.
  *
  * @remarks
  * Server component showing links to Wikidata, LCSH, FAST, MeSH,
@@ -37,17 +37,17 @@ export interface ConceptExternalIdsProps {
  *
  * @example
  * ```tsx
- * <ConceptExternalIds externalIds={concept.externalIds} />
+ * <NodeExternalIds externalIds={node.externalIds} />
  * ```
  *
  * @param props - Component props
  * @returns React element displaying the external IDs
  */
-export function ConceptExternalIds({
+export function NodeExternalIds({
   externalIds,
   variant = 'list',
   className,
-}: ConceptExternalIdsProps) {
+}: NodeExternalIdsProps) {
   if (!externalIds || externalIds.length === 0) {
     return null;
   }
@@ -78,7 +78,7 @@ export function ConceptExternalIds({
  * Props for the ExternalIdItem component.
  */
 interface ExternalIdItemProps {
-  externalId: ConceptExternalId;
+  externalId: NodeExternalId;
 }
 
 /**
@@ -112,7 +112,7 @@ function ExternalIdCompact({
   externalIds,
   className,
 }: {
-  externalIds: ConceptExternalId[];
+  externalIds: NodeExternalId[];
   className?: string;
 }) {
   return (
@@ -147,7 +147,7 @@ function ExternalIdBadges({
   externalIds,
   className,
 }: {
-  externalIds: ConceptExternalId[];
+  externalIds: NodeExternalId[];
   className?: string;
 }) {
   return (
@@ -179,14 +179,14 @@ function ExternalIdBadges({
 /**
  * Configuration for external ID sources.
  */
-function getSourceConfig(source: ConceptIdSource): {
+function getSourceConfig(source: NodeIdSource): {
   icon: React.ReactNode;
   label: string;
   color: string;
   bgColor: string;
 } {
   const configs: Record<
-    ConceptIdSource,
+    NodeIdSource,
     { icon: React.ReactNode; label: string; color: string; bgColor: string }
   > = {
     wikidata: {
@@ -233,8 +233,8 @@ function getSourceConfig(source: ConceptIdSource): {
 /**
  * Gets default URL for an external ID.
  */
-function getDefaultUrl(externalId: ConceptExternalId): string {
-  const urlPatterns: Record<ConceptIdSource, string> = {
+function getDefaultUrl(externalId: NodeExternalId): string {
+  const urlPatterns: Record<NodeIdSource, string> = {
     wikidata: `https://www.wikidata.org/wiki/${externalId.id}`,
     lcsh: `https://id.loc.gov/authorities/subjects/${externalId.id}`,
     fast: `https://id.worldcat.org/fast/${externalId.id}`,
@@ -247,9 +247,9 @@ function getDefaultUrl(externalId: ConceptExternalId): string {
 }
 
 /**
- * Props for the ConceptExternalIdsSkeleton component.
+ * Props for the NodeExternalIdsSkeleton component.
  */
-export interface ConceptExternalIdsSkeletonProps {
+export interface NodeExternalIdsSkeletonProps {
   /** Number of items */
   count?: number;
   /** Additional CSS classes */
@@ -257,12 +257,9 @@ export interface ConceptExternalIdsSkeletonProps {
 }
 
 /**
- * Loading skeleton for ConceptExternalIds.
+ * Loading skeleton for NodeExternalIds.
  */
-export function ConceptExternalIdsSkeleton({
-  count = 3,
-  className,
-}: ConceptExternalIdsSkeletonProps) {
+export function NodeExternalIdsSkeleton({ count = 3, className }: NodeExternalIdsSkeletonProps) {
   return (
     <div className={cn('space-y-3', className)}>
       <div className="h-4 w-32 animate-pulse rounded bg-muted" />

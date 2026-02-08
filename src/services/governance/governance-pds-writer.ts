@@ -1,13 +1,13 @@
 /**
- * Governance PDS Writer for trusted editors to create governance records.
+ * Graph PDS Writer for trusted editors to create graph records.
  *
  * @remarks
  * Enables trusted editors and authority editors to write records to the
- * Chive Governance PDS using delegated signing authority.
+ * Chive Graph PDS using delegated signing authority.
  *
  * **ATProto Compliance**:
  * - Uses delegated signing keys (not user PDSes)
- * - All writes go to Governance PDS (`did:plc:chive-governance`)
+ * - All writes go to Graph PDS (`did:plc:chive-governance`)
  * - Records published to firehose for interoperability
  * - Rate-limited per delegation (100 records/day default)
  *
@@ -98,7 +98,7 @@ export interface CreateRecordResult {
  * Governance PDS Writer configuration.
  */
 export interface GovernancePDSWriterOptions {
-  governanceDid: DID;
+  graphPdsDid: DID;
   pdsUrl: string;
   signingKey: string;
   pool: Pool;
@@ -112,7 +112,7 @@ export interface GovernancePDSWriterOptions {
  * @example
  * ```typescript
  * const writer = new GovernancePDSWriter({
- *   governanceDid: 'did:plc:chive-governance' as DID,
+ *   graphPdsDid: 'did:plc:chive-governance' as DID,
  *   pdsUrl: 'https://pds.chive.pub',
  *   signingKey: process.env.GOVERNANCE_SIGNING_KEY!,
  *   pool,
@@ -139,26 +139,31 @@ export interface GovernancePDSWriterOptions {
  * ```
  */
 export class GovernancePDSWriter {
-  private readonly governanceDid: DID;
+  private readonly graphPdsDid: DID;
   private readonly pdsUrl: string;
   private readonly pool: Pool;
   private readonly logger: ILogger;
   private agent: Agent | null = null;
 
   constructor(options: GovernancePDSWriterOptions) {
-    this.governanceDid = options.governanceDid;
+    this.graphPdsDid = options.graphPdsDid;
     this.pdsUrl = options.pdsUrl;
     this.pool = options.pool;
     this.logger = options.logger;
 
-    this.initializeAgent(options.signingKey);
+    // Initialize agent (authentication handled per-operation if needed)
+    void this.initializeAgent(options.signingKey);
   }
 
   private initializeAgent(_signingKey: string): void {
     this.agent = new Agent({ service: this.pdsUrl });
 
+    // For bootstrap operations (like automatic proposals), we may not need authentication
+    // The agent will be used to create records, but authentication may be handled differently
+    // depending on the PDS configuration
+
     this.logger.info('GovernancePDSWriter initialized', {
-      governanceDid: this.governanceDid,
+      graphPdsDid: this.graphPdsDid,
       pdsUrl: this.pdsUrl,
     });
   }
@@ -628,6 +633,22 @@ export class GovernancePDSWriter {
     }
   }
 
+  /**
+   * Create a proposal record in bootstrap mode (for automatic proposals).
+   *
+   * @param collection - Collection NSID (e.g., 'pub.chive.graph.nodeProposal')
+   * @param rkey - Record key
+   * @param record - Proposal record data
+   * @returns Created record result
+   */
+  async createProposalBootstrap(
+    collection: NSID,
+    rkey: string,
+    record: unknown
+  ): Promise<Result<CreateRecordResult, DatabaseError>> {
+    return this.createRecord(collection, rkey, record);
+  }
+
   private async createRecord(
     collection: NSID,
     rkey: string,
@@ -642,13 +663,13 @@ export class GovernancePDSWriter {
 
     try {
       const response = await this.agent.com.atproto.repo.createRecord({
-        repo: this.governanceDid,
+        repo: this.graphPdsDid,
         collection,
         rkey,
         record: record as Record<string, unknown>,
       });
 
-      const uri = `at://${this.governanceDid}/${collection}/${rkey}` as AtUri;
+      const uri = `at://${this.graphPdsDid}/${collection}/${rkey}` as AtUri;
 
       return {
         ok: true,

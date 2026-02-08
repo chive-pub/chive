@@ -26,7 +26,10 @@ export const MAX_DOCUMENT_SIZE_BYTES = 52_428_800;
 export const MAX_SUPPLEMENTARY_SIZE_BYTES = 104_857_600;
 
 /**
- * Supported document formats for manuscripts.
+ * Document format slugs for validation.
+ *
+ * Values align with DocumentFormat nodes in the knowledge graph (seeded by
+ * seed-document-formats). Use useDocumentFormats() for display labels.
  */
 export const SUPPORTED_DOCUMENT_FORMATS = [
   'pdf',
@@ -41,74 +44,10 @@ export const SUPPORTED_DOCUMENT_FORMATS = [
   'txt',
 ] as const;
 
-/**
- * Supported content license slugs (SPDX identifiers).
- *
- * @remarks
- * These are SPDX license identifiers used for display fallback.
- * The canonical license reference should use licenseUri pointing
- * to a knowledge graph node with subkind=license.
- */
-export const SUPPORTED_LICENSE_SLUGS = [
-  'CC-BY-4.0',
-  'CC-BY-SA-4.0',
-  'CC-BY-NC-4.0',
-  'CC-BY-NC-SA-4.0',
-  'CC0-1.0',
-  'MIT',
-  'Apache-2.0',
-  'arxiv-perpetual',
-] as const;
-
-/**
- * Supplementary material categories.
- */
-export const SUPPLEMENTARY_CATEGORIES = [
-  'appendix',
-  'figure',
-  'table',
-  'dataset',
-  'code',
-  'notebook',
-  'video',
-  'audio',
-  'presentation',
-  'protocol',
-  'questionnaire',
-  'other',
-] as const;
-
-/**
- * External link types for repositories and resources.
- */
-export const EXTERNAL_LINK_TYPES = [
-  // Code repositories
-  'github',
-  'gitlab',
-  'bitbucket',
-  // ML/AI platforms
-  'huggingface',
-  'kaggle',
-  'paperswithcode',
-  'wandb',
-  'comet',
-  // Data repositories
-  'zenodo',
-  'osf',
-  'figshare',
-  'dryad',
-  'dataverse',
-  'mendeley-data',
-  // Project pages
-  'project-page',
-  'demo',
-  'documentation',
-  // Other
-  'other',
-] as const;
-
-// NOTE: Facets are dynamic knowledge graph nodes with subkind 'facet'.
-// No hard-coded facet types - they are fetched from the API via useFacetCounts().
+// NOTE: License slugs, supplementary categories, external link types, and facets
+// are all governance-controlled values from the knowledge graph. No hardcoded
+// constants - values are fetched from nodes via hooks like useLicenses(),
+// useSupplementaryCategories(), usePlatforms(), etc.
 
 // =============================================================================
 // AUTHOR SCHEMAS
@@ -184,7 +123,7 @@ export const authorRefSchema = z.object({
         typeUri: z.string(),
         typeId: z.string().optional(),
         typeLabel: z.string().optional(),
-        degree: z.enum(['lead', 'equal', 'supporting']),
+        degree: z.string(),
       })
     )
     .default([]),
@@ -219,7 +158,10 @@ export const fieldNodeRefSchema = z.object({
   /** AT-URI of the field node */
   uri: z
     .string()
-    .regex(/^at:\/\/did:[a-z]+:[a-zA-Z0-9._:%-]+\/[a-z.]+\/[a-zA-Z0-9]+$/, 'Invalid AT-URI'),
+    .regex(
+      /^at:\/\/did:[a-z]+:[a-zA-Z0-9._:%-]+\/[a-z.]+\/[a-zA-Z0-9_-]+$/,
+      'Invalid AT-URI format'
+    ),
 
   /** Relevance weight (0-1) for multi-field papers */
   weight: z.number().min(0).max(1).optional(),
@@ -270,7 +212,7 @@ export const supplementaryMaterialSchema = z.object({
   description: z.string().max(1000).optional(),
 
   /** Material category (auto-detected or user-specified) */
-  category: z.enum(SUPPLEMENTARY_CATEGORIES),
+  category: z.string(),
 
   /** Auto-detected file format */
   detectedFormat: z.string().max(50).optional(),
@@ -286,21 +228,6 @@ export type SupplementaryMaterial = z.infer<typeof supplementaryMaterialSchema>;
 // =============================================================================
 
 /**
- * Resource categories for external links.
- */
-export const EXTERNAL_LINK_CATEGORIES = [
-  'code',
-  'dataset',
-  'model',
-  'demo',
-  'documentation',
-  'project-page',
-  'video',
-  'slides',
-  'other',
-] as const;
-
-/**
  * External link to repositories or datasets.
  */
 export const externalLinkSchema = z.object({
@@ -310,19 +237,19 @@ export const externalLinkSchema = z.object({
   /** Link URL */
   url: z.string().url(),
 
-  /** Type/platform of resource (auto-detected from URL) */
-  type: z.enum(EXTERNAL_LINK_TYPES),
+  /** Type/platform of resource (auto-detected from URL or selected from platform nodes) */
+  type: z.string(),
 
-  /** Category of the resource (user-specified) */
-  category: z.enum(EXTERNAL_LINK_CATEGORIES),
+  /** Category of the resource (from supplementary-category nodes) */
+  category: z.string(),
 
   /** Optional description */
   description: z.string().max(500).optional(),
 });
 
 export type ExternalLink = z.infer<typeof externalLinkSchema>;
-export type ExternalLinkType = (typeof EXTERNAL_LINK_TYPES)[number];
-export type ExternalLinkCategory = (typeof EXTERNAL_LINK_CATEGORIES)[number];
+export type ExternalLinkType = string;
+export type ExternalLinkCategory = string;
 
 /**
  * Funding source information.
@@ -486,7 +413,7 @@ export const supplementaryMaterialInputSchema = z.object({
   description: z.string().max(1000).optional(),
 
   /** Material category */
-  category: z.enum(SUPPLEMENTARY_CATEGORIES),
+  category: z.string(),
 
   /** Auto-detected file format */
   detectedFormat: z.string(),
@@ -628,9 +555,13 @@ export function isValidOrcid(orcid: string): boolean {
  *
  * @param uri - AT-URI string to validate
  * @returns True if valid AT-URI format
+ *
+ * @remarks
+ * Supports rkeys with alphanumeric characters, underscores, and hyphens
+ * to accommodate UUID-based rkeys (e.g., e1612645-6a62-59b7-a13a-8d618637be85).
  */
 export function isValidAtUri(uri: string): boolean {
-  return /^at:\/\/did:[a-z]+:[a-zA-Z0-9._:%-]+\/[a-z.]+\/[a-zA-Z0-9]+$/.test(uri);
+  return /^at:\/\/did:[a-z]+:[a-zA-Z0-9._:%-]+\/[a-z.]+\/[a-zA-Z0-9_-]+$/.test(uri);
 }
 
 /**

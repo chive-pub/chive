@@ -26,7 +26,6 @@ import { Neo4jConnection } from '@/storage/neo4j/connection.js';
 import { EdgeRepository } from '@/storage/neo4j/edge-repository.js';
 import { NodeRepository } from '@/storage/neo4j/node-repository.js';
 import { getRedisConfig } from '@/storage/redis/structures.js';
-import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 import {
@@ -49,6 +48,7 @@ import {
   createNoOpRelevanceLogger,
   createMockServiceAuthVerifier,
 } from '../../../helpers/mock-services.js';
+import { TEST_GRAPH_PDS_DID } from '../../../test-constants.js';
 import type {
   GraphNodeResponse,
   NodeSearchResponse,
@@ -78,7 +78,6 @@ function getNeo4jConfig(): Neo4jConfig {
 // Test constants
 const TEST_NODE_ID = 'test-node-cs-ai';
 const TEST_NODE_LABEL = 'Artificial Intelligence';
-const TEST_GOVERNANCE_DID = 'did:plc:chive-governance' as DID;
 // Unique IP for graph tests to avoid rate limit collisions with parallel test files
 const GRAPH_TEST_IP = '192.168.100.3';
 
@@ -180,7 +179,7 @@ describe('XRPC Graph Endpoints Integration', () => {
   describe('GET /xrpc/pub.chive.graph.getNode', () => {
     it('returns node by ID', async () => {
       // Create test node
-      const nodeUri = `at://${TEST_GOVERNANCE_DID}/pub.chive.graph.node/${TEST_NODE_ID}`;
+      const nodeUri = `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/${TEST_NODE_ID}`;
       await neo4jConnection.executeQuery(
         `CREATE (n:Node:Type:Field {
           id: $id,
@@ -225,19 +224,22 @@ describe('XRPC Graph Endpoints Integration', () => {
     });
 
     it('includes external IDs when available', async () => {
-      const nodeUri = `at://${TEST_GOVERNANCE_DID}/pub.chive.graph.node/test-ml-node`;
+      const nodeId = 'b0c1d2e3-f4a5-6789-0123-def123456789';
+      const nodeUri = `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/${nodeId}`;
       await neo4jConnection.executeQuery(
-        `CREATE (n:Node:Type:Field {
-          id: 'test-ml-node',
-          uri: $uri,
-          kind: 'type',
-          subkind: 'field',
-          label: 'Machine Learning',
-          status: 'established',
-          externalIds: $externalIds,
-          createdAt: datetime()
-        })`,
+        `MERGE (n:Node:Type:Field {id: $nodeId})
+         ON CREATE SET
+           n.uri = $uri,
+           n.kind = 'type',
+           n.subkind = 'field',
+           n.label = 'Machine Learning',
+           n.status = 'established',
+           n.externalIds = $externalIds,
+           n.createdAt = datetime()
+         ON MATCH SET
+           n.externalIds = $externalIds`,
         {
+          nodeId,
           uri: nodeUri,
           externalIds: JSON.stringify([
             { system: 'wikidata', identifier: 'Q2539', matchType: 'exact' },
@@ -247,7 +249,7 @@ describe('XRPC Graph Endpoints Integration', () => {
 
       const res = await testRequest(
         app,
-        `/xrpc/pub.chive.graph.getNode?id=${encodeURIComponent('test-ml-node')}`
+        `/xrpc/pub.chive.graph.getNode?id=${encodeURIComponent(nodeId)}`
       );
 
       expect(res.status).toBe(200);

@@ -579,7 +579,8 @@ export function up(pgm: MigrationBuilder): void {
     uri: {
       type: 'text',
       primaryKey: true,
-      comment: 'AT URI (e.g., at://did:plc:governance/pub.chive.graph.concept/conceptualization)',
+      comment:
+        'AT URI (e.g., at://did:plc:graph-pds/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85)',
     },
     cid: {
       type: 'text',

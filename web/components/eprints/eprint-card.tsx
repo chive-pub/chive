@@ -193,7 +193,7 @@ export function EprintCard({
               className="block font-semibold leading-tight hover:text-primary hover:underline"
             >
               <h3 className="line-clamp-2">
-                <RichTextRenderer text={eprint.title} mode="inline" />
+                <RichTextRenderer text={eprint.title} mode="inline" disableLinks />
               </h3>
             </Link>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -253,7 +253,7 @@ function CompactEprintCard({ eprint, className }: CompactEprintCardProps) {
           className="font-medium leading-tight hover:text-primary hover:underline"
         >
           <h4 className="line-clamp-1">
-            <RichTextRenderer text={eprint.title} mode="inline" />
+            <RichTextRenderer text={eprint.title} mode="inline" disableLinks />
           </h4>
         </Link>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -306,7 +306,7 @@ function FeaturedEprintCard({ eprint, onPrefetch, className }: FeaturedEprintCar
           className="block text-xl font-semibold leading-tight hover:text-primary hover:underline"
         >
           <h3 className="line-clamp-2">
-            <RichTextRenderer text={eprint.title} mode="inline" />
+            <RichTextRenderer text={eprint.title} mode="inline" disableLinks />
           </h3>
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">

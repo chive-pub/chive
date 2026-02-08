@@ -65,18 +65,25 @@ describe('CitationGraph Integration', () => {
     eprintD = createTestUri(TEST_AUTHOR_1, 'd');
     eprintE = createTestUri(TEST_AUTHOR_2, 'e');
 
-    // Create Eprint nodes for testing
+    // Create Node:Object:Eprint nodes for testing
     const session = connection.getSession();
     try {
+      const nodes = [eprintA, eprintB, eprintC, eprintD, eprintE].map((uri, i) => ({
+        uri,
+        id: `citation-test-${Date.now()}-${i}`,
+      }));
       await session.run(
         `
-        UNWIND $uris AS uri
-        MERGE (p:Eprint {uri: uri})
-        SET p.title = 'Test Eprint ' + uri
-        SET p.doi = '10.1234/citation.test.' + uri
-        SET p.createdAt = datetime()
+        UNWIND $nodes AS n
+        MERGE (p:Node:Object:Eprint {id: n.id})
+        SET p.uri = n.uri,
+            p.subkind = 'eprint',
+            p.kind = 'object',
+            p.label = 'Test Eprint ' + n.uri,
+            p.status = 'published',
+            p.createdAt = datetime()
         `,
-        { uris: [eprintA, eprintB, eprintC, eprintD, eprintE] }
+        { nodes }
       );
     } finally {
       await session.close();
@@ -108,7 +115,7 @@ describe('CitationGraph Integration', () => {
     try {
       await session.run(
         `
-        MATCH (p:Eprint)-[r:CITES]->()
+        MATCH (p:Node:Object:Eprint)-[r:CITES]->()
         WHERE p.uri STARTS WITH 'at://did:plc:citationtestauthor'
         DELETE r
         `
@@ -140,7 +147,7 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (citing:Eprint {uri: $citingUri})-[r:CITES]->(cited:Eprint {uri: $citedUri})
+          MATCH (citing:Node:Object:Eprint {uri: $citingUri})-[r:CITES]->(cited:Node:Object:Eprint {uri: $citedUri})
           RETURN r.isInfluential AS isInfluential, r.source AS source
           `,
           { citingUri: eprintA, citedUri: eprintB }
@@ -180,7 +187,7 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (citing:Eprint {uri: $citingUri})-[r:CITES]->(cited:Eprint {uri: $citedUri})
+          MATCH (citing:Node:Object:Eprint {uri: $citingUri})-[r:CITES]->(cited:Node:Object:Eprint {uri: $citedUri})
           RETURN count(r) AS edgeCount, r.isInfluential AS isInfluential, r.source AS source
           `,
           { citingUri: eprintA, citedUri: eprintB }
@@ -226,7 +233,7 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (p:Eprint)-[r:CITES]->()
+          MATCH (p:Node:Object:Eprint)-[r:CITES]->()
           WHERE p.uri IN $uris
           RETURN count(r) AS edgeCount
           `,
@@ -280,7 +287,7 @@ describe('CitationGraph Integration', () => {
       try {
         const result = await session.run(
           `
-          MATCH (p:Eprint {uri: $uri})-[r:CITES]->()
+          MATCH (p:Node:Object:Eprint {uri: $uri})-[r:CITES]->()
           RETURN count(r) AS edgeCount
           `,
           { uri: eprintA }
@@ -546,7 +553,18 @@ describe('CitationGraph Integration', () => {
       const session = connection.getSession();
       try {
         const fUri = createTestUri(TEST_AUTHOR_3, 'f');
-        await session.run(`MERGE (p:Eprint {uri: $uri}) SET p.title = 'F'`, { uri: fUri });
+        await session.run(
+          `
+          MERGE (p:Node:Object:Eprint {id: $id})
+          SET p.uri = $uri,
+              p.subkind = 'eprint',
+              p.kind = 'object',
+              p.label = 'F',
+              p.status = 'published',
+              p.createdAt = datetime()
+          `,
+          { id: `citation-test-f-${Date.now()}`, uri: fUri }
+        );
         await citationGraph.upsertCitationsBatch([
           { citingUri: fUri, citedUri: eprintB, source: 'semantic-scholar' },
           { citingUri: fUri, citedUri: eprintC, source: 'semantic-scholar' },

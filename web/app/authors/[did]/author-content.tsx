@@ -70,14 +70,14 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
     [agent, data?.profile, did]
   );
 
-  // Build share content
+  // Build share content - use default OG image (Chive logo/branding)
   const shareContent: ShareContent | null = data?.profile
     ? {
         type: 'author',
         url: `${typeof window !== 'undefined' ? window.location.origin : ''}/authors/${encodeURIComponent(did)}`,
         title: data.profile.displayName ?? data.profile.handle ?? did,
         description: data.profile.bio ?? `Author profile on Chive`,
-        ogImageUrl: `/api/og?type=author&did=${encodeURIComponent(did)}&name=${encodeURIComponent((data.profile.displayName ?? data.profile.handle ?? did).slice(0, 100))}&handle=${encodeURIComponent(data.profile.handle ?? '')}&bio=${encodeURIComponent((data.profile.bio ?? '').slice(0, 200))}&affiliation=${encodeURIComponent(data.profile.affiliation ?? '')}${data.profile.avatar ? `&avatar=${encodeURIComponent(data.profile.avatar)}` : ''}`,
+        ogImageUrl: '/api/og?type=default',
       }
     : null;
 

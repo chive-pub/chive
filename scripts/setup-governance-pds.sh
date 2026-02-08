@@ -92,7 +92,7 @@ if [ -n "$NEW_DID" ]; then
     echo "IMPORTANT: Save the password shown above!"
     echo ""
     echo "Next steps:"
-    echo "1. Add GOVERNANCE_DID=${NEW_DID} to your GitHub variables"
+    echo "1. Add GRAPH_PDS_DID=${NEW_DID} to your GitHub variables"
     echo "2. Update ATPROTO_SERVICE_DID if needed"
 else
     echo ""

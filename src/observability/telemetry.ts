@@ -106,6 +106,7 @@ export interface TelemetryOptions {
 interface TelemetryState {
   sdk: NodeSDK | null;
   initialized: boolean;
+  sigtermHandler: (() => void) | null;
 }
 
 /**
@@ -116,6 +117,7 @@ interface TelemetryState {
 const telemetryState: TelemetryState = {
   sdk: null,
   initialized: false,
+  sigtermHandler: null,
 };
 
 /**
@@ -282,8 +284,8 @@ export function initTelemetry(options: TelemetryOptions = {}): void {
       'http://otel-collector:4318',
   });
 
-  // Register graceful shutdown
-  process.on('SIGTERM', () => {
+  // Register graceful shutdown (only once per initialization)
+  const sigtermHandler = (): void => {
     shutdownTelemetry()
       .then(() => {
         console.log('[Telemetry] Graceful shutdown complete');
@@ -293,7 +295,9 @@ export function initTelemetry(options: TelemetryOptions = {}): void {
         console.error('[Telemetry] Error during shutdown', error);
         process.exit(1);
       });
-  });
+  };
+  telemetryState.sigtermHandler = sigtermHandler;
+  process.on('SIGTERM', sigtermHandler);
 }
 
 /**
@@ -321,9 +325,29 @@ export async function shutdownTelemetry(): Promise<void> {
   }
 
   try {
-    await telemetryState.sdk.shutdown();
+    // Add timeout to prevent hanging if collector is unavailable
+    const shutdownPromise = telemetryState.sdk.shutdown();
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error('Telemetry shutdown timed out')), 5000);
+    });
+
+    await Promise.race([shutdownPromise, timeoutPromise]).catch((error: unknown) => {
+      // Log timeout but don't fail - just proceed with cleanup
+      const message = error instanceof Error ? error.message : String(error);
+      if (message === 'Telemetry shutdown timed out') {
+        console.warn('[Telemetry] SDK shutdown timed out, proceeding with cleanup');
+      } else {
+        throw error;
+      }
+    });
+
     telemetryState.sdk = null;
     telemetryState.initialized = false;
+    // Remove SIGTERM handler to prevent listener accumulation
+    if (telemetryState.sigtermHandler) {
+      process.removeListener('SIGTERM', telemetryState.sigtermHandler);
+      telemetryState.sigtermHandler = null;
+    }
     console.log('[Telemetry] SDK shut down successfully');
   } catch (error) {
     console.error('[Telemetry] Error shutting down SDK', error);

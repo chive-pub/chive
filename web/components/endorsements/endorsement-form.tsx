@@ -56,8 +56,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import type { ContributionType } from '@/lib/api/schema';
+import {
+  useEndorsementCategories,
+  type EndorsementCategory,
+} from '@/lib/hooks/use-endorsement-data';
+import type { GraphNode } from '@/lib/hooks/use-nodes';
 
 // =============================================================================
 // TYPES
@@ -116,137 +121,76 @@ interface ContributionOption {
 }
 
 /**
- * Contribution type options grouped by category.
+ * Icon mapping for endorsement types.
+ *
+ * Maps endorsement type slugs to Lucide icons for UI display.
  */
-const CONTRIBUTION_CATEGORIES: Array<{
-  name: string;
-  options: ContributionOption[];
-}> = [
-  {
-    name: 'Core Research',
-    options: [
-      {
-        type: 'methodological',
-        icon: FlaskConical,
-        label: 'Methodological',
-        description: 'Novel methods, techniques, approaches, protocols',
-      },
-      {
-        type: 'analytical',
-        icon: LineChart,
-        label: 'Analytical',
-        description: 'Statistical, computational, or mathematical analysis',
-      },
-      {
-        type: 'theoretical',
-        icon: Lightbulb,
-        label: 'Theoretical',
-        description: 'Theoretical framework, conceptual model, theory development',
-      },
-      {
-        type: 'empirical',
-        icon: Database,
-        label: 'Empirical',
-        description: 'Data collection, experiments, observations, fieldwork',
-      },
-      {
-        type: 'conceptual',
-        icon: Brain,
-        label: 'Conceptual',
-        description: 'Novel ideas, hypotheses, problem framing',
-      },
-    ],
-  },
-  {
-    name: 'Technical',
-    options: [
-      {
-        type: 'technical',
-        icon: Wrench,
-        label: 'Technical',
-        description: 'Software, tools, infrastructure, instrumentation',
-      },
-      {
-        type: 'data',
-        icon: Table,
-        label: 'Data',
-        description: 'Dataset creation, curation, availability',
-      },
-    ],
-  },
-  {
-    name: 'Validation',
-    options: [
-      {
-        type: 'replication',
-        icon: Copy,
-        label: 'Replication',
-        description: 'Successful replication of prior work',
-      },
-      {
-        type: 'reproducibility',
-        icon: RefreshCw,
-        label: 'Reproducibility',
-        description: 'Code/materials availability, reproducible workflow',
-      },
-    ],
-  },
-  {
-    name: 'Synthesis',
-    options: [
-      {
-        type: 'synthesis',
-        icon: Layers,
-        label: 'Synthesis',
-        description: 'Literature review, meta-analysis, systematic review',
-      },
-      {
-        type: 'interdisciplinary',
-        icon: Network,
-        label: 'Interdisciplinary',
-        description: 'Cross-disciplinary integration, bridging fields',
-      },
-    ],
-  },
-  {
-    name: 'Communication',
-    options: [
-      {
-        type: 'pedagogical',
-        icon: GraduationCap,
-        label: 'Pedagogical',
-        description: 'Educational value, clarity of exposition',
-      },
-      {
-        type: 'visualization',
-        icon: BarChart3,
-        label: 'Visualization',
-        description: 'Figures, graphics, data presentation',
-      },
-    ],
-  },
-  {
-    name: 'Impact',
-    options: [
-      {
-        type: 'societal-impact',
-        icon: Globe,
-        label: 'Societal Impact',
-        description: 'Real-world applications, policy implications',
-      },
-      {
-        type: 'clinical',
-        icon: Stethoscope,
-        label: 'Clinical',
-        description: 'Clinical relevance (for medical/health research)',
-      },
-    ],
-  },
-];
+const ENDORSEMENT_TYPE_ICONS: Record<string, LucideIcon> = {
+  methodological: FlaskConical,
+  analytical: LineChart,
+  theoretical: Lightbulb,
+  empirical: Database,
+  conceptual: Brain,
+  technical: Wrench,
+  data: Table,
+  replication: Copy,
+  reproducibility: RefreshCw,
+  synthesis: Layers,
+  interdisciplinary: Network,
+  pedagogical: GraduationCap,
+  visualization: BarChart3,
+  'societal-impact': Globe,
+  clinical: Stethoscope,
+};
+
+/**
+ * Extracts slug from endorsement type node.
+ */
+function getEndorsementTypeSlug(node: GraphNode): string {
+  return node.metadata?.slug ?? node.label.toLowerCase().replace(/\s+/g, '-');
+}
+
+/**
+ * Converts endorsement category to contribution category format.
+ */
+function mapCategoryToContributionOptions(
+  category: EndorsementCategory
+): Array<{ name: string; options: ContributionOption[] }> {
+  const options: ContributionOption[] = [];
+
+  for (const type of category.types) {
+    const slug = getEndorsementTypeSlug(type);
+    const icon = ENDORSEMENT_TYPE_ICONS[slug] ?? FlaskConical;
+
+    options.push({
+      type: slug as ContributionType,
+      icon,
+      label: type.label,
+      description: type.description ?? '',
+    });
+  }
+
+  if (options.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      name: category.name,
+      options,
+    },
+  ];
+}
 
 // =============================================================================
 // COMPONENT
 // =============================================================================
+
+/**
+ * Stable empty array to use as default value for initialContributions.
+ * This prevents the useEffect from running on every render due to new array references.
+ */
+const EMPTY_CONTRIBUTIONS: ContributionType[] = [];
 
 /**
  * Dialog form for creating endorsements.
@@ -261,12 +205,33 @@ export function EndorsementForm({
   onSubmit,
   isLoading = false,
   error,
-  initialContributions = [],
+  initialContributions = EMPTY_CONTRIBUTIONS,
   initialComment = '',
   className,
 }: EndorsementFormProps) {
   const [contributions, setContributions] = useState<ContributionType[]>(initialContributions);
   const [comment, setComment] = useState(initialComment);
+
+  // Reset form state when initial values change (when editing different endorsement)
+  useEffect(() => {
+    setContributions(initialContributions);
+    setComment(initialComment);
+  }, [initialContributions, initialComment]);
+
+  const { data: categoriesData, isLoading: isLoadingTypes } = useEndorsementCategories();
+
+  const groupedOptions = useMemo(() => {
+    if (!categoriesData || categoriesData.length === 0) {
+      return [];
+    }
+
+    const result: Array<{ name: string; options: ContributionOption[] }> = [];
+    for (const category of categoriesData) {
+      const mapped = mapCategoryToContributionOptions(category);
+      result.push(...mapped);
+    }
+    return result;
+  }, [categoriesData]);
 
   const toggleContribution = useCallback((type: ContributionType) => {
     setContributions((prev) => {
@@ -365,45 +330,49 @@ export function EndorsementForm({
                 </span>
               </div>
 
-              {CONTRIBUTION_CATEGORIES.map((category) => (
-                <div key={category.name} className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">{category.name}</h4>
-                  <div className="grid gap-2">
-                    {category.options.map((option) => {
-                      const Icon = option.icon;
-                      const isSelected = contributions.includes(option.type);
-                      return (
-                        <div
-                          key={option.type}
-                          className={cn(
-                            'flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors',
-                            isSelected
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:bg-muted/50'
-                          )}
-                          onClick={() => toggleContribution(option.type)}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleContribution(option.type)}
-                            onClick={(e) => e.stopPropagation()}
-                            id={option.type}
-                          />
-                          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <Label htmlFor={option.type} className="font-medium cursor-pointer">
-                              {option.label}
-                            </Label>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {option.description}
-                            </p>
+              {isLoadingTypes ? (
+                <div className="text-sm text-muted-foreground">Loading endorsement types...</div>
+              ) : (
+                groupedOptions.map((category) => (
+                  <div key={category.name} className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">{category.name}</h4>
+                    <div className="grid gap-2">
+                      {category.options.map((option) => {
+                        const Icon = option.icon;
+                        const isSelected = contributions.includes(option.type);
+                        return (
+                          <div
+                            key={option.type}
+                            className={cn(
+                              'flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors',
+                              isSelected
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:bg-muted/50'
+                            )}
+                            onClick={() => toggleContribution(option.type)}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleContribution(option.type)}
+                              onClick={(e) => e.stopPropagation()}
+                              id={option.type}
+                            />
+                            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <Label htmlFor={option.type} className="font-medium cursor-pointer">
+                                {option.label}
+                              </Label>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {option.description}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
 
               {contributions.length === 0 && (
                 <p className="text-sm text-destructive">

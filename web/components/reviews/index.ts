@@ -85,3 +85,15 @@ export {
   AnnotationBodyRenderer,
   type AnnotationBodyRendererProps,
 } from './annotation-body-renderer';
+
+// =============================================================================
+// DELETE REVIEW DIALOG
+// =============================================================================
+
+export { DeleteReviewDialog, type DeleteReviewDialogProps } from './delete-review-dialog';
+
+// =============================================================================
+// DOCUMENT LOCATION CARD
+// =============================================================================
+
+export { DocumentLocationCard, type DocumentLocationCardProps } from './document-location-card';

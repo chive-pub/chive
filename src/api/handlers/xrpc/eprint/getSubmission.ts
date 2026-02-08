@@ -10,11 +10,6 @@
  * - Never writes to user PDS
  * - Index data only (rebuildable from firehose)
  *
- * **Schema Evolution:**
- * - Includes optional `_schemaHints` field when legacy formats are detected
- * - Hints are additive and don't break existing clients
- * - Provides migration guidance for outdated record formats
- *
  * @packageDocumentation
  * @public
  */
@@ -26,35 +21,10 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/eprint/getSubmission.js';
-import { SchemaCompatibilityService } from '../../../../services/schema/schema-compatibility.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
-import type { ApiSchemaHints } from '../../../../types/schema-compatibility.js';
 import { normalizeFieldUri } from '../../../../utils/at-uri.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
-
-/**
- * Extended output schema with optional schema hints.
- *
- * @remarks
- * This extends the generated OutputSchema with the optional `_schemaHints` field.
- * The field is additive and will be ignored by clients that don't understand it.
- *
- * @public
- */
-export interface OutputSchemaWithHints extends OutputSchema {
-  /**
-   * Optional schema evolution hints.
-   *
-   * @remarks
-   * Present only when the source record uses legacy formats that have available
-   * migrations. Clients can use this information to inform users about record
-   * updates or to handle format differences.
-   */
-  _schemaHints?: ApiSchemaHints;
-}
-
-const schemaService = new SchemaCompatibilityService();
 
 /**
  * XRPC method for pub.chive.eprint.getSubmission.
@@ -84,9 +54,9 @@ const schemaService = new SchemaCompatibilityService();
  *
  * @public
  */
-export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints> = {
+export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchemaWithHints>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { eprint, metrics } = c.get('services');
     const logger = c.get('logger');
     const user = c.get('user');
@@ -142,10 +112,80 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
       };
     });
 
+    // Fetch avatars for authors who don't have one
+    const authorsNeedingAvatars = result.authors.filter((a) => a.did && !a.avatarUrl);
+    const avatarMap = new Map<string, string>();
+
+    if (authorsNeedingAvatars.length > 0) {
+      const dids = authorsNeedingAvatars.map((a) => a.did).filter(Boolean) as string[];
+      // Batch fetch up to 25 profiles at a time (API limit)
+      const batchSize = 25;
+      for (let i = 0; i < dids.length; i += batchSize) {
+        const batch = dids.slice(i, i + batchSize);
+        try {
+          const params = new URLSearchParams();
+          for (const did of batch) {
+            params.append('actors', did);
+          }
+          const response = await fetch(
+            `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${params.toString()}`,
+            {
+              headers: { Accept: 'application/json' },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
+
+          if (response.ok) {
+            const data = (await response.json()) as {
+              profiles: { did: string; avatar?: string }[];
+            };
+            for (const profile of data.profiles) {
+              if (profile.avatar) {
+                avatarMap.set(profile.did, profile.avatar);
+              }
+            }
+          }
+        } catch (error) {
+          logger.debug('Failed to fetch Bluesky profiles for authors', {
+            error: error instanceof Error ? error.message : String(error),
+            batchSize: batch.length,
+          });
+        }
+      }
+    }
+
+    // Generate schema hints if migration is available
+    // The indexer tracks which records use deprecated formats
+    const deprecatedFields: string[] = [];
+    if (result.needsAbstractMigration) {
+      deprecatedFields.push('abstract');
+    }
+    // Check for title containing LaTeX that could benefit from rich text format
+    // Patterns: $...$ (inline math), $$...$$ (display math), \command{ (LaTeX commands)
+    const latexPattern = /\$[^$]+\$|\$\$[^$]+\$\$|\\[a-zA-Z]+\{/;
+    if (result.title && latexPattern.test(result.title) && !result.titleRich) {
+      deprecatedFields.push('title');
+    }
+    // Check for license needing migration (has slug but no URI)
+    if (result.license && !result.licenseUri) {
+      deprecatedFields.push('license');
+    }
+
+    const schemaHints =
+      deprecatedFields.length > 0
+        ? {
+            schemaVersion: '0.1.0',
+            deprecatedFields,
+            migrationAvailable: true,
+            migrationUrl: 'https://docs.chive.pub/guides/schema-migration',
+          }
+        : undefined;
+
     // Build the submission value in lexicon format
-    const response: OutputSchemaWithHints = {
+    const response: OutputSchema & { _schemaHints?: typeof schemaHints } = {
       uri: result.uri,
       cid: result.cid,
+      ...(schemaHints && { _schemaHints: schemaHints }),
       value: {
         $type: 'pub.chive.eprint.submission',
         title: result.title,
@@ -179,7 +219,7 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
           did: author.did,
           name: author.name,
           handle: author.handle,
-          avatarUrl: author.avatarUrl,
+          avatarUrl: author.avatarUrl ?? (author.did ? avatarMap.get(author.did) : undefined),
           orcid: author.orcid,
           email: author.email,
           order: author.order,
@@ -228,24 +268,6 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchemaWithHints>
       indexedAt: result.indexedAt.toISOString(),
       pdsUrl: result.pdsUrl,
     };
-
-    // Include schema hints only if migration is needed
-    // The needsAbstractMigration flag is set during indexing based on the source
-    // record format. This avoids heuristic-based detection which had false positives.
-    if (result.needsAbstractMigration) {
-      const schemaDetection = schemaService.analyzeEprintRecord({
-        // Pass a string to trigger the legacy abstract format detection
-        abstract: result.abstractPlainText ?? '',
-        // Include title to avoid false positive deprecation warnings
-        title: result.title,
-        titleRich: result.titleRich,
-      });
-
-      const schemaHints = schemaService.generateApiHints(schemaDetection);
-      if (schemaHints) {
-        response._schemaHints = schemaHints;
-      }
-    }
 
     return { encoding: 'application/json', body: response };
   },

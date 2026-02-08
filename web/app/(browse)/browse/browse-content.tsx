@@ -75,7 +75,7 @@ function filtersToSearchParams(filters: DynamicFacetFilters): URLSearchParams {
 /**
  * Parses URL search params into filters.
  */
-function searchParamsToFilters(searchParams: URLSearchParams): DynamicFacetFilters {
+function _searchParamsToFilters(searchParams: URLSearchParams): DynamicFacetFilters {
   const filters: DynamicFacetFilters = {};
   for (const [key, value] of searchParams.entries()) {
     if (key === 'q') continue; // Skip query param

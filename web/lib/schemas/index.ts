@@ -10,13 +10,10 @@
 
 // Eprint submission schemas
 export {
-  // Constants
+  // Constants (only document formats are hardcoded; other values come from knowledge graph nodes)
   MAX_DOCUMENT_SIZE_BYTES,
   MAX_SUPPLEMENTARY_SIZE_BYTES,
   SUPPORTED_DOCUMENT_FORMATS,
-  SUPPORTED_LICENSE_SLUGS as SUPPORTED_LICENSES,
-  SUPPLEMENTARY_CATEGORIES,
-  EXTERNAL_LINK_TYPES,
   // Schemas
   reconciliationStatusSchema,
   externalProfileSchema,

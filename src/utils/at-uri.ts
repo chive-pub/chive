@@ -12,6 +12,7 @@
 
 import { AtUri as AtUriParser } from '@atproto/api';
 
+import { GRAPH_PDS_DID } from '../config/graph.js';
 import type { AtUri, DID } from '../types/atproto.js';
 
 /**
@@ -19,18 +20,6 @@ import type { AtUri, DID } from '../types/atproto.js';
  * @public
  */
 export const GRAPH_NODE_COLLECTION = 'pub.chive.graph.node';
-
-/**
- * Default governance DID for knowledge graph records.
- * Used when constructing AT-URIs for field references.
- *
- * @remarks
- * This can be overridden via the GOVERNANCE_DID environment variable.
- *
- * @public
- */
-export const DEFAULT_GOVERNANCE_DID: DID =
-  (process.env.GOVERNANCE_DID as DID) ?? ('did:plc:5wzpn4a4nbqtz3q45hyud6hd' as DID);
 
 /**
  * Checks if a string is a valid AT-URI.
@@ -73,7 +62,7 @@ export function extractRkey(uri: string): string {
  * Constructs an AT-URI for a knowledge graph node from a UUID.
  *
  * @param uuid - The UUID or rkey of the node
- * @param governanceDid - Optional governance DID (defaults to DEFAULT_GOVERNANCE_DID)
+ * @param graphPdsDid - Optional graph PDS DID (defaults to GRAPH_PDS_DID)
  * @returns The properly formatted AT-URI
  *
  * @example
@@ -84,8 +73,8 @@ export function extractRkey(uri: string): string {
  *
  * @public
  */
-export function makeGraphNodeUri(uuid: string, governanceDid?: DID): AtUri {
-  const did = governanceDid ?? DEFAULT_GOVERNANCE_DID;
+export function makeGraphNodeUri(uuid: string, graphPdsDid?: DID): AtUri {
+  const did = graphPdsDid ?? GRAPH_PDS_DID;
   return `at://${did}/${GRAPH_NODE_COLLECTION}/${uuid}` as AtUri;
 }
 
@@ -94,10 +83,10 @@ export function makeGraphNodeUri(uuid: string, governanceDid?: DID): AtUri {
  *
  * @remarks
  * If the URI is already an AT-URI, it is returned unchanged.
- * If it's a UUID, it's converted to an AT-URI using the governance DID.
+ * If it's a UUID, it's converted to an AT-URI using the graph PDS DID.
  *
  * @param uri - The URI to normalize (may be UUID or AT-URI)
- * @param governanceDid - Optional governance DID (defaults to DEFAULT_GOVERNANCE_DID)
+ * @param graphPdsDid - Optional graph PDS DID (defaults to GRAPH_PDS_DID)
  * @returns The properly formatted AT-URI
  *
  * @example
@@ -113,11 +102,11 @@ export function makeGraphNodeUri(uuid: string, governanceDid?: DID): AtUri {
  *
  * @public
  */
-export function normalizeFieldUri(uri: string, governanceDid?: DID): AtUri {
+export function normalizeFieldUri(uri: string, graphPdsDid?: DID): AtUri {
   if (isAtUri(uri)) {
     return uri as AtUri;
   }
-  return makeGraphNodeUri(uri, governanceDid);
+  return makeGraphNodeUri(uri, graphPdsDid);
 }
 
 /**

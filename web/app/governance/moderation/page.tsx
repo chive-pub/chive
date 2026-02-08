@@ -18,7 +18,6 @@ import {
   useProposals,
   usePendingProposalsCount,
   TYPE_LABELS,
-  type ProposalStatus,
   type ProposalType,
 } from '@/lib/hooks/use-governance';
 import { ConnectedTrustedEditorStatus } from '@/components/governance';

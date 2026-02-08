@@ -52,14 +52,12 @@ const PAPER_TYPE_DEFINITIONS = [
     slug: 'methods-paper',
     label: 'Methods Paper',
     description: 'Paper describing a new method, technique, or protocol.',
-    wikidataId: 'Q60520718',
     displayOrder: 6,
   },
   {
     slug: 'data-paper',
     label: 'Data Paper',
     description: 'Paper describing a dataset and its collection methodology.',
-    wikidataId: 'Q66818983',
     displayOrder: 7,
   },
   {
@@ -72,14 +70,12 @@ const PAPER_TYPE_DEFINITIONS = [
     slug: 'perspective',
     label: 'Perspective/Opinion',
     description: 'Opinion or viewpoint piece on a scientific topic.',
-    wikidataId: 'Q30070590',
     displayOrder: 9,
   },
   {
     slug: 'commentary',
     label: 'Commentary',
     description: 'Brief commentary or response to previously published work.',
-    wikidataId: 'Q7318360',
     displayOrder: 10,
   },
   {
@@ -120,7 +116,6 @@ const PAPER_TYPE_DEFINITIONS = [
     slug: 'replication-study',
     label: 'Replication Study',
     description: 'Study attempting to replicate previous research findings.',
-    wikidataId: 'Q1665367',
     displayOrder: 16,
   },
 ] as const;

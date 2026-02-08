@@ -6,6 +6,9 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import type { Agent } from '@atproto/api';
+
+import { TEST_GRAPH_PDS_DID } from '@/tests/test-constants';
+
 import {
   uploadBlob,
   uploadDocument,
@@ -14,11 +17,14 @@ import {
   createVoteRecord,
   deleteRecord,
   updateEndorsementRecord,
+  updateReviewRecord,
   updateChiveProfileRecord,
   isAgentAuthenticated,
   getAuthenticatedDid,
   buildAtUri,
   parseAtUri,
+  createStandardDocument,
+  updateStandardDocument,
 } from './record-creator';
 
 // =============================================================================
@@ -195,7 +201,11 @@ describe('createEprintRecord', () => {
       title: 'Test Paper',
       abstract: 'This is a test abstract that is long enough to pass validation.',
       authors: [createTestAuthor()],
-      fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
+      fieldNodes: [
+        {
+          uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71`,
+        },
+      ],
       licenseSlug: 'CC-BY-4.0',
     });
 
@@ -217,7 +227,11 @@ describe('createEprintRecord', () => {
       title: 'Test Paper',
       abstract: 'This is a test abstract that is long enough to pass validation.',
       authors: [createTestAuthor()],
-      fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
+      fieldNodes: [
+        {
+          uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71`,
+        },
+      ],
       keywords: ['machine learning', 'ai'],
       licenseSlug: 'CC-BY-4.0',
     });
@@ -241,7 +255,11 @@ describe('createEprintRecord', () => {
       title: 'Test Paper',
       abstract: 'This is a test abstract that is long enough to pass validation.',
       authors: [createTestAuthor()],
-      fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
+      fieldNodes: [
+        {
+          uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71`,
+        },
+      ],
       licenseSlug: 'CC-BY-4.0',
     });
 
@@ -259,7 +277,11 @@ describe('createEprintRecord', () => {
         title: 'Test',
         abstract: 'This is a test abstract that is long enough to pass validation.',
         authors: [createTestAuthor()],
-        fieldNodes: [{ uri: 'at://did:plc:governance/pub.chive.graph.field/ml' }],
+        fieldNodes: [
+          {
+            uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71`,
+          },
+        ],
         licenseSlug: 'CC-BY-4.0',
       })
     ).rejects.toThrow('User agent is not authenticated');
@@ -503,6 +525,171 @@ describe('updateEndorsementRecord', () => {
   });
 });
 
+describe('updateReviewRecord', () => {
+  it('fetches existing record before updating', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    // Mock getRecord to return a review comment
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/pub.chive.review.comment/review123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'pub.chive.review.comment',
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/paper123',
+          content: 'Original content',
+          createdAt: '2024-01-15T00:00:00.000Z',
+        },
+      },
+    });
+
+    const uri = `at://${did}/pub.chive.review.comment/review123`;
+
+    await updateReviewRecord(agent, {
+      uri,
+      content: 'Updated content',
+    });
+
+    expect(agent.com.atproto.repo.getRecord).toHaveBeenCalledWith({
+      repo: did,
+      collection: 'pub.chive.review.comment',
+      rkey: 'review123',
+    });
+  });
+
+  it('uses putRecord to update the record', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    // Mock getRecord to return a review comment
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/pub.chive.review.comment/review123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'pub.chive.review.comment',
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/paper123',
+          content: 'Original content',
+          createdAt: '2024-01-15T00:00:00.000Z',
+        },
+      },
+    });
+
+    const uri = `at://${did}/pub.chive.review.comment/review123`;
+
+    const result = await updateReviewRecord(agent, {
+      uri,
+      content: 'Updated content',
+    });
+
+    expect(agent.com.atproto.repo.putRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: did,
+        collection: 'pub.chive.review.comment',
+        rkey: 'review123',
+      })
+    );
+    expect(result.uri).toContain('pub.chive.review.comment');
+    expect(result.cid).toBeDefined();
+  });
+
+  it('preserves original eprintUri and createdAt', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    // Mock getRecord to return a review comment
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/pub.chive.review.comment/review123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'pub.chive.review.comment',
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/paper123',
+          content: 'Original content',
+          createdAt: '2024-01-15T00:00:00.000Z',
+        },
+      },
+    });
+
+    const uri = `at://${did}/pub.chive.review.comment/review123`;
+
+    await updateReviewRecord(agent, {
+      uri,
+      content: 'Updated content',
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+
+    // Should preserve the eprintUri and createdAt from the existing record
+    expect(putRecordCall.record.eprintUri).toBe(
+      'at://did:plc:author/pub.chive.eprint.submission/paper123'
+    );
+    expect(putRecordCall.record.createdAt).toBe('2024-01-15T00:00:00.000Z');
+    // Content is now stored in the body array
+    expect(putRecordCall.record.body[0].content).toBe('Updated content');
+  });
+
+  it('preserves parentComment when present', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    // Mock getRecord to return a reply
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/pub.chive.review.comment/review123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'pub.chive.review.comment',
+          eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/paper123',
+          content: 'Original reply',
+          parentComment: 'at://did:plc:other/pub.chive.review.comment/parent123',
+          createdAt: '2024-01-15T00:00:00.000Z',
+        },
+      },
+    });
+
+    const uri = `at://${did}/pub.chive.review.comment/review123`;
+
+    await updateReviewRecord(agent, {
+      uri,
+      content: 'Updated reply',
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+
+    expect(putRecordCall.record.parentComment).toBe(
+      'at://did:plc:other/pub.chive.review.comment/parent123'
+    );
+  });
+
+  it('throws when updating another user record', async () => {
+    const agent = createMockAgent({ did: 'did:plc:user1' });
+    const uri = 'at://did:plc:user2/pub.chive.review.comment/abc123';
+
+    await expect(
+      updateReviewRecord(agent, {
+        uri,
+        content: 'Updated content',
+      })
+    ).rejects.toThrow('Cannot update records belonging to other users');
+  });
+
+  it('throws when not authenticated', async () => {
+    const agent = createMockAgent({ authenticated: false });
+    const uri = 'at://did:plc:test123/pub.chive.review.comment/abc123';
+
+    await expect(
+      updateReviewRecord(agent, {
+        uri,
+        content: 'Updated content',
+      })
+    ).rejects.toThrow('Agent is not authenticated');
+  });
+});
+
 describe('updateChiveProfileRecord', () => {
   it('uses putRecord with self rkey', async () => {
     const did = 'did:plc:test123';
@@ -588,5 +775,291 @@ describe('updateChiveProfileRecord', () => {
 
     expect(result.uri).toBe(`at://${did}/pub.chive.actor.profile/self`);
     expect(result.cid).toBe('bafyupdated123');
+  });
+});
+
+// =============================================================================
+// STANDARD.SITE DOCUMENT TESTS
+// =============================================================================
+
+describe('createStandardDocument', () => {
+  it('creates a standard.site document record', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    const result = await createStandardDocument(agent, {
+      title: 'Test Paper',
+      description: 'This is a test abstract.',
+      eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
+      eprintCid: 'bafyeprint123',
+    });
+
+    expect(result.uri).toContain('site.standard.document');
+    expect(result.cid).toBeDefined();
+    expect(agent.com.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: did,
+        collection: 'site.standard.document',
+      })
+    );
+  });
+
+  it('includes content reference with uri and cid', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+    const eprintCid = 'bafyeprint123';
+
+    await createStandardDocument(agent, {
+      title: 'Test Paper',
+      eprintUri,
+      eprintCid,
+    });
+
+    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(createRecordCall.record.content).toEqual({
+      uri: eprintUri,
+      cid: eprintCid,
+    });
+  });
+
+  it('omits cid from content reference when not provided', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+
+    await createStandardDocument(agent, {
+      title: 'Test Paper',
+      eprintUri,
+    });
+
+    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(createRecordCall.record.content).toEqual({
+      uri: eprintUri,
+    });
+    expect(createRecordCall.record.content.cid).toBeUndefined();
+  });
+
+  it('truncates description to 2000 characters', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const longDescription = 'x'.repeat(3000);
+
+    await createStandardDocument(agent, {
+      title: 'Test Paper',
+      description: longDescription,
+      eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
+    });
+
+    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(createRecordCall.record.description).toHaveLength(2000);
+  });
+
+  it('sets visibility to public', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'Test Paper',
+      eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
+    });
+
+    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(createRecordCall.record.visibility).toBe('public');
+  });
+
+  it('includes createdAt timestamp', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'Test Paper',
+      eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
+    });
+
+    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(createRecordCall.record.createdAt).toBeDefined();
+    // Should be a valid ISO date string
+    expect(new Date(createRecordCall.record.createdAt).toISOString()).toBe(
+      createRecordCall.record.createdAt
+    );
+  });
+
+  it('throws when not authenticated', async () => {
+    const agent = createMockAgent({ authenticated: false });
+
+    await expect(
+      createStandardDocument(agent, {
+        title: 'Test Paper',
+        eprintUri: 'at://did:plc:xyz/pub.chive.eprint.submission/abc123',
+      })
+    ).rejects.toThrow('Agent is not authenticated');
+  });
+});
+
+describe('updateStandardDocument', () => {
+  it('fetches existing record before updating', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    // Mock getRecord to return a standard document
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/site.standard.document/doc123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'site.standard.document',
+          title: 'Original Title',
+          content: {
+            uri: `at://${did}/pub.chive.eprint.submission/abc123`,
+            cid: 'bafyeprint123',
+          },
+          visibility: 'public',
+          createdAt: '2024-01-15T00:00:00.000Z',
+        },
+      },
+    });
+
+    const uri = `at://${did}/site.standard.document/doc123`;
+
+    await updateStandardDocument(agent, {
+      uri,
+      title: 'Updated Title',
+    });
+
+    expect(agent.com.atproto.repo.getRecord).toHaveBeenCalledWith({
+      repo: did,
+      collection: 'site.standard.document',
+      rkey: 'doc123',
+    });
+  });
+
+  it('uses putRecord to update the record', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    // Mock getRecord to return a standard document
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/site.standard.document/doc123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'site.standard.document',
+          title: 'Original Title',
+          content: {
+            uri: `at://${did}/pub.chive.eprint.submission/abc123`,
+          },
+          visibility: 'public',
+          createdAt: '2024-01-15T00:00:00.000Z',
+        },
+      },
+    });
+
+    const uri = `at://${did}/site.standard.document/doc123`;
+
+    const result = await updateStandardDocument(agent, {
+      uri,
+      title: 'Updated Title',
+    });
+
+    expect(agent.com.atproto.repo.putRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: did,
+        collection: 'site.standard.document',
+        rkey: 'doc123',
+      })
+    );
+    expect(result.uri).toContain('site.standard.document');
+    expect(result.cid).toBeDefined();
+  });
+
+  it('preserves original createdAt and visibility', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+    const originalCreatedAt = '2024-01-15T00:00:00.000Z';
+
+    // Mock getRecord
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/site.standard.document/doc123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'site.standard.document',
+          title: 'Original Title',
+          content: {
+            uri: `at://${did}/pub.chive.eprint.submission/abc123`,
+          },
+          visibility: 'public',
+          createdAt: originalCreatedAt,
+        },
+      },
+    });
+
+    await updateStandardDocument(agent, {
+      uri: `at://${did}/site.standard.document/doc123`,
+      title: 'Updated Title',
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(putRecordCall.record.createdAt).toBe(originalCreatedAt);
+    expect(putRecordCall.record.visibility).toBe('public');
+  });
+
+  it('adds updatedAt timestamp', async () => {
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    // Mock getRecord
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      data: {
+        uri: `at://${did}/site.standard.document/doc123`,
+        cid: 'bafyexisting123',
+        value: {
+          $type: 'site.standard.document',
+          title: 'Original Title',
+          content: { uri: `at://${did}/pub.chive.eprint.submission/abc123` },
+          visibility: 'public',
+          createdAt: '2024-01-15T00:00:00.000Z',
+        },
+      },
+    });
+
+    await updateStandardDocument(agent, {
+      uri: `at://${did}/site.standard.document/doc123`,
+      title: 'Updated Title',
+    });
+
+    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(putRecordCall.record.updatedAt).toBeDefined();
+  });
+
+  it('throws when updating another user record', async () => {
+    const agent = createMockAgent({ did: 'did:plc:user1' });
+    const uri = 'at://did:plc:user2/site.standard.document/doc123';
+
+    await expect(
+      updateStandardDocument(agent, {
+        uri,
+        title: 'Updated Title',
+      })
+    ).rejects.toThrow('Cannot update records belonging to other users');
+  });
+
+  it('throws when not authenticated', async () => {
+    const agent = createMockAgent({ authenticated: false });
+
+    await expect(
+      updateStandardDocument(agent, {
+        uri: 'at://did:plc:test123/site.standard.document/doc123',
+        title: 'Updated Title',
+      })
+    ).rejects.toThrow('Agent is not authenticated');
   });
 });

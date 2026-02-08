@@ -189,18 +189,25 @@ export const SUBKINDS: readonly SubkindDefinition[] = [
     displayOrder: 42,
   },
   {
-    slug: 'endorsement-contribution',
-    label: 'Endorsement Contribution',
-    description: 'Scholarly contribution qualities for endorsements',
+    slug: 'endorsement-type',
+    label: 'Endorsement Type',
+    description: 'Endorsement types (methodological, analytical, etc.)',
     kind: 'type',
-    displayOrder: 43,
+    displayOrder: 44,
+  },
+  {
+    slug: 'endorsement-kind',
+    label: 'Endorsement Kind',
+    description: 'Endorsement kinds (core research, technical, etc.)',
+    kind: 'type',
+    displayOrder: 45,
   },
   {
     slug: 'access-type',
     label: 'Access Type',
     description: 'Open access status types (open_access, gold_oa, closed, etc.)',
     kind: 'type',
-    displayOrder: 44,
+    displayOrder: 46,
   },
 
   // =============================================================================
@@ -219,6 +226,20 @@ export const SUBKINDS: readonly SubkindDefinition[] = [
     description: 'Named persons (researchers, editors)',
     kind: 'object',
     displayOrder: 51,
+  },
+  {
+    slug: 'author',
+    label: 'Author',
+    description: 'Authors and contributors (unified with Person)',
+    kind: 'object',
+    displayOrder: 52,
+  },
+  {
+    slug: 'eprint',
+    label: 'Eprint',
+    description: 'Eprint documents and papers',
+    kind: 'object',
+    displayOrder: 53,
   },
   {
     slug: 'event',

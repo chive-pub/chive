@@ -15,7 +15,12 @@ import type {
   ElevationRequest,
   ReputationMetrics,
 } from '../../../../lexicons/generated/types/pub/chive/governance/listElevationRequests.js';
-import { AuthenticationError, AuthorizationError } from '../../../../types/errors.js';
+import {
+  AuthenticationError,
+  AuthorizationError,
+  DatabaseError,
+  ServiceUnavailableError,
+} from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -36,7 +41,7 @@ export const listElevationRequests: XRPCMethod<QueryParams, void, OutputSchema> 
     // Check if user is admin
     const trustedEditorService = c.get('services').trustedEditor;
     if (!trustedEditorService) {
-      throw new Error('Trusted editor service not configured');
+      throw new ServiceUnavailableError('Trusted editor service not configured', 'trustedEditor');
     }
 
     const statusResult = await trustedEditorService.getEditorStatus(user.did);
@@ -52,7 +57,11 @@ export const listElevationRequests: XRPCMethod<QueryParams, void, OutputSchema> 
     const result = await trustedEditorService.listElevationRequests(limit, params.cursor);
 
     if (!result.ok) {
-      throw new Error(`Failed to list elevation requests: ${result.error.message}`);
+      throw new DatabaseError(
+        'QUERY',
+        `Failed to list elevation requests: ${result.error.message}`,
+        result.error
+      );
     }
 
     // Enrich with metrics

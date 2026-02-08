@@ -86,7 +86,8 @@ export function AnnotationSidebar({
   className,
 }: AnnotationSidebarProps) {
   const [sortBy, setSortBy] = useState<SortOption>('page');
-  const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([1]));
+  // Expand the first page (pageNumber=0) by default
+  const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([0]));
 
   const { data, isLoading, error } = useInlineReviews(eprintUri);
 
@@ -275,7 +276,7 @@ function PageAnnotationGroup({
               <ChevronRight className="h-4 w-4" />
             )}
             <FileText className="h-4 w-4 text-muted-foreground" />
-            Page {pageNumber}
+            Page {pageNumber + 1}
           </span>
           <Badge variant="outline" className="text-xs">
             {annotations.length}

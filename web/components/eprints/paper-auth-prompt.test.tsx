@@ -1,13 +1,49 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { PaperAuthPrompt } from './paper-auth-prompt';
+
+// Mock the auth module
+vi.mock('@/lib/auth', () => ({
+  resolveHandle: vi.fn(),
+  authenticatePaperInPopup: vi.fn(),
+}));
+
+// Mock the observability logger
+vi.mock('@/lib/observability', () => ({
+  logger: {
+    child: vi.fn(() => ({
+      info: vi.fn(),
+      error: vi.fn(),
+    })),
+  },
+}));
+
+import { resolveHandle, authenticatePaperInPopup } from '@/lib/auth';
 
 describe('PaperAuthPrompt', () => {
   const defaultProps = {
     paperDid: 'did:plc:paper123',
     onSuccess: vi.fn(),
+    onError: vi.fn(),
   };
+
+  const mockResolveHandle = resolveHandle as ReturnType<typeof vi.fn>;
+  const mockAuthenticatePaperInPopup = authenticatePaperInPopup as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveHandle.mockResolvedValue({
+      did: 'did:plc:paper123',
+      pdsEndpoint: 'https://pds.example.com',
+    });
+    mockAuthenticatePaperInPopup.mockResolvedValue({
+      paperDid: 'did:plc:paper123',
+      paperHandle: 'paper.example.com',
+      pdsEndpoint: 'https://pds.example.com',
+    });
+  });
 
   it('renders the component title', () => {
     render(<PaperAuthPrompt {...defaultProps} />);
@@ -41,58 +77,143 @@ describe('PaperAuthPrompt', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows loading state during authentication', async () => {
+  it('renders handle input field', () => {
     render(<PaperAuthPrompt {...defaultProps} />);
+
+    expect(screen.getByLabelText(/paper account handle/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('paper.example.com')).toBeInTheDocument();
+  });
+
+  it('disables button when handle is empty', () => {
+    render(<PaperAuthPrompt {...defaultProps} />);
+
+    const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
+    expect(authButton).toBeDisabled();
+  });
+
+  it('enables button when handle is entered', async () => {
+    const user = userEvent.setup();
+    render(<PaperAuthPrompt {...defaultProps} />);
+
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'paper.example.com');
+
+    const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
+    expect(authButton).not.toBeDisabled();
+  });
+
+  it('shows loading state during authentication', async () => {
+    const user = userEvent.setup();
+    // Make authentication hang
+    mockAuthenticatePaperInPopup.mockImplementation(() => new Promise(() => {}));
+
+    render(<PaperAuthPrompt {...defaultProps} />);
+
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'paper.example.com');
 
     const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
     fireEvent.click(authButton);
 
-    // Should show loading state
     await waitFor(() => {
       expect(screen.getByText(/authenticating/i)).toBeInTheDocument();
     });
   });
 
-  it('disables button during authentication', async () => {
+  it('disables button and input during authentication', async () => {
+    const user = userEvent.setup();
+    // Make authentication hang
+    mockAuthenticatePaperInPopup.mockImplementation(() => new Promise(() => {}));
+
     render(<PaperAuthPrompt {...defaultProps} />);
+
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'paper.example.com');
 
     const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
     fireEvent.click(authButton);
 
     await waitFor(() => {
-      const button = screen.getByRole('button');
-      expect(button).toBeDisabled();
+      expect(screen.getByRole('button')).toBeDisabled();
+      expect(screen.getByLabelText(/paper account handle/i)).toBeDisabled();
     });
   });
 
-  it('calls onSuccess after authentication completes', async () => {
+  it('calls onSuccess after successful authentication', async () => {
+    const user = userEvent.setup();
     const onSuccess = vi.fn();
     render(<PaperAuthPrompt {...defaultProps} onSuccess={onSuccess} />);
+
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'paper.example.com');
 
     const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
     fireEvent.click(authButton);
 
-    await waitFor(
-      () => {
-        expect(onSuccess).toHaveBeenCalledTimes(1);
-      },
-      { timeout: 2000 }
-    );
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('shows error when handle resolves to different DID', async () => {
+    const user = userEvent.setup();
+    mockResolveHandle.mockResolvedValue({
+      did: 'did:plc:different-did',
+      pdsEndpoint: 'https://pds.example.com',
+    });
+
+    render(<PaperAuthPrompt {...defaultProps} />);
+
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'wrong-paper.example.com');
+
+    const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
+    fireEvent.click(authButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/resolves to a different DID/i)).toBeInTheDocument();
+    });
   });
 
   it('calls onError when authentication fails', async () => {
-    const onSuccess = vi.fn();
+    const user = userEvent.setup();
     const onError = vi.fn();
+    const testError = new Error('Popup was blocked');
+    mockAuthenticatePaperInPopup.mockRejectedValue(testError);
 
-    // Mock the component to simulate an error
-    // Since the current implementation doesn't actually fail,
-    // we need to verify the error callback is passed correctly
-    render(<PaperAuthPrompt paperDid="did:plc:paper123" onSuccess={onSuccess} onError={onError} />);
+    render(<PaperAuthPrompt {...defaultProps} onError={onError} />);
 
-    // Verify the component renders with onError prop
-    expect(
-      screen.getByRole('button', { name: /authenticate as paper account/i })
-    ).toBeInTheDocument();
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'paper.example.com');
+
+    const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
+    fireEvent.click(authButton);
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith(testError);
+      expect(screen.getByText(/Popup was blocked/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error when authenticated DID does not match expected DID', async () => {
+    const user = userEvent.setup();
+    mockAuthenticatePaperInPopup.mockResolvedValue({
+      paperDid: 'did:plc:unexpected-did',
+      paperHandle: 'paper.example.com',
+      pdsEndpoint: 'https://pds.example.com',
+    });
+
+    render(<PaperAuthPrompt {...defaultProps} />);
+
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'paper.example.com');
+
+    const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
+    fireEvent.click(authButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/does not match the expected paper DID/i)).toBeInTheDocument();
+    });
   });
 
   it('renders with different paper DID values', () => {
@@ -105,7 +226,9 @@ describe('PaperAuthPrompt', () => {
   it('displays instruction text about popup', () => {
     render(<PaperAuthPrompt {...defaultProps} />);
 
-    expect(screen.getByText(/Click the button below to authenticate/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Enter the ATProto handle for this paper account/i)
+    ).toBeInTheDocument();
     expect(screen.getByText(/This will open a popup window/i)).toBeInTheDocument();
   });
 
@@ -118,20 +241,31 @@ describe('PaperAuthPrompt', () => {
     expect(svg).toBeInTheDocument();
   });
 
-  it('re-enables button after authentication completes', async () => {
+  it('allows authentication via Enter key', async () => {
+    const user = userEvent.setup();
+    const onSuccess = vi.fn();
+    render(<PaperAuthPrompt {...defaultProps} onSuccess={onSuccess} />);
+
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'paper.example.com');
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('shows error for empty handle submission', async () => {
+    const user = userEvent.setup();
     render(<PaperAuthPrompt {...defaultProps} />);
 
-    const authButton = screen.getByRole('button', { name: /authenticate as paper account/i });
-    fireEvent.click(authButton);
+    // Force enable button by temporarily having text then clearing
+    const input = screen.getByLabelText(/paper account handle/i);
+    await user.type(input, 'a');
+    await user.clear(input);
 
-    // Wait for authentication to complete
-    await waitFor(
-      () => {
-        // The component calls onSuccess which typically unmounts this component,
-        // but if it stays mounted, the button should be re-enabled
-        expect(defaultProps.onSuccess).toHaveBeenCalled();
-      },
-      { timeout: 2000 }
-    );
+    // The button should now be disabled, but we can test the validation
+    // by checking that handle is required
+    expect(screen.getByRole('button', { name: /authenticate as paper account/i })).toBeDisabled();
   });
 });

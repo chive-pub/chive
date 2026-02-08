@@ -130,10 +130,12 @@ export class CollaborationGraph {
     const actualDepth = Math.min(Math.max(depth, 1), 3);
 
     const query = `
-      MATCH (center:Author {did: $did})
+      MATCH (center:Node:Object:Person)
+      WHERE center.subkind = 'author' AND center.metadata.did = $did
 
       // Find all authors within N hops
-      MATCH path = (center)-[:COAUTHORED_WITH*1..${actualDepth}]-(other:Author)
+      MATCH path = (center)-[:COAUTHORED_WITH*1..${actualDepth}]-(other:Node:Object:Person)
+      WHERE other.subkind = 'author'
 
       WITH center, collect(DISTINCT other) AS allAuthors
 
@@ -147,9 +149,9 @@ export class CollaborationGraph {
 
       // Collect node info
       WITH collect({
-        did: author.did,
-        name: author.name,
-        orcid: author.orcid
+        did: author.metadata.did,
+        name: author.label,
+        orcid: author.metadata.orcid
       }) AS nodes
 
       // Now get edges between these nodes
@@ -158,7 +160,9 @@ export class CollaborationGraph {
       WITH nodes, n1, n2
       WHERE n1.did < n2.did  // Avoid duplicate edges
 
-      MATCH (a1:Author {did: n1.did})-[r:COAUTHORED_WITH]-(a2:Author {did: n2.did})
+      MATCH (a1:Node:Object:Person)-[r:COAUTHORED_WITH]-(a2:Node:Object:Person)
+      WHERE a1.subkind = 'author' AND a1.metadata.did = n1.did
+        AND a2.subkind = 'author' AND a2.metadata.did = n2.did
 
       WITH nodes, collect({
         source: n1.did,
@@ -307,7 +311,9 @@ export class CollaborationGraph {
     limit = 10
   ): Promise<{ did: DID; name: string; count: number }[]> {
     const query = `
-      MATCH (author:Author {did: $did})-[r:COAUTHORED_WITH]-(collaborator:Author)
+      MATCH (author:Node:Object:Person)-[r:COAUTHORED_WITH]-(collaborator:Node:Object:Person)
+      WHERE author.subkind = 'author' AND author.metadata.did = $did
+        AND collaborator.subkind = 'author'
       RETURN
         collaborator.did AS did,
         collaborator.name AS name,
@@ -347,12 +353,14 @@ export class CollaborationGraph {
     mostFrequentCollaborator?: { did: DID; name: string; count: number };
   }> {
     const query = `
-      MATCH (author:Author {did: $did})-[r:COAUTHORED_WITH]-(collaborator:Author)
+      MATCH (author:Node:Object:Person)-[r:COAUTHORED_WITH]-(collaborator:Node:Object:Person)
+      WHERE author.subkind = 'author' AND author.metadata.did = $did
+        AND collaborator.subkind = 'author'
       WITH count(DISTINCT collaborator) AS totalCollaborators,
            sum(COALESCE(r.count, 1)) AS totalCollaborations,
            collect({
-             did: collaborator.did,
-             name: collaborator.name,
+             did: collaborator.metadata.did,
+             name: collaborator.label,
              count: COALESCE(r.count, 1)
            }) AS collaborators
       WITH totalCollaborators, totalCollaborations, collaborators,
@@ -425,9 +433,11 @@ export class CollaborationGraph {
     maxHops = 6
   ): Promise<{ path: DID[]; length: number } | null> {
     const query = `
-      MATCH (a1:Author {did: $did1}), (a2:Author {did: $did2})
+      MATCH (a1:Node:Object:Person), (a2:Node:Object:Person)
+      WHERE a1.subkind = 'author' AND a1.metadata.did = $did1
+        AND a2.subkind = 'author' AND a2.metadata.did = $did2
       MATCH path = shortestPath((a1)-[:COAUTHORED_WITH*1..${maxHops}]-(a2))
-      WITH [node IN nodes(path) | node.did] AS pathDids, length(path) AS pathLength
+      WITH [node IN nodes(path) | node.metadata.did] AS pathDids, length(path) AS pathLength
       RETURN pathDids, pathLength
     `;
 

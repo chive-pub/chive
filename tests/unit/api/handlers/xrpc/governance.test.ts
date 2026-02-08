@@ -60,9 +60,18 @@ const createMockGraphAdapter = (): MockGraphAdapter => ({
   getVotesForProposal: vi.fn(),
 });
 
+/**
+ * UUID lookup for proposals.
+ * Generated using nodeUuid('proposal', slug) for deterministic URIs.
+ */
+const PROPOSAL_UUIDS: Record<string, string> = {
+  abc123: '3527dc4c-42e8-5bb2-8376-023497566892',
+  def456: '7353ec2c-49db-5cf1-8449-1f19c79796e6',
+};
+
 const createMockProposal = (overrides?: Partial<MockProposal>): MockProposal => ({
   id: 'proposal-abc123',
-  uri: 'at://did:plc:chive/pub.chive.graph.proposal/abc123',
+  uri: `at://did:plc:chive/pub.chive.graph.proposal/${PROPOSAL_UUIDS.abc123}`,
   fieldId: 'quantum-computing',
   label: 'Quantum Computing',
   type: 'create',
@@ -245,7 +254,7 @@ describe('XRPC Governance Handlers', () => {
         {
           id: 'vote-1',
           uri: 'at://did:plc:voter1/pub.chive.graph.vote/1',
-          proposalUri: 'at://did:plc:chive/pub.chive.graph.proposal/abc123',
+          proposalUri: `at://did:plc:chive/pub.chive.graph.proposal/${PROPOSAL_UUIDS.abc123}`,
           voterDid: 'did:plc:voter1' as DID,
           vote: 'approve',
           voterRole: 'reviewer',
@@ -256,7 +265,7 @@ describe('XRPC Governance Handlers', () => {
         {
           id: 'vote-2',
           uri: 'at://did:plc:voter2/pub.chive.graph.vote/2',
-          proposalUri: 'at://did:plc:chive/pub.chive.graph.proposal/abc123',
+          proposalUri: `at://did:plc:chive/pub.chive.graph.proposal/${PROPOSAL_UUIDS.abc123}`,
           voterDid: 'did:plc:voter2' as DID,
           vote: 'reject',
           voterRole: 'community-member',
@@ -284,7 +293,7 @@ describe('XRPC Governance Handlers', () => {
         {
           id: 'vote-1',
           uri: 'at://did:plc:editor1/pub.chive.graph.vote/1',
-          proposalUri: 'at://did:plc:chive/pub.chive.graph.proposal/abc123',
+          proposalUri: `at://did:plc:chive/pub.chive.graph.proposal/${PROPOSAL_UUIDS.abc123}`,
           voterDid: 'did:plc:editor1' as DID,
           vote: 'approve',
           voterRole: 'domain-expert',

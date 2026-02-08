@@ -421,8 +421,11 @@ export class Neo4jAdapter implements IGraphDatabase {
    * Gets node hierarchy for tree views.
    */
   async getHierarchy(rootUri: AtUri, maxDepth = 5): Promise<NodeHierarchy> {
+    // Follow 'narrower' edges FROM root TO children (root has narrower children)
+    // Use ALL() to filter relationship properties in variable-length paths
     const query = `
-      MATCH path = (root:Node {uri: $rootUri})<-[:EDGE {relationSlug: 'narrower'}*0..${maxDepth}]-(child:Node)
+      MATCH path = (root:Node {uri: $rootUri})-[:EDGE*0..${maxDepth}]->(child:Node)
+      WHERE ALL(r IN relationships(path) WHERE r.relationSlug = 'narrower')
       WITH root, child, length(path) as depth
       ORDER BY depth, child.label
       RETURN root, collect({child: child, depth: depth}) as children
@@ -449,6 +452,58 @@ export class Neo4jAdapter implements IGraphDatabase {
   }
 
   /**
+   * Gets ancestor field nodes for multiple field IDs by traversing narrower edges in reverse.
+   * In SKOS, "parent narrower child" means parent -> child. To get ancestors, we traverse
+   * the narrower relationship backwards: child <-[narrower]- parent <-[narrower]- grandparent.
+   *
+   * @param fieldIds - UUIDs of field nodes to get ancestors for
+   * @param maxDepth - Maximum hierarchy depth to traverse (default 10)
+   * @returns Map of field ID to array of ancestor field nodes (excluding the field itself)
+   */
+  async getFieldAncestors(
+    fieldIds: readonly string[],
+    maxDepth = 10
+  ): Promise<Map<string, readonly GraphNode[]>> {
+    if (fieldIds.length === 0) {
+      return new Map();
+    }
+
+    // Traverse narrower edges in reverse (child <- parent) to get ancestors
+    // Filter for field subkind to only get field nodes
+    const query = `
+      UNWIND $fieldIds AS fieldId
+      MATCH (field:Node {id: fieldId})
+      WHERE field.subkind = 'field'
+      OPTIONAL MATCH path = (field)<-[:EDGE*1..${maxDepth}]-(ancestor:Node)
+      WHERE ALL(r IN relationships(path) WHERE r.relationSlug = 'narrower')
+        AND ancestor.subkind = 'field'
+      WITH fieldId, field, collect(DISTINCT ancestor) as ancestors
+      RETURN fieldId, ancestors
+    `;
+
+    const result = await this.connection.executeQuery<{
+      fieldId: string;
+      ancestors: (Neo4jNode | null)[];
+    }>(query, { fieldIds: [...fieldIds] });
+
+    const ancestorMap = new Map<string, readonly GraphNode[]>();
+
+    for (const record of result.records) {
+      const fieldId = record.get('fieldId');
+      const ancestors = record.get('ancestors');
+
+      // Filter out nulls (when OPTIONAL MATCH found no ancestors) and map to GraphNode
+      const validAncestors = (ancestors ?? [])
+        .filter((a): a is Neo4jNode => a !== null)
+        .map((a) => this.mapNeo4jNode(a));
+
+      ancestorMap.set(fieldId, validAncestors);
+    }
+
+    return ancestorMap;
+  }
+
+  /**
    * Queries eprints by facets.
    */
   async queryByFacets(facets: readonly FacetFilter[]): Promise<readonly string[]> {
@@ -465,7 +520,8 @@ export class Neo4jAdapter implements IGraphDatabase {
     );
 
     const query = `
-      MATCH (p:Eprint)
+      MATCH (p:Node:Object:Eprint)
+      WHERE p.subkind = 'eprint'
       ${facetMatches.join('\n')}
       RETURN DISTINCT p.uri as uri
       LIMIT $limit
@@ -510,7 +566,8 @@ export class Neo4jAdapter implements IGraphDatabase {
     }
 
     const query = `
-      MATCH (p:Eprint)
+      MATCH (p:Node:Object:Eprint)
+      WHERE p.subkind = 'eprint'
       ${facetMatches}
       MATCH (p)-[:HAS_FACET]->(f:Node:Facet)
       WITH f.metadata as metadata, f.label as value, count(DISTINCT p) as count

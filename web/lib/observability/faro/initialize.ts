@@ -113,9 +113,9 @@ export function initializeFaro(configOverrides?: Partial<FaroConfig>): Faro | nu
     // Build instrumentations
     const otelInstrumentations = createInstrumentations(config);
 
-    // Initialize Faro with core options
-    faroInstance = initFaro({
-      url: config.collectorUrl,
+    // Build Faro options - url OR transports is required
+    // When no collector URL, use console-only transport in development
+    const faroOptions: Parameters<typeof initFaro>[0] = {
       app: {
         name: config.appName,
         version: config.appVersion,
@@ -168,7 +168,19 @@ export function initializeFaro(configOverrides?: Partial<FaroConfig>): Faro | nu
         // Session ID for correlation without user identity
         id: getPersistedSessionId(),
       },
-    });
+    };
+
+    // Add URL or empty transports array (url OR transports is required)
+    if (config.collectorUrl) {
+      faroOptions.url = config.collectorUrl;
+    } else {
+      // In development without a collector URL, use empty transports
+      // This still enables local console logging via instrumentations
+      faroOptions.transports = [];
+    }
+
+    // Initialize Faro
+    faroInstance = initFaro(faroOptions);
 
     // Log initialization
     if (process.env.NODE_ENV === 'development') {

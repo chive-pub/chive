@@ -1,8 +1,9 @@
 /**
- * Seed script for endorsement contribution type nodes.
+ * Seed script for endorsement type nodes.
  *
  * @remarks
  * Seeds scholarly contribution qualities for endorsements.
+ * These are now called "endorsement-type" (renamed from endorsement-contribution).
  *
  * @packageDocumentation
  */
@@ -10,13 +11,13 @@
 import { NodeCreator } from './lib/node-creator.js';
 
 /**
- * Endorsement contribution definitions.
+ * Endorsement type definitions.
  *
  * @remarks
  * These slugs MUST match the knownValues in pub.chive.review.endorsement lexicon.
  * See lexicons/pub/chive/review/endorsement.json for the source of truth.
  */
-const ENDORSEMENT_CONTRIBUTION_DEFINITIONS = [
+const ENDORSEMENT_TYPE_DEFINITIONS = [
   {
     slug: 'methodological',
     label: 'Methodological Rigor',
@@ -110,23 +111,23 @@ const ENDORSEMENT_CONTRIBUTION_DEFINITIONS = [
 ] as const;
 
 /**
- * Seeds all endorsement contribution type nodes.
+ * Seeds all endorsement type nodes.
  *
  * @param nodeCreator - Node creator instance
  * @returns Number of nodes created
  */
-export async function seedEndorsementContributions(nodeCreator: NodeCreator): Promise<number> {
+export async function seedEndorsementTypes(nodeCreator: NodeCreator): Promise<number> {
   let count = 0;
 
-  for (const contribution of ENDORSEMENT_CONTRIBUTION_DEFINITIONS) {
+  for (const endorsementType of ENDORSEMENT_TYPE_DEFINITIONS) {
     await nodeCreator.createNode({
-      slug: contribution.slug,
+      slug: endorsementType.slug,
       kind: 'type',
-      subkind: 'endorsement-contribution',
-      label: contribution.label,
-      description: contribution.description,
+      subkind: 'endorsement-type',
+      label: endorsementType.label,
+      description: endorsementType.description,
       metadata: {
-        displayOrder: contribution.displayOrder,
+        displayOrder: endorsementType.displayOrder,
       },
       status: 'established',
     });
