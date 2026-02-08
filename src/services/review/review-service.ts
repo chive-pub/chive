@@ -343,7 +343,8 @@ export class ReviewService {
         : null;
 
       // Get motivation (prefer fallback, URI would need resolution)
-      const motivation = comment.motivationFallback ?? null;
+      // Default to 'commenting' if not specified (matches database default)
+      const motivation = comment.motivationFallback ?? 'commenting';
 
       await this.pool.query(
         `INSERT INTO reviews_index (

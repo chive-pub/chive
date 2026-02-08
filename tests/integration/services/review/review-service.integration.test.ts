@@ -57,6 +57,13 @@ function createTestMetadata(uri: AtUri, cid: CID): RecordMetadata {
  * Creates test review comment matching the lexicon schema.
  */
 function createTestReviewComment(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  // Extract parentComment from overrides (map 'parent' to 'parentComment' for convenience)
+  const { parent, ...rest } = overrides as { parent?: unknown; [key: string]: unknown };
+  const finalOverrides: Record<string, unknown> = { ...rest };
+  if (parent !== undefined) {
+    finalOverrides.parentComment = parent;
+  }
+
   return {
     $type: 'pub.chive.review.comment',
     eprintUri: TEST_EPRINT_URI,
@@ -68,7 +75,7 @@ function createTestReviewComment(overrides: Record<string, unknown> = {}): Recor
       },
     ],
     createdAt: new Date().toISOString(),
-    ...overrides,
+    ...finalOverrides,
   };
 }
 
