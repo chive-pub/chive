@@ -180,7 +180,10 @@ export interface PDSEprintRecord {
   paperDid?: string;
   doi?: string;
   previousVersion?: { uri: string; cid: string };
-  version?: number;
+  /** Semantic version object (new schema) */
+  version?: { major: number; minor: number; patch: number };
+  /** Legacy integer version number */
+  versionNumber?: number;
   externalLinks?: { type: string; url: string; label?: string }[];
   fundingInfo?: {
     funderName?: string;
@@ -769,7 +772,8 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
     // Optional fields
     paperDid: record.paperDid as DID | undefined,
     supplementaryMaterials,
-    version: record.version ?? 1,
+    // Extract version number: prefer versionNumber (legacy), fall back to major from semantic version
+    version: record.versionNumber ?? record.version?.major ?? 1,
     previousVersionUri: record.previousVersion?.uri as AtUri | undefined,
     publicationStatus: 'eprint',
 
