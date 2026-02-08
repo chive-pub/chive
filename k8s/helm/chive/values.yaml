@@ -257,7 +257,7 @@ config:
   atproto:
     relayUrl: "wss://bsky.network"
     pdsUrl: "https://bsky.social"
-    governanceDid: "did:plc:chive-governance"
+    graphPdsDid: "did:plc:chive-governance"
 
   # Application
   logLevel: info

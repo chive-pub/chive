@@ -72,16 +72,6 @@ export type {
 } from '../../../../lexicons/generated/types/pub/chive/actor/getDiscoverySettings.js';
 
 /**
- * CitationNetworkDisplay type alias for backward compatibility.
- */
-export type CitationNetworkDisplay = 'hidden' | 'preview' | 'expanded';
-
-/**
- * KeywordSource type alias for backward compatibility.
- */
-export type KeywordSource = 'fast' | 'wikidata' | 'freetext';
-
-/**
  * Actor methods map keyed by NSID.
  *
  * @public

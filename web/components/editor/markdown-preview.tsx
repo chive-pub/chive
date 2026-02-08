@@ -21,6 +21,7 @@ import Link from 'next/link';
 import katex from 'katex';
 
 import { cn } from '@/lib/utils';
+import { escapeHTML } from '@/lib/utils/annotation-serializer';
 import type { RichTextContent, RichTextFacet, RichTextFeature } from './types';
 
 // =============================================================================
@@ -137,7 +138,7 @@ function renderLatex(latex: string, displayMode: boolean): string {
       errorColor: '#cc0000',
     });
   } catch {
-    return `<span class="text-destructive">[LaTeX error: ${latex}]</span>`;
+    return `<span class="text-destructive">[LaTeX error: ${escapeHTML(latex)}]</span>`;
   }
 }
 

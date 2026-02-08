@@ -112,7 +112,7 @@ export function FieldsPageContent() {
 
   // Determine which data to display
   const isSearchActive = searchQuery.length >= 2;
-  const isLoading = isSearchActive ? isSearching : isLoadingHierarchy;
+  const _isLoading = isSearchActive ? isSearching : isLoadingHierarchy;
   const error = isSearchActive ? searchError : hierarchyError;
 
   // Get display fields based on search or hierarchy

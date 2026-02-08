@@ -15,7 +15,6 @@ import {
   Users,
   Shield,
   ShieldCheck,
-  ShieldAlert,
   Clock,
   CheckCircle2,
   XCircle,
@@ -24,7 +23,6 @@ import {
   RefreshCw,
   AlertCircle,
   Key,
-  UserPlus,
   UserMinus,
   Eye,
   Star,
@@ -73,7 +71,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { GovernanceRole, EditorStatus, ReputationMetrics } from './trusted-editor-status';
+import type { GovernanceRole, ReputationMetrics } from './trusted-editor-status';
 
 /**
  * Trusted editor record.
@@ -293,7 +291,7 @@ export function GovernanceAdminDashboard({
     try {
       await onGrantDelegation(
         delegationDialog.did,
-        ['pub.chive.graph.authority', 'pub.chive.graph.facet', 'pub.chive.graph.concept'],
+        ['pub.chive.graph.node', 'pub.chive.graph.edge', 'pub.chive.graph.nodeProposal'],
         parseInt(delegationDays, 10)
       );
       setDelegationDialog(null);
@@ -833,9 +831,9 @@ export function GovernanceAdminDashboard({
             <div className="rounded-lg border p-3 text-sm">
               <p className="font-medium">Collections:</p>
               <ul className="mt-1 list-inside list-disc text-muted-foreground">
-                <li>pub.chive.graph.authority</li>
-                <li>pub.chive.graph.facet</li>
-                <li>pub.chive.graph.concept</li>
+                <li>pub.chive.graph.node</li>
+                <li>pub.chive.graph.edge</li>
+                <li>pub.chive.graph.nodeProposal</li>
               </ul>
             </div>
           </div>

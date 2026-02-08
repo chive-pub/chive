@@ -17,6 +17,7 @@ import { PDSScanner } from '../src/services/pds-discovery/pds-scanner.js';
 import { ReviewService } from '../src/services/review/review-service.js';
 import { ElasticsearchAdapter } from '../src/storage/elasticsearch/adapter.js';
 import { ElasticsearchConnectionPool } from '../src/storage/elasticsearch/connection.js';
+import { Neo4jAdapter } from '../src/storage/neo4j/adapter.js';
 import { Neo4jConnection } from '../src/storage/neo4j/connection.js';
 import { TagManager } from '../src/storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from '../src/storage/postgresql/adapter.js';
@@ -63,7 +64,9 @@ async function main() {
 
   // Create adapters
   const storageAdapter = new PostgreSQLAdapter(pgPool);
-  const searchAdapter = new ElasticsearchAdapter(esPool);
+  const searchAdapter = new ElasticsearchAdapter(esPool, {
+    indexName: 'eprints',
+  });
 
   // Create DID resolver
   const identityResolver = new DIDResolver({
@@ -104,6 +107,8 @@ async function main() {
     },
   });
 
+  const graphAdapter = new Neo4jAdapter(neo4jConnection);
+
   const tagManager = new TagManager({
     connection: neo4jConnection,
     logger,
@@ -116,6 +121,7 @@ async function main() {
     identity: identityResolver,
     logger,
     tagManager,
+    graph: graphAdapter,
   });
 
   const reviewService = new ReviewService({

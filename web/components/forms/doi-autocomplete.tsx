@@ -25,10 +25,9 @@
 
 import * as React from 'react';
 import { useCallback } from 'react';
-import { ExternalLink, Calendar, BookOpen } from 'lucide-react';
+import { ExternalLink, BookOpen } from 'lucide-react';
 
 import { logger } from '@/lib/observability';
-import { cn } from '@/lib/utils';
 import { AutocompleteInput } from './autocomplete-input';
 
 const log = logger.child({ component: 'doi-autocomplete' });
@@ -211,7 +210,13 @@ async function searchCrossRef(query: string): Promise<CrossRefWork[]> {
 /**
  * Render a single CrossRef work result.
  */
-function DoiResultItem({ work, isSelected }: { work: CrossRefWork; isSelected: boolean }) {
+function DoiResultItem({
+  work,
+  isSelected: _isSelected,
+}: {
+  work: CrossRefWork;
+  isSelected: boolean;
+}) {
   const authorText =
     work.authors.length > 0
       ? work.authors

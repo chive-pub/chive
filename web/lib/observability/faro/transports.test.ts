@@ -45,10 +45,6 @@ import {
   isOnline,
   calculateBackoff,
   withRetry,
-  createBatchingTransport,
-  createConsoleTransport,
-  createOfflineTransport,
-  createRetryTransport,
 } from './transports';
 
 describe('Transport Utilities', () => {
@@ -242,51 +238,6 @@ describe('Transport Utilities', () => {
 
       await expect(withRetry(fn, 2)).rejects.toThrow('always fails');
       expect(fn).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('deprecated transport functions', () => {
-    const mockConfig = {
-      collectorUrl: 'https://example.com',
-      appName: 'test',
-      appVersion: '1.0.0',
-      environment: 'test',
-      traceSampleRate: 1.0,
-      sessionSampleRate: 1.0,
-      enabled: true,
-      instrumentConsole: true,
-      instrumentPerformance: true,
-      instrumentErrors: true,
-    };
-
-    it('createBatchingTransport returns inner transport', () => {
-      const inner = { send: vi.fn() };
-
-      const result = createBatchingTransport(mockConfig, inner);
-
-      expect(result).toBe(inner);
-    });
-
-    it('createConsoleTransport returns null', () => {
-      const result = createConsoleTransport(mockConfig);
-
-      expect(result).toBeNull();
-    });
-
-    it('createOfflineTransport returns inner transport', () => {
-      const inner = { send: vi.fn() };
-
-      const result = createOfflineTransport(mockConfig, inner);
-
-      expect(result).toBe(inner);
-    });
-
-    it('createRetryTransport returns inner transport', () => {
-      const inner = { send: vi.fn() };
-
-      const result = createRetryTransport(mockConfig, inner);
-
-      expect(result).toBe(inner);
     });
   });
 });

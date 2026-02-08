@@ -1,4 +1,5 @@
 import { render, screen } from '@/tests/test-utils';
+import { TEST_GRAPH_PDS_DID } from '@/tests/test-constants';
 import { AnnotationBodyRenderer } from './annotation-body-renderer';
 import type { RichAnnotationBody } from '@/lib/api/schema';
 
@@ -130,7 +131,7 @@ describe('AnnotationBodyRenderer', () => {
         items: [
           {
             type: 'nodeRef',
-            uri: 'at://did:plc:governance/pub.chive.graph.node/auth123',
+            uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/9a0b1c2d-3e4f-5678-9abc-def012345678`,
             label: 'Library of Congress',
           },
         ],
@@ -140,7 +141,7 @@ describe('AnnotationBodyRenderer', () => {
       render(<AnnotationBodyRenderer body={body} />);
 
       const link = screen.getByRole('link', { name: /library of congress/i });
-      expect(link).toHaveAttribute('href', '/graph/auth123');
+      expect(link).toHaveAttribute('href', '/graph/9a0b1c2d-3e4f-5678-9abc-def012345678');
     });
 
     it('renders node reference with subkind-specific colors', () => {
@@ -172,7 +173,7 @@ describe('AnnotationBodyRenderer', () => {
         items: [
           {
             type: 'fieldRef',
-            uri: 'at://did:plc:governance/pub.chive.graph.field/neuroscience',
+            uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/17c7f1fa-28cc-582e-a9fa-74de0d7bb636`,
             label: 'Neuroscience',
           },
         ],
@@ -182,7 +183,8 @@ describe('AnnotationBodyRenderer', () => {
       render(<AnnotationBodyRenderer body={body} />);
 
       const link = screen.getByRole('link', { name: /neuroscience/i });
-      expect(link).toHaveAttribute('href', '/fields/neuroscience');
+      // Link uses UUID from AT-URI, not label slug
+      expect(link).toHaveAttribute('href', '/fields/17c7f1fa-28cc-582e-a9fa-74de0d7bb636');
     });
 
     it('applies field chip styling', () => {

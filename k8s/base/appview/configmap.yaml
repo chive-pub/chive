@@ -32,7 +32,7 @@ data:
   # ATProto
   ATPROTO_RELAY_URL: "wss://bsky.network"
   ATPROTO_PDS_URL: "https://bsky.social"
-  CHIVE_GOVERNANCE_DID: "did:plc:chive-governance"
+  GRAPH_PDS_DID: "did:plc:chive-governance"
 
   # Application
   LOG_LEVEL: "info"

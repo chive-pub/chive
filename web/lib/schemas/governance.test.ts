@@ -5,6 +5,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+
+import { TEST_GRAPH_PDS_DID } from '@/tests/test-constants';
+
 import {
   fieldProposalSchema,
   voteSchema,
@@ -97,7 +100,7 @@ describe('fieldProposalSchema', () => {
     const result = fieldProposalSchema.safeParse({
       ...validCreateProposal,
       proposalType: 'modify',
-      existingFieldUri: 'at://did:plc:governance/pub.chive.graph.field/ml',
+      existingFieldUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71`,
     });
 
     expect(result.success).toBe(true);
@@ -116,7 +119,7 @@ describe('fieldProposalSchema', () => {
     const result = fieldProposalSchema.safeParse({
       ...validCreateProposal,
       proposalType: 'merge',
-      existingFieldUri: 'at://did:plc:governance/pub.chive.graph.field/ml',
+      existingFieldUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71`,
     });
 
     expect(result.success).toBe(false);
@@ -126,8 +129,8 @@ describe('fieldProposalSchema', () => {
     const result = fieldProposalSchema.safeParse({
       ...validCreateProposal,
       proposalType: 'merge',
-      existingFieldUri: 'at://did:plc:governance/pub.chive.graph.field/ml',
-      mergeTargetUri: 'at://did:plc:governance/pub.chive.graph.field/ai',
+      existingFieldUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71`,
+      mergeTargetUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e42c83de-6d16-5876-b276-38712ac4112a`,
     });
 
     expect(result.success).toBe(true);

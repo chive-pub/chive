@@ -14,13 +14,16 @@
  * @packageDocumentation
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Send, Loader2, Info, Plus, Edit, Trash2, Link2, Network, Tags } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Send, Loader2, Info, Plus, Edit, Trash2, Network, Tags, X } from 'lucide-react';
 
 import { logger } from '@/lib/observability';
+import { api } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 
 const proposalLogger = logger.child({ component: 'proposal-form' });
@@ -45,9 +48,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useAuth, useAgent } from '@/lib/auth/auth-context';
 import { SUBKIND_LABELS } from '@/lib/hooks/use-nodes';
+import type { NodeResult } from '@/components/knowledge-graph/node-search';
 import type { Proposal } from '@/lib/api/schema';
 
 // =============================================================================
@@ -244,6 +256,16 @@ const nodeProposalSchema = z.object({
   label: z.string().min(1, 'Label is required').max(500),
   alternateLabels: z.string().optional(),
   description: z.string().min(10, 'Description must be at least 10 characters').max(2000),
+  externalIds: z
+    .array(
+      z.object({
+        system: z.string(),
+        identifier: z.string().min(1),
+        uri: z.string().optional(),
+        matchType: z.enum(['exact', 'close', 'broader', 'narrower', 'related']).optional(),
+      })
+    )
+    .optional(),
   rationale: z.string().min(20, 'Rationale must be at least 20 characters').max(2000),
 });
 
@@ -260,6 +282,167 @@ const edgeProposalSchema = z.object({
 const formSchema = z.discriminatedUnion('entityType', [nodeProposalSchema, edgeProposalSchema]);
 
 type FormValues = z.infer<typeof formSchema>;
+
+// =============================================================================
+// NODE URI INPUT COMPONENT
+// =============================================================================
+
+/**
+ * Simple node URI autocomplete input for proposal forms.
+ */
+function NodeUriInput({
+  value,
+  onChange,
+  placeholder,
+  id,
+  ...props
+}: {
+  value?: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  id?: string;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<NodeResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const debouncedSearch = useDebouncedCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await api.pub.chive.graph.searchNodes({
+        query: searchQuery,
+        limit: 20,
+        status: 'established',
+      });
+      // Cast to NodeResult[] - the API returns compatible data but with looser types
+      setResults((response.data?.nodes ?? []) as NodeResult[]);
+    } catch (error) {
+      proposalLogger.error('Node search failed', error);
+      setResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, 300);
+
+  useEffect(() => {
+    if (open && query.length >= 2) {
+      debouncedSearch(query);
+    }
+  }, [query, open, debouncedSearch]);
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Group results by subkind
+  const groupedResults = useMemo(() => {
+    const groups: Record<string, NodeResult[]> = {};
+    for (const node of results) {
+      if (!groups[node.subkind]) {
+        groups[node.subkind] = [];
+      }
+      groups[node.subkind].push(node);
+    }
+    return groups;
+  }, [results]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <Input
+        id={id}
+        value={value ?? ''}
+        onChange={(e) => {
+          const newValue = e.target.value;
+          onChange(newValue);
+          setQuery(newValue);
+          if (newValue.length >= 2) {
+            setOpen(true);
+          } else {
+            setOpen(false);
+          }
+        }}
+        onFocus={() => {
+          if (query.length >= 2 || (value && value.length >= 2)) {
+            setOpen(true);
+            if (value && value !== query) {
+              setQuery(value);
+            }
+          }
+        }}
+        placeholder={placeholder}
+        {...props}
+      />
+      {open && (query.length >= 2 || results.length > 0) && (
+        <div className="absolute z-50 w-full mt-1 rounded-md border bg-popover shadow-md">
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Search nodes..."
+              value={query}
+              onValueChange={(val) => {
+                setQuery(val);
+                if (val.length >= 2) {
+                  debouncedSearch(val);
+                } else {
+                  setResults([]);
+                }
+              }}
+            />
+            <CommandList className="max-h-72">
+              {isSearching && (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                  Searching...
+                </div>
+              )}
+              {!isSearching && Object.keys(groupedResults).length === 0 && query.length >= 2 && (
+                <CommandEmpty>No nodes found.</CommandEmpty>
+              )}
+              {!isSearching &&
+                Object.entries(groupedResults).map(([subkind, nodes]) => (
+                  <CommandGroup key={subkind} heading={SUBKIND_LABELS[subkind] ?? subkind}>
+                    {nodes.map((node) => (
+                      <CommandItem
+                        key={node.uri}
+                        value={node.uri}
+                        onSelect={() => {
+                          onChange(node.uri);
+                          setOpen(false);
+                          setQuery('');
+                        }}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">{node.label}</span>
+                          {node.description && (
+                            <span className="text-xs text-muted-foreground line-clamp-1">
+                              {node.description}
+                            </span>
+                          )}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
+            </CommandList>
+          </Command>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // =============================================================================
 // COMPONENT
@@ -280,11 +463,90 @@ export function ProposalForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch subkinds from knowledge graph
+  const { data: subkindsData } = useQuery({
+    queryKey: ['subkinds', 'type'],
+    queryFn: async () => {
+      const response = await fetch(
+        '/xrpc/pub.chive.graph.listNodes?subkind=subkind&kind=type&status=established&limit=100'
+      );
+      if (!response.ok) return { nodes: [] };
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch relations from knowledge graph
+  const { data: relationsData } = useQuery({
+    queryKey: ['relations', 'type'],
+    queryFn: async () => {
+      const response = await fetch(
+        '/xrpc/pub.chive.graph.listNodes?subkind=relation&kind=type&status=established&limit=100'
+      );
+      if (!response.ok) return { nodes: [] };
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Map subkinds to form format (subkind nodes have id=slug)
+  const availableSubkinds = useMemo(() => {
+    const graphSubkinds =
+      subkindsData?.nodes?.map((node: { id: string; label: string; kind: string }) => ({
+        value: node.id, // id is the slug
+        label: node.label,
+        kind: node.kind as NodeKind,
+      })) ?? [];
+
+    // Merge with hard-coded list as fallback, adding new subkinds
+    const hardcodedSubkinds = [
+      ...PROPOSABLE_SUBKINDS,
+      { value: 'endorsement-type', label: 'Endorsement Type', kind: 'type' as NodeKind },
+      { value: 'endorsement-kind', label: 'Endorsement Kind', kind: 'type' as NodeKind },
+      { value: 'author', label: 'Author', kind: 'object' as NodeKind },
+      { value: 'eprint', label: 'Eprint', kind: 'object' as NodeKind },
+    ];
+
+    // Combine and deduplicate by value
+    const combined = [...graphSubkinds, ...hardcodedSubkinds];
+    const seen = new Set<string>();
+    return combined.filter((item) => {
+      if (seen.has(item.value)) return false;
+      seen.add(item.value);
+      return true;
+    });
+  }, [subkindsData]);
+
+  // Map relations to form format (relation nodes have id=slug)
+  const availableRelations = useMemo(() => {
+    const graphRelations =
+      relationsData?.nodes?.map((node: { id: string; label: string }) => ({
+        value: node.id, // id is the slug
+        label: node.label,
+      })) ?? [];
+
+    // Merge with hard-coded list as fallback
+    const hardcodedRelations = RELATION_TYPES.map((rel) => ({
+      value: rel.value,
+      label: rel.label,
+    }));
+
+    // Combine and deduplicate by value
+    const combined = [...graphRelations, ...hardcodedRelations];
+    const seen = new Set<string>();
+    return combined.filter((item) => {
+      if (seen.has(item.value)) return false;
+      seen.add(item.value);
+      return true;
+    });
+  }, [relationsData]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       entityType: defaultEntityType,
       proposalType: 'create',
+      externalIds: [],
       kind: 'type',
       subkind: defaultSubkind ?? '',
       id: '',
@@ -293,6 +555,16 @@ export function ProposalForm({
       description: '',
       rationale: '',
     } as FormValues,
+  });
+
+  // External IDs field array (must be at component level, not inside render callback)
+  const {
+    fields: externalIdFields,
+    append: appendExternalId,
+    remove: removeExternalId,
+  } = useFieldArray({
+    control: form.control,
+    name: 'externalIds',
   });
 
   const entityType = form.watch('entityType');
@@ -350,6 +622,7 @@ export function ProposalForm({
                       .filter(Boolean)
                   : undefined,
                 description: values.description,
+                externalIds: values.externalIds?.filter((ext) => ext.system && ext.identifier),
               },
               rationale: values.rationale,
               createdAt: new Date().toISOString(),
@@ -429,7 +702,7 @@ export function ProposalForm({
         setIsSubmitting(false);
       }
     },
-    [session, agent, onSuccess]
+    [session, agent, user, onSuccess]
   );
 
   if (!session) {
@@ -564,19 +837,23 @@ export function ProposalForm({
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                         Type Nodes (Classifications)
                       </div>
-                      {PROPOSABLE_SUBKINDS.filter((s) => s.kind === 'type').map((subkind) => (
-                        <SelectItem key={subkind.value} value={subkind.value}>
-                          {subkind.label}
-                        </SelectItem>
-                      ))}
+                      {availableSubkinds
+                        .filter((s) => s.kind === 'type')
+                        .map((subkind) => (
+                          <SelectItem key={subkind.value} value={subkind.value}>
+                            {subkind.label}
+                          </SelectItem>
+                        ))}
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
                         Object Nodes (Instances)
                       </div>
-                      {PROPOSABLE_SUBKINDS.filter((s) => s.kind === 'object').map((subkind) => (
-                        <SelectItem key={subkind.value} value={subkind.value}>
-                          {subkind.label}
-                        </SelectItem>
-                      ))}
+                      {availableSubkinds
+                        .filter((s) => s.kind === 'object')
+                        .map((subkind) => (
+                          <SelectItem key={subkind.value} value={subkind.value}>
+                            {subkind.label}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <FormDescription>
@@ -600,7 +877,11 @@ export function ProposalForm({
                   <FormItem>
                     <FormLabel>Target Node URI</FormLabel>
                     <FormControl>
-                      <Input placeholder="at://did:plc:.../pub.chive.graph.node/..." {...field} />
+                      <NodeUriInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Search for target node..."
+                      />
                     </FormControl>
                     <FormDescription>
                       The AT-URI of the existing node to {proposalType}.
@@ -684,6 +965,75 @@ export function ProposalForm({
                 </FormItem>
               )}
             />
+
+            {/* External IDs */}
+            {proposalType === 'create' && (
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel>External Identifiers (Optional)</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => appendExternalId({ system: '', identifier: '' })}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add External ID
+                  </Button>
+                </div>
+                <FormDescription>
+                  Link this node to external identifiers (Wikidata, ROR, ORCID, etc.)
+                </FormDescription>
+                <div className="space-y-2">
+                  {externalIdFields.map((item, index) => (
+                    <div key={item.id} className="flex gap-2 items-start">
+                      <FormField
+                        control={form.control}
+                        name={`externalIds.${index}.system`}
+                        render={({ field: systemField }) => (
+                          <FormItem className="flex-1">
+                            <Select value={systemField.value} onValueChange={systemField.onChange}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="System" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {EXTERNAL_ID_SYSTEMS.map((sys) => (
+                                  <SelectItem key={sys.value} value={sys.value}>
+                                    {sys.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`externalIds.${index}.identifier`}
+                        render={({ field: idField }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input placeholder="Identifier" {...idField} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeExternalId(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
           </>
         )}
 
@@ -698,7 +1048,11 @@ export function ProposalForm({
                 <FormItem>
                   <FormLabel>Source Node URI</FormLabel>
                   <FormControl>
-                    <Input placeholder="at://did:plc:.../pub.chive.graph.node/..." {...field} />
+                    <NodeUriInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Search for source node..."
+                    />
                   </FormControl>
                   <FormDescription>The AT-URI of the source node.</FormDescription>
                   <FormMessage />
@@ -720,7 +1074,7 @@ export function ProposalForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {RELATION_TYPES.map((rel) => (
+                      {availableRelations.map((rel) => (
                         <SelectItem key={rel.value} value={rel.value}>
                           {rel.label}
                         </SelectItem>
@@ -741,7 +1095,11 @@ export function ProposalForm({
                 <FormItem>
                   <FormLabel>Target Node URI</FormLabel>
                   <FormControl>
-                    <Input placeholder="at://did:plc:.../pub.chive.graph.node/..." {...field} />
+                    <NodeUriInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Search for target node..."
+                    />
                   </FormControl>
                   <FormDescription>The AT-URI of the target node.</FormDescription>
                   <FormMessage />

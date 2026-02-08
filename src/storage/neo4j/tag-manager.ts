@@ -97,9 +97,9 @@ export interface FieldCandidate {
  *
  * // Add a tag to a record
  * await tagManager.addTag(
- *   'at://did:plc:user/pub.chive.eprint/123',
+ *   'at://did:plc:example/pub.chive.eprint.submission/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6',
  *   'neural networks',
- *   'did:plc:user'
+ *   'did:plc:example'
  * );
  *
  * // Get trending tags
@@ -212,9 +212,9 @@ export class TagManager {
    * @example
    * ```typescript
    * const result = await tagManager.addTag(
-   *   'at://did:plc:user/pub.chive.eprint/123',
+   *   'at://did:plc:example/pub.chive.eprint.submission/a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6',
    *   'Machine Learning',
-   *   'did:plc:user'
+   *   'did:plc:example'
    * );
    * console.log(`Normalized to: ${result.normalizedForm}`);
    * ```

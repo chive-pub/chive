@@ -91,7 +91,7 @@ const LICENSE_DEFINITIONS = [
     label: 'GPL 3.0',
     description: 'GNU General Public License v3.0.',
     spdxId: 'GPL-3.0-only',
-    wikidataId: 'Q10513450',
+    wikidataId: 'Q10513445',
     displayOrder: 10,
   },
   {
@@ -201,7 +201,7 @@ const LICENSE_DEFINITIONS = [
     label: 'EUPL 1.2',
     description: 'European Union Public License 1.2.',
     spdxId: 'EUPL-1.2',
-    wikidataId: 'Q123162019',
+    wikidataId: 'Q1376919',
     displayOrder: 24,
   },
   // Data licenses
@@ -210,7 +210,6 @@ const LICENSE_DEFINITIONS = [
     label: 'ODC-By',
     description: 'Open Data Commons Attribution License.',
     spdxId: 'ODC-By-1.0',
-    wikidataId: 'Q24273512',
     displayOrder: 25,
   },
   {
@@ -226,7 +225,6 @@ const LICENSE_DEFINITIONS = [
     label: 'PDDL',
     description: 'Open Data Commons Public Domain Dedication and License.',
     spdxId: 'PDDL-1.0',
-    wikidataId: 'Q24273461',
     displayOrder: 27,
   },
   // Publisher-specific licenses

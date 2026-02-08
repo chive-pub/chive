@@ -36,8 +36,8 @@ const COLORS = {
   white: '#ffffff',
 };
 
-// Chive logo URL
-const LOGO_URL = 'https://chive.pub/chive-logo.svg';
+// Chive logo URL - falls back to production URL if not available
+const LOGO_PATH = '/chive-logo.svg';
 
 // Geist Sans font URL (Regular and Bold weights)
 const GEIST_REGULAR_URL =
@@ -87,18 +87,22 @@ export async function GET(request: NextRequest) {
   // Default to 'default' type for homepage/site-wide OG image
   const imageType = type || 'default';
 
+  // Build logo URL from request origin for dev/staging/prod compatibility
+  const origin = request.nextUrl.origin;
+  const logoUrl = `${origin}${LOGO_PATH}`;
+
   try {
     switch (imageType) {
       case 'default':
-        return await generateDefaultImage();
+        return await generateDefaultImage(logoUrl);
       case 'eprint':
-        return await generateEprintImage(searchParams);
+        return await generateEprintImage(searchParams, logoUrl);
       case 'author':
-        return await generateAuthorImage(searchParams);
+        return await generateAuthorImage(searchParams, logoUrl);
       case 'review':
-        return await generateReviewImage(searchParams);
+        return await generateReviewImage(searchParams, logoUrl);
       case 'endorsement':
-        return await generateEndorsementImage(searchParams);
+        return await generateEndorsementImage(searchParams, logoUrl);
       default:
         return new Response(`Unknown type: ${imageType}`, { status: 400 });
     }
@@ -113,8 +117,15 @@ export async function GET(request: NextRequest) {
 
 /**
  * Generate default OG image for the site homepage.
+ *
+ * Design principles (based on 2025-2026 best practices):
+ * - Centered layout to prevent cropping issues on different platforms
+ * - Minimal, clean design with plenty of white space
+ * - Logo prominently displayed and readable at small thumbnail sizes
+ * - Simple color scheme with brand green accent
+ * - Works at 1.91:1 aspect ratio (1200x630) for Bluesky/Twitter/LinkedIn
  */
-async function generateDefaultImage(): Promise<ImageResponse> {
+async function generateDefaultImage(logoUrl: string): Promise<ImageResponse> {
   const fonts = await loadFonts();
 
   return new ImageResponse(
@@ -123,100 +134,72 @@ async function generateDefaultImage(): Promise<ImageResponse> {
         width: '100%',
         height: '100%',
         display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         background: COLORS.white,
         fontFamily: 'Geist, Helvetica, Arial, sans-serif',
+        padding: '60px',
       }}
     >
-      {/* Left side - Grey section with logo */}
+      {/* Centered logo */}
       <div
         style={{
-          width: '400px',
-          height: '100%',
-          background: '#d4d4d4',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '48px',
+          marginBottom: '32px',
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={LOGO_URL} alt="Chive" width={200} height={200} />
+        <img src={logoUrl} alt="Chive" width={140} height={140} style={{ borderRadius: '24px' }} />
       </div>
 
-      {/* Right side - Content */}
+      {/* Brand name */}
       <div
         style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          padding: '64px',
-          background: COLORS.white,
+          fontSize: '80px',
+          fontWeight: 700,
+          color: COLORS.primary,
+          letterSpacing: '-0.03em',
+          marginBottom: '16px',
         }}
       >
-        {/* Title */}
-        <div
-          style={{
-            fontSize: '72px',
-            fontWeight: 700,
-            color: COLORS.primary,
-            marginBottom: '8px',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          Chive
-        </div>
+        Chive
+      </div>
 
-        {/* Tagline */}
-        <div
-          style={{
-            fontSize: '32px',
-            color: COLORS.secondary,
-            marginBottom: '32px',
-          }}
-        >
-          Decentralized eprints on ATProto
-        </div>
+      {/* Tagline */}
+      <div
+        style={{
+          fontSize: '28px',
+          color: COLORS.secondary,
+          textAlign: 'center',
+          maxWidth: '800px',
+        }}
+      >
+        Decentralized eprints on ATProto
+      </div>
 
-        {/* Description */}
-        <div
+      {/* URL */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginTop: '40px',
+          padding: '12px 24px',
+          background: COLORS.brand + '12',
+          borderRadius: '100px',
+        }}
+      >
+        <span
           style={{
-            fontSize: '24px',
-            color: COLORS.secondary,
-            lineHeight: 1.5,
-            marginBottom: '40px',
+            fontSize: '22px',
+            color: COLORS.brand,
+            fontWeight: 600,
           }}
         >
-          Share your research with full data sovereignty and community governance.
-        </div>
-
-        {/* URL badge */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '6px',
-              background: COLORS.brand,
-            }}
-          />
-          <span
-            style={{
-              fontSize: '20px',
-              color: COLORS.brand,
-              fontWeight: 600,
-            }}
-          >
-            chive.pub
-          </span>
-        </div>
+          chive.pub
+        </span>
       </div>
     </div>,
     {
@@ -233,7 +216,10 @@ async function generateDefaultImage(): Promise<ImageResponse> {
 /**
  * Generate OG image for an eprint.
  */
-async function generateEprintImage(params: URLSearchParams): Promise<ImageResponse> {
+async function generateEprintImage(
+  params: URLSearchParams,
+  logoUrl: string
+): Promise<ImageResponse> {
   const title = params.get('title') || 'Untitled Eprint';
   const author = params.get('author') || 'Unknown Author';
   const handle = params.get('handle') || '';
@@ -256,7 +242,7 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
       {/* Header with logo */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={LOGO_URL} alt="Chive" width={40} height={40} style={{ marginRight: '12px' }} />
+        <img src={logoUrl} alt="Chive" width={40} height={40} style={{ marginRight: '12px' }} />
         <span
           style={{
             fontSize: '24px',
@@ -346,7 +332,10 @@ async function generateEprintImage(params: URLSearchParams): Promise<ImageRespon
 /**
  * Generate OG image for an author profile.
  */
-async function generateAuthorImage(params: URLSearchParams): Promise<ImageResponse> {
+async function generateAuthorImage(
+  params: URLSearchParams,
+  logoUrl: string
+): Promise<ImageResponse> {
   const name = params.get('name') || 'Unknown Author';
   const handle = params.get('handle') || '';
   const affiliation = params.get('affiliation') || '';
@@ -372,7 +361,7 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
       {/* Header with logo */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={LOGO_URL} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
+        <img src={logoUrl} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
         <span
           style={{
             fontSize: '24px',
@@ -474,7 +463,10 @@ async function generateAuthorImage(params: URLSearchParams): Promise<ImageRespon
 /**
  * Generate OG image for a review.
  */
-async function generateReviewImage(params: URLSearchParams): Promise<ImageResponse> {
+async function generateReviewImage(
+  params: URLSearchParams,
+  logoUrl: string
+): Promise<ImageResponse> {
   const content = params.get('content') || '';
   const reviewer = params.get('reviewer') || 'Anonymous';
   const reviewerHandle = params.get('reviewerHandle') || '';
@@ -504,7 +496,7 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_URL} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
+          <img src={logoUrl} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
           <span
             style={{
               fontSize: '24px',
@@ -592,7 +584,10 @@ async function generateReviewImage(params: URLSearchParams): Promise<ImageRespon
 /**
  * Generate OG image for an endorsement.
  */
-async function generateEndorsementImage(params: URLSearchParams): Promise<ImageResponse> {
+async function generateEndorsementImage(
+  params: URLSearchParams,
+  logoUrl: string
+): Promise<ImageResponse> {
   const contributions = params.get('contributions')?.split(',').filter(Boolean) || [];
   const comment = params.get('comment') || '';
   const endorser = params.get('endorser') || 'Anonymous';
@@ -623,7 +618,7 @@ async function generateEndorsementImage(params: URLSearchParams): Promise<ImageR
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_URL} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
+          <img src={logoUrl} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
           <span
             style={{
               fontSize: '24px',

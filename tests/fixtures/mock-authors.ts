@@ -58,7 +58,8 @@ export function createMockContribution(
   overrides: Partial<EprintAuthorContribution> = {}
 ): EprintAuthorContribution {
   return {
-    typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization' as never,
+    typeUri:
+      'at://did:plc:chive-governance/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85' as never,
     typeId: 'conceptualization',
     typeLabel: 'Conceptualization',
     degree: 'lead' as ContributionDegree,

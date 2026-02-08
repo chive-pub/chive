@@ -33,7 +33,11 @@ describe('SchemaCompatibilityService', () => {
     it('detects current rich text array format', () => {
       const richTextAbstract = [
         { type: 'text', content: 'This is a ' },
-        { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/field1', label: 'field' },
+        {
+          type: 'nodeRef',
+          uri: 'at://did:plc:123/pub.chive.graph.node/a7b8c9d0-e1f2-3456-0123-456789abcdef',
+          label: 'field',
+        },
         { type: 'text', content: ' abstract.' },
       ];
 

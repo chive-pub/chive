@@ -14,7 +14,6 @@ import { useState } from 'react';
 import {
   Shield,
   ShieldCheck,
-  ShieldAlert,
   Star,
   Clock,
   FileText,

@@ -47,7 +47,7 @@ export type TransactionWork<T> = (tx: ManagedTransaction) => Promise<T>;
  * // Execute a query
  * const result = await connection.executeQuery(
  *   'MATCH (n:Field {uri: $uri}) RETURN n',
- *   { uri: 'at://did:plc:example/pub.chive.graph.field/ml' }
+ *   { uri: 'at://did:plc:example/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71' }
  * );
  *
  * // Execute in transaction
@@ -189,7 +189,7 @@ export class Neo4jConnection {
    * ```typescript
    * const result = await connection.executeQuery(
    *   'MATCH (f:Field {uri: $uri}) RETURN f',
-   *   { uri: 'at://did:plc:example/pub.chive.graph.field/ml' }
+   *   { uri: 'at://did:plc:example/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71' }
    * );
    *
    * const field = result.records[0]?.get('f');

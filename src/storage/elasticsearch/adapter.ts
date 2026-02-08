@@ -388,8 +388,7 @@ export class ElasticsearchAdapter implements ISearchEngine {
       abstract: doc.abstract,
       full_text: doc.fullText,
       keywords: doc.keywords,
-      // Use fieldNodes if available (nested format), otherwise fall back to subjects as IDs only
-      field_nodes: doc.fieldNodes ?? doc.subjects?.map((s) => ({ id: s, label: s })),
+      field_nodes: doc.fieldNodes,
       authors: [
         {
           did: doc.author,

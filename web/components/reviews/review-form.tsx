@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import { PlainMarkdownEditor } from '@/components/editor';
+import { MarkdownEditor } from '@/components/editor';
 import type { Review, UnifiedTextSpanTarget, AnnotationMotivation } from '@/lib/api/schema';
 
 // =============================================================================
@@ -318,7 +318,7 @@ export function ReviewForm({
 
       {/* Markdown editor */}
       <div ref={editorRef}>
-        <PlainMarkdownEditor
+        <MarkdownEditor
           value={content}
           onChange={handleContentChange}
           placeholder={dynamicPlaceholder}
@@ -330,6 +330,8 @@ export function ReviewForm({
           ariaLabel="Review content"
           testId="review-content-input"
           autoFocus={true}
+          enableMentions
+          enableTags
         />
       </div>
 

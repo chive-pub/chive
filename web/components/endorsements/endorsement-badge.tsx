@@ -39,7 +39,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { ContributionType, EndorsementSummary } from '@/lib/api/schema';
+import type { ContributionType } from '@/lib/api/schema';
 
 // =============================================================================
 // TYPES

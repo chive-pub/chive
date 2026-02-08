@@ -14,6 +14,7 @@
  * @public
  */
 
+import type { DocumentFormat } from '../../lexicons/generated/types/pub/chive/defs.js';
 import type { AtUri, CID, DID, Timestamp } from '../atproto.js';
 
 // =============================================================================
@@ -47,17 +48,7 @@ export interface TextQuoteSelector {
  *
  * @public
  */
-export type DocumentFormat =
-  | 'pdf'
-  | 'docx'
-  | 'html'
-  | 'markdown'
-  | 'latex'
-  | 'jupyter'
-  | 'odt'
-  | 'rtf'
-  | 'epub'
-  | 'txt';
+export type { DocumentFormat };
 
 /**
  * Document format capabilities hint.

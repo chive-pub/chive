@@ -146,7 +146,7 @@ const nodeTypes: NodeTypes = {
 function layoutCitationNodes(
   centerEprint: { uri: string; title: string },
   citations: CitationData['citations'],
-  counts: CitationData['counts']
+  _counts: CitationData['counts']
 ): { nodes: Node<CitationNodeData>[]; edges: Edge[] } {
   const nodes: Node<CitationNodeData>[] = [];
   const edges: Edge[] = [];

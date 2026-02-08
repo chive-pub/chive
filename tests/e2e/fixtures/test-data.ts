@@ -94,19 +94,28 @@ export const SEEDED_FIELDS = [
 export const SEEDED_TAGS = ['monads', 'megaattitude'];
 
 /**
+ * UUID lookup for proposals.
+ * Generated using nodeUuid('proposal', slug) for deterministic URIs.
+ */
+const PROPOSAL_UUIDS: Record<string, string> = {
+  'proposal-test-001': 'b3cf7184-4628-5967-b4ce-496b4329dfb9',
+  'proposal-test-002': '882a9ca0-7ca5-578c-875c-9fcb5d760995',
+};
+
+/**
  * Real seeded governance proposals from global.setup.ts.
  */
 export const SEEDED_PROPOSALS = {
   quantumSemantics: {
     id: 'proposal-test-001',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-001',
+    uri: `at://did:plc:chive-governance/pub.chive.graph.proposal/${PROPOSAL_UUIDS['proposal-test-001']}`,
     fieldName: 'Quantum Semantics',
     status: 'pending',
     proposerDid: 'did:plc:aswhite123abc',
   },
   computationalPragmatics: {
     id: 'proposal-test-002',
-    uri: 'at://did:plc:chive-governance/pub.chive.graph.proposal/proposal-test-002',
+    uri: `at://did:plc:chive-governance/pub.chive.graph.proposal/${PROPOSAL_UUIDS['proposal-test-002']}`,
     fieldName: 'Computational Pragmatics',
     status: 'pending',
     proposerDid: 'did:plc:jgrove456def',

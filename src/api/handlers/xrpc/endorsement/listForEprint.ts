@@ -142,9 +142,8 @@ export const listForEprint: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     // Filter by contribution type if specified
     if (params.contributionType) {
-      endorsements = endorsements.filter((e) =>
-        e.contributions.includes(params.contributionType as never)
-      );
+      const filterType = params.contributionType;
+      endorsements = endorsements.filter((e) => e.contributions.includes(filterType));
     }
 
     const response: OutputSchema = {

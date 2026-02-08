@@ -89,34 +89,71 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
         // Calculate staleness using configured threshold
         const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
 
+        // Fetch avatars for authors
+        const avatarMap = new Map<string, { handle?: string; avatar?: string }>();
+        const authorDids = eprintData.authors
+          .filter((a) => a.did && !a.avatarUrl)
+          .map((a) => a.did)
+          .filter(Boolean) as string[];
+
+        if (authorDids.length > 0) {
+          try {
+            const params = new URLSearchParams();
+            for (const did of authorDids.slice(0, 25)) {
+              params.append('actors', did);
+            }
+            const profileResponse = await fetch(
+              `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${params.toString()}`,
+              {
+                headers: { Accept: 'application/json' },
+                signal: AbortSignal.timeout(5000),
+              }
+            );
+
+            if (profileResponse.ok) {
+              const data = (await profileResponse.json()) as {
+                profiles: { did: string; handle?: string; avatar?: string }[];
+              };
+              for (const profile of data.profiles) {
+                avatarMap.set(profile.did, { handle: profile.handle, avatar: profile.avatar });
+              }
+            }
+          } catch {
+            // Silently ignore avatar fetch failures
+          }
+        }
+
         const plainAbstract = eprintData.abstractPlainText ?? extractPlainText(eprintData.abstract);
         return {
           uri: eprintData.uri,
           cid: eprintData.cid,
           title: eprintData.title,
           abstract: plainAbstract,
-          authors: eprintData.authors.map((author) => ({
-            did: author.did,
-            name: author.name,
-            orcid: author.orcid,
-            email: author.email,
-            order: author.order,
-            affiliations: (author.affiliations ?? []).map((aff) => ({
-              name: aff.name,
-              rorId: aff.rorId,
-              department: aff.department,
-            })),
-            contributions: (author.contributions ?? []).map((contrib) => ({
-              typeUri: contrib.typeUri,
-              typeId: contrib.typeId,
-              typeLabel: contrib.typeLabel,
-              degree: contrib.degree,
-            })),
-            isCorrespondingAuthor: author.isCorrespondingAuthor,
-            isHighlighted: author.isHighlighted,
-            handle: undefined as string | undefined,
-            avatarUrl: undefined as string | undefined,
-          })),
+          authors: eprintData.authors.map((author) => {
+            const profile = author.did ? avatarMap.get(author.did) : undefined;
+            return {
+              did: author.did,
+              name: author.name,
+              orcid: author.orcid,
+              email: author.email,
+              order: author.order,
+              affiliations: (author.affiliations ?? []).map((aff) => ({
+                name: aff.name,
+                rorId: aff.rorId,
+                department: aff.department,
+              })),
+              contributions: (author.contributions ?? []).map((contrib) => ({
+                typeUri: contrib.typeUri,
+                typeId: contrib.typeId,
+                typeLabel: contrib.typeLabel,
+                degree: contrib.degree,
+              })),
+              isCorrespondingAuthor: author.isCorrespondingAuthor,
+              isHighlighted: author.isHighlighted,
+              handle: author.handle ?? profile?.handle,
+              avatarUrl: author.avatarUrl ?? profile?.avatar,
+            };
+          }),
           submittedBy: eprintData.submittedBy,
           paperDid: eprintData.paperDid,
           fields: undefined as

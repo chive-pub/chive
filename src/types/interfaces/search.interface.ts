@@ -74,21 +74,12 @@ export interface IndexableEprintDocument {
   readonly keywords: readonly string[];
 
   /**
-   * Subject classifications (e.g., field nodes).
-   *
-   * @remarks
-   * Indexed as keyword field for faceted filtering.
-   * @deprecated Use fieldNodes instead for nested field data.
-   */
-  readonly subjects: readonly string[];
-
-  /**
    * Field nodes with resolved labels from knowledge graph.
    *
    * @remarks
    * Indexed as nested documents for faceted filtering with human-readable labels.
    */
-  readonly fieldNodes?: readonly { id: string; label: string }[];
+  readonly fieldNodes: readonly { id: string; label: string }[];
 
   /**
    * Eprint creation timestamp.
@@ -288,7 +279,10 @@ export interface ISearchEngine {
    *   title: 'Neural Networks in Biology',
    *   abstract: 'This paper explores...',
    *   keywords: ['neural networks', 'biology'],
-   *   subjects: ['Computer Science', 'Biology'],
+   *   fieldNodes: [
+   *     { id: 'cs-uuid', label: 'Computer Science' },
+   *     { id: 'bio-uuid', label: 'Biology' }
+   *   ],
    *   createdAt: new Date(),
    *   indexedAt: new Date()
    * });

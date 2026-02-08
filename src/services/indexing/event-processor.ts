@@ -42,6 +42,7 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecordWithSchema } from '../eprint/pds-record-transformer.js';
+import type { AutomaticProposalService } from '../governance/automatic-proposal-service.js';
 import type { EdgeService } from '../governance/edge-service.js';
 import type { NodeService } from '../governance/node-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
@@ -143,7 +144,11 @@ export interface ActorProfileRecord {
   readonly bio?: string;
   readonly avatarBlobRef?: { readonly ref: { readonly $link: string } };
   readonly orcid?: string;
-  readonly affiliations?: readonly string[];
+  readonly affiliations?: {
+    readonly name: string;
+    readonly rorId?: string;
+    readonly institutionUri?: string;
+  }[];
   readonly fieldIds?: readonly string[];
 }
 
@@ -224,6 +229,7 @@ export interface EventProcessorOptions {
   readonly graphService: KnowledgeGraphService;
   readonly nodeService?: NodeService;
   readonly edgeService?: EdgeService;
+  readonly automaticProposalService?: AutomaticProposalService;
   readonly identity: IIdentityResolver;
   readonly logger: ILogger;
   /**
@@ -261,6 +267,7 @@ export function createEventProcessor(
     graphService,
     nodeService,
     edgeService,
+    automaticProposalService,
     identity,
     logger,
     pdsRegistry,
@@ -301,6 +308,7 @@ export function createEventProcessor(
         graphService,
         nodeService,
         edgeService,
+        automaticProposalService,
         logger,
       },
       {
@@ -373,6 +381,7 @@ interface ProcessRecordContext {
   readonly graphService: KnowledgeGraphService;
   readonly nodeService?: NodeService;
   readonly edgeService?: EdgeService;
+  readonly automaticProposalService?: AutomaticProposalService;
   readonly logger: ILogger;
 }
 
@@ -402,8 +411,16 @@ async function processRecord(
   ctx: ProcessRecordContext,
   data: RecordData
 ): Promise<ProcessRecordResult> {
-  const { eprintService, reviewService, graphService, nodeService, edgeService, pool, logger } =
-    ctx;
+  const {
+    eprintService,
+    reviewService,
+    graphService,
+    nodeService,
+    edgeService,
+    automaticProposalService,
+    pool,
+    logger,
+  } = ctx;
   const { uri, cid, collection, action, record, pdsUrl } = data;
 
   const metadata: RecordMetadata = {
@@ -467,6 +484,20 @@ async function processRecord(
             logger.error('Failed to index eprint', error, { uri, action });
             // Eprint operations are critical
             return failure(`Failed to ${action} eprint`, true, error);
+          }
+
+          // Create automatic governance proposals after successful indexing
+          if (automaticProposalService && action === 'create') {
+            try {
+              await automaticProposalService.processEprintSubmission(eprintRecord, uri);
+            } catch (proposalError) {
+              // Log but don't fail indexing if proposal creation fails
+              logger.error(
+                'Failed to create automatic proposals',
+                proposalError instanceof Error ? proposalError : undefined,
+                { uri, action }
+              );
+            }
           }
         } catch (transformError) {
           const error =
@@ -833,6 +864,28 @@ async function processRecord(
             ]
           );
           logger.info('Indexed actor profile', { did, displayName: profileRecord.displayName });
+
+          // Create automatic institution proposals from profile affiliations
+          if (
+            automaticProposalService &&
+            profileRecord.affiliations &&
+            profileRecord.affiliations.length > 0
+          ) {
+            try {
+              await automaticProposalService.processProfileUpdate(
+                did,
+                profileRecord.affiliations,
+                uri
+              );
+            } catch (proposalError) {
+              // Log but don't fail indexing if proposal creation fails
+              logger.error(
+                'Failed to create automatic institution proposals from profile',
+                proposalError instanceof Error ? proposalError : undefined,
+                { did, uri }
+              );
+            }
+          }
         } catch (dbError) {
           const error = dbError instanceof Error ? dbError : new Error(String(dbError));
           logger.error('Failed to index actor profile', error, { uri, action });

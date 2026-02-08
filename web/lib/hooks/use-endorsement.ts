@@ -38,6 +38,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
 import { api, authApi } from '@/lib/api/client';
+import { createLogger } from '@/lib/observability/logger';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
   createEndorsementRecord,
@@ -52,6 +53,8 @@ import type {
   ListEndorsementsResponse,
   EndorsementSummaryResponse,
 } from '@/lib/api/schema';
+
+const logger = createLogger({ context: { component: 'use-endorsement' } });
 
 // =============================================================================
 // QUERY KEY FACTORY
@@ -355,6 +358,16 @@ export function useCreateEndorsement() {
 
       const result = await createEndorsementRecord(agent, input as RecordCreatorEndorsementInput);
 
+      // Request immediate indexing as a UX optimization.
+      // The firehose is the primary indexing mechanism, but there may be latency.
+      // This call ensures the record appears immediately in Chive's index.
+      // If this fails, the firehose will eventually index the record.
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+      } catch {
+        logger.warn('Immediate indexing failed; firehose will handle', { uri: result.uri });
+      }
+
       // Return an Endorsement-like object for cache management
       return {
         uri: result.uri,
@@ -416,6 +429,13 @@ export function useUpdateEndorsement() {
         contributions: input.contributions,
         comment: input.comment,
       } as RecordCreatorUpdateEndorsementInput);
+
+      // Request immediate re-indexing as a UX optimization.
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+      } catch {
+        logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
 
       // Return an Endorsement-like object for cache management
       return {
@@ -690,48 +710,18 @@ export function useAuthorPaperEndorsements(
 }
 
 // =============================================================================
-// CONSTANTS
+// CONSTANTS (FALLBACK DISPLAY DATA)
 // =============================================================================
 
 /**
- * All valid contribution types.
- */
-export const CONTRIBUTION_TYPES: ContributionType[] = [
-  'methodological',
-  'analytical',
-  'theoretical',
-  'empirical',
-  'conceptual',
-  'technical',
-  'data',
-  'replication',
-  'reproducibility',
-  'synthesis',
-  'interdisciplinary',
-  'pedagogical',
-  'visualization',
-  'societal-impact',
-  'clinical',
-];
-
-/**
- * Contribution types grouped by category.
- */
-export const CONTRIBUTION_TYPE_CATEGORIES = {
-  'Core Research': ['methodological', 'analytical', 'theoretical', 'empirical', 'conceptual'],
-  Technical: ['technical', 'data'],
-  Validation: ['replication', 'reproducibility'],
-  Synthesis: ['synthesis', 'interdisciplinary'],
-  Communication: ['pedagogical', 'visualization'],
-  Impact: ['societal-impact', 'clinical'],
-} as const satisfies Record<string, readonly ContributionType[]>;
-
-/**
- * Human-readable labels for contribution types.
+ * Endorsement type labels (fallback when graph data unavailable).
  *
  * @remarks
- * Uses `Record<string, string>` to allow safe indexing with open union types
- * from the lexicon (`ContributionType | (string & {})`).
+ * Prefer using `useEndorsementCategories()` from `use-endorsement-data.ts`
+ * which fetches labels from the knowledge graph. These are fallback values
+ * for offline mode or when the graph is unavailable.
+ *
+ * Uses `Record<string, string>` to allow safe indexing with open union types.
  */
 export const CONTRIBUTION_TYPE_LABELS: Record<string, string> = {
   methodological: 'Methodological',
@@ -752,11 +742,13 @@ export const CONTRIBUTION_TYPE_LABELS: Record<string, string> = {
 };
 
 /**
- * Descriptions for each contribution type.
+ * Endorsement type descriptions (fallback when graph data unavailable).
  *
  * @remarks
- * Uses `Record<string, string>` to allow safe indexing with open union types
- * from the lexicon (`ContributionType | (string & {})`).
+ * Prefer using `useEndorsementCategories()` from `use-endorsement-data.ts`
+ * which fetches descriptions from the knowledge graph.
+ *
+ * Uses `Record<string, string>` to allow safe indexing with open union types.
  */
 export const CONTRIBUTION_TYPE_DESCRIPTIONS: Record<string, string> = {
   methodological: 'Novel methods, techniques, approaches, protocols',
@@ -775,3 +767,29 @@ export const CONTRIBUTION_TYPE_DESCRIPTIONS: Record<string, string> = {
   'societal-impact': 'Real-world applications, policy implications',
   clinical: 'Clinical relevance (for medical/health research)',
 };
+
+/**
+ * Get endorsement type label with fallback.
+ *
+ * @param typeId - Endorsement type identifier (slug)
+ * @returns Human-readable label or title-cased slug
+ */
+export function getEndorsementTypeLabel(typeId: string): string {
+  return (
+    CONTRIBUTION_TYPE_LABELS[typeId] ??
+    typeId
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  );
+}
+
+/**
+ * Get endorsement type description with fallback.
+ *
+ * @param typeId - Endorsement type identifier (slug)
+ * @returns Description or empty string
+ */
+export function getEndorsementTypeDescription(typeId: string): string {
+  return CONTRIBUTION_TYPE_DESCRIPTIONS[typeId] ?? '';
+}

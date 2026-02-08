@@ -51,7 +51,9 @@ import {
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
+import { DocumentLocationCard } from './document-location-card';
 import type { Review, AnnotationMotivation } from '@/lib/api/schema';
+import type { DocumentFormat } from '@/lib/api/generated/types/pub/chive/defs';
 
 // =============================================================================
 // TYPES
@@ -87,6 +89,15 @@ export interface ReviewCardProps {
 
   /** Whether to show the target span excerpt */
   showTarget?: boolean;
+
+  /** Document format for format-specific location display */
+  documentFormat?: DocumentFormat;
+
+  /** Callback when "Go to location" button is clicked */
+  onGoToLocation?: () => void;
+
+  /** Whether to show a thumbnail preview (PDF only) */
+  showThumbnail?: boolean;
 
   /** Additional CSS classes */
   className?: string;
@@ -186,6 +197,10 @@ function getInitials(name?: string): string {
 /**
  * Displays a single peer review.
  *
+ * @remarks
+ * If the review is deleted (soft-delete tombstone), shows a placeholder
+ * message instead of the content. This preserves thread structure.
+ *
  * @param props - Component props
  * @returns Review card element
  */
@@ -199,14 +214,35 @@ export function ReviewCard({
   onShare,
   isOwner = false,
   showTarget = true,
+  documentFormat,
+  onGoToLocation,
+  showThumbnail = false,
   className,
 }: ReviewCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isCompact = variant === 'compact';
   const hasTarget = !!review.target;
+  const isDeleted = review.deleted === true;
 
   // Use line-clamp for truncation instead of string slicing
   const showFullContent = isCompact || isExpanded;
+
+  // Render tombstone for deleted reviews
+  if (isDeleted) {
+    return (
+      <article
+        className={cn(
+          'group relative',
+          isCompact ? 'py-3' : 'rounded-lg border border-dashed bg-muted/30 p-4',
+          className
+        )}
+        data-testid="review-card-deleted"
+        data-review-uri={review.uri}
+      >
+        <div className="text-muted-foreground italic">This comment has been deleted</div>
+      </article>
+    );
+  }
 
   return (
     <article
@@ -302,11 +338,16 @@ export function ReviewCard({
         </DropdownMenu>
       </div>
 
-      {/* Target span excerpt */}
+      {/* Target span excerpt with document location */}
       {showTarget && hasTarget && review.target?.selector && (
-        <blockquote className="mt-3 border-l-2 border-primary/50 bg-muted/50 px-3 py-2 text-sm italic">
-          &ldquo;{review.target.selector.exact}&rdquo;
-        </blockquote>
+        <div className="mt-3">
+          <DocumentLocationCard
+            target={review.target}
+            documentFormat={documentFormat}
+            onGoToLocation={onGoToLocation}
+            showThumbnail={showThumbnail}
+          />
+        </div>
       )}
 
       {/* Content */}
@@ -331,12 +372,15 @@ export function ReviewCard({
       )}
 
       {/* Quick reply button (inline, not in dropdown) */}
-      {!isCompact && onReply && (
-        <div className="mt-3 flex items-center gap-2">
+      {onReply && (
+        <div className={cn('flex items-center gap-2', isCompact ? 'mt-2' : 'mt-3')}>
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
+            className={cn(
+              'gap-1 text-muted-foreground hover:text-foreground',
+              isCompact ? 'h-6 text-xs px-2' : 'h-8 text-xs'
+            )}
             onClick={onReply}
           >
             <Reply className="h-3 w-3" />

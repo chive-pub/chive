@@ -856,7 +856,7 @@ export class EprintsRepository {
    * @example
    * ```typescript
    * const uris = await repo.listUrisByFieldUri(
-   *   ['at://did:plc:governance/pub.chive.graph.node/formal-semantics'],
+   *   ['at://did:plc:graph-pds/pub.chive.graph.node/4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c'],
    *   { limit: 100 }
    * );
    * ```

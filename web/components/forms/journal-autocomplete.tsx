@@ -24,9 +24,8 @@
 
 import * as React from 'react';
 import { useCallback } from 'react';
-import { BookOpen, Hash, Building2 } from 'lucide-react';
+import { Hash, Building2 } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
 import { AutocompleteInput } from './autocomplete-input';
 import { logger } from '@/lib/observability';
 

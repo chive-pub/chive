@@ -188,7 +188,13 @@ export function PlainMarkdownEditor({
       {/* Custom preview toggle */}
       {enablePreview && (
         <div className="flex items-center justify-end border-b px-2 py-1">
-          <Button variant="ghost" size="sm" onClick={togglePreview} className="gap-1 h-8">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={togglePreview}
+            className="gap-1 h-8"
+          >
             {isPreviewMode ? (
               <>
                 <Edit3 className="h-4 w-4" />

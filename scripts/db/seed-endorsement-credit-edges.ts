@@ -1,8 +1,8 @@
 /**
- * Seed script for endorsement-contribution to CRediT contribution-type edges.
+ * Seed script for endorsement-type to CRediT contribution-type edges.
  *
  * @remarks
- * Creates relationships between endorsement qualities (what users select when
+ * Creates relationships between endorsement types (what users select when
  * endorsing a paper) and CRediT contributor roles (ANSI/NISO Z39.104-2022).
  *
  * This mapping allows the system to suggest relevant CRediT roles based on
@@ -15,10 +15,10 @@ import { EdgeCreator } from './lib/edge-creator.js';
 import { NodeCreator } from './lib/node-creator.js';
 
 /**
- * Mapping from endorsement-contribution slugs to related CRediT contribution-type slugs.
+ * Mapping from endorsement-type slugs to related CRediT contribution-type slugs.
  *
  * @remarks
- * Each endorsement quality can relate to multiple CRediT roles. The weight
+ * Each endorsement type can relate to multiple CRediT roles. The weight
  * indicates the strength of the relationship (0-1).
  */
 const ENDORSEMENT_TO_CREDIT_MAPPINGS: readonly {
@@ -132,7 +132,7 @@ const ENDORSEMENT_TO_CREDIT_MAPPINGS: readonly {
 ];
 
 /**
- * Seeds edges connecting endorsement-contribution nodes to CRediT contribution-type nodes.
+ * Seeds edges connecting endorsement-type nodes to CRediT contribution-type nodes.
  *
  * @param edgeCreator - Edge creator instance
  * @param nodeCreator - Node creator instance (for generating URIs)
@@ -145,17 +145,14 @@ export async function seedEndorsementCreditEdges(
   let count = 0;
 
   for (const mapping of ENDORSEMENT_TO_CREDIT_MAPPINGS) {
-    // Get the endorsement-contribution node URI
-    const endorsementUri = nodeCreator.getNodeUri(
-      'endorsement-contribution',
-      mapping.endorsementSlug
-    );
+    // Get the endorsement-type node URI
+    const endorsementUri = nodeCreator.getNodeUri('endorsement-type', mapping.endorsementSlug);
 
     for (const credit of mapping.creditSlugs) {
       // Get the contribution-type node URI
       const creditUri = nodeCreator.getNodeUri('contribution-type', credit.slug);
 
-      // Create the edge from endorsement-contribution to contribution-type
+      // Create the edge from endorsement-type to contribution-type
       await edgeCreator.createEdge({
         sourceUri: endorsementUri,
         targetUri: creditUri,

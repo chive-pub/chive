@@ -1,16 +1,16 @@
 #!/usr/bin/env tsx
 
 /**
- * Cleanup script for Governance PDS records.
+ * Cleanup script for Graph PDS records.
  * Deletes all pub.chive records to prepare for reseeding.
  */
 
 import { AtpAgent } from '@atproto/api';
 
-const PDS_URL = process.env.GOVERNANCE_PDS_URL ?? 'https://governance.chive.pub';
-const DID = process.env.GOVERNANCE_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd';
-const HANDLE = process.env.GOVERNANCE_HANDLE ?? 'chive-governance.governance.chive.pub';
-const PASSWORD = process.env.GOVERNANCE_PASSWORD;
+const PDS_URL = process.env.GRAPH_PDS_URL ?? 'https://governance.chive.pub';
+const DID = process.env.GRAPH_PDS_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd';
+const HANDLE = process.env.GRAPH_PDS_HANDLE ?? 'chive-governance.governance.chive.pub';
+const PASSWORD = process.env.GRAPH_PDS_PASSWORD;
 
 // Old collections that might still have records
 const OLD_COLLECTIONS = [

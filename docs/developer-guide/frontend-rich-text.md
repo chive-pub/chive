@@ -216,6 +216,13 @@ Behavior by URL type:
 - **Wikidata links**: Renders as a badge with external icon
 - **Other external links**: Opens in new tab with external icon
 
+URL validation and normalization:
+
+- URLs are validated before rendering to prevent XSS attacks
+- Relative URLs are resolved against the current page
+- Protocol-relative URLs (`//example.com`) are normalized to HTTPS
+- Invalid URLs display as plain text with error styling
+
 ### TagItem
 
 Hashtag references. Links to search results.
@@ -444,7 +451,7 @@ import { migrateLicenseToNode } from '@/lib/api/schema-migration';
 const license = migrateLicenseToNode('CC-BY-4.0');
 // Returns: {
 //   licenseSlug: 'CC-BY-4.0',
-//   licenseUri: 'at://did:plc:chive-governance/pub.chive.graph.node/license-cc-by-4.0'
+//   licenseUri: 'at://did:plc:chive-governance/pub.chive.graph.node/fc58b045-e186-5081-b7eb-abc5c47ea8a3'
 // }
 ```
 
@@ -611,6 +618,52 @@ Run with:
 pnpm test:unit web/components/editor
 pnpm test:unit web/components/eprints/eprint-abstract
 pnpm test:unit web/lib/types/rich-text
+```
+
+## Annotation System
+
+The annotation system extends rich text with position information for PDF highlights.
+
+### Bounding Rectangle
+
+PDF annotations include bounding rectangle data to position highlights:
+
+```typescript
+interface BoundingRect {
+  x: string; // X coordinate as string (ATProto serialization)
+  y: string; // Y coordinate as string
+  width: string; // Width as string
+  height: string; // Height as string
+  pageNumber: number;
+}
+```
+
+Coordinates are normalized to the page dimensions (0-1 range).
+
+### Position Refinement
+
+The annotation system includes position refinement to improve highlight accuracy:
+
+1. **Initial highlight**: Uses PDF.js text layer selection
+2. **Position refinement**: Adjusts bounding rect to match text boundaries
+3. **Serialization**: Stores coordinates as strings for ATProto compatibility
+
+### Selection Tip
+
+The PDF viewer shows a selection tip on the first highlight to guide users. The tip appears immediately when a text selection is made and can be dismissed.
+
+### Document Location Card
+
+The `DocumentLocationCard` component shows annotation context:
+
+```tsx
+import { DocumentLocationCard } from '@/components/reviews/document-location-card';
+
+<DocumentLocationCard
+  pageNumber={annotation.boundingRect?.pageNumber}
+  excerpt={annotation.targetSpan}
+  onNavigate={() => scrollToAnnotation(annotation)}
+/>;
 ```
 
 ## Related Documentation

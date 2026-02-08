@@ -146,7 +146,8 @@ describe('Lexicon ATProto Compliance', () => {
   it('all schemas have valid NSID', () => {
     for (const schema of schemas) {
       // Domain authority must be lowercase, name segment uses lowerCamelCase
-      expect(schema.id).toMatch(/^pub\.chive\.[a-z]+\.[a-z][a-zA-Z0-9]*$/);
+      // Allow *.defs for shared definition bundles (e.g., pub.chive.defs)
+      expect(schema.id).toMatch(/^pub\.chive\.([a-z]+\.)?[a-z][a-zA-Z0-9]*$/);
     }
   });
 

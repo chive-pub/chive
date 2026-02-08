@@ -58,6 +58,12 @@ export interface EndorsementPanelProps {
   /** Callback when share button is clicked for an endorsement */
   onShareEndorsement?: (endorsement: Endorsement) => void;
 
+  /** Callback when edit button is clicked for an endorsement */
+  onEditEndorsement?: (endorsement: Endorsement) => void;
+
+  /** Callback when delete button is clicked for an endorsement */
+  onDeleteEndorsement?: (endorsement: Endorsement) => void;
+
   /** Current user's DID (for showing endorsement status) */
   currentUserDid?: string;
 
@@ -79,7 +85,9 @@ export function EndorsementPanel({
   eprintUri,
   onEndorse,
   onShareEndorsement,
-  currentUserDid: _currentUserDid,
+  onEditEndorsement,
+  onDeleteEndorsement,
+  currentUserDid,
   className,
 }: EndorsementPanelProps) {
   const [selectedType, setSelectedType] = useState<ContributionType | 'all'>('all');
@@ -201,6 +209,9 @@ export function EndorsementPanel({
             showComments
             variant="list"
             onShareEndorsement={onShareEndorsement}
+            onEditEndorsement={onEditEndorsement}
+            onDeleteEndorsement={onDeleteEndorsement}
+            currentUserDid={currentUserDid}
           />
         )}
       </CardContent>

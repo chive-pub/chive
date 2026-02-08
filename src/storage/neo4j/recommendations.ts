@@ -157,8 +157,9 @@ export class RecommendationService {
       CALL {
         WITH user, userFields
         UNWIND userFields AS field
-        MATCH (paper:EprintSubmission)-[:CLASSIFIED_AS]->(field)
-        WHERE NOT (user)-[:READ|BOOKMARKED]->(paper)
+        MATCH (paper:Node:Object:Eprint)-[:CLASSIFIED_AS]->(field)
+        WHERE paper.subkind = 'eprint'
+          AND NOT (user)-[:READ|BOOKMARKED]->(paper)
           AND paper.status = 'published'
         WITH paper, field, 'similar-fields' AS reason
         RETURN paper, reason, field.label AS fieldName
@@ -169,8 +170,9 @@ export class RecommendationService {
       UNION ALL
       CALL {
         WITH user
-        MATCH (user)-[:READ|BOOKMARKED]->(engaged:EprintSubmission)-[:CITES]->(cited:EprintSubmission)
-        WHERE NOT (user)-[:READ|BOOKMARKED]->(cited)
+        MATCH (user)-[:READ|BOOKMARKED]->(engaged:Node:Object:Eprint)-[:CITES]->(cited:Node:Object:Eprint)
+        WHERE engaged.subkind = 'eprint' AND cited.subkind = 'eprint'
+          AND NOT (user)-[:READ|BOOKMARKED]->(cited)
           AND cited.status = 'published'
         WITH cited AS paper, 'cited-by-interests' AS reason, null AS fieldName
         RETURN paper, reason, fieldName
@@ -185,9 +187,10 @@ export class RecommendationService {
            sum(occurrences) AS totalScore
 
       // Get paper details
-      OPTIONAL MATCH (paper)<-[:AUTHORED]-(author:Author)
+      OPTIONAL MATCH (paper)<-[:AUTHORED]-(author:Node:Object:Person)
+      WHERE author.subkind = 'author'
       WITH paper, primaryReason, relatedFieldNames, totalScore,
-           collect(author.name)[..5] AS authorNames
+           collect(author.label)[..5] AS authorNames
 
       RETURN
         paper.uri AS uri,
@@ -267,17 +270,19 @@ export class RecommendationService {
     dateThreshold.setDate(dateThreshold.getDate() - windowDays);
 
     const query = `
-      MATCH (paper:EprintSubmission)
-      WHERE paper.status = 'published'
+      MATCH (paper:Node:Object:Eprint)
+      WHERE paper.subkind = 'eprint'
+        AND paper.status = 'published'
         AND paper.createdAt >= datetime($dateThreshold)
-        ${fieldUri ? 'AND (paper)-[:CLASSIFIED_AS]->(:FieldNode {uri: $fieldUri})' : ''}
+        ${fieldUri ? 'AND (paper)-[:CLASSIFIED_AS]->(:Node:Field {uri: $fieldUri})' : ''}
 
       // Calculate engagement metrics
       OPTIONAL MATCH (paper)<-[:VIEWED]-(viewer)
       WITH paper, count(DISTINCT viewer) AS viewCount
 
-      OPTIONAL MATCH (paper)<-[:CITES]-(citing:EprintSubmission)
-      WHERE citing.createdAt >= datetime($dateThreshold)
+      OPTIONAL MATCH (paper)<-[:CITES]-(citing:Node:Object:Eprint)
+      WHERE citing.subkind = 'eprint'
+        AND citing.createdAt >= datetime($dateThreshold)
       WITH paper, viewCount, count(DISTINCT citing) AS recentCitations
 
       OPTIONAL MATCH (paper)<-[:BOOKMARKED|ENDORSED]-(engager)
@@ -293,11 +298,12 @@ export class RecommendationService {
       WHERE score > 0
 
       // Get paper details
-      OPTIONAL MATCH (paper)<-[:AUTHORED]-(author:Author)
-      OPTIONAL MATCH (paper)-[:CLASSIFIED_AS]->(field:FieldNode)
+      OPTIONAL MATCH (paper)<-[:AUTHORED]-(author:Node:Object:Person)
+      WHERE author.subkind = 'author'
+      OPTIONAL MATCH (paper)-[:CLASSIFIED_AS]->(field:Node:Field)
 
       WITH paper, viewCount, recentCitations AS citationCount, engagementCount, score,
-           collect(DISTINCT author.name)[..3] AS authorNames,
+           collect(DISTINCT author.label)[..3] AS authorNames,
            collect(DISTINCT field)[0] AS primaryField
 
       RETURN
@@ -374,13 +380,15 @@ export class RecommendationService {
     this.logger.debug('Getting similar papers', { paperUri, limit });
 
     const query = `
-      MATCH (target:EprintSubmission {uri: $paperUri})
+      MATCH (target:Node:Object:Eprint {uri: $paperUri})
+      WHERE target.subkind = 'eprint'
 
       // Co-citation similarity: papers cited together
       CALL {
         WITH target
-        MATCH (target)<-[:CITES]-(citingPaper)-[:CITES]->(similar:EprintSubmission)
-        WHERE similar <> target AND similar.status = 'published'
+        MATCH (target)<-[:CITES]-(citingPaper:Node:Object:Eprint)-[:CITES]->(similar:Node:Object:Eprint)
+        WHERE citingPaper.subkind = 'eprint' AND similar.subkind = 'eprint'
+          AND similar <> target AND similar.status = 'published'
         WITH similar, count(DISTINCT citingPaper) AS sharedCiters
         RETURN similar, 'co-citation' AS reason, 0 AS sharedRefs, sharedCiters
       }
@@ -389,8 +397,8 @@ export class RecommendationService {
       UNION ALL
       CALL {
         WITH target
-        MATCH (target)-[:CITES]->(ref)<-[:CITES]-(similar:EprintSubmission)
-        WHERE similar <> target AND similar.status = 'published'
+        MATCH (target)-[:CITES]->(ref)<-[:CITES]-(similar:Node:Object:Eprint)
+        WHERE similar.subkind = 'eprint' AND similar <> target AND similar.status = 'published'
         WITH similar, count(DISTINCT ref) AS sharedRefs
         RETURN similar, 'bibliographic-coupling' AS reason, sharedRefs, 0 AS sharedCiters
       }
@@ -408,10 +416,11 @@ export class RecommendationService {
       WHERE similarity > 0
 
       // Get paper details
-      OPTIONAL MATCH (similar)<-[:AUTHORED]-(author:Author)
+      OPTIONAL MATCH (similar)<-[:AUTHORED]-(author:Node:Object:Person)
+      WHERE author.subkind = 'author'
 
       WITH similar, similarity, reason, totalSharedRefs, totalSharedCiters,
-           collect(DISTINCT author.name)[..3] AS authorNames
+           collect(DISTINCT author.label)[..3] AS authorNames
 
       RETURN
         similar.uri AS uri,
@@ -480,8 +489,8 @@ export class RecommendationService {
       WITH candidate, count(*) AS proximity
 
       // Check trending papers in candidate fields
-      OPTIONAL MATCH (paper:EprintSubmission)-[:CLASSIFIED_AS]->(candidate)
-      WHERE paper.status = 'published'
+      OPTIONAL MATCH (paper:Node:Object:Eprint)-[:CLASSIFIED_AS]->(candidate)
+      WHERE paper.subkind = 'eprint' AND paper.status = 'published'
       WITH candidate, proximity, count(paper) AS paperCount
 
       WITH candidate,

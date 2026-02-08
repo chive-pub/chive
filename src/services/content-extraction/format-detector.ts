@@ -468,7 +468,7 @@ function getMimeTypeForFormat(format: DocumentFormat): string {
     epub: 'application/epub+zip',
     txt: 'text/plain',
   };
-  return formatToMime[format];
+  return formatToMime[format] ?? 'application/octet-stream';
 }
 
 /**

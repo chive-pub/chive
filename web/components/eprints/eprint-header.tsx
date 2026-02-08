@@ -1,4 +1,5 @@
 import { Calendar, FileText, Tag } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { AuthorChipList, type EprintAuthor } from './author-chip';
 import { FieldBadgeList } from './field-badge';
@@ -15,6 +16,8 @@ import type { Eprint } from '@/lib/api/schema';
 export interface EprintHeaderProps {
   /** Eprint data */
   eprint: Eprint;
+  /** Optional edit action to render next to the title (e.g., pencil icon for quick edit) */
+  titleAction?: ReactNode;
   /** Additional CSS classes */
   className?: string;
 }
@@ -34,7 +37,7 @@ export interface EprintHeaderProps {
  * @param props - Component props
  * @returns React element displaying the eprint header
  */
-export function EprintHeader({ eprint, className }: EprintHeaderProps) {
+export function EprintHeader({ eprint, titleAction, className }: EprintHeaderProps) {
   return (
     <header className={cn('space-y-6', className)}>
       {/* Version indicator */}
@@ -47,10 +50,13 @@ export function EprintHeader({ eprint, className }: EprintHeaderProps) {
         </div>
       )}
 
-      {/* Title */}
-      <h1 className="text-2xl font-bold leading-tight tracking-tight break-words md:text-4xl">
-        <RichTextRenderer text={eprint.title} mode="inline" />
-      </h1>
+      {/* Title with optional edit action */}
+      <div className="flex items-start gap-2">
+        <h1 className="text-2xl font-bold leading-tight tracking-tight break-words md:text-4xl flex-1">
+          <RichTextRenderer text={eprint.title} mode="inline" />
+        </h1>
+        {titleAction}
+      </div>
 
       {/* Authors */}
       {eprint.authors && eprint.authors.length > 0 && (

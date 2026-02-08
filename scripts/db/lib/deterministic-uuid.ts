@@ -91,8 +91,8 @@ export function nodeUuid(subkind: string, id: string): string {
  * @example
  * ```ts
  * const uuid = edgeUuid(
- *   'at://did:plc:chive-governance/pub.chive.graph.node/abc123',
- *   'at://did:plc:chive-governance/pub.chive.graph.node/def456',
+ *   'at://did:plc:chive-governance/pub.chive.graph.node/6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e',
+ *   'at://did:plc:chive-governance/pub.chive.graph.node/7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f',
  *   'broader'
  * );
  * ```

@@ -107,25 +107,25 @@ describe('Neo4j Schema', () => {
       }
     });
 
-    it('creates unique constraint on Eprint.uri', async () => {
+    it('creates unique constraint on Vote.uri', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW CONSTRAINTS');
         const constraints = result.records.map((record): string => record.get('name') as string);
 
-        expect(constraints).toContain('eprint_uri_unique');
+        expect(constraints).toContain('vote_uri_unique');
       } finally {
         await session.close();
       }
     });
 
-    it('creates unique constraint on Author.did', async () => {
+    it('creates unique constraint on UserTag.normalizedForm', async () => {
       const session = driver.session();
       try {
         const result = await session.run('SHOW CONSTRAINTS');
         const constraints = result.records.map((record): string => record.get('name') as string);
 
-        expect(constraints).toContain('author_did_unique');
+        expect(constraints).toContain('user_tag_normalized_unique');
       } finally {
         await session.close();
       }

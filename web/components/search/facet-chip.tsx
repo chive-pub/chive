@@ -43,7 +43,7 @@ export interface FacetChipProps {
  * ```
  */
 export function FacetChip({
-  facetSlug,
+  facetSlug: _facetSlug,
   facetLabel,
   value,
   valueLabel,

@@ -19,6 +19,7 @@ import {
   nodeUuid,
   edgeUuid,
 } from '../../../../scripts/db/lib/deterministic-uuid.js';
+import { TEST_GRAPH_PDS_DID } from '../../../test-constants.js';
 
 // UUID format regex: 8-4-4-4-12 hexadecimal characters
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -145,8 +146,8 @@ describe('Deterministic UUID Generation', () => {
   describe('edgeUuid', () => {
     it('returns valid UUID format', () => {
       const uuid = edgeUuid(
-        'at://did:plc:governance/pub.chive.graph.node/abc123',
-        'at://did:plc:governance/pub.chive.graph.node/def456',
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a`,
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b`,
         'broader'
       );
       expect(uuid).toMatch(UUID_REGEX);

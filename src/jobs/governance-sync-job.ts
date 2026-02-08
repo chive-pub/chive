@@ -1,16 +1,16 @@
 /**
- * Governance PDS sync job.
+ * Graph PDS sync job.
  *
  * @remarks
- * Syncs knowledge graph nodes and edges from the Governance PDS to Neo4j.
+ * Syncs knowledge graph nodes and edges from the Graph PDS to Neo4j.
  * This job runs frequently to ensure the AppView has current data.
  *
- * **Why needed**: The Governance PDS may not be connected to a relay in local
+ * **Why needed**: The Graph PDS may not be connected to a relay in local
  * development, so records don't automatically flow through the firehose.
  * This job provides a direct sync mechanism.
  *
  * **ATProto Compliance**:
- * - READ-ONLY from Governance PDS
+ * - READ-ONLY from Graph PDS
  * - Indexes into Neo4j (rebuildable index, not source of truth)
  * - Tracks source PDS for all indexed records
  *
@@ -33,15 +33,15 @@ import type { DID, AtUri } from '../types/atproto.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
 
 /**
- * Governance sync job configuration.
+ * Graph sync job configuration.
  *
  * @public
  */
 export interface GovernanceSyncJobConfig {
-  /** Governance PDS URL */
+  /** Graph PDS URL */
   pdsUrl: string;
-  /** Governance DID */
-  governanceDid: DID;
+  /** Graph PDS DID */
+  graphPdsDid: DID;
   /** Node service for indexing nodes */
   nodeService: NodeService;
   /** Edge service for indexing edges */
@@ -143,7 +143,7 @@ export class GovernanceSyncJob {
   async start(): Promise<void> {
     this.config.logger.info('Starting governance sync job', {
       pdsUrl: this.config.pdsUrl,
-      governanceDid: this.config.governanceDid,
+      governanceDid: this.config.graphPdsDid,
       syncIntervalMs: this.config.syncIntervalMs,
     });
 
@@ -216,7 +216,7 @@ export class GovernanceSyncJob {
 
     do {
       const response = await this.agent.com.atproto.repo.listRecords({
-        repo: this.config.governanceDid,
+        repo: this.config.graphPdsDid,
         collection: 'pub.chive.graph.node',
         limit: 100,
         cursor,
@@ -244,7 +244,7 @@ export class GovernanceSyncJob {
             status: nodeRecord.status,
             deprecatedBy: nodeRecord.deprecatedBy as AtUri | undefined,
             proposalUri: nodeRecord.proposalUri as AtUri | undefined,
-            createdBy: this.config.governanceDid,
+            createdBy: this.config.graphPdsDid,
           });
           indexedCount++;
         } catch (error) {
@@ -271,7 +271,7 @@ export class GovernanceSyncJob {
 
     do {
       const response = await this.agent.com.atproto.repo.listRecords({
-        repo: this.config.governanceDid,
+        repo: this.config.graphPdsDid,
         collection: 'pub.chive.graph.edge',
         limit: 100,
         cursor,
@@ -296,7 +296,7 @@ export class GovernanceSyncJob {
             metadata: edgeRecord.metadata,
             status: edgeRecord.status,
             proposalUri: edgeRecord.proposalUri as AtUri | undefined,
-            createdBy: this.config.governanceDid,
+            createdBy: this.config.graphPdsDid,
           });
           indexedCount++;
         } catch (error) {

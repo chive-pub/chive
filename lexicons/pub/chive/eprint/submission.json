@@ -35,7 +35,8 @@
                 "#fieldRefItem",
                 "#latexItem",
                 "#mentionItem",
-                "#linkItem"
+                "#linkItem",
+                "#tagItem"
               ]
             },
             "maxLength": 50
@@ -96,20 +97,9 @@
             "description": "AT-URI to document format node (subkind=document-format)"
           },
           "documentFormatSlug": {
-            "type": "string",
-            "description": "Document format slug for display fallback",
-            "knownValues": [
-              "pdf",
-              "docx",
-              "html",
-              "markdown",
-              "latex",
-              "jupyter",
-              "odt",
-              "rtf",
-              "epub",
-              "txt"
-            ]
+            "type": "ref",
+            "ref": "pub.chive.defs#documentFormat",
+            "description": "Document format slug for display fallback"
           },
           "supplementaryMaterials": {
             "type": "array",
@@ -207,17 +197,9 @@
             "description": "AT-URI to publication status node (subkind=publication-status)"
           },
           "publicationStatusSlug": {
-            "type": "string",
+            "type": "ref",
+            "ref": "pub.chive.defs#publicationStatus",
             "description": "Publication status slug for display fallback",
-            "knownValues": [
-              "preprint",
-              "under_review",
-              "revision_requested",
-              "accepted",
-              "in_press",
-              "published",
-              "retracted"
-            ],
             "default": "preprint"
           },
           "paperTypeUri": {
@@ -310,22 +292,9 @@
           "description": "AT-URI to supplementary category node (subkind=supplementary-category)"
         },
         "categorySlug": {
-          "type": "string",
-          "description": "Category slug for display fallback",
-          "knownValues": [
-            "appendix",
-            "figure",
-            "table",
-            "dataset",
-            "code",
-            "notebook",
-            "video",
-            "audio",
-            "presentation",
-            "protocol",
-            "questionnaire",
-            "other"
-          ]
+          "type": "ref",
+          "ref": "pub.chive.defs#supplementaryCategory",
+          "description": "Category slug for display fallback"
         },
         "detectedFormat": {
           "type": "string",
@@ -796,6 +765,11 @@
           "type": "string",
           "format": "uri",
           "description": "Conference website URL"
+        },
+        "conferenceIteration": {
+          "type": "string",
+          "description": "Specific year or iteration of the conference (e.g., NeurIPS 2024)",
+          "maxLength": 100
         },
         "conferenceLocation": {
           "type": "string",

@@ -15,6 +15,11 @@
  * The firehose (via Jetstream with `wantedCollections=pub.chive.*`) remains
  * the primary indexing mechanism. This endpoint supplements it for better UX.
  *
+ * Supported collections:
+ * - `pub.chive.eprint.submission` - Eprint submissions
+ * - `pub.chive.review.comment` - Review comments and annotations
+ * - `pub.chive.review.endorsement` - Endorsements
+ *
  * @packageDocumentation
  * @public
  */
@@ -160,8 +165,14 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       throw new ValidationError('Can only index your own records', 'uri');
     }
 
-    // Only support eprint submissions for now
-    if (collection !== 'pub.chive.eprint.submission') {
+    // Supported collections for manual indexing
+    const supportedCollections = [
+      'pub.chive.eprint.submission',
+      'pub.chive.review.comment',
+      'pub.chive.review.endorsement',
+    ];
+
+    if (!supportedCollections.includes(collection)) {
       throw new ValidationError(
         `Collection ${collection} not supported for manual indexing`,
         'uri'
@@ -207,11 +218,34 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
         indexedAt: new Date(),
       };
 
-      // Transform PDS record to internal Eprint model
-      const eprintRecord = transformPDSRecord(record.value, input.uri as AtUri, record.cid as CID);
+      // Index based on collection type
+      let result;
 
-      // Index the eprint
-      const result = await eprintService.indexEprint(eprintRecord, metadata);
+      if (collection === 'pub.chive.eprint.submission') {
+        // Transform PDS record to internal Eprint model
+        const eprintRecord = transformPDSRecord(
+          record.value,
+          input.uri as AtUri,
+          record.cid as CID
+        );
+        result = await eprintService.indexEprint(eprintRecord, metadata);
+      } else if (collection === 'pub.chive.review.comment') {
+        // Index review comment directly
+        const reviewService = c.get('services').review;
+        if (!reviewService) {
+          throw new DatabaseError('INDEX', 'Review service not available');
+        }
+        result = await reviewService.indexReview(record.value, metadata);
+      } else if (collection === 'pub.chive.review.endorsement') {
+        // Index endorsement directly
+        const reviewService = c.get('services').review;
+        if (!reviewService) {
+          throw new DatabaseError('INDEX', 'Review service not available');
+        }
+        result = await reviewService.indexEndorsement(record.value, metadata);
+      } else {
+        throw new ValidationError(`Collection ${collection} not supported`, 'uri');
+      }
 
       if (isErr(result)) {
         const indexError = result.error;

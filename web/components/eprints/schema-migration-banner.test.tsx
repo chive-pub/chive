@@ -1,14 +1,14 @@
-import { render, screen, waitFor } from '@/tests/test-utils';
+import { render, screen } from '@/tests/test-utils';
 import userEvent from '@testing-library/user-event';
 import { SchemaMigrationBanner, SchemaMigrationBannerSkeleton } from './schema-migration-banner';
 
-// Mock the useSchemaMigration hook
-const mockMutate = vi.fn();
+// Mock the migrations module
+const mockApplyMigrations = vi.fn();
 const mockReset = vi.fn();
 
-vi.mock('@/lib/hooks/use-schema-migration', () => ({
-  useSchemaMigration: () => ({
-    mutate: mockMutate,
+vi.mock('@/lib/migrations', () => ({
+  useMigration: () => ({
+    applyMigrations: mockApplyMigrations,
     isPending: false,
     isSuccess: false,
     error: null,
@@ -21,6 +21,14 @@ vi.mock('@/lib/hooks/use-schema-migration', () => ({
       return recordDid === currentUserDid || ownerDid === currentUserDid;
     }
   ),
+  migrationRegistry: {
+    detectMigrations: vi.fn(() => ({
+      needsMigration: false,
+      migrations: [],
+      affectedFields: [],
+    })),
+  },
+  registerEprintMigrations: vi.fn(),
 }));
 
 describe('SchemaMigrationBanner', () => {
@@ -177,8 +185,10 @@ describe('SchemaMigrationBanner', () => {
   });
 
   describe('migration action', () => {
-    it('calls mutate with uri when Update Now is clicked', async () => {
+    it('calls applyMigrations when Update Now is clicked', async () => {
       const user = userEvent.setup();
+      mockApplyMigrations.mockResolvedValue({ success: true });
+
       render(
         <SchemaMigrationBanner
           schemaHints={defaultSchemaHints}
@@ -189,24 +199,15 @@ describe('SchemaMigrationBanner', () => {
 
       await user.click(screen.getByRole('button', { name: /Update Now/i }));
 
-      expect(mockMutate).toHaveBeenCalledWith(
-        { uri: 'at://did:plc:owner123/pub.chive.eprint.submission/abc123' },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-        })
-      );
+      expect(mockApplyMigrations).toHaveBeenCalled();
     });
 
     it('calls onMigrationComplete callback on success', async () => {
       const onMigrationComplete = vi.fn();
       const user = userEvent.setup();
 
-      // Set up mockMutate to call onSuccess immediately
-      mockMutate.mockImplementation((params, options) => {
-        if (options?.onSuccess) {
-          options.onSuccess();
-        }
-      });
+      // Set up mockApplyMigrations to resolve successfully
+      mockApplyMigrations.mockResolvedValue({ success: true });
 
       render(
         <SchemaMigrationBanner
@@ -219,7 +220,10 @@ describe('SchemaMigrationBanner', () => {
 
       await user.click(screen.getByRole('button', { name: /Update Now/i }));
 
-      expect(onMigrationComplete).toHaveBeenCalledTimes(1);
+      // Wait for the async operation to complete
+      await vi.waitFor(() => {
+        expect(onMigrationComplete).toHaveBeenCalledTimes(1);
+      });
     });
   });
 

@@ -28,6 +28,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Review, FrontendReviewThread } from '@/lib/api/schema';
+import type { DocumentFormat } from '@/lib/api/generated/types/pub/chive/defs';
 import { ReviewCard } from './review-card';
 
 // =============================================================================
@@ -64,6 +65,12 @@ export interface ReviewThreadProps {
 
   /** Whether to show target span excerpts */
   showTargets?: boolean;
+
+  /** Document format for format-specific location display */
+  documentFormat?: DocumentFormat;
+
+  /** Callback when "Go to location" button is clicked on a review */
+  onGoToLocation?: (uri: string) => void;
 
   /** Additional CSS classes */
   className?: string;
@@ -148,21 +155,25 @@ export function ReviewThreadComponent({
   onShare,
   currentUserDid,
   showTargets = true,
+  documentFormat,
+  onGoToLocation,
   className,
 }: ReviewThreadProps) {
   // Auto-collapse deep threads
   const [isCollapsed, setIsCollapsed] = useState(depth >= maxExpandedDepth);
 
   const hasReplies = thread.replies && thread.replies.length > 0;
-  const isOwner = currentUserDid === thread.parent.author.did;
+  // Normalize DIDs for comparison (trim whitespace, lowercase for consistency)
+  const normalizedCurrentDid = currentUserDid?.toLowerCase().trim();
+  const normalizedAuthorDid = thread.parent.author.did?.toLowerCase().trim();
+  const isOwner = !!(
+    normalizedCurrentDid &&
+    normalizedAuthorDid &&
+    normalizedCurrentDid === normalizedAuthorDid
+  );
 
   return (
     <div className={cn('relative', className)} data-testid="review-thread" data-depth={depth}>
-      {/* Thread line indicator for nested replies */}
-      {depth > 0 && (
-        <div className="absolute left-0 top-0 bottom-0 w-px bg-border" aria-hidden="true" />
-      )}
-
       {/* Parent review */}
       <ReviewCard
         review={thread.parent}
@@ -174,6 +185,8 @@ export function ReviewThreadComponent({
         onShare={onShare ? () => onShare(thread.parent) : undefined}
         isOwner={isOwner}
         showTarget={showTargets && depth === 0}
+        documentFormat={documentFormat}
+        onGoToLocation={onGoToLocation ? () => onGoToLocation(thread.parent.uri) : undefined}
       />
 
       {/* Replies */}
@@ -203,6 +216,8 @@ export function ReviewThreadComponent({
                   onShare={onShare}
                   currentUserDid={currentUserDid}
                   showTargets={showTargets}
+                  documentFormat={documentFormat}
+                  onGoToLocation={onGoToLocation}
                 />
               ))}
             </div>

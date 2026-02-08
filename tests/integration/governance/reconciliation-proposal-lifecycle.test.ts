@@ -17,6 +17,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import type { AtUri, DID, Timestamp } from '@/types/atproto.js';
 
+import { TEST_GRAPH_PDS_DID, TEST_USER_DIDS } from '../../test-constants.js';
+
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -229,10 +231,61 @@ const RECONCILABLE_ENTITY_TYPES: readonly { id: ReconcilableEntityType; label: s
 // Test Fixtures
 // =============================================================================
 
-const GOVERNANCE_DID = 'did:plc:chive-governance' as DID;
-const TEST_USER_1 = 'did:plc:testuser1' as DID;
-const TEST_USER_2 = 'did:plc:testuser2' as DID;
+// Use shared governance DID from test-constants
+const GRAPH_PDS_DID = TEST_GRAPH_PDS_DID;
+const TEST_USER_1 = TEST_USER_DIDS.USER_1;
+const TEST_USER_2 = TEST_USER_DIDS.USER_2;
 const TEST_USER_3 = 'did:plc:testuser3' as DID;
+
+/**
+ * UUID lookup for organizations.
+ * Generated using nodeUuid('organization', slug) for deterministic URIs.
+ */
+const ORGANIZATION_UUIDS: Record<string, string> = {
+  stanford: '0ee2502c-b04d-5e9b-8d43-9ae63aa47fb8',
+  mit: 'eb866be0-070c-5a2c-9a46-dd066b371fd7',
+  cern: '90e2a739-2079-5b8c-9135-da0b75f1acc2',
+  auto: 'ad010e0e-2337-53a7-91cb-1620ac5f1b59',
+  test: '7603561d-b314-5689-9a01-68c3cae30099',
+  new: '01955dd1-dc31-5ec4-b41a-bbfdd1832cdd',
+  'approved-org': '4939abdd-d837-5f76-afcb-2ea8563f8734',
+  'to-update': '621d4f17-cf30-5ede-ad88-4086b2564809',
+  rejected: '004ce014-5932-56bf-8484-df8f7fc957ac',
+  removed: 'ebb366cd-0548-567d-8f9d-65d8addd7943',
+  'confidence-test': '3c897a16-6ca8-5e28-b355-6e5f5ee4c7fe',
+};
+
+/**
+ * UUID lookup for facets.
+ * Generated using nodeUuid('facet', slug) for deterministic URIs.
+ */
+const FACET_UUIDS: Record<string, string> = {
+  'machine-learning': '3ca09134-48b5-505d-a77b-49902a84210c',
+  'deep-learning': 'baf8669c-d5e7-5e84-86ac-32cda10b94e0',
+  ai: '73b8a61f-2160-589c-9322-1fcac39cbbbb',
+  pending: '050be747-a5bf-5560-9e46-af2561715d3a',
+  disputed: 'eb52ab1f-e437-56c6-ba54-96b99a8b56b9',
+  'to-remove': '1bbd1794-36a0-5493-825f-e2ae0bd929f5',
+  'new-facet': 'ac2706a3-12a1-5808-bdaf-05aefb6803ed',
+  community: 'c0f889de-8077-5864-a22d-d29f819ece93',
+  'removal-target': '3b6dc054-69e6-5378-ba6b-1c0f1303b7a2',
+  'not-added': '913ef3a8-7088-5e87-bd3e-c54d07c2f12e',
+};
+
+/**
+ * UUID lookup for authors (for test purposes).
+ */
+const AUTHOR_UUIDS: Record<string, string> = {
+  test: 'a7b8c9d0-e1f2-3456-7890-abcdef123456',
+  expired: 'b8c9d0e1-f2a3-4567-8901-bcdef1234567',
+};
+
+/**
+ * UUID lookup for contribution types (for test purposes).
+ */
+const CONTRIBUTION_TYPE_UUIDS: Record<string, string> = {
+  expert: 'c9d0e1f2-a3b4-5678-9012-cdef12345678',
+};
 
 /**
  * Creates a reconciliation for testing.
@@ -246,7 +299,7 @@ function createTestReconciliation(
 ): Reconciliation {
   const id = `${sourceEntityType}-${targetSystem}-${Date.now()}`;
   return {
-    uri: `at://${GOVERNANCE_DID}/pub.chive.graph.reconciliation/${id}` as AtUri,
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.reconciliation/${id}` as AtUri,
     id,
     sourceEntityType,
     sourceEntityUri,
@@ -310,7 +363,8 @@ class MockReconciliationManager {
     const seedReconciliations = [
       {
         sourceEntityType: 'organization' as ReconcilableEntityType,
-        sourceEntityUri: `at://${GOVERNANCE_DID}/pub.chive.graph.organization/stanford` as AtUri,
+        sourceEntityUri:
+          `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.stanford}` as AtUri,
         targetSystem: 'wikidata' as ReconciliationSystem,
         targetIdentifier: 'Q41506',
         targetUri: 'https://www.wikidata.org/wiki/Q41506',
@@ -318,7 +372,8 @@ class MockReconciliationManager {
       },
       {
         sourceEntityType: 'organization' as ReconcilableEntityType,
-        sourceEntityUri: `at://${GOVERNANCE_DID}/pub.chive.graph.organization/stanford` as AtUri,
+        sourceEntityUri:
+          `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.stanford}` as AtUri,
         targetSystem: 'ror' as ReconciliationSystem,
         targetIdentifier: '00f54p054',
         targetUri: 'https://ror.org/00f54p054',
@@ -327,7 +382,7 @@ class MockReconciliationManager {
       {
         sourceEntityType: 'contribution-type' as ReconcilableEntityType,
         sourceEntityUri:
-          `at://${GOVERNANCE_DID}/pub.chive.graph.concept/conceptualization` as AtUri,
+          `at://${GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85` as AtUri,
         targetSystem: 'credit' as ReconciliationSystem,
         targetIdentifier: 'conceptualization',
         targetUri: 'https://credit.niso.org/contributor-roles/conceptualization/',
@@ -335,7 +390,8 @@ class MockReconciliationManager {
       },
       {
         sourceEntityType: 'facet' as ReconcilableEntityType,
-        sourceEntityUri: `at://${GOVERNANCE_DID}/pub.chive.graph.facet/machine-learning` as AtUri,
+        sourceEntityUri:
+          `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['machine-learning']}` as AtUri,
         targetSystem: 'lcsh' as ReconciliationSystem,
         targetIdentifier: 'sh85082139',
         targetUri: 'http://id.loc.gov/authorities/subjects/sh85082139',
@@ -468,7 +524,7 @@ class MockReconciliationManager {
 
     const id = `${proposal.sourceEntityType}-${proposal.targetSystem}-${Date.now()}`;
     const reconciliation: Reconciliation = {
-      uri: `at://${GOVERNANCE_DID}/pub.chive.graph.reconciliation/${id}` as AtUri,
+      uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.reconciliation/${id}` as AtUri,
       id,
       sourceEntityType: proposal.sourceEntityType,
       sourceEntityUri: proposal.sourceEntityUri,
@@ -618,7 +674,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('can get reconciliations for an entity', () => {
-      const stanfordUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/stanford` as AtUri;
+      const stanfordUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.stanford}` as AtUri;
       const reconciliations = manager.getReconciliationsForEntity(stanfordUri);
       expect(reconciliations.length).toBeGreaterThanOrEqual(2);
     });
@@ -632,7 +689,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Reconciliation Proposal Creation', () => {
     it('creates a new reconciliation proposal', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/mit` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.mit}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -653,7 +711,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('proposal is retrievable after creation', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/deep-learning` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['deep-learning']}` as AtUri;
       const proposal = createTestReconciliationProposal('facet', entityUri, 'lcsh', 'sh2016000419');
       manager.createProposal(proposal);
 
@@ -663,7 +722,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('can create proposal with evidence', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/cern` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.cern}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -680,7 +740,7 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('supports different match types', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/ai` as AtUri;
+      const entityUri = `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS.ai}` as AtUri;
 
       const exactProposal = createTestReconciliationProposal(
         'facet',
@@ -715,7 +775,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Voting Mechanism', () => {
     it('records votes on proposals', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/test` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.test}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -735,7 +796,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('calculates quorum correctly', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.author/test` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.author/${AUTHOR_UUIDS.test}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'author',
         entityUri,
@@ -756,7 +818,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('calculates threshold correctly (60% approval)', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.field/test` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.node/a1b2c3d4-e5f6-7890-abcd-ef1234567890` as AtUri;
       const proposal = createTestReconciliationProposal('field', entityUri, 'wikidata', 'Q12345');
       manager.createProposal(proposal);
 
@@ -776,7 +839,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Consensus Detection', () => {
     it('detects approval when thresholds met', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/new` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.new}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -794,7 +858,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('remains pending when quorum not met', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/pending` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS.pending}` as AtUri;
       const proposal = createTestReconciliationProposal('facet', entityUri, 'fast', 'fst123456');
       manager.createProposal(proposal);
 
@@ -806,7 +871,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('rejects when deadline passed without meeting threshold', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.author/expired` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.author/${AUTHOR_UUIDS.expired}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'author',
         entityUri,
@@ -829,7 +895,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Authority Record Creation', () => {
     it('creates authority record when proposal approved', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/approved-org` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS['approved-org']}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -854,11 +921,12 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
       expect(reconciliation.targetIdentifier).toBe('I123456');
       expect(reconciliation.status).toBe('established');
       expect(reconciliation.proposalUri).toBe(proposal.uri);
-      expect(reconciliation.uri).toContain(GOVERNANCE_DID);
+      expect(reconciliation.uri).toContain(GRAPH_PDS_DID);
     });
 
     it('new reconciliation available in list after approval', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/new-facet` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['new-facet']}` as AtUri;
       const proposal = createTestReconciliationProposal('facet', entityUri, 'wikidata', 'Q777777');
       manager.createProposal(proposal);
 
@@ -876,7 +944,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Reconciliation Methods', () => {
     it('supports automatic reconciliation method', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/auto` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.auto}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -893,7 +962,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('supports expert validation method', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.contribution-type/expert` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.contribution-type/${CONTRIBUTION_TYPE_UUIDS.expert}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'contribution-type',
         entityUri,
@@ -910,7 +980,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('supports community vote method', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/community` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS.community}` as AtUri;
       const proposal = createTestReconciliationProposal('facet', entityUri, 'lcsh', 'sh12345', {
         proposedMethod: 'community-vote',
         proposedConfidence: 0.85,
@@ -924,7 +995,7 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
   describe('Confidence Scores', () => {
     it('stores confidence score', () => {
       const entityUri =
-        `at://${GOVERNANCE_DID}/pub.chive.graph.organization/confidence-test` as AtUri;
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS['confidence-test']}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -956,7 +1027,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
   describe('Reconciliation Removal', () => {
     it('can remove an existing reconciliation', () => {
       // Create reconciliation
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/to-remove` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['to-remove']}` as AtUri;
       const proposal = createTestReconciliationProposal('facet', entityUri, 'fast', 'fst999999');
       manager.createProposal(proposal);
       manager.castVote(proposal.uri, TEST_USER_1, 'approve');
@@ -975,7 +1047,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('removed reconciliations still retrievable', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/removed` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.removed}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -1000,7 +1073,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Disputed Reconciliations', () => {
     it('can mark reconciliation as disputed', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/disputed` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS.disputed}` as AtUri;
       const proposal = createTestReconciliationProposal('facet', entityUri, 'wikidata', 'Q555555');
       manager.createProposal(proposal);
       manager.castVote(proposal.uri, TEST_USER_1, 'approve');
@@ -1016,7 +1090,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
     it('can filter by disputed status', () => {
       // Create and dispute a reconciliation
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.field/disputed-filter` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.node/b2c3d4e5-f6a7-8901-bcde-f12345678901` as AtUri;
       const proposal = createTestReconciliationProposal('field', entityUri, 'wikidata', 'Q444444');
       manager.createProposal(proposal);
       manager.castVote(proposal.uri, TEST_USER_1, 'approve');
@@ -1032,7 +1107,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Proposal Rejection', () => {
     it('updates proposal status to rejected', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/rejected` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS.rejected}` as AtUri;
       const proposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -1048,7 +1124,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
     });
 
     it('rejected proposal reconciliation not added', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/not-added` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['not-added']}` as AtUri;
       const proposal = createTestReconciliationProposal('facet', entityUri, 'lcsh', 'notadded123');
       manager.createProposal(proposal);
 
@@ -1062,7 +1139,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
   describe('Update Proposal Flow', () => {
     it('can create update proposal for existing reconciliation', () => {
       // First create a reconciliation
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.organization/to-update` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.organization/${ORGANIZATION_UUIDS['to-update']}` as AtUri;
       const createProposal = createTestReconciliationProposal(
         'organization',
         entityUri,
@@ -1102,7 +1180,8 @@ describe('Reconciliation Proposal Lifecycle Integration', () => {
 
   describe('Remove Proposal Flow', () => {
     it('can create removal proposal', () => {
-      const entityUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/removal-target` as AtUri;
+      const entityUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['removal-target']}` as AtUri;
       const createProposal = createTestReconciliationProposal(
         'facet',
         entityUri,

@@ -2,7 +2,7 @@
  * Node creator utility for seeding knowledge graph nodes.
  *
  * @remarks
- * Provides a unified interface for creating nodes in both the Governance PDS
+ * Provides a unified interface for creating nodes in both the Graph PDS
  * and Neo4j index. Ensures deterministic UUIDs for idempotent seeding.
  *
  * @packageDocumentation
@@ -83,9 +83,9 @@ export interface CreatedNode {
  * Options for NodeCreator.
  */
 export interface NodeCreatorOptions {
-  /** Governance PDS DID */
-  readonly governanceDid: string;
-  /** Governance PDS Writer (optional - for writing to PDS) */
+  /** Graph PDS DID */
+  readonly graphPdsDid: string;
+  /** Graph PDS Writer (optional - for writing to PDS) */
   readonly pdsWriter?: {
     createNode(collection: string, rkey: string, record: unknown): Promise<{ uri: string }>;
   };
@@ -123,7 +123,7 @@ export class NodeCreator {
   async createNode(input: CreateNodeInput): Promise<CreatedNode> {
     // Use 'value' as default subkind for UUID generation when not specified
     const uuid = nodeUuid(input.subkind ?? 'value', input.slug);
-    const uri = `at://${this.options.governanceDid}/pub.chive.graph.node/${uuid}`;
+    const uri = `at://${this.options.graphPdsDid}/pub.chive.graph.node/${uuid}`;
 
     // Check if already created in this session
     const existing = this.createdNodes.get(uri);
@@ -253,6 +253,6 @@ export class NodeCreator {
    */
   getNodeUri(subkind: string | undefined, slug: string): string {
     const uuid = nodeUuid(subkind ?? 'value', slug);
-    return `at://${this.options.governanceDid}/pub.chive.graph.node/${uuid}`;
+    return `at://${this.options.graphPdsDid}/pub.chive.graph.node/${uuid}`;
   }
 }

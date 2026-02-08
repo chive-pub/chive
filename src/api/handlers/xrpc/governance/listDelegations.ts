@@ -13,7 +13,12 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/governance/listDelegations.js';
-import { AuthenticationError, AuthorizationError } from '../../../../types/errors.js';
+import {
+  AuthenticationError,
+  AuthorizationError,
+  DatabaseError,
+  ServiceUnavailableError,
+} from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -34,7 +39,7 @@ export const listDelegations: XRPCMethod<QueryParams, void, OutputSchema> = {
     // Check if user is admin
     const trustedEditorService = c.get('services').trustedEditor;
     if (!trustedEditorService) {
-      throw new Error('Trusted editor service not configured');
+      throw new ServiceUnavailableError('Trusted editor service not configured', 'trustedEditor');
     }
 
     const statusResult = await trustedEditorService.getEditorStatus(user.did);
@@ -50,7 +55,11 @@ export const listDelegations: XRPCMethod<QueryParams, void, OutputSchema> = {
     const result = await trustedEditorService.listDelegations(limit, params.cursor);
 
     if (!result.ok) {
-      throw new Error(`Failed to list delegations: ${result.error.message}`);
+      throw new DatabaseError(
+        'QUERY',
+        `Failed to list delegations: ${result.error.message}`,
+        result.error
+      );
     }
 
     logger.info('Delegations listed', {

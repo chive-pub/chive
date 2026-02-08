@@ -212,6 +212,13 @@ else
   OAUTH_URL="http://127.0.0.1:3000"
 fi
 
+# Set API URL based on mode (empty in tunnel mode to use Next.js proxy)
+if [ "$MODE" = "tunnel" ]; then
+  API_URL=""
+else
+  API_URL="http://127.0.0.1:3001"
+fi
+
 # Generate web/.env.local
 cat > "$ROOT_DIR/web/.env.local" << EOF
 # ==============================================================================
@@ -223,8 +230,8 @@ cat > "$ROOT_DIR/web/.env.local" << EOF
 # OAuth configuration
 NEXT_PUBLIC_OAUTH_BASE_URL=$OAUTH_URL
 
-# Backend API URL
-NEXT_PUBLIC_API_URL=http://127.0.0.1:3001
+# Backend API URL (empty in tunnel mode to use Next.js proxy)
+NEXT_PUBLIC_API_URL=$API_URL
 
 # Development mode
 NEXT_PUBLIC_DEV_MODE=$MODE

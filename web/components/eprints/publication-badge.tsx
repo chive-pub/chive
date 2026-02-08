@@ -21,17 +21,8 @@ import { cn } from '@/lib/utils';
 // TYPES
 // =============================================================================
 
-/**
- * Publication status values.
- */
-export type PublicationStatus =
-  | 'eprint'
-  | 'under_review'
-  | 'revision_requested'
-  | 'accepted'
-  | 'in_press'
-  | 'published'
-  | 'retracted';
+import type { PublicationStatus } from '@/lib/api/generated/types/pub/chive/defs';
+export type { PublicationStatus };
 
 /**
  * Published version information.
@@ -65,19 +56,36 @@ export interface PublicationBadgeProps {
 // =============================================================================
 
 /**
- * Status configuration mapping.
+ * Status configuration for known statuses.
+ *
+ * @remarks
+ * Publication statuses are governance-controlled via knowledge graph nodes.
+ * This config provides display styling for known statuses. Unknown statuses
+ * fall back to DEFAULT_STATUS_CONFIG.
  */
-const STATUS_CONFIG: Record<
-  PublicationStatus,
-  {
-    label: string;
-    icon: typeof BookOpen;
-    color: 'default' | 'secondary' | 'destructive' | 'outline';
-    bgColor: string;
-  }
-> = {
+interface StatusConfig {
+  label: string;
+  icon: typeof BookOpen;
+  color: 'default' | 'secondary' | 'destructive' | 'outline';
+  bgColor: string;
+}
+
+const DEFAULT_STATUS_CONFIG: StatusConfig = {
+  label: 'Unknown',
+  icon: FileCheck,
+  color: 'secondary',
+  bgColor: 'bg-gray-50 dark:bg-gray-950/20',
+};
+
+const STATUS_CONFIG: Record<string, StatusConfig> = {
   eprint: {
     label: 'Eprint',
+    icon: FileCheck,
+    color: 'secondary',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/20',
+  },
+  preprint: {
+    label: 'Preprint',
     icon: FileCheck,
     color: 'secondary',
     bgColor: 'bg-blue-50 dark:bg-blue-950/20',
@@ -118,7 +126,20 @@ const STATUS_CONFIG: Record<
     color: 'destructive',
     bgColor: 'bg-red-50 dark:bg-red-950/20',
   },
+  withdrawn: {
+    label: 'Withdrawn',
+    icon: AlertTriangle,
+    color: 'destructive',
+    bgColor: 'bg-red-50 dark:bg-red-950/20',
+  },
 };
+
+/**
+ * Gets status config with fallback for unknown statuses.
+ */
+function getStatusConfig(status: string): StatusConfig {
+  return STATUS_CONFIG[status] ?? DEFAULT_STATUS_CONFIG;
+}
 
 // =============================================================================
 // COMPONENT
@@ -136,7 +157,7 @@ export function PublicationBadge({
   variant = 'badge',
   className,
 }: PublicationBadgeProps) {
-  const config = STATUS_CONFIG[status];
+  const config = getStatusConfig(status);
   const Icon = config.icon;
   const hasPublishedVersion = publishedVersion && (publishedVersion.doi || publishedVersion.url);
 

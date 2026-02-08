@@ -84,7 +84,7 @@ function conceptUuid(slug: string): string {
 
 describe('Seed Script Behavior', () => {
   let mockSession: MockSession;
-  const governanceDid = 'did:plc:test-governance';
+  const graphPdsDid = 'did:plc:test-governance';
 
   beforeEach(() => {
     mockSession = createMockSession();
@@ -107,9 +107,9 @@ describe('Seed Script Behavior', () => {
     it('generates correct AT-URIs using UUIDs', () => {
       const slug = 'conceptualization';
       const uuid = contributionTypeUuid(slug);
-      const expectedUri = `at://${governanceDid}/pub.chive.graph.concept/${uuid}`;
+      const expectedUri = `at://${graphPdsDid}/pub.chive.graph.node/${uuid}`;
 
-      expect(expectedUri).toContain(governanceDid);
+      expect(expectedUri).toContain(graphPdsDid);
       expect(expectedUri).toContain(uuid);
       expect(expectedUri).not.toContain(slug); // Should use UUID, not slug
     });
@@ -121,7 +121,7 @@ describe('Seed Script Behavior', () => {
       // Simulate seed script behavior
       await mockSession.run(
         `
-        MERGE (ct:ContributionType {slug: $slug})
+        MERGE (ct:Node {slug: $slug})
         ON CREATE SET
           ct.id = $id,
           ct.uri = $uri,
@@ -132,7 +132,7 @@ describe('Seed Script Behavior', () => {
         {
           slug,
           id: uuid,
-          uri: `at://${governanceDid}/pub.chive.graph.concept/${uuid}`,
+          uri: `at://${graphPdsDid}/pub.chive.graph.node/${uuid}`,
           label: 'Conceptualization',
         }
       );
@@ -144,7 +144,7 @@ describe('Seed Script Behavior', () => {
       const [query, params] = firstCall;
 
       // Verify MERGE on slug (not id) for idempotency
-      expect(query).toContain('MERGE (ct:ContributionType {slug: $slug})');
+      expect(query).toContain('MERGE (ct:Node {slug: $slug})');
       expect(query).toContain('ON CREATE SET');
       expect(query).toContain('ON MATCH SET');
 
@@ -169,17 +169,17 @@ describe('Seed Script Behavior', () => {
     it('generates correct AT-URIs for fields', () => {
       const slug = 'linguistics';
       const uuid = fieldUuid(slug);
-      const expectedUri = `at://${governanceDid}/pub.chive.graph.field/${uuid}`;
+      const expectedUri = `at://${graphPdsDid}/pub.chive.graph.node/${uuid}`;
 
-      expect(expectedUri).toContain('pub.chive.graph.field');
+      expect(expectedUri).toContain('pub.chive.graph.node');
       expect(expectedUri).toContain(uuid);
     });
 
     it('parent-child relationship query is correct', async () => {
       await mockSession.run(
         `
-        MATCH (parent:Field {slug: $parentSlug})
-        MATCH (child:Field {slug: $childSlug})
+        MATCH (parent:Node {slug: $parentSlug})
+        MATCH (child:Node {slug: $childSlug})
         MERGE (parent)-[r:PARENT_OF]->(child)
         ON CREATE SET r.createdAt = datetime()
         `,
@@ -194,7 +194,7 @@ describe('Seed Script Behavior', () => {
       if (!firstCall) throw new Error('Expected first call to be defined');
       const [query, params] = firstCall;
 
-      expect(query).toContain('MATCH (parent:Field {slug: $parentSlug})');
+      expect(query).toContain('MATCH (parent:Node {slug: $parentSlug})');
       expect(query).toContain('MERGE (parent)-[r:PARENT_OF]->(child)');
       expect(params.parentSlug).toBe('humanities');
       expect(params.childSlug).toBe('linguistics');
@@ -203,8 +203,8 @@ describe('Seed Script Behavior', () => {
     it('related-to relationship query is correct', async () => {
       await mockSession.run(
         `
-        MATCH (a:Field {slug: $fieldSlug})
-        MATCH (b:Field {slug: $relatedSlug})
+        MATCH (a:Node {slug: $fieldSlug})
+        MATCH (b:Node {slug: $relatedSlug})
         MERGE (a)-[r:RELATED_TO]-(b)
         ON CREATE SET r.createdAt = datetime(), r.source = 'seed'
         `,
@@ -239,7 +239,7 @@ describe('Seed Script Behavior', () => {
     it('generates correct AT-URIs for facets', () => {
       const slug = 'qualitative-research';
       const uuid = facetUuid(slug);
-      const expectedUri = `at://${governanceDid}/pub.chive.graph.facet/${uuid}`;
+      const expectedUri = `at://${graphPdsDid}/pub.chive.graph.facet/${uuid}`;
 
       expect(expectedUri).toContain('pub.chive.graph.facet');
       expect(expectedUri).toContain(uuid);
@@ -262,7 +262,7 @@ describe('Seed Script Behavior', () => {
         {
           slug,
           id: uuid,
-          uri: `at://${governanceDid}/pub.chive.graph.facet/${uuid}`,
+          uri: `at://${graphPdsDid}/pub.chive.graph.facet/${uuid}`,
           label: 'Qualitative Research',
           facetType: 'energy',
         }
@@ -291,9 +291,9 @@ describe('Seed Script Behavior', () => {
     it('generates correct AT-URIs for concepts', () => {
       const slug = 'pdf';
       const uuid = conceptUuid(slug);
-      const expectedUri = `at://${governanceDid}/pub.chive.graph.concept/${uuid}`;
+      const expectedUri = `at://${graphPdsDid}/pub.chive.graph.node/${uuid}`;
 
-      expect(expectedUri).toContain('pub.chive.graph.concept');
+      expect(expectedUri).toContain('pub.chive.graph.node');
       expect(expectedUri).toContain(uuid);
     });
 
@@ -303,7 +303,7 @@ describe('Seed Script Behavior', () => {
 
       await mockSession.run(
         `
-        MERGE (c:Concept {slug: $slug})
+        MERGE (c:Node {slug: $slug})
         ON CREATE SET
           c.id = $id,
           c.uri = $uri,
@@ -314,7 +314,7 @@ describe('Seed Script Behavior', () => {
         {
           slug,
           id: uuid,
-          uri: `at://${governanceDid}/pub.chive.graph.concept/${uuid}`,
+          uri: `at://${graphPdsDid}/pub.chive.graph.node/${uuid}`,
           name: 'PDF',
           category: 'document-format',
           wikidataId: 'Q42332',
@@ -332,8 +332,8 @@ describe('Seed Script Behavior', () => {
     it('parent concept relationship query is correct', async () => {
       await mockSession.run(
         `
-        MATCH (child:Concept {slug: $childSlug})
-        MATCH (parent:Concept {slug: $parentSlug})
+        MATCH (child:Node {slug: $childSlug})
+        MATCH (parent:Node {slug: $parentSlug})
         MERGE (child)-[:PARENT_CONCEPT]->(parent)
         SET child.parentConceptUri = parent.uri
         `,
@@ -358,7 +358,7 @@ describe('Seed Script Behavior', () => {
     it('creates slug uniqueness constraint', async () => {
       await mockSession.run(`
         CREATE CONSTRAINT field_slug_unique IF NOT EXISTS
-        FOR (f:Field) REQUIRE f.slug IS UNIQUE
+        FOR (f:Node) REQUIRE f.slug IS UNIQUE
       `);
 
       const calls = mockSession.run.mock.calls as [string][];
@@ -373,7 +373,7 @@ describe('Seed Script Behavior', () => {
     it('creates id (UUID) uniqueness constraint', async () => {
       await mockSession.run(`
         CREATE CONSTRAINT field_id_unique IF NOT EXISTS
-        FOR (f:Field) REQUIRE f.id IS UNIQUE
+        FOR (f:Node) REQUIRE f.id IS UNIQUE
       `);
 
       const calls = mockSession.run.mock.calls as [string][];
@@ -386,7 +386,7 @@ describe('Seed Script Behavior', () => {
     it('creates uri uniqueness constraint', async () => {
       await mockSession.run(`
         CREATE CONSTRAINT field_uri_unique IF NOT EXISTS
-        FOR (f:Field) REQUIRE f.uri IS UNIQUE
+        FOR (f:Node) REQUIRE f.uri IS UNIQUE
       `);
 
       const calls = mockSession.run.mock.calls as [string][];
@@ -399,7 +399,7 @@ describe('Seed Script Behavior', () => {
     it('creates status index for filtering', async () => {
       await mockSession.run(`
         CREATE INDEX field_status_idx IF NOT EXISTS
-        FOR (f:Field) ON (f.status)
+        FOR (f:Node) ON (f.status)
       `);
 
       const calls = mockSession.run.mock.calls as [string][];
@@ -424,7 +424,7 @@ describe('Seed Script Behavior', () => {
 
       await mockSession.run(
         `
-        MERGE (ct:ContributionType {slug: $slug})
+        MERGE (ct:Node {slug: $slug})
         ON CREATE SET ct.externalMappings = $externalMappings
         `,
         {
@@ -454,11 +454,11 @@ describe('Seed Script Behavior', () => {
     it('running seed twice produces same results', () => {
       // First run
       const uuid1 = contributionTypeUuid('conceptualization');
-      const uri1 = `at://${governanceDid}/pub.chive.graph.concept/${uuid1}`;
+      const uri1 = `at://${graphPdsDid}/pub.chive.graph.node/${uuid1}`;
 
       // Second run (simulating script restart)
       const uuid2 = contributionTypeUuid('conceptualization');
-      const uri2 = `at://${governanceDid}/pub.chive.graph.concept/${uuid2}`;
+      const uri2 = `at://${graphPdsDid}/pub.chive.graph.node/${uuid2}`;
 
       expect(uuid1).toBe(uuid2);
       expect(uri1).toBe(uri2);
@@ -472,7 +472,7 @@ describe('Seed Script Behavior', () => {
       for (let i = 0; i < 2; i++) {
         await mockSession.run(
           `
-          MERGE (ct:ContributionType {slug: $slug})
+          MERGE (ct:Node {slug: $slug})
           ON CREATE SET ct.createdAt = datetime()
           ON MATCH SET ct.updatedAt = datetime()
           `,
@@ -512,8 +512,8 @@ describe('Query Summary Verification', () => {
     } as MockQueryResult);
 
     const result = await mockSession.run(`
-      MATCH (ct:ContributionType) WITH count(ct) as types
-      MATCH (f:Field) WITH types, count(f) as fields
+      MATCH (ct:Node) WITH count(ct) as types
+      MATCH (f:Node) WITH types, count(f) as fields
       RETURN types, fields
     `);
 
@@ -552,7 +552,7 @@ describe('Query Summary Verification', () => {
     } as MockQueryResult);
 
     const result = await mockSession.run(`
-      MATCH (c:Concept)
+      MATCH (c:Node)
       RETURN c.category as category, count(*) as count
       ORDER BY count DESC
     `);

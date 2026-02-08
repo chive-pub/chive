@@ -59,6 +59,18 @@ vi.mock('@/lib/hooks/use-nodes', () => ({
   },
 }));
 
+vi.mock('@/lib/api/client', () => ({
+  api: {
+    pub: {
+      chive: {
+        graph: {
+          searchNodes: vi.fn().mockResolvedValue({ data: { nodes: [] } }),
+        },
+      },
+    },
+  },
+}));
+
 describe('ProposalForm', () => {
   const user = userEvent.setup();
   const mockOnSuccess = vi.fn();
@@ -319,20 +331,24 @@ describe('ProposalForm', () => {
       // Switch to edge mode
       await user.click(screen.getByText('Edge'));
 
-      // Fill source URI
+      // Fill source URI (machine-learning field UUID)
       const sourceUriInput = screen.getByLabelText(/source node uri/i);
       await user.click(sourceUriInput);
-      await user.paste('at://did:plc:gov/pub.chive.graph.node/ml');
+      await user.paste(
+        'at://did:plc:chive-governance/pub.chive.graph.node/f39a6280-d70a-5e59-9022-1ce485cc5bf4'
+      );
 
       // Select relation type
       const relationSelect = screen.getByRole('combobox', { name: /relation type/i });
       await user.click(relationSelect);
       await user.click(screen.getByRole('option', { name: /broader/i }));
 
-      // Fill target URI
+      // Fill target URI (artificial-intelligence field UUID)
       const targetUriInput = screen.getByLabelText(/target node uri/i);
       await user.click(targetUriInput);
-      await user.paste('at://did:plc:gov/pub.chive.graph.node/ai');
+      await user.paste(
+        'at://did:plc:chive-governance/pub.chive.graph.node/726c5017-723e-5ae5-a1e2-f12e636eb709'
+      );
 
       // Fill rationale
       const rationaleInput = screen.getByLabelText(/rationale/i);

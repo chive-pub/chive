@@ -16,6 +16,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 import type { AtUri, DID, Timestamp } from '@/types/atproto.js';
 
+import { TEST_GRAPH_PDS_DID, TEST_USER_DIDS } from '../../test-constants.js';
+
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -110,10 +112,30 @@ const ALL_DIMENSIONS = [...PMEST_DIMENSIONS, ...FAST_DIMENSIONS];
 // Test Fixtures
 // =============================================================================
 
-const GOVERNANCE_DID = 'did:plc:chive-governance' as DID;
-const TEST_USER_1 = 'did:plc:testuser1' as DID;
-const TEST_USER_2 = 'did:plc:testuser2' as DID;
-const TEST_USER_3 = 'did:plc:testuser3' as DID;
+const GRAPH_PDS_DID = TEST_GRAPH_PDS_DID;
+const TEST_USER_1 = TEST_USER_DIDS.USER_1;
+const TEST_USER_2 = TEST_USER_DIDS.USER_2;
+const TEST_USER_3 = TEST_USER_DIDS.USER_3;
+
+/**
+ * UUID lookup for facets.
+ * Generated using nodeUuid('facet', slug) for deterministic URIs.
+ */
+const FACET_UUIDS: Record<string, string> = {
+  'machine-learning': '3ca09134-48b5-505d-a77b-49902a84210c',
+  'some-other': '20cb66a4-20bb-5824-b88e-eace119a3005',
+};
+
+/**
+ * Gets or generates a UUID for a facet ID.
+ * Uses pre-computed UUIDs for known IDs, generates dynamic UUIDs for others.
+ */
+function getFacetUuid(id: string): string {
+  return (
+    FACET_UUIDS[id] ??
+    `${id.slice(0, 8).padEnd(8, '0')}-0000-5000-8000-${Date.now().toString(16).slice(-12)}`
+  );
+}
 
 /**
  * Creates a facet value for testing.
@@ -124,7 +146,7 @@ function createTestFacetValue(
   overrides: Partial<FacetValue> = {}
 ): FacetValue {
   return {
-    uri: `at://${GOVERNANCE_DID}/pub.chive.graph.facet/${id}` as AtUri,
+    uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${getFacetUuid(id)}` as AtUri,
     id,
     label: id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' '),
     dimension,
@@ -303,7 +325,7 @@ class MockFacetValueManager {
     if (!proposal) throw new Error('Proposal not found');
 
     const facet: FacetValue = {
-      uri: `at://${GOVERNANCE_DID}/pub.chive.graph.facet/${proposal.proposedId}` as AtUri,
+      uri: `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${proposal.proposedId}` as AtUri,
       id: proposal.proposedId,
       label: proposal.proposedLabel,
       dimension: proposal.proposedDimension,
@@ -448,7 +470,8 @@ describe('Facet Value Lifecycle Integration', () => {
     });
 
     it('can create facet with parent reference', () => {
-      const parentUri = `at://${GOVERNANCE_DID}/pub.chive.graph.facet/machine-learning` as AtUri;
+      const parentUri =
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['machine-learning']}` as AtUri;
       const proposal = createTestFacetProposal('reinforcement-learning', 'personality', {
         proposedParent: parentUri,
       });
@@ -569,7 +592,7 @@ describe('Facet Value Lifecycle Integration', () => {
       expect(facet.id).toBe('approved-facet');
       expect(facet.status).toBe('established');
       expect(facet.proposalUri).toBe(proposal.uri);
-      expect(facet.uri).toContain(GOVERNANCE_DID);
+      expect(facet.uri).toContain(GRAPH_PDS_DID);
       expect(facet.dimension).toBe('organization');
     });
 
@@ -683,7 +706,7 @@ describe('Facet Value Lifecycle Integration', () => {
 
       manager.deprecateFacetValue(
         'deprecated-retrievable',
-        `at://${GOVERNANCE_DID}/pub.chive.graph.facet/some-other` as AtUri
+        `at://${GRAPH_PDS_DID}/pub.chive.graph.facet/${FACET_UUIDS['some-other']}` as AtUri
       );
 
       const facet = manager.getFacetValue('deprecated-retrievable');

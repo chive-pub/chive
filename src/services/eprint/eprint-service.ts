@@ -308,18 +308,15 @@ export class EprintService {
       const authorDoc = authorDid ? await this.identity.resolveDID(authorDid) : undefined;
       const authorName = authorDoc?.alsoKnownAs?.[0] ?? primaryAuthor?.name ?? record.submittedBy;
 
-      const subjects = (record.facets ?? [])
-        .filter((f) => f.dimension === 'matter' || f.dimension === 'personality')
-        .map((f) => f.value);
-
       // Map resolved fields to the format expected by search indexing
       // Filter out fields without IDs (should not happen, but be defensive)
-      const fieldNodes = resolvedFields
-        ?.filter((f): f is typeof f & { id: string } => f.id !== undefined)
-        .map((f) => ({
-          id: f.id,
-          label: f.label,
-        }));
+      const fieldNodes =
+        resolvedFields
+          ?.filter((f): f is typeof f & { id: string } => f.id !== undefined)
+          .map((f) => ({
+            id: f.id,
+            label: f.label,
+          })) ?? [];
 
       // Stage 2: Elasticsearch
       try {
@@ -330,7 +327,6 @@ export class EprintService {
           title: record.title,
           abstract: abstractPlainText,
           keywords: record.keywords as string[],
-          subjects,
           fieldNodes,
           createdAt: new Date(record.createdAt),
           indexedAt: metadata.indexedAt,
@@ -830,26 +826,41 @@ export class EprintService {
     const fieldIds = normalizedFields.map((f) => f.id);
 
     try {
-      // Batch fetch all field nodes from the knowledge graph
-      const nodeMap = await this.graph.getNodesByIds(fieldIds, 'field');
+      // Batch fetch all field nodes and their ancestors from the knowledge graph
+      const [nodeMap, ancestorMap] = await Promise.all([
+        this.graph.getNodesByIds(fieldIds, 'field'),
+        this.graph.getFieldAncestors(fieldIds),
+      ]);
 
-      // Map fields with resolved labels and normalized URIs
-      return normalizedFields.map((field) => {
+      // Collect all fields: directly tagged + ancestors
+      // Use a Map to deduplicate by ID
+      const allFieldsMap = new Map<string, { uri: string; label: string; id: string }>();
+
+      // First, add directly tagged fields with resolved labels
+      for (const field of normalizedFields) {
         const node = nodeMap.get(field.id);
-        if (node) {
-          return {
-            uri: field.uri,
-            label: node.label,
-            id: field.id,
-          };
-        }
-        // Node not found: use normalized URI, keep original label
-        return {
+        allFieldsMap.set(field.id, {
           uri: field.uri,
-          label: field.label,
+          label: node?.label ?? field.label,
           id: field.id,
-        };
-      });
+        });
+      }
+
+      // Then, add ancestors for hierarchy expansion
+      for (const fieldId of fieldIds) {
+        const ancestors = ancestorMap.get(fieldId) ?? [];
+        for (const ancestor of ancestors) {
+          if (!allFieldsMap.has(ancestor.id)) {
+            allFieldsMap.set(ancestor.id, {
+              uri: ancestor.uri,
+              label: ancestor.label,
+              id: ancestor.id,
+            });
+          }
+        }
+      }
+
+      return Array.from(allFieldsMap.values());
     } catch (error) {
       this.logger.warn('Failed to resolve field labels, using URIs as fallback', {
         fieldCount: normalizedFields.length,

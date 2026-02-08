@@ -38,9 +38,9 @@ const TEST_CONFIG = {
   userHandle: 'aaronstevenwhite.io',
   // The actual PDS endpoint where the user's data lives
   userPdsEndpoint: 'https://bsky.social',
-  // Governance PDS for knowledge graph data
-  governancePdsUrl: 'https://governance.chive.pub',
-  governanceDid: 'did:plc:5wzpn4a4nbqtz3q45hyud6hd',
+  // Graph PDS for knowledge graph data
+  graphPdsUrl: 'https://governance.chive.pub',
+  graphPdsDid: 'did:plc:5wzpn4a4nbqtz3q45hyud6hd',
 };
 
 // Database connection strings
@@ -124,8 +124,8 @@ describe('Pre-Deployment Script Execution', () => {
       expect(response.data.did).toBe(TEST_CONFIG.userDid);
     });
 
-    it('can reach governance PDS endpoint', async () => {
-      const agent = new AtpAgent({ service: TEST_CONFIG.governancePdsUrl });
+    it('can reach graph PDS endpoint', async () => {
+      const agent = new AtpAgent({ service: TEST_CONFIG.graphPdsUrl });
 
       const response = await agent.com.atproto.server.describeServer();
 
@@ -147,16 +147,16 @@ describe('Pre-Deployment Script Execution', () => {
       expect(response.data.records[0]?.uri).toContain(TEST_CONFIG.userDid);
     });
 
-    it('can fetch knowledge graph nodes from governance PDS', async () => {
-      const agent = new AtpAgent({ service: TEST_CONFIG.governancePdsUrl });
+    it('can fetch knowledge graph nodes from graph PDS', async () => {
+      const agent = new AtpAgent({ service: TEST_CONFIG.graphPdsUrl });
 
       const response = await agent.com.atproto.repo.listRecords({
-        repo: TEST_CONFIG.governanceDid,
+        repo: TEST_CONFIG.graphPdsDid,
         collection: 'pub.chive.graph.node',
         limit: 10,
       });
 
-      // Governance PDS MUST have graph nodes
+      // Graph PDS MUST have graph nodes
       expect(response.success).toBe(true);
       expect(response.data.records.length).toBeGreaterThan(0);
     });

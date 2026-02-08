@@ -25,13 +25,17 @@ const defaultProps = {
   eprintUri: 'at://did:plc:testauthor/pub.chive.eprint.submission/abc123',
 };
 
-function createAnnotationOnPage(pageNumber: number, overrides = {}) {
+function createAnnotationOnPage(
+  pageNumber: number,
+  overrides: Partial<ReturnType<typeof createMockInlineReview>> = {}
+): ReturnType<typeof createMockInlineReview> {
+  // The component displays "Page {pageNumber + 1}" so pageNumber=0 shows as "Page 1"
   return createMockInlineReview({
     uri: `at://review/page-${pageNumber}-${Math.random().toString(36).slice(2, 8)}`,
     target: createMockTextSpanTarget({
       selector: {
         type: 'TextQuoteSelector',
-        exact: `Selected text on page ${pageNumber}`,
+        exact: `Selected text on page ${pageNumber + 1}`,
       },
       refinedBy: {
         type: 'TextPositionSelector',
@@ -44,26 +48,27 @@ function createAnnotationOnPage(pageNumber: number, overrides = {}) {
   });
 }
 
+// Page numbers are 0-indexed internally but display as 1-indexed
 const mockAnnotations = [
-  createAnnotationOnPage(1, {
+  createAnnotationOnPage(0, {
     uri: 'at://review/1',
     author: createMockAuthor({ displayName: 'Dr. First' }),
     content: 'First annotation content on page 1',
     createdAt: '2024-06-15T10:00:00Z',
   }),
-  createAnnotationOnPage(1, {
+  createAnnotationOnPage(0, {
     uri: 'at://review/2',
     author: createMockAuthor({ displayName: 'Dr. Second' }),
     content: 'Second annotation content on page 1',
     createdAt: '2024-06-15T11:00:00Z',
   }),
-  createAnnotationOnPage(2, {
+  createAnnotationOnPage(1, {
     uri: 'at://review/3',
     author: createMockAuthor({ displayName: 'Dr. Alpha' }),
     content: 'Annotation on page 2',
     createdAt: '2024-06-14T09:00:00Z',
   }),
-  createAnnotationOnPage(3, {
+  createAnnotationOnPage(2, {
     uri: 'at://review/4',
     author: createMockAuthor({ displayName: 'Dr. Beta' }),
     content: 'Annotation on page 3',
@@ -95,8 +100,10 @@ describe('AnnotationSidebar', () => {
 
       render(<AnnotationSidebar {...defaultProps} />);
 
-      // Should render skeleton
-      expect(screen.getAllByRole('generic').some((el) => el.className.includes('animate-pulse')));
+      // Should render skeleton with animation
+      expect(
+        screen.getAllByRole('generic').some((el) => el.className.includes('animate-pulse'))
+      ).toBe(true);
     });
   });
 
@@ -313,7 +320,8 @@ describe('AnnotationSidebar', () => {
       expect(annotationButton).toBeDefined();
       await user.click(annotationButton!);
 
-      expect(onAnnotationClick).toHaveBeenCalledWith('at://review/1', 1);
+      // pageNumber is 0-indexed internally (0 for "Page 1")
+      expect(onAnnotationClick).toHaveBeenCalledWith('at://review/1', 0);
     });
 
     it('passes page number in callback', async () => {
@@ -322,7 +330,7 @@ describe('AnnotationSidebar', () => {
 
       render(<AnnotationSidebar {...defaultProps} onAnnotationClick={onAnnotationClick} />);
 
-      // Expand page 2
+      // Expand page 2 (which is pageNumber=1 internally)
       await user.click(screen.getByRole('button', { name: /Page 2/i }));
 
       // Click on page 2 annotation
@@ -331,7 +339,8 @@ describe('AnnotationSidebar', () => {
         await user.click(annotationButton!);
       });
 
-      expect(onAnnotationClick).toHaveBeenCalledWith('at://review/3', 2);
+      // pageNumber is 0-indexed internally (1 for "Page 2")
+      expect(onAnnotationClick).toHaveBeenCalledWith('at://review/3', 1);
     });
   });
 

@@ -72,25 +72,55 @@ Element.prototype.scrollIntoView = vi.fn();
 Element.prototype.getAnimations = vi.fn().mockReturnValue([]);
 
 // Mock Animation API for Radix presence
-global.Animation = vi.fn().mockImplementation(() => ({
-  finished: Promise.resolve(),
-  cancel: vi.fn(),
-  play: vi.fn(),
-  pause: vi.fn(),
-  effect: null,
-  startTime: null,
-  currentTime: null,
-  playbackRate: 1,
-  playState: 'finished',
-  pending: false,
-  ready: Promise.resolve(),
-  onfinish: null,
-  oncancel: null,
-  onremove: null,
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  dispatchEvent: vi.fn(),
-})) as unknown as typeof Animation;
+// Define a minimal mock animation for testing purposes
+interface MockAnimation {
+  finished: Promise<MockAnimation>;
+  cancel: ReturnType<typeof vi.fn>;
+  play: ReturnType<typeof vi.fn>;
+  pause: ReturnType<typeof vi.fn>;
+  effect: AnimationEffect | null;
+  startTime: number | null;
+  currentTime: number | null;
+  playbackRate: number;
+  playState: AnimationPlayState;
+  pending: boolean;
+  ready: Promise<MockAnimation>;
+  onfinish: ((this: Animation, ev: AnimationPlaybackEvent) => unknown) | null;
+  oncancel: ((this: Animation, ev: AnimationPlaybackEvent) => unknown) | null;
+  onremove: ((this: Animation, ev: Event) => unknown) | null;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+  dispatchEvent: ReturnType<typeof vi.fn>;
+}
+
+const createMockAnimation = (): MockAnimation => {
+  const mockAnimation: MockAnimation = {
+    finished: Promise.resolve(null as unknown as MockAnimation),
+    cancel: vi.fn(),
+    play: vi.fn(),
+    pause: vi.fn(),
+    effect: null,
+    startTime: null,
+    currentTime: null,
+    playbackRate: 1,
+    playState: 'finished',
+    pending: false,
+    ready: Promise.resolve(null as unknown as MockAnimation),
+    onfinish: null,
+    oncancel: null,
+    onremove: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  };
+  // Resolve promises with the mock itself
+  mockAnimation.finished = Promise.resolve(mockAnimation);
+  mockAnimation.ready = Promise.resolve(mockAnimation);
+  return mockAnimation;
+};
+
+// Cast to the global Animation constructor type
+global.Animation = vi.fn().mockImplementation(createMockAnimation) as typeof Animation;
 
 // Mock getComputedStyle to return empty animation properties
 // This helps prevent Radix UI presence from detecting animations
@@ -220,58 +250,93 @@ vi.mock('@radix-ui/react-checkbox', async () => {
 vi.mock('@tiptap/react', async () => {
   const React = await import('react');
 
+  // Define interfaces for the mock editor state and doc structures
+  interface MockEditorDocState {
+    descendants: (callback: (node: unknown, pos: number) => boolean) => void;
+    textBetween: (from: number, to: number) => string;
+  }
+
+  interface MockEditorSelectionState {
+    from: number;
+    to: number;
+    empty?: boolean;
+  }
+
+  interface MockEditorState {
+    doc: MockEditorDocState;
+    selection: MockEditorSelectionState;
+  }
+
+  // The editor shape passed to onUpdate callbacks (subset of MockEditor)
+  interface OnUpdateEditorParam {
+    getText: () => string;
+    getHTML?: () => string;
+    state?: MockEditorState;
+  }
+
+  interface OnUpdateCallbackProps {
+    editor: OnUpdateEditorParam;
+  }
+
   // Shared state registry for editor instances (allows EditorContent to sync with useEditor)
   const editorRegistry = new Map<
     string,
     {
       value: string;
       setValue: (v: string) => void;
-      onUpdate?: (props: { editor: { getText: () => string } }) => void;
+      onUpdate?: (props: OnUpdateCallbackProps) => void;
     }
   >();
+
+  interface MockEditorCommands {
+    setContent: (content: string) => void;
+    clearContent: () => void;
+    focus: () => MockEditorCommands;
+    toggleBold: () => MockEditorCommands;
+    toggleItalic: () => MockEditorCommands;
+    toggleStrike: () => MockEditorCommands;
+    toggleCode: () => MockEditorCommands;
+    toggleHeading: (attrs: { level: number }) => MockEditorCommands;
+    toggleBulletList: () => MockEditorCommands;
+    toggleOrderedList: () => MockEditorCommands;
+    toggleBlockquote: () => MockEditorCommands;
+    setLink: (attrs: { href: string }) => MockEditorCommands;
+    unsetLink: () => MockEditorCommands;
+    extendMarkRange: (mark: string) => MockEditorCommands;
+    insertContent: (content: unknown) => MockEditorCommands;
+  }
 
   interface MockEditor {
     getText: () => string;
     getHTML: () => string;
-    commands: {
-      setContent: (content: string) => void;
-      clearContent: () => void;
-      focus: () => MockEditor['commands'];
-      toggleBold: () => MockEditor['commands'];
-      toggleItalic: () => MockEditor['commands'];
-      toggleStrike: () => MockEditor['commands'];
-      toggleCode: () => MockEditor['commands'];
-      toggleHeading: (attrs: { level: number }) => MockEditor['commands'];
-      toggleBulletList: () => MockEditor['commands'];
-      toggleOrderedList: () => MockEditor['commands'];
-      toggleBlockquote: () => MockEditor['commands'];
-      setLink: (attrs: { href: string }) => MockEditor['commands'];
-      unsetLink: () => MockEditor['commands'];
-      extendMarkRange: (mark: string) => MockEditor['commands'];
-      insertContent: (content: unknown) => MockEditor['commands'];
-    };
-    chain: () => MockEditor['commands'];
+    commands: MockEditorCommands;
+    chain: () => MockEditorCommands;
     isActive: (type: string, attrs?: unknown) => boolean;
     getAttributes: (type: string) => Record<string, unknown>;
-    state: {
-      doc: {
-        descendants: (callback: (node: unknown, pos: number) => boolean) => void;
-      };
-      selection: {
-        from: number;
-        to: number;
-      };
-    };
+    state: MockEditorState & { selection: MockEditorSelectionState & { empty: boolean } };
     on: ReturnType<typeof vi.fn>;
     off: ReturnType<typeof vi.fn>;
     destroy: () => void;
     isDestroyed: boolean;
+    setEditable: (editable: boolean) => void;
     options: {
       editorProps?: {
         attributes?: Record<string, string>;
       };
     };
     _editorId: string;
+  }
+
+  // Helper to create a minimal editor param for onUpdate callbacks
+  function createOnUpdateEditorParam(text: string, html?: string): OnUpdateEditorParam {
+    return {
+      getText: () => text,
+      getHTML: () => html ?? `<p>${text}</p>`,
+      state: {
+        doc: { descendants: () => {}, textBetween: () => '' },
+        selection: { from: 0, to: 0 },
+      },
+    };
   }
 
   interface EditorContentProps {
@@ -281,28 +346,39 @@ vi.mock('@tiptap/react', async () => {
 
   // Simple textarea-based mock for EditorContent
   function MockEditorContent({ editor, className }: EditorContentProps) {
-    const [localValue, setLocalValue] = React.useState('');
+    // Initialize with editor's current content from registry
+    const [localValue, setLocalValue] = React.useState(() => {
+      if (editor && editor._editorId) {
+        const registration = editorRegistry.get(editor._editorId);
+        return registration?.value ?? '';
+      }
+      return '';
+    });
 
-    // Sync with editor registry
+    // Use a ref to store setLocalValue so it can be accessed from the registry
+    const setLocalValueRef = React.useRef(setLocalValue);
+    setLocalValueRef.current = setLocalValue;
+
+    // Set up setValue override on mount
     React.useEffect(() => {
       if (editor && editor._editorId) {
         const registration = editorRegistry.get(editor._editorId);
         if (registration) {
+          // Initialize localValue from registration if not already set
+          if (registration.value) {
+            setLocalValue(registration.value);
+          }
+
+          // Override setValue to update MockEditorContent's state
+          // Use ref to always get the latest setLocalValue
           registration.setValue = (v: string) => {
-            setLocalValue(v);
+            setLocalValueRef.current(v);
             // Update getText to return the new value
             editor.getText = () => v;
             editor.getHTML = () => `<p>${v}</p>`;
-            // Trigger onUpdate callback with full mock editor
+            // Trigger onUpdate callback with properly typed editor param
             registration.onUpdate?.({
-              editor: {
-                getText: () => v,
-                getHTML: () => `<p>${v}</p>`,
-                state: {
-                  doc: { descendants: () => {} },
-                  selection: { from: 0, to: 0 },
-                },
-              } as unknown as { getText: () => string },
+              editor: createOnUpdateEditorParam(v),
             });
           };
         }
@@ -318,14 +394,7 @@ vi.mock('@tiptap/react', async () => {
           setLocalValue('');
           const registration = editor._editorId ? editorRegistry.get(editor._editorId) : null;
           registration?.onUpdate?.({
-            editor: {
-              getText: () => '',
-              getHTML: () => '<p></p>',
-              state: {
-                doc: { descendants: () => {} },
-                selection: { from: 0, to: 0 },
-              },
-            } as unknown as { getText: () => string },
+            editor: createOnUpdateEditorParam('', '<p></p>'),
           });
         };
       }
@@ -348,9 +417,14 @@ vi.mock('@tiptap/react', async () => {
         setLocalValue(newValue);
         // Update editor.getText synchronously
         editor.getText = () => newValue;
-        // Trigger onUpdate callback
+        editor.getHTML = () => `<p>${newValue}</p>`;
+        // Update registration value to keep in sync with local state
         const registration = editor._editorId ? editorRegistry.get(editor._editorId) : null;
-        registration?.onUpdate?.({ editor: { getText: () => newValue } });
+        if (registration) {
+          registration.value = newValue;
+        }
+        // Trigger onUpdate callback
+        registration?.onUpdate?.({ editor: createOnUpdateEditorParam(newValue) });
       },
       // Parse style string into object or use defaults
       style: styleString
@@ -371,7 +445,7 @@ vi.mock('@tiptap/react', async () => {
     content?: string;
     extensions?: unknown[];
     editorProps?: { attributes?: Record<string, string> };
-    onUpdate?: (props: { editor: { getText: () => string } }) => void;
+    onUpdate?: (props: OnUpdateCallbackProps) => void;
     immediatelyRender?: boolean;
     editable?: boolean;
   }) {
@@ -379,8 +453,9 @@ vi.mock('@tiptap/react', async () => {
     const editorIdRef = React.useRef(`editor-${Math.random().toString(36).slice(2)}`);
     const [content, setContent] = React.useState(options.content || '');
 
-    // Register this editor instance
-    React.useEffect(() => {
+    // Register this editor instance (only on mount)
+    // Use useLayoutEffect to ensure registration happens before child effects
+    React.useLayoutEffect(() => {
       const editorId = editorIdRef.current;
       editorRegistry.set(editorId, {
         value: content,
@@ -390,7 +465,16 @@ vi.mock('@tiptap/react', async () => {
       return () => {
         editorRegistry.delete(editorId);
       };
-    }, [content, options.onUpdate]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run on mount to avoid resetting setValue override
+
+    // Keep registration value in sync with content
+    React.useEffect(() => {
+      const registration = editorRegistry.get(editorIdRef.current);
+      if (registration) {
+        registration.value = content;
+      }
+    }, [content]);
 
     // Update onUpdate callback when it changes
     React.useEffect(() => {
@@ -403,34 +487,26 @@ vi.mock('@tiptap/react', async () => {
     const editor: MockEditor = React.useMemo(
       () => {
         // Create commands object that returns itself for chaining
-        const createCommands = (): MockEditor['commands'] => {
-          const commands: MockEditor['commands'] = {
+        const createCommands = (): MockEditorCommands => {
+          const commands: MockEditorCommands = {
             setContent: (newContent: string) => {
               setContent(newContent);
               options.onUpdate?.({
-                editor: {
-                  getText: () => newContent,
-                  getHTML: () => `<p>${newContent}</p>`,
-                  state: {
-                    doc: { descendants: () => {} },
-                    selection: { from: 0, to: 0 },
-                  },
-                } as unknown as MockEditor,
+                editor: createOnUpdateEditorParam(newContent),
               });
               return commands;
             },
             clearContent: () => {
-              setContent('');
-              options.onUpdate?.({
-                editor: {
-                  getText: () => '',
-                  getHTML: () => '<p></p>',
-                  state: {
-                    doc: { descendants: () => {} },
-                    selection: { from: 0, to: 0 },
-                  },
-                } as unknown as MockEditor,
-              });
+              // Use registry's setValue if available (allows MockEditorContent to sync)
+              const registration = editorRegistry.get(editorIdRef.current);
+              if (registration?.setValue) {
+                registration.setValue('');
+              } else {
+                setContent('');
+                options.onUpdate?.({
+                  editor: createOnUpdateEditorParam('', '<p></p>'),
+                });
+              }
               return commands;
             },
             focus: () => commands,
@@ -452,7 +528,7 @@ vi.mock('@tiptap/react', async () => {
 
         const commands = createCommands();
 
-        return {
+        const mockEditor: MockEditor = {
           getText: () => content,
           getHTML: () => `<p>${content}</p>`,
           commands,
@@ -462,21 +538,26 @@ vi.mock('@tiptap/react', async () => {
           state: {
             doc: {
               descendants: () => {},
+              textBetween: () => '',
             },
             selection: {
               from: 0,
               to: 0,
+              empty: true,
             },
           },
           on: vi.fn(),
           off: vi.fn(),
           destroy: vi.fn(),
           isDestroyed: false,
+          setEditable: vi.fn(),
           options: {
             editorProps: options.editorProps,
           },
           _editorId: editorIdRef.current,
         };
+
+        return mockEditor;
       },
       // Only recreate when editorProps changes, not content
       // eslint-disable-next-line react-hooks/exhaustive-deps

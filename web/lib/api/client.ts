@@ -95,6 +95,11 @@ const isTunnelMode =
 
 /**
  * Get the API base URL based on environment.
+ *
+ * @remarks
+ * In tunnel mode, we use the current origin so requests go through
+ * Next.js rewrites (which proxy to the backend). This avoids CORS
+ * issues when the ngrok tunnel URL differs from localhost.
  */
 export function getApiBaseUrl(): string {
   const isServer = typeof window === 'undefined';
@@ -103,8 +108,9 @@ export function getApiBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
   }
 
+  // In tunnel mode, use current origin to go through Next.js proxy
   if (isTunnelMode) {
-    return '';
+    return window.location.origin;
   }
 
   return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';

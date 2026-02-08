@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 import { EprintCard, EprintCardSkeleton } from './eprint-card';
 import { createMockEprintSummary } from '@/tests/mock-data';
+import { TEST_GRAPH_PDS_DID } from '@/tests/test-constants';
 
 // Mock next/link
 vi.mock('next/link', () => ({
@@ -58,8 +59,14 @@ describe('EprintCard', () => {
     // EprintSummary has fields as FieldRef[] with uri and label
     const eprint = createMockEprintSummary({
       fields: [
-        { uri: 'at://did:plc:governance/pub.chive.graph.field/physics', label: 'Physics' },
-        { uri: 'at://did:plc:governance/pub.chive.graph.field/chemistry', label: 'Chemistry' },
+        {
+          uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/8e31479f-01c0-5c1e-aae4-bd28b7cb0a7b`,
+          label: 'Physics',
+        },
+        {
+          uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/3dfb025e-7733-5cb6-bc1b-9acd4ebc5e26`,
+          label: 'Chemistry',
+        },
       ],
     });
     render(<EprintCard eprint={eprint} />);

@@ -37,7 +37,7 @@ echo "Generating server types..."
 rm -rf "$SERVER_OUTPUT_DIR"
 mkdir -p "$SERVER_OUTPUT_DIR"
 
-npx @atproto/lex-cli gen-server --yes "$SERVER_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" | xargs)
+pnpm exec lex gen-server --yes "$SERVER_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" | xargs)
 
 # Post-process server files for NodeNext module resolution
 echo "Fixing server import paths for NodeNext module resolution..."
@@ -64,7 +64,7 @@ echo "Generating web client types..."
 rm -rf "$WEB_OUTPUT_DIR"
 mkdir -p "$WEB_OUTPUT_DIR"
 
-npx @atproto/lex-cli gen-api --yes "$WEB_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" | xargs)
+pnpm exec lex gen-api --yes "$WEB_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" | xargs)
 
 # Remove .js extensions from web client imports.
 # Next.js/webpack resolves .ts imports without extensions, but the

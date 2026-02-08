@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * Funder autocomplete input using CrossRef Funder Registry.
+ * Funder autocomplete input with dual-source search.
  *
  * @remarks
- * Searches CrossRef Funder Registry API for funding organizations.
- * Returns funder name, DOI, and location for accurate attribution.
+ * Searches both Chive knowledge graph institutions and CrossRef Funder Registry.
+ * Returns funder name, URI (for knowledge graph nodes), DOI (for CrossRef), and ROR ID.
  *
  * @example
  * ```tsx
@@ -13,7 +13,14 @@
  *   value={funderName}
  *   onSelect={(funder) => {
  *     form.setValue('funding.funderName', funder.name);
- *     form.setValue('funding.funderDoi', funder.doi);
+ *     if ('uri' in funder) {
+ *       form.setValue('funding.funderUri', funder.uri);
+ *       if (funder.rorId) {
+ *         form.setValue('funding.funderRor', funder.rorId);
+ *       }
+ *     } else {
+ *       form.setValue('funding.funderDoi', funder.doi);
+ *     }
  *   }}
  * />
  * ```
@@ -22,12 +29,13 @@
  */
 
 import * as React from 'react';
-import { useCallback } from 'react';
-import { Building2, MapPin, ExternalLink } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { MapPin, ExternalLink, Loader2 } from 'lucide-react';
+import { useDebouncedCallback } from 'use-debounce';
 
 import { logger } from '@/lib/observability';
 import { cn } from '@/lib/utils';
-import { AutocompleteInput } from './autocomplete-input';
+import { Input } from '@/components/ui/input';
 
 const log = logger.child({ component: 'funder-autocomplete' });
 
@@ -36,9 +44,35 @@ const log = logger.child({ component: 'funder-autocomplete' });
 // =============================================================================
 
 /**
+ * Chive institution from knowledge graph.
+ */
+export interface ChiveInstitutionFunder {
+  /** Source type */
+  type: 'chive';
+  /** Institution ID */
+  id: string;
+  /** Institution AT-URI */
+  uri: string;
+  /** Institution name */
+  name: string;
+  /** Country */
+  country?: string;
+  /** City */
+  city?: string;
+  /** ROR ID if available */
+  rorId?: string;
+  /** Wikidata ID if available */
+  wikidataId?: string;
+  /** Status */
+  status: string;
+}
+
+/**
  * CrossRef Funder result.
  */
 export interface CrossRefFunder {
+  /** Source type */
+  type: 'crossref';
   /** Funder DOI (e.g., 10.13039/100000002) */
   doi: string;
   /** Funder name */
@@ -52,6 +86,11 @@ export interface CrossRefFunder {
   /** Number of works funded */
   worksCount: number | null;
 }
+
+/**
+ * Union type for funder results.
+ */
+export type FunderResult = ChiveInstitutionFunder | CrossRefFunder;
 
 /**
  * CrossRef Funders API response shape.
@@ -71,13 +110,21 @@ interface CrossRefFundersResponse {
 }
 
 /**
+ * Search results from both sources.
+ */
+interface DualSourceResults {
+  chiveInstitutions: ChiveInstitutionFunder[];
+  crossrefFunders: CrossRefFunder[];
+}
+
+/**
  * Props for FunderAutocomplete component.
  */
 export interface FunderAutocompleteProps {
   /** Current funder name value */
   value?: string;
-  /** Called when a funder is selected with full metadata */
-  onSelect: (funder: CrossRefFunder) => void;
+  /** Called when a funder is selected */
+  onSelect: (funder: FunderResult) => void;
   /** Called when input value changes */
   onChange?: (value: string) => void;
   /** Called when selection is cleared */
@@ -108,6 +155,7 @@ const CROSSREF_POLITE_EMAIL = 'contact@chive.pub';
  */
 function transformFundersResponse(data: CrossRefFundersResponse): CrossRefFunder[] {
   return data.message.items.map((item) => ({
+    type: 'crossref',
     doi: item.id,
     name: item.name,
     altNames: item['alt-names'] ?? [],
@@ -120,7 +168,7 @@ function transformFundersResponse(data: CrossRefFundersResponse): CrossRefFunder
 /**
  * Search CrossRef for funders by query.
  */
-async function searchFunders(query: string): Promise<CrossRefFunder[]> {
+async function searchCrossRefFunders(query: string): Promise<CrossRefFunder[]> {
   const params = new URLSearchParams({
     query,
     rows: '10',
@@ -142,13 +190,161 @@ async function searchFunders(query: string): Promise<CrossRefFunder[]> {
 }
 
 // =============================================================================
+// DUAL-SOURCE SEARCH HOOK
+// =============================================================================
+
+/**
+ * Custom hook for searching both Chive institutions and CrossRef funders.
+ */
+function useDualSourceSearch() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<DualSourceResults>({
+    chiveInstitutions: [],
+    crossrefFunders: [],
+  });
+  const [isSearching, setIsSearching] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Debounced search
+  const debouncedSearch = useDebouncedCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setResults({ chiveInstitutions: [], crossrefFunders: [] });
+      return;
+    }
+
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setIsSearching(true);
+    try {
+      // Query both sources in parallel
+      const [chiveResponse, crossrefResponse] = await Promise.allSettled([
+        // Chive knowledge graph - using unified node search
+        fetch(
+          `/xrpc/pub.chive.graph.searchNodes?query=${encodeURIComponent(searchQuery)}&subkind=institution&kind=object&status=established&limit=5`,
+          { signal: controller.signal }
+        ),
+        // CrossRef API (only if query is 3+ chars)
+        searchQuery.length >= 3 ? searchCrossRefFunders(searchQuery) : Promise.resolve([]),
+      ]);
+
+      // Parse Chive results - map unified node format to ChiveInstitutionFunder
+      let chiveInstitutions: ChiveInstitutionFunder[] = [];
+      if (chiveResponse.status === 'fulfilled' && chiveResponse.value?.ok) {
+        const chiveData = await chiveResponse.value.json();
+        chiveInstitutions = (chiveData.nodes ?? []).map(
+          (node: {
+            id: string;
+            uri: string;
+            label: string;
+            metadata?: { country?: string; city?: string };
+            externalIds?: Array<{ system: string; identifier: string }>;
+            status: string;
+          }) => ({
+            type: 'chive',
+            id: node.id,
+            uri: node.uri,
+            name: node.label,
+            country: node.metadata?.country,
+            city: node.metadata?.city,
+            rorId: node.externalIds?.find((ext) => ext.system === 'ror')?.identifier,
+            wikidataId: node.externalIds?.find((ext) => ext.system === 'wikidata')?.identifier,
+            status: node.status,
+          })
+        );
+      }
+
+      // Parse CrossRef results
+      let crossrefFunders: CrossRefFunder[] = [];
+      if (crossrefResponse.status === 'fulfilled') {
+        crossrefFunders = crossrefResponse.value;
+      }
+
+      // Deduplicate: filter out CrossRef funders that match Chive institutions by name
+      // Note: ROR ID matching is not possible since CrossRef funder metadata lacks ROR IDs.
+      // A DOI-to-ROR mapping service would be needed for ROR-based deduplication.
+      const chiveNames = new Set(chiveInstitutions.map((inst) => inst.name.toLowerCase()));
+      const filteredCrossref = crossrefFunders.filter((funder) => {
+        // Skip if name matches a Chive institution
+        return !chiveNames.has(funder.name.toLowerCase());
+      });
+
+      setResults({
+        chiveInstitutions,
+        crossrefFunders: filteredCrossref,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        log.error('Funder search error', error, { query: searchQuery });
+        setResults({ chiveInstitutions: [], crossrefFunders: [] });
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  }, 300);
+
+  useEffect(() => {
+    debouncedSearch(query);
+  }, [query, debouncedSearch]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const hasResults = results.chiveInstitutions.length > 0 || results.crossrefFunders.length > 0;
+
+  return {
+    query,
+    setQuery,
+    results,
+    hasResults,
+    isSearching,
+    clearResults: () => setResults({ chiveInstitutions: [], crossrefFunders: [] }),
+  };
+}
+
+// =============================================================================
 // COMPONENTS
 // =============================================================================
 
 /**
- * Render a single funder result.
+ * Render a single funder result item.
  */
-function FunderResultItem({ funder }: { funder: CrossRefFunder }) {
+function FunderResultItem({ funder }: { funder: FunderResult }) {
+  if (funder.type === 'chive') {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-sm font-medium line-clamp-2">{funder.name}</span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {funder.city && funder.country && (
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              {[funder.city, funder.country].filter(Boolean).join(', ')}
+            </span>
+          )}
+          {funder.rorId && (
+            <span className="flex items-center gap-1 font-mono text-xs">
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              ROR linked
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1">
       <div className="flex items-start justify-between gap-2">
@@ -177,7 +373,7 @@ function FunderResultItem({ funder }: { funder: CrossRefFunder }) {
 }
 
 /**
- * Funder autocomplete input with CrossRef Funder Registry search.
+ * Funder autocomplete input with dual-source search.
  *
  * @param props - Component props
  * @returns Funder autocomplete element
@@ -192,34 +388,166 @@ export function FunderAutocomplete({
   className,
   id,
 }: FunderAutocompleteProps) {
-  const renderItem = useCallback(
-    (funder: CrossRefFunder) => <FunderResultItem funder={funder} />,
-    []
+  const { query, setQuery, results, hasResults, isSearching, clearResults } = useDualSourceSearch();
+  const [showResults, setShowResults] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Sync external value with internal query
+  useEffect(() => {
+    if (value !== undefined && value !== query) {
+      setQuery(value);
+    }
+  }, [value, query, setQuery]);
+
+  const handleSelect = useCallback(
+    (funder: FunderResult) => {
+      onSelect(funder);
+      setQuery(funder.name);
+      clearResults();
+      setShowResults(false);
+      onChange?.(funder.name);
+    },
+    [onSelect, setQuery, clearResults, onChange]
   );
 
-  const getItemKey = useCallback((funder: CrossRefFunder) => funder.doi, []);
-  const getItemValue = useCallback((funder: CrossRefFunder) => funder.name, []);
+  const handleClear = useCallback(() => {
+    setQuery('');
+    clearResults();
+    setShowResults(false);
+    onClear?.();
+    onChange?.('');
+  }, [setQuery, clearResults, onClear, onChange]);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setQuery(newValue);
+      onChange?.(newValue);
+      setShowResults(true);
+    },
+    [setQuery, onChange]
+  );
+
+  const handleInputFocus = useCallback(() => {
+    if (hasResults || query.trim().length >= 2) {
+      setShowResults(true);
+    }
+  }, [hasResults, query]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowResults(false);
+    }
+  }, []);
+
+  // Close results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        resultsRef.current &&
+        !resultsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <AutocompleteInput<CrossRefFunder>
-      id={id}
-      placeholder={placeholder}
-      groupLabel="Funding Organizations"
-      queryFn={searchFunders}
-      queryKeyPrefix="crossref-funder"
-      onSelect={onSelect}
-      onInputChange={onChange}
-      onClear={onClear}
-      renderItem={renderItem}
-      getItemKey={getItemKey}
-      getItemValue={getItemValue}
-      initialValue={value}
-      minChars={2}
-      debounceMs={300}
-      staleTime={60 * 1000}
-      emptyMessage="No funders found. Try a different search term."
-      disabled={disabled}
-      className={className}
-    />
+    <div className={cn('relative', className)}>
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          id={id}
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="pr-8"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </button>
+        )}
+        {isSearching && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      {/* Sectioned results dropdown */}
+      {showResults && (hasResults || (query.trim().length >= 2 && !isSearching)) && (
+        <div
+          ref={resultsRef}
+          className="absolute z-50 w-full rounded-md border bg-popover shadow-md mt-1"
+        >
+          <div className="max-h-72 overflow-y-auto">
+            {/* Chive Institutions Section */}
+            {results.chiveInstitutions.length > 0 && (
+              <div>
+                <div className="sticky top-0 bg-muted/80 px-2 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+                  Chive Institutions
+                </div>
+                <div className="p-1">
+                  {results.chiveInstitutions.map((inst) => (
+                    <button
+                      key={inst.uri}
+                      type="button"
+                      onClick={() => handleSelect(inst)}
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <FunderResultItem funder={inst} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CrossRef Funders Section */}
+            {results.crossrefFunders.length > 0 && (
+              <div>
+                <div className="sticky top-0 bg-muted/80 px-2 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+                  CrossRef Funders
+                </div>
+                <div className="p-1">
+                  {results.crossrefFunders.map((funder) => (
+                    <button
+                      key={funder.doi}
+                      type="button"
+                      onClick={() => handleSelect(funder)}
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <FunderResultItem funder={funder} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!hasResults && query.trim().length >= 2 && !isSearching && (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No funders found. Try a different search term.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

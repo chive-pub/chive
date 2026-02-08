@@ -17,6 +17,7 @@ import type { DID, NSID, Timestamp } from '../../../../types/atproto.js';
 import {
   AuthenticationError,
   AuthorizationError,
+  ServiceUnavailableError,
   ValidationError,
 } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
@@ -39,13 +40,13 @@ export const grantDelegation: XRPCMethod<void, InputSchema, OutputSchema> = {
     }
 
     if (!input) {
-      throw new Error('Input required');
+      throw new ValidationError('Request body is required', 'input', 'required');
     }
 
     const trustedEditorService = c.get('services').trustedEditor;
     const governancePdsWriter = c.get('services').governancePdsWriter;
     if (!trustedEditorService || !governancePdsWriter) {
-      throw new Error('Governance services not configured');
+      throw new ServiceUnavailableError('Governance services not configured', 'governance');
     }
 
     const adminDid = user.did;

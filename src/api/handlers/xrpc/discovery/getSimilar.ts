@@ -161,7 +161,7 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
     if (includeGraphTypes && recommendationService) {
       try {
         const graphSimilar = await recommendationService.getSimilar(
-          params.uri as never,
+          params.uri as AtUri,
           params.limit ?? 5
         );
         const existingUris = new Set(relatedPapers.map((r) => r.uri));

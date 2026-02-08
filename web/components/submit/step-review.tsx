@@ -36,6 +36,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { EprintFormValues } from './submission-wizard';
 
@@ -444,8 +446,8 @@ export function StepReview({
         {fieldNodes.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {fieldNodes.map((field) => (
-              <Badge key={field.id} variant="outline">
-                {field.name}
+              <Badge key={field.uri} variant="outline">
+                {field.label}
               </Badge>
             ))}
           </div>
@@ -641,10 +643,23 @@ export function StepReview({
                     Conference Presentation
                   </span>
                   <div className="mt-1">
-                    <p className="text-sm font-medium">{conferencePresentation.conferenceName}</p>
+                    <p className="text-sm font-medium">
+                      {conferencePresentation.conferenceName}
+                      {conferencePresentation.conferenceIteration && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          ({conferencePresentation.conferenceIteration})
+                        </span>
+                      )}
+                    </p>
                     {conferencePresentation.conferenceLocation && (
                       <p className="text-xs text-muted-foreground">
                         {conferencePresentation.conferenceLocation}
+                      </p>
+                    )}
+                    {conferencePresentation.presentationDate && (
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(conferencePresentation.presentationDate).toLocaleDateString()}
                       </p>
                     )}
                     {conferencePresentation.presentationTypeName && (
@@ -659,6 +674,32 @@ export function StepReview({
           </div>
         </ReviewSection>
       )}
+
+      {/* Cross-Platform Discovery Option */}
+      <section className="rounded-lg border border-muted bg-muted/30 p-4">
+        <div className="flex items-start space-x-3">
+          <Checkbox
+            id="enableCrossPlatformDiscovery"
+            checked={form.watch('enableCrossPlatformDiscovery') ?? true}
+            onCheckedChange={(checked) => {
+              form.setValue('enableCrossPlatformDiscovery', checked === true);
+            }}
+          />
+          <div className="space-y-1">
+            <Label
+              htmlFor="enableCrossPlatformDiscovery"
+              className="text-sm font-medium leading-none cursor-pointer"
+            >
+              Make discoverable across ATProto platforms
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Creates a standard.site document record alongside your eprint. This enables
+              cross-platform discovery on other ATProto publishing platforms, such as WhiteWind and
+              Frontpage. Your eprint will still appear on Chive regardless of this setting.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Submission notice */}
       <section className="rounded-lg border border-muted bg-muted/30 p-4">

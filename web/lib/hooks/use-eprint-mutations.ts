@@ -14,17 +14,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api, authApi } from '@/lib/api/client';
+import type {
+  Main as AuthorContribution,
+  Affiliation as AuthorAffiliation,
+  Contribution,
+} from '@/lib/api/generated/types/pub/chive/eprint/authorContribution';
+import type { ChangelogSection } from '@/lib/api/generated/types/pub/chive/eprint/changelog';
 import type { OutputSchema as DeleteOutput } from '@/lib/api/generated/types/pub/chive/eprint/deleteSubmission';
 import type { OutputSchema as GetChangelogOutput } from '@/lib/api/generated/types/pub/chive/eprint/getChangelog';
+import type { ChangelogView } from '@/lib/api/generated/types/pub/chive/eprint/listChangelogs';
 import type {
-  ChangelogView,
-  OutputSchema as ListChangelogsOutput,
-} from '@/lib/api/generated/types/pub/chive/eprint/listChangelogs';
-import type { OutputSchema as UpdateOutput } from '@/lib/api/generated/types/pub/chive/eprint/updateSubmission';
+  OutputSchema as UpdateOutput,
+  ChangelogInput,
+} from '@/lib/api/generated/types/pub/chive/eprint/updateSubmission';
 import type { SemanticVersion } from '@/lib/api/generated/types/pub/chive/eprint/submission';
 import { APIError } from '@/lib/errors';
 
 import { eprintKeys } from './use-eprint';
+
+// Re-export generated types for consumers
+export type {
+  AuthorContribution,
+  AuthorAffiliation,
+  Contribution,
+  ChangelogInput,
+  ChangelogSection,
+};
 
 /**
  * Session for paper account authentication.
@@ -54,43 +69,10 @@ interface DeleteEprintParams {
 }
 
 /**
- * Changelog section item for update mutations.
- */
-interface ChangelogSectionItem {
-  /** Description of the change */
-  description: string;
-  /** Type of change (added, changed, removed, fixed, deprecated) */
-  changeType?: string;
-  /** Location in document (e.g., "Section 3.2") */
-  location?: string;
-  /** Reference to reviewer comment */
-  reviewReference?: string;
-}
-
-/**
- * Changelog section for update mutations.
- */
-interface ChangelogSection {
-  /** Category of changes (kebab-case) */
-  category: string;
-  /** Individual change items */
-  items: ChangelogSectionItem[];
-}
-
-/**
- * Changelog input for update mutations.
- */
-interface ChangelogInput {
-  /** One-line summary of changes */
-  summary?: string;
-  /** Structured changelog sections */
-  sections?: ChangelogSection[];
-  /** Response to peer review feedback */
-  reviewerResponse?: string;
-}
-
-/**
  * Parameters for update eprint mutation.
+ *
+ * @remarks
+ * Uses generated types from the lexicon schema for authors and changelog.
  */
 interface UpdateEprintParams {
   /** AT-URI of the eprint to update */
@@ -101,6 +83,10 @@ interface UpdateEprintParams {
   title?: string;
   /** Updated keywords (optional) */
   keywords?: string[];
+  /** Updated field node URIs (optional) */
+  fieldUris?: string[];
+  /** Updated authors (optional) */
+  authors?: AuthorContribution[];
   /** Structured changelog data (optional) */
   changelog?: ChangelogInput;
 }
@@ -191,26 +177,16 @@ export function useUpdateEprint() {
   const queryClient = useQueryClient();
 
   return useMutation<UpdateOutput, APIError, UpdateEprintParams>({
-    mutationFn: async ({ uri, versionBump, changelog }) => {
+    mutationFn: async ({ uri, versionBump, fieldUris, authors, changelog }) => {
       try {
         const response = await authApi.pub.chive.eprint.updateSubmission({
           uri,
           versionBump,
-          changelog: changelog
-            ? {
-                summary: changelog.summary,
-                sections: changelog.sections?.map((section) => ({
-                  category: section.category,
-                  items: section.items.map((item) => ({
-                    description: item.description,
-                    changeType: item.changeType,
-                    location: item.location,
-                    reviewReference: item.reviewReference,
-                  })),
-                })),
-                reviewerResponse: changelog.reviewerResponse,
-              }
-            : undefined,
+          fieldUris,
+          // Authors already match the generated AuthorContribution type
+          authors,
+          // Changelog already matches the generated ChangelogInput type
+          changelog,
         });
         return response.data;
       } catch (error) {
@@ -328,9 +304,12 @@ export function useEprintPermissions(
  *
  * @public
  */
-export function formatVersion(version: SemanticVersion): string {
-  const base = `${version.major}.${version.minor}.${version.patch}`;
-  return version.prerelease ? `${base}-${version.prerelease}` : base;
+export function formatVersion(version: SemanticVersion | null | undefined): string {
+  const major = version?.major ?? 0;
+  const minor = version?.minor ?? 0;
+  const patch = version?.patch ?? 0;
+  const base = `${major}.${minor}.${patch}`;
+  return version?.prerelease ? `${base}-${version.prerelease}` : base;
 }
 
 // =============================================================================

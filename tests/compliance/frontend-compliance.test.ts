@@ -50,10 +50,12 @@ const PDS_WRITE_EXCLUDED_PATHS = [
   'lib/schemas',
   'lib/hooks',
   'lib/auth',
+  'lib/migrations', // User-initiated schema migration writes to user's own PDS
   'lib/api/generated', // Auto-generated ATProto lexicon type definitions
   'lib/api/schema.generated.ts', // Auto-generated OpenAPI type definitions
   'components/governance', // User-initiated governance proposal writes to user's own PDS
   'components/eprints', // User-initiated eprint edit/delete writes to user's own PDS
+  'app/eprints', // User-initiated eprint delete on their own PDS via page actions
 ];
 
 function findTsFiles(dir: string, files: string[] = []): string[] {
@@ -240,8 +242,15 @@ describe('Frontend ATProto compliance', () => {
         const content = readFileContent(file);
         const relativePath = path.relative(WEB_DIR, file);
 
+        // Remove comments before checking for 'any' type to avoid false positives
+        // (e.g., "has any linked" in JSDoc comments)
+        const contentWithoutComments = content
+          .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+          .replace(/\/\/.*$/gm, ''); // Remove single-line comments
+
+        // Match actual TypeScript 'any' type usage, not words containing 'any'
         const anyPattern = /:\s*any\b|<any>|as any\b/g;
-        const matches = content.match(anyPattern);
+        const matches = contentWithoutComments.match(anyPattern);
 
         if (matches) {
           violations.push(`${relativePath}: Uses 'any' type ${matches.length} time(s)`);

@@ -36,15 +36,16 @@ import {
 
 import {
   FileDropzone,
-  ConceptAutocomplete,
+  NodeAutocomplete,
   type SelectedFile,
-  type ConceptSuggestion,
+  type NodeSuggestion,
 } from '@/components/forms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+// Note: Categories are fetched via NodeAutocomplete with subkind='supplementary-category'
 import type { EprintFormValues, SupplementaryMaterialInput } from './submission-wizard';
 
 // =============================================================================
@@ -63,12 +64,8 @@ export interface StepSupplementaryProps {
 
 /**
  * Known supplementary category slugs for auto-detection and icons.
- *
- * @remarks
- * Categories are now sourced from the knowledge graph via ConceptAutocomplete.
- * These slugs are used for auto-detection from file types and for icon display.
  */
-const KNOWN_CATEGORY_SLUGS = [
+const _KNOWN_CATEGORY_SLUGS = [
   'appendix',
   'figure',
   'table',
@@ -83,7 +80,7 @@ const KNOWN_CATEGORY_SLUGS = [
   'other',
 ] as const;
 
-type KnownCategorySlug = (typeof KNOWN_CATEGORY_SLUGS)[number];
+type KnownCategorySlug = (typeof _KNOWN_CATEGORY_SLUGS)[number];
 
 // =============================================================================
 // CONSTANTS
@@ -358,12 +355,12 @@ function SupplementaryItem({
 }: SupplementaryItemProps) {
   const Icon = getCategoryIcon(item.category);
 
-  // Handler for concept selection
-  const handleConceptSelect = (concept: ConceptSuggestion) => {
+  // Handler for node selection
+  const handleNodeSelect = (node: NodeSuggestion) => {
     onUpdate(index, {
-      category: concept.id, // slug
-      categoryUri: concept.uri,
-      categoryName: concept.name,
+      category: node.id, // slug
+      categoryUri: node.uri,
+      categoryName: node.label,
     });
   };
 
@@ -439,10 +436,12 @@ function SupplementaryItem({
             <div className="flex items-center gap-2">
               <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1">
-                <ConceptAutocomplete
-                  category="supplementary-type"
+                <NodeAutocomplete
+                  kind="type"
+                  subkind="supplementary-category"
+                  label="Supplementary Type"
                   value={item.categoryUri}
-                  onSelect={handleConceptSelect}
+                  onSelect={handleNodeSelect}
                   placeholder={
                     item.categoryName ??
                     (item.category in CATEGORY_LABELS
@@ -567,7 +566,7 @@ export function StepSupplementary({ form, className }: StepSupplementaryProps) {
   }, [dragIndex, dragTargetIndex, materials, form]);
 
   // Convert materials to SelectedFile array for dropzone (used only for display count)
-  const selectedFiles: SelectedFile[] = materials.map((m) => ({
+  const _selectedFiles: SelectedFile[] = materials.map((m) => ({
     file: m.file,
     isValid: true,
   }));

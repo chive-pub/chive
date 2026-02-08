@@ -67,7 +67,10 @@ const legacyResult = service.detectAbstractFormat('Plain text abstract');
 // Current rich text format
 const currentResult = service.detectAbstractFormat([
   { type: 'text', content: 'Rich text abstract with ' },
-  { type: 'nodeRef', uri: 'at://did:plc:.../pub.chive.graph.field/physics' },
+  {
+    type: 'nodeRef',
+    uri: 'at://did:plc:chive-governance/pub.chive.graph.node/8e31479f-01c0-5c1e-aae4-bd28b7cb0a7b',
+  },
 ]);
 // {
 //   field: 'abstract',
@@ -400,6 +403,52 @@ The schema compatibility service follows ATProto principles:
 2. **Additive hints**: Schema hints are optional fields that existing clients ignore
 3. **No breaking changes**: Legacy records continue to work; hints are informational only
 4. **User data sovereignty**: Migration is performed by clients updating their PDS records; Chive never writes to user PDSes
+
+## Numeric field serialization
+
+ATProto requires floating-point numbers to be serialized as strings in certain contexts to preserve precision across different JSON parsers. The schema compatibility service handles this for:
+
+### Bounding rectangle coordinates
+
+PDF annotation bounding rectangles use string-serialized floats:
+
+```typescript
+interface BoundingRect {
+  x: string; // "0.123456"
+  y: string; // "0.234567"
+  width: string; // "0.345678"
+  height: string; // "0.456789"
+  pageNumber: number;
+}
+```
+
+When reading:
+
+```typescript
+const rect = {
+  x: parseFloat(record.boundingRect.x),
+  y: parseFloat(record.boundingRect.y),
+  width: parseFloat(record.boundingRect.width),
+  height: parseFloat(record.boundingRect.height),
+  pageNumber: record.boundingRect.pageNumber,
+};
+```
+
+When writing:
+
+```typescript
+const record = {
+  boundingRect: {
+    x: coords.x.toString(),
+    y: coords.y.toString(),
+    width: coords.width.toString(),
+    height: coords.height.toString(),
+    pageNumber: coords.pageNumber,
+  },
+};
+```
+
+This ensures consistent precision when coordinates are round-tripped through different ATProto implementations.
 
 ## Default instance
 

@@ -59,22 +59,7 @@ export interface UploadBlobResult {
   mimeType: string;
 }
 
-/**
- * Supplementary material category.
- */
-type SupplementaryCategory =
-  | 'appendix'
-  | 'figure'
-  | 'table'
-  | 'dataset'
-  | 'code'
-  | 'notebook'
-  | 'video'
-  | 'audio'
-  | 'presentation'
-  | 'protocol'
-  | 'questionnaire'
-  | 'other';
+import type { SupplementaryCategory } from '@/lib/api/generated/types/pub/chive/defs';
 
 /**
  * Eprint record as stored in ATProto.
@@ -940,15 +925,101 @@ export async function updateEndorsementRecord(
 // =============================================================================
 
 /**
+ * Text span target for inline annotations (lexicon format).
+ * Note: boundingRect coordinates are stored as strings to preserve floating-point precision
+ * since ATProto Lexicon only supports integer type.
+ */
+export interface ReviewTextSpanTarget {
+  versionUri?: string;
+  selector: {
+    $type: string;
+    type: string;
+    exact?: string;
+    prefix?: string;
+    suffix?: string;
+    start?: number;
+    end?: number;
+    value?: string;
+  };
+  refinedBy?: {
+    $type?: string;
+    type?: string;
+    pageNumber?: number;
+    start?: number;
+    end?: number;
+    boundingRect?: {
+      $type?: string;
+      x1: string;
+      y1: string;
+      x2: string;
+      y2: string;
+      width: string;
+      height: string;
+      pageNumber: number;
+    };
+  };
+}
+
+/**
+ * Input target from frontend (UnifiedTextSpanTarget format).
+ */
+export interface InputTextSpanTarget {
+  source?: string;
+  selector?: {
+    $type?: string;
+    type?: string;
+    exact?: string;
+    prefix?: string;
+    suffix?: string;
+  };
+  refinedBy?: {
+    type?: string;
+    pageNumber?: number;
+    start?: number;
+    end?: number;
+    boundingRect?: {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      width: number;
+      height: number;
+      pageNumber?: number;
+    };
+  };
+  page?: number;
+}
+
+/**
  * Review comment record as stored in ATProto.
  */
 export interface ReviewCommentRecord {
   [key: string]: unknown;
   $type: 'pub.chive.review.comment';
   eprintUri: string;
-  content: string;
+  body: Array<{ $type?: string; type: string; content: string; facets?: unknown[] }>;
   parentComment?: string;
+  target?: ReviewTextSpanTarget & {
+    refinedBy?: ReviewTextSpanTarget['refinedBy'];
+  };
+  motivationFallback?: string;
   createdAt: string;
+}
+
+/**
+ * Facet for rich text formatting in reviews.
+ */
+export interface ReviewFacet {
+  /** Byte range for the facet */
+  index: {
+    byteStart: number;
+    byteEnd: number;
+  };
+  /** Features (e.g., link) */
+  features: Array<{
+    $type: string;
+    uri?: string;
+  }>;
 }
 
 /**
@@ -958,6 +1029,18 @@ export interface CreateReviewInput {
   eprintUri: string;
   content: string;
   parentReviewUri?: string;
+  target?: InputTextSpanTarget;
+  motivation?: string;
+  /** Optional facets for rich text (links, etc.) */
+  facets?: ReviewFacet[];
+}
+
+/**
+ * Input for updating a review.
+ */
+export interface UpdateReviewInput {
+  uri: string;
+  content: string;
 }
 
 /**
@@ -976,10 +1059,32 @@ export async function createReviewRecord(
     throw new Error('Agent is not authenticated');
   }
 
+  // Build the body array (lexicon requires body, not content)
+  const textItem: {
+    $type: string;
+    type: string;
+    content: string;
+    facets?: Array<{
+      index: { byteStart: number; byteEnd: number };
+      features: Array<{ $type: string; uri?: string }>;
+    }>;
+  } = {
+    $type: 'pub.chive.review.comment#textItem',
+    type: 'text',
+    content: input.content,
+  };
+
+  // Add facets if provided
+  if (input.facets && input.facets.length > 0) {
+    textItem.facets = input.facets;
+  }
+
+  const body: ReviewCommentRecord['body'] = [textItem];
+
   const record: ReviewCommentRecord = {
     $type: 'pub.chive.review.comment',
     eprintUri: input.eprintUri,
-    content: input.content,
+    body,
     createdAt: new Date().toISOString(),
   };
 
@@ -987,9 +1092,116 @@ export async function createReviewRecord(
     record.parentComment = input.parentReviewUri;
   }
 
+  // Transform target from frontend format to lexicon format
+  if (input.target?.selector?.exact) {
+    record.target = {
+      selector: {
+        $type: 'pub.chive.review.comment#textQuoteSelector',
+        type: 'TextQuoteSelector',
+        exact: input.target.selector.exact,
+        prefix: input.target.selector.prefix,
+        suffix: input.target.selector.suffix,
+      },
+    };
+
+    // Include refinedBy for position data (pageNumber, boundingRect)
+    if (input.target.refinedBy) {
+      const inputBoundingRect = input.target.refinedBy.boundingRect;
+      record.target.refinedBy = {
+        $type: 'pub.chive.review.comment#positionRefinement',
+        type: 'TextPositionSelector',
+        pageNumber: input.target.refinedBy.pageNumber,
+        start: input.target.refinedBy.start,
+        end: input.target.refinedBy.end,
+        // Serialize boundingRect coordinates to strings for ATProto storage
+        // (ATProto Lexicon only supports integer type, not float)
+        boundingRect: inputBoundingRect
+          ? {
+              $type: 'pub.chive.review.comment#boundingRect',
+              x1: String(inputBoundingRect.x1),
+              y1: String(inputBoundingRect.y1),
+              x2: String(inputBoundingRect.x2),
+              y2: String(inputBoundingRect.y2),
+              width: String(inputBoundingRect.width),
+              height: String(inputBoundingRect.height),
+              pageNumber:
+                inputBoundingRect.pageNumber ?? (input.target.refinedBy.pageNumber ?? 0) + 1,
+            }
+          : undefined,
+      };
+    }
+  }
+
+  if (input.motivation) {
+    record.motivationFallback = input.motivation;
+  }
+
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
     collection: 'pub.chive.review.comment',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Update a review comment record in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Updated review data
+ * @returns Updated record result
+ */
+export async function updateReviewRecord(
+  agent: Agent,
+  input: UpdateReviewInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(input.uri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  // Get the existing record to preserve eprintUri, parentComment, and createdAt
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.review.comment',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as ReviewCommentRecord;
+
+  // Build the body array with the new content
+  const body: ReviewCommentRecord['body'] = [
+    {
+      $type: 'pub.chive.review.comment#textItem',
+      type: 'text',
+      content: input.content,
+    },
+  ];
+
+  const record: ReviewCommentRecord = {
+    $type: 'pub.chive.review.comment',
+    eprintUri: existing.eprintUri,
+    body,
+    createdAt: existing.createdAt,
+  };
+
+  if (existing.parentComment) {
+    record.parentComment = existing.parentComment;
+  }
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.review.comment',
+    rkey: parsed.rkey,
     record,
   });
 
@@ -1282,5 +1494,208 @@ export function parseAtUri(uri: string): {
     did: match[1],
     collection: match[2],
     rkey: match[3],
+  };
+}
+
+// =============================================================================
+// STANDARD.SITE INTEGRATION
+// =============================================================================
+
+/**
+ * Standard document record as stored in ATProto (site.standard.document).
+ *
+ * @remarks
+ * This record enables cross-platform discovery of eprints across the ATProto
+ * publishing ecosystem. When a user creates an eprint, they can optionally
+ * create a companion standard.site document that references it.
+ */
+export interface StandardDocumentRecord {
+  [key: string]: unknown;
+  $type: 'site.standard.document';
+  title: string;
+  description?: string;
+  content: {
+    uri: string;
+    cid?: string;
+  };
+  visibility: 'public' | 'private' | 'unlisted';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Input for creating a standard.site document.
+ */
+export interface CreateStandardDocumentInput {
+  /** Title of the document */
+  title: string;
+  /** Brief description or abstract (max 2000 chars) */
+  description?: string;
+  /** AT-URI of the platform-specific content record (e.g., eprint) */
+  eprintUri: string;
+  /** CID of the content record for verification */
+  eprintCid?: string;
+}
+
+/**
+ * Create a standard.site document record in the user's PDS.
+ *
+ * @remarks
+ * Creates a site.standard.document record that references a Chive eprint.
+ * This enables cross-platform discovery across ATProto publishing platforms.
+ * The document is created in the user's PDS, following ATProto compliance.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Document data
+ * @returns Created record result with URI and CID
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record creation fails
+ *
+ * @example
+ * ```typescript
+ * // After creating an eprint, create a standard.site document
+ * const eprintResult = await createEprintRecord(agent, eprintData);
+ * const docResult = await createStandardDocument(agent, {
+ *   title: eprintData.title,
+ *   description: eprintData.abstract.substring(0, 2000),
+ *   eprintUri: eprintResult.uri,
+ *   eprintCid: eprintResult.cid,
+ * });
+ * ```
+ */
+export async function createStandardDocument(
+  agent: Agent,
+  input: CreateStandardDocumentInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: StandardDocumentRecord = {
+    $type: 'site.standard.document',
+    title: input.title,
+    content: {
+      uri: input.eprintUri,
+      ...(input.eprintCid && { cid: input.eprintCid }),
+    },
+    visibility: 'public',
+    createdAt: new Date().toISOString(),
+  };
+
+  // Add optional description (truncated to 2000 chars per lexicon spec)
+  if (input.description) {
+    record.description = input.description.substring(0, 2000);
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'site.standard.document',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Input for updating a standard.site document.
+ */
+export interface UpdateStandardDocumentInput {
+  /** AT-URI of the existing document record */
+  uri: string;
+  /** Updated title */
+  title?: string;
+  /** Updated description */
+  description?: string;
+  /** Updated eprint URI (if the underlying record changed) */
+  eprintUri?: string;
+  /** Updated eprint CID */
+  eprintCid?: string;
+}
+
+/**
+ * Update a standard.site document record in the user's PDS.
+ *
+ * @remarks
+ * Updates an existing site.standard.document record. This is useful when
+ * the underlying eprint is updated (new version) or metadata changes.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Updated document data
+ * @returns Updated record result with URI and CID
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ * @throws Error if record update fails
+ *
+ * @example
+ * ```typescript
+ * // Update the standard.site document after eprint changes
+ * await updateStandardDocument(agent, {
+ *   uri: existingDocUri,
+ *   title: 'Updated Title',
+ *   eprintCid: newEprintCid,
+ * });
+ * ```
+ */
+export async function updateStandardDocument(
+  agent: Agent,
+  input: UpdateStandardDocumentInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(input.uri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  // Get the existing record to preserve fields not being updated
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'site.standard.document',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as StandardDocumentRecord;
+
+  // Build updated record, preserving existing values for fields not specified
+  const record: StandardDocumentRecord = {
+    $type: 'site.standard.document',
+    title: input.title ?? existing.title,
+    content: {
+      uri: input.eprintUri ?? existing.content.uri,
+      ...(input.eprintCid
+        ? { cid: input.eprintCid }
+        : existing.content.cid && { cid: existing.content.cid }),
+    },
+    visibility: existing.visibility,
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Update description if provided, otherwise preserve existing
+  if (input.description !== undefined) {
+    record.description = input.description.substring(0, 2000);
+  } else if (existing.description) {
+    record.description = existing.description;
+  }
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'site.standard.document',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
   };
 }

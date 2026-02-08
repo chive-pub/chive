@@ -23,13 +23,10 @@ export * from './hooks';
 
 // Schemas - explicit re-exports to avoid conflicts with hooks
 export {
-  // Constants
+  // Constants (governance-controlled values come from knowledge graph nodes, not constants)
   MAX_DOCUMENT_SIZE_BYTES,
   MAX_SUPPLEMENTARY_SIZE_BYTES,
   SUPPORTED_DOCUMENT_FORMATS,
-  SUPPORTED_LICENSES,
-  SUPPLEMENTARY_CATEGORIES,
-  EXTERNAL_LINK_TYPES,
   PROPOSAL_TYPES,
   FIELD_TYPES,
   RELATIONSHIP_TYPES,

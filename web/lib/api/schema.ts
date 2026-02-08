@@ -462,6 +462,8 @@ export interface Review {
   replyCount: number;
   createdAt: string;
   indexedAt: string;
+  /** Whether this review has been deleted (soft-delete tombstone) */
+  deleted?: boolean;
 }
 
 /**

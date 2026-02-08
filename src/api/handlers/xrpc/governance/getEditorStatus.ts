@@ -15,7 +15,11 @@ import type {
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/governance/getEditorStatus.js';
 import type { DID } from '../../../../types/atproto.js';
-import { AuthenticationError, NotFoundError } from '../../../../types/errors.js';
+import {
+  AuthenticationError,
+  NotFoundError,
+  ServiceUnavailableError,
+} from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -41,7 +45,7 @@ export const getEditorStatus: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     const trustedEditorService = c.get('services').trustedEditor;
     if (!trustedEditorService) {
-      throw new Error('Trusted editor service not configured');
+      throw new ServiceUnavailableError('Trusted editor service not configured', 'trustedEditor');
     }
 
     logger.debug('Getting editor status', { targetDid });

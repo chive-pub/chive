@@ -34,12 +34,12 @@ import type {
   IRepository,
   RepositoryRecord,
 } from '../../src/types/interfaces/repository.interface.js';
+import { TEST_GRAPH_PDS_DID, TEST_USER_DIDS } from '../test-constants.js';
 
 // Test constants
-const TEST_GOVERNANCE_DID = 'did:plc:chive-governance' as DID;
-const TEST_USER_DID = 'did:plc:testuser' as DID;
-const TEST_GOVERNANCE_PDS = 'https://pds.chive-governance.test';
-const TEST_AUTHORITY_URI = 'at://did:plc:chive-governance/pub.chive.graph.authority/test' as AtUri;
+const TEST_USER_DID = TEST_USER_DIDS.USER_1;
+const TEST_GRAPH_PDS_URL = 'https://pds.chive-governance.test';
+const TEST_AUTHORITY_URI = `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.authority/test` as AtUri;
 
 /**
  * Creates mock logger for tests.
@@ -82,7 +82,7 @@ function createTrackedRepository(): IRepository & {
           version: 1,
           createdAt: new Date().toISOString(),
         },
-        author: TEST_GOVERNANCE_DID,
+        author: TEST_GRAPH_PDS_DID,
         indexedAt: new Date().toISOString(),
       } as unknown as RepositoryRecord<T>);
     }),
@@ -109,11 +109,11 @@ function createTrackedRepository(): IRepository & {
 function createMockIdentity(): IIdentityResolver {
   return {
     resolveDID: vi.fn().mockResolvedValue({
-      id: TEST_GOVERNANCE_DID,
+      id: TEST_GRAPH_PDS_DID,
       verificationMethod: [],
     }),
-    resolveHandle: vi.fn().mockResolvedValue(TEST_GOVERNANCE_DID),
-    getPDSEndpoint: vi.fn().mockResolvedValue(TEST_GOVERNANCE_PDS),
+    resolveHandle: vi.fn().mockResolvedValue(TEST_GRAPH_PDS_DID),
+    getPDSEndpoint: vi.fn().mockResolvedValue(TEST_GRAPH_PDS_URL),
   };
 }
 
@@ -130,7 +130,7 @@ describe('ATProto Advanced Features Compliance', () => {
       logger = createMockLogger();
 
       connector = new GovernancePDSConnector({
-        governanceDid: TEST_GOVERNANCE_DID,
+        graphPdsDid: TEST_GRAPH_PDS_DID,
         repository,
         identity,
         logger,
@@ -170,7 +170,7 @@ describe('ATProto Advanced Features Compliance', () => {
       const record = await connector.getAuthorityRecord(TEST_AUTHORITY_URI);
 
       // Record should include source PDS URL
-      expect(record?.sourcePds).toBe(TEST_GOVERNANCE_PDS);
+      expect(record?.sourcePds).toBe(TEST_GRAPH_PDS_URL);
     });
 
     it('caches authority records locally without becoming source of truth', async () => {

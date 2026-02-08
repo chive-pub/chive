@@ -48,8 +48,8 @@ function subkindToLabel(slug: string): string {
  *
  * // Create a node
  * await repo.createNode({
- *   id: 'ml',
- *   uri: 'at://did:plc:gov/pub.chive.graph.node/ml',
+ *   id: '33b86a72-193b-5c4f-a585-98eb6c77ca71',
+ *   uri: 'at://did:plc:graph-pds/pub.chive.graph.node/33b86a72-193b-5c4f-a585-98eb6c77ca71',
  *   kind: 'object',
  *   subkind: 'field',
  *   label: 'Machine Learning',

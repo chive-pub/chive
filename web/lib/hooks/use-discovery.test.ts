@@ -54,6 +54,12 @@ vi.mock('@/lib/api/client', () => ({
   },
 }));
 
+// Mock auth module to provide hooks without AuthProvider
+vi.mock('@/lib/auth', () => ({
+  useCurrentUser: vi.fn(() => null),
+  useAgent: vi.fn(() => null),
+}));
+
 // Mock localStorage
 const mockLocalStorage: Record<string, string> = {};
 vi.stubGlobal('localStorage', {

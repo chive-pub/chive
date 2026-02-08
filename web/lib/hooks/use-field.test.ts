@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createWrapper } from '@/tests/test-utils';
 import { createMockFieldDetail, createMockFieldList } from '@/tests/mock-data';
+import { TEST_GRAPH_PDS_DID } from '@/tests/test-constants';
 
 import { fieldKeys, useField, useFields, useFieldWithRelations } from './use-field';
 
@@ -151,7 +152,7 @@ describe('useFields', () => {
     const mockResponse = {
       nodes: mockFields.map((f) => ({
         ...f,
-        uri: `at://did:plc:gov/pub.chive.graph.node/${f.id}`,
+        uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/${f.id}`,
       })),
       cursor: undefined,
       hasMore: false,
@@ -181,7 +182,7 @@ describe('useFields', () => {
     const mockResponse = {
       nodes: mockFields.map((f) => ({
         ...f,
-        uri: `at://did:plc:gov/pub.chive.graph.node/${f.id}`,
+        uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/${f.id}`,
         status: 'established',
       })),
       cursor: undefined,
@@ -230,7 +231,7 @@ describe('useFieldWithRelations', () => {
             id: 'edge1',
             uri: 'at://test/edge/1',
             sourceUri: mockField.uri,
-            targetUri: 'at://did:plc:gov/pub.chive.graph.node/cs',
+            targetUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/8f9a0b1c-2d3e-4f5a-6b7c-8d9e0f1a2b3c`,
             relationSlug: 'broader',
             status: 'established',
           },
@@ -242,7 +243,7 @@ describe('useFieldWithRelations', () => {
     mockGetNode.mockResolvedValueOnce({
       data: {
         id: 'cs',
-        uri: 'at://did:plc:gov/pub.chive.graph.node/cs',
+        uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/8f9a0b1c-2d3e-4f5a-6b7c-8d9e0f1a2b3c`,
         label: 'Computer Science',
         status: 'established',
       },

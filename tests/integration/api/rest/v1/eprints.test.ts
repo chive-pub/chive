@@ -115,7 +115,7 @@ function createSearchEngine(client: Client): ISearchEngine {
           title: doc.title,
           abstract: doc.abstract,
           keywords: doc.keywords,
-          subjects: doc.subjects,
+          field_nodes: doc.fieldNodes,
           createdAt: doc.createdAt.toISOString(),
           indexedAt: doc.indexedAt.toISOString(),
         },

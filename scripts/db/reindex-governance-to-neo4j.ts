@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 
 /**
- * Reindex Governance PDS records directly to Neo4j.
+ * Reindex Graph PDS records directly to Neo4j.
  *
  * @remarks
  * Fetches all pub.chive.graph.node and pub.chive.graph.edge records from
- * the Governance PDS and indexes them directly to Neo4j, bypassing the
+ * the Graph PDS and indexes them directly to Neo4j, bypassing the
  * firehose consumer.
  *
  * Use this when you need to force a complete reindex without waiting
@@ -15,8 +15,8 @@
 import { AtpAgent } from '@atproto/api';
 import neo4j from 'neo4j-driver';
 
-const PDS_URL = process.env.GOVERNANCE_PDS_URL ?? 'https://governance.chive.pub';
-const GOVERNANCE_DID = process.env.GOVERNANCE_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd';
+const PDS_URL = process.env.GRAPH_PDS_URL ?? 'https://governance.chive.pub';
+const GRAPH_PDS_DID = process.env.GRAPH_PDS_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd';
 
 const NEO4J_URI = process.env.NEO4J_URI ?? 'bolt://localhost:7687';
 const NEO4J_USER = process.env.NEO4J_USER ?? 'neo4j';
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
 
     do {
       const response = await agent.com.atproto.repo.listRecords({
-        repo: GOVERNANCE_DID,
+        repo: GRAPH_PDS_DID,
         collection: 'pub.chive.graph.node',
         limit: 100,
         cursor,
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
 
     do {
       const response = await agent.com.atproto.repo.listRecords({
-        repo: GOVERNANCE_DID,
+        repo: GRAPH_PDS_DID,
         collection: 'pub.chive.graph.edge',
         limit: 100,
         cursor,

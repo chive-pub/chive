@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "site.standard.publication",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "self",
+      "description": "A publication identity record for a publishing platform or author.",
+      "record": {
+        "type": "object",
+        "required": ["name", "createdAt"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Name of the publication"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Brief description of the publication"
+          },
+          "avatar": {
+            "type": "blob",
+            "accept": ["image/png", "image/jpeg", "image/webp"],
+            "maxSize": 1000000,
+            "description": "Square image identifying the publication (256x256 minimum)"
+          },
+          "theme": {
+            "type": "ref",
+            "ref": "#theme"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "properties": {
+        "primaryColor": {
+          "type": "string",
+          "description": "Primary brand color in hex format"
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "Accent color in hex format"
+        }
+      }
+    }
+  }
+}

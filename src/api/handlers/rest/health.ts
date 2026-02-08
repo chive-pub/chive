@@ -13,8 +13,18 @@
 import type { Context } from 'hono';
 import type { Hono } from 'hono';
 
+import type { DID } from '../../../types/atproto.js';
 import { HEALTH_PATHS } from '../../config.js';
 import type { ChiveEnv } from '../../types/context.js';
+
+/**
+ * DID used for health check queries.
+ *
+ * @remarks
+ * This is a synthetic DID used only for testing database connectivity.
+ * Queries with this DID are expected to return no results.
+ */
+const HEALTH_CHECK_DID = 'did:plc:health-check' as DID;
 
 /**
  * Health check response.
@@ -110,9 +120,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
       // In a full implementation, we'd call a health-specific method on the adapter
       await Promise.race([
         // Use a dummy query that will fail fast if DB is down
-        services.eprint
-          .getEprintsByAuthor?.('did:plc:health-check' as never, { limit: 1 })
-          .catch(() => undefined), // Swallow expected not-found errors
+        services.eprint.getEprintsByAuthor?.(HEALTH_CHECK_DID, { limit: 1 }).catch(() => undefined), // Swallow expected not-found errors
         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
       ]);
       const pgLatency = Math.round(performance.now() - pgStart);

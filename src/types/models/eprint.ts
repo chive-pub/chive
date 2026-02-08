@@ -10,6 +10,10 @@
  * @public
  */
 
+import type {
+  PublicationStatus,
+  SupplementaryCategory,
+} from '../../lexicons/generated/types/pub/chive/defs.js';
 import type { AtUri, BlobRef, CID, DID, Timestamp } from '../atproto.js';
 import type { Facet } from '../interfaces/graph.interface.js';
 
@@ -28,19 +32,7 @@ export type { DocumentFormat };
  *
  * @public
  */
-export type SupplementaryCategory =
-  | 'appendix'
-  | 'figure'
-  | 'table'
-  | 'dataset'
-  | 'code'
-  | 'notebook'
-  | 'video'
-  | 'audio'
-  | 'presentation'
-  | 'protocol'
-  | 'questionnaire'
-  | 'other';
+export type { SupplementaryCategory } from '../../lexicons/generated/types/pub/chive/defs.js';
 
 /**
  * Supplementary material item with metadata.
@@ -99,14 +91,7 @@ export interface SupplementaryMaterial {
  *
  * @public
  */
-export type PublicationStatus =
-  | 'eprint'
-  | 'under_review'
-  | 'revision_requested'
-  | 'accepted'
-  | 'in_press'
-  | 'published'
-  | 'retracted';
+export type { PublicationStatus } from '../../lexicons/generated/types/pub/chive/defs.js';
 
 /**
  * Open access status types.

@@ -25,9 +25,11 @@
 import { Queue, Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 
+import { IdentityResolutionError, RecordFetchError } from '../atproto/errors/repository-errors.js';
 import type { EprintService, RecordMetadata } from '../services/eprint/eprint-service.js';
 import { transformPDSRecord } from '../services/eprint/pds-record-transformer.js';
 import type { AtUri, CID, DID } from '../types/atproto.js';
+import { DatabaseError } from '../types/errors.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
 
 /**
@@ -277,13 +279,13 @@ export class IndexRetryWorker {
     // Resolve PDS endpoint
     const pdsUrl = cachedPdsUrl ?? (await resolvePdsEndpoint(did as DID));
     if (!pdsUrl) {
-      throw new Error(`Failed to resolve PDS endpoint for ${did}`);
+      throw new IdentityResolutionError(`Failed to resolve PDS endpoint for ${did}`, did, 'no_pds');
     }
 
     // Fetch record from PDS
     const record = await fetchRecordFromPds(pdsUrl, did as DID, collection, rkey);
     if (!record) {
-      throw new Error(`Record not found on PDS: ${uri}`);
+      throw new RecordFetchError(`Record not found on PDS: ${uri}`, uri, 'not_found');
     }
 
     // Build metadata
@@ -299,7 +301,7 @@ export class IndexRetryWorker {
     const result = await this.eprintService.indexEprint(eprintRecord, metadata);
 
     if (!result.ok) {
-      throw new Error(`Indexing failed: ${result.error.message}`);
+      throw new DatabaseError('INDEX', `Indexing failed: ${result.error.message}`, result.error);
     }
 
     this.logger.info('Successfully indexed record via retry', {

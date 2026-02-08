@@ -16,6 +16,8 @@ import {
 import type { AtUri, CID } from '@/types/atproto.js';
 import { ValidationError } from '@/types/errors.js';
 
+import { TEST_GRAPH_PDS_DID } from '../../../test-constants.js';
+
 // =============================================================================
 // TEST DATA
 // =============================================================================
@@ -23,7 +25,7 @@ import { ValidationError } from '@/types/errors.js';
 /**
  * Creates a minimal valid PDS eprint record.
  */
-function createMockPDSRecord(overrides?: Record<string, unknown>) {
+function createMockPDSRecord(overrides?: Record<string, unknown>): Record<string, unknown> {
   return {
     $type: 'pub.chive.eprint.submission',
     title: 'Test Paper: A Study in Testing',
@@ -49,7 +51,7 @@ function createMockPDSRecord(overrides?: Record<string, unknown>) {
         ],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/conceptualization',
+            typeUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85`,
             typeId: 'conceptualization',
             typeLabel: 'Conceptualization',
             degree: 'lead',
@@ -64,7 +66,7 @@ function createMockPDSRecord(overrides?: Record<string, unknown>) {
     abstract: 'This is a test abstract for a test paper.',
     documentFormat: 'pdf',
     keywords: ['testing', 'unit tests', 'vitest'],
-    license: 'CC-BY-4.0',
+    licenseSlug: 'CC-BY-4.0',
     facets: [
       { dimension: 'matter', label: 'Computer Science', value: 'computer-science' },
       { dimension: 'personality', label: 'Testing', value: 'testing' },
@@ -150,7 +152,8 @@ describe('transformPDSRecord', () => {
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.authors).toHaveLength(1);
-      const author = result.authors[0]!;
+      const author = result.authors[0];
+      if (!author) throw new Error('Expected author at index 0');
 
       expect(author.did).toBe('did:plc:author123');
       expect(author.name).toBe('Alice Researcher');
@@ -165,7 +168,8 @@ describe('transformPDSRecord', () => {
       const pdsRecord = createMockPDSRecord();
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      const author = result.authors[0]!;
+      const author = result.authors[0];
+      if (!author) throw new Error('Expected author at index 0');
       expect(author.affiliations).toHaveLength(1);
       expect(author.affiliations[0]).toEqual({
         name: 'University of Testing',
@@ -178,10 +182,11 @@ describe('transformPDSRecord', () => {
       const pdsRecord = createMockPDSRecord();
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      const author = result.authors[0]!;
+      const author = result.authors[0];
+      if (!author) throw new Error('Expected author at index 0');
       expect(author.contributions).toHaveLength(1);
       expect(author.contributions[0]).toEqual({
-        typeUri: 'at://did:plc:gov/pub.chive.graph.concept/conceptualization',
+        typeUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85`,
         typeId: 'conceptualization',
         typeLabel: 'Conceptualization',
         degree: 'lead',
@@ -199,10 +204,14 @@ describe('transformPDSRecord', () => {
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.authors).toHaveLength(3);
-      expect(result.authors[0]!.name).toBe('First Author');
-      expect(result.authors[1]!.name).toBe('Second Author');
-      expect(result.authors[2]!.name).toBe('Third Author');
-      expect(result.authors[2]!.did).toBeUndefined();
+      const first = result.authors[0];
+      const second = result.authors[1];
+      const third = result.authors[2];
+      if (!first || !second || !third) throw new Error('Expected 3 authors');
+      expect(first.name).toBe('First Author');
+      expect(second.name).toBe('Second Author');
+      expect(third.name).toBe('Third Author');
+      expect(third.did).toBeUndefined();
     });
 
     it('assigns default order if missing', () => {
@@ -211,8 +220,11 @@ describe('transformPDSRecord', () => {
       });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      expect(result.authors[0]!.order).toBe(1);
-      expect(result.authors[1]!.order).toBe(2);
+      const first = result.authors[0];
+      const second = result.authors[1];
+      if (!first || !second) throw new Error('Expected 2 authors');
+      expect(first.order).toBe(1);
+      expect(second.order).toBe(2);
     });
   });
 
@@ -238,7 +250,9 @@ describe('transformPDSRecord', () => {
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.supplementaryMaterials).toHaveLength(1);
-      const material = result.supplementaryMaterials![0]!;
+      if (!result.supplementaryMaterials) throw new Error('Expected supplementary materials');
+      const material = result.supplementaryMaterials[0];
+      if (!material) throw new Error('Expected supplementary material at index 0');
 
       expect(material.blobRef).toBeDefined();
       expect(material.blobRef.ref).toBe('bafkreisupplementary1');
@@ -281,8 +295,12 @@ describe('transformPDSRecord', () => {
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.supplementaryMaterials).toHaveLength(2);
-      expect(result.supplementaryMaterials![0]!.blobRef.ref).toBe('bafkreidata1');
-      expect(result.supplementaryMaterials![1]!.blobRef.ref).toBe('bafkreicode2');
+      if (!result.supplementaryMaterials) throw new Error('Expected supplementary materials');
+      const first = result.supplementaryMaterials[0];
+      const second = result.supplementaryMaterials[1];
+      if (!first || !second) throw new Error('Expected 2 supplementary materials');
+      expect(first.blobRef.ref).toBe('bafkreidata1');
+      expect(second.blobRef.ref).toBe('bafkreicode2');
     });
 
     it('defaults category to other if missing', () => {
@@ -303,7 +321,10 @@ describe('transformPDSRecord', () => {
       });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      expect(result.supplementaryMaterials![0]!.category).toBe('other');
+      if (!result.supplementaryMaterials) throw new Error('Expected supplementary materials');
+      const material = result.supplementaryMaterials[0];
+      if (!material) throw new Error('Expected supplementary material at index 0');
+      expect(material.category).toBe('other');
     });
   });
 
@@ -313,7 +334,9 @@ describe('transformPDSRecord', () => {
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.facets).toHaveLength(2);
-      expect(result.facets[0]!).toEqual({
+      const firstFacet = result.facets[0];
+      if (!firstFacet) throw new Error('Expected facet at index 0');
+      expect(firstFacet).toEqual({
         dimension: 'matter',
         label: 'Computer Science',
         value: 'computer-science',
@@ -327,7 +350,9 @@ describe('transformPDSRecord', () => {
       });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      expect(result.facets[0]!.dimension).toBe('field');
+      const facet = result.facets[0];
+      if (!facet) throw new Error('Expected facet at index 0');
+      expect(facet.dimension).toBe('field');
     });
 
     it('handles empty facets', () => {
@@ -346,37 +371,23 @@ describe('transformPDSRecord', () => {
       expect(result.keywords).toEqual(['testing', 'unit tests', 'vitest']);
     });
 
-    it('preserves license from legacy license field', () => {
-      const pdsRecord = createMockPDSRecord();
+    it('preserves license from licenseSlug', () => {
+      const pdsRecord = createMockPDSRecord({ licenseSlug: 'CC-BY-4.0' });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.license).toBe('CC-BY-4.0');
     });
 
-    it('uses licenseSlug over legacy license field', () => {
-      const pdsRecord = createMockPDSRecord({
-        licenseSlug: 'MIT',
-        license: 'CC-BY-4.0',
-      });
+    it('uses licenseSlug when provided', () => {
+      const pdsRecord = createMockPDSRecord({ licenseSlug: 'MIT' });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.license).toBe('MIT');
     });
 
-    it('falls back to legacy license field if licenseSlug is missing', () => {
+    it('defaults to CC-BY-4.0 when licenseSlug is missing', () => {
       const pdsRecord = createMockPDSRecord({
         licenseSlug: undefined,
-        license: 'Apache-2.0',
-      });
-      const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
-
-      expect(result.license).toBe('Apache-2.0');
-    });
-
-    it('defaults license to CC-BY-4.0 when both fields are missing', () => {
-      const pdsRecord = createMockPDSRecord({
-        licenseSlug: undefined,
-        license: undefined,
       });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
@@ -385,12 +396,14 @@ describe('transformPDSRecord', () => {
 
     it('stores licenseUri when provided', () => {
       const pdsRecord = createMockPDSRecord({
-        licenseUri: 'at://did:plc:gov/pub.chive.graph.node/license-mit',
+        licenseUri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/c8989feb-d5a7-587c-bb34-64c80013d5e3`,
         licenseSlug: 'MIT',
       });
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
-      expect(result.licenseUri).toBe('at://did:plc:gov/pub.chive.graph.node/license-mit');
+      expect(result.licenseUri).toBe(
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/c8989feb-d5a7-587c-bb34-64c80013d5e3`
+      );
       expect(result.license).toBe('MIT');
     });
 
@@ -500,7 +513,10 @@ describe('transformPDSRecord', () => {
       const result = transformPDSRecord(pdsRecord, mockUri, mockCid);
 
       expect(result.funding).toHaveLength(1);
-      expect(result.funding![0]!).toEqual({
+      if (!result.funding) throw new Error('Expected funding');
+      const fundingItem = result.funding[0];
+      if (!fundingItem) throw new Error('Expected funding at index 0');
+      expect(fundingItem).toEqual({
         funderName: 'National Science Foundation',
         funderDoi: '10.13039/100000001',
         funderRor: 'https://ror.org/021nxhr62',
@@ -639,7 +655,10 @@ describe('transformPDSRecord abstract edge cases', () => {
     const pdsRecord = createMockPDSRecord({
       abstract: [
         { type: 'text', content: 'Relates to ' },
-        { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/field1' },
+        {
+          type: 'nodeRef',
+          uri: 'at://did:plc:123/pub.chive.graph.node/e1f2a3b4-c5d6-7890-1234-567890abcdef',
+        },
         { type: 'text', content: ' research.' },
       ],
     });
@@ -663,7 +682,7 @@ describe('transformPDSRecord abstract edge cases', () => {
         { type: 'text', content: 'Explores ' },
         {
           type: 'nodeRef',
-          uri: 'at://did:plc:123/pub.chive.graph.node/quantum',
+          uri: 'at://did:plc:123/pub.chive.graph.node/f2a3b4c5-d6e7-8901-2345-67890abcdef1',
           label: 'quantum computing',
         },
         { type: 'text', content: ' advances.' },
@@ -683,7 +702,11 @@ describe('transformPDSRecord abstract edge cases', () => {
         'not an object',
         { type: 'text', content: ' more text' },
         { notType: 'invalid' },
-        { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/field1', label: 'field' },
+        {
+          type: 'nodeRef',
+          uri: 'at://did:plc:123/pub.chive.graph.node/a3b4c5d6-e7f8-9012-3456-7890abcdef12',
+          label: 'field',
+        },
       ],
     });
 
@@ -724,8 +747,8 @@ describe('transformPDSRecord abstract edge cases', () => {
 // =============================================================================
 
 describe('transformPDSRecordWithSchema', () => {
-  describe('schema detection', () => {
-    it('detects legacy string abstract format', () => {
+  describe('format detection', () => {
+    it('detects string abstract format', () => {
       const pdsRecord = createMockPDSRecord({
         abstract: 'This is a plain text abstract.',
       });
@@ -733,17 +756,17 @@ describe('transformPDSRecordWithSchema', () => {
       const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
 
       expect(result.abstractFormat).toBe('string');
-      expect(result.schemaDetection.isCurrentSchema).toBe(false);
-      expect(result.schemaDetection.compatibility.detectedFormat).toBe('legacy');
-      expect(result.schemaDetection.compatibility.deprecatedFields).toHaveLength(1);
-      expect(result.schemaDetection.compatibility.deprecatedFields[0]?.field).toBe('abstract');
     });
 
-    it('detects current rich text array format', () => {
+    it('detects rich text array format', () => {
       const pdsRecord = createMockPDSRecord({
         abstract: [
           { type: 'text', content: 'This is a ' },
-          { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/field1', label: 'rich' },
+          {
+            type: 'nodeRef',
+            uri: 'at://did:plc:123/pub.chive.graph.node/b4c5d6e7-f8a9-0123-4567-890abcdef123',
+            label: 'rich',
+          },
           { type: 'text', content: ' text abstract.' },
         ],
       });
@@ -751,9 +774,6 @@ describe('transformPDSRecordWithSchema', () => {
       const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
 
       expect(result.abstractFormat).toBe('rich-text-array');
-      expect(result.schemaDetection.isCurrentSchema).toBe(true);
-      expect(result.schemaDetection.compatibility.detectedFormat).toBe('current');
-      expect(result.schemaDetection.compatibility.deprecatedFields).toHaveLength(0);
     });
 
     it('detects empty abstract', () => {
@@ -764,7 +784,6 @@ describe('transformPDSRecordWithSchema', () => {
       const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
 
       expect(result.abstractFormat).toBe('empty');
-      expect(result.schemaDetection.isCurrentSchema).toBe(true);
     });
   });
 
@@ -789,7 +808,11 @@ describe('transformPDSRecordWithSchema', () => {
       const pdsRecord = createMockPDSRecord({
         abstract: [
           { type: 'text', content: 'Hello ' },
-          { type: 'nodeRef', uri: 'at://did:plc:123/pub.chive.graph.node/world', label: 'world' },
+          {
+            type: 'nodeRef',
+            uri: 'at://did:plc:123/pub.chive.graph.node/c5d6e7f8-a9b0-1234-5678-90abcdef1234',
+            label: 'world',
+          },
         ],
       });
 
@@ -802,16 +825,12 @@ describe('transformPDSRecordWithSchema', () => {
       expect(result.eprint.abstractPlainText).toBe('Hello world');
     });
 
-    it('includes schema detection in result', () => {
+    it('includes abstractFormat and titleFormat in result', () => {
       const pdsRecord = createMockPDSRecord();
       const result = transformPDSRecordWithSchema(pdsRecord, mockUri, mockCid);
 
-      expect(result.schemaDetection).toBeDefined();
-      // Now includes both abstract and title field detection
-      expect(result.schemaDetection.fieldDetections).toHaveLength(2);
-      expect(result.schemaDetection.fieldDetections[0]?.field).toBe('abstract');
-      expect(result.schemaDetection.fieldDetections[1]?.field).toBe('title');
-      expect(result.schemaDetection.compatibility).toBeDefined();
+      expect(result.abstractFormat).toBeDefined();
+      expect(result.titleFormat).toBeDefined();
     });
 
     it('returns valid Eprint model', () => {

@@ -57,6 +57,13 @@ export function AuthorChip({
   const textSize = size === 'sm' ? 'text-xs' : 'text-sm';
   const hasProfile = !!author.did;
 
+  // Handle ORCID click separately to avoid nested anchor issues
+  const handleOrcidClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(`https://orcid.org/${author.orcid}`, '_blank', 'noopener,noreferrer');
+  };
+
   const chipContent = (
     <span
       className={cn(
@@ -91,17 +98,16 @@ export function AuthorChip({
         </>
       )}
 
-      {/* ORCID link */}
+      {/* ORCID button (not anchor to avoid nested <a> tags) */}
       {author.orcid && (
-        <a
-          href={`https://orcid.org/${author.orcid}`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={handleOrcidClick}
           className="text-muted-foreground hover:text-primary"
-          onClick={(e) => e.stopPropagation()}
+          aria-label={`View ORCID profile for ${displayName}`}
         >
           <ExternalLink className="h-3 w-3" />
-        </a>
+        </button>
       )}
     </span>
   );

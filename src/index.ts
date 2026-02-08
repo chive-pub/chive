@@ -137,9 +137,9 @@ interface EnvConfig {
   // Relevance logging (for LTR training)
   readonly relevanceLoggingEnabled?: boolean;
 
-  // Governance PDS
-  readonly governancePdsUrl: string;
-  readonly governanceDid: string;
+  // Graph PDS
+  readonly graphPdsUrl: string;
+  readonly graphPdsDid: string;
 
   // Freshness system
   readonly freshnessEnabled: boolean;
@@ -203,9 +203,9 @@ function loadConfig(): EnvConfig {
     // Relevance logging
     relevanceLoggingEnabled: process.env.RELEVANCE_LOGGING_ENABLED !== 'false',
 
-    // Governance PDS (uses remote governance.chive.pub for local development)
-    governancePdsUrl: process.env.GOVERNANCE_PDS_URL ?? 'https://governance.chive.pub',
-    governanceDid: process.env.GOVERNANCE_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd',
+    // Graph PDS (uses remote governance.chive.pub for local development)
+    graphPdsUrl: process.env.GRAPH_PDS_URL ?? 'https://governance.chive.pub',
+    graphPdsDid: process.env.GRAPH_PDS_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd',
 
     // Freshness system
     freshnessEnabled: process.env.FRESHNESS_ENABLED !== 'false',
@@ -1060,10 +1060,10 @@ async function main(): Promise<void> {
       logger
     );
 
-    // Start governance sync job to sync nodes/edges from Governance PDS to Neo4j
+    // Start governance sync job to sync nodes/edges from Graph PDS to Neo4j
     state.governanceSyncJob = new GovernanceSyncJob({
-      pdsUrl: config.governancePdsUrl,
-      governanceDid: config.governanceDid as DID,
+      pdsUrl: config.graphPdsUrl,
+      graphPdsDid: config.graphPdsDid as DID,
       nodeService: serverConfig.nodeService,
       edgeService: serverConfig.edgeService,
       logger,
@@ -1071,8 +1071,8 @@ async function main(): Promise<void> {
     });
     await state.governanceSyncJob.start();
     logger.info('Governance sync job started', {
-      pdsUrl: config.governancePdsUrl,
-      governanceDid: config.governanceDid,
+      pdsUrl: config.graphPdsUrl,
+      graphPdsDid: config.graphPdsDid,
     });
 
     // Initialize freshness system (if enabled)

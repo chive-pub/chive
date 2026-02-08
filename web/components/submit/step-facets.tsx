@@ -12,7 +12,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { Layers, X, ChevronDown, ChevronRight, Info, Loader2 } from 'lucide-react';
+import { Info, Layers, X, ChevronDown, ChevronRight } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';

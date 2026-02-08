@@ -43,12 +43,14 @@ interface MockReviewService {
   getReviews: ReturnType<typeof vi.fn>;
   getReviewByUri: ReturnType<typeof vi.fn>;
   getReviewThread: ReturnType<typeof vi.fn>;
+  getAuthorInfoByDids: ReturnType<typeof vi.fn>;
 }
 
 const createMockReviewService = (): MockReviewService => ({
   getReviews: vi.fn(),
   getReviewByUri: vi.fn(),
   getReviewThread: vi.fn(),
+  getAuthorInfoByDids: vi.fn().mockResolvedValue(new Map()),
 });
 
 const createMockReviewView = (overrides?: Partial<MockReviewView>): MockReviewView => ({

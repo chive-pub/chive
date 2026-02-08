@@ -33,6 +33,8 @@ import type {
 } from '@/types/interfaces/search.interface.js';
 import type { IStorageBackend } from '@/types/interfaces/storage.interface.js';
 
+import { TEST_GRAPH_PDS_DID } from '../test-constants.js';
+
 /**
  * Creates a mock authorization service for tests.
  *
@@ -433,7 +435,11 @@ export function createMockFacetManager(): ServerConfig['facetManager'] {
     initializeDimensions: vi.fn().mockResolvedValue(undefined),
     getFacetDimensions: vi.fn().mockReturnValue([]),
     getFacetDimension: vi.fn().mockReturnValue(null),
-    createFacet: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.facet/test'),
+    createFacet: vi
+      .fn()
+      .mockResolvedValue(
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.facet/b3615a85-96df-5bc0-b5a5-a2439abd1b14`
+      ),
     getFacet: vi.fn().mockResolvedValue(null),
     getFacetById: vi.fn().mockResolvedValue(null),
     updateFacet: vi.fn().mockResolvedValue(undefined),
@@ -461,7 +467,9 @@ export function createMockNodeService(): ServerConfig['nodeService'] {
     listNodes: vi.fn().mockResolvedValue({ nodes: [], hasMore: false }),
     getHierarchy: vi.fn().mockResolvedValue([]),
     getSubkinds: vi.fn().mockResolvedValue([]),
-    proposeNode: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.nodeProposal/test'),
+    proposeNode: vi
+      .fn()
+      .mockResolvedValue(`at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.nodeProposal/test`),
   } as unknown as ServerConfig['nodeService'];
 }
 
@@ -473,7 +481,9 @@ export function createMockEdgeService(): ServerConfig['edgeService'] {
     getEdge: vi.fn().mockResolvedValue(null),
     listEdges: vi.fn().mockResolvedValue({ edges: [], hasMore: false }),
     getRelations: vi.fn().mockResolvedValue([]),
-    proposeEdge: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.edgeProposal/test'),
+    proposeEdge: vi
+      .fn()
+      .mockResolvedValue(`at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.edgeProposal/test`),
   } as unknown as ServerConfig['edgeService'];
 }
 

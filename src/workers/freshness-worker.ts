@@ -32,6 +32,7 @@ import type { EventEmitter2 as EventEmitter2Type } from 'eventemitter2';
 import type { PDSRateLimiter } from '../services/pds-sync/pds-rate-limiter.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
 import type { AtUri } from '../types/atproto.js';
+import { RateLimitError } from '../types/errors.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
 
 /**
@@ -376,7 +377,7 @@ export class FreshnessWorker {
 
     if (!rateLimitResult.allowed) {
       this.rateLimitedCount++;
-      throw new Error(`Rate limited for PDS ${pdsUrl}, exceeded max wait time`);
+      throw new RateLimitError(Math.ceil(this.maxRateLimitWait / 1000));
     }
 
     // Perform the refresh

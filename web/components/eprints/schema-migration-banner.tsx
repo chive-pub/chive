@@ -1,27 +1,53 @@
 'use client';
 
 /**
- * Schema migration banner component.
+ * Schema migration banner component for eprint records.
  *
  * @remarks
  * Displays a dismissable banner when an eprint record uses deprecated formats.
  * Provides a one-click "Update to Latest Format" button that triggers the
  * schema migration flow.
  *
- * The banner only renders when:
- * - `schemaHints.migrationAvailable` is true
- * - The current user is the record owner (can update the record)
+ * This component wraps the generic migration system for eprint-specific use
+ * cases, supporting both the old API (schemaHints from API responses) and
+ * the new registry-based migration detection.
  *
  * @packageDocumentation
  */
 
-import { useState } from 'react';
-import { AlertCircle, CheckCircle, Loader2, RefreshCw, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import {
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  RefreshCw,
+  X,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useSchemaMigration, canUserMigrateRecord } from '@/lib/hooks/use-schema-migration';
+import {
+  useMigration,
+  canUserMigrateRecord,
+  migrationRegistry,
+  registerEprintMigrations,
+  type MigrationDetectionResult,
+} from '@/lib/migrations';
+
+// Register eprint migrations on module load
+registerEprintMigrations();
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+/**
+ * Collection NSID for eprint submissions.
+ */
+const EPRINT_COLLECTION = 'pub.chive.eprint.submission';
 
 // =============================================================================
 // TYPES
@@ -46,12 +72,12 @@ export interface ApiSchemaHints {
 }
 
 /**
- * Eprint data needed for permission checking.
+ * Eprint data needed for permission checking and migration.
  */
 interface EprintOwnerInfo {
   /** AT-URI of the eprint */
   uri: string;
-  /** DID of the human who submitted the eprint */
+  /** DID of the human who submitted this eprint */
   submittedBy: string;
   /** DID of the paper account (if paper-centric) */
   paperDid?: string;
@@ -61,10 +87,12 @@ interface EprintOwnerInfo {
  * Props for the SchemaMigrationBanner component.
  */
 export interface SchemaMigrationBannerProps {
-  /** Schema hints from the API response */
+  /** Schema hints from the API response (optional, used if record not provided) */
   schemaHints?: ApiSchemaHints;
   /** Eprint owner information for permission checking */
   eprint: EprintOwnerInfo;
+  /** The actual eprint record for registry-based detection (optional) */
+  record?: unknown;
   /** Current user's DID (undefined if not authenticated) */
   currentUserDid?: string;
   /** Additional CSS classes */
@@ -83,32 +111,59 @@ export interface SchemaMigrationBannerProps {
  * @param props - Component props
  * @returns React element or null if no migration needed
  *
+ * @remarks
+ * Supports two modes of operation:
+ * 1. API hints mode: Uses `schemaHints` from API response (backward compatible)
+ * 2. Registry mode: Uses `record` with the migration registry for detection
+ *
+ * When `record` is provided, the registry-based detection takes precedence.
+ *
  * @example
  * ```tsx
+ * // Using API hints (backward compatible)
  * <SchemaMigrationBanner
  *   schemaHints={eprint._schemaHints}
- *   eprint={{
- *     uri: eprint.uri,
- *     submittedBy: eprint.submittedBy,
- *     paperDid: eprint.paperDid,
- *   }}
+ *   eprint={{ uri: eprint.uri, submittedBy: eprint.submittedBy }}
  *   currentUserDid={currentUser?.did}
- *   onMigrationComplete={() => toast.success('Record updated!')}
+ * />
+ *
+ * // Using registry-based detection
+ * <SchemaMigrationBanner
+ *   record={eprint}
+ *   eprint={{ uri: eprint.uri, submittedBy: eprint.submittedBy }}
+ *   currentUserDid={currentUser?.did}
  * />
  * ```
  */
 export function SchemaMigrationBanner({
   schemaHints,
   eprint,
+  record,
   currentUserDid,
   className,
   onMigrationComplete,
 }: SchemaMigrationBannerProps) {
   const [isDismissed, setIsDismissed] = useState(false);
-  const { mutate: migrateRecord, isPending, isSuccess, error, reset } = useSchemaMigration();
+  const [showDetails, setShowDetails] = useState(false);
+
+  // Detect migrations using registry if record is provided
+  const registryDetection = useMemo((): MigrationDetectionResult => {
+    if (record) {
+      return migrationRegistry.detectMigrations(EPRINT_COLLECTION, record);
+    }
+    return { needsMigration: false, migrations: [], affectedFields: [] };
+  }, [record]);
+
+  // Use registry-based hook for applying migrations
+  const migration = useMigration(EPRINT_COLLECTION, record ?? {}, eprint.uri);
+
+  // Determine if migration is needed (registry takes precedence)
+  const needsMigration = record
+    ? registryDetection.needsMigration
+    : (schemaHints?.migrationAvailable ?? false);
 
   // Don't render if no migration available
-  if (!schemaHints?.migrationAvailable) {
+  if (!needsMigration) {
     return null;
   }
 
@@ -127,31 +182,38 @@ export function SchemaMigrationBanner({
   }
 
   // Handle migration
-  const handleMigrate = () => {
-    migrateRecord(
-      { uri: eprint.uri },
-      {
-        onSuccess: () => {
-          onMigrationComplete?.();
-        },
-      }
-    );
+  const handleMigrate = async () => {
+    try {
+      await migration.applyMigrations();
+      onMigrationComplete?.();
+    } catch {
+      // Error handled by mutation
+    }
   };
 
   // Handle dismiss
   const handleDismiss = () => {
     setIsDismissed(true);
-    reset();
+    migration.reset();
   };
 
   // Handle retry
   const handleRetry = () => {
-    reset();
+    migration.reset();
     handleMigrate();
   };
 
-  // Format deprecated fields for display
-  const deprecatedFieldsDisplay = formatDeprecatedFields(schemaHints.deprecatedFields);
+  // Get display information
+  const deprecatedFieldsDisplay = record
+    ? formatMigrationLabels(registryDetection)
+    : formatDeprecatedFields(schemaHints?.deprecatedFields);
+
+  const migrationDescriptions = registryDetection.migrations.map((m) => m.migration.description);
+
+  // State from the migration hook
+  const isPending = migration.isPending;
+  const isSuccess = migration.isSuccess;
+  const error = migration.error;
 
   // Success state
   if (isSuccess) {
@@ -227,6 +289,38 @@ export function SchemaMigrationBanner({
             </p>
           )}
 
+          {/* Expandable details (only when using registry-based detection) */}
+          {migrationDescriptions.length > 0 && (
+            <div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-0 text-sm text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+                onClick={() => setShowDetails(!showDetails)}
+              >
+                {showDetails ? (
+                  <>
+                    <ChevronUp className="mr-1 h-3 w-3" />
+                    Hide details
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="mr-1 h-3 w-3" />
+                    Show details
+                  </>
+                )}
+              </Button>
+
+              {showDetails && (
+                <ul className="mt-2 list-inside list-disc text-sm">
+                  {migrationDescriptions.map((desc, idx) => (
+                    <li key={idx}>{desc}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={handleMigrate}
@@ -247,7 +341,7 @@ export function SchemaMigrationBanner({
               )}
             </Button>
 
-            {schemaHints.migrationUrl && (
+            {schemaHints?.migrationUrl && (
               <Button variant="ghost" size="sm" asChild>
                 <a
                   href={schemaHints.migrationUrl}
@@ -308,6 +402,23 @@ function formatDeprecatedFields(fields?: readonly string[]): string | null {
   };
 
   return fields.map((field) => fieldLabels[field] ?? field).join(', ');
+}
+
+/**
+ * Formats migration labels from registry detection.
+ *
+ * @param detection - Migration detection result
+ * @returns Formatted string for display
+ */
+function formatMigrationLabels(detection: MigrationDetectionResult): string | null {
+  const labels = detection.migrations.map((m) => m.changeLabel);
+  const uniqueLabels = [...new Set(labels)];
+
+  if (uniqueLabels.length === 0) {
+    return null;
+  }
+
+  return uniqueLabels.join(', ');
 }
 
 /**

@@ -1,9 +1,9 @@
 /**
- * Type concepts data.
+ * Type node definitions for knowledge graph seeding.
  *
  * @remarks
- * Governance-controlled type concepts replacing hardcoded enums.
- * All concepts use deterministic UUIDs (v5) for idempotency.
+ * Governance-controlled type nodes replacing hardcoded enums.
+ * All nodes use deterministic UUIDs (v5) for idempotency.
  *
  * Categories:
  * - contribution-type: 14 CRediT contributor roles (ANSI/NISO Z39.104-2022)
@@ -28,7 +28,7 @@
  * @packageDocumentation
  */
 
-export type ConceptCategory =
+export type TypeNodeCategory =
   | 'contribution-type'
   | 'institution-type'
   | 'paper-type'
@@ -48,12 +48,12 @@ export type ConceptCategory =
   | 'identifier-type'
   | 'presentation-type';
 
-export interface ConceptDefinition {
+export interface TypeNodeDefinition {
   /** Human-readable slug for lookups (e.g., 'pdf', 'university') */
   readonly slug: string;
   readonly name: string;
   readonly description: string;
-  readonly category: ConceptCategory;
+  readonly category: TypeNodeCategory;
   readonly wikidataId?: string;
   readonly lcshId?: string;
   readonly fastId?: string;
@@ -80,7 +80,7 @@ export interface ConceptDefinition {
  * @see {@link https://www.niso.org/publications/z39104-2022-credit | ANSI/NISO Z39.104-2022}
  * @see {@link https://credit.niso.org/contributor-roles-defined/ | CRediT Role Definitions}
  */
-export const CONTRIBUTION_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
+export const CONTRIBUTION_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'conceptualization',
     name: 'Conceptualization',
@@ -214,7 +214,7 @@ export const CONTRIBUTION_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Document formats with Wikidata mappings.
  */
-export const DOCUMENT_FORMAT_CONCEPTS: readonly ConceptDefinition[] = [
+export const DOCUMENT_FORMAT_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'pdf',
     name: 'PDF',
@@ -241,7 +241,6 @@ export const DOCUMENT_FORMAT_CONCEPTS: readonly ConceptDefinition[] = [
     name: 'Microsoft Word (DOCX)',
     description: 'Office Open XML document format for word processing.',
     category: 'document-format',
-    wikidataId: 'Q27203404',
   },
   {
     slug: 'html',
@@ -262,7 +261,6 @@ export const DOCUMENT_FORMAT_CONCEPTS: readonly ConceptDefinition[] = [
     name: 'OpenDocument (ODT)',
     description: 'Open Document Format for word processing.',
     category: 'document-format',
-    wikidataId: 'Q27203973',
   },
   {
     slug: 'epub',
@@ -280,7 +278,7 @@ export const DOCUMENT_FORMAT_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Publication status values with Wikidata mappings.
  */
-export const PUBLICATION_STATUS_CONCEPTS: readonly ConceptDefinition[] = [
+export const PUBLICATION_STATUS_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'eprint',
     name: 'Eprint',
@@ -347,7 +345,7 @@ export const PUBLICATION_STATUS_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Access type models with Wikidata mappings.
  */
-export const ACCESS_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
+export const ACCESS_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'open-access',
     name: 'Open Access',
@@ -409,7 +407,7 @@ export const ACCESS_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Code hosting platforms with Wikidata mappings.
  */
-export const CODE_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
+export const CODE_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'github',
     name: 'GitHub',
@@ -489,7 +487,7 @@ export const CODE_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Data repository platforms with Wikidata mappings.
  */
-export const DATA_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
+export const DATA_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'zenodo',
     name: 'Zenodo',
@@ -562,7 +560,7 @@ export const DATA_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Preprint server platforms with Wikidata mappings.
  */
-export const PREPRINT_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
+export const PREPRINT_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'arxiv',
     name: 'arXiv',
@@ -628,7 +626,7 @@ export const PREPRINT_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Pre-registration and registered report platforms.
  */
-export const PREREGISTRATION_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
+export const PREREGISTRATION_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'osf-prereg',
     name: 'OSF Registrations',
@@ -672,7 +670,7 @@ export const PREREGISTRATION_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Protocol repository platforms.
  */
-export const PROTOCOL_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
+export const PROTOCOL_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'protocols-io',
     name: 'protocols.io',
@@ -703,7 +701,7 @@ export const PROTOCOL_PLATFORM_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Supplementary material types with Wikidata mappings.
  */
-export const SUPPLEMENTARY_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
+export const SUPPLEMENTARY_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'dataset',
     name: 'Dataset',
@@ -802,7 +800,7 @@ export const SUPPLEMENTARY_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Institution types with Wikidata mappings.
  */
-export const INSTITUTION_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
+export const INSTITUTION_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'university',
     name: 'University',
@@ -882,7 +880,7 @@ export const INSTITUTION_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Researcher position types with Wikidata mappings.
  */
-export const RESEARCHER_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
+export const RESEARCHER_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'faculty',
     name: 'Faculty',
@@ -940,7 +938,7 @@ export const RESEARCHER_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Identifier systems with Wikidata mappings.
  */
-export const IDENTIFIER_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
+export const IDENTIFIER_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'doi',
     name: 'DOI',
@@ -1020,7 +1018,7 @@ export const IDENTIFIER_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
 /**
  * Conference presentation types with Wikidata mappings.
  */
-export const PRESENTATION_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
+export const PRESENTATION_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
   {
     slug: 'oral-presentation',
     name: 'Oral Presentation',
@@ -1065,10 +1063,10 @@ export const PRESENTATION_TYPE_CONCEPTS: readonly ConceptDefinition[] = [
 ];
 
 // =============================================================================
-// Combined Concepts Export
+// Combined Type Nodes Export
 // =============================================================================
 
-export const ALL_CONCEPTS: readonly ConceptDefinition[] = [
+export const ALL_TYPE_NODES: readonly TypeNodeDefinition[] = [
   ...CONTRIBUTION_TYPE_CONCEPTS,
   ...DOCUMENT_FORMAT_CONCEPTS,
   ...PUBLICATION_STATUS_CONCEPTS,

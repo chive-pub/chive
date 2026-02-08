@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from '@/tests/test-utils';
-import userEvent from '@testing-library/user-event';
 import { AnnotationEditor, AnnotationPreview } from './annotation-editor';
 import type { RichAnnotationBody } from '@/lib/api/schema';
 

@@ -50,7 +50,7 @@ Syncs authority records and approved proposals from Governance PDS:
 import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 
 const job = new GovernanceSyncJob({
-  governanceDid: 'did:plc:chive-governance',
+  graphPdsDid: 'did:plc:chive-governance',
   repository,
   knowledgeGraphService,
   logger,

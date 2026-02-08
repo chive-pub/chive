@@ -523,7 +523,7 @@ export interface IStorageBackend {
    * @example
    * ```typescript
    * const uris = await storage.listEprintUrisByFieldUri(
-   *   ['at://did:plc:governance/pub.chive.graph.node/formal-semantics'],
+   *   ['at://did:plc:graph-pds/pub.chive.graph.node/5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d'],
    *   { limit: 100 }
    * );
    * ```

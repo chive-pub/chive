@@ -51,8 +51,8 @@ spec:
               value: {{ .Values.config.atproto.relayUrl | quote }}
             - name: ATPROTO_PDS_URL
               value: {{ .Values.config.atproto.pdsUrl | quote }}
-            - name: CHIVE_GOVERNANCE_DID
-              value: {{ .Values.config.atproto.governanceDid | quote }}
+            - name: GRAPH_PDS_DID
+              value: {{ .Values.config.atproto.graphPdsDid | quote }}
             - name: RATE_LIMIT_FAIL_MODE
               value: {{ .Values.config.rateLimitFailMode | quote }}
             - name: STALENESS_THRESHOLD_MS

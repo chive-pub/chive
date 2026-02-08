@@ -449,6 +449,7 @@ export class IndexingService {
       const consumer = new FirehoseConsumer({
         cursorManager,
         reconnectionManager,
+        logger: this.logger,
       });
 
       this.relayStates.set(relay, {

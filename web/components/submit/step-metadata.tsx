@@ -25,8 +25,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
-import { PlainMarkdownEditor } from '@/components/editor';
-import { ConceptAutocomplete } from '@/components/forms/concept-autocomplete';
+import { MarkdownEditor } from '@/components/editor';
+import { NodeAutocomplete } from '@/components/forms/node-autocomplete';
 import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
@@ -67,7 +67,7 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
         render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Title *</FormLabel>
-            <PlainMarkdownEditor
+            <MarkdownEditor
               value={field.value ?? ''}
               onChange={field.onChange}
               placeholder="Enter the title of your eprint. Use $...$ for LaTeX math symbols."
@@ -75,11 +75,13 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
               minHeight="60px"
               enablePreview={true}
               showToolbar={false}
+              enableMentions={true}
+              enableTags={true}
               ariaLabel="Title editor"
             />
             <FormDescription>
-              A clear, descriptive title for your eprint (max 500 characters). Supports LaTeX:
-              $H_2O$, $E=mc^2$
+              A clear, descriptive title for your eprint (max 500 characters). Supports LaTeX, @
+              mentions, and # tags.
             </FormDescription>
             {fieldState.error && (
               <p className="text-sm text-destructive">{fieldState.error.message}</p>
@@ -88,14 +90,14 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
         )}
       />
 
-      {/* Abstract with Plain Markdown Editor */}
+      {/* Abstract with Markdown Editor */}
       <Controller
         control={form.control}
         name="abstract"
         render={({ field, fieldState }) => (
           <FormItem>
             <FormLabel>Abstract *</FormLabel>
-            <PlainMarkdownEditor
+            <MarkdownEditor
               value={field.value ?? ''}
               onChange={field.onChange}
               placeholder="Enter your abstract. Use Markdown for formatting and $...$ for inline LaTeX, $$...$$ for display equations."
@@ -103,11 +105,13 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
               minHeight="200px"
               enablePreview={true}
               showToolbar={true}
+              enableMentions={true}
+              enableTags={true}
               ariaLabel="Abstract editor"
             />
             <FormDescription>
-              {abstractLength}/10,000 characters (minimum 50). Supports Markdown formatting and
-              LaTeX equations.
+              {abstractLength}/10,000 characters (minimum 50). Supports Markdown, LaTeX, @ mentions,
+              and # tags.
             </FormDescription>
             {fieldState.error && (
               <p className="text-sm text-destructive">{fieldState.error.message}</p>
@@ -153,15 +157,17 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
           <FormItem>
             <FormLabel>License *</FormLabel>
             <FormControl>
-              <ConceptAutocomplete
+              <NodeAutocomplete
                 id="license-select"
-                category="license"
+                kind="object"
+                subkind="license"
+                label="License"
                 value={field.value}
-                onSelect={(concept) => {
-                  // Set both licenseSlug and licenseUri from the concept
+                onSelect={(node) => {
+                  // Set both licenseSlug and licenseUri from the node
                   // The slug is used for display fallback, the URI for graph reference
-                  field.onChange(concept.id);
-                  form.setValue('licenseUri', concept.uri || undefined);
+                  field.onChange(node.id);
+                  form.setValue('licenseUri', node.uri || undefined);
                 }}
                 onClear={() => {
                   field.onChange('');

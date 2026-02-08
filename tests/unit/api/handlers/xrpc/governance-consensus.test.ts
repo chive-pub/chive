@@ -12,6 +12,8 @@ import { listProposals } from '@/api/handlers/xrpc/governance/listProposals.js';
 import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
+import { TEST_GRAPH_PDS_DID } from '../../../../test-constants.js';
+
 const createMockLogger = (): ILogger => ({
   debug: vi.fn(),
   info: vi.fn(),
@@ -307,7 +309,7 @@ describe('Consensus Calculation in listProposals', () => {
 
   describe('proposal enrichment', () => {
     it('enriches proposal with node label', async () => {
-      const nodeUri = 'at://did:plc:governance/pub.chive.graph.node/quantum-computing';
+      const nodeUri = `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/b8c9d0e1-f2a3-4567-1234-56789abcdef0`;
       const proposal = createMockProposal({
         nodeUri,
       });
@@ -319,7 +321,7 @@ describe('Consensus Calculation in listProposals', () => {
       });
 
       mockGraphService.getNode.mockResolvedValue({
-        id: 'quantum-computing',
+        id: 'b8c9d0e1-f2a3-4567-1234-56789abcdef0',
         uri: nodeUri,
         label: 'Quantum Computing',
         kind: 'type',
@@ -418,8 +420,8 @@ describe('Consensus Calculation in listProposals', () => {
 
   describe('batch lookups', () => {
     it('batches node lookups for multiple proposals', async () => {
-      const nodeUriA = 'at://did:plc:governance/pub.chive.graph.node/node-a';
-      const nodeUriB = 'at://did:plc:governance/pub.chive.graph.node/node-b';
+      const nodeUriA = `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/c9d0e1f2-a3b4-5678-2345-6789abcdef01`;
+      const nodeUriB = `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/d0e1f2a3-b4c5-6789-3456-789abcdef012`;
       const proposals = [
         createMockProposal({ id: '1', nodeUri: nodeUriA }),
         createMockProposal({ id: '2', nodeUri: nodeUriB }),

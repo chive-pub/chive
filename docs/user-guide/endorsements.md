@@ -10,7 +10,7 @@ When you endorse an eprint, you select one or more **contribution types** that y
 
 ## Contribution Types
 
-Endorsements use a fine-grained system based on the CRediT (Contributor Roles Taxonomy) framework:
+Endorsements use a fine-grained system based on the CRediT (Contributor Roles Taxonomy) framework. Contribution types are managed as nodes in the knowledge graph with `kind: 'type'` and `subkind: 'endorsement-kind'`.
 
 ### Core Research
 

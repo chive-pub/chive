@@ -134,7 +134,7 @@ export function authenticateServiceAuth(
       const roles = await authzService.getRoles(result.did);
       const isAdmin = roles.includes('admin');
       const isAlphaTester = roles.includes('alpha-tester') || isAdmin;
-      const isPremium = roles.includes('premium' as never) || isAdmin;
+      const isPremium = roles.includes('premium') || isAdmin;
 
       const user: AuthenticatedUser = {
         did: result.did,

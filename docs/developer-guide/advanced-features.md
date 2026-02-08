@@ -245,17 +245,58 @@ events.addEventListener('ping', () => {
 });
 ```
 
+## Immediate indexing hooks
+
+Reviews and endorsements support immediate indexing after creation to provide instant feedback to users.
+
+### Review indexing
+
+When a user creates a review, the frontend can trigger immediate indexing:
+
+```typescript
+import { useReview } from '@/lib/hooks/use-review';
+
+const { createReview } = useReview();
+
+const handleSubmit = async (reviewData) => {
+  // Create review in user's PDS
+  const result = await createReview(reviewData);
+
+  // The hook automatically triggers indexing via pub.chive.sync.indexRecord
+  // No additional action needed; the review appears immediately
+};
+```
+
+### Endorsement indexing
+
+Endorsements follow the same pattern:
+
+```typescript
+import { useEndorsement } from '@/lib/hooks/use-endorsement';
+
+const { createEndorsement } = useEndorsement();
+
+const handleEndorse = async (endorsementData) => {
+  // Create endorsement in user's PDS
+  const result = await createEndorsement(endorsementData);
+
+  // Immediate indexing is triggered automatically
+};
+```
+
+This provides a better user experience than waiting for firehose propagation, which can take several seconds.
+
 ## Governance PDS connector
 
-Read community authority records from the Governance PDS (`did:plc:chive-governance`).
+Read community authority records from the Graph PDS (`did:plc:chive-governance`).
 
 ### Fetching authority records
 
 ```typescript
 import { GovernancePDSConnector } from '@chive/services/governance';
 
-const governance = new GovernancePDSConnector({
-  governanceDid: 'did:plc:chive-governance' as DID,
+const connector = new GovernancePDSConnector({
+  graphPdsDid: 'did:plc:chive-governance' as DID,
   repository,
   identity,
   logger,
@@ -371,7 +412,7 @@ await metrics.batchIncrement([
 | `REDIS_MAX_BLOB_SIZE_MB`   | Max blob size for L1 cache   | `100`                      |
 | `R2_BUCKET_NAME`           | Cloudflare R2 bucket         | -                          |
 | `R2_CACHE_TTL_SECONDS`     | L2 CDN cache TTL             | `86400`                    |
-| `GOVERNANCE_DID`           | Governance PDS DID           | `did:plc:chive-governance` |
+| `GRAPH_PDS_DID`            | Graph PDS DID                | `did:plc:chive-governance` |
 | `NOTIFICATION_TTL_SECONDS` | Notification storage TTL     | `2592000`                  |
 | `WS_PING_INTERVAL_MS`      | WebSocket keepalive interval | `30000`                    |
 | `WS_CONNECTION_TIMEOUT_MS` | WebSocket inactivity timeout | `60000`                    |

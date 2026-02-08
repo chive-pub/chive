@@ -187,6 +187,19 @@ export interface IGraphDatabase {
   getHierarchy(rootUri: AtUri, maxDepth?: number): Promise<NodeHierarchy>;
 
   /**
+   * Gets ancestor field nodes for multiple field IDs by traversing narrower edges in reverse.
+   * Used to expand field hierarchies for search indexing.
+   *
+   * @param fieldIds - UUIDs of field nodes to get ancestors for
+   * @param maxDepth - Maximum hierarchy depth to traverse (default 10)
+   * @returns Map of field ID to array of ancestor field nodes (excluding the field itself)
+   */
+  getFieldAncestors(
+    fieldIds: readonly string[],
+    maxDepth?: number
+  ): Promise<Map<string, readonly GraphNode[]>>;
+
+  /**
    * Queries eprints by facets.
    */
   queryByFacets(facets: readonly FacetFilter[]): Promise<readonly string[]>;

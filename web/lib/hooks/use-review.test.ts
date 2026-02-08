@@ -321,6 +321,9 @@ describe('useCreateReview', () => {
       eprintUri,
       content: 'Great paper!',
       parentReviewUri: undefined,
+      target: undefined,
+      motivation: 'commenting',
+      facets: undefined,
     });
     expect(review.uri).toBe('at://did:plc:user123/pub.chive.review.comment/abc');
     expect(review.content).toBe('Great paper!');
@@ -357,6 +360,9 @@ describe('useCreateReview', () => {
       eprintUri,
       content: 'This finding is significant.',
       parentReviewUri: undefined,
+      target,
+      motivation: 'highlighting',
+      facets: undefined,
     });
     expect(review.target).toEqual(target);
     expect(review.motivation).toBe('highlighting');
@@ -384,6 +390,9 @@ describe('useCreateReview', () => {
       eprintUri,
       content: 'I agree with your point.',
       parentReviewUri,
+      target: undefined,
+      motivation: 'replying',
+      facets: undefined,
     });
     expect(review.parentReviewUri).toBe(parentReviewUri);
   });

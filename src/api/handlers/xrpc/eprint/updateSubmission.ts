@@ -104,7 +104,7 @@ export const updateSubmission: XRPCMethod<void, InputSchema, OutputSchema> = {
       throw new ValidationError('Missing request body', 'body');
     }
 
-    const { uri, versionBump } = input;
+    const { uri, versionBump, authors } = input;
 
     if (!uri) {
       throw new ValidationError('Missing required parameter: uri', 'uri');
@@ -123,7 +123,33 @@ export const updateSubmission: XRPCMethod<void, InputSchema, OutputSchema> = {
       );
     }
 
-    logger.debug('Update submission request', { uri, versionBump, did: user.did });
+    // Validate authors if provided
+    if (authors !== undefined) {
+      if (!Array.isArray(authors) || authors.length === 0) {
+        throw new ValidationError('authors must be a non-empty array', 'authors', 'invalid');
+      }
+      // Validate each author has required fields
+      authors.forEach((author, i) => {
+        if (!author?.name || typeof author.name !== 'string') {
+          throw new ValidationError(`authors[${i}].name is required`, 'authors', 'invalid');
+        }
+        if (typeof author.order !== 'number' || author.order < 1) {
+          throw new ValidationError(
+            `authors[${i}].order must be a positive integer`,
+            'authors',
+            'invalid'
+          );
+        }
+      });
+    }
+
+    logger.debug('Update submission request', {
+      uri,
+      versionBump,
+      did: user.did,
+      hasAuthors: !!authors,
+      authorCount: authors?.length,
+    });
 
     // Fetch the eprint to verify ownership and get current version
     const eprintData = await eprint.getEprint(uri as AtUri);

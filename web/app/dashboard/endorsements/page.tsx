@@ -40,7 +40,7 @@ function formatDate(dateString: string): string {
  */
 function getEprintPath(uri: string): string {
   // AT-URI format: at://did:plc:xxx/collection/rkey
-  // We want: /eprints/at%3A%2F%2Fdid%3Aplc%3Axxx%2Fcollection%2Frkey
+  // URL path requires encoding due to :// in the URI
   return `/eprints/${encodeURIComponent(uri)}`;
 }
 

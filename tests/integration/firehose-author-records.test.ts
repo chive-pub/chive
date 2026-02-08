@@ -16,6 +16,8 @@ import type { AtUri, CID, DID } from '@/types/atproto.js';
 import type { EprintAuthor } from '@/types/models/author.js';
 import type { Eprint } from '@/types/models/eprint.js';
 
+import { TEST_GRAPH_PDS_DID } from '../test-constants.js';
+
 // =============================================================================
 // Mock Firehose Event Types
 // =============================================================================
@@ -186,7 +188,8 @@ function createEprintRecord(overrides: Partial<Eprint> = {}): Record<string, unk
     affiliations: [{ name: 'Test University' }],
     contributions: [
       {
-        typeUri: 'at://did:plc:chive-governance/pub.chive.graph.concept/conceptualization' as AtUri,
+        typeUri:
+          `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85` as AtUri,
         typeId: 'conceptualization',
         typeLabel: 'Conceptualization',
         degree: 'lead',
@@ -273,7 +276,8 @@ describe('Firehose Author Records Integration', () => {
         affiliations: [{ name: 'Stanford University', rorId: 'https://ror.org/00f54p054' }],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/conceptualization' as AtUri,
+            typeUri:
+              `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85` as AtUri,
             typeId: 'conceptualization',
             typeLabel: 'Conceptualization',
             degree: 'lead',
@@ -372,7 +376,8 @@ describe('Firehose Author Records Integration', () => {
         affiliations: [{ name: 'Partner Organization' }],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/data-curation' as AtUri,
+            typeUri:
+              `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/fa5c6fc7-2202-5e45-8364-7740ae534f7c` as AtUri,
             typeId: 'data-curation',
             typeLabel: 'Data Curation',
             degree: 'supporting',
@@ -466,19 +471,22 @@ describe('Firehose Author Records Integration', () => {
         affiliations: [],
         contributions: [
           {
-            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/conceptualization' as AtUri,
+            typeUri:
+              `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/e1612645-6a62-59b7-a13a-8d618637be85` as AtUri,
             typeId: 'conceptualization',
             typeLabel: 'Conceptualization',
             degree: 'lead',
           },
           {
-            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/methodology' as AtUri,
+            typeUri:
+              `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/052bfbce-9b15-55fd-8efc-99e82f7abeb2` as AtUri,
             typeId: 'methodology',
             typeLabel: 'Methodology',
             degree: 'equal',
           },
           {
-            typeUri: 'at://did:plc:gov/pub.chive.graph.concept/writing-original-draft' as AtUri,
+            typeUri:
+              `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/829cce56-857a-5abb-be9d-9e6b29f51198` as AtUri,
             typeId: 'writing-original-draft',
             typeLabel: 'Writing - Original Draft',
             degree: 'supporting',

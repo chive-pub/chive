@@ -521,6 +521,78 @@
         "selector": {
           "type": "union",
           "refs": ["#textQuoteSelector", "#textPositionSelector", "#fragmentSelector"]
+        },
+        "refinedBy": {
+          "type": "ref",
+          "ref": "#positionRefinement",
+          "description": "Position refinement with page number and bounding box for visual rendering"
+        }
+      }
+    },
+    "positionRefinement": {
+      "type": "object",
+      "description": "Position refinement for precise visual rendering of annotations",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextPositionSelector"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-indexed page number"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Approximate character start offset"
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Approximate character end offset"
+        },
+        "boundingRect": {
+          "type": "ref",
+          "ref": "#boundingRect",
+          "description": "Bounding rectangle for visual positioning"
+        }
+      }
+    },
+    "boundingRect": {
+      "type": "object",
+      "description": "Bounding rectangle coordinates for highlight positioning. All values stored as strings to preserve floating-point precision since ATProto only supports integer type.",
+      "required": ["x1", "y1", "x2", "y2", "width", "height", "pageNumber"],
+      "properties": {
+        "x1": {
+          "type": "string",
+          "description": "Left edge coordinate (as string to preserve float precision)"
+        },
+        "y1": {
+          "type": "string",
+          "description": "Top edge coordinate (as string to preserve float precision)"
+        },
+        "x2": {
+          "type": "string",
+          "description": "Right edge coordinate (as string to preserve float precision)"
+        },
+        "y2": {
+          "type": "string",
+          "description": "Bottom edge coordinate (as string to preserve float precision)"
+        },
+        "width": {
+          "type": "string",
+          "description": "Page width reference (as string to preserve float precision)"
+        },
+        "height": {
+          "type": "string",
+          "description": "Page height reference (as string to preserve float precision)"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Page number (1-indexed for the library)"
         }
       }
     },

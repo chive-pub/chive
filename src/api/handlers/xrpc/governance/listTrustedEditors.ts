@@ -14,7 +14,12 @@ import type {
   OutputSchema,
   TrustedEditor,
 } from '../../../../lexicons/generated/types/pub/chive/governance/listTrustedEditors.js';
-import { AuthenticationError, AuthorizationError } from '../../../../types/errors.js';
+import {
+  AuthenticationError,
+  AuthorizationError,
+  DatabaseError,
+  ServiceUnavailableError,
+} from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -35,7 +40,7 @@ export const listTrustedEditors: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     const trustedEditorService = c.get('services').trustedEditor;
     if (!trustedEditorService) {
-      throw new Error('Trusted editor service not configured');
+      throw new ServiceUnavailableError('Trusted editor service not configured', 'trustedEditor');
     }
 
     const callerStatusResult = await trustedEditorService.getEditorStatus(user.did);
@@ -53,7 +58,11 @@ export const listTrustedEditors: XRPCMethod<QueryParams, void, OutputSchema> = {
     const result = await trustedEditorService.listTrustedEditors(params.limit, params.cursor);
 
     if (!result.ok) {
-      throw new Error(`Failed to list trusted editors: ${result.error.message}`);
+      throw new DatabaseError(
+        'QUERY',
+        `Failed to list trusted editors: ${result.error.message}`,
+        result.error
+      );
     }
 
     // Map to API response format

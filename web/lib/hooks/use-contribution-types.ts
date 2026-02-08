@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { APIError } from '@/lib/errors';
 import { api } from '@/lib/api/client';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import { CREDIT_TAXONOMY, type CreditType } from '@/lib/constants/credit-taxonomy';
 import type {
   PubChiveGraphListNodes,
   PubChiveGovernanceListProposals,
@@ -209,245 +210,26 @@ export interface UseContributionTypeOptions {
 
 /**
  * Default CRediT contribution types (fallback when API not available).
- * Uses unified node AT-URI format: at://governance-did/pub.chive.graph.node/rkey
+ * Maps from shared CREDIT_TAXONOMY to CreditContributionType interface.
  */
-const DEFAULT_CREDIT_TYPES: CreditContributionType[] = [
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-conceptualization',
-    id: 'conceptualization',
-    label: 'Conceptualization',
-    description: 'Ideas; formulation or evolution of overarching research goals and aims',
+const DEFAULT_CREDIT_TYPES: CreditContributionType[] = CREDIT_TAXONOMY.map(
+  (t: CreditType): CreditContributionType => ({
+    uri: t.uri,
+    id: t.id,
+    label: t.label,
+    description: t.description,
     externalMappings: [
       {
         system: 'credit',
-        identifier: 'conceptualization',
-        uri: 'https://credit.niso.org/contributor-roles/conceptualization/',
+        identifier: t.id,
+        uri: t.creditUri,
         matchType: 'exact-match',
       },
     ],
-    status: 'established',
+    status: t.status,
     createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-data-curation',
-    id: 'data-curation',
-    label: 'Data Curation',
-    description:
-      'Management activities to annotate, scrub data and maintain research data for initial use and later reuse',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'data-curation',
-        uri: 'https://credit.niso.org/contributor-roles/data-curation/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-formal-analysis',
-    id: 'formal-analysis',
-    label: 'Formal Analysis',
-    description:
-      'Application of statistical, mathematical, computational, or other formal techniques to analyze or synthesize study data',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'formal-analysis',
-        uri: 'https://credit.niso.org/contributor-roles/formal-analysis/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-funding-acquisition',
-    id: 'funding-acquisition',
-    label: 'Funding Acquisition',
-    description: 'Acquisition of the financial support for the project leading to this publication',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'funding-acquisition',
-        uri: 'https://credit.niso.org/contributor-roles/funding-acquisition/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-investigation',
-    id: 'investigation',
-    label: 'Investigation',
-    description:
-      'Conducting a research and investigation process, specifically performing the experiments, or data/evidence collection',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'investigation',
-        uri: 'https://credit.niso.org/contributor-roles/investigation/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-methodology',
-    id: 'methodology',
-    label: 'Methodology',
-    description: 'Development or design of methodology; creation of models',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'methodology',
-        uri: 'https://credit.niso.org/contributor-roles/methodology/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-project-administration',
-    id: 'project-administration',
-    label: 'Project Administration',
-    description:
-      'Management and coordination responsibility for the research activity planning and execution',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'project-administration',
-        uri: 'https://credit.niso.org/contributor-roles/project-administration/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-resources',
-    id: 'resources',
-    label: 'Resources',
-    description:
-      'Provision of study materials, reagents, materials, patients, laboratory samples, animals, instrumentation, computing resources, or other analysis tools',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'resources',
-        uri: 'https://credit.niso.org/contributor-roles/resources/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-software',
-    id: 'software',
-    label: 'Software',
-    description:
-      'Programming, software development; designing computer programs; implementation of the computer code and supporting algorithms',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'software',
-        uri: 'https://credit.niso.org/contributor-roles/software/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-supervision',
-    id: 'supervision',
-    label: 'Supervision',
-    description:
-      'Oversight and leadership responsibility for the research activity planning and execution, including mentorship',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'supervision',
-        uri: 'https://credit.niso.org/contributor-roles/supervision/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-validation',
-    id: 'validation',
-    label: 'Validation',
-    description:
-      'Verification of the overall replication/reproducibility of results/experiments and other research outputs',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'validation',
-        uri: 'https://credit.niso.org/contributor-roles/validation/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-visualization',
-    id: 'visualization',
-    label: 'Visualization',
-    description:
-      'Preparation, creation and/or presentation of the published work, specifically visualization/data presentation',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'visualization',
-        uri: 'https://credit.niso.org/contributor-roles/visualization/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-original-draft',
-    id: 'writing-original-draft',
-    label: 'Writing - Original Draft',
-    description:
-      'Preparation, creation and/or presentation of the published work, specifically writing the initial draft',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'writing-original-draft',
-        uri: 'https://credit.niso.org/contributor-roles/writing-original-draft/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-review-editing',
-    id: 'writing-review-editing',
-    label: 'Writing - Review & Editing',
-    description:
-      'Preparation, creation and/or presentation of the published work, specifically critical review, commentary or revision',
-    externalMappings: [
-      {
-        system: 'credit',
-        identifier: 'writing-review-editing',
-        uri: 'https://credit.niso.org/contributor-roles/writing-review-editing/',
-        matchType: 'exact-match',
-      },
-    ],
-    status: 'established',
-    createdAt: new Date().toISOString(),
-  },
-];
+  })
+);
 
 /**
  * Fetches available contribution types.

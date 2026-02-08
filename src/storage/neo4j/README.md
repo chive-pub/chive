@@ -60,7 +60,7 @@ const authorityRepo = container.resolve(AuthorityRepository);
 
 await authorityRepo.createAuthorityRecord({
   id: 'neural-networks-cs',
-  uri: 'at://did:plc:gov/pub.chive.graph.authority/nn-cs',
+  uri: 'at://did:plc:graph-pds/pub.chive.graph.authority/33b86a72-193b-5c4f-a585-98eb6c77ca71',
   authorizedForm: 'Neural networks (Computer science)',
   variantForms: ['Neural nets', 'ANNs'],
   scopeNote: 'For biological networks, see Nervous system',
@@ -114,7 +114,7 @@ const moderation = container.resolve(ModerationService);
 
 await moderation.castVote({
   proposalUri,
-  voterDid: 'did:plc:user123',
+  voterDid: 'did:plc:example',
   voteType: 'approve',
   comment: 'Well-sourced with clear evidence',
 });

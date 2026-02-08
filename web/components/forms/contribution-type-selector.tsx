@@ -18,12 +18,18 @@
  * @packageDocumentation
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Check, ChevronDown, X, Search } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { ChevronDown, X, Search } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useContributionDegrees } from '@/lib/hooks/use-nodes';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  CREDIT_TAXONOMY,
+  CONTRIBUTION_DEGREES,
+  type CreditType,
+} from '@/lib/constants/credit-taxonomy';
 import {
   Select,
   SelectContent,
@@ -40,8 +46,12 @@ import { cn } from '@/lib/utils';
 
 /**
  * Contribution degree modifier.
+ *
+ * @remarks
+ * Degrees come from governance-controlled nodes with subkind 'contribution-degree'.
+ * Common values: 'lead', 'equal', 'supporting'.
  */
-export type ContributionDegree = 'lead' | 'equal' | 'supporting';
+export type ContributionDegree = string;
 
 /**
  * Available contribution type from API.
@@ -104,118 +114,17 @@ export interface ContributionTypeSelectorProps {
 // =============================================================================
 
 /**
- * Default CRediT types use unified node AT-URI format.
+ * Default CRediT types mapped from shared taxonomy.
  */
-const DEFAULT_CREDIT_TYPES: ContributionType[] = [
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-conceptualization',
-    id: 'conceptualization',
-    label: 'Conceptualization',
-    description: 'Ideas; formulation or evolution of overarching research goals and aims',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-data-curation',
-    id: 'data-curation',
-    label: 'Data Curation',
-    description: 'Management activities to annotate, scrub data and maintain research data',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-formal-analysis',
-    id: 'formal-analysis',
-    label: 'Formal Analysis',
-    description:
-      'Application of statistical, mathematical, computational, or other formal techniques to analyze or synthesize study data',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-funding-acquisition',
-    id: 'funding-acquisition',
-    label: 'Funding Acquisition',
-    description: 'Acquisition of the financial support for the project leading to this publication',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-investigation',
-    id: 'investigation',
-    label: 'Investigation',
-    description:
-      'Conducting a research and investigation process, specifically performing the experiments, or data/evidence collection',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-methodology',
-    id: 'methodology',
-    label: 'Methodology',
-    description: 'Development or design of methodology; creation of models',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-project-administration',
-    id: 'project-administration',
-    label: 'Project Administration',
-    description:
-      'Management and coordination responsibility for the research activity planning and execution',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-resources',
-    id: 'resources',
-    label: 'Resources',
-    description:
-      'Provision of study materials, reagents, materials, patients, laboratory samples, animals, instrumentation, computing resources, or other analysis tools',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-software',
-    id: 'software',
-    label: 'Software',
-    description:
-      'Programming, software development; designing computer programs; implementation of the computer code and supporting algorithms',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-supervision',
-    id: 'supervision',
-    label: 'Supervision',
-    description:
-      'Oversight and leadership responsibility for the research activity planning and execution, including mentorship external to the core team',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-validation',
-    id: 'validation',
-    label: 'Validation',
-    description:
-      'Verification of the overall replication/reproducibility of results/experiments and other research outputs',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-visualization',
-    id: 'visualization',
-    label: 'Visualization',
-    description:
-      'Preparation, creation and/or presentation of the published work, specifically visualization/data presentation',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-original-draft',
-    id: 'writing-original-draft',
-    label: 'Writing - Original Draft',
-    description:
-      'Preparation, creation and/or presentation of the published work, specifically writing the initial draft',
-    status: 'established',
-  },
-  {
-    uri: 'at://did:plc:5wzpn4a4nbqtz3q45hyud6hd/pub.chive.graph.node/contribution-type-writing-review-editing',
-    id: 'writing-review-editing',
-    label: 'Writing - Review & Editing',
-    description:
-      'Preparation, creation and/or presentation of the published work specifically critical review, commentary or revision',
-    status: 'established',
-  },
-];
+const DEFAULT_CREDIT_TYPES: ContributionType[] = CREDIT_TAXONOMY.map(
+  (t: CreditType): ContributionType => ({
+    uri: t.uri,
+    id: t.id,
+    label: t.label,
+    description: t.description,
+    status: t.status,
+  })
+);
 
 // =============================================================================
 // DEGREE SELECTOR
@@ -227,16 +136,33 @@ interface DegreeSelectorProps {
   disabled?: boolean;
 }
 
+// Use shared CONTRIBUTION_DEGREES from credit-taxonomy.ts
+
 function DegreeSelector({ value, onChange, disabled }: DegreeSelectorProps) {
+  const { data: degreesData } = useContributionDegrees();
+
+  // Use fetched degrees or fallback to defaults
+  const degrees = useMemo(() => {
+    if (degreesData?.nodes && degreesData.nodes.length > 0) {
+      return degreesData.nodes.map((node) => ({
+        slug: node.metadata?.slug ?? node.id,
+        label: node.label,
+      }));
+    }
+    return [...CONTRIBUTION_DEGREES];
+  }, [degreesData]);
+
   return (
     <Select value={value} onValueChange={onChange as (v: string) => void} disabled={disabled}>
       <SelectTrigger className="h-7 w-24 text-xs">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="lead">Lead</SelectItem>
-        <SelectItem value="equal">Equal</SelectItem>
-        <SelectItem value="supporting">Supporting</SelectItem>
+        {degrees.map((degree) => (
+          <SelectItem key={degree.slug} value={degree.slug}>
+            {degree.label}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );

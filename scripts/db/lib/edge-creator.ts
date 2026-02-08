@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides a unified interface for creating edges (relationships) in both
- * the Governance PDS and Neo4j index. Ensures deterministic UUIDs for
+ * the Graph PDS and Neo4j index. Ensures deterministic UUIDs for
  * idempotent seeding.
  *
  * @packageDocumentation
@@ -60,9 +60,9 @@ export interface CreatedEdge {
  * Options for EdgeCreator.
  */
 export interface EdgeCreatorOptions {
-  /** Governance PDS DID */
-  readonly governanceDid: string;
-  /** Governance PDS Writer (optional - for writing to PDS) */
+  /** Graph PDS DID */
+  readonly graphPdsDid: string;
+  /** Graph PDS Writer (optional - for writing to PDS) */
   readonly pdsWriter?: {
     createEdge(collection: string, rkey: string, record: unknown): Promise<{ uri: string }>;
   };
@@ -99,7 +99,7 @@ export class EdgeCreator {
    */
   async createEdge(input: CreateEdgeInput): Promise<CreatedEdge> {
     const uuid = edgeUuid(input.sourceUri, input.targetUri, input.relationSlug);
-    const uri = `at://${this.options.governanceDid}/pub.chive.graph.edge/${uuid}`;
+    const uri = `at://${this.options.graphPdsDid}/pub.chive.graph.edge/${uuid}`;
 
     // Check if already created in this session
     const existing = this.createdEdges.get(uri);
@@ -265,6 +265,6 @@ export class EdgeCreator {
    */
   getEdgeUri(sourceUri: string, targetUri: string, relationSlug: string): string {
     const uuid = edgeUuid(sourceUri, targetUri, relationSlug);
-    return `at://${this.options.governanceDid}/pub.chive.graph.edge/${uuid}`;
+    return `at://${this.options.graphPdsDid}/pub.chive.graph.edge/${uuid}`;
   }
 }

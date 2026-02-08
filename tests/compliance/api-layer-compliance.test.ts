@@ -54,6 +54,7 @@ import {
   createMockNodeRepository,
   createMockEdgeRepository,
 } from '../helpers/mock-services.js';
+import { TEST_GRAPH_PDS_DID } from '../test-constants.js';
 import type { EprintResponse, EprintListResponse, ErrorResponse } from '../types/api-responses.js';
 
 // Test constants for compliance validation
@@ -135,7 +136,7 @@ function createSearchEngine(client: Client): ISearchEngine {
           title: doc.title,
           abstract: doc.abstract,
           keywords: doc.keywords,
-          subjects: doc.subjects,
+          field_nodes: doc.fieldNodes,
           createdAt: doc.createdAt.toISOString(),
           indexedAt: doc.indexedAt.toISOString(),
         },
@@ -278,7 +279,11 @@ function createMockFacetManager(): ServerConfig['facetManager'] {
     initializeDimensions: vi.fn().mockResolvedValue(undefined),
     getFacetDimensions: vi.fn().mockReturnValue([]),
     getFacetDimension: vi.fn().mockReturnValue(null),
-    createFacet: vi.fn().mockResolvedValue('at://did:plc:gov/pub.chive.graph.facet/test'),
+    createFacet: vi
+      .fn()
+      .mockResolvedValue(
+        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.facet/b3615a85-96df-5bc0-b5a5-a2439abd1b14`
+      ),
     getFacet: vi.fn().mockResolvedValue(null),
     getFacetById: vi.fn().mockResolvedValue(null),
     updateFacet: vi.fn().mockResolvedValue(undefined),

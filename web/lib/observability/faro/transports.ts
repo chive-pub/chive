@@ -9,7 +9,6 @@
  * @packageDocumentation
  */
 
-import type { FaroConfig } from './config';
 import { scrubObject } from './privacy';
 
 /**
@@ -161,35 +160,4 @@ export async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promi
   }
 
   throw lastError ?? new Error('All retry attempts failed');
-}
-
-// Re-export placeholder functions for backwards compatibility
-// The actual transport creation is handled by Faro SDK internally
-
-/**
- * @deprecated Use Faro's built-in transports instead
- */
-export function createBatchingTransport(_config: FaroConfig, innerTransport: unknown) {
-  return innerTransport;
-}
-
-/**
- * @deprecated Use Faro's built-in console instrumentation instead
- */
-export function createConsoleTransport(_config: FaroConfig) {
-  return null;
-}
-
-/**
- * @deprecated Use Faro's built-in offline support instead
- */
-export function createOfflineTransport(_config: FaroConfig, innerTransport: unknown) {
-  return innerTransport;
-}
-
-/**
- * @deprecated Use Faro's built-in retry logic instead
- */
-export function createRetryTransport(_config: FaroConfig, innerTransport: unknown) {
-  return innerTransport;
 }

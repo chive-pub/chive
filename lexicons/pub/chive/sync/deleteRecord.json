@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.sync.deleteRecord",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Mark a record as deleted in Chive's index (owner or admin only)",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the record to mark as deleted"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["uri", "deleted"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the deleted record"
+            },
+            "deleted": {
+              "type": "boolean",
+              "description": "Whether deletion succeeded"
+            },
+            "error": {
+              "type": "string",
+              "description": "Error message (if failed)"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "InvalidRequest" },
+        { "name": "AuthenticationRequired" },
+        { "name": "NotFound" }
+      ]
+    }
+  }
+}

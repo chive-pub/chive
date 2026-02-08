@@ -24,7 +24,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Network,
   Search,
-  Loader2,
   Layers,
   Building2,
   User,
@@ -44,7 +43,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -223,25 +221,35 @@ const SUBKIND_BY_SLUG = new Map(SUBKIND_CONFIGS.map((c) => [c.slug, c]));
 async function fetchNodes(
   subkind: string,
   kind?: NodeKind,
-  status?: NodeStatus,
-  limit = 50
+  status?: NodeStatus
 ): Promise<GraphNode[]> {
-  const params = new URLSearchParams({
-    subkind,
-    limit: String(limit),
-  });
+  const allNodes: GraphNode[] = [];
+  let cursor: string | undefined;
+  const pageLimit = 100;
 
-  if (kind) params.set('kind', kind);
-  if (status) params.set('status', status);
+  // Fetch all pages
+  do {
+    const params = new URLSearchParams({
+      subkind,
+      limit: String(pageLimit),
+    });
 
-  const response = await fetch(`/xrpc/pub.chive.graph.listNodes?${params.toString()}`);
+    if (kind) params.set('kind', kind);
+    if (status) params.set('status', status);
+    if (cursor) params.set('cursor', cursor);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch nodes');
-  }
+    const response = await fetch(`/xrpc/pub.chive.graph.listNodes?${params.toString()}`);
 
-  const data = (await response.json()) as { nodes: GraphNode[] };
-  return data.nodes ?? [];
+    if (!response.ok) {
+      throw new Error('Failed to fetch nodes');
+    }
+
+    const data = (await response.json()) as { nodes: GraphNode[]; cursor?: string };
+    allNodes.push(...(data.nodes ?? []));
+    cursor = data.cursor;
+  } while (cursor);
+
+  return allNodes;
 }
 
 async function searchNodesApi(

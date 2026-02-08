@@ -50,7 +50,7 @@ interface GraphNodeDocument {
   $type: 'pub.chive.graph.node';
   id: string;
   kind: 'type' | 'object';
-  subkind: string; // 'field', 'facet', 'institution', 'person', 'concept'
+  subkind: string;
   label: string;
   alternateLabels: string[];
   description: string;
@@ -65,6 +65,13 @@ interface ExternalId {
   value: string;
 }
 ```
+
+Subkind values by kind:
+
+| Kind     | Subkinds                                                   |
+| -------- | ---------------------------------------------------------- |
+| `type`   | `endorsement-kind`, `license`, `methodology`, `paper-type` |
+| `object` | `field`, `facet`, `institution`, `author`, `eprint`        |
 
 ### Graph edges
 
@@ -185,7 +192,7 @@ All changes include provenance:
   "record": { ... },
   "sig": "z...",
   "provenance": {
-    "proposal": "at://did:plc:.../pub.chive.graph.proposal/abc",
+    "proposal": "at://did:plc:.../pub.chive.graph.proposal/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "approvedAt": "2025-01-15T10:30:00Z",
     "approvedBy": "did:plc:admin..."
   }

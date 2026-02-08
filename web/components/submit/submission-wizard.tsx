@@ -29,7 +29,8 @@ import { Button } from '@/components/ui/button';
 const submitLogger = logger.child({ component: 'submission-wizard' });
 import { cn } from '@/lib/utils';
 import { useAuth, useAgent } from '@/lib/auth/auth-context';
-import { createEprintRecord, type CreateRecordResult } from '@/lib/atproto';
+import { createEprintRecord, createStandardDocument, type CreateRecordResult } from '@/lib/atproto';
+import { SUPPORTED_DOCUMENT_FORMATS } from '@/lib/schemas/eprint';
 import { authApi } from '@/lib/api/client';
 
 import { WizardProgress, WizardProgressCompact, type WizardStep } from './wizard-progress';
@@ -49,43 +50,13 @@ import type { EprintAuthorFormData } from '@/components/forms/eprint-author-edit
 // TYPES
 // =============================================================================
 
-/**
- * Supported document format values.
- */
-export type DocumentFormatValue =
-  | 'pdf'
-  | 'docx'
-  | 'html'
-  | 'markdown'
-  | 'latex'
-  | 'jupyter'
-  | 'odt'
-  | 'rtf'
-  | 'epub'
-  | 'txt';
-
-/**
- * Supplementary material category.
- */
-export type SupplementaryCategoryValue =
-  | 'appendix'
-  | 'figure'
-  | 'table'
-  | 'dataset'
-  | 'code'
-  | 'notebook'
-  | 'video'
-  | 'audio'
-  | 'presentation'
-  | 'protocol'
-  | 'questionnaire'
-  | 'other';
+import type { DocumentFormat, PublicationStatus } from '@/lib/api/generated/types/pub/chive/defs';
 
 /**
  * Supplementary material input with metadata.
  *
  * @remarks
- * Uses knowledge graph concepts for category. The `category` field stores the
+ * Uses knowledge graph nodes for category. The `category` field stores the
  * slug (e.g., 'dataset', 'code') for auto-detection and icon display.
  * The `categoryUri` and `categoryName` store the knowledge graph reference.
  */
@@ -95,9 +66,9 @@ export interface SupplementaryMaterialInput {
   description?: string;
   /** Category slug for auto-detection and icon display */
   category: string;
-  /** Knowledge graph concept AT-URI */
+  /** Knowledge graph node AT-URI */
   categoryUri?: string;
-  /** Knowledge graph concept display name */
+  /** Knowledge graph node display name */
   categoryName?: string;
   detectedFormat: string;
   order: number;
@@ -106,27 +77,17 @@ export interface SupplementaryMaterialInput {
 /**
  * Form values for the submission wizard.
  */
-/**
- * Publication status values.
- */
-export type PublicationStatusValue =
-  | 'eprint'
-  | 'under_review'
-  | 'revision_requested'
-  | 'accepted'
-  | 'in_press'
-  | 'published'
-  | 'retracted';
+export type PublicationStatusValue = PublicationStatus;
 
 // Platform and presentation types are now sourced from the knowledge graph
-// via ConceptAutocomplete. URIs (e.g., at://did:plc:governance/pub.chive.graph.concept/uuid)
+// via NodeAutocomplete. URIs (e.g., at://did:plc:governance/pub.chive.graph.node/uuid)
 // are stored in platformUri/presentationTypeUri fields.
 // Display names are stored in platformName/presentationTypeName fields.
 
 export interface EprintFormValues {
   // Step 1: Files
   documentFile?: File;
-  documentFormat?: DocumentFormatValue;
+  documentFormat?: DocumentFormat;
   supplementaryFiles?: File[];
 
   // Step 1.5: Destination (where to submit)
@@ -135,6 +96,10 @@ export interface EprintFormValues {
 
   // Step 2: Supplementary Materials
   supplementaryMaterials?: SupplementaryMaterialInput[];
+
+  // Cross-platform discovery (standard.site)
+  /** Whether to create a site.standard.document record for cross-platform discovery */
+  enableCrossPlatformDiscovery?: boolean;
 
   // Step 3: Metadata
   title: string;
@@ -148,10 +113,10 @@ export interface EprintFormValues {
   // Step 4: Authors
   authors: EprintAuthorFormData[];
 
-  // Step 5: Fields
+  // Step 5: Fields (matches FieldNodeRef schema)
   fieldNodes: Array<{
-    id: string;
-    name: string;
+    uri: string;
+    label: string;
   }>;
 
   // Step 6: Facets (optional)
@@ -196,11 +161,17 @@ export interface EprintFormValues {
   };
   funding?: Array<{
     funderName?: string;
+    funderUri?: string;
+    funderDoi?: string;
+    funderRor?: string;
     grantNumber?: string;
   }>;
   conferencePresentation?: {
     conferenceName?: string;
+    conferenceUri?: string;
+    conferenceIteration?: string;
     conferenceLocation?: string;
+    presentationDate?: string;
     presentationTypeUri?: string;
     presentationTypeName?: string;
     conferenceUrl?: string;
@@ -346,7 +317,7 @@ const formSchema = z.object({
             typeUri: z.string(),
             typeId: z.string().nullish(),
             typeLabel: z.string().nullish(),
-            degree: z.enum(['lead', 'equal', 'supporting']),
+            degree: z.string(),
           })
         ),
         isCorrespondingAuthor: z.boolean(),
@@ -355,12 +326,12 @@ const formSchema = z.object({
     )
     .min(1, 'At least one author is required'),
 
-  // Step 4
+  // Step 5: Fields (matches FieldNodeRef schema)
   fieldNodes: z
     .array(
       z.object({
-        id: z.string(),
-        name: z.string(),
+        uri: z.string(),
+        label: z.string(),
       })
     )
     .min(1, 'At least one field is required')
@@ -417,7 +388,7 @@ const stepSchemas = {
               typeUri: z.string(),
               typeId: z.string().nullish(),
               typeLabel: z.string().nullish(),
-              degree: z.enum(['lead', 'equal', 'supporting']),
+              degree: z.string(),
             })
           ),
           isCorrespondingAuthor: z.boolean(),
@@ -430,8 +401,8 @@ const stepSchemas = {
     fieldNodes: z
       .array(
         z.object({
-          id: z.string(),
-          name: z.string(),
+          uri: z.string(),
+          label: z.string(),
         })
       )
       .min(1, 'At least one field is required')
@@ -500,6 +471,9 @@ const stepSchemas = {
       .array(
         z.object({
           funderName: z.string().optional(),
+          funderUri: z.string().optional(),
+          funderDoi: z.string().optional(),
+          funderRor: z.string().optional(),
           grantNumber: z.string().optional(),
         })
       )
@@ -507,7 +481,10 @@ const stepSchemas = {
     conferencePresentation: z
       .object({
         conferenceName: z.string().optional(),
+        conferenceUri: z.string().optional(),
+        conferenceIteration: z.string().optional(),
         conferenceLocation: z.string().optional(),
+        presentationDate: z.string().optional(),
         presentationTypeUri: z.string().optional(),
         presentationTypeName: z.string().optional(),
         conferenceUrl: z.union([z.url(), z.literal('')]).optional(),
@@ -597,6 +574,8 @@ export function SubmissionWizard({
       preregistration: {},
       funding: [],
       conferencePresentation: {},
+      // Cross-platform discovery is enabled by default
+      enableCrossPlatformDiscovery: true,
     },
   });
 
@@ -692,9 +671,9 @@ export function SubmissionWizard({
         isHighlighted: a.isHighlighted,
       }));
 
-      // Field nodes need: uri (use id as AT-URI), weight (optional)
+      // Field nodes: uri is already the full AT-URI, weight is optional
       const transformedFieldNodes = values.fieldNodes.map((f) => ({
-        uri: f.id, // The id should be the AT-URI
+        uri: f.uri,
         weight: undefined,
       }));
 
@@ -703,7 +682,7 @@ export function SubmissionWizard({
         file: m.file,
         label: m.label,
         description: m.description,
-        category: m.category as SupplementaryCategoryValue,
+        category: m.category,
         detectedFormat: m.detectedFormat,
         order: m.order,
       }));
@@ -733,7 +712,9 @@ export function SubmissionWizard({
         agent,
         {
           documentFile: values.documentFile!,
-          documentFormat: values.documentFormat,
+          documentFormat: values.documentFormat as
+            | (typeof SUPPORTED_DOCUMENT_FORMATS)[number]
+            | undefined,
           supplementaryMaterials: transformedSupplementary,
           title: values.title,
           abstract: values.abstract,
@@ -746,6 +727,31 @@ export function SubmissionWizard({
         },
         targetAgent
       );
+
+      // Optionally create a standard.site document for cross-platform discovery
+      if (values.enableCrossPlatformDiscovery && agent) {
+        try {
+          submitLogger.info('Creating standard.site document', { eprintUri: result.uri });
+          await createStandardDocument(agent, {
+            title: values.title,
+            description: values.abstract?.substring(0, 2000),
+            eprintUri: result.uri,
+            eprintCid: result.cid,
+          });
+          submitLogger.info('Standard.site document created for cross-platform discovery');
+        } catch (standardDocError) {
+          // Log but don't fail; the eprint is the primary record
+          submitLogger.warn(
+            'Failed to create standard.site document; eprint was created successfully',
+            {
+              error:
+                standardDocError instanceof Error
+                  ? standardDocError.message
+                  : String(standardDocError),
+            }
+          );
+        }
+      }
 
       // Request immediate indexing as a UX optimization.
       // The firehose is the primary indexing mechanism (Jetstream broadcasts all

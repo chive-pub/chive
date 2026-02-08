@@ -44,14 +44,14 @@ import { useNodeSearch } from '@/lib/hooks/use-nodes';
  * Field reference for form state.
  *
  * @remarks
- * The `id` field contains the AT-URI of the knowledge graph node.
- * This is used for referencing in eprint submissions.
+ * The `uri` field contains the AT-URI of the knowledge graph node.
+ * This matches the FieldNodeRef schema used in eprint submissions.
  */
 export interface FieldSelection {
-  /** AT-URI of the field node (used for references in eprint submissions) */
-  id: string;
-  /** Field name for display */
-  name: string;
+  /** AT-URI of the field node (matches FieldNodeRef.uri) */
+  uri: string;
+  /** Field display label */
+  label: string;
   /** Optional description */
   description?: string;
 }
@@ -124,39 +124,32 @@ export function FieldSearch({
     { enabled: query.length >= 2 }
   );
 
-  // selectedIds now contains AT-URIs (since FieldSelection.id is now the URI)
-  const selectedIds = useMemo(() => new Set(selectedFields.map((f) => f.id)), [selectedFields]);
+  // selectedUris contains AT-URIs for deduplication
+  const selectedUris = useMemo(() => new Set(selectedFields.map((f) => f.uri)), [selectedFields]);
   const canAddMore = selectedFields.length < maxFields;
 
   // Map search results to field format and exclude already selected (by URI)
   const filteredFields = useMemo(() => {
     if (!searchData?.nodes) return [];
     return searchData.nodes
-      .filter((node) => !selectedIds.has(node.uri))
+      .filter((node) => !selectedUris.has(node.uri))
       .map((node) => ({
-        id: node.id,
         uri: node.uri,
-        name: node.label,
+        label: node.label,
         description: node.description,
       }));
-  }, [searchData, selectedIds]);
+  }, [searchData, selectedUris]);
 
   const handleAddField = useCallback(
-    (field: { id: string; uri: string; name: string; description?: string }) => {
+    (field: FieldSelection) => {
       if (!canAddMore) return;
-      // Check by URI since that's now the stable identifier in FieldSelection
-      if (selectedIds.has(field.uri)) return;
+      if (selectedUris.has(field.uri)) return;
 
-      // Use AT-URI as the id (not the UUID) - this is what eprint submissions expect
-      onFieldAdd({
-        id: field.uri,
-        name: field.name,
-        description: field.description,
-      });
+      onFieldAdd(field);
       setQuery('');
       setIsOpen(false);
     },
-    [canAddMore, selectedIds, onFieldAdd]
+    [canAddMore, selectedUris, onFieldAdd]
   );
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -185,18 +178,18 @@ export function FieldSearch({
         <div className="flex flex-wrap gap-2">
           {selectedFields.map((field) => (
             <Badge
-              key={field.id}
+              key={field.uri}
               variant="secondary"
               className="gap-1 py-1 pl-2 pr-1"
               data-testid="selected-field"
             >
               <ChevronRight className="h-3 w-3 text-muted-foreground" />
-              <span>{field.name}</span>
+              <span>{field.label}</span>
               <button
                 type="button"
                 onClick={() => onFieldRemove(field)}
                 className="ml-1 rounded-full p-0.5 hover:bg-muted"
-                aria-label={`Remove ${field.name}`}
+                aria-label={`Remove ${field.label}`}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -248,14 +241,14 @@ export function FieldSearch({
                   <CommandGroup heading="Fields">
                     {filteredFields.slice(0, 10).map((field) => (
                       <CommandItem
-                        key={field.id}
-                        value={field.id}
+                        key={field.uri}
+                        value={field.uri}
                         onSelect={() => handleAddField(field)}
                         className="cursor-pointer"
                         data-testid="field-suggestion"
                       >
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-medium">{field.name}</span>
+                          <span className="font-medium">{field.label}</span>
                           {field.description && (
                             <span className="text-xs text-muted-foreground line-clamp-1">
                               {field.description}

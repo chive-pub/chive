@@ -11,6 +11,23 @@ The eprint lifecycle features follow a two-step authorization pattern:
 
 This design keeps authorization logic on the backend while maintaining ATProto's principle that users control their own data.
 
+## Section-Based Editing
+
+The eprint edit page (`/eprints/edit/[...uri]`) uses a section-based UI that organizes editable fields into logical groups:
+
+| Section       | Fields                           | Description                        |
+| ------------- | -------------------------------- | ---------------------------------- |
+| Metadata      | Title, abstract, keywords        | Core document information          |
+| Authors       | Author list, affiliations, ORCID | Authorship and attribution         |
+| Fields        | Field classifications            | Academic discipline categorization |
+| Publication   | Status, DOI, journal             | Publication metadata               |
+| Files         | PDF, supplementary materials     | Document files                     |
+| Supplementary | Code, data, appendices           | Additional materials               |
+| Facets        | PMEST classification             | Faceted classification values      |
+| Review        | Changelog, version bump          | Version control                    |
+
+Each section can be expanded or collapsed, with unsaved changes indicated by a badge.
+
 ## React Query Hooks
 
 All lifecycle operations use TanStack Query mutations located in `web/lib/hooks/use-eprint-mutations.ts`.
@@ -339,6 +356,41 @@ import { PaperAuthPrompt } from '@/components/eprints/paper-auth-prompt';
 | paperDid  | string                 | DID of paper account                |
 | onSuccess | () => void             | Callback on successful auth         |
 | onError   | (error: Error) => void | Callback on auth failure (optional) |
+
+### SchemaMigrationBanner
+
+Banner component that prompts users to update records using outdated schema formats.
+
+**Location:** `web/components/migrations/migration-banner.tsx`
+
+```typescript
+import { SchemaMigrationBanner } from '@/components/migrations/migration-banner';
+
+<SchemaMigrationBanner
+  uri={eprint.uri}
+  fields={['title', 'abstract']}
+  onMigrated={() => refetch()}
+/>
+```
+
+**Props:**
+
+| Prop       | Type       | Description                         |
+| ---------- | ---------- | ----------------------------------- |
+| uri        | string     | AT-URI of the record to migrate     |
+| fields     | string[]   | List of fields needing migration    |
+| onMigrated | () => void | Callback after successful migration |
+| className  | string     | Additional CSS classes (optional)   |
+
+The banner appears when `needsSchemaMigration()` returns true for a record. It shows which fields need updating and provides a one-click migration action.
+
+### QuickEditPencil
+
+Inline edit button for quick title editing without opening the full edit dialog.
+
+**Location:** `web/components/eprints/eprint-header.tsx`
+
+The pencil icon appears next to the title when the user has edit permissions. Clicking it opens an inline text input for immediate title changes.
 
 ## Data Types
 

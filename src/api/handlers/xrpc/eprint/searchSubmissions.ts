@@ -69,7 +69,7 @@ interface HierarchyNode {
  * @example
  * ```typescript
  * const uris = flattenHierarchy(hierarchy);
- * // ['at://did:plc:abc/pub.chive.graph.node/root', 'at://did:plc:abc/pub.chive.graph.node/child1']
+ * // ['at://did:plc:abc/pub.chive.graph.node/2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a', 'at://did:plc:abc/pub.chive.graph.node/3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b']
  * ```
  */
 function flattenHierarchy(hierarchy: HierarchyNode): string[] {

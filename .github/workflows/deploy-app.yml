@@ -325,16 +325,16 @@ jobs:
             # Run the reindex script inside the chive-api container
             # The script syncs all pub.chive.graph.node and pub.chive.graph.edge records
             docker exec \
-              -e GOVERNANCE_PDS_URL=http://governance-pds:3000 \
-              -e GOVERNANCE_DID=${{ vars.GOVERNANCE_DID }} \
-              -e GOVERNANCE_HANDLE=${{ vars.GOVERNANCE_HANDLE }} \
-              -e GOVERNANCE_PASSWORD=${{ secrets.GOVERNANCE_PDS_ADMIN_PASSWORD }} \
+              -e GRAPH_PDS_URL=http://governance-pds:3000 \
+              -e GRAPH_PDS_DID=${{ vars.GRAPH_PDS_DID }} \
+              -e GRAPH_PDS_HANDLE=${{ vars.GRAPH_PDS_HANDLE }} \
+              -e GRAPH_PDS_PASSWORD=${{ secrets.GRAPH_PDS_ADMIN_PASSWORD }} \
               -e NEO4J_URI=bolt://neo4j:7687 \
               -e NEO4J_USER=neo4j \
               -e NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }} \
               chive-api \
               node --enable-source-maps dist/scripts/db/reindex-governance-to-neo4j.js || {
-                echo "::warning::Governance sync failed - this may be expected on first deploy before records exist"
+                echo "::warning::Graph PDS sync failed - this may be expected on first deploy before records exist"
               }
 
             echo "=== Governance sync complete ==="
