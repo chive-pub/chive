@@ -151,4 +151,31 @@
   .react-pdf__Page__textContent {
     max-width: 100%;
   }
+
+  /* Cross-reference node styling in editor */
+  .cross-reference {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium cursor-default;
+  }
+
+  .cross-reference-review {
+    @apply bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300;
+  }
+
+  .cross-reference-annotation {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300;
+  }
+
+  /* Scroll-to highlight flash animation */
+  @keyframes highlight-flash {
+    0% {
+      background-color: hsl(var(--primary) / 0.2);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  .highlight-flash {
+    animation: highlight-flash 1.5s ease-out;
+  }
 }

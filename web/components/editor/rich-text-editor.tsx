@@ -24,10 +24,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactRenderer, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
+import tippy, { type Instance as TippyInstance } from 'tippy.js';
 import {
   Bold,
   Italic,
@@ -50,7 +51,11 @@ import { Toggle } from '@/components/ui/toggle';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api/client';
+import { logger } from '@/lib/observability';
 import { LatexExtension } from './extensions/latex-extension';
+import { CrossReferenceExtension } from './extensions/cross-reference-extension';
+import { CrossReferenceList, type CrossReferenceItem } from './cross-reference-list';
 import { MarkdownPreview } from './markdown-preview';
 import type { RichTextContent, RichTextFacet } from './types';
 
@@ -88,6 +93,8 @@ export interface RichTextEditorProps {
   ariaLabel?: string;
   /** Test ID for the editor container */
   testId?: string;
+  /** AT-URI of the eprint (enables [[ cross-reference autocomplete) */
+  eprintUri?: string;
 }
 
 // =============================================================================
@@ -130,6 +137,166 @@ function ToolbarButton({
 }
 
 // =============================================================================
+// CROSS-REFERENCE SUGGESTION
+// =============================================================================
+
+const crossRefLogger = logger.child({ component: 'cross-reference-suggestion' });
+
+/**
+ * Creates the suggestion configuration for [[ cross-reference autocomplete.
+ *
+ * @param eprintUri - AT-URI of the current eprint
+ * @returns Suggestion options for CrossReferenceExtension
+ */
+function createCrossReferenceSuggestion(eprintUri: string) {
+  return {
+    char: '[[',
+    allowSpaces: true,
+
+    items: async ({ query }: { query: string }): Promise<CrossReferenceItem[]> => {
+      crossRefLogger.debug('Cross-reference items called', { query, eprintUri });
+
+      try {
+        const response = await api.pub.chive.review.listForEprint({
+          eprintUri,
+          limit: 20,
+        });
+
+        const reviews = response.data.reviews ?? [];
+        const results: CrossReferenceItem[] = reviews.map((review) => {
+          const isAnnotation = review.motivation === 'highlighting' || !!review.target;
+          const authorLabel =
+            review.author.displayName ?? review.author.handle ?? review.author.did.slice(0, 12);
+          const preview = review.content.slice(0, 60) + (review.content.length > 60 ? '...' : '');
+
+          return {
+            uri: review.uri,
+            label: authorLabel,
+            type: isAnnotation ? ('annotation' as const) : ('review' as const),
+            contentPreview: preview,
+          };
+        });
+
+        // Filter by query if provided
+        if (query) {
+          const lowerQuery = query.toLowerCase();
+          return results.filter(
+            (item) =>
+              item.label.toLowerCase().includes(lowerQuery) ||
+              item.contentPreview.toLowerCase().includes(lowerQuery)
+          );
+        }
+
+        return results;
+      } catch (err) {
+        crossRefLogger.error('Cross-reference fetch failed', { error: err });
+        return [];
+      }
+    },
+
+    command: ({
+      editor,
+      range,
+      props,
+    }: {
+      editor: Editor;
+      range: { from: number; to: number };
+      props: CrossReferenceItem;
+    }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'crossReference',
+          attrs: {
+            uri: props.uri,
+            label: props.label,
+            refType: props.type,
+          },
+        })
+        .insertContent(' ')
+        .run();
+    },
+
+    render: () => {
+      let component: ReactRenderer | null = null;
+      let popup: TippyInstance | null = null;
+
+      return {
+        onStart: (props: {
+          clientRect?: (() => DOMRect | null) | null;
+          command: (item: CrossReferenceItem) => void;
+          items: CrossReferenceItem[];
+          editor: Editor;
+        }) => {
+          component = new ReactRenderer(CrossReferenceList, {
+            props: {
+              items: props.items,
+              command: props.command,
+            },
+            editor: props.editor,
+          });
+
+          if (!props.clientRect) return;
+
+          const rect = props.clientRect();
+          if (!rect) return;
+
+          popup = tippy(document.body, {
+            getReferenceClientRect: () => rect,
+            appendTo: () => document.body,
+            content: component.element,
+            showOnCreate: true,
+            interactive: true,
+            trigger: 'manual',
+            placement: 'bottom-start',
+            hideOnClick: false,
+          });
+        },
+
+        onUpdate: (props: {
+          clientRect?: (() => DOMRect | null) | null;
+          command: (item: CrossReferenceItem) => void;
+          items: CrossReferenceItem[];
+        }) => {
+          component?.updateProps({
+            items: props.items,
+            command: props.command,
+          });
+
+          if (!props.clientRect) return;
+
+          const rect = props.clientRect();
+          if (rect) {
+            popup?.setProps({
+              getReferenceClientRect: () => rect,
+            });
+          }
+        },
+
+        onKeyDown: (props: { event: KeyboardEvent }) => {
+          if (props.event.key === 'Escape') {
+            popup?.hide();
+            return true;
+          }
+
+          const componentRef = component?.ref as {
+            onKeyDown?: (e: KeyboardEvent) => boolean;
+          } | null;
+          return componentRef?.onKeyDown?.(props.event) ?? false;
+        },
+
+        onExit: () => {
+          popup?.destroy();
+          component?.destroy();
+        },
+      };
+    },
+  };
+}
+
+// =============================================================================
 // COMPONENT
 // =============================================================================
 
@@ -150,6 +317,7 @@ export function RichTextEditor({
   autoFocus = false,
   ariaLabel = 'Rich text editor',
   testId,
+  eprintUri,
 }: RichTextEditorProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -175,6 +343,13 @@ export function RichTextEditor({
         },
       }),
       ...(enableLatex ? [LatexExtension] : []),
+      ...(eprintUri
+        ? [
+            CrossReferenceExtension.configure({
+              suggestion: createCrossReferenceSuggestion(eprintUri),
+            }),
+          ]
+        : []),
     ],
     content: value.text || '',
     editable: !disabled && !isPreviewMode,
@@ -526,6 +701,22 @@ function extractFacetsFromEditor(editor: ReturnType<typeof useEditor>): RichText
       });
 
       byteOffset += latexBytes.length;
+    } else if (node.type.name === 'crossReference') {
+      // Handle cross-reference nodes
+      const label = node.attrs.label as string;
+      const labelBytes = encoder.encode(label);
+
+      facets.push({
+        index: { byteStart: byteOffset, byteEnd: byteOffset + labelBytes.length },
+        features: [
+          {
+            $type: 'pub.chive.richtext.facets#crossReference',
+            uri: node.attrs.uri as string,
+          },
+        ],
+      });
+
+      byteOffset += labelBytes.length;
     } else if (node.type.name === 'paragraph' || node.type.name === 'hardBreak') {
       // Add newline
       byteOffset += 1;

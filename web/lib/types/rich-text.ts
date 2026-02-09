@@ -45,6 +45,7 @@ export type { RichTextFacet };
  * - Basic: text (with optional formatting)
  * - ATProto facets: mention, link, tag
  * - Entity references: nodeRef, wikidataRef, fieldRef, facetRef, eprintRef, annotationRef, authorRef
+ * - Cross-references: crossReference (review/annotation within an eprint)
  * - Special content: latex, code
  */
 export type RichTextItemType =
@@ -59,6 +60,7 @@ export type RichTextItemType =
   | 'eprintRef' // Eprint reference
   | 'annotationRef' // Annotation reference
   | 'authorRef' // Author reference (DID)
+  | 'crossReference' // Cross-reference to review or annotation
   | 'latex' // LaTeX math expression
   | 'code'; // Code block
 
@@ -224,6 +226,19 @@ export interface AuthorRefItem extends BaseRichTextItem {
 }
 
 /**
+ * Cross-reference to a review or annotation within an eprint.
+ */
+export interface CrossReferenceItem extends BaseRichTextItem {
+  type: 'crossReference';
+  /** AT-URI of the referenced review or annotation */
+  uri: string;
+  /** Display label (author name or excerpt) */
+  label: string;
+  /** Whether this references a review or annotation */
+  refType: 'review' | 'annotation';
+}
+
+/**
  * LaTeX math expression.
  */
 export interface LatexItem extends BaseRichTextItem {
@@ -262,6 +277,7 @@ export type RichTextItem =
   | EprintRefItem
   | AnnotationRefItem
   | AuthorRefItem
+  | CrossReferenceItem
   | LatexItem
   | CodeItem;
 
@@ -346,6 +362,8 @@ export function extractPlainText(items: RichTextItem[]): string {
           return item.excerpt;
         case 'authorRef':
           return item.displayName ?? item.handle ?? `@${item.did}`;
+        case 'crossReference':
+          return item.label;
         default:
           return '';
       }
@@ -494,6 +512,9 @@ export function toLegacyAnnotationItems(items: RichTextItem[]): LegacyAnnotation
           type: 'text',
           content: item.displayMode ? `$$${item.content}$$` : `$${item.content}$`,
         };
+      case 'crossReference':
+        // Cross-references become annotation refs in legacy format
+        return { type: 'annotationRef', uri: item.uri, excerpt: item.label };
       case 'code':
         return {
           type: 'text',
