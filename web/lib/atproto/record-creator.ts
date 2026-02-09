@@ -1212,6 +1212,305 @@ export async function updateReviewRecord(
 }
 
 // =============================================================================
+// ANNOTATION RECORD CREATION
+// =============================================================================
+
+/**
+ * Annotation comment record as stored in ATProto.
+ *
+ * @remarks
+ * Uses W3C Web Annotation compliant text span targeting. The target
+ * field is required (unlike review comments, which can be general).
+ */
+export interface AnnotationCommentRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.annotation.comment';
+  eprintUri: string;
+  body: Array<{ $type?: string; type: string; content: string; facets?: unknown[] }>;
+  target: ReviewTextSpanTarget & {
+    refinedBy?: ReviewTextSpanTarget['refinedBy'];
+  };
+  parentAnnotation?: string;
+  motivationFallback?: string;
+  createdAt: string;
+}
+
+/**
+ * Input for creating an annotation comment.
+ */
+export interface CreateAnnotationInput {
+  eprintUri: string;
+  content: string;
+  target: InputTextSpanTarget;
+  parentAnnotationUri?: string;
+  motivation?: string;
+  /** Optional facets for rich text (links, etc.) */
+  facets?: ReviewFacet[];
+}
+
+/**
+ * Create an annotation comment record in the user's PDS.
+ *
+ * @remarks
+ * Annotations always require a target text span, unlike general reviews.
+ * The record is stored in the `pub.chive.annotation.comment` collection
+ * and will be indexed by Chive when it appears on the firehose.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Annotation data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if target is not provided
+ *
+ * @example
+ * ```typescript
+ * const result = await createAnnotationRecord(agent, {
+ *   eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/123',
+ *   content: 'This finding contradicts earlier work.',
+ *   target: { selector: { exact: 'our results show' } },
+ * });
+ * ```
+ */
+export async function createAnnotationRecord(
+  agent: Agent,
+  input: CreateAnnotationInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  if (!input.target?.selector?.exact) {
+    throw new Error('Annotation target with text quote selector is required');
+  }
+
+  // Build the body array (lexicon requires body, not content)
+  const textItem: {
+    $type: string;
+    type: string;
+    content: string;
+    facets?: Array<{
+      index: { byteStart: number; byteEnd: number };
+      features: Array<{ $type: string; uri?: string }>;
+    }>;
+  } = {
+    $type: 'pub.chive.annotation.comment#textItem',
+    type: 'text',
+    content: input.content,
+  };
+
+  // Add facets if provided
+  if (input.facets && input.facets.length > 0) {
+    textItem.facets = input.facets;
+  }
+
+  const body: AnnotationCommentRecord['body'] = [textItem];
+
+  // Transform target from frontend format to lexicon format
+  const target: AnnotationCommentRecord['target'] = {
+    selector: {
+      $type: 'pub.chive.annotation.comment#textQuoteSelector',
+      type: 'TextQuoteSelector',
+      exact: input.target.selector.exact,
+      prefix: input.target.selector.prefix,
+      suffix: input.target.selector.suffix,
+    },
+  };
+
+  // Include refinedBy for position data (pageNumber, boundingRect)
+  if (input.target.refinedBy) {
+    const inputBoundingRect = input.target.refinedBy.boundingRect;
+    target.refinedBy = {
+      $type: 'pub.chive.annotation.comment#positionRefinement',
+      type: 'TextPositionSelector',
+      pageNumber: input.target.refinedBy.pageNumber,
+      start: input.target.refinedBy.start,
+      end: input.target.refinedBy.end,
+      // Serialize boundingRect coordinates to strings for ATProto storage
+      // (ATProto Lexicon only supports integer type, not float)
+      boundingRect: inputBoundingRect
+        ? {
+            $type: 'pub.chive.annotation.comment#boundingRect',
+            x1: String(inputBoundingRect.x1),
+            y1: String(inputBoundingRect.y1),
+            x2: String(inputBoundingRect.x2),
+            y2: String(inputBoundingRect.y2),
+            width: String(inputBoundingRect.width),
+            height: String(inputBoundingRect.height),
+            pageNumber:
+              inputBoundingRect.pageNumber ?? (input.target.refinedBy.pageNumber ?? 0) + 1,
+          }
+        : undefined,
+    };
+  }
+
+  const record: AnnotationCommentRecord = {
+    $type: 'pub.chive.annotation.comment',
+    eprintUri: input.eprintUri,
+    body,
+    target,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.parentAnnotationUri) {
+    record.parentAnnotation = input.parentAnnotationUri;
+  }
+
+  if (input.motivation) {
+    record.motivationFallback = input.motivation;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.annotation.comment',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Entity link record as stored in ATProto.
+ *
+ * @remarks
+ * Entity links connect a text span in an eprint to a structured entity
+ * such as a Wikidata item, knowledge graph node, author, or eprint.
+ */
+export interface EntityLinkRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.annotation.entityLink';
+  eprintUri: string;
+  target: ReviewTextSpanTarget & {
+    refinedBy?: ReviewTextSpanTarget['refinedBy'];
+  };
+  linkedEntity: {
+    $type: string;
+    [key: string]: unknown;
+  };
+  confidence?: number;
+  createdAt: string;
+}
+
+/**
+ * Input for creating an entity link.
+ */
+export interface CreateEntityLinkInput {
+  eprintUri: string;
+  target: InputTextSpanTarget;
+  linkedEntity: {
+    $type: string;
+    [key: string]: unknown;
+  };
+  confidence?: number;
+}
+
+/**
+ * Create an entity link record in the user's PDS.
+ *
+ * @remarks
+ * Entity links are stored in the `pub.chive.annotation.entityLink` collection.
+ * They connect a text span to an external entity for semantic enrichment.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Entity link data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if target is not provided
+ *
+ * @example
+ * ```typescript
+ * const result = await createEntityLinkRecord(agent, {
+ *   eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/123',
+ *   target: { selector: { exact: 'transformer architecture' } },
+ *   linkedEntity: {
+ *     $type: 'pub.chive.annotation.entityLink#wikidataEntity',
+ *     qid: 'Q97109669',
+ *     label: 'Transformer (machine learning model)',
+ *     url: 'https://www.wikidata.org/wiki/Q97109669',
+ *   },
+ *   confidence: 0.95,
+ * });
+ * ```
+ */
+export async function createEntityLinkRecord(
+  agent: Agent,
+  input: CreateEntityLinkInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  if (!input.target?.selector?.exact) {
+    throw new Error('Entity link target with text quote selector is required');
+  }
+
+  // Transform target from frontend format to lexicon format
+  const target: EntityLinkRecord['target'] = {
+    selector: {
+      $type: 'pub.chive.annotation.comment#textQuoteSelector',
+      type: 'TextQuoteSelector',
+      exact: input.target.selector.exact,
+      prefix: input.target.selector.prefix,
+      suffix: input.target.selector.suffix,
+    },
+  };
+
+  // Include refinedBy for position data
+  if (input.target.refinedBy) {
+    const inputBoundingRect = input.target.refinedBy.boundingRect;
+    target.refinedBy = {
+      $type: 'pub.chive.annotation.comment#positionRefinement',
+      type: 'TextPositionSelector',
+      pageNumber: input.target.refinedBy.pageNumber,
+      start: input.target.refinedBy.start,
+      end: input.target.refinedBy.end,
+      boundingRect: inputBoundingRect
+        ? {
+            $type: 'pub.chive.annotation.comment#boundingRect',
+            x1: String(inputBoundingRect.x1),
+            y1: String(inputBoundingRect.y1),
+            x2: String(inputBoundingRect.x2),
+            y2: String(inputBoundingRect.y2),
+            width: String(inputBoundingRect.width),
+            height: String(inputBoundingRect.height),
+            pageNumber:
+              inputBoundingRect.pageNumber ?? (input.target.refinedBy.pageNumber ?? 0) + 1,
+          }
+        : undefined,
+    };
+  }
+
+  const record: EntityLinkRecord = {
+    $type: 'pub.chive.annotation.entityLink',
+    eprintUri: input.eprintUri,
+    target,
+    linkedEntity: input.linkedEntity,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.confidence !== undefined) {
+    record.confidence = input.confidence;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.annotation.entityLink',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
 // PROFILE RECORD CREATION/UPDATE
 // =============================================================================
 
