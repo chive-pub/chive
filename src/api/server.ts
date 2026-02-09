@@ -26,6 +26,7 @@ import type { Redis } from 'ioredis';
 import { ServiceAuthVerifier, type IServiceAuthVerifier } from '../auth/service-auth/index.js';
 import type { ActivityService } from '../services/activity/activity-service.js';
 import type { AlphaApplicationService } from '../services/alpha/alpha-application-service.js';
+import type { AnnotationService } from '../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../services/claiming/claiming-service.js';
@@ -97,6 +98,11 @@ export interface ServerConfig {
    * Review service instance.
    */
   readonly reviewService: ReviewService;
+
+  /**
+   * Annotation service instance.
+   */
+  readonly annotationService: AnnotationService;
 
   /**
    * Tag manager instance.
@@ -316,6 +322,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       graph: config.graphService,
       blobProxy: config.blobProxyService,
       review: config.reviewService,
+      annotation: config.annotationService,
       tagManager: config.tagManager,
       facetManager: config.facetManager,
       nodeRepository: config.nodeRepository,

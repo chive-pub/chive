@@ -323,6 +323,7 @@ describe('REST v1/eprints Endpoints Integration', () => {
       graphService: createMockGraphService(),
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
+      annotationService: {} as ServerConfig['annotationService'],
       tagManager: createMockTagManager(),
       facetManager: createMockFacetManager(),
       nodeService: createMockNodeService(),

@@ -13,6 +13,7 @@ import type { Redis } from 'ioredis';
 
 import type { ActivityService } from '../../services/activity/activity-service.js';
 import type { AlphaApplicationService } from '../../services/alpha/alpha-application-service.js';
+import type { AnnotationService } from '../../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
@@ -56,6 +57,7 @@ export interface ChiveServices {
   readonly graph: KnowledgeGraphService;
   readonly blobProxy: BlobProxyService;
   readonly review: ReviewService;
+  readonly annotation: AnnotationService;
   readonly tagManager: TagManager;
   readonly facetManager: FacetManager;
   readonly nodeRepository: NodeRepository;

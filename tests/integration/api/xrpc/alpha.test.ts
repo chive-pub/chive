@@ -125,6 +125,7 @@ describe('XRPC Alpha Application Endpoints Integration', () => {
       graphService: createMockGraphService(),
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
+      annotationService: {} as ServerConfig['annotationService'],
       tagManager: createMockTagManager(),
       facetManager: createMockFacetManager(),
       nodeService: createMockNodeService(),

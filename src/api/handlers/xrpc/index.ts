@@ -22,6 +22,7 @@ import { lexicons, getMethodType } from '../../xrpc/validation.js';
 export * from './activity/index.js';
 export * from './actor/index.js';
 export * from './alpha/index.js';
+export { annotationMethods } from './annotation/index.js';
 export * from './author/index.js';
 export * from './backlink/index.js';
 export * from './claiming/index.js';
@@ -41,6 +42,7 @@ export * from './notification/index.js';
 import { activityMethods } from './activity/index.js';
 import { actorMethods } from './actor/index.js';
 import { alphaMethods } from './alpha/index.js';
+import { annotationMethods } from './annotation/index.js';
 import { authorMethods } from './author/index.js';
 import { backlinkMethods } from './backlink/index.js';
 import { claimingMethods, claimingRestEndpoints } from './claiming/index.js';
@@ -63,6 +65,7 @@ export const allXRPCMethods = {
   ...activityMethods,
   ...actorMethods,
   ...alphaMethods,
+  ...annotationMethods,
   ...authorMethods,
   ...backlinkMethods,
   ...claimingMethods,
