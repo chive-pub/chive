@@ -7,7 +7,6 @@ import { createMockReviewsResponse, createMockReviewThread } from '@/tests/mock-
 import {
   reviewKeys,
   useReviews,
-  useInlineReviews,
   useReviewThread,
   useCreateReview,
   useDeleteReview,
@@ -82,11 +81,6 @@ describe('reviewKeys', () => {
     expect(reviewKeys.thread(reviewUri)).toEqual(['reviews', 'thread', reviewUri]);
   });
 
-  it('generates inline key', () => {
-    const uri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
-    expect(reviewKeys.inline(uri)).toEqual(['reviews', 'eprint', uri, 'inline']);
-  });
-
   it('generates byUser key', () => {
     const did = 'did:plc:user123';
     expect(reviewKeys.byUser(did)).toEqual(['reviews', 'user', did]);
@@ -139,8 +133,6 @@ describe('useReviews', () => {
         useReviews(eprintUri, {
           limit: 20,
           cursor: 'next',
-          motivation: 'commenting',
-          inlineOnly: false,
         }),
       { wrapper: Wrapper }
     );
@@ -153,8 +145,6 @@ describe('useReviews', () => {
       eprintUri,
       limit: 20,
       cursor: 'next',
-      motivation: 'commenting',
-      inlineOnly: false,
     });
   });
 
@@ -196,55 +186,6 @@ describe('useReviews', () => {
 
     expect(result.current.fetchStatus).toBe('idle');
     expect(mockListForEprint).not.toHaveBeenCalled();
-  });
-});
-
-describe('useInlineReviews', () => {
-  const eprintUri = 'at://did:plc:abc/pub.chive.eprint.submission/123';
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('fetches inline reviews with inlineOnly flag', async () => {
-    const mockResponse = createMockReviewsResponse();
-    mockListForEprint.mockResolvedValueOnce({
-      data: mockResponse,
-    });
-
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useInlineReviews(eprintUri), { wrapper: Wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(mockListForEprint).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eprintUri,
-        inlineOnly: true,
-      })
-    );
-  });
-
-  it('is disabled when eprintUri is empty', () => {
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useInlineReviews(''), { wrapper: Wrapper });
-
-    expect(result.current.fetchStatus).toBe('idle');
-  });
-
-  it('throws error when API returns error', async () => {
-    mockListForEprint.mockRejectedValueOnce(new Error('Failed to fetch'));
-
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useInlineReviews(eprintUri), { wrapper: Wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-
-    expect(result.current.error?.message).toBe('Failed to fetch');
   });
 });
 
@@ -314,58 +255,16 @@ describe('useCreateReview', () => {
     const review = await result.current.mutateAsync({
       eprintUri,
       content: 'Great paper!',
-      motivation: 'commenting',
     });
 
     expect(mockCreateReviewRecord).toHaveBeenCalledWith(mockAgent, {
       eprintUri,
       content: 'Great paper!',
       parentReviewUri: undefined,
-      target: undefined,
-      motivation: 'commenting',
       facets: undefined,
     });
     expect(review.uri).toBe('at://did:plc:user123/pub.chive.review.comment/abc');
     expect(review.content).toBe('Great paper!');
-  });
-
-  it('creates a review with target span', async () => {
-    mockGetCurrentAgent.mockReturnValue(mockAgent as never);
-    mockCreateReviewRecord.mockResolvedValueOnce({
-      uri: 'at://did:plc:user123/pub.chive.review.comment/abc',
-      cid: 'bafycid123',
-    });
-
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useCreateReview(), { wrapper: Wrapper });
-
-    const target = {
-      source: eprintUri,
-      selector: {
-        type: 'TextQuoteSelector' as const,
-        exact: 'important finding',
-        prefix: 'We found an ',
-        suffix: ' in our study.',
-      },
-    };
-
-    const review = await result.current.mutateAsync({
-      eprintUri,
-      content: 'This finding is significant.',
-      target,
-      motivation: 'highlighting',
-    });
-
-    expect(mockCreateReviewRecord).toHaveBeenCalledWith(mockAgent, {
-      eprintUri,
-      content: 'This finding is significant.',
-      parentReviewUri: undefined,
-      target,
-      motivation: 'highlighting',
-      facets: undefined,
-    });
-    expect(review.target).toEqual(target);
-    expect(review.motivation).toBe('highlighting');
   });
 
   it('creates a reply to another review', async () => {
@@ -383,15 +282,12 @@ describe('useCreateReview', () => {
       eprintUri,
       content: 'I agree with your point.',
       parentReviewUri,
-      motivation: 'replying',
     });
 
     expect(mockCreateReviewRecord).toHaveBeenCalledWith(mockAgent, {
       eprintUri,
       content: 'I agree with your point.',
       parentReviewUri,
-      target: undefined,
-      motivation: 'replying',
       facets: undefined,
     });
     expect(review.parentReviewUri).toBe(parentReviewUri);

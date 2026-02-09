@@ -41,45 +41,6 @@ function flattenThreads(
   function processThread(thread: ServiceReviewThread): void {
     const root = thread.root;
 
-    // Map anchor to target format expected by frontend
-    let target: ReviewView['target'] = undefined;
-    if (root.anchor) {
-      // Use stored refinedBy if available (contains boundingRect for accurate positioning)
-      // Fall back to constructing from pageNumber for backwards compatibility
-      const refinedBy = root.anchor.refinedBy
-        ? {
-            type: 'TextPositionSelector' as const,
-            start: root.anchor.refinedBy.start ?? 0,
-            end: root.anchor.refinedBy.end ?? 0,
-            pageNumber: root.anchor.refinedBy.pageNumber ?? root.anchor.pageNumber,
-            boundingRect: root.anchor.refinedBy.boundingRect,
-          }
-        : root.anchor.pageNumber
-          ? {
-              type: 'TextPositionSelector' as const,
-              start: 0,
-              end: 0,
-              pageNumber: root.anchor.pageNumber,
-            }
-          : undefined;
-
-      target = {
-        source: root.anchor.source ?? root.subject,
-        // TextQuoteSelector requires type literal and exact string
-        selector: root.anchor.selector?.exact
-          ? {
-              type: 'TextQuoteSelector' as const,
-              exact: root.anchor.selector.exact,
-              prefix: root.anchor.selector.prefix,
-              suffix: root.anchor.selector.suffix,
-            }
-          : undefined,
-        refinedBy,
-        // Deprecated page field for backwards compatibility
-        page: root.anchor.refinedBy?.pageNumber ?? root.anchor.pageNumber,
-      };
-    }
-
     // Resolve author info from map
     const authorInfo = authorMap.get(root.author);
 
@@ -149,8 +110,8 @@ function flattenThreads(
       eprintUri: root.subject,
       content: root.deleted ? '' : root.text,
       body,
-      target,
-      motivation: (root.motivation as ReviewView['motivation']) ?? 'commenting',
+      target: undefined,
+      motivation: 'commenting',
       parentReviewUri: root.parent ?? undefined,
       replyCount: root.replyCount,
       createdAt: root.createdAt.toISOString(),
@@ -209,8 +170,6 @@ export const listForEprint: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     logger.debug('Listing reviews for eprint', {
       eprintUri: params.eprintUri,
-      motivation: params.motivation,
-      inlineOnly: params.inlineOnly,
       limit: params.limit,
       cursor: params.cursor,
     });
@@ -235,17 +194,7 @@ export const listForEprint: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     // Flatten threads with author info
-    let allReviews = flattenThreads(threads, authorMap);
-
-    // Filter to inline annotations only if requested
-    if (params.inlineOnly) {
-      allReviews = allReviews.filter((review) => review.target !== undefined);
-    }
-
-    // Filter by motivation if specified
-    if (params.motivation) {
-      allReviews = allReviews.filter((review) => review.motivation === params.motivation);
-    }
+    const allReviews = flattenThreads(threads, authorMap);
 
     // Apply pagination
     const limit = params.limit ?? 50;

@@ -66,7 +66,6 @@ export {
 
 export {
   useReviews,
-  useInlineReviews,
   useReviewThread,
   useAuthorReviews,
   useCreateReview,
