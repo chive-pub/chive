@@ -173,10 +173,10 @@ export function useAuthor(did: string, options: UseAuthorOptions = {}) {
 export function useAuthorProfile(did: string) {
   return useQuery({
     queryKey: authorKeys.profile(did),
-    queryFn: async (): Promise<AuthorProfile> => {
+    queryFn: async (): Promise<AuthorProfileResponse> => {
       try {
         const response = await api.pub.chive.author.getProfile({ did });
-        return response.data.profile;
+        return response.data;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
@@ -188,7 +188,7 @@ export function useAuthorProfile(did: string) {
     },
     enabled: !!did,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    select: (data) => data as unknown as AuthorProfile,
+    select: (data) => data.profile,
   });
 }
 

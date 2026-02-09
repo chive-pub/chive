@@ -112,7 +112,7 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
     );
   }
 
-  if (!data) {
+  if (!data?.profile) {
     notFound();
   }
 

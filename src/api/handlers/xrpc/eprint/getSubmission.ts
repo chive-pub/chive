@@ -181,6 +181,40 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
           }
         : undefined;
 
+    // Resolve UUID field labels from Neo4j at response time.
+    // During indexing, labels may fall back to UUIDs if Neo4j was unavailable.
+    const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let resolvedFields = result.fields?.map((f) => ({
+      uri: normalizeFieldUri(f.uri),
+      label: f.label,
+      id: f.id ?? normalizeFieldUri(f.uri),
+    }));
+
+    if (resolvedFields) {
+      const uuidFields = resolvedFields.filter((f) => UUID_PATTERN.test(f.label));
+      if (uuidFields.length > 0) {
+        try {
+          const { nodeRepository } = c.get('services');
+          const uuidIds = uuidFields.map((f) => f.id);
+          const nodeMap = await nodeRepository.getNodesByIds(uuidIds);
+          resolvedFields = resolvedFields.map((f) => {
+            if (UUID_PATTERN.test(f.label)) {
+              const node = nodeMap.get(f.id);
+              if (node) {
+                return { ...f, label: node.label };
+              }
+            }
+            return f;
+          });
+        } catch (err) {
+          logger.warn('Failed to resolve UUID field labels from Neo4j', {
+            error: err instanceof Error ? err.message : 'Unknown error',
+            uuidCount: uuidFields.length,
+          });
+        }
+      }
+    }
+
     // Build the submission value in lexicon format
     const response: OutputSchema & { _schemaHints?: typeof schemaHints } = {
       uri: result.uri,
@@ -241,12 +275,9 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
         paperDid: result.paperDid,
         keywords: result.keywords ? [...result.keywords] : undefined,
         fieldUris: result.fields?.map((f) => normalizeFieldUri(f.uri)),
-        // Include enriched fields with resolved labels for frontend display
-        fields: result.fields?.map((f) => ({
-          uri: normalizeFieldUri(f.uri),
-          label: f.label,
-          id: f.id ?? normalizeFieldUri(f.uri),
-        })),
+        // Include enriched fields with resolved labels for frontend display.
+        // UUID labels are resolved from Neo4j at response time (see below).
+        fields: resolvedFields,
         version: result.version,
         licenseUri: result.licenseUri,
         licenseSlug: result.license as
