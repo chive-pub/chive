@@ -35,8 +35,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { useInlineReviews } from '@/lib/hooks/use-review';
-import type { Review } from '@/lib/api/schema';
+import { useAnnotations, type AnnotationView } from '@/lib/hooks/use-annotations';
 
 // =============================================================================
 // TYPES
@@ -61,7 +60,7 @@ export interface AnnotationSidebarProps {
  */
 interface PageGroup {
   pageNumber: number;
-  annotations: Review[];
+  annotations: AnnotationView[];
 }
 
 /**
@@ -89,18 +88,18 @@ export function AnnotationSidebar({
   // Expand the first page (pageNumber=0) by default
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([0]));
 
-  const { data, isLoading, error } = useInlineReviews(eprintUri);
+  const { data, isLoading, error } = useAnnotations(eprintUri);
 
   // Group annotations by page
   const pageGroups = useMemo<PageGroup[]>(() => {
-    if (!data?.reviews) return [];
+    if (!data?.annotations) return [];
 
-    const groups = new Map<number, Review[]>();
+    const groups = new Map<number, AnnotationView[]>();
 
-    data.reviews.forEach((review: Review) => {
-      const pageNumber = review.target?.refinedBy?.pageNumber ?? 0;
+    data.annotations.forEach((annotation: AnnotationView) => {
+      const pageNumber = annotation.target?.refinedBy?.pageNumber ?? 0;
       const existing = groups.get(pageNumber) ?? [];
-      groups.set(pageNumber, [...existing, review]);
+      groups.set(pageNumber, [...existing, annotation]);
     });
 
     // Sort groups by page number
@@ -126,7 +125,7 @@ export function AnnotationSidebar({
     }
 
     return sorted;
-  }, [data?.reviews, sortBy]);
+  }, [data?.annotations, sortBy]);
 
   // Toggle page expansion
   const togglePage = (pageNumber: number) => {
@@ -163,7 +162,7 @@ export function AnnotationSidebar({
     );
   }
 
-  const totalAnnotations = data?.reviews?.length ?? 0;
+  const totalAnnotations = data?.annotations?.length ?? 0;
 
   return (
     <div className={cn('flex flex-col rounded-lg border bg-card', className)}>
@@ -244,7 +243,7 @@ export function AnnotationSidebar({
  */
 interface PageAnnotationGroupProps {
   pageNumber: number;
-  annotations: Review[];
+  annotations: AnnotationView[];
   isExpanded: boolean;
   onToggle: () => void;
   selectedUri?: string;
@@ -307,7 +306,7 @@ function PageAnnotationGroup({
  * Props for AnnotationItem.
  */
 interface AnnotationItemProps {
-  annotation: Review;
+  annotation: AnnotationView;
   isSelected?: boolean;
   onClick?: () => void;
 }

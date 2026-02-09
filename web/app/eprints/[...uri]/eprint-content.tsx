@@ -59,7 +59,7 @@ import { RelatedPapersPanel } from '@/components/discovery';
 import type { RichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
-import { Sparkles, Pencil, Trash2 } from 'lucide-react';
+import { Sparkles, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,11 @@ import {
   useUpdateReview,
   useDeleteReview,
 } from '@/lib/hooks/use-review';
+import {
+  useAnnotations,
+  useCreateAnnotation,
+  useCreateEntityLink,
+} from '@/lib/hooks/use-annotations';
 import {
   useEndorsementSummary,
   useUserEndorsement,
@@ -199,6 +204,11 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const deleteReview = useDeleteReview();
+
+  // Annotation hooks (separate from reviews -- annotations have text span targets)
+  const { data: annotationsData } = useAnnotations(uri);
+  const createAnnotation = useCreateAnnotation();
+  const createEntityLink = useCreateEntityLink();
   const createEndorsement = useCreateEndorsement();
   const updateEndorsement = useUpdateEndorsement();
   const deleteEndorsement = useDeleteEndorsement();
@@ -398,17 +408,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
   const handleSubmitInlineReview = useCallback(
     async (data: ReviewFormData) => {
-      await createReview.mutateAsync({
+      if (!inlineReviewTarget?.target) return;
+      await createAnnotation.mutateAsync({
         eprintUri: uri,
         content: data.content,
-        target: inlineReviewTarget?.target,
-        parentReviewUri: data.parentReviewUri,
+        target: inlineReviewTarget.target,
+        motivation: 'commenting',
       });
       setShowReviewForm(false);
       setReplyingTo(null);
       setInlineReviewTarget(null);
     },
-    [uri, createReview, inlineReviewTarget]
+    [uri, createAnnotation, inlineReviewTarget]
   );
 
   /**
@@ -700,6 +711,15 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         <TabsList>
           <TabsTrigger value="abstract">Abstract</TabsTrigger>
           <TabsTrigger value="pdf">{getDocumentTabLabel(eprint.documentFormatUri)}</TabsTrigger>
+          <TabsTrigger value="annotations" className="gap-1.5">
+            <MessageSquare className="h-3 w-3" />
+            Annotations
+            {annotationsData?.annotations && annotationsData.annotations.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                {annotationsData.annotations.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="reviews" className="gap-1.5">
             Reviews
             {reviewsData?.reviews && reviewsData.reviews.length > 0 && (
@@ -907,7 +927,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   setShowReviewForm(false);
                   setInlineReviewTarget(null);
                 }}
-                isLoading={createReview.isPending}
+                isLoading={createAnnotation.isPending}
               />
             </div>
           )}
@@ -918,8 +938,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             onOpenChange={setEntityLinkDialogOpen}
             selectedText={entityLinkSelection?.selectedText ?? ''}
             onLink={async (entity) => {
-              // Create an annotation with entity reference
-              // The annotation body includes the linked entity as embedded content
+              // Create a proper entity link record (not a review with motivation='linking')
               if (!entityLinkSelection?.target) {
                 setEntityLinkDialogOpen(false);
                 setEntityLinkSelection(null);
@@ -927,41 +946,75 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               }
 
               try {
-                // Create entity link content and URL based on entity type
-                let entityLabel: string;
-                let entityUrl: string;
+                // Build linkedEntity based on entity type
+                let linkedEntity: { $type: string; [key: string]: unknown };
 
                 switch (entity.type) {
                   case 'wikidata':
-                    entityLabel = entity.label;
-                    entityUrl = entity.url;
+                    linkedEntity = {
+                      $type: 'pub.chive.annotation.entityLink#externalIdLink',
+                      type: 'externalId',
+                      system: 'wikidata',
+                      identifier: entity.qid ?? entity.id,
+                      label: entity.label,
+                      uri: entity.url,
+                    };
                     break;
                   case 'nodeRef':
-                    entityLabel = entity.label;
-                    entityUrl = `/graph/${encodeURIComponent(entity.uri)}`;
+                    linkedEntity = {
+                      $type: 'pub.chive.annotation.entityLink#graphNodeLink',
+                      type: 'graphNode',
+                      uri: entity.uri,
+                      label: entity.label,
+                      kind: 'object',
+                    };
                     break;
                   case 'field':
-                    entityLabel = entity.label;
-                    entityUrl = entity.uri;
+                    linkedEntity = {
+                      $type: 'pub.chive.annotation.entityLink#graphNodeLink',
+                      type: 'graphNode',
+                      uri: entity.uri,
+                      label: entity.label,
+                      kind: 'type',
+                      subkind: 'field',
+                    };
                     break;
                   case 'author':
-                    entityLabel = entity.displayName ?? entity.did;
-                    entityUrl = `/authors/${encodeURIComponent(entity.did)}`;
+                    linkedEntity = {
+                      $type: 'pub.chive.annotation.entityLink#authorLink',
+                      type: 'author',
+                      did: entity.did,
+                      displayName: entity.displayName ?? entity.did,
+                    };
                     break;
                   case 'eprint':
-                    entityLabel = entity.title;
-                    entityUrl = entity.uri;
+                    linkedEntity = {
+                      $type: 'pub.chive.annotation.entityLink#eprintLink',
+                      type: 'eprint',
+                      uri: entity.uri,
+                      title: entity.title,
+                    };
                     break;
                   case 'fast':
-                    entityLabel = entity.label;
-                    entityUrl = entity.uri;
+                    linkedEntity = {
+                      $type: 'pub.chive.annotation.entityLink#externalIdLink',
+                      type: 'externalId',
+                      system: 'fast',
+                      identifier: entity.id ?? entity.uri,
+                      label: entity.label,
+                      uri: entity.uri,
+                    };
                     break;
                   case 'orcid':
-                    entityLabel = entity.displayName ?? entity.did;
-                    entityUrl = `/authors/${encodeURIComponent(entity.did)}`;
+                    linkedEntity = {
+                      $type: 'pub.chive.annotation.entityLink#authorLink',
+                      type: 'author',
+                      did: entity.did,
+                      displayName: entity.displayName ?? entity.did,
+                      orcid: entity.orcid,
+                    };
                     break;
                   default: {
-                    // Type guard: should never reach here.
                     const _exhaustive: never = entity;
                     throw new Error(
                       `Unknown entity type: ${(_exhaustive as { type: string }).type}`
@@ -969,40 +1022,14 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   }
                 }
 
-                // Create text content with the entity reference
-                const prefix = 'Linked to: ';
-                const entityContent = `${prefix}${entityLabel}`;
-
-                // Calculate byte positions for the facet (the label portion should be the link)
-                const prefixBytes = new TextEncoder().encode(prefix).length;
-                const labelBytes = new TextEncoder().encode(entityLabel).length;
-
-                // Create the review with entity link annotation using facets
-                await createReview.mutateAsync({
+                await createEntityLink.mutateAsync({
                   eprintUri: uri,
-                  content: entityContent,
                   target: entityLinkSelection.target,
-                  motivation: 'linking',
-                  facets: [
-                    {
-                      index: {
-                        byteStart: prefixBytes,
-                        byteEnd: prefixBytes + labelBytes,
-                      },
-                      features: [
-                        {
-                          $type: 'app.bsky.richtext.facet#link',
-                          uri: entityUrl.startsWith('/')
-                            ? `${window.location.origin}${entityUrl}`
-                            : entityUrl,
-                        },
-                      ],
-                    },
-                  ],
+                  linkedEntity,
                 });
                 toast.success('Entity linked successfully');
               } catch (error) {
-                eprintLogger.error('Failed to create entity link annotation', error);
+                eprintLogger.error('Failed to create entity link', error);
                 toast.error(
                   error instanceof Error ? error.message : 'Failed to create entity link'
                 );
@@ -1010,6 +1037,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
               setEntityLinkDialogOpen(false);
               setEntityLinkSelection(null);
+            }}
+          />
+        </TabsContent>
+
+        {/* Annotations tab -- inline text span annotations and entity links */}
+        <TabsContent value="annotations" className="space-y-6">
+          <AnnotationSidebar
+            eprintUri={uri}
+            selectedUri={selectedAnnotationUri ?? undefined}
+            onAnnotationClick={(annotationUri, _pageNumber) => {
+              setSelectedAnnotationUri(annotationUri);
+              setActiveTab('pdf');
             }}
           />
         </TabsContent>
@@ -1052,7 +1091,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               onDelete={isAuthenticated ? handleDeleteReview : undefined}
               onShare={isAuthenticated ? handleShareReview : undefined}
               currentUserDid={currentUser?.did}
-              showTargets
+              showTargets={false}
               documentFormat={eprint?.documentFormatUri}
               onGoToLocation={handleGoToLocation}
             />
