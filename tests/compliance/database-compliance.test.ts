@@ -262,9 +262,11 @@ describe('ATProto Database Compliance', () => {
 
       for (const row of result.rows) {
         // All foreign keys must reference uri columns (AT URIs)
-        // Exception: parent_comment references review uris (renamed from parent_review_uri)
+        // Exceptions: parent_comment (reviews), parent_annotation (annotations) reference uris via self-FK
         const validColumn =
-          row.column_name.endsWith('_uri') || row.column_name === 'parent_comment';
+          row.column_name.endsWith('_uri') ||
+          row.column_name === 'parent_comment' ||
+          row.column_name === 'parent_annotation';
         expect(validColumn).toBe(true);
         expect(row.foreign_column_name).toBe('uri');
       }
@@ -599,12 +601,12 @@ describe('ATProto Database Compliance', () => {
         {
           name: 'Index semantics (_index naming)',
           query: `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%_index'`,
-          expected: 9, // eprints, reviews, endorsements, user_tags, relevance_logs, activity_log, authors, coauthor_claims, changelogs
+          expected: 11, // eprints, reviews, endorsements, user_tags, relevance_logs, activity_log, authors, coauthor_claims, changelogs, annotations, entity_links
         },
         {
           name: 'PDS source tracking',
           query: `SELECT COUNT(*) as count FROM information_schema.columns WHERE table_schema = 'public' AND table_name LIKE '%_index' AND column_name = 'pds_url'`,
-          expected: 9, // All index tables have pds_url
+          expected: 11, // All index tables have pds_url
         },
         {
           name: 'No blob data',
