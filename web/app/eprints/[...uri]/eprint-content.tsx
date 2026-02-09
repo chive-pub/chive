@@ -436,18 +436,6 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     []
   );
 
-  /**
-   * Handle "Go to location" click from review cards.
-   * Switches to PDF tab and scrolls to the annotation.
-   */
-  const handleGoToLocation = useCallback((reviewUri: string) => {
-    eprintLogger.info('Go to location clicked', { reviewUri });
-    // Switch to PDF tab (works for PDF documents; text formats would use 'document' tab)
-    setActiveTab('pdf');
-    // Set the annotation URI to trigger scrolling in the PDF viewer
-    setSelectedAnnotationUri(reviewUri);
-  }, []);
-
   // Handle review share button click
   const handleShareReview = useCallback((review: Review) => {
     setReviewToShare(review);
@@ -1091,9 +1079,6 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               onDelete={isAuthenticated ? handleDeleteReview : undefined}
               onShare={isAuthenticated ? handleShareReview : undefined}
               currentUserDid={currentUser?.did}
-              showTargets={false}
-              documentFormat={eprint?.documentFormatUri}
-              onGoToLocation={handleGoToLocation}
             />
           ) : (
             <p className="text-muted-foreground text-center py-8">

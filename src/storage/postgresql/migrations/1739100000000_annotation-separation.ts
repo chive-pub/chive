@@ -228,7 +228,16 @@ export function up(pgm: MigrationBuilder): void {
   `);
 
   // =========================================================================
-  // 6. TABLE COMMENTS
+  // 6. ENFORCE REVIEWS ARE DOCUMENT-LEVEL ONLY
+  // =========================================================================
+
+  pgm.sql(`
+    ALTER TABLE reviews_index
+      ADD CONSTRAINT chk_reviews_no_anchor CHECK (anchor IS NULL)
+  `);
+
+  // =========================================================================
+  // 7. TABLE COMMENTS
   // =========================================================================
 
   pgm.sql(`
@@ -246,6 +255,14 @@ export function up(pgm: MigrationBuilder): void {
  * @param pgm - PostgreSQL migration builder
  */
 export function down(pgm: MigrationBuilder): void {
+  // =========================================================================
+  // 0. DROP CONSTRAINT BEFORE REINSERTING ANCHORED ROWS
+  // =========================================================================
+
+  pgm.sql(`
+    ALTER TABLE reviews_index DROP CONSTRAINT IF EXISTS chk_reviews_no_anchor
+  `);
+
   // =========================================================================
   // 1. MOVE ANNOTATIONS BACK TO reviews_index
   // =========================================================================
