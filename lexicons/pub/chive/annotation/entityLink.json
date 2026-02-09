@@ -1,0 +1,258 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.annotation.entityLink",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Link from a text span in an eprint to a knowledge graph entity",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["eprintUri", "target", "linkedEntity", "createdAt"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint containing the linked text"
+          },
+          "target": {
+            "type": "ref",
+            "ref": "#textSpanTarget",
+            "description": "Text span being linked to an entity"
+          },
+          "linkedEntity": {
+            "type": "union",
+            "refs": ["#graphNodeLink", "#externalIdLink", "#authorLink", "#eprintLink"],
+            "description": "The entity being linked to"
+          },
+          "confidence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000,
+            "description": "Confidence score for the link (scaled by 1000 for 0.0-1.0 range)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "textSpanTarget": {
+      "type": "object",
+      "description": "W3C Web Annotation target for text spans",
+      "required": ["source", "selector"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the source document"
+        },
+        "selector": {
+          "type": "ref",
+          "ref": "#textQuoteSelector",
+          "description": "Primary selector for resilient text matching"
+        },
+        "refinedBy": {
+          "type": "ref",
+          "ref": "#textPositionSelector",
+          "description": "Optional position selector for precise targeting"
+        }
+      }
+    },
+    "textQuoteSelector": {
+      "type": "object",
+      "description": "W3C TextQuoteSelector for resilient text matching",
+      "required": ["type", "exact"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextQuoteSelector"
+        },
+        "exact": {
+          "type": "string",
+          "description": "The exact text to match"
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Text immediately before the match"
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Text immediately after the match"
+        }
+      }
+    },
+    "textPositionSelector": {
+      "type": "object",
+      "description": "W3C TextPositionSelector for character-based targeting",
+      "required": ["type", "start", "end", "pageNumber"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextPositionSelector"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Start character offset"
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "End character offset"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Page number in the document"
+        }
+      }
+    },
+    "graphNodeLink": {
+      "type": "object",
+      "description": "Link to a knowledge graph node (type or object, with optional subkind)",
+      "required": ["type", "uri", "label", "kind"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "graphNode"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the graph node"
+        },
+        "id": {
+          "type": "string",
+          "description": "Node UUID identifier"
+        },
+        "slug": {
+          "type": "string",
+          "description": "Human-readable slug (e.g., 'computer-science')"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the node"
+        },
+        "kind": {
+          "type": "string",
+          "knownValues": ["type", "object"],
+          "description": "Node kind: 'type' for classifications, 'object' for instances"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Subkind slug (e.g., 'field', 'facet', 'institution', 'contribution-type')"
+        },
+        "subkindUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the subkind type node"
+        }
+      }
+    },
+    "externalIdLink": {
+      "type": "object",
+      "description": "Link to an external identifier (Wikidata, ROR, ORCID, etc.)",
+      "required": ["type", "system", "identifier", "label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "externalId"
+        },
+        "system": {
+          "type": "string",
+          "knownValues": [
+            "wikidata",
+            "ror",
+            "orcid",
+            "isni",
+            "viaf",
+            "lcsh",
+            "fast",
+            "credit",
+            "spdx",
+            "fundref",
+            "mesh",
+            "aat",
+            "gnd",
+            "anzsrc",
+            "arxiv",
+            "doi",
+            "pmid",
+            "pmcid"
+          ],
+          "description": "External identifier system"
+        },
+        "identifier": {
+          "type": "string",
+          "description": "Identifier value (e.g., Q42 for Wikidata)"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the entity"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URI for the external entity"
+        }
+      }
+    },
+    "authorLink": {
+      "type": "object",
+      "description": "Link to an ATProto author",
+      "required": ["type", "did", "displayName"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "author"
+        },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Author's DID"
+        },
+        "handle": {
+          "type": "string",
+          "format": "handle",
+          "description": "Author's handle"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Author's display name"
+        },
+        "orcid": {
+          "type": "string",
+          "description": "Author's ORCID (if available)"
+        }
+      }
+    },
+    "eprintLink": {
+      "type": "object",
+      "description": "Link to another eprint/preprint",
+      "required": ["type", "uri", "title"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "eprint"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the eprint"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI if available"
+        }
+      }
+    }
+  }
+}
