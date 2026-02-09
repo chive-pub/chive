@@ -187,6 +187,34 @@ export class NodeRepository {
   }
 
   /**
+   * Get multiple nodes by IDs in a single query.
+   *
+   * @param ids - Node IDs (UUIDs)
+   * @returns Map of id to GraphNode (missing nodes are omitted)
+   */
+  async getNodesByIds(ids: readonly string[]): Promise<Map<string, GraphNode>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const query = `
+      MATCH (n:Node)
+      WHERE n.id IN $ids
+      RETURN n
+    `;
+
+    const result = await this.connection.executeQuery<{ n: GraphNode }>(query, { ids: [...ids] });
+    const map = new Map<string, GraphNode>();
+
+    for (const record of result.records) {
+      const node = this.mapRecordToNode(record.get('n'));
+      map.set(node.id, node);
+    }
+
+    return map;
+  }
+
+  /**
    * Update a node.
    *
    * @param uri - Node AT-URI
