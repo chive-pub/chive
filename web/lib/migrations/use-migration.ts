@@ -12,6 +12,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useCallback } from 'react';
 
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import { authApi } from '@/lib/api/client';
 import { logger } from '@/lib/observability';
 import { eprintKeys } from '@/lib/hooks/use-eprint';
 
@@ -268,6 +269,15 @@ export function useMigration(
           migrationsApplied: result.migrationsApplied,
           finalVersion: result.finalVersion,
         });
+
+        // Request immediate re-indexing so the backend index reflects the
+        // migrated record. The firehose will also pick it up, but this
+        // avoids the latency gap that causes the migration banner to reappear.
+        try {
+          await authApi.pub.chive.sync.indexRecord({ uri });
+        } catch {
+          migrationLogger.warn('Immediate re-indexing failed; firehose will handle', { uri });
+        }
       } catch (err) {
         migrationLogger.error('Failed to update record in PDS', err as Error, { uri });
         throw new MigrationError(
