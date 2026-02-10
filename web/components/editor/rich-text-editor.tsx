@@ -712,6 +712,7 @@ function extractFacetsFromEditor(editor: ReturnType<typeof useEditor>): RichText
           {
             $type: 'pub.chive.richtext.facets#crossReference',
             uri: node.attrs.uri as string,
+            refType: (node.attrs.refType as 'review' | 'annotation') ?? 'review',
           },
         ],
       });
