@@ -662,7 +662,7 @@ textItem, nodeRefItem, wikidataRefItem, fieldRefItem, facetRefItem, eprintRefIte
 | `highlighting` | Highlighting important text |
 | `replying`     | Reply to another annotation |
 
-**TextSpanTarget type:**
+#### TextSpanTarget type
 
 Implements W3C Web Annotation selectors for targeting text spans.
 
