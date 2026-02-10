@@ -753,7 +753,8 @@ interface TextPositionSelector {
   type: 'TextPositionSelector';
   start: number; // Start character offset
   end: number; // End character offset
-  pageNumber: number; // Page number in the document
+  pageNumber: number; // 0-indexed page number in the document
+  boundingRect?: BoundingRect; // Visual positioning coordinates
 }
 ```
 

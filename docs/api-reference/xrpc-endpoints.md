@@ -1838,6 +1838,8 @@ Notify the AppView that a record has been deleted from a PDS.
 
 This endpoint is used by PDS operators to notify the AppView of record deletions when firehose delivery is delayed or unreliable. The AppView removes the record from its index.
 
+**Supported collections:** `pub.chive.review.comment`, `pub.chive.review.endorsement`, `pub.chive.annotation.comment`, `pub.chive.annotation.entityLink`.
+
 ---
 
 ## Error codes

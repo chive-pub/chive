@@ -12,6 +12,9 @@ import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
+import type { AnnotationViewOutput } from './listForEprint.js';
+import { mapAnnotationView } from './listForEprint.js';
+
 /**
  * Query parameters for getThread.
  */
@@ -24,7 +27,7 @@ export interface QueryParams {
  * Output schema for getThread.
  */
 export interface OutputSchema {
-  thread: unknown[];
+  thread: AnnotationViewOutput[];
   totalReplies: number;
 }
 
@@ -56,11 +59,30 @@ export const getThread: XRPCMethod<QueryParams, void, OutputSchema> = {
       throw new NotFoundError('Annotation', params.uri);
     }
 
-    // First item is root, rest are replies
-    const totalReplies = threadAnnotations.length - 1;
+    // Batch resolve author info for all annotations in thread
+    const annotatorDids = new Set(threadAnnotations.map((a) => a.annotator));
+    const authorInfoMap = await annotationService.getAuthorInfoByDids(annotatorDids);
+
+    const authorMap = new Map<
+      string,
+      { did: string; handle?: string; displayName?: string; avatar?: string }
+    >();
+    for (const entry of Array.from(authorInfoMap.entries())) {
+      const [did, info] = entry;
+      authorMap.set(did, {
+        did,
+        handle: info.handle,
+        displayName: info.displayName,
+        avatar: info.avatar,
+      });
+    }
+
+    // Transform annotations to API output format
+    const thread = threadAnnotations.map((a) => mapAnnotationView(a, authorMap));
+    const totalReplies = thread.length - 1;
 
     const response: OutputSchema = {
-      thread: threadAnnotations,
+      thread,
       totalReplies,
     };
 

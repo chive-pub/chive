@@ -12,6 +12,9 @@ import type { AtUri } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
+import type { AnnotationViewOutput, EntityLinkViewOutput } from './listForEprint.js';
+import { collectAnnotatorDids, flattenThreads, mapEntityLinkView } from './listForEprint.js';
+
 /**
  * Query parameters for listForPage.
  */
@@ -25,8 +28,8 @@ export interface QueryParams {
  * Output schema for listForPage.
  */
 export interface OutputSchema {
-  annotations: unknown[];
-  entityLinks?: readonly unknown[];
+  annotations: AnnotationViewOutput[];
+  entityLinks?: EntityLinkViewOutput[];
   pageNumber: number;
 }
 
@@ -58,26 +61,55 @@ export const listForPage: XRPCMethod<QueryParams, void, OutputSchema> = {
       params.pageNumber
     );
 
-    // Flatten threads to flat annotation list for page view
-    const annotations: unknown[] = [];
-    function flattenThread(thread: {
-      root: unknown;
-      replies: readonly { root: unknown; replies: readonly unknown[] }[];
-    }): void {
-      annotations.push(thread.root);
-      for (const reply of thread.replies) {
-        flattenThread(reply as typeof thread);
-      }
-    }
-    for (const thread of threads) {
-      flattenThread(thread);
+    // Batch resolve author info
+    const annotatorDids = collectAnnotatorDids(threads);
+    const authorInfoMap = await annotationService.getAuthorInfoByDids(annotatorDids);
+
+    const authorMap = new Map<
+      string,
+      { did: string; handle?: string; displayName?: string; avatar?: string }
+    >();
+    for (const entry of Array.from(authorInfoMap.entries())) {
+      const [did, info] = entry;
+      authorMap.set(did, {
+        did,
+        handle: info.handle,
+        displayName: info.displayName,
+        avatar: info.avatar,
+      });
     }
 
-    let entityLinks: readonly unknown[] | undefined;
+    // Flatten threads with author info
+    const annotations = flattenThreads(threads, authorMap);
+
+    // Optionally include entity links
+    let entityLinks: EntityLinkViewOutput[] | undefined;
     if (params.includeEntityLinks) {
-      entityLinks = await annotationService.getEntityLinks(params.eprintUri as AtUri, {
+      const rawEntityLinks = await annotationService.getEntityLinks(params.eprintUri as AtUri, {
         pageNumber: params.pageNumber,
       });
+
+      // Resolve creator DIDs not already in authorMap
+      const creatorDids = new Set(rawEntityLinks.map((el) => el.creator));
+      const missingDids = new Set<string>();
+      for (const did of creatorDids) {
+        if (!authorMap.has(did)) {
+          missingDids.add(did);
+        }
+      }
+      if (missingDids.size > 0) {
+        const extraAuthors = await annotationService.getAuthorInfoByDids(missingDids);
+        for (const [did, info] of extraAuthors.entries()) {
+          authorMap.set(did, {
+            did,
+            handle: info.handle,
+            displayName: info.displayName,
+            avatar: info.avatar,
+          });
+        }
+      }
+
+      entityLinks = rawEntityLinks.map((el) => mapEntityLinkView(el, authorMap));
     }
 
     const response: OutputSchema = {

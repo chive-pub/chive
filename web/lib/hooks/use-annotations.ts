@@ -38,6 +38,9 @@ import {
   type CreateEntityLinkInput as RecordCreatorEntityLinkInput,
 } from '@/lib/atproto/record-creator';
 import type { UnifiedTextSpanTarget } from '@/lib/api/schema';
+import type * as PubChiveAnnotationListForEprint from '@/lib/api/generated/types/pub/chive/annotation/listForEprint';
+import type * as PubChiveAnnotationListForPage from '@/lib/api/generated/types/pub/chive/annotation/listForPage';
+import type * as PubChiveAnnotationGetThread from '@/lib/api/generated/types/pub/chive/annotation/getThread';
 
 // =============================================================================
 // LOCAL TYPES (until OpenAPI types are regenerated)
@@ -106,13 +109,7 @@ export interface ListAnnotationsResponse {
 /**
  * Response from the listForPage annotation endpoint.
  */
-export interface ListAnnotationsForPageResponse {
-  annotations: AnnotationView[];
-  entityLinks?: EntityLinkView[];
-  cursor?: string;
-  hasMore: boolean;
-  total?: number;
-}
+export type ListAnnotationsForPageResponse = PubChiveAnnotationListForPage.OutputSchema;
 
 /**
  * Annotation thread structure returned by getThread.
@@ -290,20 +287,14 @@ export function useAnnotations(
     queryKey: annotationKeys.list(eprintUri, params),
     queryFn: async (): Promise<ListAnnotationsResponse> => {
       try {
-        const searchParams = new URLSearchParams();
-        searchParams.set('eprintUri', eprintUri);
-        if (params.limit) searchParams.set('limit', String(params.limit));
-        if (params.cursor) searchParams.set('cursor', params.cursor);
-        if (params.motivation) searchParams.set('motivation', params.motivation);
-
-        // @ts-expect-error - annotation API types will be regenerated
         const response = await api.pub.chive.annotation.listForEprint({
           eprintUri,
           limit: params.limit ?? 20,
           cursor: params.cursor,
           motivation: params.motivation,
+          includeEntityLinks: true,
         });
-        return response.data as unknown as ListAnnotationsResponse;
+        return response.data as ListAnnotationsResponse;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
@@ -349,12 +340,11 @@ export function useAnnotationsForPage(
     queryKey: annotationKeys.forPage(eprintUri, pageNumber),
     queryFn: async (): Promise<ListAnnotationsForPageResponse> => {
       try {
-        // @ts-expect-error - annotation API types will be regenerated
         const response = await api.pub.chive.annotation.listForPage({
           eprintUri,
           pageNumber,
         });
-        return response.data as unknown as ListAnnotationsForPageResponse;
+        return response.data as ListAnnotationsForPageResponse;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
@@ -398,9 +388,8 @@ export function useAnnotationThread(uri: string, options: UseAnnotationsOptions 
     queryKey: annotationKeys.thread(uri),
     queryFn: async (): Promise<AnnotationThread> => {
       try {
-        // @ts-expect-error - annotation API types will be regenerated
         const response = await api.pub.chive.annotation.getThread({ uri });
-        return response.data as unknown as AnnotationThread;
+        return response.data as AnnotationThread;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
@@ -654,6 +643,41 @@ export function useDeleteAnnotation() {
         await authApi.pub.chive.sync.deleteRecord({ uri });
       } catch {
         // Silently ignore; firehose will handle the deletion eventually
+        logger.warn('Immediate deletion indexing failed; firehose will handle', { uri });
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: annotationKeys.forEprint(variables.eprintUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for deleting an entity link.
+ *
+ * @remarks
+ * Deletes an entity link from the user's PDS and marks it as deleted in
+ * Chive's index. Only the entity link creator can delete their own links.
+ *
+ * @returns Mutation object for deleting entity links
+ */
+export function useDeleteEntityLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ uri }: { uri: string; eprintUri: string }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'deleteEntityLink');
+      }
+
+      await deleteRecord(agent, uri);
+
+      try {
+        await authApi.pub.chive.sync.deleteRecord({ uri });
+      } catch {
         logger.warn('Immediate deletion indexing failed; firehose will handle', { uri });
       }
     },

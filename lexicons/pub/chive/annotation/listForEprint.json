@@ -522,8 +522,8 @@
         },
         "page": {
           "type": "integer",
-          "minimum": 1,
-          "description": "Page number"
+          "minimum": 0,
+          "description": "0-indexed page number"
         }
       }
     },
@@ -569,8 +569,49 @@
         },
         "pageNumber": {
           "type": "integer",
+          "minimum": 0,
+          "description": "0-indexed page number in PDF"
+        },
+        "boundingRect": {
+          "type": "ref",
+          "ref": "#boundingRect",
+          "description": "Bounding rectangle for visual positioning"
+        }
+      }
+    },
+    "boundingRect": {
+      "type": "object",
+      "description": "Bounding rectangle coordinates for highlight positioning. All values stored as strings to preserve floating-point precision since ATProto only supports integer type.",
+      "required": ["x1", "y1", "x2", "y2", "width", "height", "pageNumber"],
+      "properties": {
+        "x1": {
+          "type": "string",
+          "description": "Left edge coordinate (as string to preserve float precision)"
+        },
+        "y1": {
+          "type": "string",
+          "description": "Top edge coordinate (as string to preserve float precision)"
+        },
+        "x2": {
+          "type": "string",
+          "description": "Right edge coordinate (as string to preserve float precision)"
+        },
+        "y2": {
+          "type": "string",
+          "description": "Bottom edge coordinate (as string to preserve float precision)"
+        },
+        "width": {
+          "type": "string",
+          "description": "Page width reference (as string to preserve float precision)"
+        },
+        "height": {
+          "type": "string",
+          "description": "Page height reference (as string to preserve float precision)"
+        },
+        "pageNumber": {
+          "type": "integer",
           "minimum": 1,
-          "description": "Page number in PDF"
+          "description": "1-indexed page number for the bounding rectangle"
         }
       }
     }

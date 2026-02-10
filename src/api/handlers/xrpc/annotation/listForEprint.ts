@@ -11,6 +11,7 @@
 import type {
   AnnotationThread as ServiceAnnotationThread,
   AnnotationView as ServiceAnnotationView,
+  EntityLinkView as ServiceEntityLinkView,
 } from '../../../../services/annotation/annotation-service.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
@@ -81,11 +82,50 @@ export interface AnnotationViewOutput {
 }
 
 /**
+ * Entity link view in API response format.
+ */
+export interface EntityLinkViewOutput {
+  uri: string;
+  cid: string;
+  creator: {
+    did: string;
+    handle?: string;
+    displayName?: string;
+    avatar?: string;
+  };
+  eprintUri: string;
+  target: {
+    source: string;
+    selector?: {
+      type: string;
+      exact?: string;
+      prefix?: string;
+      suffix?: string;
+    };
+    refinedBy?: {
+      type: string;
+      start?: number;
+      end?: number;
+      pageNumber?: number;
+      boundingRect?: unknown;
+    };
+    page?: number;
+  };
+  linkedEntity: {
+    $type: string;
+    [key: string]: unknown;
+  };
+  confidence?: number;
+  createdAt: string;
+  indexedAt: string;
+}
+
+/**
  * Output schema for listForEprint.
  */
 export interface OutputSchema {
   annotations: AnnotationViewOutput[];
-  entityLinks?: readonly unknown[];
+  entityLinks?: EntityLinkViewOutput[];
   cursor?: string;
   hasMore: boolean;
   total?: number;
@@ -96,7 +136,7 @@ export interface OutputSchema {
  *
  * @internal
  */
-function flattenThreads(
+export function flattenThreads(
   threads: readonly ServiceAnnotationThread[],
   authorMap: Map<string, AuthorInfo>
 ): AnnotationViewOutput[] {
@@ -122,7 +162,7 @@ function flattenThreads(
  *
  * @internal
  */
-function mapAnnotationView(
+export function mapAnnotationView(
   view: ServiceAnnotationView,
   authorMap: Map<string, AuthorInfo>
 ): AnnotationViewOutput {
@@ -175,14 +215,22 @@ function mapAnnotationView(
     }
   }
 
-  // Build refinedBy
+  // Build refinedBy, stripping $type from boundingRect to avoid cross-lexicon
+  // $type mismatches (stored data may reference comment#boundingRect)
+  const rawBoundingRect = view.target.refinedBy?.boundingRect as
+    | (Record<string, unknown> & { $type?: string })
+    | undefined;
+  const sanitizedBoundingRect = rawBoundingRect
+    ? Object.fromEntries(Object.entries(rawBoundingRect).filter(([k]) => k !== '$type'))
+    : undefined;
+
   const refinedBy = view.target.refinedBy
     ? {
         type: 'TextPositionSelector' as const,
         start: view.target.refinedBy.start ?? 0,
         end: view.target.refinedBy.end ?? 0,
         pageNumber: view.target.refinedBy.pageNumber ?? view.target.pageNumber,
-        boundingRect: view.target.refinedBy.boundingRect,
+        boundingRect: sanitizedBoundingRect,
       }
     : view.target.pageNumber
       ? {
@@ -228,11 +276,117 @@ function mapAnnotationView(
 }
 
 /**
+ * Maps a service EntityLinkView to the API output format.
+ *
+ * @internal
+ */
+export function mapEntityLinkView(
+  view: ServiceEntityLinkView,
+  authorMap: Map<string, AuthorInfo>
+): EntityLinkViewOutput {
+  const creatorInfo = authorMap.get(view.creator);
+
+  // Build linkedEntity from entityType/entityData
+  const entityData = (
+    typeof view.entityData === 'object' && view.entityData !== null ? view.entityData : {}
+  ) as Record<string, unknown>;
+
+  // Spread entityData first, then override $type to match the listForEprint lexicon
+  let linkedEntity: EntityLinkViewOutput['linkedEntity'];
+  switch (view.entityType) {
+    case 'graphNode':
+      linkedEntity = {
+        ...entityData,
+        $type: 'pub.chive.annotation.listForEprint#graphNodeLink',
+        type: 'graphNode',
+        label: view.entityLabel,
+      };
+      break;
+    case 'externalId':
+      linkedEntity = {
+        ...entityData,
+        $type: 'pub.chive.annotation.listForEprint#externalIdLink',
+        type: 'externalId',
+        label: view.entityLabel,
+      };
+      break;
+    case 'author':
+      linkedEntity = {
+        ...entityData,
+        $type: 'pub.chive.annotation.listForEprint#authorLink',
+        type: 'author',
+        displayName: view.entityLabel,
+      };
+      break;
+    case 'eprint':
+      linkedEntity = {
+        ...entityData,
+        $type: 'pub.chive.annotation.listForEprint#eprintLink',
+        type: 'eprint',
+        title: view.entityLabel,
+      };
+      break;
+    default:
+      linkedEntity = {
+        ...entityData,
+        $type: 'pub.chive.annotation.listForEprint#graphNodeLink',
+        type: view.entityType,
+        label: view.entityLabel,
+      };
+  }
+
+  return {
+    uri: view.uri,
+    cid: view.cid,
+    creator: {
+      did: view.creator,
+      handle: creatorInfo?.handle,
+      displayName: creatorInfo?.displayName,
+      avatar: creatorInfo?.avatar,
+    },
+    eprintUri: view.eprintUri,
+    target: {
+      source: view.target.source,
+      selector: view.target.selector?.exact
+        ? {
+            type: 'TextQuoteSelector' as const,
+            exact: view.target.selector.exact,
+            prefix: view.target.selector.prefix,
+            suffix: view.target.selector.suffix,
+          }
+        : undefined,
+      refinedBy: view.target.refinedBy
+        ? (() => {
+            const rawRect = view.target.refinedBy.boundingRect as
+              | (Record<string, unknown> & { $type?: string })
+              | undefined;
+            const rect = rawRect
+              ? Object.fromEntries(Object.entries(rawRect).filter(([k]) => k !== '$type'))
+              : undefined;
+            return {
+              type: 'TextPositionSelector' as const,
+              start: view.target.refinedBy.start ?? 0,
+              end: view.target.refinedBy.end ?? 0,
+              pageNumber: view.target.refinedBy.pageNumber ?? view.target.pageNumber,
+              boundingRect: rect,
+            };
+          })()
+        : undefined,
+      page: view.target.refinedBy?.pageNumber ?? view.target.pageNumber,
+    },
+    linkedEntity,
+    confidence: view.confidence,
+    createdAt: view.createdAt.toISOString(),
+    indexedAt: view.indexedAt.toISOString(),
+  };
+}
+
+/**
  * Collects all unique annotator DIDs from annotation threads.
  *
  * @internal
  */
-function collectAnnotatorDids(threads: readonly ServiceAnnotationThread[]): Set<string> {
+export function collectAnnotatorDids(threads: readonly ServiceAnnotationThread[]): Set<string> {
   const dids = new Set<string>();
 
   function processThread(thread: ServiceAnnotationThread): void {
@@ -310,11 +464,33 @@ export const listForEprint: XRPCMethod<QueryParams, void, OutputSchema> = {
     const hasMore = endIndex < allAnnotations.length;
 
     // Optionally include entity links
-    let entityLinks: readonly unknown[] | undefined;
+    let entityLinks: EntityLinkViewOutput[] | undefined;
     if (params.includeEntityLinks) {
-      entityLinks = await annotationService.getEntityLinks(params.eprintUri as AtUri, {
+      const rawEntityLinks = await annotationService.getEntityLinks(params.eprintUri as AtUri, {
         pageNumber: params.pageNumber,
       });
+
+      // Resolve creator DIDs not already in authorMap
+      const creatorDids = new Set(rawEntityLinks.map((el) => el.creator));
+      const missingDids = new Set<string>();
+      for (const did of creatorDids) {
+        if (!authorMap.has(did)) {
+          missingDids.add(did);
+        }
+      }
+      if (missingDids.size > 0) {
+        const extraAuthors = await annotationService.getAuthorInfoByDids(missingDids);
+        for (const [did, info] of extraAuthors.entries()) {
+          authorMap.set(did, {
+            did,
+            handle: info.handle,
+            displayName: info.displayName,
+            avatar: info.avatar,
+          });
+        }
+      }
+
+      entityLinks = rawEntityLinks.map((el) => mapEntityLinkView(el, authorMap));
     }
 
     const response: OutputSchema = {

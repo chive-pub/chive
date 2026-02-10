@@ -68,7 +68,11 @@ import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
 import { createLogger } from '@/lib/observability/logger';
-import { useAnnotations, type AnnotationView } from '@/lib/hooks/use-annotations';
+import {
+  useAnnotations,
+  type AnnotationView,
+  type EntityLinkView,
+} from '@/lib/hooks/use-annotations';
 import { useIsAuthenticated } from '@/lib/auth';
 import type { BlobRef, UnifiedTextSpanTarget } from '@/lib/api/schema';
 
@@ -360,6 +364,39 @@ function annotationsToHighlights(annotations: AnnotationView[]): ChiveHighlight[
   return highlights;
 }
 
+/**
+ * Convert entity links to ChiveHighlight format.
+ */
+function entityLinksToHighlights(entityLinks: EntityLinkView[]): ChiveHighlight[] {
+  const highlights: ChiveHighlight[] = [];
+
+  for (const entityLink of entityLinks) {
+    const position = w3cTargetToScaledPosition(entityLink.target);
+    if (!position) continue;
+
+    const entity = entityLink.linkedEntity as Record<string, unknown> | null;
+    const label = (entity?.label ??
+      entity?.displayName ??
+      entity?.title ??
+      'Entity link') as string;
+
+    highlights.push({
+      id: entityLink.uri,
+      reviewUri: entityLink.uri,
+      type: 'text',
+      position,
+      authorName: entityLink.creator.displayName || entityLink.creator.handle || 'Anonymous',
+      excerpt: label,
+      replyCount: 0,
+      colorClass:
+        'bg-blue-200/50 hover:bg-blue-300/60 dark:bg-blue-500/30 dark:hover:bg-blue-500/50',
+      w3cTarget: entityLink.target,
+    });
+  }
+
+  return highlights;
+}
+
 // =============================================================================
 // HIGHLIGHT CONTAINER COMPONENT
 // =============================================================================
@@ -526,11 +563,14 @@ export function AnnotatedPDFViewer({
     }
   );
 
-  // Convert annotations to highlights
+  // Convert annotations and entity links to highlights
   const highlights = useMemo<ChiveHighlight[]>(() => {
-    if (!showAnnotations || !annotationsData?.annotations) return [];
-    return annotationsToHighlights(annotationsData.annotations);
-  }, [showAnnotations, annotationsData?.annotations]);
+    if (!showAnnotations || !annotationsData) return [];
+    return [
+      ...annotationsToHighlights(annotationsData.annotations ?? []),
+      ...entityLinksToHighlights(annotationsData.entityLinks ?? []),
+    ];
+  }, [showAnnotations, annotationsData]);
 
   // Construct PDF URL
   // blobRef.ref can be a string, { $link: string }, or a CID object with toString()
