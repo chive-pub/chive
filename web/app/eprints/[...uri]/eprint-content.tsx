@@ -995,7 +995,6 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       type: 'author',
                       did: entity.did,
                       displayName: entity.displayName ?? entity.did,
-                      orcid: entity.orcid,
                     };
                     break;
                   default: {
