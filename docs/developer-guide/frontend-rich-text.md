@@ -6,12 +6,13 @@ This guide covers the unified rich text rendering system for Chive's frontend.
 
 The rich text system implements three lexicon schemas:
 
-| Lexicon                       | Field       | Description                               |
-| ----------------------------- | ----------- | ----------------------------------------- |
-| `pub.chive.richtext.defs`     | (shared)    | Shared type definitions for all rich text |
-| `pub.chive.eprint.submission` | `titleRich` | Rich title with LaTeX and entity refs     |
-| `pub.chive.eprint.submission` | `abstract`  | Rich abstract with full formatting        |
-| `pub.chive.review.comment`    | `body`      | Rich comment body                         |
+| Lexicon                        | Field       | Description                               |
+| ------------------------------ | ----------- | ----------------------------------------- |
+| `pub.chive.richtext.defs`      | (shared)    | Shared type definitions for all rich text |
+| `pub.chive.eprint.submission`  | `titleRich` | Rich title with LaTeX and entity refs     |
+| `pub.chive.eprint.submission`  | `abstract`  | Rich abstract with full formatting        |
+| `pub.chive.review.comment`     | `body`      | Rich comment body                         |
+| `pub.chive.annotation.comment` | `body`      | Rich annotation body with formatting      |
 
 See [Lexicons Reference](/reference/lexicons#rich-text-system) for complete schema documentation.
 
@@ -620,27 +621,55 @@ pnpm test:unit web/components/eprints/eprint-abstract
 pnpm test:unit web/lib/types/rich-text
 ```
 
-## Annotation System
+## Annotation system
 
-The annotation system extends rich text with position information for PDF highlights.
+The annotation system extends rich text with W3C Web Annotation targets for positioning highlights on PDF text.
 
-### Bounding Rectangle
+Chive distinguishes two types of text-linked content:
 
-PDF annotations include bounding rectangle data to position highlights:
+- **Inline annotations** (`pub.chive.annotation.comment`): Comments on specific text spans, with required W3C targets
+- **Document-level reviews** (`pub.chive.review.comment`): Broader feedback on the whole eprint, with optional targets
+
+### W3C Web Annotation targets
+
+Annotations use W3C selectors to identify text spans:
+
+```typescript
+interface TextSpanTarget {
+  versionUri?: string; // AT-URI of specific eprint version
+  selector: TextQuoteSelector | TextPositionSelector | FragmentSelector;
+  refinedBy?: PositionRefinement; // Page number and bounding box
+}
+```
+
+The primary selector is `TextQuoteSelector`, which matches text by exact content with optional context:
+
+```typescript
+interface TextQuoteSelector {
+  type: 'TextQuoteSelector';
+  exact: string; // Exact text to match, max 1000 chars
+  prefix?: string; // Context before, max 100 chars
+  suffix?: string; // Context after, max 100 chars
+}
+```
+
+### Bounding rectangle
+
+PDF annotations include bounding rectangle data to position highlights. Coordinates are stored as strings to preserve floating-point precision (ATProto only supports integer types):
 
 ```typescript
 interface BoundingRect {
-  x: string; // X coordinate as string (ATProto serialization)
-  y: string; // Y coordinate as string
-  width: string; // Width as string
-  height: string; // Height as string
+  x1: string;
+  y1: string;
+  x2: string;
+  y2: string;
+  width: string;
+  height: string;
   pageNumber: number;
 }
 ```
 
-Coordinates are normalized to the page dimensions (0-1 range).
-
-### Position Refinement
+### Position refinement
 
 The annotation system includes position refinement to improve highlight accuracy:
 
@@ -648,11 +677,11 @@ The annotation system includes position refinement to improve highlight accuracy
 2. **Position refinement**: Adjusts bounding rect to match text boundaries
 3. **Serialization**: Stores coordinates as strings for ATProto compatibility
 
-### Selection Tip
+### Selection tip
 
 The PDF viewer shows a selection tip on the first highlight to guide users. The tip appears immediately when a text selection is made and can be dismissed.
 
-### Document Location Card
+### Document location card
 
 The `DocumentLocationCard` component shows annotation context:
 
@@ -660,8 +689,8 @@ The `DocumentLocationCard` component shows annotation context:
 import { DocumentLocationCard } from '@/components/reviews/document-location-card';
 
 <DocumentLocationCard
-  pageNumber={annotation.boundingRect?.pageNumber}
-  excerpt={annotation.targetSpan}
+  pageNumber={annotation.target?.refinedBy?.pageNumber}
+  excerpt={annotation.target?.selector?.exact}
   onNavigate={() => scrollToAnnotation(annotation)}
 />;
 ```

@@ -181,25 +181,26 @@ Access-Control-Allow-Headers: Authorization, Content-Type
 
 XRPC endpoints are organized by namespace:
 
-| Namespace                  | Purpose               | Endpoints |
-| -------------------------- | --------------------- | --------- |
-| `pub.chive.eprint.*`       | Eprint operations     | 3         |
-| `pub.chive.review.*`       | Reviews and comments  | 3         |
-| `pub.chive.endorsement.*`  | Endorsements          | 3         |
-| `pub.chive.graph.*`        | Knowledge graph       | 10        |
-| `pub.chive.tag.*`          | User tags             | 5         |
-| `pub.chive.governance.*`   | Proposals and voting  | 16        |
-| `pub.chive.metrics.*`      | Analytics             | 8         |
-| `pub.chive.discovery.*`    | Recommendations       | 6         |
-| `pub.chive.claiming.*`     | Authorship claims     | 19        |
-| `pub.chive.backlink.*`     | AT Protocol app links | 4         |
-| `pub.chive.activity.*`     | User activity         | 4         |
-| `pub.chive.import.*`       | External imports      | 3         |
-| `pub.chive.actor.*`        | User profiles         | 7         |
-| `pub.chive.author.*`       | Author profiles       | 2         |
-| `pub.chive.sync.*`         | Data synchronization  | 5         |
-| `pub.chive.alpha.*`        | Alpha tester program  | 2         |
-| `pub.chive.notification.*` | Notifications         | 2         |
+| Namespace                  | Purpose                                 | Endpoints |
+| -------------------------- | --------------------------------------- | --------- |
+| `pub.chive.eprint.*`       | Eprint operations                       | 3         |
+| `pub.chive.review.*`       | Reviews, endorsements, and entity links | 6         |
+| `pub.chive.annotation.*`   | Inline annotations and entity links     | 4         |
+| `pub.chive.endorsement.*`  | Endorsements                            | 3         |
+| `pub.chive.graph.*`        | Knowledge graph                         | 10        |
+| `pub.chive.tag.*`          | User tags                               | 5         |
+| `pub.chive.governance.*`   | Proposals and voting                    | 16        |
+| `pub.chive.metrics.*`      | Analytics                               | 8         |
+| `pub.chive.discovery.*`    | Recommendations                         | 6         |
+| `pub.chive.claiming.*`     | Authorship claims                       | 19        |
+| `pub.chive.backlink.*`     | AT Protocol app links                   | 4         |
+| `pub.chive.activity.*`     | User activity                           | 4         |
+| `pub.chive.import.*`       | External imports                        | 3         |
+| `pub.chive.actor.*`        | User profiles                           | 7         |
+| `pub.chive.author.*`       | Author profiles                         | 2         |
+| `pub.chive.sync.*`         | Data synchronization                    | 5         |
+| `pub.chive.alpha.*`        | Alpha tester program                    | 2         |
+| `pub.chive.notification.*` | Notifications                           | 2         |
 
 See [XRPC endpoints](./xrpc-endpoints.md) for the complete reference.
 
@@ -299,7 +300,7 @@ For detailed endpoint documentation with request/response examples and schemas, 
 - Request parameters and body schemas
 - Response schemas with examples
 - Try-it-out functionality
-- All 102 XRPC endpoints (plus REST variants for binary data)
+- All 109 XRPC endpoints (plus REST variants for binary data)
 
 ## Next steps
 
