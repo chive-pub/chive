@@ -939,7 +939,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#externalIdLink',
                       type: 'externalId',
                       system: 'wikidata',
-                      identifier: entity.qid ?? entity.id,
+                      identifier: entity.qid,
                       label: entity.label,
                       uri: entity.url,
                     };
@@ -984,7 +984,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#externalIdLink',
                       type: 'externalId',
                       system: 'fast',
-                      identifier: entity.id ?? entity.uri,
+                      identifier: entity.uri,
                       label: entity.label,
                       uri: entity.uri,
                     };
