@@ -71,10 +71,7 @@ export default function ClaimsPage() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="suggestions" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Suggested For You
-          </TabsTrigger>
+          <TabsTrigger value="suggestions">Suggested For You</TabsTrigger>
           <TabsTrigger value="search">Search External</TabsTrigger>
           <TabsTrigger value="my-claims">My Claims</TabsTrigger>
         </TabsList>

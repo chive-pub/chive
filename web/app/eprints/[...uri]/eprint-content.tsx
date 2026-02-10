@@ -59,7 +59,7 @@ import { RelatedPapersPanel } from '@/components/discovery';
 import type { RichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
-import { Sparkles, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -700,7 +700,6 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           <TabsTrigger value="abstract">Abstract</TabsTrigger>
           <TabsTrigger value="pdf">{getDocumentTabLabel(eprint.documentFormatUri)}</TabsTrigger>
           <TabsTrigger value="annotations" className="gap-1.5">
-            <MessageSquare className="h-3 w-3" />
             Annotations
             {annotationsData?.annotations && annotationsData.annotations.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
@@ -724,10 +723,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="related" className="gap-1.5">
-            <Sparkles className="h-3 w-3" />
-            Related
-          </TabsTrigger>
+          <TabsTrigger value="related">Related</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           {eprint.versions && eprint.versions.length > 1 && (
             <TabsTrigger value="versions">Versions</TabsTrigger>
