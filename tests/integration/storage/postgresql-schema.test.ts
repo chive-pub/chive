@@ -249,9 +249,11 @@ describe('PostgreSQL Schema', () => {
       `);
 
       for (const row of result.rows) {
-        // Foreign key columns should end with '_uri' (AT URIs) or be 'parent_comment' (threading column for reviews)
+        // Foreign key columns should end with '_uri' (AT URIs) or be threading columns for reviews/annotations
         const validColumn =
-          row.column_name.endsWith('_uri') || row.column_name === 'parent_comment';
+          row.column_name.endsWith('_uri') ||
+          row.column_name === 'parent_comment' ||
+          row.column_name === 'parent_annotation';
         expect(validColumn).toBe(true);
         expect(row.foreign_column_name).toBe('uri');
       }
