@@ -101,6 +101,7 @@ interface EprintRow extends Record<string, unknown> {
   readonly version: string | number; // JSONB (SemanticVersion) or integer
   readonly keywords: string[] | null;
   readonly license: string;
+  readonly license_uri: string | null;
   readonly publication_status: string;
   readonly published_version: string | null; // JSONB
   readonly external_ids: string | null; // JSONB
@@ -212,6 +213,7 @@ export class EprintsRepository {
             typeof eprint.version === 'number' ? eprint.version : JSON.stringify(eprint.version),
           keywords: eprint.keywords ? [...eprint.keywords] : null,
           license: eprint.license,
+          license_uri: eprint.licenseUri ?? null,
           publication_status: eprint.publicationStatus,
           published_version: eprint.publishedVersion
             ? JSON.stringify(eprint.publishedVersion)
@@ -295,6 +297,7 @@ export class EprintsRepository {
             typeof eprint.version === 'number' ? eprint.version : JSON.stringify(eprint.version),
           keywords: eprint.keywords ? [...eprint.keywords] : null,
           license: eprint.license,
+          license_uri: eprint.licenseUri ?? null,
           publication_status: eprint.publicationStatus,
           published_version: eprint.publishedVersion
             ? JSON.stringify(eprint.publishedVersion)
@@ -372,6 +375,7 @@ export class EprintsRepository {
           'version',
           'keywords',
           'license',
+          'license_uri',
           'publication_status',
           'published_version',
           'external_ids',
@@ -453,7 +457,7 @@ export class EprintsRepository {
         SELECT
           uri, cid, authors, submitted_by, paper_did, title, abstract,
           abstract_plain_text, document_blob_cid, document_blob_mime_type,
-          document_blob_size, document_format, version, keywords, license,
+          document_blob_size, document_format, version, keywords, license, license_uri,
           publication_status, published_version, external_ids, related_works,
           repositories, funding, conference_presentation, supplementary_materials,
           fields, needs_abstract_migration, pds_url, indexed_at, created_at
@@ -791,6 +795,7 @@ export class EprintsRepository {
       version: this.parseVersion(row.version),
       keywords: row.keywords ?? undefined,
       license: row.license,
+      licenseUri: (row.license_uri as AtUri) ?? undefined,
       publicationStatus: row.publication_status as PublicationStatus,
       publishedVersion,
       externalIds,

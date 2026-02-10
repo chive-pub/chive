@@ -225,14 +225,14 @@ export function SchemaMigrationBanner({
         )}
       >
         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <AlertTitle className="text-green-800 dark:text-green-200">Record Updated</AlertTitle>
+        <AlertTitle className="pr-8 text-green-800 dark:text-green-200">Record Updated</AlertTitle>
         <AlertDescription className="text-green-700 dark:text-green-300">
           Your record has been updated to the latest format. The changes will be synced shortly.
         </AlertDescription>
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-6 w-6 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
+          className="absolute right-4 top-4 h-6 w-6 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
           onClick={handleDismiss}
         >
           <X className="h-4 w-4" />
@@ -273,7 +273,7 @@ export function SchemaMigrationBanner({
       )}
     >
       <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-      <AlertTitle className="text-amber-800 dark:text-amber-200">
+      <AlertTitle className="pr-8 text-amber-800 dark:text-amber-200">
         Format Update Available
       </AlertTitle>
       <AlertDescription className="text-amber-700 dark:text-amber-300">
@@ -360,7 +360,7 @@ export function SchemaMigrationBanner({
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-2 top-2 h-6 w-6 text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
+        className="absolute right-4 top-4 h-6 w-6 text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
         onClick={handleDismiss}
       >
         <X className="h-4 w-4" />

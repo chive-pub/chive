@@ -478,9 +478,7 @@ describe('PDS record transformer with real records', () => {
       expect(field.uri).toBe(
         `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e`
       );
-      expect(field.label).toBe(
-        `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/6fe7359e-8b24-5fce-8bd4-0225a10c899e`
-      ); // Label defaults to URI when not provided
+      expect(field.label).toBe('6fe7359e-8b24-5fce-8bd4-0225a10c899e'); // Label defaults to UUID rkey (resolved from knowledge graph at response time)
       expect(field.id).toBe('6fe7359e-8b24-5fce-8bd4-0225a10c899e');
     });
   });

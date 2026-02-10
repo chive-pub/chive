@@ -17,6 +17,7 @@
  */
 
 import pg from 'pg';
+import neo4j from 'neo4j-driver';
 import { AtpAgent } from '@atproto/api';
 
 import type { AtUri, CID } from '../src/types/atproto.js';
@@ -24,6 +25,7 @@ import type { StoredEprint } from '../src/types/interfaces/storage.interface.js'
 import type { Eprint } from '../src/types/models/eprint.js';
 import { transformPDSRecord } from '../src/services/eprint/pds-record-transformer.js';
 import { EprintsRepository } from '../src/storage/postgresql/eprints-repository.js';
+import { resolveFieldLabels, type NodeLookup } from '../src/utils/field-label.js';
 
 // =============================================================================
 // Configuration
@@ -31,6 +33,10 @@ import { EprintsRepository } from '../src/storage/postgresql/eprints-repository.
 
 const DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgresql://chive:chive_test_password@localhost:5432/chive';
+
+const NEO4J_URI = process.env.NEO4J_URI ?? 'bolt://localhost:7687';
+const NEO4J_USER = process.env.NEO4J_USER ?? 'neo4j';
+const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD ?? 'chive_test_password';
 
 // =============================================================================
 // DID Resolution
@@ -98,12 +104,14 @@ async function listChiveRecords(pdsUrl: string, did: string): Promise<ListRecord
  * Convert Eprint model to StoredEprint for repository storage.
  *
  * @remarks
- * Handles type conversions:
- * - Timestamp (number) → Date for createdAt
- * - Adds indexing metadata (pdsUrl, indexedAt)
- * - Converts readonly arrays to mutable for storage
+ * Resolves field labels from Neo4j before storing.
  */
-function toStoredEprint(eprint: Eprint, pdsUrl: string): StoredEprint {
+async function toStoredEprint(
+  eprint: Eprint,
+  pdsUrl: string,
+  nodeLookup: NodeLookup
+): Promise<StoredEprint> {
+  const resolvedFields = await resolveFieldLabels(eprint.fields, nodeLookup);
   return {
     uri: eprint.uri,
     cid: eprint.cid,
@@ -120,12 +128,9 @@ function toStoredEprint(eprint: Eprint, pdsUrl: string): StoredEprint {
     version: eprint.version,
     versionNotes: eprint.versionNotes,
     keywords: eprint.keywords,
-    fields: eprint.fields?.map((f) => ({
-      uri: f.uri,
-      label: f.label ?? f.uri, // Use URI as fallback if no label
-      id: f.id,
-    })),
+    fields: resolvedFields.length > 0 ? resolvedFields : undefined,
     license: eprint.license,
+    licenseUri: eprint.licenseUri,
     publicationStatus: eprint.publicationStatus,
     publishedVersion: eprint.publishedVersion,
     externalIds: eprint.externalIds,
@@ -135,7 +140,6 @@ function toStoredEprint(eprint: Eprint, pdsUrl: string): StoredEprint {
     conferencePresentation: eprint.conferencePresentation,
     pdsUrl,
     indexedAt: new Date(),
-    // Convert Timestamp (number) to Date
     createdAt: new Date(eprint.createdAt),
   };
 }
@@ -161,11 +165,46 @@ Example:
 
   try {
     await pool.query('SELECT 1');
-    console.log('Connected to PostgreSQL\n');
+    console.log('Connected to PostgreSQL');
   } catch (error) {
     console.error('Failed to connect to PostgreSQL:', error);
     process.exit(1);
   }
+
+  // Connect to Neo4j for field label resolution
+  const neo4jDriver = neo4j.driver(NEO4J_URI, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
+  try {
+    const session = neo4jDriver.session();
+    await session.run('RETURN 1');
+    await session.close();
+    console.log('Connected to Neo4j\n');
+  } catch (error) {
+    console.error('Failed to connect to Neo4j:', error);
+    console.warn('Field labels will not be resolved.\n');
+  }
+
+  // Create a NodeLookup adapter from the raw driver
+  const nodeLookup: NodeLookup = {
+    async getNodesByIds(ids: readonly string[]) {
+      const map = new Map<string, { label: string }>();
+      if (ids.length === 0) return map;
+      const session = neo4jDriver.session();
+      try {
+        const result = await session.run(
+          'MATCH (n:Node) WHERE n.id IN $ids RETURN n.id AS id, n.label AS label',
+          { ids: [...ids] }
+        );
+        for (const record of result.records) {
+          const id = record.get('id');
+          const label = record.get('label');
+          if (id && label) map.set(id, { label });
+        }
+      } finally {
+        await session.close();
+      }
+      return map;
+    },
+  };
 
   // Initialize repository
   const eprintsRepository = new EprintsRepository(pool);
@@ -194,8 +233,8 @@ Example:
         // Transform PDS record to Eprint model
         const eprint = transformPDSRecord(record.value, record.uri as AtUri, record.cid as CID);
 
-        // Convert to StoredEprint and store via repository
-        const storedEprint = toStoredEprint(eprint, pdsUrl);
+        // Convert to StoredEprint (resolves field labels from Neo4j)
+        const storedEprint = await toStoredEprint(eprint, pdsUrl, nodeLookup);
         const result = await eprintsRepository.store(storedEprint);
 
         if (result.ok) {
@@ -222,6 +261,7 @@ Example:
   console.log(`Note: Run reindex-all-eprints.ts to update Elasticsearch.`);
 
   await pool.end();
+  await neo4jDriver.close();
 }
 
 main().catch((error) => {

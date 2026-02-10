@@ -279,6 +279,7 @@ export class EprintService {
         keywords: record.keywords,
         fields: resolvedFields,
         license: record.license,
+        licenseUri: record.licenseUri,
         publicationStatus: record.publicationStatus,
         publishedVersion: record.publishedVersion,
         externalIds: record.externalIds,

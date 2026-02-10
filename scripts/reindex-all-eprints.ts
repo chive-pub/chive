@@ -34,7 +34,7 @@ import neo4j, { Driver } from 'neo4j-driver';
 import { transformPDSRecord } from '../src/services/eprint/pds-record-transformer.js';
 import { mapEprintToDocument } from '../src/storage/elasticsearch/document-mapper.js';
 import { setupElasticsearch } from '../src/storage/elasticsearch/setup.js';
-import { extractRkeyOrPassthrough, normalizeFieldUri } from '../src/utils/at-uri.js';
+import { resolveFieldLabels, type NodeLookup } from '../src/utils/field-label.js';
 import type { AtUri, CID } from '../src/types/atproto.js';
 
 // =============================================================================
@@ -106,63 +106,50 @@ function formatDuration(ms: number): string {
 }
 
 // =============================================================================
-// FIELD LABEL CACHE
+// NEO4J NODE LOOKUP ADAPTER
 // =============================================================================
 
-class FieldLabelCache {
-  private cache = new Map<string, string>();
-  private driver: Driver;
-
-  constructor(driver: Driver) {
-    this.driver = driver;
-  }
-
-  /**
-   * Resolve field ID to human-readable label from Neo4j knowledge graph.
-   *
-   * @param fieldUri - Full AT-URI or UUID of the field
-   * @returns Human-readable label, or the UUID if not found
-   */
-  async resolveLabel(fieldUri: string): Promise<string> {
-    // Normalize AT-URI to UUID
-    const fieldId = extractRkeyOrPassthrough(fieldUri);
-
-    // Check cache first
-    if (this.cache.has(fieldId)) {
-      return this.cache.get(fieldId)!;
-    }
-
-    const session = this.driver.session();
-    try {
-      // Query with Field label filter to match normal indexing behavior
-      // This matches the query pattern used by getNodesByIds in node-repository.ts
-      const result = await session.run(
-        `
-        MATCH (n:Node:Field)
-        WHERE n.id = $id
-        RETURN n.label as label
-        LIMIT 1
-        `,
-        { id: fieldId }
-      );
-
-      const record = result.records[0];
-      const label = record?.get('label') ?? fieldId;
-      this.cache.set(fieldId, label);
-      return label;
-    } catch (error) {
-      // Log but don't fail - use ID as fallback
-      console.warn(`  Warning: Failed to resolve field label for ${fieldId}:`, error);
-      this.cache.set(fieldId, fieldId);
-      return fieldId;
-    } finally {
-      await session.close();
-    }
-  }
-
-  get size(): number {
-    return this.cache.size;
-  }
+/**
+ * Create a NodeLookup adapter from a raw Neo4j driver.
+ * Includes a label cache for batch efficiency across multiple records.
+ */
+function createNodeLookup(driver: Driver): NodeLookup & { cacheSize: number } {
+  const cache = new Map<string, string>();
+  return {
+    async getNodesByIds(ids: readonly string[]) {
+      const map = new Map<string, { label: string }>();
+      const uncached: string[] = [];
+      for (const id of ids) {
+        if (cache.has(id)) {
+          map.set(id, { label: cache.get(id)! });
+        } else {
+          uncached.push(id);
+        }
+      }
+      if (uncached.length === 0) return map;
+      const session = driver.session();
+      try {
+        const result = await session.run(
+          'MATCH (n:Node) WHERE n.id IN $ids RETURN n.id AS id, n.label AS label',
+          { ids: uncached }
+        );
+        for (const record of result.records) {
+          const id = record.get('id');
+          const label = record.get('label');
+          if (id && label) {
+            cache.set(id, label);
+            map.set(id, { label });
+          }
+        }
+      } finally {
+        await session.close();
+      }
+      return map;
+    },
+    get cacheSize() {
+      return cache.size;
+    },
+  };
 }
 
 // =============================================================================
@@ -212,7 +199,7 @@ async function reindexSingleRecord(
   recordOwner: string,
   esClient: ElasticsearchClient,
   pgPool: Pool,
-  fieldLabelCache: FieldLabelCache,
+  nodeLookup: NodeLookup,
   indexName: string
 ): Promise<void> {
   // Validate inputs
@@ -253,17 +240,7 @@ async function reindexSingleRecord(
   );
 
   // Resolve field labels from Neo4j knowledge graph
-  let fieldsWithLabels = eprint.fields;
-  if (eprint.fields && eprint.fields.length > 0) {
-    fieldsWithLabels = await Promise.all(
-      eprint.fields.map(async (f) => {
-        // Normalize URI to AT-URI format before resolving label
-        const normalizedUri = normalizeFieldUri(f.uri);
-        const label = await fieldLabelCache.resolveLabel(normalizedUri);
-        return { ...f, uri: normalizedUri, label };
-      })
-    );
-  }
+  const fieldsWithLabels = await resolveFieldLabels(eprint.fields, nodeLookup);
 
   // Update PostgreSQL with fields (including resolved labels)
   await pgPool.query(
@@ -273,7 +250,7 @@ async function reindexSingleRecord(
         indexed_at = NOW()
     WHERE uri = $1
     `,
-    [uri, fieldsWithLabels ? JSON.stringify(fieldsWithLabels) : null]
+    [uri, fieldsWithLabels.length > 0 ? JSON.stringify(fieldsWithLabels) : null]
   );
 
   // Map to Elasticsearch document
@@ -296,7 +273,7 @@ async function processBatch(
   batch: Array<{ uri: string; pds_url: string; paper_did: string; submitted_by: string }>,
   esClient: ElasticsearchClient,
   pgPool: Pool,
-  fieldLabelCache: FieldLabelCache,
+  nodeLookup: NodeLookup,
   indexName: string,
   stats: ReindexStats,
   batchIndex: number,
@@ -328,7 +305,7 @@ async function processBatch(
           recordOwner,
           esClient,
           pgPool,
-          fieldLabelCache,
+          nodeLookup,
           indexName
         );
 
@@ -496,7 +473,7 @@ async function main() {
   // PROCESS IN BATCHES
   // ==========================================================================
 
-  const fieldLabelCache = new FieldLabelCache(neo4jDriver);
+  const nodeLookup = createNodeLookup(neo4jDriver);
 
   const stats: ReindexStats = {
     total: records.length,
@@ -515,7 +492,7 @@ async function main() {
     const end = Math.min(start + CONFIG.batchSize, records.length);
     const batch = records.slice(start, end);
 
-    await processBatch(batch, esClient, pgPool, fieldLabelCache, indexName, stats, i, totalBatches);
+    await processBatch(batch, esClient, pgPool, nodeLookup, indexName, stats, i, totalBatches);
 
     // Delay between batches to avoid overwhelming services
     if (i < totalBatches - 1) {
@@ -550,7 +527,7 @@ async function main() {
   );
   console.log(`  Failed: ${stats.failed} (${((stats.failed / stats.total) * 100).toFixed(1)}%)`);
   console.log(`  Skipped: ${stats.skipped} (${((stats.skipped / stats.total) * 100).toFixed(1)}%)`);
-  console.log(`Field labels cached: ${fieldLabelCache.size}`);
+  console.log(`Field labels cached: ${nodeLookup.cacheSize}`);
 
   if (stats.failedRecords.length > 0) {
     console.log();

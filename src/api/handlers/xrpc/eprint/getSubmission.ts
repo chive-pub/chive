@@ -24,6 +24,7 @@ import type {
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
 import { normalizeFieldUri } from '../../../../utils/at-uri.js';
+import { resolveFieldLabels } from '../../../../utils/field-label.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -181,39 +182,10 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
           }
         : undefined;
 
-    // Resolve UUID field labels from Neo4j at response time.
+    // Resolve field labels from Neo4j at response time.
     // During indexing, labels may fall back to UUIDs if Neo4j was unavailable.
-    const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let resolvedFields = result.fields?.map((f) => ({
-      uri: normalizeFieldUri(f.uri),
-      label: f.label,
-      id: f.id ?? normalizeFieldUri(f.uri),
-    }));
-
-    if (resolvedFields) {
-      const uuidFields = resolvedFields.filter((f) => UUID_PATTERN.test(f.label));
-      if (uuidFields.length > 0) {
-        try {
-          const { nodeRepository } = c.get('services');
-          const uuidIds = uuidFields.map((f) => f.id);
-          const nodeMap = await nodeRepository.getNodesByIds(uuidIds);
-          resolvedFields = resolvedFields.map((f) => {
-            if (UUID_PATTERN.test(f.label)) {
-              const node = nodeMap.get(f.id);
-              if (node) {
-                return { ...f, label: node.label };
-              }
-            }
-            return f;
-          });
-        } catch (err) {
-          logger.warn('Failed to resolve UUID field labels from Neo4j', {
-            error: err instanceof Error ? err.message : 'Unknown error',
-            uuidCount: uuidFields.length,
-          });
-        }
-      }
-    }
+    const { nodeRepository } = c.get('services');
+    const resolvedFields = await resolveFieldLabels(result.fields, nodeRepository);
 
     // Build the submission value in lexicon format
     const response: OutputSchema & { _schemaHints?: typeof schemaHints } = {
