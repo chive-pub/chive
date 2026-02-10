@@ -26,7 +26,7 @@ web/
 │   ├── fields/               # Field taxonomy pages
 │   └── governance/           # Governance and proposals
 ├── components/
-│   ├── annotations/          # PDF text annotation components
+│   ├── annotations/          # PDF text annotation and entity link components
 │   ├── backlinks/            # Bluesky backlink display
 │   ├── endorsements/         # Endorsement panel and badges
 │   ├── enrichment/           # Citation enrichment display
@@ -272,20 +272,20 @@ import { EndorsementPanel } from '@/components/endorsements/endorsement-panel';
 
 ### Review components
 
-Located in `components/reviews/`:
+Located in `components/reviews/`. Reviews are document-level discussion (no text span targeting):
 
-| Component                | Description                                    |
-| ------------------------ | ---------------------------------------------- |
-| `ReviewForm`             | Create/edit review with character count        |
-| `InlineReplyForm`        | Compact reply form                             |
-| `ReviewList`             | Paginated reviews                              |
-| `ReviewThread`           | Threaded discussion display                    |
-| `ReviewCard`             | Single review with actions                     |
-| `AnnotationBodyRenderer` | Renders annotation content                     |
-| `TargetSpanPreview`      | Shows selected text being annotated            |
-| `ParentReviewPreview`    | Shows parent review when replying              |
-| `DeleteReviewDialog`     | Confirmation dialog for soft-deleting a review |
-| `DocumentLocationCard`   | Shows annotation context in document           |
+| Component                | Description                                                     |
+| ------------------------ | --------------------------------------------------------------- |
+| `ReviewForm`             | Create/edit review with character count                         |
+| `InlineReplyForm`        | Compact reply form                                              |
+| `ReviewList`             | Paginated reviews                                               |
+| `ReviewThread`           | Threaded discussion display                                     |
+| `ReviewCard`             | Single review with actions                                      |
+| `AnnotationBodyRenderer` | Renders rich text body content for both annotations and reviews |
+| `TargetSpanPreview`      | Shows referenced text for document-level reviews                |
+| `ParentReviewPreview`    | Shows parent review when replying                               |
+| `DeleteReviewDialog`     | Confirmation dialog for soft-deleting a review                  |
+| `DocumentLocationCard`   | Shows annotation location context in the PDF                    |
 
 Example:
 
@@ -299,6 +299,34 @@ import { ReviewForm } from '@/components/reviews/review-form';
   }}
   onCancel={() => setShowForm(false)}
   isLoading={createReview.isPending}
+/>;
+```
+
+### Annotation components
+
+Located in `components/annotations/`. These handle inline PDF annotations and entity linking:
+
+| Component                 | Description                                                               |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `AnnotationEditor`        | Rich text editor with `@` and `#` triggers for knowledge graph references |
+| `AnnotationPreview`       | Preview of annotation body content                                        |
+| `AnnotationSidebar`       | Sidebar listing annotations and entity links grouped by page              |
+| `EntityLinkDialog`        | Dialog for linking a text span to a Wikidata or graph entity              |
+| `NodeMentionAutocomplete` | Autocomplete dropdown for `@` and `#` node mentions                       |
+| `WikidataSearch`          | Wikidata entity search for entity linking                                 |
+
+Example:
+
+```tsx
+import { AnnotationEditor, EntityLinkDialog } from '@/components/annotations';
+
+<AnnotationEditor value={body} onChange={setBody} placeholder="Add your annotation..." />;
+
+<EntityLinkDialog
+  open={isOpen}
+  onOpenChange={setIsOpen}
+  selectedText="neural networks"
+  onLink={handleLink}
 />;
 ```
 
@@ -357,9 +385,10 @@ import { NodeAutocomplete } from '@/components/forms/node-autocomplete';
 
 Located in `components/editor/`:
 
-| Component          | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| `RichTextRenderer` | Renders rich text items with entity references |
+| Component                 | Description                                                 |
+| ------------------------- | ----------------------------------------------------------- |
+| `RichTextRenderer`        | Renders rich text items with entity references              |
+| `CrossReferenceExtension` | TipTap extension for `[[` autocomplete of entity references |
 
 See [Frontend Rich Text](./frontend-rich-text.md) for detailed documentation on the rich text system.
 
@@ -541,14 +570,13 @@ if (hasOrcid(author)) {
 
 ### Review hooks
 
-| Hook                          | Description               |
-| ----------------------------- | ------------------------- |
-| `useReviews(eprintUri)`       | Reviews for an eprint     |
-| `useInlineReviews(eprintUri)` | Inline annotations only   |
-| `useReviewThread(reviewUri)`  | Threaded replies          |
-| `useCreateReview()`           | Create review mutation    |
-| `useDeleteReview()`           | Delete review mutation    |
-| `usePrefetchReviews()`        | Prefetch reviews on hover |
+| Hook                         | Description                           |
+| ---------------------------- | ------------------------------------- |
+| `useReviews(eprintUri)`      | Document-level reviews for an eprint  |
+| `useReviewThread(reviewUri)` | Threaded replies to a review          |
+| `useCreateReview()`          | Create document-level review mutation |
+| `useDeleteReview()`          | Delete review mutation                |
+| `usePrefetchReviews()`       | Prefetch reviews on hover             |
 
 ```tsx
 import { useReviews, useCreateReview } from '@/lib/hooks';
@@ -559,6 +587,46 @@ const createReview = useCreateReview();
 await createReview.mutateAsync({
   content: 'Great methodology!',
   eprintUri,
+  motivation: 'commenting',
+});
+```
+
+### Annotation hooks
+
+| Hook                                           | Description                                                 |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| `useAnnotations(eprintUri, params?)`           | Annotations for an eprint (with optional motivation filter) |
+| `useAnnotationsForPage(eprintUri, pageNumber)` | Annotations targeting a specific PDF page                   |
+| `useAnnotationThread(annotationUri)`           | Thread with parent and nested replies                       |
+| `useCreateAnnotation()`                        | Create inline annotation mutation                           |
+| `useCreateEntityLink()`                        | Create entity link mutation                                 |
+| `useDeleteAnnotation()`                        | Delete annotation mutation                                  |
+| `useDeleteEntityLink()`                        | Delete entity link mutation                                 |
+
+Query key factory:
+
+```typescript
+import { annotationKeys } from '@/lib/hooks/use-annotations';
+
+// Invalidate all annotations for an eprint
+queryClient.invalidateQueries({ queryKey: annotationKeys.forEprint(eprintUri) });
+
+// Invalidate a specific thread
+queryClient.invalidateQueries({ queryKey: annotationKeys.thread(annotationUri) });
+```
+
+Example:
+
+```tsx
+import { useAnnotations, useCreateAnnotation } from '@/lib/hooks';
+
+const { data, isLoading } = useAnnotations(eprintUri);
+const createAnnotation = useCreateAnnotation();
+
+await createAnnotation.mutateAsync({
+  eprintUri,
+  content: 'Interesting claim here.',
+  target: { source: eprintUri, selector: { type: 'TextQuoteSelector', exact: 'selected text' } },
   motivation: 'commenting',
 });
 ```

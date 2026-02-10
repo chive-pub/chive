@@ -39,6 +39,7 @@ import {
 } from './plugins/index.js';
 import { ActivityService } from './services/activity/activity-service.js';
 import { AlphaApplicationService } from './services/alpha/alpha-application-service.js';
+import { AnnotationService } from './services/annotation/annotation-service.js';
 import { BacklinkService } from './services/backlink/backlink-service.js';
 import { CDNAdapter } from './services/blob-proxy/cdn-adapter.js';
 import { CIDVerifier } from './services/blob-proxy/cid-verifier.js';
@@ -417,6 +418,12 @@ function createServices(
     logger,
   });
 
+  // Create annotation service
+  const annotationService = new AnnotationService({
+    pool: pgPool,
+    logger,
+  });
+
   // Wire facet usage history repository to TagManager (TagManager created earlier for EprintService)
   const facetUsageHistoryRepository = new FacetUsageHistoryRepository(pgPool, logger);
   tagManager.setFacetHistoryRepository(facetUsageHistoryRepository);
@@ -534,6 +541,7 @@ function createServices(
     graphService,
     blobProxyService,
     reviewService,
+    annotationService,
     tagManager,
     facetManager,
     nodeRepository,

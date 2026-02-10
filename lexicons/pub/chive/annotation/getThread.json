@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.annotation.getThread",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get an annotation thread including the root annotation and all replies",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the root annotation"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["parent", "replies", "totalReplies"],
+          "properties": {
+            "parent": {
+              "type": "ref",
+              "ref": "pub.chive.annotation.listForEprint#annotationView",
+              "description": "Root annotation of the thread"
+            },
+            "replies": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.annotation.listForEprint#annotationView"
+              },
+              "description": "Direct replies to the root annotation"
+            },
+            "totalReplies": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of replies in the thread"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "NotFound",
+          "description": "Annotation not found"
+        }
+      ]
+    }
+  }
+}

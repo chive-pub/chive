@@ -10,7 +10,8 @@ Chive's core services handle:
 - **BlobProxyService**: Proxies PDF and image blobs from user PDSes with 3-tier caching
 - **MetricsService**: Tracks view counts and downloads using Redis data structures
 - **PDSSyncService**: Detects stale indexes and triggers re-sync from source PDSes
-- **ReviewService**: Indexes reviews and endorsements with threaded discussions
+- **AnnotationService**: Indexes inline text annotations and entity links with threaded discussions
+- **ReviewService**: Indexes document-level reviews and endorsements
 
 All services follow ATProto compliance rules: they index data from the firehose but never write to user PDSes.
 
@@ -25,10 +26,12 @@ flowchart TB
     end
 
     FC --> ES[EprintService]
+    FC --> AS[AnnotationService]
     FC --> RS[ReviewService]
     FC --> MS[MetricsService]
 
     ES --> ES_DB[(PostgreSQL<br/>Elasticsearch)]
+    AS --> AS_DB[(PostgreSQL)]
     RS --> RS_DB[(PostgreSQL)]
     MS --> MS_DB[(Redis)]
 
@@ -48,13 +51,30 @@ flowchart TB
 
 ### Data flow
 
-1. User creates an eprint record in their PDS
+1. User creates a record in their PDS
 2. PDS publishes event to the ATProto relay
-3. Chive's firehose consumer receives the event
-4. EprintService indexes the record to PostgreSQL and Elasticsearch
-5. MetricsService tracks views when users access the eprint
-6. BlobProxyService fetches PDFs from the user's PDS on demand
-7. PDSSyncService periodically checks for stale records
+3. Chive's firehose consumer receives the event and routes it by collection:
+   - Eprint submissions (`pub.chive.eprint.submission`)
+   - Inline annotations (`pub.chive.annotation.comment`)
+   - Entity links (`pub.chive.annotation.entityLink`, `pub.chive.review.entityLink`)
+   - Document-level reviews and endorsements
+4. EprintService indexes eprint records to PostgreSQL and Elasticsearch
+5. AnnotationService indexes annotations and entity links to PostgreSQL
+6. ReviewService indexes document-level reviews and endorsements
+7. MetricsService tracks views when users access the eprint
+8. BlobProxyService fetches PDFs from the user's PDS on demand
+9. PDSSyncService periodically checks for stale records
+
+### Service layer
+
+| Service           | Responsibility                              |
+| ----------------- | ------------------------------------------- |
+| EprintService     | Eprint indexing, search, metadata storage   |
+| BlobProxyService  | PDF/image proxy with 3-tier cache           |
+| MetricsService    | View counts, downloads, trending            |
+| PDSSyncService    | Staleness detection, PDS re-sync            |
+| AnnotationService | Inline annotations, entity links, threading |
+| ReviewService     | Document-level reviews, endorsements        |
 
 ## EprintService
 
@@ -349,9 +369,87 @@ Users can register their PDS via `pub.chive.sync.registerPDS`. If authenticated,
 
 See [PDS Discovery](./services/pds-discovery.md) for detailed documentation.
 
+## AnnotationService
+
+Indexes inline text annotations and entity links from the firehose with support for threaded discussions and W3C Web Annotation targets. AnnotationService uses generated lexicon types with runtime validation.
+
+### Type imports
+
+```typescript
+import {
+  isRecord as isAnnotationRecord,
+  type Main as AnnotationRecord,
+} from '../../lexicons/generated/types/pub/chive/annotation/comment.js';
+import {
+  isRecord as isEntityLinkRecord,
+  type Main as EntityLinkRecord,
+} from '../../lexicons/generated/types/pub/chive/annotation/entityLink.js';
+```
+
+### Key methods
+
+```typescript
+import { AnnotationService } from '@/services/annotation/annotation-service.js';
+
+const service = new AnnotationService({ storage, logger });
+
+// Index an annotation from firehose event
+await service.indexAnnotation(record, {
+  uri: 'at://did:plc:abc/pub.chive.annotation.comment/xyz' as AtUri,
+  cid: 'bafyrei...' as CID,
+  pdsUrl: 'https://pds.example.com',
+  indexedAt: new Date(),
+});
+
+// Index an entity link from firehose event
+await service.indexEntityLink(entityLinkRecord, metadata);
+
+// Get annotations for an eprint
+const annotations = await service.getAnnotationsForEprint(eprintUri, {
+  motivation: 'questioning',
+  limit: 50,
+});
+
+// Get annotations for a specific PDF page
+const pageAnnotations = await service.getAnnotationsForPage(eprintUri, 5);
+
+// Get threaded annotation with replies (recursive CTE)
+const thread = await service.getAnnotationThread(annotationUri);
+
+// Get annotations by author
+const authorAnnotations = await service.getAnnotationsByAuthor(authorDid);
+```
+
+### Database tables
+
+AnnotationService writes to two PostgreSQL tables:
+
+**annotations_index**: Inline text annotations with W3C targets
+
+- Columns: uri, cid, eprint_uri, annotator_did, body (JSONB), anchor (JSONB, NOT NULL), page_number, motivation, parent_annotation, reply_count, timestamps, pds_url
+- Indexed by: eprint_uri, annotator_did, page_number, parent_annotation
+
+**entity_links_index**: Entity links connecting text spans to knowledge graph entities
+
+- Columns: uri, cid, eprint_uri, creator_did, anchor (JSONB, NOT NULL), page_number, entity_type, entity_data (JSONB), entity_label, confidence, timestamps, pds_url
+- GIN index on entity_data for JSON querying
+
+### Threading
+
+Threads are built using recursive CTEs with unlimited depth:
+
+```typescript
+const thread = await service.getAnnotationThread(annotationUri);
+// Returns: { root: AnnotationView, replies: AnnotationThread[], totalReplies: number }
+```
+
+### ATProto compliance
+
+AnnotationService indexes records from the firehose and never writes to user PDSes. All index tables are rebuildable from firehose events and track PDS source URLs for staleness detection.
+
 ## ReviewService
 
-Indexes reviews and endorsements with support for threaded discussions and soft deletion. ReviewService uses generated lexicon types with runtime validation (see [Lexicon type validation](./lexicon-type-validation.md) for the pattern).
+Indexes document-level reviews and endorsements with support for threaded discussions and soft deletion. ReviewService uses generated lexicon types with runtime validation (see [Lexicon type validation](./lexicon-type-validation.md) for the pattern). For inline text annotations, see [AnnotationService](#annotationservice) above.
 
 ### Type imports
 

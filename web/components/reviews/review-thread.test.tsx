@@ -268,39 +268,12 @@ describe('ReviewThreadComponent', () => {
     });
   });
 
-  describe('showTargets prop', () => {
-    it('shows targets only at depth 0', () => {
-      const threadWithTarget: FrontendReviewThread = {
-        parent: createMockReview({
-          target: {
-            source: 'at://test',
-            selector: { type: 'TextQuoteSelector', exact: 'target text' },
-          },
-        }),
-        replies: [],
-        totalReplies: 0,
-      };
+  describe('document-level reviews', () => {
+    it('does not render target display (reviews are document-level only)', () => {
+      const thread = createThread();
+      render(<ReviewThreadComponent thread={thread} />);
 
-      render(<ReviewThreadComponent thread={threadWithTarget} depth={0} showTargets />);
-
-      expect(screen.getByText(/target text/)).toBeInTheDocument();
-    });
-
-    it('hides targets at depth > 0 even if showTargets is true', () => {
-      const threadWithTarget: FrontendReviewThread = {
-        parent: createMockReview({
-          target: {
-            source: 'at://test',
-            selector: { type: 'TextQuoteSelector', exact: 'target text' },
-          },
-        }),
-        replies: [],
-        totalReplies: 0,
-      };
-
-      render(<ReviewThreadComponent thread={threadWithTarget} depth={1} showTargets />);
-
-      expect(screen.queryByText(/target text/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('document-location-card')).not.toBeInTheDocument();
     });
   });
 

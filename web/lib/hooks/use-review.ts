@@ -3,7 +3,7 @@
  *
  * @remarks
  * Provides TanStack Query hooks for fetching, creating, and managing peer reviews.
- * Reviews support unlimited-depth threading and W3C-compliant text span targeting.
+ * Reviews are document-level and support unlimited-depth threading.
  *
  * @example
  * ```tsx
@@ -40,9 +40,6 @@ import type {
   ListReviewsResponse,
   ListAuthorReviewsResponse,
   ReviewThread,
-  TextSpanTarget,
-  AnnotationBody,
-  AnnotationMotivation,
 } from '@/lib/api/schema';
 
 // =============================================================================
@@ -85,9 +82,6 @@ export const reviewKeys = {
   /** Key for specific review thread */
   thread: (reviewUri: string) => [...reviewKeys.threads(), reviewUri] as const,
 
-  /** Key for inline reviews (span annotations) */
-  inline: (eprintUri: string) => [...reviewKeys.forEprint(eprintUri), 'inline'] as const,
-
   /** Key for reviews by user */
   byUser: (did: string) => [...reviewKeys.all, 'user', did] as const,
 };
@@ -104,10 +98,6 @@ export interface ReviewListParams {
   limit?: number;
   /** Cursor for pagination */
   cursor?: string;
-  /** Filter by motivation type */
-  motivation?: AnnotationMotivation;
-  /** Only include inline annotations (with target) */
-  inlineOnly?: boolean;
 }
 
 /**
@@ -142,12 +132,6 @@ export interface CreateReviewInput {
   eprintUri: string;
   /** Plain text content */
   content: string;
-  /** Rich text body (optional) */
-  body?: AnnotationBody;
-  /** Target span (optional) */
-  target?: TextSpanTarget;
-  /** Motivation */
-  motivation?: AnnotationMotivation;
   /** Parent review URI for replies */
   parentReviewUri?: string;
   /** Optional facets for rich text (links, etc.) */
@@ -182,7 +166,7 @@ export interface CreateReviewInput {
  * ```
  *
  * @param eprintUri - AT-URI of the eprint
- * @param params - Query parameters (limit, cursor, motivation, inlineOnly)
+ * @param params - Query parameters (limit, cursor)
  * @param options - Hook options
  * @returns Query result with reviews data
  *
@@ -201,8 +185,6 @@ export function useReviews(
           eprintUri,
           limit: params.limit ?? 20,
           cursor: params.cursor,
-          motivation: params.motivation,
-          inlineOnly: params.inlineOnly,
         });
         return response.data as unknown as ListReviewsResponse;
       } catch (error) {
@@ -217,51 +199,6 @@ export function useReviews(
     enabled: !!eprintUri && (options.enabled ?? true),
     staleTime: 60 * 1000, // 1 minute; reviews are more dynamic.
     placeholderData: (previousData) => previousData,
-  });
-}
-
-/**
- * Fetches inline reviews (span annotations) for an eprint.
- *
- * @remarks
- * Returns only reviews that have a target text span.
- * Used for rendering annotation markers on the PDF viewer.
- *
- * @example
- * ```tsx
- * const { data } = useInlineReviews(eprintUri);
- *
- * return (
- *   <PDFAnnotationLayer annotations={data?.reviews ?? []} />
- * );
- * ```
- *
- * @param eprintUri - AT-URI of the eprint
- * @param options - Hook options
- * @returns Query result with inline reviews
- */
-export function useInlineReviews(eprintUri: string, options: UseReviewsOptions = {}) {
-  return useQuery({
-    queryKey: reviewKeys.inline(eprintUri),
-    queryFn: async (): Promise<ListReviewsResponse> => {
-      try {
-        const response = await api.pub.chive.review.listForEprint({
-          eprintUri,
-          inlineOnly: true,
-          limit: 100, // Get all inline reviews
-        });
-        return response.data as unknown as ListReviewsResponse;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch inline reviews',
-          undefined,
-          'pub.chive.review.listForEprint'
-        );
-      }
-    },
-    enabled: !!eprintUri && (options.enabled ?? true),
-    staleTime: 60 * 1000,
   });
 }
 
@@ -314,9 +251,8 @@ export function useReviewThread(reviewUri: string, options: UseReviewsOptions = 
  * Mutation hook for creating a new review.
  *
  * @remarks
- * Creates a review in the user's PDS. Supports:
- * - General reviews (no target)
- * - Inline annotations (with target span)
+ * Creates a document-level review in the user's PDS. Supports:
+ * - General reviews
  * - Threaded replies (with parentReviewUri)
  * - Rich text bodies with embedded references
  *
@@ -359,8 +295,6 @@ export function useCreateReview() {
         eprintUri: input.eprintUri,
         content: input.content,
         parentReviewUri: input.parentReviewUri,
-        target: input.target,
-        motivation: input.motivation,
         facets: input.facets,
       } as RecordCreatorReviewInput);
 
@@ -396,9 +330,6 @@ export function useCreateReview() {
         author: { did: '' },
         eprintUri: input.eprintUri,
         content: input.content,
-        body: input.body,
-        target: input.target,
-        motivation: input.motivation,
         parentReviewUri: input.parentReviewUri,
         replyCount: 0,
         createdAt: new Date().toISOString(),
@@ -625,8 +556,8 @@ export interface UseAuthorReviewsOptions {
  * Fetches reviews created by a specific author.
  *
  * @remarks
- * Returns all reviews (both inline annotations and general comments)
- * created by the specified author, ordered by most recent first.
+ * Returns all document-level reviews created by the specified author,
+ * ordered by most recent first.
  *
  * @example
  * ```tsx

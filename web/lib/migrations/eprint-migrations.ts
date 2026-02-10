@@ -79,9 +79,14 @@ interface LegacyTitleEprint {
 
 /**
  * Eprint record with legacy license format (slug only).
+ *
+ * @remarks
+ * Older PDS records use the field name `license` instead of `licenseSlug`.
+ * The migration must handle both field names.
  */
 interface LegacyLicenseEprint {
-  licenseSlug: string;
+  license?: string;
+  licenseSlug?: string;
   licenseUri?: undefined | '';
   [key: string]: unknown;
 }
@@ -333,8 +338,15 @@ const licenseSlugToUriMigration: SchemaMigration = {
     }
     const rec = record as Record<string, unknown>;
 
-    // Has slug but no URI
-    if (typeof rec.licenseSlug !== 'string' || !rec.licenseSlug) {
+    // Check both old field name (license) and new field name (licenseSlug)
+    const slug =
+      typeof rec.licenseSlug === 'string'
+        ? rec.licenseSlug
+        : typeof rec.license === 'string'
+          ? rec.license
+          : null;
+
+    if (!slug) {
       return false;
     }
 
@@ -343,16 +355,23 @@ const licenseSlugToUriMigration: SchemaMigration = {
       return false;
     }
 
-    // Check if we have a mapping for this slug
-    return rec.licenseSlug in LICENSE_URI_MAP;
+    // Check if we have a mapping for this slug (case-insensitive)
+    return slug.toUpperCase() in LICENSE_URI_MAP || slug in LICENSE_URI_MAP;
   },
 
   migrate: (old: unknown): unknown => {
     const record = old as LegacyLicenseEprint;
-    const uri = LICENSE_URI_MAP[record.licenseSlug];
+    // Use whichever field name is present
+    const slug = record.licenseSlug ?? record.license ?? '';
+    const normalizedSlug = slug.toUpperCase() in LICENSE_URI_MAP ? slug.toUpperCase() : slug;
+    const uri = LICENSE_URI_MAP[normalizedSlug];
+
+    // Remove old field name, use the canonical licenseSlug
+    const { license: _removed, ...rest } = record;
 
     return {
-      ...record,
+      ...rest,
+      licenseSlug: normalizedSlug,
       licenseUri: uri ?? '',
     };
   },

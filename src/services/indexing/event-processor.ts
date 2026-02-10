@@ -40,6 +40,7 @@ import { ChiveError, DatabaseError } from '../../types/errors.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { ActivityService } from '../activity/activity-service.js';
+import type { AnnotationService } from '../annotation/annotation-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecordWithSchema } from '../eprint/pds-record-transformer.js';
 import type { AutomaticProposalService } from '../governance/automatic-proposal-service.js';
@@ -226,6 +227,7 @@ export interface EventProcessorOptions {
   readonly activity: ActivityService;
   readonly eprintService: EprintService;
   readonly reviewService: ReviewService;
+  readonly annotationService?: AnnotationService;
   readonly graphService: KnowledgeGraphService;
   readonly nodeService?: NodeService;
   readonly edgeService?: EdgeService;
@@ -264,6 +266,7 @@ export function createEventProcessor(
     activity,
     eprintService,
     reviewService,
+    annotationService,
     graphService,
     nodeService,
     edgeService,
@@ -305,6 +308,7 @@ export function createEventProcessor(
         pool,
         eprintService,
         reviewService,
+        annotationService,
         graphService,
         nodeService,
         edgeService,
@@ -378,6 +382,7 @@ interface ProcessRecordContext {
   readonly pool: Pool;
   readonly eprintService: EprintService;
   readonly reviewService: ReviewService;
+  readonly annotationService?: AnnotationService;
   readonly graphService: KnowledgeGraphService;
   readonly nodeService?: NodeService;
   readonly edgeService?: EdgeService;
@@ -414,6 +419,7 @@ async function processRecord(
   const {
     eprintService,
     reviewService,
+    annotationService,
     graphService,
     nodeService,
     edgeService,
@@ -627,6 +633,60 @@ async function processRecord(
           const error = result.error as Error;
           logger.error('Failed to index endorsement', error, { uri, action });
           return failure('Failed to index endorsement', false, error);
+        }
+      }
+      return success();
+    }
+
+    case 'pub.chive.annotation.comment': {
+      logger.debug('Processing annotation comment', { action, uri });
+
+      if (action === 'delete') {
+        try {
+          await pool.query('DELETE FROM annotations_index WHERE uri = $1', [uri]);
+          logger.info('Deleted annotation from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete annotation', error, { uri });
+          return failure(
+            'Failed to delete annotation',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
+      } else if (record && annotationService) {
+        const result = await annotationService.indexAnnotation(record, metadata);
+        if (!result.ok) {
+          const error = result.error as Error;
+          logger.error('Failed to index annotation', error, { uri, action });
+          return failure('Failed to index annotation', false, error);
+        }
+      }
+      return success();
+    }
+
+    case 'pub.chive.annotation.entityLink': {
+      logger.debug('Processing entity link', { action, uri });
+
+      if (action === 'delete') {
+        try {
+          await pool.query('DELETE FROM entity_links_index WHERE uri = $1', [uri]);
+          logger.info('Deleted entity link from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete entity link', error, { uri });
+          return failure(
+            'Failed to delete entity link',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
+      } else if (record && annotationService) {
+        const result = await annotationService.indexEntityLink(record, metadata);
+        if (!result.ok) {
+          const error = result.error as Error;
+          logger.error('Failed to index entity link', error, { uri, action });
+          return failure('Failed to index entity link', false, error);
         }
       }
       return success();
@@ -992,6 +1052,7 @@ export function createBatchEventProcessor(
     activity,
     eprintService,
     reviewService,
+    annotationService,
     graphService,
     nodeService,
     edgeService,
@@ -1022,7 +1083,16 @@ export function createBatchEventProcessor(
       }
 
       const result = await processRecord(
-        { pool, eprintService, reviewService, graphService, nodeService, edgeService, logger },
+        {
+          pool,
+          eprintService,
+          reviewService,
+          annotationService,
+          graphService,
+          nodeService,
+          edgeService,
+          logger,
+        },
         {
           uri,
           repo: event.repo as DID,

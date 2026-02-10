@@ -133,11 +133,11 @@ List eprints by a specific author.
 
 ## Review namespace
 
-Endpoints for peer reviews and comments.
+Endpoints for peer reviews and comments. Reviews follow the [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) data model, with each review carrying a `motivation` field and an optional `target` for inline text span annotations.
 
 ### pub.chive.review.getThread
 
-Get a review thread for an eprint.
+Get a review thread with all replies.
 
 | Property | Value       |
 | -------- | ----------- |
@@ -146,30 +146,55 @@ Get a review thread for an eprint.
 
 #### Parameters
 
-| Name    | Type    | Required | Description                      |
-| ------- | ------- | -------- | -------------------------------- |
-| `uri`   | string  | Yes      | URI of the eprint or root review |
-| `depth` | integer | No       | Thread depth (default: 6)        |
+| Name  | Type   | Required | Description               |
+| ----- | ------ | -------- | ------------------------- |
+| `uri` | string | Yes      | AT-URI of the root review |
 
 #### Response
 
 ```json
 {
-  "thread": {
+  "parent": {
     "uri": "at://did:plc:reviewer.../pub.chive.review.comment/abc...",
+    "cid": "bafyreib...",
     "author": {
       "did": "did:plc:reviewer...",
-      "handle": "bob.bsky.social"
+      "handle": "bob.bsky.social",
+      "displayName": "Bob Jones"
     },
-    "record": {
-      "text": "This is an excellent contribution...",
-      "subject": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
-      "createdAt": "2025-01-16T14:00:00Z"
-    },
-    "replies": [...]
-  }
+    "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+    "content": "The methodology section needs clarification...",
+    "motivation": "commenting",
+    "replyCount": 2,
+    "createdAt": "2025-01-16T14:00:00Z",
+    "indexedAt": "2025-01-16T14:01:00Z"
+  },
+  "replies": [
+    {
+      "uri": "at://did:plc:replier.../pub.chive.review.comment/def...",
+      "cid": "bafyreic...",
+      "author": {
+        "did": "did:plc:replier...",
+        "handle": "carol.bsky.social"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "Good point, I agree...",
+      "motivation": "replying",
+      "parentReviewUri": "at://did:plc:reviewer.../pub.chive.review.comment/abc...",
+      "replyCount": 0,
+      "createdAt": "2025-01-16T15:30:00Z",
+      "indexedAt": "2025-01-16T15:31:00Z"
+    }
+  ],
+  "totalReplies": 2
 }
 ```
+
+#### Errors
+
+| Name       | Description                   |
+| ---------- | ----------------------------- |
+| `NotFound` | The review URI does not exist |
 
 ### pub.chive.review.listForEprint
 
@@ -182,12 +207,13 @@ List all reviews for an eprint.
 
 #### Parameters
 
-| Name     | Type    | Required | Description               |
-| -------- | ------- | -------- | ------------------------- |
-| `uri`    | string  | Yes      | Eprint URI                |
-| `sortBy` | string  | No       | Sort: `recent`, `helpful` |
-| `limit`  | integer | No       | Results per page          |
-| `cursor` | string  | No       | Pagination cursor         |
+| Name         | Type    | Required | Description                                                             |
+| ------------ | ------- | -------- | ----------------------------------------------------------------------- |
+| `eprintUri`  | string  | Yes      | AT-URI of the eprint                                                    |
+| `motivation` | string  | No       | Filter by W3C motivation (e.g., `commenting`, `questioning`)            |
+| `inlineOnly` | boolean | No       | Only include inline annotations with text span targets (default: false) |
+| `limit`      | integer | No       | Results per page (1-100, default: 50)                                   |
+| `cursor`     | string  | No       | Pagination cursor                                                       |
 
 #### Response
 
@@ -196,26 +222,369 @@ List all reviews for an eprint.
   "reviews": [
     {
       "uri": "at://did:plc:reviewer.../pub.chive.review.comment/abc...",
+      "cid": "bafyreib...",
       "author": {
         "did": "did:plc:reviewer...",
         "handle": "bob.bsky.social",
         "displayName": "Bob Jones",
         "avatar": "https://cdn.bsky.app/..."
       },
-      "record": {
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "The methodology section...",
+      "body": {
         "text": "The methodology section...",
-        "subject": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
-        "createdAt": "2025-01-16T14:00:00Z"
+        "facets": []
       },
-      "deleted": false,
-      "indexedAt": "2025-01-16T14:01:00Z"
+      "motivation": "commenting",
+      "parentReviewUri": null,
+      "replyCount": 3,
+      "createdAt": "2025-01-16T14:00:00Z",
+      "indexedAt": "2025-01-16T14:01:00Z",
+      "deleted": false
     }
   ],
-  "cursor": "eyJvZmZzZXQiOjI1fQ=="
+  "cursor": "50",
+  "hasMore": false,
+  "total": 8
 }
 ```
 
 The `deleted` field indicates whether a review has been soft-deleted. Soft-deleted reviews remain in the response to preserve thread structure but their content should be hidden in the UI.
+
+### pub.chive.review.listForAuthor
+
+List reviews by a specific author.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+#### Parameters
+
+| Name          | Type    | Required | Description                                                             |
+| ------------- | ------- | -------- | ----------------------------------------------------------------------- |
+| `reviewerDid` | string  | Yes      | DID of the reviewer                                                     |
+| `motivation`  | string  | No       | Filter by W3C motivation                                                |
+| `inlineOnly`  | boolean | No       | Only include inline annotations with text span targets (default: false) |
+| `limit`       | integer | No       | Results per page (1-100, default: 50)                                   |
+| `cursor`      | string  | No       | Pagination cursor                                                       |
+
+#### Response
+
+```json
+{
+  "reviews": [
+    {
+      "uri": "at://did:plc:reviewer.../pub.chive.review.comment/abc...",
+      "cid": "bafyreib...",
+      "author": {
+        "did": "did:plc:reviewer...",
+        "handle": "bob.bsky.social",
+        "displayName": "Bob Jones"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "The methodology section...",
+      "motivation": "commenting",
+      "replyCount": 3,
+      "createdAt": "2025-01-16T14:00:00Z",
+      "indexedAt": "2025-01-16T14:01:00Z"
+    }
+  ],
+  "cursor": "50",
+  "hasMore": false,
+  "total": 12
+}
+```
+
+---
+
+## Annotation namespace
+
+Endpoints for inline annotations and entity links on eprints. Annotations follow the [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) data model, using text quote selectors and text position selectors to anchor annotations to specific text spans within eprint PDFs. Entity links connect text spans to knowledge graph nodes, external identifiers, authors, or other eprints.
+
+### pub.chive.annotation.listForEprint
+
+List inline annotations for an eprint.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+#### Parameters
+
+| Name                 | Type    | Required | Description                                                   |
+| -------------------- | ------- | -------- | ------------------------------------------------------------- |
+| `eprintUri`          | string  | Yes      | AT-URI of the eprint                                          |
+| `motivation`         | string  | No       | Filter by W3C motivation (e.g., `commenting`, `highlighting`) |
+| `pageNumber`         | integer | No       | Filter by page number                                         |
+| `includeEntityLinks` | boolean | No       | Include entity links in response (default: false)             |
+| `limit`              | integer | No       | Results per page (1-100, default: 50)                         |
+| `cursor`             | string  | No       | Pagination cursor                                             |
+
+#### Response
+
+```json
+{
+  "annotations": [
+    {
+      "uri": "at://did:plc:annotator.../pub.chive.annotation.comment/3k5...",
+      "cid": "bafyreib...",
+      "author": {
+        "did": "did:plc:annotator...",
+        "handle": "alice.bsky.social",
+        "displayName": "Alice Smith"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "This claim needs a citation.",
+      "body": {
+        "text": "This claim needs a citation.",
+        "facets": []
+      },
+      "target": {
+        "source": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+        "selector": {
+          "type": "TextQuoteSelector",
+          "exact": "quantum entanglement enables faster-than-light communication",
+          "prefix": "We show that ",
+          "suffix": " between nodes."
+        },
+        "refinedBy": {
+          "type": "TextPositionSelector",
+          "start": 1245,
+          "end": 1312,
+          "pageNumber": 3
+        },
+        "page": 3
+      },
+      "motivation": "commenting",
+      "parentAnnotationUri": null,
+      "replyCount": 2,
+      "createdAt": "2025-01-17T09:15:00Z",
+      "indexedAt": "2025-01-17T09:16:00Z",
+      "deleted": false
+    }
+  ],
+  "entityLinks": [
+    {
+      "uri": "at://did:plc:linker.../pub.chive.annotation.entityLink/3k6...",
+      "cid": "bafyreic...",
+      "creator": {
+        "did": "did:plc:linker...",
+        "handle": "bob.bsky.social"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "target": {
+        "source": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+        "selector": {
+          "type": "TextQuoteSelector",
+          "exact": "quantum entanglement"
+        },
+        "refinedBy": {
+          "type": "TextPositionSelector",
+          "start": 1245,
+          "end": 1265,
+          "pageNumber": 3
+        },
+        "page": 3
+      },
+      "linkedEntity": {
+        "$type": "pub.chive.annotation.listForEprint#graphNodeLink",
+        "type": "graphNode",
+        "label": "Quantum Entanglement",
+        "nodeId": "quant-ph.entanglement"
+      },
+      "confidence": 0.95,
+      "createdAt": "2025-01-17T09:20:00Z",
+      "indexedAt": "2025-01-17T09:21:00Z"
+    }
+  ],
+  "cursor": "50",
+  "hasMore": false,
+  "total": 14
+}
+```
+
+The `entityLinks` field is only present when `includeEntityLinks` is set to `true`. The `linkedEntity` object uses a discriminated union with `$type` to indicate the entity kind: `#graphNodeLink`, `#externalIdLink`, `#authorLink`, or `#eprintLink`.
+
+### pub.chive.annotation.listForPage
+
+List annotations for a specific page in an eprint.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+#### Parameters
+
+| Name                 | Type    | Required | Description                                      |
+| -------------------- | ------- | -------- | ------------------------------------------------ |
+| `eprintUri`          | string  | Yes      | AT-URI of the eprint                             |
+| `pageNumber`         | integer | Yes      | Page number (must be at least 1)                 |
+| `includeEntityLinks` | boolean | No       | Include entity links in response (default: true) |
+
+#### Response
+
+```json
+{
+  "annotations": [
+    {
+      "uri": "at://did:plc:annotator.../pub.chive.annotation.comment/3k5...",
+      "cid": "bafyreib...",
+      "author": {
+        "did": "did:plc:annotator...",
+        "handle": "alice.bsky.social",
+        "displayName": "Alice Smith"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "Interesting approach here.",
+      "target": {
+        "source": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+        "selector": {
+          "type": "TextQuoteSelector",
+          "exact": "novel optimization technique"
+        },
+        "refinedBy": {
+          "type": "TextPositionSelector",
+          "start": 450,
+          "end": 478,
+          "pageNumber": 5
+        },
+        "page": 5
+      },
+      "motivation": "highlighting",
+      "replyCount": 0,
+      "createdAt": "2025-01-18T11:00:00Z",
+      "indexedAt": "2025-01-18T11:01:00Z",
+      "deleted": false
+    }
+  ],
+  "entityLinks": [],
+  "pageNumber": 5
+}
+```
+
+### pub.chive.annotation.getThread
+
+Get an annotation thread with all replies.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+#### Parameters
+
+| Name       | Type    | Required | Description                       |
+| ---------- | ------- | -------- | --------------------------------- |
+| `uri`      | string  | Yes      | AT-URI of the annotation          |
+| `maxDepth` | integer | No       | Maximum reply depth (default: 10) |
+
+#### Response
+
+```json
+{
+  "thread": [
+    {
+      "uri": "at://did:plc:annotator.../pub.chive.annotation.comment/3k5...",
+      "cid": "bafyreib...",
+      "author": {
+        "did": "did:plc:annotator...",
+        "handle": "alice.bsky.social",
+        "displayName": "Alice Smith"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "This claim needs a citation.",
+      "target": {
+        "source": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+        "selector": {
+          "type": "TextQuoteSelector",
+          "exact": "quantum entanglement enables faster-than-light communication"
+        },
+        "page": 3
+      },
+      "motivation": "commenting",
+      "replyCount": 1,
+      "createdAt": "2025-01-17T09:15:00Z",
+      "indexedAt": "2025-01-17T09:16:00Z",
+      "deleted": false
+    },
+    {
+      "uri": "at://did:plc:replier.../pub.chive.annotation.comment/3k6...",
+      "cid": "bafyreic...",
+      "author": {
+        "did": "did:plc:replier...",
+        "handle": "bob.bsky.social"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "Added reference to Bell 1964.",
+      "motivation": "replying",
+      "parentAnnotationUri": "at://did:plc:annotator.../pub.chive.annotation.comment/3k5...",
+      "replyCount": 0,
+      "createdAt": "2025-01-17T10:00:00Z",
+      "indexedAt": "2025-01-17T10:01:00Z",
+      "deleted": false
+    }
+  ],
+  "totalReplies": 1
+}
+```
+
+The `thread` array contains the root annotation as the first element, followed by all replies in depth-first order.
+
+#### Errors
+
+| Name       | Description                       |
+| ---------- | --------------------------------- |
+| `NotFound` | The annotation URI does not exist |
+
+### pub.chive.annotation.listByAuthor
+
+List annotations by a specific author.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+#### Parameters
+
+| Name           | Type    | Required | Description                           |
+| -------------- | ------- | -------- | ------------------------------------- |
+| `annotatorDid` | string  | Yes      | DID of the annotator                  |
+| `motivation`   | string  | No       | Filter by W3C motivation              |
+| `limit`        | integer | No       | Results per page (1-100, default: 50) |
+| `cursor`       | string  | No       | Pagination cursor                     |
+
+#### Response
+
+```json
+{
+  "annotations": [
+    {
+      "uri": "at://did:plc:annotator.../pub.chive.annotation.comment/3k5...",
+      "cid": "bafyreib...",
+      "author": {
+        "did": "did:plc:annotator...",
+        "handle": "alice.bsky.social",
+        "displayName": "Alice Smith"
+      },
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "content": "This claim needs a citation.",
+      "motivation": "commenting",
+      "replyCount": 2,
+      "createdAt": "2025-01-17T09:15:00Z",
+      "indexedAt": "2025-01-17T09:16:00Z",
+      "deleted": false
+    }
+  ],
+  "cursor": "50",
+  "hasMore": false,
+  "total": 7
+}
+```
 
 ---
 
@@ -1468,6 +1837,8 @@ Notify the AppView that a record has been deleted from a PDS.
 ```
 
 This endpoint is used by PDS operators to notify the AppView of record deletions when firehose delivery is delayed or unreliable. The AppView removes the record from its index.
+
+**Supported collections:** `pub.chive.review.comment`, `pub.chive.review.endorsement`, `pub.chive.annotation.comment`, `pub.chive.annotation.entityLink`.
 
 ---
 

@@ -128,27 +128,12 @@ describe('ReviewCard', () => {
   });
 
   describe('target span display', () => {
-    it('shows target span excerpt when present', () => {
-      const inlineReview = createMockInlineReview({
-        target: {
-          source: 'at://test/eprint/1',
-          selector: {
-            type: 'TextQuoteSelector',
-            exact: 'neural network architecture',
-          },
-        },
-      });
+    it('does not render target display (reviews are document-level only)', () => {
+      const review = createMockReview();
+      render(<ReviewCard review={review} />);
 
-      render(<ReviewCard review={inlineReview} showTarget />);
-
-      expect(screen.getByText(/neural network architecture/)).toBeInTheDocument();
-    });
-
-    it('hides target span when showTarget is false', () => {
-      const inlineReview = createMockInlineReview();
-      render(<ReviewCard review={inlineReview} showTarget={false} />);
-
-      expect(screen.queryByText(/neural network architecture/)).not.toBeInTheDocument();
+      // ReviewCard no longer renders DocumentLocationCard
+      expect(screen.queryByTestId('document-location-card')).not.toBeInTheDocument();
     });
   });
 

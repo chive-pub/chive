@@ -1,0 +1,663 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.annotation.comment",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Inline annotation on a specific text span in an eprint",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["eprintUri", "body", "target", "createdAt"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Annotated eprint URI"
+          },
+          "body": {
+            "type": "array",
+            "description": "Rich annotation body with formatting and references",
+            "items": {
+              "type": "union",
+              "refs": [
+                "#textItem",
+                "#nodeRefItem",
+                "#wikidataRefItem",
+                "#fieldRefItem",
+                "#facetRefItem",
+                "#eprintRefItem",
+                "#annotationRefItem",
+                "#authorRefItem",
+                "#mentionItem",
+                "#linkItem",
+                "#tagItem",
+                "#latexItem",
+                "#codeBlockItem",
+                "#headingItem",
+                "#listItem",
+                "#blockquoteItem"
+              ]
+            },
+            "maxLength": 500
+          },
+          "target": {
+            "type": "ref",
+            "ref": "#textSpanTarget",
+            "description": "Target text span for the annotation"
+          },
+          "motivationUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of motivation type node (subkind=motivation)"
+          },
+          "motivationFallback": {
+            "type": "string",
+            "knownValues": ["commenting", "questioning", "highlighting", "replying"],
+            "description": "Fallback motivation if motivationUri not available"
+          },
+          "parentAnnotation": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Parent annotation for threading"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "textItem": {
+      "type": "object",
+      "description": "Plain text content item with optional formatting facets",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "text"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "facets": {
+          "type": "array",
+          "description": "ATProto-style facets for rich text formatting",
+          "items": {
+            "type": "ref",
+            "ref": "#facet"
+          },
+          "maxLength": 500
+        }
+      }
+    },
+    "facet": {
+      "type": "object",
+      "description": "ATProto-compatible facet for rich text formatting",
+      "required": ["index", "features"],
+      "properties": {
+        "index": {
+          "type": "ref",
+          "ref": "#byteSlice"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "union",
+            "refs": [
+              "#boldFacet",
+              "#italicFacet",
+              "#strikethroughFacet",
+              "#codeFacet",
+              "#latexFacet",
+              "#linkFacet"
+            ]
+          }
+        }
+      }
+    },
+    "byteSlice": {
+      "type": "object",
+      "description": "Byte range for facet positioning",
+      "required": ["byteStart", "byteEnd"],
+      "properties": {
+        "byteStart": {
+          "type": "integer",
+          "description": "Start byte position (inclusive)",
+          "minimum": 0
+        },
+        "byteEnd": {
+          "type": "integer",
+          "description": "End byte position (exclusive)",
+          "minimum": 0
+        }
+      }
+    },
+    "boldFacet": {
+      "type": "object",
+      "description": "Bold text formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#bold"
+        }
+      }
+    },
+    "italicFacet": {
+      "type": "object",
+      "description": "Italic text formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#italic"
+        }
+      }
+    },
+    "strikethroughFacet": {
+      "type": "object",
+      "description": "Strikethrough text formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#strikethrough"
+        }
+      }
+    },
+    "codeFacet": {
+      "type": "object",
+      "description": "Inline code formatting",
+      "required": ["$type"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#code"
+        }
+      }
+    },
+    "latexFacet": {
+      "type": "object",
+      "description": "LaTeX math expression",
+      "required": ["$type", "displayMode"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "pub.chive.richtext.facets#latex"
+        },
+        "displayMode": {
+          "type": "boolean",
+          "description": "True for block display ($$...$$), false for inline ($...$)"
+        }
+      }
+    },
+    "linkFacet": {
+      "type": "object",
+      "description": "Hyperlink",
+      "required": ["$type", "uri"],
+      "properties": {
+        "$type": {
+          "type": "string",
+          "const": "app.bsky.richtext.facet#link"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link target URL"
+        }
+      }
+    },
+    "nodeRefItem": {
+      "type": "object",
+      "description": "Reference to a knowledge graph node",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "nodeRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the referenced node"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Display label (cached from node)"
+        },
+        "subkind": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Subkind slug for styling"
+        }
+      }
+    },
+    "eprintRefItem": {
+      "type": "object",
+      "description": "Reference to another eprint",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "eprintRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the referenced eprint"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Eprint title (cached)"
+        }
+      }
+    },
+    "wikidataRefItem": {
+      "type": "object",
+      "description": "Reference to a Wikidata entity",
+      "required": ["type", "qid"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "wikidataRef"
+        },
+        "qid": {
+          "type": "string",
+          "description": "Wikidata QID (e.g., Q12345)"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Display label"
+        }
+      }
+    },
+    "fieldRefItem": {
+      "type": "object",
+      "description": "Reference to an academic field node",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "fieldRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "facetRefItem": {
+      "type": "object",
+      "description": "Reference to a facet node",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "facetRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "annotationRefItem": {
+      "type": "object",
+      "description": "Reference to an annotation or review",
+      "required": ["type", "uri"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "annotationRef"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "authorRefItem": {
+      "type": "object",
+      "description": "Reference to an author by DID",
+      "required": ["type", "did"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "authorRef"
+        },
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Display name"
+        }
+      }
+    },
+    "mentionItem": {
+      "type": "object",
+      "description": "ATProto-style mention (@handle)",
+      "required": ["type", "did"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "mention"
+        },
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string",
+          "description": "Handle at time of mention"
+        }
+      }
+    },
+    "linkItem": {
+      "type": "object",
+      "description": "Inline hyperlink",
+      "required": ["type", "url"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "link"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
+    "tagItem": {
+      "type": "object",
+      "description": "Hashtag reference",
+      "required": ["type", "tag"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "tag"
+        },
+        "tag": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Tag without # prefix"
+        }
+      }
+    },
+    "latexItem": {
+      "type": "object",
+      "description": "Standalone LaTeX math block",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "latex"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "displayMode": {
+          "type": "boolean",
+          "description": "True for block, false for inline"
+        }
+      }
+    },
+    "codeBlockItem": {
+      "type": "object",
+      "description": "Code block",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "codeBlock"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 50000
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 50
+        }
+      }
+    },
+    "headingItem": {
+      "type": "object",
+      "description": "Heading (for abstracts and reviews, not titles)",
+      "required": ["type", "content", "level"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "heading"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        }
+      }
+    },
+    "listItem": {
+      "type": "object",
+      "description": "List item",
+      "required": ["type", "content", "listType"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "listItem"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "listType": {
+          "type": "string",
+          "knownValues": ["bullet", "ordered"]
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "blockquoteItem": {
+      "type": "object",
+      "description": "Blockquote",
+      "required": ["type", "content"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "blockquote"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 5000
+        }
+      }
+    },
+    "textSpanTarget": {
+      "type": "object",
+      "description": "Target text span for inline annotations (W3C Web Annotation compatible)",
+      "required": ["selector"],
+      "properties": {
+        "versionUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of specific eprint version"
+        },
+        "selector": {
+          "type": "union",
+          "refs": ["#textQuoteSelector", "#textPositionSelector", "#fragmentSelector"]
+        },
+        "refinedBy": {
+          "type": "ref",
+          "ref": "#positionRefinement",
+          "description": "Position refinement with page number and bounding box for visual rendering"
+        }
+      }
+    },
+    "positionRefinement": {
+      "type": "object",
+      "description": "Position refinement for precise visual rendering of annotations",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextPositionSelector"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-indexed page number"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Approximate character start offset"
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Approximate character end offset"
+        },
+        "boundingRect": {
+          "type": "ref",
+          "ref": "#boundingRect",
+          "description": "Bounding rectangle for visual positioning"
+        }
+      }
+    },
+    "boundingRect": {
+      "type": "object",
+      "description": "Bounding rectangle coordinates for highlight positioning. All values stored as strings to preserve floating-point precision since ATProto only supports integer type.",
+      "required": ["x1", "y1", "x2", "y2", "width", "height", "pageNumber"],
+      "properties": {
+        "x1": {
+          "type": "string",
+          "description": "Left edge coordinate (as string to preserve float precision)"
+        },
+        "y1": {
+          "type": "string",
+          "description": "Top edge coordinate (as string to preserve float precision)"
+        },
+        "x2": {
+          "type": "string",
+          "description": "Right edge coordinate (as string to preserve float precision)"
+        },
+        "y2": {
+          "type": "string",
+          "description": "Bottom edge coordinate (as string to preserve float precision)"
+        },
+        "width": {
+          "type": "string",
+          "description": "Page width reference (as string to preserve float precision)"
+        },
+        "height": {
+          "type": "string",
+          "description": "Page height reference (as string to preserve float precision)"
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Page number (1-indexed for the library)"
+        }
+      }
+    },
+    "textQuoteSelector": {
+      "type": "object",
+      "description": "W3C Text Quote Selector",
+      "required": ["type", "exact"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextQuoteSelector"
+        },
+        "exact": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 100
+        }
+      }
+    },
+    "textPositionSelector": {
+      "type": "object",
+      "description": "W3C Text Position Selector",
+      "required": ["type", "start", "end"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "TextPositionSelector"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "fragmentSelector": {
+      "type": "object",
+      "description": "W3C Fragment Selector",
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "FragmentSelector"
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Fragment identifier (e.g., page number, section ID)"
+        },
+        "conformsTo": {
+          "type": "string",
+          "format": "uri",
+          "description": "Fragment syntax specification"
+        }
+      }
+    }
+  }
+}

@@ -23,7 +23,6 @@
 
 import { cn } from '@/lib/utils';
 import type { Review, FrontendReviewThread } from '@/lib/api/schema';
-import type { DocumentFormat } from '@/lib/api/generated/types/pub/chive/defs';
 import { ReviewCard, ReviewCardSkeleton } from './review-card';
 import { ReviewThreadComponent } from './review-thread';
 
@@ -55,15 +54,6 @@ export interface ReviewListProps {
 
   /** Current user's DID for ownership checks */
   currentUserDid?: string;
-
-  /** Whether to show target span excerpts */
-  showTargets?: boolean;
-
-  /** Document format for format-specific location display */
-  documentFormat?: DocumentFormat;
-
-  /** Callback when "Go to location" button is clicked on a review */
-  onGoToLocation?: (uri: string) => void;
 
   /** Additional CSS classes */
   className?: string;
@@ -98,9 +88,6 @@ export function ReviewList({
   onDelete,
   onShare,
   currentUserDid,
-  showTargets = true,
-  documentFormat,
-  onGoToLocation,
   className,
 }: ReviewListProps) {
   if (reviews.length === 0) {
@@ -157,9 +144,6 @@ export function ReviewList({
             onDelete={onDelete}
             onShare={onShare}
             currentUserDid={currentUserDid}
-            showTargets={showTargets}
-            documentFormat={documentFormat}
-            onGoToLocation={onGoToLocation}
           />
         ))}
       </div>
@@ -184,9 +168,6 @@ export function ReviewList({
               currentUserDid.toLowerCase().trim() === review.author.did.toLowerCase().trim()
             )
           }
-          showTarget={showTargets}
-          documentFormat={documentFormat}
-          onGoToLocation={onGoToLocation ? () => onGoToLocation(review.uri) : undefined}
         />
       ))}
     </div>

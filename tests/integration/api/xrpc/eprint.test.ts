@@ -328,6 +328,7 @@ describe('XRPC Eprint Endpoints Integration', () => {
       graphService: createMockGraphService(),
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
+      annotationService: {} as ServerConfig['annotationService'],
       tagManager: createMockTagManager(),
       facetManager: createMockFacetManager(),
       nodeService: createMockNodeService(),

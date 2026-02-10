@@ -375,6 +375,54 @@ describe('Eprint Migrations', () => {
       expect(result.success).toBe(true);
       expect(result.record?.licenseUri).toBe(LICENSE_URI_MAP['CC0-1.0']);
     });
+
+    it('detects old "license" field name needing migration', () => {
+      const record = {
+        title: 'Test',
+        abstract: [],
+        license: 'CC-BY-4.0',
+      };
+
+      const detection = registry.detectMigrations('pub.chive.eprint.submission', record);
+      expect(detection.needsMigration).toBe(true);
+    });
+
+    it('migrates old "license" field to licenseSlug and adds URI', () => {
+      const record = {
+        title: 'Test',
+        abstract: [],
+        license: 'CC-BY-4.0',
+      };
+
+      const result = registry.applyMigrations<Record<string, unknown>>(
+        'pub.chive.eprint.submission',
+        record
+      );
+      expect(result.success).toBe(true);
+      expect(result.record?.licenseUri).toBe(LICENSE_URI_MAP['CC-BY-4.0']);
+      expect(result.record?.licenseSlug).toBe('CC-BY-4.0');
+      // Old field name should be removed
+      expect(result.record?.license).toBeUndefined();
+    });
+
+    it('handles case-insensitive license slug', () => {
+      const record = {
+        title: 'Test',
+        abstract: [],
+        license: 'cc-by-4.0',
+      };
+
+      const detection = registry.detectMigrations('pub.chive.eprint.submission', record);
+      expect(detection.needsMigration).toBe(true);
+
+      const result = registry.applyMigrations<Record<string, unknown>>(
+        'pub.chive.eprint.submission',
+        record
+      );
+      expect(result.success).toBe(true);
+      expect(result.record?.licenseUri).toBe(LICENSE_URI_MAP['CC-BY-4.0']);
+      expect(result.record?.licenseSlug).toBe('CC-BY-4.0');
+    });
   });
 
   describe('registerEprintMigrations', () => {

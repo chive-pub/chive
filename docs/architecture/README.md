@@ -69,7 +69,8 @@ flowchart LR
 The consumer filters for `pub.chive.*` records and processes:
 
 - Eprint submissions
-- Reviews and comments
+- Document-level reviews
+- Inline annotations and entity links
 - Endorsements
 - Governance proposals and votes
 - User tags
@@ -78,16 +79,17 @@ The consumer filters for `pub.chive.*` records and processes:
 
 Business logic is encapsulated in services:
 
-| Service               | Responsibility                    |
-| --------------------- | --------------------------------- |
-| EprintService         | Eprint CRUD, version management   |
-| SearchService         | Full-text search, faceted queries |
-| DiscoveryService      | Recommendations, similar papers   |
-| KnowledgeGraphService | Field taxonomy, authority control |
-| ReviewService         | Review threading, endorsements    |
-| GovernanceService     | Proposals, voting                 |
-| MetricsService        | View counts, trending             |
-| ClaimingService       | Authorship verification           |
+| Service               | Responsibility                       |
+| --------------------- | ------------------------------------ |
+| EprintService         | Eprint CRUD, version management      |
+| SearchService         | Full-text search, faceted queries    |
+| DiscoveryService      | Recommendations, similar papers      |
+| KnowledgeGraphService | Field taxonomy, authority control    |
+| ReviewService         | Document-level reviews, endorsements |
+| AnnotationService     | Inline annotations, entity links     |
+| GovernanceService     | Proposals, voting                    |
+| MetricsService        | View counts, trending                |
+| ClaimingService       | Authorship verification              |
 
 ### Storage layer
 

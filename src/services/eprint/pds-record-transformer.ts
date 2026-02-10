@@ -177,6 +177,8 @@ export interface PDSEprintRecord {
   licenseUri?: string;
   /** SPDX license identifier for display */
   licenseSlug?: string;
+  /** Legacy field name for license slug (pre-rename) */
+  license?: string;
   paperDid?: string;
   doi?: string;
   previousVersion?: { uri: string; cid: string };
@@ -636,7 +638,7 @@ function transformFieldNodes(
     const rkey = normalizedUri.split('/').pop() ?? normalizedUri;
     return {
       uri: normalizedUri,
-      label: normalizedUri, // Label should be resolved from knowledge graph
+      label: rkey, // Placeholder UUID; resolved from knowledge graph at response time
       id: rkey,
     };
   });
@@ -762,7 +764,7 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
     createdAt: toTimestamp(new Date(record.createdAt)),
     abstract: abstractResult.richTextBody,
     abstractPlainText: abstractResult.plainText,
-    license: record.licenseSlug ?? 'CC-BY-4.0',
+    license: record.licenseSlug ?? record.license ?? 'CC-BY-4.0',
     // Store licenseUri for knowledge graph reference (optional)
     licenseUri: record.licenseUri as AtUri | undefined,
     keywords: record.keywords ?? [],

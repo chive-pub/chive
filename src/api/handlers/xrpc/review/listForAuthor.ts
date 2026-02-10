@@ -32,8 +32,6 @@ export const listForAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     logger.debug('Listing reviews for author', {
       reviewerDid: params.reviewerDid,
-      motivation: params.motivation,
-      inlineOnly: params.inlineOnly,
       limit: params.limit,
       cursor: params.cursor,
     });

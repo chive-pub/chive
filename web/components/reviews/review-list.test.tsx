@@ -177,17 +177,10 @@ describe('ReviewList', () => {
       expect(screen.getByText(/quoted text/)).toBeInTheDocument();
     });
 
-    it('hides target spans when showTargets is false', () => {
-      const reviewWithTarget = createMockReview({
-        target: {
-          source: 'at://test/eprint/1',
-          selector: { type: 'TextQuoteSelector', exact: 'quoted text' },
-        },
-      });
+    it('does not render target display (reviews are document-level only)', () => {
+      render(<ReviewList reviews={mockReviews} />);
 
-      render(<ReviewList reviews={[reviewWithTarget]} showTargets={false} />);
-
-      expect(screen.queryByText(/quoted text/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('document-location-card')).not.toBeInTheDocument();
     });
   });
 

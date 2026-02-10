@@ -27,43 +27,6 @@ import { Err, Ok, type Result } from '../../types/result.js';
 import type { RecordMetadata } from '../eprint/eprint-service.js';
 
 /**
- * Text span target for inline comments (W3C Web Annotation model).
- *
- * @public
- */
-export interface TextSpanTarget {
-  /**
-   * Type of selector (text position, text quote, etc.)
-   */
-  readonly type: 'TextPositionSelector' | 'TextQuoteSelector';
-
-  /**
-   * Start offset for position selector.
-   */
-  readonly start?: number;
-
-  /**
-   * End offset for position selector.
-   */
-  readonly end?: number;
-
-  /**
-   * Exact text content for quote selector.
-   */
-  readonly exact?: string;
-
-  /**
-   * Text before the quote for context.
-   */
-  readonly prefix?: string;
-
-  /**
-   * Text after the quote for context.
-   */
-  readonly suffix?: string;
-}
-
-/**
  * Re-export generated lexicon types for external use.
  *
  * @public
@@ -114,34 +77,6 @@ export interface EndorsementView {
  *
  * @public
  */
-/**
- * Anchor data for inline annotations (W3C Web Annotation format).
- */
-export interface ReviewAnchor {
-  readonly source?: string;
-  readonly selector?: {
-    readonly type: string;
-    readonly exact?: string;
-    readonly prefix?: string;
-    readonly suffix?: string;
-  };
-  readonly refinedBy?: {
-    readonly type?: string;
-    readonly pageNumber?: number;
-    readonly start?: number;
-    readonly end?: number;
-    readonly boundingRect?: {
-      readonly x1: number;
-      readonly y1: number;
-      readonly x2: number;
-      readonly y2: number;
-      readonly width: number;
-      readonly height: number;
-    };
-  };
-  readonly pageNumber?: number;
-}
-
 export interface ReviewView {
   readonly uri: AtUri;
   readonly cid: string;
@@ -155,10 +90,6 @@ export interface ReviewView {
   readonly parent?: AtUri;
   readonly createdAt: Date;
   readonly replyCount: number;
-  /** Anchor for inline annotations */
-  readonly anchor?: ReviewAnchor;
-  /** W3C motivation type */
-  readonly motivation?: string;
   /** Whether this review has been soft-deleted */
   readonly deleted?: boolean;
 }
@@ -325,39 +256,15 @@ export class ReviewService {
       }
       const facetsJson = facets.length > 0 ? JSON.stringify(facets) : null;
 
-      // Convert target to anchor format for storage
-      // Include refinedBy for position data (pageNumber, boundingRect)
-      const anchor = comment.target
-        ? JSON.stringify({
-            source: comment.target.versionUri ?? comment.eprintUri,
-            selector: comment.target.selector,
-            refinedBy: comment.target.refinedBy,
-            pageNumber:
-              // Get pageNumber from refinedBy if available, otherwise from fragment selector
-              comment.target.refinedBy?.pageNumber ??
-              (comment.target.selector &&
-              '$type' in comment.target.selector &&
-              comment.target.selector.$type === 'pub.chive.review.comment#fragmentSelector'
-                ? parseInt((comment.target.selector as { value: string }).value, 10)
-                : undefined),
-          })
-        : null;
-
-      // Get motivation (prefer fallback, URI would need resolution)
-      // Default to 'commenting' if not specified (matches database default)
-      const motivation = comment.motivationFallback ?? 'commenting';
-
       await this.pool.query(
         `INSERT INTO reviews_index (
           uri, cid, eprint_uri, reviewer_did, body, parent_comment,
-          anchor, motivation, facets,
+          facets,
           created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           body = EXCLUDED.body,
-          anchor = EXCLUDED.anchor,
-          motivation = EXCLUDED.motivation,
           facets = EXCLUDED.facets,
           updated_at = NOW(),
           last_synced_at = NOW()`,
@@ -368,8 +275,6 @@ export class ReviewService {
           extractDidFromUri(metadata.uri),
           body,
           comment.parentComment ?? null,
-          anchor,
-          motivation,
           facetsJson,
           new Date(comment.createdAt),
           metadata.pdsUrl,
@@ -486,16 +391,13 @@ export class ReviewService {
         facets: unknown[] | null;
         parent_comment: string | null;
         created_at: Date;
-        anchor: ReviewAnchor | null;
-        motivation: string | null;
         deleted_at: Date | null;
       }>(
         `SELECT r.uri, r.cid, r.reviewer_did,
                 CASE WHEN r.deleted_at IS NOT NULL THEN '' ELSE COALESCE(r.body->0->>'content', '') END as text,
                 CASE WHEN r.deleted_at IS NOT NULL THEN NULL ELSE r.body END as body,
                 CASE WHEN r.deleted_at IS NOT NULL THEN NULL ELSE r.facets END as facets,
-                r.parent_comment, r.created_at,
-                r.anchor, r.motivation, r.deleted_at
+                r.parent_comment, r.created_at, r.deleted_at
          FROM reviews_index r
          WHERE r.eprint_uri = $1
            AND (r.deleted_at IS NULL OR EXISTS (
@@ -532,8 +434,6 @@ export class ReviewService {
           createdAt: new Date(row.created_at),
           replyCount: replyCounts.get(row.uri) ?? 0,
           parentUri: row.parent_comment ?? undefined,
-          anchor: row.anchor ?? undefined,
-          motivation: row.motivation ?? undefined,
           deleted: row.deleted_at !== null,
         });
       }
@@ -574,8 +474,6 @@ export class ReviewService {
             parent: review.parent,
             createdAt: review.createdAt,
             replyCount: review.replyCount,
-            anchor: review.anchor,
-            motivation: review.motivation,
             deleted: review.deleted,
           },
           replies,

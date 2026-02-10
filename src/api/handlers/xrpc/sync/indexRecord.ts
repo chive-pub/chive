@@ -170,6 +170,8 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       'pub.chive.eprint.submission',
       'pub.chive.review.comment',
       'pub.chive.review.endorsement',
+      'pub.chive.annotation.comment',
+      'pub.chive.annotation.entityLink',
     ];
 
     if (!supportedCollections.includes(collection)) {
@@ -243,6 +245,18 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
           throw new DatabaseError('INDEX', 'Review service not available');
         }
         result = await reviewService.indexEndorsement(record.value, metadata);
+      } else if (collection === 'pub.chive.annotation.comment') {
+        const annotationService = c.get('services').annotation;
+        if (!annotationService) {
+          throw new DatabaseError('INDEX', 'Annotation service not available');
+        }
+        result = await annotationService.indexAnnotation(record.value, metadata);
+      } else if (collection === 'pub.chive.annotation.entityLink') {
+        const annotationService = c.get('services').annotation;
+        if (!annotationService) {
+          throw new DatabaseError('INDEX', 'Annotation service not available');
+        }
+        result = await annotationService.indexEntityLink(record.value, metadata);
       } else {
         throw new ValidationError(`Collection ${collection} not supported`, 'uri');
       }

@@ -12,9 +12,9 @@ import {
 // MOCKS
 // =============================================================================
 
-const mockUseInlineReviews = vi.fn();
-vi.mock('@/lib/hooks/use-review', () => ({
-  useInlineReviews: (eprintUri: string) => mockUseInlineReviews(eprintUri),
+const mockUseAnnotations = vi.fn();
+vi.mock('@/lib/hooks/use-annotations', () => ({
+  useAnnotations: (eprintUri: string) => mockUseAnnotations(eprintUri),
 }));
 
 // =============================================================================
@@ -83,8 +83,8 @@ const mockAnnotations = [
 describe('AnnotationSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseInlineReviews.mockReturnValue({
-      data: { reviews: mockAnnotations },
+    mockUseAnnotations.mockReturnValue({
+      data: { annotations: mockAnnotations },
       isLoading: false,
       error: null,
     });
@@ -92,7 +92,7 @@ describe('AnnotationSidebar', () => {
 
   describe('loading state', () => {
     it('shows skeleton when loading', () => {
-      mockUseInlineReviews.mockReturnValue({
+      mockUseAnnotations.mockReturnValue({
         data: null,
         isLoading: true,
         error: null,
@@ -109,7 +109,7 @@ describe('AnnotationSidebar', () => {
 
   describe('error state', () => {
     it('shows error message on fetch error', () => {
-      mockUseInlineReviews.mockReturnValue({
+      mockUseAnnotations.mockReturnValue({
         data: null,
         isLoading: false,
         error: new Error('Failed to fetch'),
@@ -123,8 +123,8 @@ describe('AnnotationSidebar', () => {
 
   describe('empty state', () => {
     it('shows empty state when no annotations', () => {
-      mockUseInlineReviews.mockReturnValue({
-        data: { reviews: [] },
+      mockUseAnnotations.mockReturnValue({
+        data: { annotations: [] },
         isLoading: false,
         error: null,
       });

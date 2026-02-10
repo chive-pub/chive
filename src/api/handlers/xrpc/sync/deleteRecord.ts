@@ -94,7 +94,12 @@ export const deleteRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
     }
 
     // Supported collections for deletion
-    const supportedCollections = ['pub.chive.review.comment', 'pub.chive.review.endorsement'];
+    const supportedCollections = [
+      'pub.chive.review.comment',
+      'pub.chive.review.endorsement',
+      'pub.chive.annotation.comment',
+      'pub.chive.annotation.entityLink',
+    ];
 
     if (!supportedCollections.includes(collection)) {
       throw new ValidationError(
@@ -136,6 +141,44 @@ export const deleteRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
           return { encoding: 'application/json', body };
         }
         const result = await reviewService.softDeleteEndorsement(input.uri as AtUri, 'admin');
+        if (isErr(result)) {
+          const body: OutputSchema = {
+            uri: input.uri,
+            deleted: false,
+            error: result.error.message,
+          };
+          return { encoding: 'application/json', body };
+        }
+      } else if (collection === 'pub.chive.annotation.comment') {
+        const annotationService = services.annotation;
+        if (!annotationService) {
+          const body: OutputSchema = {
+            uri: input.uri,
+            deleted: false,
+            error: 'Annotation service not available',
+          };
+          return { encoding: 'application/json', body };
+        }
+        const result = await annotationService.softDeleteAnnotation(input.uri as AtUri, 'admin');
+        if (isErr(result)) {
+          const body: OutputSchema = {
+            uri: input.uri,
+            deleted: false,
+            error: result.error.message,
+          };
+          return { encoding: 'application/json', body };
+        }
+      } else if (collection === 'pub.chive.annotation.entityLink') {
+        const annotationService = services.annotation;
+        if (!annotationService) {
+          const body: OutputSchema = {
+            uri: input.uri,
+            deleted: false,
+            error: 'Annotation service not available',
+          };
+          return { encoding: 'application/json', body };
+        }
+        const result = await annotationService.softDeleteEntityLink(input.uri as AtUri, 'admin');
         if (isErr(result)) {
           const body: OutputSchema = {
             uri: input.uri,

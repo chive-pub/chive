@@ -19,7 +19,7 @@ import type {
 } from '../../../../lexicons/generated/types/pub/chive/eprint/listByAuthor.js';
 import type { DID } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
-import { normalizeFieldUri } from '../../../../utils/at-uri.js';
+import { resolveFieldLabels } from '../../../../utils/field-label.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -110,61 +110,31 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
       }
     }
 
-    // Resolve UUID field labels from Neo4j at response time.
-    // During indexing, labels may fall back to UUIDs if Neo4j was unavailable.
-    const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const uuidFieldIds = new Set<string>();
-    for (const p of results.eprints) {
-      for (const f of p.fields ?? []) {
-        if (UUID_PATTERN.test(f.label)) {
-          uuidFieldIds.add(f.id ?? f.label);
-        }
-      }
-    }
-
-    let nodeMap = new Map<string, { label: string }>();
-    if (uuidFieldIds.size > 0) {
-      try {
-        const { nodeRepository } = c.get('services');
-        nodeMap = await nodeRepository.getNodesByIds([...uuidFieldIds]);
-      } catch (err) {
-        logger.warn('Failed to resolve UUID field labels from Neo4j', {
-          error: err instanceof Error ? err.message : 'Unknown error',
-          uuidCount: uuidFieldIds.size,
-        });
-      }
-    }
+    // Resolve field labels from Neo4j at response time.
+    const { nodeRepository } = c.get('services');
 
     const response: OutputSchema = {
-      eprints: results.eprints.map((p) => ({
-        uri: p.uri,
-        cid: p.cid,
-        title: p.title,
-        abstract: p.abstractPlainText,
-        authors: (p.authors ?? []).map((author) => {
-          const profile = author.did ? avatarMap.get(author.did) : undefined;
-          return {
-            // Only include did if it's a valid DID (not empty string)
-            ...(author.did ? { did: author.did } : {}),
-            handle: author.handle ?? profile?.handle,
-            displayName: author.name,
-            avatarUrl: author.avatarUrl ?? profile?.avatar,
-          };
-        }),
-        fields: p.fields?.map((f) => {
-          const fieldId = f.id ?? f.label;
-          const label = UUID_PATTERN.test(f.label)
-            ? (nodeMap.get(fieldId)?.label ?? f.label)
-            : f.label;
-          return {
-            uri: normalizeFieldUri(f.uri),
-            label,
-            id: f.id,
-          };
-        }),
-        indexedAt: p.indexedAt.toISOString(),
-        publishedAt: p.createdAt.toISOString(),
-      })),
+      eprints: await Promise.all(
+        results.eprints.map(async (p) => ({
+          uri: p.uri,
+          cid: p.cid,
+          title: p.title,
+          abstract: p.abstractPlainText,
+          authors: (p.authors ?? []).map((author) => {
+            const profile = author.did ? avatarMap.get(author.did) : undefined;
+            return {
+              // Only include did if it's a valid DID (not empty string)
+              ...(author.did ? { did: author.did } : {}),
+              handle: author.handle ?? profile?.handle,
+              displayName: author.name,
+              avatarUrl: author.avatarUrl ?? profile?.avatar,
+            };
+          }),
+          fields: await resolveFieldLabels(p.fields, nodeRepository),
+          indexedAt: p.indexedAt.toISOString(),
+          publishedAt: p.createdAt.toISOString(),
+        }))
+      ),
       cursor: hasMore ? String(offset + results.eprints.length) : undefined,
       total: results.total,
     };

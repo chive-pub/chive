@@ -558,6 +558,7 @@ describe('API Layer ATProto Compliance', () => {
       graphService: createMockGraphService(),
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
+      annotationService: {} as ServerConfig['annotationService'],
       tagManager: createMockTagManager(),
       facetManager: createMockFacetManager(),
       nodeService: createMockNodeService(),

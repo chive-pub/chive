@@ -68,9 +68,13 @@ import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
 import { createLogger } from '@/lib/observability/logger';
-import { useInlineReviews } from '@/lib/hooks/use-review';
+import {
+  useAnnotations,
+  type AnnotationView,
+  type EntityLinkView,
+} from '@/lib/hooks/use-annotations';
 import { useIsAuthenticated } from '@/lib/auth';
-import type { BlobRef, UnifiedTextSpanTarget, Review } from '@/lib/api/schema';
+import type { BlobRef, UnifiedTextSpanTarget } from '@/lib/api/schema';
 
 const logger = createLogger({ context: { component: 'pdf-viewer-annotated' } });
 
@@ -327,42 +331,69 @@ function w3cTargetToScaledPosition(target: UnifiedTextSpanTarget): ScaledPositio
 }
 
 /**
- * Convert reviews to ChiveHighlight format.
+ * Convert annotations to ChiveHighlight format.
  */
-function reviewsToHighlights(reviews: Review[]): ChiveHighlight[] {
+function annotationsToHighlights(annotations: AnnotationView[]): ChiveHighlight[] {
   const highlights: ChiveHighlight[] = [];
 
-  for (const review of reviews) {
-    // Skip reviews without a target
-    if (!review.target) {
-      continue;
-    }
-
-    const position = w3cTargetToScaledPosition(review.target);
+  for (const annotation of annotations) {
+    const position = w3cTargetToScaledPosition(annotation.target);
     if (!position) {
-      // Log for debugging - should not happen with the fallback logic
-      logger.warn('Could not create position for review', { reviewUri: review.uri });
+      logger.warn('Could not create position for annotation', { annotationUri: annotation.uri });
       continue;
     }
 
     highlights.push({
-      id: review.uri,
-      reviewUri: review.uri,
+      id: annotation.uri,
+      reviewUri: annotation.uri,
       type: 'text',
       position,
-      authorName: review.author.displayName || review.author.handle || 'Anonymous',
-      excerpt: review.content.slice(0, 150),
+      authorName: annotation.author.displayName || annotation.author.handle || 'Anonymous',
+      excerpt: annotation.content.slice(0, 150),
       replyCount: 0,
       colorClass:
         'bg-yellow-200/60 hover:bg-yellow-300/70 dark:bg-yellow-500/40 dark:hover:bg-yellow-500/60',
-      w3cTarget: review.target,
+      w3cTarget: annotation.target,
     });
   }
 
-  logger.debug('Created highlights from reviews', {
+  logger.debug('Created highlights from annotations', {
     highlightsCount: highlights.length,
-    reviewsCount: reviews.length,
+    annotationsCount: annotations.length,
   });
+  return highlights;
+}
+
+/**
+ * Convert entity links to ChiveHighlight format.
+ */
+function entityLinksToHighlights(entityLinks: EntityLinkView[]): ChiveHighlight[] {
+  const highlights: ChiveHighlight[] = [];
+
+  for (const entityLink of entityLinks) {
+    const position = w3cTargetToScaledPosition(entityLink.target);
+    if (!position) continue;
+
+    const entity = entityLink.linkedEntity as Record<string, unknown> | null;
+    const label = (entity?.label ??
+      entity?.displayName ??
+      entity?.title ??
+      'Entity link') as string;
+
+    highlights.push({
+      id: entityLink.uri,
+      reviewUri: entityLink.uri,
+      type: 'text',
+      position,
+      authorName: entityLink.creator.displayName || entityLink.creator.handle || 'Anonymous',
+      excerpt: label,
+      replyCount: 0,
+      colorClass:
+        'bg-blue-200/50 hover:bg-blue-300/60 dark:bg-blue-500/30 dark:hover:bg-blue-500/50',
+      w3cTarget: entityLink.target,
+    });
+  }
+
   return highlights;
 }
 
@@ -523,16 +554,23 @@ export function AnnotatedPDFViewer({
   // Use ref for selection to avoid async state timing issues with the tip
   const currentSelectionRef = useRef<PdfSelection | null>(null);
 
-  // Fetch inline reviews
-  const { data: inlineReviewsData } = useInlineReviews(eprintUri, {
-    enabled: showAnnotations,
-  });
+  // Fetch annotations
+  const { data: annotationsData } = useAnnotations(
+    eprintUri,
+    {},
+    {
+      enabled: showAnnotations,
+    }
+  );
 
-  // Convert reviews to highlights
+  // Convert annotations and entity links to highlights
   const highlights = useMemo<ChiveHighlight[]>(() => {
-    if (!showAnnotations || !inlineReviewsData?.reviews) return [];
-    return reviewsToHighlights(inlineReviewsData.reviews);
-  }, [showAnnotations, inlineReviewsData?.reviews]);
+    if (!showAnnotations || !annotationsData) return [];
+    return [
+      ...annotationsToHighlights(annotationsData.annotations ?? []),
+      ...entityLinksToHighlights(annotationsData.entityLinks ?? []),
+    ];
+  }, [showAnnotations, annotationsData]);
 
   // Construct PDF URL
   // blobRef.ref can be a string, { $link: string }, or a CID object with toString()

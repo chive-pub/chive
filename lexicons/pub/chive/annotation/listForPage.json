@@ -1,0 +1,57 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.annotation.listForPage",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List annotations for a specific page in an eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri", "pageNumber"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Page number to list annotations for"
+          },
+          "includeEntityLinks": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include entity link annotations in response"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["annotations"],
+          "properties": {
+            "annotations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.annotation.listForEprint#annotationView"
+              },
+              "description": "Annotations on the specified page"
+            },
+            "entityLinks": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.annotation.listForEprint#entityLinkView"
+              },
+              "description": "Entity links on the specified page"
+            }
+          }
+        }
+      },
+      "errors": []
+    }
+  }
+}

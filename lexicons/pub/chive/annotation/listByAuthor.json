@@ -1,0 +1,67 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.annotation.listByAuthor",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List annotations created by a specific author",
+      "parameters": {
+        "type": "params",
+        "required": ["annotatorDid"],
+        "properties": {
+          "annotatorDid": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the annotator"
+          },
+          "motivation": {
+            "type": "string",
+            "knownValues": ["commenting", "questioning", "highlighting", "replying"],
+            "description": "Filter by annotation motivation"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for next page"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["annotations", "hasMore"],
+          "properties": {
+            "annotations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.annotation.listForEprint#annotationView"
+              },
+              "description": "List of annotations by the author"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results are available"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of annotations by this author"
+            }
+          }
+        }
+      },
+      "errors": []
+    }
+  }
+}

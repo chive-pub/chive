@@ -7,7 +7,6 @@
  * Displays a review with:
  * - Reviewer avatar, name, and timestamp
  * - Review content (plain text or rich text with references)
- * - Target span excerpt (for inline annotations)
  * - Motivation indicator (commenting, questioning, etc.)
  * - Action buttons (reply, edit, delete)
  *
@@ -51,9 +50,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
-import { DocumentLocationCard } from './document-location-card';
 import type { Review, AnnotationMotivation } from '@/lib/api/schema';
-import type { DocumentFormat } from '@/lib/api/generated/types/pub/chive/defs';
 
 // =============================================================================
 // TYPES
@@ -86,18 +83,6 @@ export interface ReviewCardProps {
 
   /** Whether the current user owns this review */
   isOwner?: boolean;
-
-  /** Whether to show the target span excerpt */
-  showTarget?: boolean;
-
-  /** Document format for format-specific location display */
-  documentFormat?: DocumentFormat;
-
-  /** Callback when "Go to location" button is clicked */
-  onGoToLocation?: () => void;
-
-  /** Whether to show a thumbnail preview (PDF only) */
-  showThumbnail?: boolean;
 
   /** Additional CSS classes */
   className?: string;
@@ -213,15 +198,10 @@ export function ReviewCard({
   onDelete,
   onShare,
   isOwner = false,
-  showTarget = true,
-  documentFormat,
-  onGoToLocation,
-  showThumbnail = false,
   className,
 }: ReviewCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isCompact = variant === 'compact';
-  const hasTarget = !!review.target;
   const isDeleted = review.deleted === true;
 
   // Use line-clamp for truncation instead of string slicing
@@ -337,18 +317,6 @@ export function ReviewCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
-      {/* Target span excerpt with document location */}
-      {showTarget && hasTarget && review.target?.selector && (
-        <div className="mt-3">
-          <DocumentLocationCard
-            target={review.target}
-            documentFormat={documentFormat}
-            onGoToLocation={onGoToLocation}
-            showThumbnail={showThumbnail}
-          />
-        </div>
-      )}
 
       {/* Content */}
       <div

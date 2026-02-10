@@ -4,29 +4,31 @@ Chive supports open peer review through threaded comments on eprints.
 
 ## Review Types
 
-### Inline Comments
+### Inline Annotations
 
-Readers can leave comments on specific text in an eprint:
+Readers can annotate specific text in an eprint's PDF:
 
 1. Select text in the PDF viewer
 2. A selection tip appears on your first highlight to guide you
-3. Click "Add Comment" in the selection popover
-4. Write your comment
+3. Click "Add Annotation" in the selection popover
+4. Write your annotation using the rich text editor
 5. Submit
 
-The system captures the exact position of your selection, including page number and bounding coordinates, so readers can navigate directly to the annotated text.
+The system captures the exact position of your selection using W3C Web Annotation selectors, including page number and bounding coordinates, so readers can navigate directly to the annotated text.
 
-Comments are linked to your AT Protocol identity and visible to all readers.
+Annotations are stored as `pub.chive.annotation.comment` records in your AT Protocol PDS and indexed by Chive.
 
-### General Comments
+### Document-Level Reviews
 
-For broader feedback not tied to a specific line:
+For broader feedback not tied to a specific passage:
 
 1. Open an eprint
 2. Scroll to the discussion section
-3. Click "Add Comment"
-4. Write your comment
+3. Click "Add Review"
+4. Write your review
 5. Submit
+
+Reviews are stored as `pub.chive.review.comment` records and appear in the discussion section below the eprint.
 
 ## Threaded Discussions
 
@@ -90,7 +92,7 @@ Deleted reviews are soft-deleted: they remain in the thread structure to preserv
 
 ## Document Location Context
 
-When viewing annotations on PDF text, the system shows a document location card indicating:
+When viewing inline annotations on PDF text, the system shows a document location card indicating:
 
 - Page number
 - Excerpt of the selected text

@@ -28,7 +28,6 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Review, FrontendReviewThread } from '@/lib/api/schema';
-import type { DocumentFormat } from '@/lib/api/generated/types/pub/chive/defs';
 import { ReviewCard } from './review-card';
 
 // =============================================================================
@@ -62,15 +61,6 @@ export interface ReviewThreadProps {
 
   /** Current user's DID for ownership checks */
   currentUserDid?: string;
-
-  /** Whether to show target span excerpts */
-  showTargets?: boolean;
-
-  /** Document format for format-specific location display */
-  documentFormat?: DocumentFormat;
-
-  /** Callback when "Go to location" button is clicked on a review */
-  onGoToLocation?: (uri: string) => void;
 
   /** Additional CSS classes */
   className?: string;
@@ -154,9 +144,6 @@ export function ReviewThreadComponent({
   onDelete,
   onShare,
   currentUserDid,
-  showTargets = true,
-  documentFormat,
-  onGoToLocation,
   className,
 }: ReviewThreadProps) {
   // Auto-collapse deep threads
@@ -184,9 +171,6 @@ export function ReviewThreadComponent({
         onDelete={onDelete ? () => onDelete(thread.parent) : undefined}
         onShare={onShare ? () => onShare(thread.parent) : undefined}
         isOwner={isOwner}
-        showTarget={showTargets && depth === 0}
-        documentFormat={documentFormat}
-        onGoToLocation={onGoToLocation ? () => onGoToLocation(thread.parent.uri) : undefined}
       />
 
       {/* Replies */}
@@ -215,9 +199,6 @@ export function ReviewThreadComponent({
                   onDelete={onDelete}
                   onShare={onShare}
                   currentUserDid={currentUserDid}
-                  showTargets={showTargets}
-                  documentFormat={documentFormat}
-                  onGoToLocation={onGoToLocation}
                 />
               ))}
             </div>

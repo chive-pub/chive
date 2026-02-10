@@ -28,6 +28,7 @@ import { AcademicTextScorer } from '../../../../services/search/text-scorer.js';
 import type { DID } from '../../../../types/atproto.js';
 import type { GraphNode } from '../../../../types/interfaces/graph.interface.js';
 import { normalizeFieldUri } from '../../../../utils/at-uri.js';
+import { resolveFieldLabels } from '../../../../utils/field-label.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -300,32 +301,84 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
       }
     }
 
+    // Collect author DIDs for avatar fetching
+    const allAuthorDids = new Set<string>();
+    for (const [, data] of eprintDataForResponse) {
+      for (const author of data?.authors ?? []) {
+        if (author.did && !author.avatarUrl) {
+          allAuthorDids.add(author.did);
+        }
+      }
+    }
+
+    // Fetch avatars from Bluesky API
+    const avatarMap = new Map<string, { handle?: string; avatar?: string }>();
+    if (allAuthorDids.size > 0) {
+      const dids = Array.from(allAuthorDids);
+      const batchSize = 25;
+      for (let i = 0; i < dids.length; i += batchSize) {
+        const batch = dids.slice(i, i + batchSize);
+        try {
+          const urlParams = new URLSearchParams();
+          for (const did of batch) {
+            urlParams.append('actors', did);
+          }
+          const profileResponse = await fetch(
+            `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${urlParams.toString()}`,
+            {
+              headers: { Accept: 'application/json' },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
+          if (profileResponse.ok) {
+            const profileData = (await profileResponse.json()) as {
+              profiles: { did: string; handle?: string; avatar?: string }[];
+            };
+            for (const profile of profileData.profiles) {
+              avatarMap.set(profile.did, { handle: profile.handle, avatar: profile.avatar });
+            }
+          }
+        } catch {
+          // Silently ignore avatar fetch failures
+        }
+      }
+    }
+
+    // Resolve field labels for all eprints in one batch
+    const { nodeRepository } = c.get('services');
+
     const response: OutputSchema = {
-      hits: searchResults.hits.map((hit) => {
-        const eprintData = eprintDataForResponse.get(hit.uri);
-        return {
-          uri: hit.uri,
-          // Lexicon expects integer score scaled by 1000 for precision
-          score: Math.round((hit.score ?? 0) * 1000),
-          title: eprintData?.title,
-          authors: eprintData?.authors?.map((a) => ({
-            ...(a.did ? { did: a.did } : {}),
-            name: a.name,
-            handle: a.handle,
-            avatarUrl: a.avatarUrl,
-          })),
-          abstract: eprintData?.abstractPlainText,
-          // Include dates for frontend display
-          indexedAt: eprintData?.indexedAt?.toISOString(),
-          createdAt: eprintData?.createdAt?.toISOString(),
-          highlight: hit.highlight
-            ? {
-                title: hit.highlight.title ? [...hit.highlight.title] : undefined,
-                abstract: hit.highlight.abstract ? [...hit.highlight.abstract] : undefined,
-              }
-            : undefined,
-        };
-      }),
+      hits: await Promise.all(
+        searchResults.hits.map(async (hit) => {
+          const eprintData = eprintDataForResponse.get(hit.uri);
+          return {
+            uri: hit.uri,
+            // Lexicon expects integer score scaled by 1000 for precision
+            score: Math.round((hit.score ?? 0) * 1000),
+            title: eprintData?.title,
+            authors: eprintData?.authors?.map((a) => {
+              const profile = a.did ? avatarMap.get(a.did) : undefined;
+              return {
+                ...(a.did ? { did: a.did } : {}),
+                name: a.name,
+                handle: a.handle ?? profile?.handle,
+                avatarUrl: a.avatarUrl ?? profile?.avatar,
+              };
+            }),
+            abstract: eprintData?.abstractPlainText,
+            fields: await resolveFieldLabels(eprintData?.fields, nodeRepository),
+            // Include dates for frontend display
+            indexedAt: eprintData?.indexedAt?.toISOString(),
+            createdAt: eprintData?.createdAt?.toISOString(),
+            highlight: hit.highlight
+              ? {
+                  title: hit.highlight.title ? [...hit.highlight.title] : undefined,
+                  abstract: hit.highlight.abstract ? [...hit.highlight.abstract] : undefined,
+                }
+              : undefined,
+          };
+        })
+      ),
       cursor: hasMore ? String(offset + searchResults.hits.length) : undefined,
       total: searchResults.total,
       facetAggregations: undefined,

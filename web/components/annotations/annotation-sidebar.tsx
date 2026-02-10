@@ -4,23 +4,23 @@
  * Sidebar for displaying and navigating inline annotations.
  *
  * @remarks
- * Shows a list of inline reviews (span annotations) for an eprint.
- * Clicking an annotation scrolls to its location in the PDF.
- *
- * @example
- * ```tsx
- * <AnnotationSidebar
- *   eprintUri={eprintUri}
- *   onAnnotationClick={handleScrollToAnnotation}
- *   selectedUri={selectedAnnotationUri}
- * />
- * ```
+ * Shows annotations (comments) and entity links grouped by page.
+ * Clicking an item scrolls to its location in the PDF.
  *
  * @packageDocumentation
  */
 
 import { useState, useMemo } from 'react';
-import { MessageSquare, ChevronDown, ChevronRight, User, Filter, FileText } from 'lucide-react';
+import {
+  MessageSquare,
+  ChevronDown,
+  ChevronRight,
+  User,
+  Filter,
+  FileText,
+  Link2,
+  Trash2,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,50 +35,69 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { useInlineReviews } from '@/lib/hooks/use-review';
-import type { Review } from '@/lib/api/schema';
+import { useAuth } from '@/lib/auth';
+import {
+  useAnnotations,
+  useDeleteAnnotation,
+  useDeleteEntityLink,
+  type AnnotationView,
+  type EntityLinkView,
+} from '@/lib/hooks/use-annotations';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-/**
- * Props for AnnotationSidebar.
- */
 export interface AnnotationSidebarProps {
-  /** AT-URI of the eprint */
   eprintUri: string;
-  /** Currently selected annotation URI */
   selectedUri?: string;
-  /** Callback when annotation is clicked */
   onAnnotationClick?: (uri: string, pageNumber?: number) => void;
-  /** Additional CSS classes */
   className?: string;
 }
 
 /**
- * Grouped annotations by page.
+ * A sidebar item is either an annotation comment or an entity link.
  */
+type SidebarItem =
+  | { kind: 'annotation'; data: AnnotationView }
+  | { kind: 'entityLink'; data: EntityLinkView };
+
 interface PageGroup {
   pageNumber: number;
-  annotations: Review[];
+  items: SidebarItem[];
 }
 
-/**
- * Sort options for annotations.
- */
 type SortOption = 'page' | 'date' | 'author';
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+function getEntityLabel(linkedEntity: unknown): string {
+  if (typeof linkedEntity !== 'object' || linkedEntity === null) return 'Unknown entity';
+  const entity = linkedEntity as Record<string, unknown>;
+  return (entity.label ?? entity.displayName ?? entity.title ?? 'Unknown entity') as string;
+}
+
+function getItemPageNumber(item: SidebarItem): number {
+  return item.data.target?.refinedBy?.pageNumber ?? 0;
+}
+
+function getItemCreatedAt(item: SidebarItem): string {
+  return item.data.createdAt;
+}
+
+function getItemAuthorName(item: SidebarItem): string {
+  if (item.kind === 'annotation') {
+    return item.data.author.displayName ?? item.data.author.handle ?? '';
+  }
+  return item.data.creator.displayName ?? item.data.creator.handle ?? '';
+}
 
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
-/**
- * Sidebar displaying inline annotations.
- *
- * @param props - Component props
- * @returns Sidebar element
- */
 export function AnnotationSidebar({
   eprintUri,
   selectedUri,
@@ -86,49 +105,57 @@ export function AnnotationSidebar({
   className,
 }: AnnotationSidebarProps) {
   const [sortBy, setSortBy] = useState<SortOption>('page');
-  // Expand the first page (pageNumber=0) by default
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([0]));
 
-  const { data, isLoading, error } = useInlineReviews(eprintUri);
+  const { user } = useAuth();
+  const { data, isLoading, error } = useAnnotations(eprintUri);
+  const deleteAnnotation = useDeleteAnnotation();
+  const deleteEntityLink = useDeleteEntityLink();
 
-  // Group annotations by page
+  // Merge annotations and entity links into a unified list grouped by page
   const pageGroups = useMemo<PageGroup[]>(() => {
-    if (!data?.reviews) return [];
+    const items: SidebarItem[] = [];
 
-    const groups = new Map<number, Review[]>();
+    for (const annotation of data?.annotations ?? []) {
+      items.push({ kind: 'annotation', data: annotation });
+    }
+    for (const entityLink of data?.entityLinks ?? []) {
+      items.push({ kind: 'entityLink', data: entityLink });
+    }
 
-    data.reviews.forEach((review: Review) => {
-      const pageNumber = review.target?.refinedBy?.pageNumber ?? 0;
+    if (items.length === 0) return [];
+
+    // Group by page
+    const groups = new Map<number, SidebarItem[]>();
+    for (const item of items) {
+      const pageNumber = getItemPageNumber(item);
       const existing = groups.get(pageNumber) ?? [];
-      groups.set(pageNumber, [...existing, review]);
-    });
+      groups.set(pageNumber, [...existing, item]);
+    }
 
-    // Sort groups by page number
     const sorted = Array.from(groups.entries())
-      .map(([pageNumber, annotations]) => ({ pageNumber, annotations }))
+      .map(([pageNumber, pageItems]) => ({ pageNumber, items: pageItems }))
       .sort((a, b) => a.pageNumber - b.pageNumber);
 
-    // Sort annotations within each group
+    // Sort items within each group
     if (sortBy === 'date') {
-      sorted.forEach((group) => {
-        group.annotations.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      for (const group of sorted) {
+        group.items.sort(
+          (a, b) =>
+            new Date(getItemCreatedAt(b)).getTime() - new Date(getItemCreatedAt(a)).getTime()
         );
-      });
+      }
     } else if (sortBy === 'author') {
-      sorted.forEach((group) => {
-        group.annotations.sort((a, b) =>
-          (a.author.displayName ?? a.author.handle ?? '').localeCompare(
-            b.author.displayName ?? b.author.handle ?? ''
-          )
-        );
-      });
+      for (const group of sorted) {
+        group.items.sort((a, b) => getItemAuthorName(a).localeCompare(getItemAuthorName(b)));
+      }
     }
 
     return sorted;
-  }, [data?.reviews, sortBy]);
+  }, [data?.annotations, data?.entityLinks, sortBy]);
 
-  // Toggle page expansion
+  const totalItems = (data?.annotations?.length ?? 0) + (data?.entityLinks?.length ?? 0);
+
   const togglePage = (pageNumber: number) => {
     setExpandedPages((prev) => {
       const next = new Set(prev);
@@ -141,12 +168,10 @@ export function AnnotationSidebar({
     });
   };
 
-  // Expand all pages
   const expandAll = () => {
     setExpandedPages(new Set(pageGroups.map((g) => g.pageNumber)));
   };
 
-  // Collapse all pages
   const collapseAll = () => {
     setExpandedPages(new Set());
   };
@@ -163,8 +188,6 @@ export function AnnotationSidebar({
     );
   }
 
-  const totalAnnotations = data?.reviews?.length ?? 0;
-
   return (
     <div className={cn('flex flex-col rounded-lg border bg-card', className)}>
       {/* Header */}
@@ -175,12 +198,11 @@ export function AnnotationSidebar({
             Annotations
           </h3>
           <Badge variant="secondary" className="text-xs">
-            {totalAnnotations}
+            {totalItems}
           </Badge>
         </div>
 
-        {/* Controls */}
-        {totalAnnotations > 0 && (
+        {totalItems > 0 && (
           <div className="flex items-center gap-2">
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
               <SelectTrigger className="h-7 text-xs flex-1">
@@ -205,9 +227,9 @@ export function AnnotationSidebar({
         )}
       </div>
 
-      {/* Annotation list */}
+      {/* Item list */}
       <ScrollArea className="flex-1">
-        {totalAnnotations === 0 ? (
+        {totalItems === 0 ? (
           <div className="p-8 text-center">
             <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No annotations yet</p>
@@ -218,14 +240,17 @@ export function AnnotationSidebar({
         ) : (
           <div className="py-1">
             {pageGroups.map((group) => (
-              <PageAnnotationGroup
+              <PageItemGroup
                 key={group.pageNumber}
                 pageNumber={group.pageNumber}
-                annotations={group.annotations}
+                items={group.items}
                 isExpanded={expandedPages.has(group.pageNumber)}
                 onToggle={() => togglePage(group.pageNumber)}
                 selectedUri={selectedUri}
                 onAnnotationClick={onAnnotationClick}
+                currentUserDid={user?.did}
+                onDeleteAnnotation={(uri) => deleteAnnotation.mutate({ uri, eprintUri })}
+                onDeleteEntityLink={(uri) => deleteEntityLink.mutate({ uri, eprintUri })}
               />
             ))}
           </div>
@@ -239,29 +264,29 @@ export function AnnotationSidebar({
 // PAGE GROUP
 // =============================================================================
 
-/**
- * Props for PageAnnotationGroup.
- */
-interface PageAnnotationGroupProps {
+interface PageItemGroupProps {
   pageNumber: number;
-  annotations: Review[];
+  items: SidebarItem[];
   isExpanded: boolean;
   onToggle: () => void;
   selectedUri?: string;
   onAnnotationClick?: (uri: string, pageNumber?: number) => void;
+  currentUserDid?: string;
+  onDeleteAnnotation?: (uri: string) => void;
+  onDeleteEntityLink?: (uri: string) => void;
 }
 
-/**
- * Collapsible group of annotations for a page.
- */
-function PageAnnotationGroup({
+function PageItemGroup({
   pageNumber,
-  annotations,
+  items,
   isExpanded,
   onToggle,
   selectedUri,
   onAnnotationClick,
-}: PageAnnotationGroupProps) {
+  currentUserDid,
+  onDeleteAnnotation,
+  onDeleteEntityLink,
+}: PageItemGroupProps) {
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
@@ -279,20 +304,33 @@ function PageAnnotationGroup({
             Page {pageNumber + 1}
           </span>
           <Badge variant="outline" className="text-xs">
-            {annotations.length}
+            {items.length}
           </Badge>
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="pl-6 pr-2 pb-2 space-y-1">
-          {annotations.map((annotation) => (
-            <AnnotationItem
-              key={annotation.uri}
-              annotation={annotation}
-              isSelected={selectedUri === annotation.uri}
-              onClick={() => onAnnotationClick?.(annotation.uri, pageNumber)}
-            />
-          ))}
+          {items.map((item) =>
+            item.kind === 'annotation' ? (
+              <AnnotationItem
+                key={item.data.uri}
+                annotation={item.data}
+                isSelected={selectedUri === item.data.uri}
+                onClick={() => onAnnotationClick?.(item.data.uri, pageNumber)}
+                canDelete={!!currentUserDid && item.data.author.did === currentUserDid}
+                onDelete={() => onDeleteAnnotation?.(item.data.uri)}
+              />
+            ) : (
+              <EntityLinkItem
+                key={item.data.uri}
+                entityLink={item.data}
+                isSelected={selectedUri === item.data.uri}
+                onClick={() => onAnnotationClick?.(item.data.uri, pageNumber)}
+                canDelete={!!currentUserDid && item.data.creator.did === currentUserDid}
+                onDelete={() => onDeleteEntityLink?.(item.data.uri)}
+              />
+            )
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>
@@ -303,58 +341,137 @@ function PageAnnotationGroup({
 // ANNOTATION ITEM
 // =============================================================================
 
-/**
- * Props for AnnotationItem.
- */
-interface AnnotationItemProps {
-  annotation: Review;
+function AnnotationItem({
+  annotation,
+  isSelected,
+  onClick,
+  canDelete,
+  onDelete,
+}: {
+  annotation: AnnotationView;
   isSelected?: boolean;
   onClick?: () => void;
-}
-
-/**
- * Single annotation item in the sidebar.
- */
-function AnnotationItem({ annotation, isSelected, onClick }: AnnotationItemProps) {
+  canDelete?: boolean;
+  onDelete?: () => void;
+}) {
   const authorName = annotation.author.displayName ?? annotation.author.handle ?? 'Anonymous';
   const excerpt = annotation.content.slice(0, 80);
   const hasMore = annotation.content.length > 80;
 
   return (
-    <button
-      type="button"
+    <div
       className={cn(
-        'w-full rounded-md p-2 text-left transition-colors',
+        'group relative w-full rounded-md p-2 text-left transition-colors cursor-pointer',
         isSelected
           ? 'bg-primary/10 border border-primary/30'
           : 'hover:bg-muted/50 border border-transparent'
       )}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick?.();
+      }}
     >
-      {/* Quoted text */}
+      {canDelete && (
+        <button
+          type="button"
+          className="absolute top-1.5 right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.();
+          }}
+          title="Delete comment"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
       {annotation.target?.selector?.exact && (
         <div className="mb-1.5 rounded bg-muted/50 px-2 py-1 text-xs text-muted-foreground italic border-l-2 border-primary/30">
           &ldquo;{annotation.target.selector.exact.slice(0, 60)}
           {annotation.target.selector.exact.length > 60 && '...'}&rdquo;
         </div>
       )}
-
-      {/* Author and date */}
       <div className="flex items-center gap-1.5 mb-1">
-        <User className="h-3 w-3 text-muted-foreground" />
+        <MessageSquare className="h-3 w-3 text-muted-foreground" />
         <span className="text-xs font-medium truncate">{authorName}</span>
         <span className="text-xs text-muted-foreground">·</span>
         <span className="text-xs text-muted-foreground">
           {new Date(annotation.createdAt).toLocaleDateString()}
         </span>
       </div>
-
-      {/* Comment excerpt */}
       <p className="text-xs text-muted-foreground line-clamp-2">
         {excerpt}
         {hasMore && '...'}
       </p>
-    </button>
+    </div>
+  );
+}
+
+// =============================================================================
+// ENTITY LINK ITEM
+// =============================================================================
+
+function EntityLinkItem({
+  entityLink,
+  isSelected,
+  onClick,
+  canDelete,
+  onDelete,
+}: {
+  entityLink: EntityLinkView;
+  isSelected?: boolean;
+  onClick?: () => void;
+  canDelete?: boolean;
+  onDelete?: () => void;
+}) {
+  const creatorName = entityLink.creator.displayName ?? entityLink.creator.handle ?? 'Anonymous';
+  const label = getEntityLabel(entityLink.linkedEntity);
+  const excerpt = entityLink.target?.selector?.exact;
+
+  return (
+    <div
+      className={cn(
+        'group relative w-full rounded-md p-2 text-left transition-colors cursor-pointer',
+        isSelected
+          ? 'bg-primary/10 border border-primary/30'
+          : 'hover:bg-muted/50 border border-transparent'
+      )}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick?.();
+      }}
+    >
+      {canDelete && (
+        <button
+          type="button"
+          className="absolute top-1.5 right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.();
+          }}
+          title="Delete entity link"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
+      {excerpt && (
+        <div className="mb-1.5 rounded bg-muted/50 px-2 py-1 text-xs text-muted-foreground italic border-l-2 border-blue-400/50">
+          &ldquo;{excerpt.slice(0, 60)}
+          {excerpt.length > 60 && '...'}&rdquo;
+        </div>
+      )}
+      <div className="flex items-center gap-1.5 mb-1">
+        <Link2 className="h-3 w-3 text-blue-500" />
+        <span className="text-xs font-medium truncate">{label}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <User className="h-3 w-3 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground truncate">{creatorName}</span>
+      </div>
+    </div>
   );
 }
 
@@ -362,9 +479,6 @@ function AnnotationItem({ annotation, isSelected, onClick }: AnnotationItemProps
 // SKELETON
 // =============================================================================
 
-/**
- * Loading skeleton for AnnotationSidebar.
- */
 export function AnnotationSidebarSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('rounded-lg border bg-card', className)}>

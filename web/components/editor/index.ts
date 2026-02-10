@@ -16,6 +16,12 @@ export { MarkdownPreview, type MarkdownPreviewProps } from './markdown-preview';
 export { MarkdownPreviewPane, type MarkdownPreviewPaneProps } from './markdown-preview-pane';
 export { RichTextRenderer, type RichTextRendererProps } from './rich-text-renderer';
 export { LatexExtension } from './extensions/latex-extension';
+export { CrossReferenceExtension } from './extensions/cross-reference-extension';
+export {
+  CrossReferenceList,
+  type CrossReferenceItem,
+  type CrossReferenceListProps,
+} from './cross-reference-list';
 export {
   type RichTextContent,
   type RichTextFacet,
@@ -33,6 +39,7 @@ export {
   type MentionFeature,
   type LinkFeature,
   type TagFeature,
+  type CrossReferenceFacet,
   toAtprotoRichText,
   createEmptyContent,
   createFromPlainText,

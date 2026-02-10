@@ -25,7 +25,7 @@
  */
 
 import Link from 'next/link';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, FileText, MessageSquare } from 'lucide-react';
 import katex from 'katex';
 
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +45,7 @@ import type {
   EprintRefItem,
   AnnotationRefItem,
   AuthorRefItem,
+  CrossReferenceItem,
   LatexItem,
   CodeItem,
   LegacyAnnotationItem,
@@ -485,6 +486,41 @@ function CodeRenderer({ item }: { item: CodeItem }) {
 }
 
 // =============================================================================
+// CROSS-REFERENCE CHIP
+// =============================================================================
+
+/**
+ * Renders a cross-reference to a review or annotation as a clickable badge.
+ */
+function CrossReferenceChip({ item }: { item: CrossReferenceItem }) {
+  const Icon = item.refType === 'annotation' ? MessageSquare : FileText;
+
+  return (
+    <a
+      href={`#${item.uri}`}
+      className="inline-flex items-center"
+      onClick={(e) => {
+        e.preventDefault();
+        const target = document.querySelector(`[data-uri="${item.uri}"]`);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          target.classList.add('highlight-flash');
+          setTimeout(() => target.classList.remove('highlight-flash'), 1500);
+        }
+      }}
+    >
+      <Badge
+        variant="secondary"
+        className="gap-1 cursor-pointer bg-violet-100 text-violet-800 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-300"
+      >
+        <Icon className="h-3 w-3" />
+        <span>{item.label}</span>
+      </Badge>
+    </a>
+  );
+}
+
+// =============================================================================
 // ITEM RENDERER
 // =============================================================================
 
@@ -523,6 +559,8 @@ function ItemRenderer({
       return <AnnotationRefChip key={index} item={item} disableLinks={disableLinks} />;
     case 'authorRef':
       return <AuthorRefChip key={index} item={item} disableLinks={disableLinks} />;
+    case 'crossReference':
+      return <CrossReferenceChip key={index} item={item} />;
     case 'latex':
       return <LatexRenderer key={index} item={item} />;
     case 'code':

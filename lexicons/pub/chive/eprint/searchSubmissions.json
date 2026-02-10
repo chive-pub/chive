@@ -147,6 +147,34 @@
         "highlight": {
           "type": "ref",
           "ref": "#highlightResult"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#fieldRef"
+          },
+          "description": "Knowledge graph field references"
+        }
+      }
+    },
+    "fieldRef": {
+      "type": "object",
+      "description": "Reference to a knowledge graph field node",
+      "required": ["uri", "label"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the field node"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable field name"
+        },
+        "id": {
+          "type": "string",
+          "description": "UUID of the field node"
         }
       }
     },

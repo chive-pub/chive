@@ -21,11 +21,11 @@ import { AnnotatedPDFViewer, AnnotatedPDFViewerSkeleton } from './pdf-viewer-ann
 // MOCKS
 // =============================================================================
 
-// Mock useInlineReviews hook
-const mockUseInlineReviews = vi.fn();
-vi.mock('@/lib/hooks/use-review', () => ({
-  useInlineReviews: (eprintUri: string, options?: { enabled?: boolean }) => {
-    return mockUseInlineReviews(eprintUri, options);
+// Mock useAnnotations hook
+const mockUseAnnotations = vi.fn();
+vi.mock('@/lib/hooks/use-annotations', () => ({
+  useAnnotations: (eprintUri: string, _params?: unknown, options?: { enabled?: boolean }) => {
+    return mockUseAnnotations(eprintUri, options);
   },
 }));
 
@@ -67,8 +67,8 @@ describe('AnnotatedPDFViewer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsAuthenticated.mockReturnValue(true);
-    mockUseInlineReviews.mockReturnValue({
-      data: { reviews: mockReviews },
+    mockUseAnnotations.mockReturnValue({
+      data: { annotations: mockReviews },
       isLoading: false,
       error: null,
     });
@@ -235,7 +235,7 @@ describe('AnnotatedPDFViewer', () => {
 
   describe('annotations loading', () => {
     it('shows loading state when fetching annotations', () => {
-      mockUseInlineReviews.mockReturnValue({
+      mockUseAnnotations.mockReturnValue({
         data: null,
         isLoading: true,
         error: null,
@@ -255,9 +255,9 @@ describe('AnnotatedPDFViewer', () => {
       expect(screen.getByTestId('pdf-highlighter').getAttribute('data-highlight-count')).toBe('2');
     });
 
-    it('handles empty reviews', () => {
-      mockUseInlineReviews.mockReturnValue({
-        data: { reviews: [] },
+    it('handles empty annotations', () => {
+      mockUseAnnotations.mockReturnValue({
+        data: { annotations: [] },
         isLoading: false,
         error: null,
       });
@@ -377,15 +377,15 @@ describe('AnnotatedPDFViewerSkeleton', () => {
 });
 
 describe('coordinate conversion utilities', () => {
-  it('converts reviews with targets to highlights', () => {
+  it('converts annotations with targets to highlights', () => {
     render(<AnnotatedPDFViewer {...defaultProps} />);
 
-    // Verify highlights are created from reviews
+    // Verify highlights are created from annotations
     expect(screen.getByTestId('pdf-highlighter').getAttribute('data-highlight-count')).toBe('2');
   });
 
-  it('filters out reviews without targets', () => {
-    const reviewsWithAndWithoutTargets = [
+  it('filters out annotations without valid positions', () => {
+    const annotationsWithAndWithoutTargets = [
       createMockInlineReview({ uri: 'at://review/with-target' }),
       {
         ...createMockInlineReview({ uri: 'at://review/without-target' }),
@@ -393,15 +393,15 @@ describe('coordinate conversion utilities', () => {
       },
     ];
 
-    mockUseInlineReviews.mockReturnValue({
-      data: { reviews: reviewsWithAndWithoutTargets },
+    mockUseAnnotations.mockReturnValue({
+      data: { annotations: annotationsWithAndWithoutTargets },
       isLoading: false,
       error: null,
     });
 
     render(<AnnotatedPDFViewer {...defaultProps} />);
 
-    // Only the review with target should be converted to highlight
+    // Only the annotation with a valid target should be converted to highlight
     expect(screen.getByTestId('pdf-highlighter').getAttribute('data-highlight-count')).toBe('1');
   });
 });

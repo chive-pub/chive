@@ -97,6 +97,7 @@ describe('API Rate Limiting Integration', () => {
       graphService: createMockGraphService(),
       blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
+      annotationService: {} as ServerConfig['annotationService'],
       tagManager: createMockTagManager(),
       facetManager: createMockFacetManager(),
       nodeService: createMockNodeService(),

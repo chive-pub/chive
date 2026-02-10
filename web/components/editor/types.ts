@@ -111,6 +111,15 @@ export interface TagFeature {
 }
 
 /**
+ * Cross-reference feature for linking to reviews or annotations.
+ */
+export interface CrossReferenceFacet {
+  $type: 'pub.chive.richtext.facets#crossReference';
+  uri: string;
+  refType: 'review' | 'annotation';
+}
+
+/**
  * Union of all facet features.
  */
 export type RichTextFeature =
@@ -125,7 +134,8 @@ export type RichTextFeature =
   | ListItemFeature
   | MentionFeature
   | LinkFeature
-  | TagFeature;
+  | TagFeature
+  | CrossReferenceFacet;
 
 // =============================================================================
 // FACETS
