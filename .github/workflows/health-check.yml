@@ -12,9 +12,13 @@ on:
         default: 'true'
         type: boolean
 
+permissions:
+  contents: read
+  issues: write
+
 env:
   # Thresholds
-  CURSOR_STALE_MINUTES: 30
+  CURSOR_STALE_MINUTES: 120
   QUEUE_DEPTH_WARNING: 100
   QUEUE_DEPTH_CRITICAL: 500
   DLQ_WARNING: 10

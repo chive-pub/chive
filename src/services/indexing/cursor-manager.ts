@@ -179,6 +179,8 @@ export class CursorManager {
   private lastSavedCursor: number | null = null;
   private eventCount = 0;
   private flushTimer: NodeJS.Timeout | null = null;
+  private lastHeartbeat = 0;
+  private readonly heartbeatInterval = 60_000;
 
   /**
    * Creates a cursor manager.
@@ -432,6 +434,27 @@ export class CursorManager {
   }
 
   /**
+   * Updates `last_updated` without changing cursor_seq.
+   *
+   * @remarks
+   * Signals to health checks that the indexer is alive during idle
+   * periods when no events are flowing through the filtered firehose.
+   *
+   * @internal
+   */
+  private async heartbeat(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastHeartbeat < this.heartbeatInterval) {
+      return;
+    }
+
+    await this.db.query(`UPDATE firehose_cursor SET last_updated = NOW() WHERE service_name = $1`, [
+      this.serviceName,
+    ]);
+    this.lastHeartbeat = now;
+  }
+
+  /**
    * Starts periodic flush timer.
    *
    * @internal
@@ -440,7 +463,13 @@ export class CursorManager {
     this.flushTimer = setInterval(() => {
       void (async () => {
         try {
+          const beforeCursor = this.lastSavedCursor;
           await this.flush();
+
+          // If flush was a no-op (no new events), send heartbeat
+          if (this.lastSavedCursor === beforeCursor) {
+            await this.heartbeat();
+          }
         } catch (error) {
           // Log error but don't crash timer
           this.logger.error('Cursor flush failed', error instanceof Error ? error : undefined, {
