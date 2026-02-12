@@ -732,26 +732,21 @@ export class EprintsRepository {
         ? (JSON.parse(row.authors) as EprintAuthor[])
         : (row.authors as EprintAuthor[]);
 
-    // Parse optional JSONB fields
-    const publishedVersion = row.published_version
-      ? (JSON.parse(row.published_version) as PublishedVersion)
-      : undefined;
-    const externalIds = row.external_ids
-      ? (JSON.parse(row.external_ids) as ExternalIds)
-      : undefined;
-    const relatedWorks = row.related_works
-      ? (JSON.parse(row.related_works) as RelatedWork[])
-      : undefined;
-    const repositories = row.repositories
-      ? (JSON.parse(row.repositories) as Repositories)
-      : undefined;
-    const funding = row.funding ? (JSON.parse(row.funding) as FundingSource[]) : undefined;
-    const conferencePresentation = row.conference_presentation
-      ? (JSON.parse(row.conference_presentation) as ConferencePresentation)
-      : undefined;
-    const supplementaryMaterials = row.supplementary_materials
-      ? (JSON.parse(row.supplementary_materials) as SupplementaryMaterial[])
-      : undefined;
+    // Parse optional JSONB fields.
+    // PostgreSQL returns JSONB columns as already-parsed objects, so only
+    // call JSON.parse when the value is still a string (e.g. from a raw query).
+    const parseJsonb = <T>(val: unknown): T | undefined => {
+      if (val == null) return undefined;
+      if (typeof val === 'string') return JSON.parse(val) as T;
+      return val as T;
+    };
+    const publishedVersion = parseJsonb<PublishedVersion>(row.published_version);
+    const externalIds = parseJsonb<ExternalIds>(row.external_ids);
+    const relatedWorks = parseJsonb<RelatedWork[]>(row.related_works);
+    const repositories = parseJsonb<Repositories>(row.repositories);
+    const funding = parseJsonb<FundingSource[]>(row.funding);
+    const conferencePresentation = parseJsonb<ConferencePresentation>(row.conference_presentation);
+    const supplementaryMaterials = parseJsonb<SupplementaryMaterial[]>(row.supplementary_materials);
     interface FieldRow {
       uri: string;
       label: string;
