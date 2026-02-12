@@ -104,13 +104,13 @@
     @apply outline-none;
   }
 
-  /* Code block styling in editor */
+  /* Code block styling in editor - hljs theme handles bg/color */
   .tiptap pre {
-    @apply bg-muted rounded p-3 my-2 overflow-x-auto;
+    @apply my-2 p-0;
   }
 
   .tiptap pre code {
-    @apply bg-transparent p-0 font-mono text-sm;
+    @apply bg-transparent font-mono text-sm;
   }
 
   /* Inline code styling in editor */
@@ -130,6 +130,21 @@
 
   .tiptap ol {
     @apply list-decimal list-inside my-2;
+  }
+
+  /* Code blocks -- github-dark theme handles colors/background via .hljs */
+  pre code.hljs {
+    @apply block rounded p-4 my-2 overflow-x-auto font-mono text-sm;
+  }
+
+  /* Inline code in prose -- muted background, no Typography backtick pseudo-elements */
+  .prose :where(code):not(pre code) {
+    @apply bg-muted rounded px-1 py-0.5;
+  }
+
+  .prose code::before,
+  .prose code::after {
+    content: none !important;
   }
 
   /* PDF Highlighter - ensure absolute positioning respects container bounds */

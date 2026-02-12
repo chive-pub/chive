@@ -164,19 +164,6 @@ describe('ReviewList', () => {
   });
 
   describe('showTargets prop', () => {
-    it('shows target spans by default', () => {
-      const reviewWithTarget = createMockReview({
-        target: {
-          source: 'at://test/eprint/1',
-          selector: { type: 'TextQuoteSelector', exact: 'quoted text' },
-        },
-      });
-
-      render(<ReviewList reviews={[reviewWithTarget]} />);
-
-      expect(screen.getByText(/quoted text/)).toBeInTheDocument();
-    });
-
     it('does not render target display (reviews are document-level only)', () => {
       render(<ReviewList reviews={mockReviews} />);
 

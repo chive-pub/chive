@@ -38,6 +38,7 @@ import {
   Italic,
   Strikethrough,
   Code,
+  SquareCode,
   List,
   ListOrdered,
   Quote,
@@ -199,26 +200,67 @@ function insertMarkdown(
   }
 }
 
+/** Heading prefix pattern: matches `# `, `## `, `### `, etc. at line start */
+const HEADING_PREFIX_REGEX = /^#{1,6} /;
+
 /**
- * Inserts a line prefix (for headings, lists, quotes).
+ * Inserts or toggles a line prefix (for headings, lists, quotes).
+ *
+ * @remarks
+ * Uses ProseMirror's resolved position to find the correct block start,
+ * avoiding the coordinate-system mismatch between textContent indices
+ * and ProseMirror positions. For heading prefixes, toggles off if the
+ * same prefix exists, or replaces a different heading prefix.
  */
 function insertLinePrefix(editor: Editor, prefix: string): void {
   const { from } = editor.state.selection;
+  const $pos = editor.state.doc.resolve(from);
+  const blockStart = $pos.start($pos.depth);
+  const blockEnd = $pos.end($pos.depth);
+  const blockText = editor.state.doc.textBetween(blockStart, blockEnd, '');
+  const isHeadingPrefix = /^#{1,6} $/.test(prefix);
 
-  // Find start of current line
-  let lineStart = from;
-  const docText = editor.state.doc.textContent;
-  while (lineStart > 0 && docText[lineStart - 1] !== '\n') {
-    lineStart--;
+  if (isHeadingPrefix) {
+    const existingMatch = blockText.match(HEADING_PREFIX_REGEX);
+    if (existingMatch) {
+      const existingPrefix = existingMatch[0];
+      if (existingPrefix === prefix) {
+        // Same heading level: toggle off (remove prefix)
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: blockStart, to: blockStart + existingPrefix.length })
+          .run();
+        return;
+      }
+      // Different heading level: replace prefix
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from: blockStart, to: blockStart + existingPrefix.length })
+        .insertContentAt(blockStart, prefix)
+        .run();
+      return;
+    }
+  } else {
+    // For non-heading prefixes (list, quote): toggle off if already present
+    if (blockText.startsWith(prefix)) {
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from: blockStart, to: blockStart + prefix.length })
+        .run();
+      return;
+    }
   }
 
-  // Insert prefix at line start
+  // Insert prefix at block start
+  const cursorOffset = from - blockStart;
   editor
     .chain()
     .focus()
-    .setTextSelection(lineStart)
-    .insertContent(prefix)
-    .setTextSelection(from + prefix.length)
+    .insertContentAt(blockStart, prefix)
+    .setTextSelection(blockStart + cursorOffset + prefix.length)
     .run();
 }
 
@@ -867,6 +909,27 @@ export function MarkdownEditor({
     if (editor) insertMarkdown(editor, '`', '`', 'code');
   }, [editor]);
 
+  const insertCodeBlock = useCallback(() => {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      editor
+        .chain()
+        .focus()
+        .insertContent('```\ncode\n```')
+        .setTextSelection({ from: from + 4, to: from + 8 })
+        .run();
+    } else {
+      const selectedText = editor.state.doc.textBetween(from, to);
+      editor
+        .chain()
+        .focus()
+        .deleteSelection()
+        .insertContent(`\`\`\`\n${selectedText}\n\`\`\``)
+        .run();
+    }
+  }, [editor]);
+
   const insertHeading1 = useCallback(() => {
     if (editor) insertLinePrefix(editor, '# ');
   }, [editor]);
@@ -1002,6 +1065,14 @@ export function MarkdownEditor({
               tooltip="Inline code (`code`)"
             >
               <Code className="h-4 w-4" />
+            </ToolbarButton>
+
+            <ToolbarButton
+              onClick={insertCodeBlock}
+              disabled={disabled || isPreviewMode}
+              tooltip="Code block (```code```)"
+            >
+              <SquareCode className="h-4 w-4" />
             </ToolbarButton>
 
             <Separator orientation="vertical" className="mx-1 h-6" />

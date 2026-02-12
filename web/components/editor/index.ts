@@ -4,7 +4,6 @@
  * @packageDocumentation
  */
 
-export { RichTextEditor, type RichTextEditorProps } from './rich-text-editor';
 export { MarkdownEditor, type MarkdownEditorProps } from './markdown-editor';
 export {
   PlainMarkdownEditor,
@@ -12,11 +11,9 @@ export {
   type PlainMarkdownEditorProps,
   type PlainMarkdownEditorRichTextProps,
 } from './plain-markdown-editor';
-export { MarkdownPreview, type MarkdownPreviewProps } from './markdown-preview';
 export { MarkdownPreviewPane, type MarkdownPreviewPaneProps } from './markdown-preview-pane';
+export { MarkdownRenderer, type MarkdownRendererProps } from './markdown-renderer';
 export { RichTextRenderer, type RichTextRendererProps } from './rich-text-renderer';
-export { LatexExtension } from './extensions/latex-extension';
-export { CrossReferenceExtension } from './extensions/cross-reference-extension';
 export {
   CrossReferenceList,
   type CrossReferenceItem,

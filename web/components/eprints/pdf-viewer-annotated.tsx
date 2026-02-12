@@ -265,7 +265,10 @@ function scaledPositionToW3CTarget(
  * For optimal accuracy, stored annotations include boundingRect.
  * External annotations without boundingRect fall back to position estimation.
  */
-function w3cTargetToScaledPosition(target: UnifiedTextSpanTarget): ScaledPosition | null {
+function w3cTargetToScaledPosition(
+  target: UnifiedTextSpanTarget | undefined
+): ScaledPosition | null {
+  if (!target) return null;
   const refinedBy = target.refinedBy;
 
   // Only create highlights when we have accurate boundingRect data
