@@ -130,7 +130,7 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
               avatarUrl: author.avatarUrl ?? profile?.avatar,
             };
           }),
-          fields: await resolveFieldLabels(p.fields, nodeRepository),
+          fields: await resolveFieldLabels(p.fields, nodeRepository).catch(() => undefined),
           indexedAt: p.indexedAt.toISOString(),
           publishedAt: p.createdAt.toISOString(),
         }))

@@ -76,20 +76,20 @@ export async function resolveFieldLabels(
 ): Promise<ResolvedField[]> {
   if (!fields || fields.length === 0) return [];
 
-  // Normalize URIs and extract IDs
-  const normalized = fields.map((f) => {
-    const uri = normalizeFieldUri(f.uri);
-    const id = f.id ?? extractRkeyOrPassthrough(uri);
-    return { uri, label: f.label, id };
-  });
-
-  // Find fields that need label resolution
-  const unresolvedIds = normalized.filter((f) => needsLabelResolution(f.label)).map((f) => f.id);
-
-  if (unresolvedIds.length === 0) return normalized;
-
-  // Batch fetch from Neo4j
   try {
+    // Normalize URIs and extract IDs
+    const normalized = fields.map((f) => {
+      const uri = normalizeFieldUri(f.uri);
+      const id = f.id ?? extractRkeyOrPassthrough(uri);
+      return { uri, label: f.label, id };
+    });
+
+    // Find fields that need label resolution
+    const unresolvedIds = normalized.filter((f) => needsLabelResolution(f.label)).map((f) => f.id);
+
+    if (unresolvedIds.length === 0) return normalized;
+
+    // Batch fetch from Neo4j
     const nodeMap = await nodeLookup.getNodesByIds(unresolvedIds);
     return normalized.map((f) => {
       if (needsLabelResolution(f.label)) {
@@ -99,7 +99,11 @@ export async function resolveFieldLabels(
       return f;
     });
   } catch {
-    // On failure, return fields with existing labels
-    return normalized;
+    // On any failure (bad URI, Neo4j down), return fields with original labels
+    return fields.map((f) => ({
+      uri: f.uri,
+      label: f.label,
+      id: f.id ?? f.uri,
+    }));
   }
 }
