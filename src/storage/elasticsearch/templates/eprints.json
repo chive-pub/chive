@@ -17,7 +17,7 @@
             "filter": [
               "lowercase",
               "asciifolding",
-              "porter_stem",
+              "kstem",
               "academic_stopwords",
               "academic_synonym"
             ]

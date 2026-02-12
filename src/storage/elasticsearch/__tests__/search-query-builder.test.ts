@@ -63,9 +63,11 @@ describe('SearchQueryBuilder', () => {
       const multiMatch = mustClause && 'multi_match' in mustClause ? mustClause.multi_match : null;
       expect(multiMatch).toBeDefined();
       expect(multiMatch?.query).toBe('machine learning');
-      expect(multiMatch?.type).toBe('best_fields');
-      expect(multiMatch?.operator).toBe('or');
-      expect(multiMatch?.fuzziness).toBe('AUTO');
+      expect(multiMatch?.type).toBe('bool_prefix');
+      expect(multiMatch?.operator).toBe('and');
+      expect(multiMatch).not.toHaveProperty('fuzziness');
+      expect(multiMatch).not.toHaveProperty('minimum_should_match');
+      expect(multiMatch).not.toHaveProperty('prefix_length');
     });
 
     it('should include boosted fields in multi_match query', () => {
@@ -77,11 +79,19 @@ describe('SearchQueryBuilder', () => {
       const fields = multiMatch?.fields;
 
       expect(fields).toBeDefined();
-      expect(fields).toContain('title^3');
-      expect(fields).toContain('abstract^2');
-      expect(fields).toContain('full_text^1');
-      expect(fields).toContain('authors.name^2');
-      expect(fields).toContain('keywords^1.5');
+      expect(fields).toContain('title^5');
+      expect(fields).toContain('abstract^1.5');
+      expect(fields).toContain('full_text^0.5');
+      expect(fields).toContain('authors.name^2.5');
+      expect(fields).toContain('keywords^2');
+      expect(fields).toContain('tags^0.8');
+
+      // Removed fields should not be present
+      const allFields = Array.isArray(fields) ? fields.join(' ') : (fields ?? '');
+      expect(allFields).not.toContain('title.ngram');
+      expect(allFields).not.toContain('facets.matter');
+      expect(allFields).not.toContain('facets.energy');
+      expect(allFields).not.toContain('authorities');
     });
 
     it('should ignore empty query text', () => {
@@ -250,8 +260,8 @@ describe('SearchQueryBuilder', () => {
       expect(multiMatch?.operator).toBe('and');
     });
 
-    it('should use custom prefix length', () => {
-      const builder = new SearchQueryBuilder({ prefixLength: 3 });
+    it('should use custom prefix length with non-bool_prefix type', () => {
+      const builder = new SearchQueryBuilder({ prefixLength: 3, multiMatchType: 'best_fields' });
       const query = builder.build({ q: 'test' });
 
       const mustClause = Array.isArray(query.bool?.must) ? query.bool.must[0] : query.bool?.must;

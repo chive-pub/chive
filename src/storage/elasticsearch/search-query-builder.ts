@@ -3,9 +3,8 @@
  *
  * @remarks
  * Constructs Elasticsearch Query DSL from search parameters with:
- * - Field boosting (title^3, abstract^2, etc.)
- * - Fuzzy matching with AUTO fuzziness
- * - Multi-field search (title, abstract, full text, authors, keywords, facets)
+ * - Field boosting (title^5, abstract^1.5, etc.)
+ * - Multi-field search (title, abstract, full text, authors, keywords)
  * - Author filtering (nested queries)
  * - Subject filtering (terms queries)
  * - Date range filtering
@@ -25,9 +24,8 @@ import { extractRkeyOrPassthrough } from '../../utils/at-uri.js';
  * @remarks
  * Boost values prioritize different fields in search relevance:
  * - Title fields get highest boost (most important)
- * - Abstract gets high boost (very relevant)
- * - Authors and keywords get medium boost
- * - Facets and authorities get low-medium boost
+ * - Authors and keywords get high boost
+ * - Abstract gets medium boost
  * - Tags get lowest boost (least important)
  *
  * @public
@@ -36,65 +34,37 @@ export interface FieldBoostConfig {
   /**
    * Main title field boost.
    *
-   * @defaultValue 3.0
+   * @defaultValue 5.0
    */
   readonly title: number;
 
   /**
-   * Title ngram field boost (for partial matching).
-   *
-   * @defaultValue 2.0
-   */
-  readonly titleNgram: number;
-
-  /**
    * Abstract field boost.
    *
-   * @defaultValue 2.0
+   * @defaultValue 1.5
    */
   readonly abstract: number;
 
   /**
    * Full text field boost.
    *
-   * @defaultValue 1.0
+   * @defaultValue 0.5
    */
   readonly fullText: number;
 
   /**
    * Author name field boost.
    *
-   * @defaultValue 2.0
+   * @defaultValue 2.5
    */
   readonly authorName: number;
 
   /**
    * Keywords field boost.
    *
-   * @defaultValue 1.5
+   * @defaultValue 2.0
    */
   readonly keywords: number;
-
-  /**
-   * Matter facet boost (subject matter).
-   *
-   * @defaultValue 1.3
-   */
-  readonly facetsMatter: number;
-
-  /**
-   * Energy facet boost (methods/approaches).
-   *
-   * @defaultValue 1.1
-   */
-  readonly facetsEnergy: number;
-
-  /**
-   * Authority terms boost.
-   *
-   * @defaultValue 1.2
-   */
-  readonly authorities: number;
 
   /**
    * Tags boost.
@@ -109,24 +79,20 @@ export interface FieldBoostConfig {
  *
  * @remarks
  * Optimized for academic eprint search:
- * - Titles are most important (3x weight)
- * - Abstracts are very important (2x weight)
- * - Authors and keywords are important (1.5-2x weight)
- * - Facets provide context (1.1-1.3x weight)
+ * - Titles are most important (5x weight)
+ * - Authors and keywords are strong signals (2-2.5x weight)
+ * - Abstracts are moderate (1.5x weight)
  * - Tags are supplementary (0.8x weight)
+ * - Full text is low priority (0.5x weight)
  *
  * @public
  */
 export const DEFAULT_FIELD_BOOSTS: FieldBoostConfig = {
-  title: 3.0,
-  titleNgram: 2.0,
-  abstract: 2.0,
-  fullText: 1.0,
-  authorName: 2.0,
-  keywords: 1.5,
-  facetsMatter: 1.3,
-  facetsEnergy: 1.1,
-  authorities: 1.2,
+  title: 5.0,
+  abstract: 1.5,
+  fullText: 0.5,
+  authorName: 2.5,
+  keywords: 2.0,
   tags: 0.8,
 };
 
@@ -152,7 +118,7 @@ export interface SearchQueryBuilderConfig {
    * - 1: Allow 1 character difference
    * - 2: Allow 2 character differences
    *
-   * @defaultValue 'AUTO'
+   * @defaultValue 0
    */
   readonly fuzziness?: 'AUTO' | 0 | 1 | 2;
 
@@ -174,10 +140,11 @@ export interface SearchQueryBuilderConfig {
    * - 'best_fields': Finds documents matching any field (best scoring field wins)
    * - 'most_fields': Combines scores from all matching fields
    * - 'cross_fields': Treats all fields as one large field
+   * - 'bool_prefix': Search-as-you-type (term queries + prefix on last term)
    *
-   * @defaultValue 'best_fields'
+   * @defaultValue 'bool_prefix'
    */
-  readonly multiMatchType?: 'best_fields' | 'most_fields' | 'cross_fields';
+  readonly multiMatchType?: 'best_fields' | 'most_fields' | 'cross_fields' | 'bool_prefix';
 
   /**
    * Multi-match operator.
@@ -186,9 +153,20 @@ export interface SearchQueryBuilderConfig {
    * - 'or': Document matches if any term matches
    * - 'and': Document matches only if all terms match
    *
-   * @defaultValue 'or'
+   * @defaultValue 'and'
    */
   readonly operator?: 'or' | 'and';
+
+  /**
+   * Minimum percentage of terms that must match.
+   *
+   * @remarks
+   * Safety net for multi-term queries. With `operator: 'and'` this is
+   * technically redundant, but protects against unexpected tokenization.
+   *
+   * @defaultValue '75%'
+   */
+  readonly minimumShouldMatch?: string;
 }
 
 /**
@@ -223,10 +201,11 @@ export class SearchQueryBuilder {
   constructor(config: SearchQueryBuilderConfig = {}) {
     this.config = {
       fieldBoosts: config.fieldBoosts ?? DEFAULT_FIELD_BOOSTS,
-      fuzziness: config.fuzziness ?? 'AUTO',
+      fuzziness: config.fuzziness ?? 0,
       prefixLength: config.prefixLength ?? 2,
-      multiMatchType: config.multiMatchType ?? 'best_fields',
-      operator: config.operator ?? 'or',
+      multiMatchType: config.multiMatchType ?? 'bool_prefix',
+      operator: config.operator ?? 'and',
+      minimumShouldMatch: config.minimumShouldMatch ?? '75%',
     };
   }
 
@@ -300,16 +279,14 @@ export class SearchQueryBuilder {
     const boosts = this.config.fieldBoosts;
     const fields = [
       `title^${boosts.title}`,
-      `title.ngram^${boosts.titleNgram}`,
       `abstract^${boosts.abstract}`,
       `full_text^${boosts.fullText}`,
       `authors.name^${boosts.authorName}`,
       `keywords^${boosts.keywords}`,
-      `facets.matter^${boosts.facetsMatter}`,
-      `facets.energy^${boosts.facetsEnergy}`,
-      `authorities^${boosts.authorities}`,
       `tags^${boosts.tags}`,
     ];
+
+    const isBoolPrefix = this.config.multiMatchType === 'bool_prefix';
 
     return {
       multi_match: {
@@ -317,8 +294,10 @@ export class SearchQueryBuilder {
         fields,
         type: this.config.multiMatchType,
         operator: this.config.operator,
-        fuzziness: this.config.fuzziness,
-        prefix_length: this.config.prefixLength,
+        // These parameters don't apply to bool_prefix type
+        ...(!isBoolPrefix && this.config.fuzziness !== 0 && { fuzziness: this.config.fuzziness }),
+        ...(!isBoolPrefix && { minimum_should_match: this.config.minimumShouldMatch }),
+        ...(!isBoolPrefix && { prefix_length: this.config.prefixLength }),
       },
     };
   }
