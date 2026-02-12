@@ -226,6 +226,34 @@ export interface SubmissionWizardProps {
 }
 
 // =============================================================================
+// UTILITIES
+// =============================================================================
+
+interface FacetEntry {
+  slug: string;
+  value: string;
+  label?: string;
+}
+
+/**
+ * Merge selected field nodes into the facets array as personality (discipline) facets.
+ * Deduplicates against any personality facets the user already selected manually.
+ */
+export function mergeFieldsIntoFacets(
+  facets: FacetEntry[],
+  fieldNodes: ReadonlyArray<{ uri: string; label: string }>
+): FacetEntry[] {
+  const existing = new Set(facets.filter((f) => f.slug === 'personality').map((f) => f.value));
+  const additions: FacetEntry[] = [];
+  for (const field of fieldNodes) {
+    if (!existing.has(field.uri)) {
+      additions.push({ slug: 'personality', value: field.uri, label: field.label });
+    }
+  }
+  return [...facets, ...additions];
+}
+
+// =============================================================================
 // CONSTANTS
 // =============================================================================
 
@@ -687,12 +715,13 @@ export function SubmissionWizard({
         order: m.order,
       }));
 
-      // Transform facets for submission
-      const transformedFacets = (values.facets ?? []).map((f) => ({
+      // Transform facets and auto-add fields as personality (discipline) facets
+      const baseFacets = (values.facets ?? []).map((f) => ({
         slug: f.slug,
         value: f.value,
         label: f.label,
       }));
+      const transformedFacets = mergeFieldsIntoFacets(baseFacets, values.fieldNodes);
 
       // Determine target agent (user's or paper's PDS)
       let targetAgent = undefined;
