@@ -8,6 +8,7 @@ import { ConditionalHeader } from '@/components/conditional-header';
 import { SkipLink } from '@/components/skip-link';
 import { Toaster } from '@/components/ui/sonner';
 import { DebugPanel } from '@/components/debug';
+import 'highlight.js/styles/github-dark.css';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {

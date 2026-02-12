@@ -15,6 +15,14 @@ import {
 const mockUseAnnotations = vi.fn();
 vi.mock('@/lib/hooks/use-annotations', () => ({
   useAnnotations: (eprintUri: string) => mockUseAnnotations(eprintUri),
+  useDeleteAnnotation: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteEntityLink: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
+vi.mock('@/lib/auth', () => ({
+  useAuth: () => ({
+    user: { did: 'did:plc:testuser', handle: 'test.bsky.social' },
+  }),
 }));
 
 // =============================================================================
@@ -313,12 +321,12 @@ describe('AnnotationSidebar', () => {
 
       render(<AnnotationSidebar {...defaultProps} onAnnotationClick={onAnnotationClick} />);
 
-      // Click on an annotation
-      const annotationButton = screen
+      // Click on an annotation (component uses div[role="button"])
+      const annotationItem = screen
         .getByText('First annotation content on page 1')
-        .closest('button');
-      expect(annotationButton).toBeDefined();
-      await user.click(annotationButton!);
+        .closest('[role="button"]');
+      expect(annotationItem).not.toBeNull();
+      await user.click(annotationItem!);
 
       // pageNumber is 0-indexed internally (0 for "Page 1")
       expect(onAnnotationClick).toHaveBeenCalledWith('at://review/1', 0);
@@ -333,10 +341,10 @@ describe('AnnotationSidebar', () => {
       // Expand page 2 (which is pageNumber=1 internally)
       await user.click(screen.getByRole('button', { name: /Page 2/i }));
 
-      // Click on page 2 annotation
+      // Click on page 2 annotation (component uses div[role="button"])
       await waitFor(async () => {
-        const annotationButton = screen.getByText('Annotation on page 2').closest('button');
-        await user.click(annotationButton!);
+        const annotationItem = screen.getByText('Annotation on page 2').closest('[role="button"]');
+        await user.click(annotationItem!);
       });
 
       // pageNumber is 0-indexed internally (1 for "Page 2")

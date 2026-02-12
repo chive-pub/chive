@@ -27,10 +27,12 @@
 import Link from 'next/link';
 import { ExternalLink, FileText, MessageSquare } from 'lucide-react';
 import katex from 'katex';
+import { toHtml } from 'hast-util-to-html';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { escapeHTML } from '@/lib/utils/annotation-serializer';
+import { lowlight } from '@/lib/utils/syntax-highlight';
 import { getSubkindColorClasses, getSubkindIcon } from '@/lib/constants/subkind-colors';
 import type {
   RichTextItem,
@@ -471,13 +473,17 @@ function LatexRenderer({ item }: { item: LatexItem }) {
 }
 
 /**
- * Renders a code item.
+ * Renders a code item with optional syntax highlighting.
  */
 function CodeRenderer({ item }: { item: CodeItem }) {
   if (item.block) {
+    const tree = item.language
+      ? lowlight.highlight(item.language, item.content)
+      : lowlight.highlightAuto(item.content);
+    const html = toHtml(tree);
     return (
-      <pre className="rounded bg-muted p-3 overflow-x-auto my-2">
-        <code className="font-mono text-sm">{item.content}</code>
+      <pre className="hljs rounded p-3 overflow-x-auto my-2">
+        <code className="font-mono text-sm" dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
     );
   }

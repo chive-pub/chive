@@ -65,6 +65,16 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: Run frontend tests
+        run: pnpm --filter @chive/web test
+
   # ==============================================================================
   # Stage 3: Integration Tests (requires all 4 database services)
   # ==============================================================================
@@ -285,7 +295,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, compliance-tests]
+    needs: [unit-tests, frontend-tests, integration-tests, compliance-tests]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-node-pnpm
