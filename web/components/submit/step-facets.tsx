@@ -10,7 +10,7 @@
  * @packageDocumentation
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Info, Layers, X, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -34,6 +34,7 @@ import {
   type FacetValue,
 } from '@/lib/hooks/use-faceted-search';
 import type { EprintFormValues } from './submission-wizard';
+import { mergeFieldsIntoFacets } from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -149,7 +150,7 @@ function FacetSelector({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[300px] p-0" align="start">
-            <Command>
+            <Command shouldFilter={false}>
               <CommandInput
                 placeholder={`Search ${facet.label.toLowerCase()}...`}
                 value={searchQuery}
@@ -220,10 +221,22 @@ export function StepFacets({ form, className }: StepFacetsProps) {
   const { data: facets, isLoading, error } = useFacetCounts();
 
   const watchedFacets = form.watch('facets');
+  const watchedFieldNodes = form.watch('fieldNodes');
   const selectedFacets = useMemo<SelectedFacet[]>(
     () => (watchedFacets as SelectedFacet[] | undefined) ?? [],
     [watchedFacets]
   );
+
+  // Auto-populate personality facets from selected field nodes
+  useEffect(() => {
+    const fieldNodes = watchedFieldNodes ?? [];
+    if (fieldNodes.length === 0) return;
+
+    const merged = mergeFieldsIntoFacets(selectedFacets, fieldNodes);
+    if (merged.length !== selectedFacets.length) {
+      form.setValue('facets', merged, { shouldValidate: true });
+    }
+  }, [watchedFieldNodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Get selected values for a specific facet
   const getSelectedValues = useCallback(
