@@ -12,7 +12,7 @@
             "type": "custom",
             "tokenizer": "standard",
             "char_filter": ["html_strip"],
-            "filter": ["lowercase", "asciifolding", "porter_stem", "academic_stopwords"]
+            "filter": ["lowercase", "asciifolding", "kstem", "academic_stopwords"]
           },
           "name_analyzer": {
             "type": "custom",

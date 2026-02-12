@@ -430,21 +430,15 @@ export class ElasticsearchAdapter implements ISearchEngine {
         multi_match: {
           query: query.q,
           fields: [
-            'title^3',
-            'title.ngram^2',
-            'abstract^2',
-            'full_text',
-            'authors.name^2',
-            'keywords^1.5',
-            'facets.matter.text^1.3',
-            'facets.energy.text^1.1',
-            'authorities.text^1.2',
+            'title^5',
+            'abstract^1.5',
+            'full_text^0.5',
+            'authors.name^2.5',
+            'keywords^2',
             'tags.text^0.8',
           ],
-          type: 'best_fields',
-          operator: 'or',
-          fuzziness: 'AUTO',
-          prefix_length: 2,
+          type: 'bool_prefix',
+          operator: 'and',
         },
       });
     }

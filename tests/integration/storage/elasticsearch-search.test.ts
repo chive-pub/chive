@@ -233,10 +233,10 @@ describe('Elasticsearch Search Integration', () => {
       }
     });
 
-    it('should handle fuzzy matching', async () => {
+    it('should not match typos (fuzziness disabled)', async () => {
       const results = await adapter.search({ q: 'machne lerning' });
 
-      expect(results.hits.length).toBeGreaterThan(0);
+      expect(results.hits.length).toBe(0);
     });
 
     it('should return empty results for non-matching query', async () => {
@@ -290,7 +290,7 @@ describe('Elasticsearch Search Integration', () => {
 
     it('should combine query with filters', async () => {
       const results = await adapter.search({
-        q: 'computer',
+        q: 'learning',
         filters: {
           author: 'did:plc:author1' as DID,
         },

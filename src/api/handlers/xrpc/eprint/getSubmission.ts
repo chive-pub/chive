@@ -185,7 +185,7 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
     // Resolve field labels from Neo4j at response time.
     // During indexing, labels may fall back to UUIDs if Neo4j was unavailable.
     const { nodeRepository } = c.get('services');
-    const resolvedFields = await resolveFieldLabels(result.fields, nodeRepository);
+    const resolvedFields = await resolveFieldLabels(result.fields, nodeRepository).catch(() => []);
 
     // Build the submission value in lexicon format
     const response: OutputSchema & { _schemaHints?: typeof schemaHints } = {

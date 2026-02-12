@@ -366,7 +366,9 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
               };
             }),
             abstract: eprintData?.abstractPlainText,
-            fields: await resolveFieldLabels(eprintData?.fields, nodeRepository),
+            fields: await resolveFieldLabels(eprintData?.fields, nodeRepository).catch(
+              () => undefined
+            ),
             // Include dates for frontend display
             indexedAt: eprintData?.indexedAt?.toISOString(),
             createdAt: eprintData?.createdAt?.toISOString(),
