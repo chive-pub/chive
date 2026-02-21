@@ -22,6 +22,8 @@ import { createServer, type ServerConfig } from './api/server.js';
 import { ATRepository } from './atproto/repository/at-repository.js';
 import { AuthorizationService } from './auth/authorization/authorization-service.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
+import { getGrobidConfig } from './config/grobid.js';
+import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { FreshnessScanJob } from './jobs/freshness-scan-job.js';
 import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
@@ -46,6 +48,9 @@ import { CIDVerifier } from './services/blob-proxy/cid-verifier.js';
 import { BlobProxyService, type BlobFetchResult } from './services/blob-proxy/proxy-service.js';
 import { RedisCache } from './services/blob-proxy/redis-cache.js';
 import { RequestCoalescer } from './services/blob-proxy/request-coalescer.js';
+import { CitationExtractionService } from './services/citation/citation-extraction-service.js';
+import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
+import { GrobidClient } from './services/citation/grobid-client.js';
 import { ClaimingService } from './services/claiming/claiming-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { DiscoveryService } from './services/discovery/discovery-service.js';
@@ -236,6 +241,7 @@ interface AppState {
   tagSyncJob?: TagSyncJob;
   eventBus?: EventEmitter2Type;
   indexRetryWorker?: IndexRetryWorker;
+  citationExtractionJob?: CitationExtractionJob;
 }
 
 /**
@@ -298,7 +304,7 @@ function createServices(
   esPool: ElasticsearchConnectionPool,
   neo4jConnection: Neo4jConnection,
   logger: PinoLogger
-): ServerConfig {
+): ServerConfig & { readonly citationExtractionService: CitationExtractionService } {
   // Create adapters
   const storageAdapter = new PostgreSQLAdapter(pgPool);
   const searchAdapter = new ElasticsearchAdapter(esPool);
@@ -520,6 +526,20 @@ function createServices(
 
   const pdsScanner = new PDSScanner(pdsRegistry, eprintService, reviewService, logger);
 
+  // Create GROBID client and citation extraction service
+  const grobidConfig = getGrobidConfig();
+  const grobidClient = new GrobidClient({ config: grobidConfig, logger });
+  const documentTextExtractor = new DocumentTextExtractor({ logger });
+
+  const citationExtractionService = new CitationExtractionService({
+    grobidClient,
+    repository,
+    db: pgPool,
+    citationGraph,
+    logger,
+    documentTextExtractor,
+  });
+
   // Create index retry worker for failed indexRecord calls
   const redisUrl = new URL(config.redisUrl);
   const indexRetryWorker = new IndexRetryWorker({
@@ -563,6 +583,7 @@ function createServices(
     pdsScanner,
     indexRetryWorker,
     identityResolver,
+    citationExtractionService,
     redis,
     logger,
     serviceDid: config.serviceDid,
@@ -1067,6 +1088,18 @@ async function main(): Promise<void> {
       serverConfig.claimingService,
       logger
     );
+
+    // Wire citation extraction service with plugin manager for Semantic Scholar enrichment
+    const pluginManager = getPluginManager();
+    serverConfig.citationExtractionService.setPluginManager(pluginManager);
+
+    // Create citation extraction job for post-indexing use
+    state.citationExtractionJob = new CitationExtractionJob({
+      citationExtractionService: serverConfig.citationExtractionService,
+      db: pgPool,
+      logger,
+    });
+    logger.info('Citation extraction pipeline initialized');
 
     // Start governance sync job to sync nodes/edges from Graph PDS to Neo4j
     state.governanceSyncJob = new GovernanceSyncJob({

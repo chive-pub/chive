@@ -65,6 +65,14 @@ import type {
   SemanticVersionData,
   ChangelogSectionData,
   IndexedUserTag,
+  EprintCitationQueryOptions,
+  CitationListResult,
+  IndexedCitation,
+  IndexCitationInput,
+  RelatedWorkQueryOptions,
+  RelatedWorkListResult,
+  IndexedRelatedWork,
+  IndexRelatedWorkInput,
 } from '../../types/interfaces/storage.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
 
@@ -582,6 +590,396 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * SQL expression that normalizes a raw tag/keyword column to the canonical
+   * hyphen-separated form (matching src/utils/normalize-tag.ts).
+   */
+  private static normalizeExpr(col: string): string {
+    // lowercase -> strip special chars -> spaces to hyphens -> collapse hyphens -> trim hyphens
+    return `TRIM(BOTH '-' FROM REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(${col}), '[^a-z0-9\\s-]', '', 'g'), '\\s+', '-', 'g'), '-+', '-', 'g'))`;
+  }
+
+  /**
+   * Retrieves distinct eprint URIs that match a normalized term as either
+   * a community tag or an author keyword.
+   */
+  async getEprintUrisForTerm(
+    normalizedTerm: string,
+    limit: number,
+    offset: number
+  ): Promise<{ uris: AtUri[]; total: number }> {
+    const normTag = PostgreSQLAdapter.normalizeExpr('tag');
+    const normKw = PostgreSQLAdapter.normalizeExpr('k');
+
+    const countResult = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM (
+         SELECT DISTINCT eprint_uri AS uri FROM user_tags_index WHERE ${normTag} = $1
+         UNION
+         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k WHERE ${normKw} = $1
+       ) combined`,
+      [normalizedTerm]
+    );
+    const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+    if (limit === 0) {
+      return { uris: [], total };
+    }
+
+    const result = await this.pool.query<{ uri: string }>(
+      `SELECT uri FROM (
+         SELECT DISTINCT eprint_uri AS uri FROM user_tags_index WHERE ${normTag} = $1
+         UNION
+         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k WHERE ${normKw} = $1
+       ) combined
+       ORDER BY uri
+       LIMIT $2 OFFSET $3`,
+      [normalizedTerm, limit, offset]
+    );
+
+    return {
+      uris: result.rows.map((r) => r.uri as AtUri),
+      total,
+    };
+  }
+
+  /**
+   * Searches distinct keywords from eprints_index matching a search term.
+   */
+  async searchKeywords(
+    searchText: string,
+    limit: number
+  ): Promise<{ normalizedForm: string; displayForm: string; usageCount: number }[]> {
+    const normKw = PostgreSQLAdapter.normalizeExpr('k');
+
+    const result = await this.pool.query<{
+      normalized: string;
+      display: string;
+      count: string;
+    }>(
+      `SELECT ${normKw} AS normalized, k AS display, COUNT(DISTINCT uri)::text AS count
+       FROM eprints_index, LATERAL unnest(keywords) AS k
+       WHERE ${normKw} LIKE '%' || $1 || '%'
+       GROUP BY normalized, k
+       ORDER BY count DESC
+       LIMIT $2`,
+      [searchText.toLowerCase(), limit]
+    );
+
+    return result.rows.map((r) => ({
+      normalizedForm: r.normalized,
+      displayForm: r.display,
+      usageCount: parseInt(r.count, 10),
+    }));
+  }
+
+  /**
+   * Deletes a record from an index table by AT-URI.
+   */
+  async deleteByUri(table: string, uri: AtUri): Promise<void> {
+    // Allowlist of valid table names to prevent SQL injection
+    const validTables = [
+      'user_tags_index',
+      'reviews_index',
+      'endorsements_index',
+      'citations_index',
+      'related_works_index',
+    ];
+    if (!validTables.includes(table)) {
+      throw new Error(`Invalid table name: ${table}`);
+    }
+    await this.pool.query(`DELETE FROM ${table} WHERE uri = $1`, [uri]);
+  }
+
+  /**
+   * Indexes a user tag record into the user_tags_index table.
+   */
+  async indexTag(tag: {
+    readonly uri: AtUri;
+    readonly cid: CID;
+    readonly eprintUri: AtUri;
+    readonly taggerDid: DID;
+    readonly tag: string;
+    readonly createdAt: Date;
+    readonly pdsUrl: string;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO user_tags_index (
+        uri, cid, eprint_uri, tagger_did, tag, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      ON CONFLICT (uri) DO UPDATE SET
+        cid = EXCLUDED.cid,
+        tag = EXCLUDED.tag,
+        last_synced_at = NOW()`,
+      [tag.uri, tag.cid, tag.eprintUri, tag.taggerDid, tag.tag, tag.createdAt, tag.pdsUrl]
+    );
+  }
+
+  // ===========================================================================
+  // CITATION METHODS
+  // ===========================================================================
+
+  /**
+   * Retrieves citations for an eprint with optional source filtering.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset, source)
+   * @returns Paginated list of citations
+   *
+   * @public
+   */
+  async getCitationsForEprint(
+    eprintUri: AtUri,
+    options?: EprintCitationQueryOptions
+  ): Promise<CitationListResult> {
+    const limit = options?.limit ?? 50;
+    const offset = options?.offset ?? 0;
+    const source = options?.source ?? 'all';
+
+    let whereClause = 'WHERE eprint_uri = $1';
+    const params: unknown[] = [eprintUri];
+
+    if (source === 'user') {
+      whereClause += " AND source = 'user-provided'";
+    } else if (source === 'auto') {
+      whereClause += " AND source != 'user-provided'";
+    }
+
+    const countResult = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*) as count FROM extracted_citations ${whereClause}`,
+      params
+    );
+    const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+    const result = await this.pool.query<CitationRow>(
+      `SELECT id, eprint_uri, raw_text, title, doi, arxiv_id, authors, year, venue,
+              source, confidence, chive_match_uri, match_confidence, is_influential,
+              citation_type, context, user_record_uri, curator_did, extracted_at, updated_at
+       FROM extracted_citations
+       ${whereClause}
+       ORDER BY extracted_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset]
+    );
+
+    const citations: IndexedCitation[] = result.rows.map((row) => this.mapCitationRow(row));
+
+    return { citations, total };
+  }
+
+  /**
+   * Indexes a user-provided citation from the firehose.
+   *
+   * @param citation - Citation data to index
+   *
+   * @public
+   */
+  async indexCitation(citation: IndexCitationInput): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO extracted_citations (
+        eprint_uri, title, doi, arxiv_id, authors, year, venue, source,
+        confidence, chive_match_uri, citation_type, context,
+        user_record_uri, curator_did, extracted_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'user-provided', 1.0, $8, $9, $10, $11, $12, $13, $13)
+      ON CONFLICT (user_record_uri) WHERE user_record_uri IS NOT NULL DO UPDATE SET
+        title = EXCLUDED.title,
+        doi = EXCLUDED.doi,
+        arxiv_id = EXCLUDED.arxiv_id,
+        authors = EXCLUDED.authors,
+        year = EXCLUDED.year,
+        venue = EXCLUDED.venue,
+        chive_match_uri = EXCLUDED.chive_match_uri,
+        citation_type = EXCLUDED.citation_type,
+        context = EXCLUDED.context,
+        updated_at = NOW()`,
+      [
+        citation.eprintUri,
+        citation.title,
+        citation.doi ?? null,
+        citation.arxivId ?? null,
+        citation.authors ? JSON.stringify(citation.authors) : null,
+        citation.year ?? null,
+        citation.venue ?? null,
+        citation.chiveUri ?? null,
+        citation.citationType ?? null,
+        citation.context ?? null,
+        citation.userRecordUri,
+        citation.curatorDid,
+        citation.createdAt,
+      ]
+    );
+  }
+
+  /**
+   * Deletes a user-provided citation by its record URI.
+   *
+   * @param userRecordUri - AT URI of the citation record
+   *
+   * @public
+   */
+  async deleteCitation(userRecordUri: AtUri): Promise<void> {
+    await this.pool.query('DELETE FROM extracted_citations WHERE user_record_uri = $1', [
+      userRecordUri,
+    ]);
+  }
+
+  // ===========================================================================
+  // RELATED WORK METHODS
+  // ===========================================================================
+
+  /**
+   * Retrieves related works for an eprint with pagination.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset)
+   * @returns Paginated list of related works
+   *
+   * @public
+   */
+  async getRelatedWorksForEprint(
+    eprintUri: AtUri,
+    options?: RelatedWorkQueryOptions
+  ): Promise<RelatedWorkListResult> {
+    const limit = options?.limit ?? 50;
+    const offset = options?.offset ?? 0;
+
+    const countResult = await this.pool.query<{ count: string }>(
+      'SELECT COUNT(*) as count FROM user_related_works_index WHERE source_eprint_uri = $1',
+      [eprintUri]
+    );
+    const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+    const result = await this.pool.query<RelatedWorkRow>(
+      `SELECT uri, cid, source_eprint_uri, target_eprint_uri, relationship_type,
+              description, curator_did, created_at, pds_url, indexed_at, last_synced_at
+       FROM user_related_works_index
+       WHERE source_eprint_uri = $1
+       ORDER BY created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [eprintUri, limit, offset]
+    );
+
+    const relatedWorks: IndexedRelatedWork[] = result.rows.map((row) =>
+      this.mapRelatedWorkRow(row)
+    );
+
+    return { relatedWorks, total };
+  }
+
+  /**
+   * Indexes a related work record from the firehose.
+   *
+   * @param relatedWork - Related work data to index
+   *
+   * @public
+   */
+  async indexRelatedWork(relatedWork: IndexRelatedWorkInput): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO user_related_works_index (
+        uri, cid, source_eprint_uri, target_eprint_uri, relationship_type,
+        description, curator_did, created_at, pds_url, indexed_at, last_synced_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      ON CONFLICT (uri) DO UPDATE SET
+        cid = EXCLUDED.cid,
+        source_eprint_uri = EXCLUDED.source_eprint_uri,
+        target_eprint_uri = EXCLUDED.target_eprint_uri,
+        relationship_type = EXCLUDED.relationship_type,
+        description = EXCLUDED.description,
+        last_synced_at = NOW()`,
+      [
+        relatedWork.uri,
+        relatedWork.cid,
+        relatedWork.sourceEprintUri,
+        relatedWork.targetEprintUri,
+        relatedWork.relationshipType,
+        relatedWork.description ?? null,
+        relatedWork.curatorDid,
+        relatedWork.createdAt,
+        relatedWork.pdsUrl,
+      ]
+    );
+  }
+
+  /**
+   * Deletes a related work record by its URI.
+   *
+   * @param uri - AT URI of the related work record
+   *
+   * @public
+   */
+  async deleteRelatedWork(uri: AtUri): Promise<void> {
+    await this.pool.query('DELETE FROM user_related_works_index WHERE uri = $1', [uri]);
+  }
+
+  // ===========================================================================
+  // PRIVATE HELPERS
+  // ===========================================================================
+
+  /**
+   * Maps a citation database row to IndexedCitation.
+   *
+   * @param row - Database row
+   * @returns Mapped citation object
+   *
+   * @internal
+   */
+  private mapCitationRow(row: CitationRow): IndexedCitation {
+    const rawAuthors = row.authors;
+    let parsedAuthors: readonly string[] | undefined;
+    if (rawAuthors != null) {
+      parsedAuthors =
+        typeof rawAuthors === 'string'
+          ? (JSON.parse(rawAuthors) as string[])
+          : (rawAuthors as string[]);
+    }
+
+    return {
+      id: row.id,
+      eprintUri: row.eprint_uri as AtUri,
+      rawText: row.raw_text ?? undefined,
+      title: row.title ?? undefined,
+      doi: row.doi ?? undefined,
+      arxivId: row.arxiv_id ?? undefined,
+      authors: parsedAuthors,
+      year: row.year ?? undefined,
+      venue: row.venue ?? undefined,
+      source: row.source,
+      confidence: row.confidence,
+      chiveMatchUri: row.chive_match_uri ? (row.chive_match_uri as AtUri) : undefined,
+      matchConfidence: row.match_confidence ?? undefined,
+      isInfluential: row.is_influential ?? undefined,
+      citationType: row.citation_type ?? undefined,
+      context: row.context ?? undefined,
+      userRecordUri: row.user_record_uri ? (row.user_record_uri as AtUri) : undefined,
+      curatorDid: row.curator_did ? (row.curator_did as DID) : undefined,
+      extractedAt: row.extracted_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  /**
+   * Maps a related work database row to IndexedRelatedWork.
+   *
+   * @param row - Database row
+   * @returns Mapped related work object
+   *
+   * @internal
+   */
+  private mapRelatedWorkRow(row: RelatedWorkRow): IndexedRelatedWork {
+    return {
+      uri: row.uri as AtUri,
+      cid: row.cid as CID,
+      sourceEprintUri: row.source_eprint_uri as AtUri,
+      targetEprintUri: row.target_eprint_uri as AtUri,
+      relationshipType: row.relationship_type,
+      description: row.description ?? undefined,
+      curatorDid: row.curator_did as DID,
+      createdAt: row.created_at,
+      pdsUrl: row.pds_url ?? undefined,
+      indexedAt: row.indexed_at,
+      lastSyncedAt: row.last_synced_at,
+    };
+  }
+
+  /**
    * Maps a changelog database row to StoredChangelog.
    *
    * @param row - Database row
@@ -635,4 +1033,51 @@ interface UserTagRow {
   readonly created_at: Date;
   readonly pds_url: string;
   readonly indexed_at: Date;
+}
+
+/**
+ * Database row representation of extracted citation record.
+ *
+ * @internal
+ */
+interface CitationRow {
+  readonly id: number;
+  readonly eprint_uri: string;
+  readonly raw_text: string | null;
+  readonly title: string | null;
+  readonly doi: string | null;
+  readonly arxiv_id: string | null;
+  readonly authors: unknown; // JSONB
+  readonly year: number | null;
+  readonly venue: string | null;
+  readonly source: string;
+  readonly confidence: number;
+  readonly chive_match_uri: string | null;
+  readonly match_confidence: number | null;
+  readonly is_influential: boolean | null;
+  readonly citation_type: string | null;
+  readonly context: string | null;
+  readonly user_record_uri: string | null;
+  readonly curator_did: string | null;
+  readonly extracted_at: Date;
+  readonly updated_at: Date;
+}
+
+/**
+ * Database row representation of user related work record.
+ *
+ * @internal
+ */
+interface RelatedWorkRow {
+  readonly uri: string;
+  readonly cid: string;
+  readonly source_eprint_uri: string;
+  readonly target_eprint_uri: string;
+  readonly relationship_type: string;
+  readonly description: string | null;
+  readonly curator_did: string;
+  readonly created_at: Date;
+  readonly pds_url: string | null;
+  readonly indexed_at: Date;
+  readonly last_synced_at: Date;
 }

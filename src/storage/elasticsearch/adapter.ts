@@ -16,12 +16,15 @@
 import type { Client, estypes } from '@elastic/elasticsearch';
 import { errors } from '@elastic/elasticsearch';
 
+import { withSpan } from '../../observability/tracer.js';
 import type { AtUri } from '../../types/atproto.js';
 import type {
   FacetedSearchQuery,
   FacetedSearchResults,
   ISearchEngine,
   IndexableEprintDocument as SimpleIndexableDocument,
+  MLTOptions,
+  MLTResult,
   SearchQuery,
   SearchResults,
 } from '../../types/interfaces/search.interface.js';
@@ -354,6 +357,100 @@ export class ElasticsearchAdapter implements ISearchEngine {
         error instanceof Error ? error : undefined
       );
     }
+  }
+
+  /**
+   * Finds documents similar to a given document using Elasticsearch More Like This.
+   *
+   * @param documentUri - AT-URI of the source document
+   * @param options - MLT query options
+   * @returns Similar documents sorted by relevance
+   *
+   * @throws {SearchError} On query failure
+   *
+   * @remarks
+   * Queries the title, abstract, and keywords fields to find content-similar
+   * documents. Excludes the source document from results. Uses OpenTelemetry
+   * span for tracing the ES query.
+   *
+   * @public
+   */
+  async findSimilarByText(documentUri: AtUri, options?: MLTOptions): Promise<readonly MLTResult[]> {
+    const limit = this.normalizeLimit(options?.limit ?? 10);
+    const minTermFreq = options?.minTermFreq ?? 1;
+    const minDocFreq = options?.minDocFreq ?? 2;
+    const maxQueryTerms = options?.maxQueryTerms ?? 25;
+    const minimumShouldMatch = options?.minimumShouldMatch ?? '30%';
+    // Pivot for saturation normalization: the raw BM25 score at which
+    // the normalized similarity equals 0.5. Tuned for academic paper
+    // MLT queries where raw scores typically range from 3 to 20.
+    const saturationPivot = options?.saturationPivot ?? 8;
+
+    return withSpan(
+      'elasticsearch.findSimilarByText',
+      async () => {
+        try {
+          const response = await this.client.search<IndexableEprintDocument>({
+            index: this.config.indexName,
+            query: {
+              script_score: {
+                query: {
+                  more_like_this: {
+                    fields: ['title', 'abstract', 'keywords'],
+                    like: [
+                      {
+                        _index: this.config.indexName,
+                        _id: String(documentUri),
+                      },
+                    ],
+                    min_term_freq: minTermFreq,
+                    min_doc_freq: minDocFreq,
+                    max_query_terms: maxQueryTerms,
+                    minimum_should_match: minimumShouldMatch,
+                  },
+                },
+                script: {
+                  source: 'saturation(_score, params.pivot)',
+                  params: { pivot: saturationPivot },
+                },
+              },
+            },
+            min_score: 0.15,
+            size: limit,
+            _source: ['uri', 'title'],
+          });
+
+          return response.hits.hits
+            .filter((hit) => hit._id !== String(documentUri))
+            .map((hit) => ({
+              uri: (hit._source?.uri ?? hit._id) as AtUri,
+              score: hit._score ?? 0,
+              title: hit._source?.title,
+            }));
+        } catch (error) {
+          if (error instanceof errors.ResponseError) {
+            throw new SearchError(
+              `More Like This query failed for ${documentUri}: ${error.message}`,
+              error
+            );
+          }
+
+          throw new SearchError(
+            `Unexpected error in More Like This query for ${documentUri}`,
+            error instanceof Error ? error : undefined
+          );
+        }
+      },
+      {
+        attributes: {
+          'chive.eprint.uri': String(documentUri),
+          'elasticsearch.query_type': 'more_like_this',
+          'elasticsearch.mlt.limit': limit,
+          'elasticsearch.mlt.min_term_freq': minTermFreq,
+          'elasticsearch.mlt.min_doc_freq': minDocFreq,
+        },
+      }
+    );
   }
 
   /**

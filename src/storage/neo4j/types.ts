@@ -343,6 +343,7 @@ export type RelationshipSlug =
   | 'broader'
   | 'narrower'
   | 'related'
+  | 'relates-to'
   | 'equivalent'
   | 'interdisciplinary-with'
   | 'supersedes'
