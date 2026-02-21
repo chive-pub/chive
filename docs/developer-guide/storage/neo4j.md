@@ -178,6 +178,17 @@ const clusters = await graph.findCoCitationClusters(eprintUri, {
 });
 ```
 
+### Automated citation extraction
+
+When GROBID extracts citations from an eprint PDF, matched citations create `CITES` edges:
+
+```typescript
+// After GROBID extraction resolves a DOI to a Chive eprint
+await graph.addCitation(citingUri, citedUri);
+```
+
+User-curated citations from `pub.chive.eprint.citation` records with a `chiveUri` field also create `CITES` edges during indexing.
+
 ## Graph algorithms
 
 Neo4j Graph Data Science library powers advanced queries:
