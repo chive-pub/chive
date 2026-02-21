@@ -12,7 +12,6 @@ import {
   EprintHeader,
   EprintHeaderSkeleton,
   EprintAbstract,
-  EprintMetadata,
   EprintSource,
   EprintVersionSelector,
   EprintVersionTimeline,
@@ -55,7 +54,7 @@ import {
 import { LoginPrompt } from '@/components/auth';
 import { TagManager } from '@/components/tags';
 import { IntegrationPanel } from '@/components/integrations';
-import { RelatedPapersPanel } from '@/components/discovery';
+import { RelatedPapersPanel, CitationSummary, CitationListPanel } from '@/components/discovery';
 import type { RichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
@@ -63,6 +62,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useEprint } from '@/lib/hooks/use-eprint';
 import {
   useReviews,
@@ -724,6 +724,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             )}
           </TabsTrigger>
           <TabsTrigger value="related">Related</TabsTrigger>
+          <TabsTrigger value="network">Network</TabsTrigger>
+          <TabsTrigger value="citations">Citations</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           {eprint.versions && eprint.versions.length > 1 && (
             <TabsTrigger value="versions">Versions</TabsTrigger>
@@ -1160,38 +1162,38 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         </TabsContent>
 
         {/* Related papers tab */}
-        <TabsContent value="related" className="space-y-6">
-          <RelatedPapersPanel eprintUri={uri} limit={5} showCitations />
+        <TabsContent value="related" className="space-y-6 overflow-visible">
+          <RelatedPapersPanel eprintUri={uri} limit={5} editable={isAuthenticated} />
+        </TabsContent>
 
-          {/* Backlinks from external sources (Semble, Bluesky, etc.) */}
+        {/* Citation network tab */}
+        <TabsContent value="network" className="space-y-6">
+          <CitationSummary eprintUri={uri} defaultOpen />
+        </TabsContent>
+
+        {/* Citations tab */}
+        <TabsContent value="citations" className="space-y-6">
+          <CitationListPanel eprintUri={uri} editable={isAuthenticated} />
           <BacklinksPanel eprintUri={uri} />
         </TabsContent>
 
         {/* Metadata tab */}
         <TabsContent value="metadata" className="space-y-6">
-          <EprintMetadata
-            fields={eprint.fields}
-            keywords={eprint.keywords}
-            license={eprint.license}
-            doi={eprint.doi}
-            layout="stacked"
+          {/* Tags section */}
+          <TagManager
+            eprintUri={uri}
+            editable={isAuthenticated}
+            currentUserDid={currentUser?.did}
           />
 
-          <Separator />
-
           {/* External enrichment data (S2, OpenAlex citations, topics, concepts) */}
+          {/* No separator: EnrichmentPanel returns null when no data */}
           <EnrichmentPanel eprintUri={uri} />
-
-          <Separator />
-
-          {/* Tags section */}
-          <TagManager eprintUri={uri} editable={isAuthenticated} />
-
-          <Separator />
 
           {/* Funding sources */}
           {eprint.funding && eprint.funding.length > 0 && (
             <>
+              <Separator />
               <FundingPanel
                 funding={eprint.funding
                   .filter((f): f is typeof f & { funderName: string } => !!f.funderName)
@@ -1205,13 +1207,13 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   }))}
                 variant="card"
               />
-              <Separator />
             </>
           )}
 
           {/* Supplementary materials */}
           {eprint.supplementaryMaterials && eprint.supplementaryMaterials.length > 0 && (
             <>
+              <Separator />
               <SupplementaryPanel
                 items={eprint.supplementaryMaterials.map((item, index) => {
                   const did = eprint.paperDid ?? eprint.submittedBy;
@@ -1233,25 +1235,28 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   };
                 })}
               />
-              <Separator />
             </>
           )}
 
           {/* Code, data, and model repositories */}
           {eprint.repositories && (
             <>
-              <RepositoriesPanel repositories={eprint.repositories} />
               <Separator />
+              <RepositoriesPanel repositories={eprint.repositories} />
             </>
           )}
 
           {/* Linked resources (GitHub, Zenodo, etc.) */}
+          {/* No separator: IntegrationPanel returns null when no data */}
           <IntegrationPanel eprintUri={uri} />
 
-          <Separator />
-
           {/* ATProto source information */}
-          {eprintSource && <EprintSource source={eprintSource} variant="card" />}
+          {eprintSource && (
+            <>
+              <Separator />
+              <EprintSource source={eprintSource} variant="card" />
+            </>
+          )}
         </TabsContent>
 
         {/* Versions tab */}

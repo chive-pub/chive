@@ -67,9 +67,34 @@ export function TagManager({
 
   const tags = data?.tags ?? [];
 
-  // Separate user's own tags from others
-  const userTags = currentUserDid ? tags.filter((t) => t.author.did === currentUserDid) : [];
-  const otherTags = currentUserDid ? tags.filter((t) => t.author.did !== currentUserDid) : tags;
+  // Separate user's own tags from others, deduplicating by normalizedForm.
+  // A user may have multiple records with the same normalized form (e.g. created twice);
+  // we keep all URIs so deletion removes every duplicate.
+  const userTagsByNorm = new Map<string, { tag: (typeof tags)[number]; uris: string[] }>();
+  const otherTagsByNorm = new Map<string, { tag: (typeof tags)[number]; count: number }>();
+
+  for (const t of tags) {
+    if (currentUserDid && t.author.did === currentUserDid) {
+      const existing = userTagsByNorm.get(t.normalizedForm);
+      if (existing) {
+        existing.uris.push(t.uri);
+      } else {
+        userTagsByNorm.set(t.normalizedForm, { tag: t, uris: [t.uri] });
+      }
+    } else {
+      // Skip terms the current user already tagged
+      if (currentUserDid && userTagsByNorm.has(t.normalizedForm)) continue;
+      const existing = otherTagsByNorm.get(t.normalizedForm);
+      if (existing) {
+        existing.count++;
+      } else {
+        otherTagsByNorm.set(t.normalizedForm, { tag: t, count: 1 });
+      }
+    }
+  }
+
+  const dedupedUserTags = Array.from(userTagsByNorm.values());
+  const dedupedOtherTags = Array.from(otherTagsByNorm.values());
 
   const handleAddTag = async (displayForm: string) => {
     await createTag.mutateAsync({
@@ -81,19 +106,18 @@ export function TagManager({
 
   /**
    * Handle tag removal - accepts TagSummary or string from TagList.
-   * Looks up the original UserTag to get the URI for deletion.
+   * Deletes all user records matching the normalized form (handles duplicates).
    */
   const handleRemoveTag = async (tag: TagSummary | string) => {
     const normalizedForm = typeof tag === 'string' ? tag : tag.normalizedForm;
 
-    // Find the original UserTag to get the URI
-    const userTag = userTags.find((t) => t.normalizedForm === normalizedForm);
-    if (!userTag) return;
+    const entry = userTagsByNorm.get(normalizedForm);
+    if (!entry) return;
 
-    await deleteTag.mutateAsync({
-      uri: userTag.uri,
-      eprintUri,
-    });
+    // Delete all duplicate records for this normalized form
+    for (const uri of entry.uris) {
+      await deleteTag.mutateAsync({ uri, eprintUri });
+    }
   };
 
   if (error) {
@@ -110,10 +134,15 @@ export function TagManager({
     <Card className={cn('', className)} data-testid="tag-manager">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Tags className="h-4 w-4" />
-            Tags
-          </CardTitle>
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Tags className="h-4 w-4" />
+              Community Tags
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              User-contributed labels for discovery
+            </p>
+          </div>
 
           {editable && !isAdding && (
             <Button size="sm" variant="ghost" className="gap-1" onClick={() => setIsAdding(true)}>
@@ -132,7 +161,7 @@ export function TagManager({
         {isAdding && (
           <div className="space-y-2">
             <TagInput
-              existingTags={userTags.map((t) => t.normalizedForm)}
+              existingTags={dedupedUserTags.map((e) => e.tag.normalizedForm)}
               onTagAdd={handleAddTag}
               onTagRemove={handleRemoveTag}
               maxTags={10}
@@ -147,13 +176,13 @@ export function TagManager({
         )}
 
         {/* User's tags */}
-        {!isLoading && userTags.length > 0 && !isAdding && (
+        {!isLoading && dedupedUserTags.length > 0 && !isAdding && (
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Your tags</p>
             <TagList
-              tags={userTags.map((t) => ({
-                normalizedForm: t.normalizedForm,
-                displayForms: [t.displayForm],
+              tags={dedupedUserTags.map((e) => ({
+                normalizedForm: e.tag.normalizedForm,
+                displayForms: [e.tag.displayForm],
                 usageCount: 1,
                 qualityScore: 1,
                 isPromoted: false,
@@ -165,14 +194,16 @@ export function TagManager({
         )}
 
         {/* Other users' tags */}
-        {!isLoading && otherTags.length > 0 && (
+        {!isLoading && dedupedOtherTags.length > 0 && (
           <div className="space-y-1">
-            {userTags.length > 0 && <p className="text-xs text-muted-foreground">Community tags</p>}
+            {dedupedUserTags.length > 0 && (
+              <p className="text-xs text-muted-foreground">Community tags</p>
+            )}
             <TagList
-              tags={otherTags.map((t) => ({
-                normalizedForm: t.normalizedForm,
-                displayForms: [t.displayForm],
-                usageCount: 1,
+              tags={dedupedOtherTags.map((e) => ({
+                normalizedForm: e.tag.normalizedForm,
+                displayForms: [e.tag.displayForm],
+                usageCount: e.count,
                 qualityScore: 1,
                 isPromoted: false,
               }))}

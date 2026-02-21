@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronDown, ChevronUp, ExternalLink, Quote, BookMarked, Star } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
@@ -43,11 +44,79 @@ export function CitationSummary({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const { data, isLoading, isError } = useCitations(eprintUri, {
     limit: 5,
-    enabled: isOpen, // Only fetch when expanded
+    enabled: defaultOpen || isOpen, // Fetch immediately when defaultOpen
   });
 
   if (isError) {
     return null; // Silently fail - citations are optional enrichment
+  }
+
+  const content = (
+    <div className="space-y-4">
+      {isLoading ? (
+        <CitationListSkeleton />
+      ) : data && data.citations.length > 0 ? (
+        <>
+          {/* Citing papers */}
+          <CitationSection
+            title="Cited by"
+            icon={<BookMarked className="h-4 w-4" />}
+            citations={data.citations.filter((c) => c.citedUri === eprintUri)}
+            eprintUri={eprintUri}
+            direction="citing"
+          />
+
+          {/* Referenced papers */}
+          <CitationSection
+            title="References"
+            icon={<Quote className="h-4 w-4" />}
+            citations={data.citations.filter((c) => c.citingUri === eprintUri)}
+            eprintUri={eprintUri}
+            direction="cited"
+          />
+
+          {data.hasMore && (
+            <Button variant="outline" size="sm" className="w-full" asChild>
+              <Link href={`/eprints/${encodeURIComponent(eprintUri)}/citations`}>
+                View full citation network
+                <ExternalLink className="ml-2 h-3 w-3" />
+              </Link>
+            </Button>
+          )}
+        </>
+      ) : (
+        <p className="text-center text-sm text-muted-foreground py-4">
+          No citation data available yet.
+        </p>
+      )}
+    </div>
+  );
+
+  // When defaultOpen, render expanded without collapsible wrapper
+  if (defaultOpen) {
+    return (
+      <Card className={className}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Quote className="h-5 w-5" />
+            Citation Network
+            {!isLoading && data && (
+              <span className="text-sm font-normal text-muted-foreground">
+                {data.counts.citedByCount} citations &middot; {data.counts.referencesCount}{' '}
+                references
+                {data.counts.influentialCitedByCount > 0 && (
+                  <span className="ml-1">
+                    <Star className="inline h-3 w-3" /> {data.counts.influentialCitedByCount}{' '}
+                    influential
+                  </span>
+                )}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>{content}</CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -55,7 +124,7 @@ export function CitationSummary({
       <CollapsibleTrigger asChild>
         <Button
           variant="ghost"
-          className="flex w-full items-center justify-between p-4 hover:bg-muted/50"
+          className="flex w-full items-center justify-between p-6 h-auto hover:bg-muted/50"
         >
           <div className="flex items-center gap-3">
             <Quote className="h-5 w-5 text-muted-foreground" />
@@ -88,44 +157,7 @@ export function CitationSummary({
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className="space-y-4 border-t px-4 py-4">
-          {isLoading ? (
-            <CitationListSkeleton />
-          ) : data && data.citations.length > 0 ? (
-            <>
-              {/* Citing papers */}
-              <CitationSection
-                title="Cited by"
-                icon={<BookMarked className="h-4 w-4" />}
-                citations={data.citations.filter((c) => c.citedUri === eprintUri)}
-                eprintUri={eprintUri}
-                direction="citing"
-              />
-
-              {/* Referenced papers */}
-              <CitationSection
-                title="References"
-                icon={<Quote className="h-4 w-4" />}
-                citations={data.citations.filter((c) => c.citingUri === eprintUri)}
-                eprintUri={eprintUri}
-                direction="cited"
-              />
-
-              {data.hasMore && (
-                <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href={`/eprints/${encodeURIComponent(eprintUri)}/citations`}>
-                    View full citation network
-                    <ExternalLink className="ml-2 h-3 w-3" />
-                  </Link>
-                </Button>
-              )}
-            </>
-          ) : (
-            <p className="text-center text-sm text-muted-foreground py-4">
-              No citation data available yet.
-            </p>
-          )}
-        </div>
+        <div className="border-t px-4 py-4">{content}</div>
       </CollapsibleContent>
     </Collapsible>
   );

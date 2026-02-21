@@ -37,7 +37,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
-import { api } from '@/lib/api/client';
+import { api, authApi } from '@/lib/api/client';
+import { createLogger } from '@/lib/observability/logger';
+
+const logger = createLogger({ context: { component: 'use-tags' } });
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
   createTagRecord,
@@ -442,6 +445,31 @@ export function useCreateTag() {
 
       const result = await createTagRecord(agent, input as RecordCreatorTagInput);
 
+      // Request immediate indexing as a UX optimization.
+      // The firehose is the primary indexing mechanism, but there may be latency.
+      // This call ensures the tag appears immediately in Chive's index.
+      // If this fails, the firehose will eventually index the record.
+      try {
+        const indexResult = await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        if (indexResult.data && !indexResult.data.indexed) {
+          logger.warn('Immediate indexing returned failure', {
+            uri: result.uri,
+            error: indexResult.data.error,
+          });
+        } else {
+          logger.info('Immediate indexing succeeded', { uri: result.uri });
+        }
+        // Small delay to ensure the database transaction is fully committed
+        // before the query invalidation triggers a refetch
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (indexError) {
+        // Log with details but don't throw; firehose will index eventually
+        logger.warn('Immediate indexing failed; firehose will handle', {
+          uri: result.uri,
+          error: indexError instanceof Error ? indexError.message : String(indexError),
+        });
+      }
+
       // Return a UserTag-like object for cache management
       // The author info comes from the current user's agent DID
       return {
@@ -495,7 +523,7 @@ export function useDeleteTag() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ uri }: { uri: string; eprintUri: string }): Promise<void> => {
+    mutationFn: async ({ uri, eprintUri }: { uri: string; eprintUri: string }): Promise<void> => {
       // Delete directly from PDS using the authenticated agent
       const agent = getCurrentAgent();
       if (!agent) {
@@ -503,6 +531,17 @@ export function useDeleteTag() {
       }
 
       await deleteRecord(agent, uri);
+
+      // Immediately remove from Chive's index via the sync.deleteRecord
+      // endpoint. This follows the same pattern as review/annotation deletion.
+      try {
+        await authApi.pub.chive.sync.deleteRecord({ uri });
+      } catch (syncError) {
+        logger.warn('Immediate deletion indexing failed; firehose will handle', {
+          uri,
+          error: syncError instanceof Error ? syncError.message : String(syncError),
+        });
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

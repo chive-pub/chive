@@ -1998,3 +1998,206 @@ export async function updateStandardDocument(
     cid: response.data.cid,
   };
 }
+
+// =============================================================================
+// CITATION RECORD CREATION
+// =============================================================================
+
+/**
+ * Cited work metadata for a user-curated citation.
+ */
+export interface CitedWork {
+  title: string;
+  doi?: string;
+  arxivId?: string;
+  url?: string;
+  authors?: string[];
+  year?: number;
+  venue?: string;
+  chiveUri?: string;
+}
+
+/**
+ * Citation record as stored in ATProto.
+ */
+export interface CitationRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.eprint.citation';
+  eprintUri: string;
+  citedWork: CitedWork;
+  citationType?: string;
+  context?: string;
+  createdAt: string;
+}
+
+/**
+ * Input for creating a citation record.
+ */
+export interface CreateCitationInput {
+  eprintUri: string;
+  citedWork: CitedWork;
+  citationType?: string;
+  context?: string;
+}
+
+/**
+ * Create a citation record in the user's PDS.
+ *
+ * @remarks
+ * Records a user-curated citation link between an eprint and a cited work.
+ * The citation is stored in the user's PDS and will be indexed by Chive
+ * when it appears on the firehose.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Citation data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record creation fails
+ *
+ * @example
+ * ```typescript
+ * const result = await createCitationRecord(agent, {
+ *   eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/123',
+ *   citedWork: {
+ *     title: 'Attention Is All You Need',
+ *     doi: '10.5555/3295222.3295349',
+ *     authors: ['Vaswani, A.', 'Shazeer, N.'],
+ *     year: 2017,
+ *     venue: 'NeurIPS',
+ *   },
+ *   citationType: 'extends',
+ *   context: 'We build on the transformer architecture from this work.',
+ * });
+ * ```
+ */
+export async function createCitationRecord(
+  agent: Agent,
+  input: CreateCitationInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CitationRecord = {
+    $type: 'pub.chive.eprint.citation',
+    eprintUri: input.eprintUri,
+    citedWork: input.citedWork,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.citationType) {
+    record.citationType = input.citationType;
+  }
+  if (input.context) {
+    record.context = input.context;
+  }
+
+  recordLogger.info('Creating citation record', {
+    eprintUri: input.eprintUri,
+    citedWorkTitle: input.citedWork.title,
+  });
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.eprint.citation',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// RELATED WORK RECORD CREATION
+// =============================================================================
+
+/**
+ * Related work record as stored in ATProto.
+ */
+export interface RelatedWorkRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.eprint.relatedWork';
+  eprintUri: string;
+  relatedUri: string;
+  relationType: string;
+  description?: string;
+  createdAt: string;
+}
+
+/**
+ * Input for creating a related work record.
+ */
+export interface CreateRelatedWorkInput {
+  eprintUri: string;
+  relatedUri: string;
+  relationType: string;
+  description?: string;
+}
+
+/**
+ * Create a related work record in the user's PDS.
+ *
+ * @remarks
+ * Records a user-curated relationship between two eprints.
+ * The link is stored in the user's PDS and will be indexed by Chive
+ * when it appears on the firehose.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Related work data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record creation fails
+ *
+ * @example
+ * ```typescript
+ * const result = await createRelatedWorkRecord(agent, {
+ *   eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/123',
+ *   relatedUri: 'at://did:plc:xyz/pub.chive.eprint.submission/456',
+ *   relationType: 'extends',
+ *   description: 'This work extends our earlier framework.',
+ * });
+ * ```
+ */
+export async function createRelatedWorkRecord(
+  agent: Agent,
+  input: CreateRelatedWorkInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: RelatedWorkRecord = {
+    $type: 'pub.chive.eprint.relatedWork',
+    eprintUri: input.eprintUri,
+    relatedUri: input.relatedUri,
+    relationType: input.relationType,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.description) {
+    record.description = input.description;
+  }
+
+  recordLogger.info('Creating related work record', {
+    eprintUri: input.eprintUri,
+    relatedUri: input.relatedUri,
+    relationType: input.relationType,
+  });
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.eprint.relatedWork',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
