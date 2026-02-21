@@ -582,7 +582,7 @@ describe('CitationExtractionService', () => {
           source: 'grobid',
         })
       );
-      expect(citations[0]!.authors).toEqual([{ firstName: 'Alice', lastName: 'Smith' }]);
+      expect(citations[0]?.authors).toEqual([{ firstName: 'Alice', lastName: 'Smith' }]);
     });
 
     it('passes limit and offset parameters', async () => {
@@ -633,7 +633,7 @@ describe('CitationExtractionService', () => {
       const citations = await service.getExtractedCitations(TEST_EPRINT_URI);
 
       expect(citations).toHaveLength(1);
-      expect(citations[0]!.authors).toBeUndefined();
+      expect(citations[0]?.authors).toBeUndefined();
     });
 
     it('handles invalid JSON in authors column gracefully', async () => {
@@ -662,7 +662,7 @@ describe('CitationExtractionService', () => {
       const citations = await service.getExtractedCitations(TEST_EPRINT_URI);
 
       expect(citations).toHaveLength(1);
-      expect(citations[0]!.authors).toBeUndefined();
+      expect(citations[0]?.authors).toBeUndefined();
     });
 
     it('uses default limit of 100 and offset of 0', async () => {
@@ -705,9 +705,9 @@ describe('CitationExtractionService', () => {
       const matched = await service.matchCitationsToChive(citations);
 
       expect(matched).toHaveLength(1);
-      expect(matched[0]!.matchConfidence).toBe(1.0);
-      expect(matched[0]!.matchMethod).toBe('doi');
-      expect(matched[0]!.chiveMatchUri).toBe(matchedUri);
+      expect(matched[0]?.matchConfidence).toBe(1.0);
+      expect(matched[0]?.matchMethod).toBe('doi');
+      expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
     });
 
     it('falls back to title match with confidence 0.8 when DOI is absent', async () => {
@@ -732,9 +732,9 @@ describe('CitationExtractionService', () => {
       const matched = await service.matchCitationsToChive(citations);
 
       expect(matched).toHaveLength(1);
-      expect(matched[0]!.matchConfidence).toBe(0.8);
-      expect(matched[0]!.matchMethod).toBe('title');
-      expect(matched[0]!.chiveMatchUri).toBe(matchedUri);
+      expect(matched[0]?.matchConfidence).toBe(0.8);
+      expect(matched[0]?.matchMethod).toBe('title');
+      expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
     });
 
     it('prefers DOI match over title match', async () => {
@@ -760,9 +760,9 @@ describe('CitationExtractionService', () => {
 
       const matched = await service.matchCitationsToChive(citations);
 
-      expect(matched[0]!.matchConfidence).toBe(1.0);
-      expect(matched[0]!.matchMethod).toBe('doi');
-      expect(matched[0]!.chiveMatchUri).toBe(doiUri);
+      expect(matched[0]?.matchConfidence).toBe(1.0);
+      expect(matched[0]?.matchMethod).toBe('doi');
+      expect(matched[0]?.chiveMatchUri).toBe(doiUri);
     });
 
     it('returns unmatched citations with zero confidence', async () => {
@@ -780,8 +780,8 @@ describe('CitationExtractionService', () => {
       const matched = await service.matchCitationsToChive(citations);
 
       expect(matched).toHaveLength(1);
-      expect(matched[0]!.matchConfidence).toBe(0);
-      expect(matched[0]!.chiveMatchUri).toBeUndefined();
+      expect(matched[0]?.matchConfidence).toBe(0);
+      expect(matched[0]?.chiveMatchUri).toBeUndefined();
     });
 
     it('returns empty array for empty input', async () => {
@@ -822,8 +822,8 @@ describe('CitationExtractionService', () => {
       const matched = await service.matchCitationsToChive(citations);
 
       expect(matched).toHaveLength(2);
-      expect(matched[0]!.matchConfidence).toBe(1.0);
-      expect(matched[1]!.matchConfidence).toBe(0);
+      expect(matched[0]?.matchConfidence).toBe(1.0);
+      expect(matched[1]?.matchConfidence).toBe(0);
     });
 
     it('skips title match for very short titles', async () => {
@@ -840,8 +840,8 @@ describe('CitationExtractionService', () => {
 
       const matched = await service.matchCitationsToChive(citations);
 
-      expect(matched[0]!.matchConfidence).toBe(0);
-      expect(matched[0]!.chiveMatchUri).toBeUndefined();
+      expect(matched[0]?.matchConfidence).toBe(0);
+      expect(matched[0]?.chiveMatchUri).toBeUndefined();
     });
   });
 

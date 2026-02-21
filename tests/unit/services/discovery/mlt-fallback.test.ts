@@ -302,7 +302,7 @@ describe('DiscoveryService MLT fallback', () => {
         minTermFreq: 1,
         minDocFreq: 1,
         maxQueryTerms: 25,
-        minimumShouldMatch: '20%',
+        minimumShouldMatch: '30%',
       });
 
       expect(results.length).toBeGreaterThan(0);
@@ -356,11 +356,11 @@ describe('DiscoveryService MLT fallback', () => {
     it('weights MLT scores at 0.6x relative to SPECTER2', async () => {
       db.query.mockResolvedValue({ rows: [EPRINT_ROW_NO_S2] });
 
-      // Single result with a known score
+      // ES saturation normalization produces scores in the 0-1 range
       const mltResults: MLTResult[] = [
         {
           uri: 'at://did:plc:other/pub.chive.eprint.submission/weighted' as AtUri,
-          score: 10.0,
+          score: 0.85,
           title: 'Weighted Score Paper',
         },
       ];
@@ -372,22 +372,22 @@ describe('DiscoveryService MLT fallback', () => {
 
       expect(results).toHaveLength(1);
 
-      const result = results[0]!;
-      // MLT score = raw_score * 0.6, then normalized: min(mltScore / 10, 1.0)
-      // raw=10.0, weighted=6.0, normalized=min(6.0/10, 1.0)=0.6
-      const expectedScore = Math.min((10.0 * 0.6) / 10, 1.0);
-      expect(result.score).toBeCloseTo(expectedScore, 5);
-      expect(result.signalScores?.semantic).toBeCloseTo(expectedScore, 5);
+      const result = results[0];
+      // MLT score = raw_score * 0.6 (scores already 0-1 via ES saturation)
+      // 0.85 * 0.6 = 0.51
+      const expectedScore = 0.85 * 0.6;
+      expect(result?.score).toBeCloseTo(expectedScore, 5);
+      expect(result?.signalScores?.semantic).toBeCloseTo(expectedScore, 5);
     });
 
-    it('caps MLT normalized scores at 1.0', async () => {
+    it('applies 0.6 discount to high MLT scores', async () => {
       db.query.mockResolvedValue({ rows: [EPRINT_ROW_NO_S2] });
 
-      // Very high raw ES score
+      // Saturation-normalized score near maximum
       const mltResults: MLTResult[] = [
         {
           uri: 'at://did:plc:other/pub.chive.eprint.submission/capped' as AtUri,
-          score: 50.0,
+          score: 0.98,
           title: 'Very High Score Paper',
         },
       ];
@@ -398,8 +398,8 @@ describe('DiscoveryService MLT fallback', () => {
       });
 
       expect(results).toHaveLength(1);
-      // 50.0 * 0.6 / 10 = 3.0, capped at 1.0
-      expect(results[0]!.score).toBe(1.0);
+      // 0.98 * 0.6 = 0.588
+      expect(results[0]?.score).toBeCloseTo(0.98 * 0.6, 5);
     });
 
     it('handles MLT returning no results gracefully', async () => {
@@ -533,7 +533,7 @@ describe('DiscoveryService MLT fallback', () => {
       });
 
       expect(results).toHaveLength(1);
-      expect(results[0]!.explanation).toBe(
+      expect(results[0]?.explanation).toBe(
         'Similar content based on title, abstract, and keywords'
       );
     });
@@ -553,7 +553,7 @@ describe('DiscoveryService MLT fallback', () => {
       });
 
       expect(results).toHaveLength(1);
-      expect(results[0]!.title).toBe('');
+      expect(results[0]?.title).toBe('');
     });
 
     it('does not duplicate URIs between SPECTER2 fallback MLT and other signals', async () => {
@@ -587,7 +587,7 @@ describe('DiscoveryService MLT fallback', () => {
       // The shared URI should appear only once (citation signal wins since it was added first)
       const sharedResults = results.filter((r) => r.uri === sharedUri);
       expect(sharedResults).toHaveLength(1);
-      expect(sharedResults[0]!.relationshipType).toBe('co-cited');
+      expect(sharedResults[0]?.relationshipType).toBe('co-cited');
     });
   });
 });

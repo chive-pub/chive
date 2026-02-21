@@ -133,15 +133,15 @@ describe('ElasticsearchAdapter', () => {
 
       const first = results[0];
       expect(first).toBeDefined();
-      expect(first!.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/similar1');
-      expect(first!.score).toBe(12.5);
-      expect(first!.title).toBe('A Similar Paper on Neural Networks');
+      expect(first?.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/similar1');
+      expect(first?.score).toBe(12.5);
+      expect(first?.title).toBe('A Similar Paper on Neural Networks');
 
       const second = results[1];
       expect(second).toBeDefined();
-      expect(second!.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/similar2');
-      expect(second!.score).toBe(8.3);
-      expect(second!.title).toBe('Another Related Work');
+      expect(second?.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/similar2');
+      expect(second?.score).toBe(8.3);
+      expect(second?.title).toBe('Another Related Work');
     });
 
     it('respects the limit option', async () => {
@@ -191,7 +191,7 @@ describe('ElasticsearchAdapter', () => {
       const results = await adapter.findSimilarByText(SOURCE_URI);
 
       expect(results).toHaveLength(1);
-      expect(results[0]!.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/different');
+      expect(results[0]?.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/different');
     });
 
     it('handles empty results', async () => {
@@ -244,20 +244,29 @@ describe('ElasticsearchAdapter', () => {
         expect.objectContaining({
           index: 'test-eprints',
           query: {
-            more_like_this: {
-              fields: ['title', 'abstract', 'keywords'],
-              like: [
-                {
-                  _index: 'test-eprints',
-                  _id: String(SOURCE_URI),
+            script_score: {
+              query: {
+                more_like_this: {
+                  fields: ['title', 'abstract', 'keywords'],
+                  like: [
+                    {
+                      _index: 'test-eprints',
+                      _id: String(SOURCE_URI),
+                    },
+                  ],
+                  min_term_freq: 2,
+                  min_doc_freq: 5,
+                  max_query_terms: 50,
+                  minimum_should_match: '50%',
                 },
-              ],
-              min_term_freq: 2,
-              min_doc_freq: 5,
-              max_query_terms: 50,
-              minimum_should_match: '50%',
+              },
+              script: {
+                source: 'saturation(_score, params.pivot)',
+                params: { pivot: 8 },
+              },
             },
           },
+          min_score: 0.15,
           size: 10,
           _source: ['uri', 'title'],
         })
@@ -273,20 +282,29 @@ describe('ElasticsearchAdapter', () => {
       expect(mockClient.search).toHaveBeenCalledWith(
         expect.objectContaining({
           query: {
-            more_like_this: {
-              fields: ['title', 'abstract', 'keywords'],
-              like: [
-                {
-                  _index: 'test-eprints',
-                  _id: String(SOURCE_URI),
+            script_score: {
+              query: {
+                more_like_this: {
+                  fields: ['title', 'abstract', 'keywords'],
+                  like: [
+                    {
+                      _index: 'test-eprints',
+                      _id: String(SOURCE_URI),
+                    },
+                  ],
+                  min_term_freq: 1,
+                  min_doc_freq: 2,
+                  max_query_terms: 25,
+                  minimum_should_match: '30%',
                 },
-              ],
-              min_term_freq: 1,
-              min_doc_freq: 2,
-              max_query_terms: 25,
-              minimum_should_match: '30%',
+              },
+              script: {
+                source: 'saturation(_score, params.pivot)',
+                params: { pivot: 8 },
+              },
             },
           },
+          min_score: 0.15,
           size: 10,
           _source: ['uri', 'title'],
         })
@@ -306,7 +324,7 @@ describe('ElasticsearchAdapter', () => {
       const results = await adapter.findSimilarByText(SOURCE_URI);
 
       expect(results).toHaveLength(1);
-      expect(results[0]!.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/fallback');
+      expect(results[0]?.uri).toBe('at://did:plc:other/pub.chive.eprint.submission/fallback');
     });
 
     it('defaults score to 0 when _score is null', async () => {
@@ -325,7 +343,7 @@ describe('ElasticsearchAdapter', () => {
       const results = await adapter.findSimilarByText(SOURCE_URI);
 
       expect(results).toHaveLength(1);
-      expect(results[0]!.score).toBe(0);
+      expect(results[0]?.score).toBe(0);
     });
 
     it('clamps limit to maxLimit', async () => {

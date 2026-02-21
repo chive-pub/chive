@@ -301,13 +301,13 @@ describe('GrobidClient', () => {
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
       expect(refs).toHaveLength(3);
-      expect(refs[0]!.title).toBe('First Paper Title');
-      expect(refs[0]!.doi).toBe('10.1234/first');
-      expect(refs[1]!.title).toBe('Second Paper Title');
-      expect(refs[1]!.volume).toBe('15');
-      expect(refs[1]!.doi).toBeUndefined();
-      expect(refs[2]!.title).toBe('Third Paper Title');
-      expect(refs[2]!.year).toBe(2019);
+      expect(refs[0]?.title).toBe('First Paper Title');
+      expect(refs[0]?.doi).toBe('10.1234/first');
+      expect(refs[1]?.title).toBe('Second Paper Title');
+      expect(refs[1]?.volume).toBe('15');
+      expect(refs[1]?.doi).toBeUndefined();
+      expect(refs[2]?.title).toBe('Third Paper Title');
+      expect(refs[2]?.year).toBe(2019);
     });
 
     it('parses multi-author references with and without forenames', async () => {
@@ -319,8 +319,8 @@ describe('GrobidClient', () => {
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
       expect(refs).toHaveLength(1);
-      expect(refs[0]!.authors).toHaveLength(4);
-      expect(refs[0]!.authors).toEqual([
+      expect(refs[0]?.authors).toHaveLength(4);
+      expect(refs[0]?.authors).toEqual([
         { firstName: 'Alice', lastName: 'Smith' },
         { firstName: 'Bob', lastName: 'Jones' },
         { firstName: 'Carol', lastName: 'Williams' },
@@ -337,14 +337,14 @@ describe('GrobidClient', () => {
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
       expect(refs).toHaveLength(1);
-      expect(refs[0]!.title).toBe('Title Only Paper');
-      expect(refs[0]!.rawText).toBe('Title Only Paper, unknown source.');
-      expect(refs[0]!.authors).toBeUndefined();
-      expect(refs[0]!.doi).toBeUndefined();
-      expect(refs[0]!.year).toBeUndefined();
-      expect(refs[0]!.journal).toBeUndefined();
-      expect(refs[0]!.volume).toBeUndefined();
-      expect(refs[0]!.pages).toBeUndefined();
+      expect(refs[0]?.title).toBe('Title Only Paper');
+      expect(refs[0]?.rawText).toBe('Title Only Paper, unknown source.');
+      expect(refs[0]?.authors).toBeUndefined();
+      expect(refs[0]?.doi).toBeUndefined();
+      expect(refs[0]?.year).toBeUndefined();
+      expect(refs[0]?.journal).toBeUndefined();
+      expect(refs[0]?.volume).toBeUndefined();
+      expect(refs[0]?.pages).toBeUndefined();
     });
 
     it('extracts year from date content when "when" attribute is absent', async () => {
@@ -356,7 +356,7 @@ describe('GrobidClient', () => {
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
       expect(refs).toHaveLength(1);
-      expect(refs[0]!.year).toBe(2018);
+      expect(refs[0]?.year).toBe(2018);
     });
 
     it('returns empty array when GROBID is disabled', async () => {
@@ -564,7 +564,7 @@ describe('GrobidClient', () => {
 
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
-      expect(refs[0]!.doi).toBe('10.1038/nature12373');
+      expect(refs[0]?.doi).toBe('10.1038/nature12373');
     });
 
     it('extracts page range from from/to attributes', async () => {
@@ -590,7 +590,7 @@ describe('GrobidClient', () => {
 
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
-      expect(refs[0]!.pages).toBe('100-200');
+      expect(refs[0]?.pages).toBe('100-200');
     });
 
     it('extracts volume from biblScope with volume unit', async () => {
@@ -616,7 +616,7 @@ describe('GrobidClient', () => {
 
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
-      expect(refs[0]!.volume).toBe('42');
+      expect(refs[0]?.volume).toBe('42');
     });
 
     it('extracts journal title from monogr block', async () => {
@@ -641,7 +641,7 @@ describe('GrobidClient', () => {
 
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
-      expect(refs[0]!.journal).toBe('Physical Review Letters');
+      expect(refs[0]?.journal).toBe('Physical Review Letters');
     });
 
     it('handles complete reference with all fields', async () => {
@@ -652,16 +652,16 @@ describe('GrobidClient', () => {
 
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
-      const ref = refs[0]!;
-      expect(ref.rawText).toBeTruthy();
-      expect(ref.title).toBeTruthy();
-      expect(ref.authors).toBeDefined();
-      expect(ref.authors!.length).toBeGreaterThan(0);
-      expect(ref.doi).toBeTruthy();
-      expect(ref.year).toBeGreaterThan(0);
-      expect(ref.journal).toBeTruthy();
-      expect(ref.volume).toBeTruthy();
-      expect(ref.pages).toBeTruthy();
+      const ref = refs[0];
+      expect(ref?.rawText).toBeTruthy();
+      expect(ref?.title).toBeTruthy();
+      expect(ref?.authors).toBeDefined();
+      expect(ref?.authors?.length).toBeGreaterThan(0);
+      expect(ref?.doi).toBeTruthy();
+      expect(ref?.year).toBeGreaterThan(0);
+      expect(ref?.journal).toBeTruthy();
+      expect(ref?.volume).toBeTruthy();
+      expect(ref?.pages).toBeTruthy();
     });
 
     it('handles reference with only raw text (fallback from note element)', async () => {
@@ -683,8 +683,8 @@ describe('GrobidClient', () => {
       const refs = await client.extractReferences(Buffer.from('pdf'));
 
       expect(refs).toHaveLength(1);
-      expect(refs[0]!.rawText).toBe('Some raw citation text that could not be parsed.');
-      expect(refs[0]!.title).toBeUndefined();
+      expect(refs[0]?.rawText).toBe('Some raw citation text that could not be parsed.');
+      expect(refs[0]?.title).toBeUndefined();
     });
   });
 
