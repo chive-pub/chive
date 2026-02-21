@@ -276,8 +276,8 @@ async function searchNodes(params: {
   limit: number;
   minQueryLength: number;
 }): Promise<NodeSuggestion[]> {
-  // If query is too short, list all nodes instead
-  if (params.query.length < params.minQueryLength) {
+  // If query is empty or too short, list all nodes instead
+  if (params.query.length <= params.minQueryLength) {
     return listNodes({
       kind: params.kind,
       subkind: params.subkind,
@@ -523,7 +523,7 @@ export function NodeAutocomplete({
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <Command>
+        <Command shouldFilter={false}>
           <CommandList>
             {isLoading && (
               <div className="flex items-center justify-center py-4">

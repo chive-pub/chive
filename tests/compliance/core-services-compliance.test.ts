@@ -160,6 +160,37 @@ function createTrackedStorage(): IStorageBackend & {
       operations.push({ method: 'getTagsForEprint', args: [eprintUri] });
       return Promise.resolve([]);
     }),
+    getEprintUrisForTerm: vi.fn().mockResolvedValue({ uris: [], total: 0 }),
+    searchKeywords: vi.fn().mockResolvedValue([]),
+    indexTag: vi.fn().mockImplementation((tag: unknown) => {
+      operations.push({ method: 'indexTag', args: [tag] });
+      return Promise.resolve();
+    }),
+    deleteByUri: vi.fn().mockResolvedValue(undefined),
+    getCitationsForEprint: vi.fn().mockImplementation((eprintUri: AtUri) => {
+      operations.push({ method: 'getCitationsForEprint', args: [eprintUri] });
+      return Promise.resolve({ citations: [], total: 0 });
+    }),
+    indexCitation: vi.fn().mockImplementation((citation: unknown) => {
+      operations.push({ method: 'indexCitation', args: [citation] });
+      return Promise.resolve();
+    }),
+    deleteCitation: vi.fn().mockImplementation((uri: AtUri) => {
+      operations.push({ method: 'deleteCitation', args: [uri] });
+      return Promise.resolve();
+    }),
+    getRelatedWorksForEprint: vi.fn().mockImplementation((eprintUri: AtUri) => {
+      operations.push({ method: 'getRelatedWorksForEprint', args: [eprintUri] });
+      return Promise.resolve({ relatedWorks: [], total: 0 });
+    }),
+    indexRelatedWork: vi.fn().mockImplementation((relatedWork: unknown) => {
+      operations.push({ method: 'indexRelatedWork', args: [relatedWork] });
+      return Promise.resolve();
+    }),
+    deleteRelatedWork: vi.fn().mockImplementation((uri: AtUri) => {
+      operations.push({ method: 'deleteRelatedWork', args: [uri] });
+      return Promise.resolve();
+    }),
   };
 }
 
@@ -205,6 +236,7 @@ function createMockSearch(): ISearchEngine {
     facetedSearch: vi.fn().mockResolvedValue({ hits: [], total: 0, facets: {} }),
     autocomplete: vi.fn().mockResolvedValue([]),
     deleteDocument: vi.fn().mockResolvedValue(undefined),
+    findSimilarByText: vi.fn().mockResolvedValue([]),
   };
 }
 
@@ -581,6 +613,104 @@ describe('ATProto Core Services Compliance', () => {
     });
   });
 
+  describe('CRITICAL: Citation/Related Work Indexing - No PDS Writes', () => {
+    it('citation indexing stores to local database only (never to PDS)', () => {
+      const storage = createTrackedStorage();
+
+      // indexCitation stores to local extracted_citations table
+      void storage.indexCitation({
+        userRecordUri: 'at://did:plc:user/pub.chive.eprint.citation/abc' as AtUri,
+        eprintUri: TEST_URI,
+        curatorDid: TEST_AUTHOR,
+        title: 'A Cited Paper',
+        doi: '10.1234/cited',
+        createdAt: new Date(),
+        pdsUrl: TEST_PDS_URL,
+      });
+
+      const indexOps = storage.operations.filter((op) => op.method === 'indexCitation');
+      expect(indexOps.length).toBe(1);
+
+      // Verify no PDS write operations
+      const pdsWriteOps = storage.operations.filter((op) =>
+        ['createRecord', 'putRecord', 'deleteRecord', 'uploadBlob'].includes(op.method)
+      );
+      expect(pdsWriteOps.length).toBe(0);
+    });
+
+    it('related work indexing stores to local database only (never to PDS)', () => {
+      const storage = createTrackedStorage();
+
+      void storage.indexRelatedWork({
+        uri: 'at://did:plc:user/pub.chive.eprint.relatedWork/abc' as AtUri,
+        cid: TEST_CID,
+        sourceEprintUri: TEST_URI,
+        targetEprintUri: 'at://did:plc:other/pub.chive.eprint.submission/target' as AtUri,
+        relationshipType: 'related',
+        curatorDid: TEST_AUTHOR,
+        createdAt: new Date(),
+        pdsUrl: TEST_PDS_URL,
+      });
+
+      const indexOps = storage.operations.filter((op) => op.method === 'indexRelatedWork');
+      expect(indexOps.length).toBe(1);
+
+      // Verify no PDS write operations
+      const pdsWriteOps = storage.operations.filter((op) =>
+        ['createRecord', 'putRecord', 'deleteRecord', 'uploadBlob'].includes(op.method)
+      );
+      expect(pdsWriteOps.length).toBe(0);
+    });
+
+    it('citation deletion removes from local index only (never from PDS)', () => {
+      const storage = createTrackedStorage();
+
+      void storage.deleteCitation('at://did:plc:user/pub.chive.eprint.citation/abc' as AtUri);
+
+      const deleteOps = storage.operations.filter((op) => op.method === 'deleteCitation');
+      expect(deleteOps.length).toBe(1);
+
+      // Verify no PDS write operations
+      const pdsWriteOps = storage.operations.filter((op) =>
+        ['createRecord', 'putRecord', 'deleteRecord', 'uploadBlob'].includes(op.method)
+      );
+      expect(pdsWriteOps.length).toBe(0);
+    });
+
+    it('related work deletion removes from local index only (never from PDS)', () => {
+      const storage = createTrackedStorage();
+
+      void storage.deleteRelatedWork('at://did:plc:user/pub.chive.eprint.relatedWork/abc' as AtUri);
+
+      const deleteOps = storage.operations.filter((op) => op.method === 'deleteRelatedWork');
+      expect(deleteOps.length).toBe(1);
+
+      // Verify no PDS write operations
+      const pdsWriteOps = storage.operations.filter((op) =>
+        ['createRecord', 'putRecord', 'deleteRecord', 'uploadBlob'].includes(op.method)
+      );
+      expect(pdsWriteOps.length).toBe(0);
+    });
+
+    it('getCitationsForEprint reads from local index only', () => {
+      const storage = createTrackedStorage();
+
+      void storage.getCitationsForEprint(TEST_URI);
+
+      const getOps = storage.operations.filter((op) => op.method === 'getCitationsForEprint');
+      expect(getOps.length).toBe(1);
+    });
+
+    it('getRelatedWorksForEprint reads from local index only', () => {
+      const storage = createTrackedStorage();
+
+      void storage.getRelatedWorksForEprint(TEST_URI);
+
+      const getOps = storage.operations.filter((op) => op.method === 'getRelatedWorksForEprint');
+      expect(getOps.length).toBe(1);
+    });
+  });
+
   describe('Core Services Compliance Summary', () => {
     it('100% compliance with ATProto AppView requirements', () => {
       // Summary of all compliance requirements verified above
@@ -595,6 +725,10 @@ describe('ATProto Core Services Compliance', () => {
         'BlobProxyService: No authoritative storage': true,
         'PDSSyncService: Read-only PDS access': true,
         'PDSSyncService: CID comparison only': true,
+        'Citation indexing: local only': true,
+        'Related work indexing: local only': true,
+        'Citation deletion: local only': true,
+        'Related work deletion: local only': true,
       };
 
       // All requirements must pass

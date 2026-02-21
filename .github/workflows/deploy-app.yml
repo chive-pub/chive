@@ -185,7 +185,7 @@ jobs:
 
             # Pull latest base images (including observability stack)
             echo "Pulling latest base images..."
-            docker compose -f docker-compose.prod.yml --profile observability pull postgres redis elasticsearch neo4j traefik alloy tempo loki prometheus grafana || true
+            docker compose -f docker-compose.prod.yml --profile observability pull postgres redis elasticsearch neo4j grobid traefik alloy tempo loki prometheus grafana || true
 
             # Build the main chive image (API + Indexer) - must target production stage
             # --no-cache ensures lexicons are regenerated from latest schemas

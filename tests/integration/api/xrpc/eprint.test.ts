@@ -178,6 +178,7 @@ function createSearchEngine(client: Client): ISearchEngine {
         // Ignore if document doesn't exist
       }
     },
+    findSimilarByText: () => Promise.resolve([]),
   };
 }
 

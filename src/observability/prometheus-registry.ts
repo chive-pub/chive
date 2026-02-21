@@ -444,6 +444,92 @@ export const pdsMetrics = {
 };
 
 /**
+ * Pre-defined metrics for citation extraction.
+ *
+ * @remarks
+ * Tracks GROBID extraction, Semantic Scholar enrichment,
+ * and Chive matching operations.
+ *
+ * @public
+ */
+export const citationMetrics = {
+  /**
+   * Total citation extractions counter.
+   *
+   * @remarks
+   * Labels: source (grobid, semantic-scholar, crossref), status (success/error)
+   *
+   * @example
+   * ```typescript
+   * citationMetrics.extractionsTotal.inc({ source: 'grobid', status: 'success' });
+   * ```
+   */
+  extractionsTotal: new Counter({
+    name: 'chive_citation_extractions_total',
+    help: 'Total number of citation extraction operations',
+    labelNames: ['source', 'status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'source' | 'status'>),
+
+  /**
+   * Total citations extracted counter.
+   *
+   * @remarks
+   * Labels: source (grobid, semantic-scholar, crossref)
+   *
+   * @example
+   * ```typescript
+   * citationMetrics.citationsExtracted.inc({ source: 'grobid' }, refCount);
+   * ```
+   */
+  citationsExtracted: new Counter({
+    name: 'chive_citations_extracted_total',
+    help: 'Total number of individual citations extracted',
+    labelNames: ['source'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'source'>),
+
+  /**
+   * Citations matched to Chive eprints counter.
+   *
+   * @remarks
+   * Labels: match_method (doi, title)
+   *
+   * @example
+   * ```typescript
+   * citationMetrics.citationsMatched.inc({ match_method: 'doi' });
+   * ```
+   */
+  citationsMatched: new Counter({
+    name: 'chive_citations_matched_total',
+    help: 'Total number of citations matched to Chive eprints',
+    labelNames: ['match_method'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'match_method'>),
+
+  /**
+   * Citation extraction duration histogram.
+   *
+   * @remarks
+   * Labels: source (grobid, semantic-scholar, crossref), status (success/error)
+   *
+   * @example
+   * ```typescript
+   * const end = citationMetrics.extractionDuration.startTimer({ source: 'grobid' });
+   * // ... extract ...
+   * end({ status: 'success' });
+   * ```
+   */
+  extractionDuration: new Histogram({
+    name: 'chive_citation_extraction_duration_seconds',
+    help: 'Citation extraction duration in seconds',
+    labelNames: ['source', 'status'] as const,
+    buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'source' | 'status'>),
+};
+
+/**
  * Retrieves all metrics in Prometheus text format.
  *
  * @returns Promise resolving to metrics string

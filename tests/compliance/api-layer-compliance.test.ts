@@ -179,6 +179,7 @@ function createSearchEngine(client: Client): ISearchEngine {
         // Ignore
       }
     },
+    findSimilarByText: () => Promise.resolve([]),
   };
 }
 
@@ -1113,6 +1114,75 @@ describe('API Layer ATProto Compliance', () => {
       expect(typeof blobCid).toBe('string');
       // CID should be valid format
       expect(blobCid).toMatch(/^baf[a-z0-9]+$/);
+    });
+  });
+
+  describe('CRITICAL: Citation and Related Works endpoints are read-only', () => {
+    it('listCitations returns indexed data without writing to PDS', async () => {
+      // Index an eprint first
+      const uri = createTestUri('citations1');
+      const cid = createTestCid('citations1');
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
+
+      const res = await makeRequest(
+        `/xrpc/pub.chive.eprint.listCitations?eprintUri=${encodeURIComponent(uri)}`
+      );
+
+      // Should return 200 with citations array (may be empty)
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { citations: unknown[]; total?: number };
+      expect(body.citations).toBeDefined();
+      expect(Array.isArray(body.citations)).toBe(true);
+    });
+
+    it('listRelatedWorks returns indexed data without writing to PDS', async () => {
+      const uri = createTestUri('relworks1');
+      const cid = createTestCid('relworks1');
+      const eprint = createTestEprint(uri);
+      await eprintService.indexEprint(eprint, createTestMetadata(uri, cid));
+
+      const res = await makeRequest(
+        `/xrpc/pub.chive.eprint.listRelatedWorks?eprintUri=${encodeURIComponent(uri)}`
+      );
+
+      // Should return 200 with relatedWorks array (may be empty)
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { relatedWorks: unknown[]; total?: number };
+      expect(body.relatedWorks).toBeDefined();
+      expect(Array.isArray(body.relatedWorks)).toBe(true);
+    });
+
+    it('listCitations returns 400 for missing eprintUri', async () => {
+      const res = await makeRequest('/xrpc/pub.chive.eprint.listCitations');
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe('InvalidRequest');
+    });
+
+    it('listRelatedWorks returns 400 for missing eprintUri', async () => {
+      const res = await makeRequest('/xrpc/pub.chive.eprint.listRelatedWorks');
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as ErrorResponse;
+      expect(body.error).toBe('InvalidRequest');
+    });
+
+    it('API does not expose citation write endpoints', async () => {
+      const writeEndpoints = [
+        { path: '/xrpc/pub.chive.eprint.createCitation', method: 'POST' },
+        { path: '/xrpc/pub.chive.eprint.deleteCitation', method: 'POST' },
+        { path: '/xrpc/pub.chive.eprint.createRelatedWork', method: 'POST' },
+        { path: '/xrpc/pub.chive.eprint.deleteRelatedWork', method: 'POST' },
+      ];
+
+      for (const { path, method } of writeEndpoints) {
+        const res = await makeRequest(path, { method });
+        // These endpoints should NOT exist; users create citations
+        // in their own PDSes, not via the AppView
+        expect([404, 405]).toContain(res.status);
+      }
     });
   });
 

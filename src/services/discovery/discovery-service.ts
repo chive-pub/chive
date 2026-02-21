@@ -452,7 +452,7 @@ export class DiscoveryService implements IDiscoveryService {
     options?: RelatedEprintOptions
   ): Promise<readonly RelatedEprint[]> {
     const limit = options?.limit ?? 10;
-    const minScore = options?.minScore ?? 0.3;
+    const minScore = options?.minScore ?? 0.2;
     const signals = options?.signals ?? ['citations', 'concepts', 'semantic'];
 
     const relatedMap = new Map<string, RelatedEprint>();
@@ -463,100 +463,153 @@ export class DiscoveryService implements IDiscoveryService {
       return [];
     }
 
-    // Signal 1: Citation-based (co-citation)
+    // Signal 1 & 2: Citation-based (co-citation + direct citations)
     if (signals.includes('citations')) {
-      const coCited = await this.citationGraph.findCoCitedPapers(eprintUri, 2);
+      try {
+        const coCited = await this.citationGraph.findCoCitedPapers(eprintUri, 2);
 
-      for (const paper of coCited) {
-        if (paper.strength >= minScore) {
-          relatedMap.set(paper.uri, {
-            uri: paper.uri,
-            title: paper.title,
-            abstract: paper.abstract,
-            categories: paper.categories,
-            publicationDate: paper.publicationDate,
-            score: paper.strength,
-            relationshipType: 'co-cited',
-            explanation: `Frequently cited together (${paper.coCitationCount} co-citations)`,
-            signalScores: { citations: paper.strength },
-          });
-        }
-      }
-    }
-
-    // Signal 2: Direct citations
-    if (signals.includes('citations')) {
-      const [citingResult, referencesResult] = await Promise.all([
-        this.citationGraph.getCitingPapers(eprintUri, { limit: 5 }),
-        this.citationGraph.getReferences(eprintUri, { limit: 5 }),
-      ]);
-
-      for (const citation of citingResult.citations) {
-        const citingEprint = await this.getEprintByUri(citation.citingUri);
-        if (citingEprint && !relatedMap.has(citation.citingUri)) {
-          relatedMap.set(citation.citingUri, {
-            uri: citation.citingUri,
-            title: citingEprint.title,
-            abstract: citingEprint.abstract ?? undefined,
-            categories: citingEprint.categories ?? undefined,
-            publicationDate: citingEprint.publication_date ?? undefined,
-            score: citation.isInfluential ? 0.9 : 0.7,
-            relationshipType: 'cited-by',
-            explanation: 'Cites this paper',
-            signalScores: { citations: citation.isInfluential ? 0.9 : 0.7 },
-          });
-        }
-      }
-
-      for (const reference of referencesResult.citations) {
-        const refEprint = await this.getEprintByUri(reference.citedUri);
-        if (refEprint && !relatedMap.has(reference.citedUri)) {
-          relatedMap.set(reference.citedUri, {
-            uri: reference.citedUri,
-            title: refEprint.title,
-            abstract: refEprint.abstract ?? undefined,
-            categories: refEprint.categories ?? undefined,
-            publicationDate: refEprint.publication_date ?? undefined,
-            score: reference.isInfluential ? 0.9 : 0.7,
-            relationshipType: 'cites',
-            explanation: 'Referenced by this paper',
-            signalScores: { citations: reference.isInfluential ? 0.9 : 0.7 },
-          });
-        }
-      }
-    }
-
-    // Signal 3: Semantic similarity (via S2 recommendations if available)
-    if (signals.includes('semantic') && eprint.semantic_scholar_id) {
-      const s2Plugin = this.getSemanticScholarPlugin();
-      if (s2Plugin) {
-        try {
-          const recommendations = await s2Plugin.getRecommendations(eprint.semantic_scholar_id, {
-            limit: 10,
-          });
-
-          for (const rec of recommendations) {
-            // Only include if paper is in Chive
-            const chiveEprint = await this.findEprintByExternalId(
-              rec.paperId,
-              rec.externalIds?.DOI ?? undefined
-            );
-            if (chiveEprint && !relatedMap.has(chiveEprint.uri)) {
-              relatedMap.set(chiveEprint.uri, {
-                uri: chiveEprint.uri as AtUri,
-                title: chiveEprint.title,
-                abstract: chiveEprint.abstract ?? undefined,
-                categories: chiveEprint.categories ?? undefined,
-                publicationDate: chiveEprint.publication_date ?? undefined,
-                score: 0.7, // SPECTER2 similarity
-                relationshipType: 'semantically-similar',
-                explanation: 'Semantically similar based on content',
-                signalScores: { semantic: 0.7 },
-              });
-            }
+        for (const paper of coCited) {
+          if (paper.strength >= minScore) {
+            relatedMap.set(paper.uri, {
+              uri: paper.uri,
+              title: paper.title,
+              abstract: paper.abstract,
+              categories: paper.categories,
+              publicationDate: paper.publicationDate,
+              score: paper.strength,
+              relationshipType: 'co-cited',
+              explanation: `Frequently cited together (${paper.coCitationCount} co-citations)`,
+              signalScores: { citations: paper.strength },
+            });
           }
+        }
+
+        const [citingResult, referencesResult] = await Promise.all([
+          this.citationGraph.getCitingPapers(eprintUri, { limit: 5 }),
+          this.citationGraph.getReferences(eprintUri, { limit: 5 }),
+        ]);
+
+        for (const citation of citingResult.citations) {
+          const citingEprint = await this.getEprintByUri(citation.citingUri);
+          if (citingEprint && !relatedMap.has(citation.citingUri)) {
+            relatedMap.set(citation.citingUri, {
+              uri: citation.citingUri,
+              title: citingEprint.title,
+              abstract: citingEprint.abstract ?? undefined,
+              categories: citingEprint.categories ?? undefined,
+              publicationDate: citingEprint.publication_date ?? undefined,
+              score: citation.isInfluential ? 0.9 : 0.7,
+              relationshipType: 'cited-by',
+              explanation: 'Cites this paper',
+              signalScores: { citations: citation.isInfluential ? 0.9 : 0.7 },
+            });
+          }
+        }
+
+        for (const reference of referencesResult.citations) {
+          const refEprint = await this.getEprintByUri(reference.citedUri);
+          if (refEprint && !relatedMap.has(reference.citedUri)) {
+            relatedMap.set(reference.citedUri, {
+              uri: reference.citedUri,
+              title: refEprint.title,
+              abstract: refEprint.abstract ?? undefined,
+              categories: refEprint.categories ?? undefined,
+              publicationDate: refEprint.publication_date ?? undefined,
+              score: reference.isInfluential ? 0.9 : 0.7,
+              relationshipType: 'cites',
+              explanation: 'Referenced by this paper',
+              signalScores: { citations: reference.isInfluential ? 0.9 : 0.7 },
+            });
+          }
+        }
+      } catch (error) {
+        this.logger.debug('Citation graph signals unavailable', {
+          uri: eprintUri,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Signal 3: Semantic similarity (via S2 recommendations or ES MLT fallback)
+    if (signals.includes('semantic')) {
+      let usedSpecter2 = false;
+
+      // Prefer SPECTER2 embeddings via Semantic Scholar when available
+      if (eprint.semantic_scholar_id) {
+        const s2Plugin = this.getSemanticScholarPlugin();
+        if (s2Plugin) {
+          try {
+            const recommendations = await s2Plugin.getRecommendations(eprint.semantic_scholar_id, {
+              limit: 10,
+            });
+
+            for (const rec of recommendations) {
+              // Only include if paper is in Chive
+              const chiveEprint = await this.findEprintByExternalId(
+                rec.paperId,
+                rec.externalIds?.DOI ?? undefined
+              );
+              if (chiveEprint && !relatedMap.has(chiveEprint.uri)) {
+                relatedMap.set(chiveEprint.uri, {
+                  uri: chiveEprint.uri as AtUri,
+                  title: chiveEprint.title,
+                  abstract: chiveEprint.abstract ?? undefined,
+                  categories: chiveEprint.categories ?? undefined,
+                  publicationDate: chiveEprint.publication_date ?? undefined,
+                  score: 0.7, // SPECTER2 similarity
+                  relationshipType: 'semantically-similar',
+                  explanation: 'Semantically similar based on content',
+                  signalScores: { semantic: 0.7 },
+                });
+              }
+            }
+            usedSpecter2 = true;
+          } catch (error) {
+            this.logger.debug('S2 recommendations unavailable, falling back to ES MLT', {
+              uri: eprintUri,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
+
+      // Fallback: Elasticsearch More Like This when SPECTER2 is unavailable
+      if (!usedSpecter2) {
+        try {
+          const mltResults = await this.searchEngine.findSimilarByText(eprintUri, {
+            limit: 10,
+            minTermFreq: 1,
+            minDocFreq: 1,
+            maxQueryTerms: 25,
+            minimumShouldMatch: '30%',
+          });
+
+          for (const mltResult of mltResults) {
+            // Scores are already 0-1 via ES saturation normalization.
+            // Discount by 0.6 relative to SPECTER2 embeddings.
+            const score = mltResult.score * 0.6;
+
+            if (score < minScore || relatedMap.has(mltResult.uri)) {
+              continue;
+            }
+
+            relatedMap.set(mltResult.uri, {
+              uri: mltResult.uri,
+              title: mltResult.title ?? '',
+              score,
+              relationshipType: 'semantically-similar',
+              explanation: 'Similar content based on title, abstract, and keywords',
+              signalScores: { semantic: score },
+            });
+          }
+
+          this.logger.debug('ES MLT fallback produced results', {
+            uri: eprintUri,
+            resultCount: mltResults.length,
+          });
         } catch (error) {
-          this.logger.debug('S2 recommendations unavailable', {
+          this.logger.debug('ES MLT fallback unavailable', {
+            uri: eprintUri,
             error: error instanceof Error ? error.message : String(error),
           });
         }
@@ -923,8 +976,12 @@ export class DiscoveryService implements IDiscoveryService {
    */
   private async getEprintByUri(uri: AtUri): Promise<EprintRow | null> {
     const result = await this.db.query<EprintRow>(
-      `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
-              semantic_scholar_id, openalex_id
+      `SELECT uri, title, keywords,
+              external_ids->>'doi' AS doi,
+              external_ids->>'arxivId' AS arxiv_id,
+              created_at AS publication_date,
+              external_ids->>'semanticScholarId' AS semantic_scholar_id,
+              external_ids->>'openAlexId' AS openalex_id
        FROM eprints_index WHERE uri = $1`,
       [uri]
     );
@@ -938,9 +995,13 @@ export class DiscoveryService implements IDiscoveryService {
   private async findEprintByExternalId(s2Id?: string, doi?: string): Promise<EprintRow | null> {
     if (s2Id) {
       const result = await this.db.query<EprintRow>(
-        `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
-                semantic_scholar_id, openalex_id
-         FROM eprints_index WHERE semantic_scholar_id = $1`,
+        `SELECT uri, title, keywords,
+                external_ids->>'doi' AS doi,
+                external_ids->>'arxivId' AS arxiv_id,
+                created_at AS publication_date,
+                external_ids->>'semanticScholarId' AS semantic_scholar_id,
+                external_ids->>'openAlexId' AS openalex_id
+         FROM eprints_index WHERE external_ids->>'semanticScholarId' = $1`,
         [s2Id]
       );
 
@@ -949,9 +1010,13 @@ export class DiscoveryService implements IDiscoveryService {
 
     if (doi) {
       const result = await this.db.query<EprintRow>(
-        `SELECT uri, title, abstract, categories, doi, arxiv_id, publication_date,
-                semantic_scholar_id, openalex_id
-         FROM eprints_index WHERE doi = $1`,
+        `SELECT uri, title, keywords,
+                external_ids->>'doi' AS doi,
+                external_ids->>'arxivId' AS arxiv_id,
+                created_at AS publication_date,
+                external_ids->>'semanticScholarId' AS semantic_scholar_id,
+                external_ids->>'openAlexId' AS openalex_id
+         FROM eprints_index WHERE external_ids->>'doi' = $1`,
         [doi]
       );
 

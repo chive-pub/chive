@@ -51,6 +51,7 @@ import type {
   CitationRelationship,
   CoCitedPaper,
   ICitationGraph,
+  RelatedWorkInput,
 } from '../../types/interfaces/discovery.interface.js';
 
 import { Neo4jConnection } from './connection.js';
@@ -503,6 +504,106 @@ export class CitationGraph implements ICitationGraph {
       throw new DatabaseError(
         'QUERY',
         `Failed to delete citations for paper: ${error.message}`,
+        error
+      );
+    }
+  }
+
+  /**
+   * Creates RELATES_TO edges between eprints for related work records.
+   *
+   * @param relationships - Related work relationships to upsert
+   *
+   * @remarks
+   * Uses MERGE to create or update RELATES_TO edges. The relationship is
+   * bidirectional in intent (paper A relates to paper B), but stored as a
+   * directed edge. Only creates edges where both eprints exist as Eprint
+   * nodes in the graph.
+   *
+   * @example
+   * ```typescript
+   * await citationGraph.upsertRelatedWorksBatch([
+   *   {
+   *     sourceUri: 'at://did:plc:abc/pub.chive.eprint.submission/1',
+   *     targetUri: 'at://did:plc:xyz/pub.chive.eprint.submission/2',
+   *     createdBy: 'did:plc:abc',
+   *   },
+   * ]);
+   * ```
+   */
+  async upsertRelatedWorksBatch(relationships: readonly RelatedWorkInput[]): Promise<number> {
+    if (relationships.length === 0) {
+      return 0;
+    }
+
+    const query = `
+      UNWIND $rels AS rel
+      MATCH (source:Node:Object:Eprint {uri: rel.sourceUri})
+      WHERE source.subkind = 'eprint'
+      MATCH (target:Node:Object:Eprint {uri: rel.targetUri})
+      WHERE target.subkind = 'eprint'
+      MERGE (source)-[r:RELATES_TO]->(target)
+      SET r.createdBy = rel.createdBy,
+          r.relatedWorkUri = rel.relatedWorkUri,
+          r.discoveredAt = CASE
+            WHEN r.discoveredAt IS NULL THEN datetime()
+            ELSE r.discoveredAt
+          END,
+          r.updatedAt = datetime()
+      RETURN count(r) AS edgesCreated
+    `;
+
+    const relData = relationships.map((r: RelatedWorkInput) => ({
+      sourceUri: r.sourceUri,
+      targetUri: r.targetUri,
+      createdBy: r.createdBy ?? null,
+      relatedWorkUri: r.relatedWorkUri ?? null,
+    }));
+
+    try {
+      const result = await this.connection.executeQuery<Record<string, Neo4jValue>>(query, {
+        rels: relData,
+      });
+      return (result.records[0]?.get('edgesCreated') as number) ?? 0;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      throw new DatabaseError(
+        'QUERY',
+        `Failed to upsert related work edges: ${error.message}`,
+        error
+      );
+    }
+  }
+
+  /**
+   * Deletes all RELATES_TO edges for an eprint.
+   *
+   * @param paperUri - AT-URI of the eprint
+   *
+   * @remarks
+   * Removes all RELATES_TO edges where the paper is either source or target.
+   * Used when an eprint is removed from Chive's index.
+   *
+   * @example
+   * ```typescript
+   * await citationGraph.deleteRelatedWorksForPaper(eprintUri);
+   * ```
+   */
+  async deleteRelatedWorksForPaper(paperUri: AtUri): Promise<void> {
+    const query = `
+      MATCH (p:Node:Object:Eprint {uri: $paperUri})
+      WHERE p.subkind = 'eprint'
+      OPTIONAL MATCH (p)-[r:RELATES_TO]-()
+      DELETE r
+    `;
+
+    try {
+      await this.connection.executeQuery(query, { paperUri });
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      throw new DatabaseError(
+        'QUERY',
+        `Failed to delete related works for paper: ${error.message}`,
         error
       );
     }

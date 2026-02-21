@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Calendar, FileText, Tag } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -8,6 +9,7 @@ import { LicenseBadge, DoiLink } from './eprint-metadata';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
+import { normalizeTag } from '@/lib/utils/normalize-tag';
 import type { Eprint } from '@/lib/api/schema';
 
 /**
@@ -89,12 +91,14 @@ export function EprintHeader({ eprint, titleAction, className }: EprintHeaderPro
           <span className="text-sm font-medium text-muted-foreground">Keywords:</span>
           <ul role="list" aria-label="Keywords" className="flex flex-wrap gap-1">
             {eprint.keywords.map((keyword: string) => (
-              <li
-                key={keyword}
-                className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs"
-              >
-                <Tag className="mr-1 h-3 w-3" />
-                {keyword}
+              <li key={keyword}>
+                <Link
+                  href={`/tags/${encodeURIComponent(normalizeTag(keyword))}`}
+                  className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs hover:bg-accent transition-colors"
+                >
+                  <Tag className="mr-1 h-3 w-3" />
+                  {keyword}
+                </Link>
               </li>
             ))}
           </ul>

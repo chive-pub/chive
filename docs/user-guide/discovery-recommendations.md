@@ -39,33 +39,39 @@ Click the **X** on any recommendation to dismiss it and improve future suggestio
 
 Each eprint page shows related papers in the sidebar:
 
-### How similarity is calculated
+### How related papers are found
 
-1. **Citation overlap**: Papers that cite the same references
-2. **Concept overlap**: Shared fields, tags, and keywords
-3. **Semantic similarity**: Text similarity using SPECTER2 embeddings
-4. **Co-citation**: Papers frequently cited together
+Related papers come from two sources:
 
-### Filtering related papers
+**Auto-detected**: The system finds related papers using:
 
-Click **Filter** above the related papers panel:
+1. **Elasticsearch MLT**: Text similarity based on title, abstract, and keywords
+2. **Citation overlap**: Papers that cite the same references (when citation data is available)
+3. **Co-citation**: Papers frequently cited together
 
-- **All**: Default mixed ranking
-- **Cites this**: Papers that cite this eprint
-- **Cited by this**: References from this eprint
-- **Similar methods**: Papers using similar methodology
-- **Same authors**: Other papers by the same authors
+**User-curated**: Any authenticated user can add related papers manually using the "Add Related Paper" button. User-curated links include a relationship type (extends, replicates, contradicts, etc.) and optional description.
 
-## Citation network
+Both sources appear in a single "Related Papers" panel on the eprint page.
 
-### Exploring citations
+### Relationship types
 
-On any eprint page:
+User-curated related papers display a relationship badge:
 
-1. Click the **Citations** tab
-2. View **Cited by** (incoming citations)
-3. View **References** (outgoing citations)
-4. Click any paper to explore further
+| Badge       | Meaning                       |
+| ----------- | ----------------------------- |
+| Related     | Generally related work        |
+| Extends     | Builds upon this paper        |
+| Replicates  | Replication study             |
+| Contradicts | Contradicts findings          |
+| Reviews     | Reviews or surveys this paper |
+
+### Citation network
+
+Chive can extract citations from eprint PDFs using GROBID. When citations are available:
+
+1. Click the **Related** tab on any eprint page
+2. View the **Citation Network** section showing extracted references
+3. Citations that match existing Chive eprints are linked
 
 ## Field browsing
 

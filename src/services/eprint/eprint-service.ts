@@ -58,6 +58,10 @@ import type {
   ChangelogQueryOptions as StorageChangelogQueryOptions,
   ChangelogListResult,
   IndexedUserTag,
+  EprintCitationQueryOptions,
+  CitationListResult,
+  RelatedWorkQueryOptions,
+  RelatedWorkListResult,
 } from '../../types/interfaces/storage.interface.js';
 import type { Eprint, EprintVersion } from '../../types/models/eprint.ts';
 import type { Result } from '../../types/result.js';
@@ -541,6 +545,35 @@ export class EprintService {
     }
   }
 
+  /**
+   * Removes a record from the Chive index by URI and collection type.
+   * Used when a record has been deleted from its PDS.
+   */
+  async deleteFromIndex(uri: AtUri, collection: string): Promise<void> {
+    switch (collection) {
+      case 'pub.chive.eprint.submission':
+        await this.indexEprintDelete(uri);
+        break;
+      case 'pub.chive.eprint.userTag':
+        await this.storage.deleteByUri('user_tags_index', uri);
+        break;
+      case 'pub.chive.review.comment':
+        await this.storage.deleteByUri('reviews_index', uri);
+        break;
+      case 'pub.chive.review.endorsement':
+        await this.storage.deleteByUri('endorsements_index', uri);
+        break;
+      case 'pub.chive.eprint.citation':
+        await this.storage.deleteByUri('citations_index', uri);
+        break;
+      case 'pub.chive.eprint.relatedWork':
+        await this.storage.deleteByUri('related_works_index', uri);
+        break;
+      default:
+        this.logger.debug('No index table for collection', { collection, uri });
+    }
+  }
+
   async getEprint(uri: AtUri): Promise<EprintView | null> {
     const stored = await this.storage.getEprint(uri);
     if (!stored) {
@@ -894,5 +927,215 @@ export class EprintService {
    */
   async getTagsForEprint(eprintUri: AtUri): Promise<readonly IndexedUserTag[]> {
     return this.storage.getTagsForEprint(eprintUri);
+  }
+
+  /**
+   * Retrieves distinct eprint URIs matching a term as either a community tag
+   * or an author keyword.
+   */
+  async getEprintUrisForTerm(
+    normalizedTerm: string,
+    limit: number,
+    offset: number
+  ): Promise<{ uris: AtUri[]; total: number }> {
+    return this.storage.getEprintUrisForTerm(normalizedTerm, limit, offset);
+  }
+
+  /**
+   * Searches distinct keywords matching a search term with usage counts.
+   */
+  async searchKeywords(
+    searchText: string,
+    limit: number
+  ): Promise<{ normalizedForm: string; displayForm: string; usageCount: number }[]> {
+    return this.storage.searchKeywords(searchText, limit);
+  }
+
+  /**
+   * Indexes a user tag from a PDS record.
+   *
+   * @param record - The raw tag record from the PDS
+   * @param metadata - Record metadata (URI, CID, PDS URL)
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async indexTag(record: unknown, metadata: RecordMetadata): Promise<Result<void>> {
+    try {
+      const tagRecord = record as { eprintUri: string; tag: string; createdAt: string };
+      const taggerDid = metadata.uri.split('/')[2] as DID;
+
+      await this.storage.indexTag({
+        uri: metadata.uri,
+        cid: metadata.cid,
+        eprintUri: tagRecord.eprintUri as AtUri,
+        taggerDid,
+        tag: tagRecord.tag,
+        createdAt: new Date(tagRecord.createdAt),
+        pdsUrl: metadata.pdsUrl ?? '',
+      });
+
+      // Also update Neo4j tag manager for quality scoring and trending
+      if (this.tagManager) {
+        try {
+          await this.tagManager.addTag(tagRecord.eprintUri as AtUri, tagRecord.tag, taggerDid);
+        } catch (tagManagerError) {
+          // Non-fatal: tag is in PostgreSQL, Neo4j update can happen via firehose
+          this.logger.warn('Tag manager update failed during immediate indexing', {
+            uri: metadata.uri,
+            error:
+              tagManagerError instanceof Error ? tagManagerError.message : String(tagManagerError),
+          });
+        }
+      }
+
+      return { ok: true, value: undefined };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      return { ok: false, error: err };
+    }
+  }
+
+  /**
+   * Indexes a user-provided citation from a PDS record.
+   *
+   * @param record - The raw citation record from the PDS
+   * @param metadata - Record metadata (URI, CID, PDS URL)
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Transforms the raw PDS record into the IndexCitationInput shape
+   * and delegates to IStorageBackend for persistence.
+   *
+   * @public
+   */
+  async indexCitation(record: unknown, metadata: RecordMetadata): Promise<Result<void>> {
+    try {
+      const citationRecord = record as {
+        eprintUri: string;
+        citedWork: {
+          title: string;
+          doi?: string;
+          arxivId?: string;
+          authors?: readonly string[];
+          year?: number;
+          venue?: string;
+          chiveUri?: string;
+        };
+        citationType?: string;
+        context?: string;
+        createdAt: string;
+      };
+      const curatorDid = metadata.uri.split('/')[2] as DID;
+
+      await this.storage.indexCitation({
+        userRecordUri: metadata.uri,
+        eprintUri: citationRecord.eprintUri as AtUri,
+        curatorDid,
+        title: citationRecord.citedWork.title,
+        doi: citationRecord.citedWork.doi,
+        arxivId: citationRecord.citedWork.arxivId,
+        authors: citationRecord.citedWork.authors as string[] | undefined,
+        year: citationRecord.citedWork.year,
+        venue: citationRecord.citedWork.venue,
+        chiveUri: citationRecord.citedWork.chiveUri
+          ? (citationRecord.citedWork.chiveUri as AtUri)
+          : undefined,
+        citationType: citationRecord.citationType,
+        context: citationRecord.context,
+        createdAt: new Date(citationRecord.createdAt),
+        pdsUrl: metadata.pdsUrl ?? '',
+      });
+
+      return { ok: true, value: undefined };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      return { ok: false, error: err };
+    }
+  }
+
+  /**
+   * Indexes a user-provided related work link from a PDS record.
+   *
+   * @param record - The raw related work record from the PDS
+   * @param metadata - Record metadata (URI, CID, PDS URL)
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Transforms the raw PDS record into the IndexRelatedWorkInput shape
+   * and delegates to IStorageBackend for persistence.
+   *
+   * @public
+   */
+  async indexRelatedWork(record: unknown, metadata: RecordMetadata): Promise<Result<void>> {
+    try {
+      const relatedWorkRecord = record as {
+        eprintUri: string;
+        relatedUri: string;
+        relationType: string;
+        description?: string;
+        createdAt: string;
+      };
+      const curatorDid = metadata.uri.split('/')[2] as DID;
+
+      await this.storage.indexRelatedWork({
+        uri: metadata.uri,
+        cid: metadata.cid,
+        sourceEprintUri: relatedWorkRecord.eprintUri as AtUri,
+        targetEprintUri: relatedWorkRecord.relatedUri as AtUri,
+        relationshipType: relatedWorkRecord.relationType,
+        description: relatedWorkRecord.description,
+        curatorDid,
+        createdAt: new Date(relatedWorkRecord.createdAt),
+        pdsUrl: metadata.pdsUrl ?? '',
+      });
+
+      return { ok: true, value: undefined };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      return { ok: false, error: err };
+    }
+  }
+
+  /**
+   * Retrieves citations for an eprint.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset, source filter)
+   * @returns Paginated list of citations
+   *
+   * @remarks
+   * Delegates to IStorageBackend for the query. Returns both auto-extracted
+   * and user-provided citations unless filtered by source.
+   *
+   * @public
+   */
+  async getCitationsForEprint(
+    eprintUri: AtUri,
+    options?: EprintCitationQueryOptions
+  ): Promise<CitationListResult> {
+    this.logger.debug('Listing citations', { eprintUri, options });
+    return this.storage.getCitationsForEprint(eprintUri, options);
+  }
+
+  /**
+   * Retrieves related works for an eprint.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset)
+   * @returns Paginated list of related works
+   *
+   * @remarks
+   * Delegates to IStorageBackend for the query. Returns user-curated
+   * related work links between eprints.
+   *
+   * @public
+   */
+  async getRelatedWorksForEprint(
+    eprintUri: AtUri,
+    options?: RelatedWorkQueryOptions
+  ): Promise<RelatedWorkListResult> {
+    this.logger.debug('Listing related works', { eprintUri, options });
+    return this.storage.getRelatedWorksForEprint(eprintUri, options);
   }
 }

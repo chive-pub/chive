@@ -174,6 +174,14 @@ These must be set for Chive to start:
 | `WIKIDATA_SPARQL_ENDPOINT` | `https://query.wikidata.org/sparql` | SPARQL endpoint         |
 | `WIKIDATA_USER_AGENT`      | `Chive/1.0`                         | User agent for requests |
 
+### GROBID
+
+| Variable             | Default                 | Description                                          |
+| -------------------- | ----------------------- | ---------------------------------------------------- |
+| `GROBID_URL`         | `http://localhost:8070` | GROBID service URL                                   |
+| `GROBID_TIMEOUT`     | `120000`                | Request timeout in milliseconds                      |
+| `GROBID_CONSOLIDATE` | `1`                     | Citation consolidation level (0=none, 1=DOI, 2=full) |
+
 ## Feature flags
 
 | Variable             | Default | Description                |
@@ -233,6 +241,9 @@ S2_API_KEY=your-semantic-scholar-key
 OPENALEX_EMAIL=your-email@example.com
 ORCID_CLIENT_ID=APP-XXXXXXXX
 ORCID_CLIENT_SECRET=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+# Citation extraction
+GROBID_URL=http://grobid:8070
 
 # Observability
 OTEL_ENABLED=true

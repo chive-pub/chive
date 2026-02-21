@@ -1,0 +1,106 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.listRelatedWorks",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List user-curated related works for an eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint to list related works for"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of related works to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["relatedWorks"],
+          "properties": {
+            "relatedWorks": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#relatedWorkView"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of related works"
+            }
+          }
+        }
+      }
+    },
+    "relatedWorkView": {
+      "type": "object",
+      "required": [
+        "uri",
+        "sourceEprintUri",
+        "targetEprintUri",
+        "relationType",
+        "curatorDid",
+        "createdAt"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the related work record"
+        },
+        "sourceEprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the source eprint"
+        },
+        "targetEprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the related eprint"
+        },
+        "targetTitle": {
+          "type": "string",
+          "description": "Title of the related eprint (resolved from index)"
+        },
+        "relationType": {
+          "type": "string",
+          "description": "Type of relationship"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the relationship"
+        },
+        "curatorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the user who created this link"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When this related work link was created"
+        }
+      }
+    }
+  }
+}

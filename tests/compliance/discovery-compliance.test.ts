@@ -97,6 +97,8 @@ const createMockCitationGraph = (): ICitationGraph => ({
     influentialCitedByCount: 0,
   }),
   deleteCitationsForPaper: vi.fn().mockResolvedValue(undefined),
+  upsertRelatedWorksBatch: vi.fn().mockResolvedValue(0),
+  deleteRelatedWorksForPaper: vi.fn().mockResolvedValue(undefined),
 });
 
 /**
@@ -345,6 +347,18 @@ describe('Discovery ATProto Compliance', () => {
       // Should NOT have non-idempotent methods
       expect(mockCitationGraph).not.toHaveProperty('insertCitation');
       expect(mockCitationGraph).not.toHaveProperty('createCitation');
+    });
+
+    it('related works graph uses upsert (idempotent) not insert', () => {
+      // MERGE in Neo4j = upsert for RELATES_TO edges
+      // Running indexing twice produces identical state
+
+      expect(mockCitationGraph.upsertRelatedWorksBatch).toBeDefined();
+      expect(mockCitationGraph.deleteRelatedWorksForPaper).toBeDefined();
+
+      // Should NOT have non-idempotent methods
+      expect(mockCitationGraph).not.toHaveProperty('insertRelatedWork');
+      expect(mockCitationGraph).not.toHaveProperty('createRelatedWork');
     });
   });
 
@@ -647,6 +661,7 @@ describe('Discovery ATProto Compliance', () => {
         'Graceful degradation without plugins': true,
         'External services are source of truth': true,
         'Upsert operations are idempotent': true,
+        'Related works graph is idempotent': true,
       };
 
       for (const [, met] of Object.entries(requirements)) {
@@ -657,7 +672,7 @@ describe('Discovery ATProto Compliance', () => {
       const metRequirements = Object.values(requirements).filter((met) => met).length;
 
       expect(metRequirements).toBe(totalRequirements);
-      expect(metRequirements).toBe(9); // All 9 requirements met
+      expect(metRequirements).toBe(10); // All 10 requirements met
     });
   });
 });

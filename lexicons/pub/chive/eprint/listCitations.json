@@ -1,0 +1,131 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.listCitations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List citations for an eprint (auto-extracted and user-provided)",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint to list citations for"
+          },
+          "source": {
+            "type": "string",
+            "knownValues": ["all", "user", "auto"],
+            "default": "all",
+            "description": "Filter by citation source type"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of citations to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["citations"],
+          "properties": {
+            "citations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#citation"
+              }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total number of matching citations"
+            }
+          }
+        }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "required": ["title", "source"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the user-provided citation record (if user-provided)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the cited work"
+        },
+        "doi": {
+          "type": "string",
+          "description": "DOI of the cited work"
+        },
+        "arxivId": {
+          "type": "string",
+          "description": "arXiv identifier"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Author names"
+        },
+        "year": {
+          "type": "integer",
+          "description": "Publication year"
+        },
+        "venue": {
+          "type": "string",
+          "description": "Publication venue"
+        },
+        "chiveUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the cited work if it exists in Chive"
+        },
+        "citationType": {
+          "type": "string",
+          "description": "Semantic type of the citation relationship"
+        },
+        "context": {
+          "type": "string",
+          "description": "Contextual note about the citation"
+        },
+        "source": {
+          "type": "string",
+          "knownValues": ["semantic-scholar", "crossref", "grobid", "user-provided"],
+          "description": "Source of the citation data"
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence score for auto-extracted citations (0-1)"
+        },
+        "isInfluential": {
+          "type": "boolean",
+          "description": "Whether this is an influential citation (from Semantic Scholar)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When this citation was created or extracted"
+        }
+      }
+    }
+  }
+}

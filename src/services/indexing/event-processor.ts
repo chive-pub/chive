@@ -27,6 +27,8 @@
 
 import type { Pool } from 'pg';
 
+import type { CitationExtractionJob } from '../../jobs/citation-extraction-job.js';
+import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type {
   NodeKind,
   NodeStatus,
@@ -37,8 +39,10 @@ import type {
 } from '../../storage/neo4j/types.js';
 import type { AtUri, CID, DID, NSID } from '../../types/atproto.js';
 import { ChiveError, DatabaseError } from '../../types/errors.js';
+import type { ICitationGraph } from '../../types/interfaces/discovery.interface.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
+import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { AnnotationService } from '../annotation/annotation-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
@@ -204,6 +208,37 @@ export interface NodeRecord {
 }
 
 /**
+ * Citation record from lexicon.
+ */
+export interface CitationRecord {
+  readonly eprintUri: string;
+  readonly citedWork: {
+    readonly title: string;
+    readonly doi?: string;
+    readonly arxivId?: string;
+    readonly url?: string;
+    readonly authors?: readonly string[];
+    readonly year?: number;
+    readonly venue?: string;
+    readonly chiveUri?: string;
+  };
+  readonly citationType?: string;
+  readonly context?: string;
+  readonly createdAt: string;
+}
+
+/**
+ * Related work record from lexicon.
+ */
+export interface RelatedWorkRecord {
+  readonly eprintUri: string;
+  readonly relatedUri: string;
+  readonly relationType: string;
+  readonly description?: string;
+  readonly createdAt: string;
+}
+
+/**
  * Edge record from lexicon.
  */
 export interface EdgeRecord {
@@ -244,6 +279,26 @@ export interface EventProcessorOptions {
    * When provided, failed events are sent to the DLQ for later retry.
    */
   readonly dlq?: DeadLetterQueue;
+  /**
+   * Optional storage backend for citation and related work indexing.
+   * When provided, user-curated citations and related works are indexed directly.
+   */
+  readonly storage?: IStorageBackend;
+  /**
+   * Optional citation graph for creating CITES edges in Neo4j.
+   * When provided, user-curated citations with chiveUri create graph edges.
+   */
+  readonly citationGraph?: ICitationGraph;
+  /**
+   * Optional tag manager for updating Neo4j tag graph during firehose processing.
+   * When provided, user tag creates and deletes are mirrored to the Neo4j tag graph.
+   */
+  readonly tagManager?: TagManager;
+  /**
+   * Optional citation extraction job for post-indexing citation processing.
+   * When provided, citation extraction runs asynchronously after eprint indexing.
+   */
+  readonly citationExtractionJob?: CitationExtractionJob;
 }
 
 /**
@@ -275,6 +330,10 @@ export function createEventProcessor(
     logger,
     pdsRegistry,
     dlq,
+    storage,
+    citationGraph,
+    tagManager,
+    citationExtractionJob,
   } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
@@ -314,6 +373,10 @@ export function createEventProcessor(
         edgeService,
         automaticProposalService,
         logger,
+        storage,
+        citationGraph,
+        tagManager,
+        citationExtractionJob,
       },
       {
         uri,
@@ -388,6 +451,10 @@ interface ProcessRecordContext {
   readonly edgeService?: EdgeService;
   readonly automaticProposalService?: AutomaticProposalService;
   readonly logger: ILogger;
+  readonly storage?: IStorageBackend;
+  readonly citationGraph?: ICitationGraph;
+  readonly tagManager?: TagManager;
+  readonly citationExtractionJob?: CitationExtractionJob;
 }
 
 interface RecordData {
@@ -426,6 +493,10 @@ async function processRecord(
     automaticProposalService,
     pool,
     logger,
+    storage,
+    citationGraph,
+    tagManager,
+    citationExtractionJob,
   } = ctx;
   const { uri, cid, collection, action, record, pdsUrl } = data;
 
@@ -504,6 +575,17 @@ async function processRecord(
                 { uri, action }
               );
             }
+          }
+
+          // Trigger citation extraction asynchronously (fire-and-forget)
+          if (citationExtractionJob) {
+            void citationExtractionJob.run(uri).catch((citationError: unknown) => {
+              logger.error(
+                'Citation extraction failed',
+                citationError instanceof Error ? citationError : undefined,
+                { uri, action }
+              );
+            });
           }
         } catch (transformError) {
           const error =
@@ -698,8 +780,28 @@ async function processRecord(
 
       if (action === 'delete') {
         try {
+          // Query tag details before deleting so we can clean up Neo4j
+          const tagLookup = await pool.query<{ eprint_uri: string; tag: string }>(
+            'SELECT eprint_uri, tag FROM user_tags_index WHERE uri = $1',
+            [uri]
+          );
+          const deletedTag = tagLookup.rows[0];
+
           await pool.query('DELETE FROM user_tags_index WHERE uri = $1', [uri]);
           logger.info('Deleted tag from index', { uri });
+
+          // Remove from Neo4j tag graph if tag manager is available
+          if (tagManager && deletedTag) {
+            try {
+              const normalizedTag = tagManager.normalizeTag(deletedTag.tag);
+              await tagManager.removeTag(deletedTag.eprint_uri as AtUri, normalizedTag);
+            } catch (tagError) {
+              logger.warn('Tag manager removal failed during firehose processing', {
+                uri,
+                error: tagError instanceof Error ? tagError.message : String(tagError),
+              });
+            }
+          }
         } catch (dbError) {
           const error = dbError instanceof Error ? dbError : new Error(String(dbError));
           logger.error('Failed to delete tag', error, { uri });
@@ -733,11 +835,170 @@ async function processRecord(
             ]
           );
           logger.info('Indexed tag', { uri, eprintUri: tagRecord.eprintUri, tag: tagRecord.tag });
+
+          // Update Neo4j tag graph for quality scoring and trending
+          if (tagManager) {
+            try {
+              await tagManager.addTag(
+                tagRecord.eprintUri as AtUri,
+                tagRecord.tag,
+                taggerDid as DID
+              );
+            } catch (tagError) {
+              logger.warn('Tag manager update failed during firehose processing', {
+                uri,
+                error: tagError instanceof Error ? tagError.message : String(tagError),
+              });
+            }
+          }
         } catch (dbError) {
           const error = dbError instanceof Error ? dbError : new Error(String(dbError));
           logger.error('Failed to index tag', error, { uri, action });
           return failure(
             'Failed to index tag',
+            false,
+            new DatabaseError('INSERT', error.message, error)
+          );
+        }
+      }
+      return success();
+    }
+
+    case 'pub.chive.eprint.citation': {
+      logger.debug('Processing citation', { action, uri });
+
+      if (action === 'delete') {
+        if (storage) {
+          try {
+            await storage.deleteCitation(uri);
+            logger.info('Deleted citation from index', { uri });
+          } catch (dbError) {
+            const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+            logger.error('Failed to delete citation', error, { uri });
+            return failure(
+              'Failed to delete citation',
+              false,
+              new DatabaseError('DELETE', error.message, error)
+            );
+          }
+        }
+      } else if (record && storage) {
+        try {
+          const citationRecord = record as CitationRecord;
+          const curatorDid = uri.split('/')[2] as DID;
+
+          await storage.indexCitation({
+            userRecordUri: uri,
+            eprintUri: citationRecord.eprintUri as AtUri,
+            curatorDid,
+            title: citationRecord.citedWork.title,
+            doi: citationRecord.citedWork.doi,
+            arxivId: citationRecord.citedWork.arxivId,
+            authors: citationRecord.citedWork.authors as string[] | undefined,
+            year: citationRecord.citedWork.year,
+            venue: citationRecord.citedWork.venue,
+            chiveUri: citationRecord.citedWork.chiveUri
+              ? (citationRecord.citedWork.chiveUri as AtUri)
+              : undefined,
+            citationType: citationRecord.citationType,
+            context: citationRecord.context,
+            createdAt: new Date(citationRecord.createdAt),
+            pdsUrl,
+          });
+
+          logger.info('Indexed citation', {
+            uri,
+            eprintUri: citationRecord.eprintUri,
+            title: citationRecord.citedWork.title,
+          });
+
+          // Create CITES edge in Neo4j when the cited work exists in Chive
+          if (citationGraph && citationRecord.citedWork.chiveUri) {
+            try {
+              await citationGraph.upsertCitationsBatch([
+                {
+                  citingUri: citationRecord.eprintUri as AtUri,
+                  citedUri: citationRecord.citedWork.chiveUri as AtUri,
+                  isInfluential: false,
+                  source: 'user-provided',
+                  discoveredAt: new Date(),
+                },
+              ]);
+              logger.debug('Created CITES edge from user citation', {
+                citingUri: citationRecord.eprintUri,
+                citedUri: citationRecord.citedWork.chiveUri,
+              });
+            } catch (graphError) {
+              // Log but do not fail indexing if graph upsert fails
+              logger.error(
+                'Failed to create CITES edge from user citation',
+                graphError instanceof Error ? graphError : undefined,
+                {
+                  citingUri: citationRecord.eprintUri,
+                  citedUri: citationRecord.citedWork.chiveUri,
+                }
+              );
+            }
+          }
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index citation', error, { uri, action });
+          return failure(
+            'Failed to index citation',
+            false,
+            new DatabaseError('INSERT', error.message, error)
+          );
+        }
+      }
+      return success();
+    }
+
+    case 'pub.chive.eprint.relatedWork': {
+      logger.debug('Processing related work', { action, uri });
+
+      if (action === 'delete') {
+        if (storage) {
+          try {
+            await storage.deleteRelatedWork(uri);
+            logger.info('Deleted related work from index', { uri });
+          } catch (dbError) {
+            const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+            logger.error('Failed to delete related work', error, { uri });
+            return failure(
+              'Failed to delete related work',
+              false,
+              new DatabaseError('DELETE', error.message, error)
+            );
+          }
+        }
+      } else if (record && storage) {
+        try {
+          const relatedWorkRecord = record as RelatedWorkRecord;
+          const curatorDid = uri.split('/')[2] as DID;
+
+          await storage.indexRelatedWork({
+            uri,
+            cid: cid ?? ('' as CID),
+            sourceEprintUri: relatedWorkRecord.eprintUri as AtUri,
+            targetEprintUri: relatedWorkRecord.relatedUri as AtUri,
+            relationshipType: relatedWorkRecord.relationType,
+            description: relatedWorkRecord.description,
+            curatorDid,
+            createdAt: new Date(relatedWorkRecord.createdAt),
+            pdsUrl,
+          });
+
+          logger.info('Indexed related work', {
+            uri,
+            sourceEprintUri: relatedWorkRecord.eprintUri,
+            targetEprintUri: relatedWorkRecord.relatedUri,
+            relationType: relatedWorkRecord.relationType,
+          });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index related work', error, { uri, action });
+          return failure(
+            'Failed to index related work',
             false,
             new DatabaseError('INSERT', error.message, error)
           );
@@ -1060,6 +1321,9 @@ export function createBatchEventProcessor(
     logger,
     pdsRegistry,
     dlq,
+    storage,
+    citationGraph,
+    tagManager,
   } = options;
 
   return async (events: readonly ProcessedEvent[]): Promise<BatchProcessResult> => {
@@ -1092,6 +1356,9 @@ export function createBatchEventProcessor(
           nodeService,
           edgeService,
           logger,
+          storage,
+          citationGraph,
+          tagManager,
         },
         {
           uri,
