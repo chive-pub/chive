@@ -13,6 +13,7 @@
  * @packageDocumentation
  */
 
+import { useState } from 'react';
 import { UseFormReturn, Controller } from 'react-hook-form';
 
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,7 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
   const abstract = form.watch('abstract');
   const abstractLength = typeof abstract === 'string' ? abstract.length : 0;
   const keywords = form.watch('keywords') ?? [];
+  const [keywordText, setKeywordText] = useState(() => keywords.join(', '));
 
   return (
     <div className={cn('space-y-6', className)}>
@@ -129,14 +131,15 @@ export function StepMetadata({ form, className }: StepMetadataProps) {
             <FormLabel>Keywords</FormLabel>
             <FormControl>
               <Input
-                value={field.value?.join(', ') ?? ''}
+                value={keywordText}
                 onChange={(e) => {
                   const value = e.target.value;
-                  const keywords = value
+                  setKeywordText(value);
+                  const parsed = value
                     .split(',')
                     .map((k) => k.trim())
                     .filter(Boolean);
-                  field.onChange(keywords);
+                  field.onChange(parsed);
                 }}
                 placeholder="machine learning, neural networks, deep learning"
               />
