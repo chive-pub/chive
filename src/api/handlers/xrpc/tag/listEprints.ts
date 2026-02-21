@@ -2,9 +2,8 @@
  * XRPC handler for pub.chive.tag.listEprints.
  *
  * @remarks
- * Lists eprints that have a specific tag applied.
- * Uses TagManager.getRecordsWithTag() to find matching eprints,
- * then fetches eprint details from the EprintService.
+ * Lists eprints that have a specific tag or keyword applied.
+ * Queries PostgreSQL for both community tags and author keywords.
  *
  * @packageDocumentation
  * @public
@@ -15,6 +14,7 @@ import type {
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/tag/listEprints.js';
 import { NotFoundError } from '../../../../types/errors.js';
+import { normalizeTag } from '../../../../utils/normalize-tag.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -45,7 +45,6 @@ export const listEprints: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: false,
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const logger = c.get('logger');
-    const tagManager = c.get('services').tagManager;
     const eprintService = c.get('services').eprint;
 
     const limit = params.limit ?? 25;
@@ -57,25 +56,21 @@ export const listEprints: XRPCMethod<QueryParams, void, OutputSchema> = {
       offset,
     });
 
-    // Normalize the tag for lookup
-    const normalizedTag = tagManager.normalizeTag(params.tag);
+    const normalizedTerm = normalizeTag(params.tag);
 
-    // Verify tag exists
-    const tag = await tagManager.getTag(normalizedTag);
-    if (!tag) {
+    // Query PostgreSQL for eprints matching as community tag OR author keyword.
+    const { uris: eprintUris, total } = await eprintService.getEprintUrisForTerm(
+      normalizedTerm,
+      limit,
+      offset
+    );
+
+    if (total === 0 && offset === 0) {
       throw new NotFoundError('Tag', params.tag);
     }
 
-    // Get eprint URIs with this tag
-    // Note: getRecordsWithTag doesn't support pagination, so we fetch more and slice
-    const allEprintUris = await tagManager.getRecordsWithTag(normalizedTag, 500);
-    const total = allEprintUris.length;
-
-    // Apply pagination
-    const paginatedUris = allEprintUris.slice(offset, offset + limit);
-
     // Fetch eprint details for each URI
-    const eprintPromises = paginatedUris.map(async (uri) => {
+    const eprintPromises = eprintUris.map(async (uri) => {
       try {
         const eprint = await eprintService.getEprint(uri);
         if (!eprint) return null;
