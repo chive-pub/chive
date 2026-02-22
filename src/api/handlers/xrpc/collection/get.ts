@@ -10,40 +10,30 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/collection/get.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-import type { CollectionView } from './types.js';
 import { mapCollectionToView } from './utils.js';
 
-/**
- * Query parameters for pub.chive.collection.get.
- *
- * @public
- */
-export interface GetCollectionParams {
-  /** AT-URI of the collection to retrieve. */
-  uri: string;
-}
+/** Re-exported query parameters for pub.chive.collection.get. */
+export type GetCollectionParams = QueryParams;
 
-/**
- * Output schema for pub.chive.collection.get.
- *
- * @public
- */
-export interface GetCollectionOutput {
-  collection: CollectionView;
-}
+/** Re-exported output schema for pub.chive.collection.get. */
+export type GetCollectionOutput = OutputSchema;
 
 /**
  * XRPC method for pub.chive.collection.get query.
  *
  * @public
  */
-export const get: XRPCMethod<GetCollectionParams, void, GetCollectionOutput> = {
+export const get: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  handler: async ({ params, c }): Promise<XRPCResponse<GetCollectionOutput>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
     const user = c.get('user');
@@ -64,7 +54,7 @@ export const get: XRPCMethod<GetCollectionParams, void, GetCollectionOutput> = {
       throw new NotFoundError('Collection', params.uri);
     }
 
-    const response: GetCollectionOutput = {
+    const response: OutputSchema = {
       collection: mapCollectionToView(result),
     };
 

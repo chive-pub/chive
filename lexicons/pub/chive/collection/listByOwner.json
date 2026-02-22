@@ -1,0 +1,60 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.listByOwner",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List collections owned by a specific user",
+      "parameters": {
+        "type": "params",
+        "required": ["did"],
+        "properties": {
+          "did": {
+            "type": "string",
+            "description": "DID of the collection owner"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["collections", "hasMore", "total"],
+          "properties": {
+            "collections": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#collectionView"
+              },
+              "description": "Collections owned by the user"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results exist"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total count of collections"
+            }
+          }
+        }
+      }
+    }
+  }
+}

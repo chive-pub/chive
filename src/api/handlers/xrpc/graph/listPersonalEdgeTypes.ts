@@ -9,38 +9,27 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/graph/listPersonalEdgeTypes.js';
 import { AuthenticationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-/**
- * Query parameters for pub.chive.graph.listPersonalEdgeTypes (none required).
- *
- * @public
- */
-export type ListPersonalEdgeTypesParams = Record<string, never>;
+/** Re-exported query parameters for pub.chive.graph.listPersonalEdgeTypes. */
+export type ListPersonalEdgeTypesParams = QueryParams;
 
-/**
- * Output schema for pub.chive.graph.listPersonalEdgeTypes.
- *
- * @public
- */
-export interface ListPersonalEdgeTypesOutput {
-  /** Distinct relation slug strings used in the user's personal edges. */
-  relationTypes: string[];
-}
+/** Re-exported output schema for pub.chive.graph.listPersonalEdgeTypes. */
+export type ListPersonalEdgeTypesOutput = OutputSchema;
 
 /**
  * XRPC method for pub.chive.graph.listPersonalEdgeTypes query.
  *
  * @public
  */
-export const listPersonalEdgeTypes: XRPCMethod<
-  ListPersonalEdgeTypesParams,
-  void,
-  ListPersonalEdgeTypesOutput
-> = {
+export const listPersonalEdgeTypes: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: true,
-  handler: async ({ c }): Promise<XRPCResponse<ListPersonalEdgeTypesOutput>> => {
+  handler: async ({ c }): Promise<XRPCResponse<OutputSchema>> => {
     const { personalGraph } = c.get('services');
     const logger = c.get('logger');
     const user = c.get('user');
@@ -60,7 +49,7 @@ export const listPersonalEdgeTypes: XRPCMethod<
 
     const relationTypes = await personalGraph.listPersonalRelationTypes(user.did);
 
-    const response: ListPersonalEdgeTypesOutput = {
+    const response: OutputSchema = {
       relationTypes,
     };
 

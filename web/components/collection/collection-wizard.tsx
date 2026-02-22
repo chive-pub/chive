@@ -40,6 +40,10 @@ import {
   Newspaper,
   Hash,
   MapPin,
+  Banknote,
+  Database,
+  FileCode,
+  Stethoscope,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -78,6 +82,9 @@ import {
   type Conference,
 } from '@/components/forms/conference-autocomplete';
 import { JournalAutocomplete, type CrossRefJournal } from '@/components/forms/journal-autocomplete';
+import { FunderAutocomplete, type FunderResult } from '@/components/forms/funder-autocomplete';
+import { ZenodoAutocomplete, type ZenodoRecord } from '@/components/forms/zenodo-autocomplete';
+import { PubmedAutocomplete, type PubmedEntry } from '@/components/forms/pubmed-autocomplete';
 
 import {
   useCreateCollection,
@@ -250,6 +257,10 @@ const ITEM_TYPE_CONFIG: Record<string, { label: string; icon: typeof FileText; c
   graphNode: { label: 'Node', icon: Globe, color: 'bg-cyan-100 text-cyan-800' },
   conference: { label: 'Conference', icon: MapPin, color: 'bg-amber-100 text-amber-800' },
   journal: { label: 'Journal', icon: Newspaper, color: 'bg-teal-100 text-teal-800' },
+  funder: { label: 'Funder', icon: Banknote, color: 'bg-emerald-100 text-emerald-800' },
+  dataset: { label: 'Dataset', icon: Database, color: 'bg-indigo-100 text-indigo-800' },
+  software: { label: 'Software', icon: FileCode, color: 'bg-violet-100 text-violet-800' },
+  pubmed: { label: 'PubMed', icon: Stethoscope, color: 'bg-rose-100 text-rose-800' },
 };
 
 // =============================================================================
@@ -549,7 +560,7 @@ function StepItems({ form }: StepItemsProps) {
       </div>
 
       <Tabs defaultValue="eprints">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-6 xl:grid-cols-12">
           <TabsTrigger value="eprints">Eprints</TabsTrigger>
           <TabsTrigger value="doi">By DOI</TabsTrigger>
           <TabsTrigger value="arxiv">By arXiv</TabsTrigger>
@@ -558,6 +569,10 @@ function StepItems({ form }: StepItemsProps) {
           <TabsTrigger value="nodes">Graph Nodes</TabsTrigger>
           <TabsTrigger value="conferences">Conferences</TabsTrigger>
           <TabsTrigger value="journals">Journals</TabsTrigger>
+          <TabsTrigger value="funders">Funders</TabsTrigger>
+          <TabsTrigger value="datasets">Datasets</TabsTrigger>
+          <TabsTrigger value="software">Software</TabsTrigger>
+          <TabsTrigger value="pubmed">PubMed</TabsTrigger>
         </TabsList>
 
         <TabsContent value="eprints" className="mt-4">
@@ -678,6 +693,61 @@ function StepItems({ form }: StepItemsProps) {
               });
             }}
             placeholder="Search journals..."
+          />
+        </TabsContent>
+
+        <TabsContent value="funders" className="mt-4">
+          <FunderAutocomplete
+            onSelect={(funder: FunderResult) => {
+              const uri = funder.type === 'chive' ? funder.uri : `doi:${funder.doi}`;
+              addItem({
+                uri,
+                type: 'funder',
+                label: funder.name,
+              });
+            }}
+            placeholder="Search funding organizations..."
+          />
+        </TabsContent>
+
+        <TabsContent value="datasets" className="mt-4">
+          <ZenodoAutocomplete
+            recordType="dataset"
+            onSelect={(record: ZenodoRecord) => {
+              addItem({
+                uri: record.doi ? `doi:${record.doi}` : record.url,
+                type: 'dataset',
+                label: record.title,
+              });
+            }}
+            placeholder="Search Zenodo datasets..."
+          />
+        </TabsContent>
+
+        <TabsContent value="software" className="mt-4">
+          <ZenodoAutocomplete
+            recordType="software"
+            onSelect={(record: ZenodoRecord) => {
+              addItem({
+                uri: record.doi ? `doi:${record.doi}` : record.url,
+                type: 'software',
+                label: record.title,
+              });
+            }}
+            placeholder="Search Zenodo software..."
+          />
+        </TabsContent>
+
+        <TabsContent value="pubmed" className="mt-4">
+          <PubmedAutocomplete
+            onSelect={(entry: PubmedEntry) => {
+              addItem({
+                uri: `pmid:${entry.pmid}`,
+                type: 'pubmed',
+                label: entry.title,
+              });
+            }}
+            placeholder="Search PubMed by title or PMID..."
           />
         </TabsContent>
       </Tabs>

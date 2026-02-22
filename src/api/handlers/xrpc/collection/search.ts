@@ -8,10 +8,13 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/collection/search.js';
 import { ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-import type { CollectionView } from './types.js';
 import { mapCollectionToView } from './utils.js';
 
 /**
@@ -24,40 +27,20 @@ const DEFAULT_LIMIT = 20;
  */
 const MAX_LIMIT = 100;
 
-/**
- * Query parameters for pub.chive.collection.search.
- *
- * @public
- */
-export interface SearchCollectionsParams {
-  /** Text search query. */
-  query: string;
-  /** Maximum results to return. */
-  limit?: number;
-  /** Pagination cursor. */
-  cursor?: string;
-}
+/** Re-exported query parameters for pub.chive.collection.search. */
+export type SearchCollectionsParams = QueryParams;
 
-/**
- * Output schema for pub.chive.collection.search.
- *
- * @public
- */
-export interface SearchCollectionsOutput {
-  collections: CollectionView[];
-  cursor?: string;
-  hasMore: boolean;
-  total: number;
-}
+/** Re-exported output schema for pub.chive.collection.search. */
+export type SearchCollectionsOutput = OutputSchema;
 
 /**
  * XRPC method for pub.chive.collection.search query.
  *
  * @public
  */
-export const search: XRPCMethod<SearchCollectionsParams, void, SearchCollectionsOutput> = {
+export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: false,
-  handler: async ({ params, c }): Promise<XRPCResponse<SearchCollectionsOutput>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
 
@@ -86,7 +69,7 @@ export const search: XRPCMethod<SearchCollectionsParams, void, SearchCollections
       visibility: 'public',
     });
 
-    const response: SearchCollectionsOutput = {
+    const response: OutputSchema = {
       collections: result.items.map(mapCollectionToView),
       cursor: result.cursor,
       hasMore: result.hasMore,

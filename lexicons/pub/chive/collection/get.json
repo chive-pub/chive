@@ -1,0 +1,34 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.get",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get a single collection by its AT-URI",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "AT-URI of the collection"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["collection"],
+          "properties": {
+            "collection": {
+              "type": "ref",
+              "ref": "pub.chive.collection.defs#collectionView",
+              "description": "The requested collection"
+            }
+          }
+        }
+      }
+    }
+  }
+}

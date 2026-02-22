@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getSubcollections",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get subcollections of a given collection",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "AT-URI of the parent collection"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["subcollections"],
+          "properties": {
+            "subcollections": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#collectionView"
+              },
+              "description": "Subcollections of the given collection"
+            }
+          }
+        }
+      }
+    }
+  }
+}

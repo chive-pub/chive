@@ -9,40 +9,30 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/collection/getParent.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-import type { CollectionView } from './types.js';
 import { mapCollectionToView } from './utils.js';
 
-/**
- * Query parameters for pub.chive.collection.getParent.
- *
- * @public
- */
-export interface GetParentParams {
-  /** AT-URI of the child collection. */
-  uri: string;
-}
+/** Re-exported query parameters for pub.chive.collection.getParent. */
+export type GetParentParams = QueryParams;
 
-/**
- * Output schema for pub.chive.collection.getParent.
- *
- * @public
- */
-export interface GetParentOutput {
-  parent?: CollectionView;
-}
+/** Re-exported output schema for pub.chive.collection.getParent. */
+export type GetParentOutput = OutputSchema;
 
 /**
  * XRPC method for pub.chive.collection.getParent query.
  *
  * @public
  */
-export const getParent: XRPCMethod<GetParentParams, void, GetParentOutput> = {
+export const getParent: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  handler: async ({ params, c }): Promise<XRPCResponse<GetParentOutput>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
 
@@ -61,7 +51,7 @@ export const getParent: XRPCMethod<GetParentParams, void, GetParentOutput> = {
 
     const parent = await collectionService.getParentCollection(params.uri as AtUri);
 
-    const response: GetParentOutput = {
+    const response: OutputSchema = {
       parent: parent ? mapCollectionToView(parent) : undefined,
     };
 

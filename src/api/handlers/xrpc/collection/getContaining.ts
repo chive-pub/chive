@@ -10,33 +10,15 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/collection/getContaining.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-import type { CollectionView } from './types.js';
 import { mapCollectionToView } from './utils.js';
-
-/**
- * Query parameters for pub.chive.collection.getContaining.
- *
- * @public
- */
-export interface GetContainingParams {
-  /** AT-URI of the item to look up. */
-  itemUri: string;
-  /** Maximum results to return. */
-  limit?: number;
-}
-
-/**
- * Output schema for pub.chive.collection.getContaining.
- *
- * @public
- */
-export interface GetContainingOutput {
-  collections: CollectionView[];
-}
 
 /**
  * Default maximum results.
@@ -48,14 +30,20 @@ const DEFAULT_LIMIT = 50;
  */
 const MAX_LIMIT = 100;
 
+/** Re-exported query parameters for pub.chive.collection.getContaining. */
+export type GetContainingParams = QueryParams;
+
+/** Re-exported output schema for pub.chive.collection.getContaining. */
+export type GetContainingOutput = OutputSchema;
+
 /**
  * XRPC method for pub.chive.collection.getContaining query.
  *
  * @public
  */
-export const getContaining: XRPCMethod<GetContainingParams, void, GetContainingOutput> = {
+export const getContaining: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  handler: async ({ params, c }): Promise<XRPCResponse<GetContainingOutput>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
     const user = c.get('user');
@@ -83,7 +71,7 @@ export const getContaining: XRPCMethod<GetContainingParams, void, GetContainingO
       user?.did
     );
 
-    const response: GetContainingOutput = {
+    const response: OutputSchema = {
       collections: collections.slice(0, limit).map(mapCollectionToView),
     };
 

@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getParent",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the parent collection of a given collection",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "AT-URI of the collection"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "parent": {
+              "type": "ref",
+              "ref": "pub.chive.collection.defs#collectionView",
+              "description": "Parent collection, if one exists"
+            }
+          }
+        }
+      }
+    }
+  }
+}

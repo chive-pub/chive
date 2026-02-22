@@ -10,11 +10,14 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/collection/listByOwner.js';
 import type { DID } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-import type { CollectionView } from './types.js';
 import { mapCollectionToView } from './utils.js';
 
 /**
@@ -27,40 +30,20 @@ const DEFAULT_LIMIT = 50;
  */
 const MAX_LIMIT = 100;
 
-/**
- * Query parameters for pub.chive.collection.listByOwner.
- *
- * @public
- */
-export interface ListByOwnerParams {
-  /** DID of the collection owner. */
-  did: string;
-  /** Maximum results to return. */
-  limit?: number;
-  /** Pagination cursor. */
-  cursor?: string;
-}
+/** Re-exported query parameters for pub.chive.collection.listByOwner. */
+export type ListByOwnerParams = QueryParams;
 
-/**
- * Output schema for pub.chive.collection.listByOwner.
- *
- * @public
- */
-export interface ListByOwnerOutput {
-  collections: CollectionView[];
-  cursor?: string;
-  hasMore: boolean;
-  total: number;
-}
+/** Re-exported output schema for pub.chive.collection.listByOwner. */
+export type ListByOwnerOutput = OutputSchema;
 
 /**
  * XRPC method for pub.chive.collection.listByOwner query.
  *
  * @public
  */
-export const listByOwner: XRPCMethod<ListByOwnerParams, void, ListByOwnerOutput> = {
+export const listByOwner: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  handler: async ({ params, c }): Promise<XRPCResponse<ListByOwnerOutput>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
     const user = c.get('user');
@@ -94,7 +77,7 @@ export const listByOwner: XRPCMethod<ListByOwnerParams, void, ListByOwnerOutput>
     // Filter out private collections unless the viewer is the owner
     const filtered = isOwner ? result.items : result.items.filter((c) => c.visibility === 'public');
 
-    const response: ListByOwnerOutput = {
+    const response: OutputSchema = {
       collections: filtered.map(mapCollectionToView),
       cursor: result.cursor,
       hasMore: result.hasMore,

@@ -8,9 +8,12 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+} from '../../../../lexicons/generated/types/pub/chive/collection/listPublic.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-import type { CollectionView } from './types.js';
 import { mapCollectionToView } from './utils.js';
 
 /**
@@ -23,40 +26,20 @@ const DEFAULT_LIMIT = 50;
  */
 const MAX_LIMIT = 100;
 
-/**
- * Query parameters for pub.chive.collection.listPublic.
- *
- * @public
- */
-export interface ListPublicParams {
-  /** Maximum results to return. */
-  limit?: number;
-  /** Pagination cursor. */
-  cursor?: string;
-  /** Filter by tag. */
-  tag?: string;
-}
+/** Re-exported query parameters for pub.chive.collection.listPublic. */
+export type ListPublicParams = QueryParams;
 
-/**
- * Output schema for pub.chive.collection.listPublic.
- *
- * @public
- */
-export interface ListPublicOutput {
-  collections: CollectionView[];
-  cursor?: string;
-  hasMore: boolean;
-  total: number;
-}
+/** Re-exported output schema for pub.chive.collection.listPublic. */
+export type ListPublicOutput = OutputSchema;
 
 /**
  * XRPC method for pub.chive.collection.listPublic query.
  *
  * @public
  */
-export const listPublic: XRPCMethod<ListPublicParams, void, ListPublicOutput> = {
+export const listPublic: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: false,
-  handler: async ({ params, c }): Promise<XRPCResponse<ListPublicOutput>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
 
@@ -80,7 +63,7 @@ export const listPublic: XRPCMethod<ListPublicParams, void, ListPublicOutput> = 
       cursor: params.cursor,
     });
 
-    const response: ListPublicOutput = {
+    const response: OutputSchema = {
       collections: result.items.map(mapCollectionToView),
       cursor: result.cursor,
       hasMore: result.hasMore,

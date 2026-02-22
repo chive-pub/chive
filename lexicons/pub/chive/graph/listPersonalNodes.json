@@ -1,0 +1,92 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.listPersonalNodes",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List personal graph nodes for the authenticated user",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum results to return"
+          },
+          "subkind": {
+            "type": "string",
+            "description": "Filter by subkind slug"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["nodes"],
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#personalNodeView"
+              },
+              "description": "Personal graph nodes"
+            }
+          }
+        }
+      }
+    },
+    "personalNodeView": {
+      "type": "object",
+      "description": "View of a personal graph node",
+      "required": ["uri", "id", "kind", "label", "status", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the node"
+        },
+        "id": {
+          "type": "string",
+          "description": "Node identifier"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Node kind"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Subkind slug"
+        },
+        "label": {
+          "type": "string",
+          "description": "Primary display label"
+        },
+        "alternateLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Alternate labels or synonyms"
+        },
+        "description": {
+          "type": "string",
+          "description": "Node description"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["proposed", "provisional", "established", "deprecated"],
+          "description": "Lifecycle status"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        }
+      }
+    }
+  }
+}

@@ -197,14 +197,14 @@ export function useCollection(uri: string, options?: { enabled?: boolean }) {
       try {
         const baseUrl = getApiBaseUrl();
         const searchParams = new URLSearchParams({ uri });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.getDetail?${searchParams.toString()}`;
+        const url = `${baseUrl}/xrpc/pub.chive.collection.get?${searchParams.toString()}`;
         const response = await fetch(url);
         if (!response.ok) {
           const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
           throw new APIError(
             typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch collection',
             response.status,
-            'pub.chive.collection.getDetail'
+            'pub.chive.collection.get'
           );
         }
         return (await response.json()) as CollectionDetailResponse;
@@ -213,7 +213,7 @@ export function useCollection(uri: string, options?: { enabled?: boolean }) {
         throw new APIError(
           error instanceof Error ? error.message : 'Failed to fetch collection',
           undefined,
-          'pub.chive.collection.getDetail'
+          'pub.chive.collection.get'
         );
       }
     },
@@ -241,15 +241,15 @@ export function useMyCollections(did: string, options?: { enabled?: boolean }) {
     queryFn: async (): Promise<ListCollectionsResponse> => {
       try {
         const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ ownerDid: did, limit: '100' });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.listForUser?${searchParams.toString()}`;
+        const searchParams = new URLSearchParams({ did, limit: '100' });
+        const url = `${baseUrl}/xrpc/pub.chive.collection.listByOwner?${searchParams.toString()}`;
         const response = await fetch(url);
         if (!response.ok) {
           const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
           throw new APIError(
             typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch collections',
             response.status,
-            'pub.chive.collection.listForUser'
+            'pub.chive.collection.listByOwner'
           );
         }
         return (await response.json()) as ListCollectionsResponse;
@@ -258,7 +258,7 @@ export function useMyCollections(did: string, options?: { enabled?: boolean }) {
         throw new APIError(
           error instanceof Error ? error.message : 'Failed to fetch collections',
           undefined,
-          'pub.chive.collection.listForUser'
+          'pub.chive.collection.listByOwner'
         );
       }
     },
@@ -344,14 +344,14 @@ export function useCollectionsContaining(itemUri: string, options?: { enabled?: 
       try {
         const baseUrl = getApiBaseUrl();
         const searchParams = new URLSearchParams({ itemUri });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.listContaining?${searchParams.toString()}`;
+        const url = `${baseUrl}/xrpc/pub.chive.collection.getContaining?${searchParams.toString()}`;
         const response = await fetch(url);
         if (!response.ok) {
           const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
           throw new APIError(
             typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch collections',
             response.status,
-            'pub.chive.collection.listContaining'
+            'pub.chive.collection.getContaining'
           );
         }
         return (await response.json()) as ListCollectionsResponse;
@@ -360,7 +360,7 @@ export function useCollectionsContaining(itemUri: string, options?: { enabled?: 
         throw new APIError(
           error instanceof Error ? error.message : 'Failed to fetch collections containing item',
           undefined,
-          'pub.chive.collection.listContaining'
+          'pub.chive.collection.getContaining'
         );
       }
     },

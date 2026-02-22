@@ -9,62 +9,32 @@
  * @public
  */
 
+import type {
+  QueryParams,
+  OutputSchema,
+  ProfileSectionView,
+} from '../../../../lexicons/generated/types/pub/chive/actor/getProfileConfig.js';
 import type { DID } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
-/**
- * Query parameters for pub.chive.actor.getProfileConfig.
- *
- * @public
- */
-export interface GetProfileConfigParams {
-  /** DID of the user whose profile config to retrieve. */
-  did: string;
-}
+/** Re-exported query parameters for pub.chive.actor.getProfileConfig. */
+export type GetProfileConfigParams = QueryParams;
 
-/**
- * Profile section in the API response.
- *
- * @public
- */
-export interface ProfileSectionView {
-  /** Section type identifier. */
-  type: string;
-  /** Whether this section is visible. */
-  visible: boolean;
-  /** Display order. */
-  order: number;
-  /** Section-specific configuration. */
-  config?: Record<string, unknown>;
-}
+/** Re-exported profile section view type. */
+export type { ProfileSectionView };
 
-/**
- * Output schema for pub.chive.actor.getProfileConfig.
- *
- * @public
- */
-export interface GetProfileConfigOutput {
-  /** DID of the profile owner. */
-  did: string;
-  /** AT-URI of the profile config record. */
-  uri?: string;
-  /** Profile type (individual, lab, organization). */
-  profileType: string;
-  /** Ordered list of profile sections. */
-  sections: ProfileSectionView[];
-  /** AT-URI of the featured collection. */
-  featuredCollectionUri?: string;
-}
+/** Re-exported output schema for pub.chive.actor.getProfileConfig. */
+export type GetProfileConfigOutput = OutputSchema;
 
 /**
  * XRPC method for pub.chive.actor.getProfileConfig query.
  *
  * @public
  */
-export const getProfileConfig: XRPCMethod<GetProfileConfigParams, void, GetProfileConfigOutput> = {
+export const getProfileConfig: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
-  handler: async ({ params, c }): Promise<XRPCResponse<GetProfileConfigOutput>> => {
+  handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const logger = c.get('logger');
     const { collection: collectionService } = c.get('services');
 
@@ -98,7 +68,7 @@ export const getProfileConfig: XRPCMethod<GetProfileConfigParams, void, GetProfi
       };
     }
 
-    const response: GetProfileConfigOutput = {
+    const response: OutputSchema = {
       did: config.did as string,
       uri: config.uri as string,
       profileType: config.profileType,

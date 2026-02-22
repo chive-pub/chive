@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.defs",
+  "defs": {
+    "collectionView": {
+      "type": "object",
+      "description": "View of a user collection",
+      "required": ["uri", "cid", "ownerDid", "label", "visibility", "itemCount", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the collection record"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "ownerDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the collection owner"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the collection"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the collection"
+        },
+        "visibility": {
+          "type": "string",
+          "knownValues": ["public", "private"],
+          "description": "Collection visibility setting"
+        },
+        "itemCount": {
+          "type": "integer",
+          "description": "Number of items in the collection"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        }
+      }
+    }
+  }
+}

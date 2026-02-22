@@ -1,0 +1,61 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.search",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Search collections by query string",
+      "parameters": {
+        "type": "params",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Search query"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["collections", "hasMore", "total"],
+          "properties": {
+            "collections": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#collectionView"
+              },
+              "description": "Search results"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more results exist"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total count of matching collections"
+            }
+          }
+        }
+      }
+    }
+  }
+}
