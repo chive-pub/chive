@@ -8,6 +8,7 @@ import {
   FileText,
   MessageSquare,
   ThumbsUp,
+  Library,
   Vote,
   Settings,
   LogOut,
@@ -111,6 +112,12 @@ export function UserMenu() {
             <Link href="/dashboard/endorsements">
               <ThumbsUp className="mr-2 h-4 w-4" />
               My Endorsements
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard/collections">
+              <Library className="mr-2 h-4 w-4" />
+              My Collections
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

@@ -17,6 +17,7 @@ import { autocompleteOrcid } from './autocompleteOrcid.js';
 import { discoverAuthorIds } from './discoverAuthorIds.js';
 import { getDiscoverySettings } from './getDiscoverySettings.js';
 import { getMyProfile } from './getMyProfile.js';
+import { getProfileConfig } from './getProfileConfig.js';
 
 // Re-export handlers
 export { autocompleteAffiliation } from './autocompleteAffiliation.js';
@@ -26,6 +27,7 @@ export { autocompleteOpenReview } from './autocompleteOpenReview.js';
 export { discoverAuthorIds } from './discoverAuthorIds.js';
 export { getMyProfile } from './getMyProfile.js';
 export { getDiscoverySettings } from './getDiscoverySettings.js';
+export { getProfileConfig } from './getProfileConfig.js';
 
 // Re-export types from generated lexicons for external consumers
 export type {
@@ -85,4 +87,5 @@ export const actorMethods: Record<string, XRPCMethod<any, any, any>> = {
   'pub.chive.actor.discoverAuthorIds': discoverAuthorIds,
   'pub.chive.actor.getDiscoverySettings': getDiscoverySettings,
   'pub.chive.actor.getMyProfile': getMyProfile,
+  'pub.chive.actor.getProfileConfig': getProfileConfig,
 };

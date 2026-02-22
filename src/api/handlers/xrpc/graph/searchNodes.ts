@@ -74,10 +74,11 @@ function mapNodeToResponse(node: {
  * @public
  */
 export const searchNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
-  auth: false,
+  auth: 'optional',
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
-    const { nodeService } = c.get('services');
+    const { nodeService, personalGraph } = c.get('services');
     const logger = c.get('logger');
+    const user = c.get('user');
 
     const limit = params.limit ?? 20;
 
@@ -103,8 +104,42 @@ export const searchNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
       cursor: params.cursor,
     });
 
+    let mergedNodes: GraphNode[] = result.nodes.map(mapNodeToResponse);
+
+    // When authenticated, merge personal graph nodes into results
+    if (user?.did && personalGraph) {
+      const personalNodes = await personalGraph
+        .searchPersonalNodes(user.did, params.query, {
+          subkind: params.subkind,
+          limit,
+        })
+        .catch(() => []);
+
+      if (personalNodes.length > 0) {
+        const existingUris = new Set(mergedNodes.map((n) => n.uri));
+
+        const personalMapped: GraphNode[] = personalNodes
+          .filter((pn) => !existingUris.has(pn.uri as string))
+          .map((pn) => ({
+            id: pn.id,
+            uri: pn.uri as string,
+            kind: pn.kind,
+            subkind: pn.subkind,
+            label: pn.label,
+            alternateLabels: pn.alternateLabels,
+            description: pn.description,
+            status: pn.status,
+            createdAt: pn.createdAt.toISOString(),
+            isPersonal: true,
+          }));
+
+        // Prepend personal nodes so they appear first
+        mergedNodes = [...personalMapped, ...mergedNodes];
+      }
+    }
+
     const response: OutputSchema = {
-      nodes: result.nodes.map(mapNodeToResponse),
+      nodes: mergedNodes,
       cursor: result.cursor,
       hasMore: result.hasMore ?? result.nodes.length >= limit,
       total: result.total,

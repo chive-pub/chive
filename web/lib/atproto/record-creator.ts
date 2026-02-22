@@ -2201,3 +2201,1239 @@ export async function createRelatedWorkRecord(
     cid: response.data.cid,
   };
 }
+
+// =============================================================================
+// COLLECTION NODE CRUD
+// =============================================================================
+
+/**
+ * Collection node record as stored in ATProto.
+ *
+ * @remarks
+ * Collections are graph nodes with kind='object' and subkind='collection'.
+ * They live in the user's PDS and are indexed by Chive from the firehose.
+ */
+export interface CollectionNodeRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.graph.node';
+  id: string;
+  kind: 'object';
+  subkind: 'collection';
+  label: string;
+  description?: string;
+  metadata: {
+    visibility: 'public' | 'unlisted' | 'private';
+    itemOrder: string[];
+    enableSembleMirror?: boolean;
+    [key: string]: unknown;
+  };
+  status: 'established';
+  createdAt: string;
+}
+
+/**
+ * Input for creating a collection node.
+ */
+export interface CreateCollectionNodeInput {
+  /** Display name of the collection */
+  name: string;
+  /** Optional description */
+  description?: string;
+  /** Visibility setting */
+  visibility: 'public' | 'unlisted' | 'private';
+  /** Optional tags for categorization */
+  tags?: string[];
+  /** Whether to mirror to Semble */
+  enableSembleMirror?: boolean;
+}
+
+/**
+ * Create a collection node record in the user's PDS.
+ *
+ * @remarks
+ * Collections are personal graph nodes with kind='object' and subkind='collection'.
+ * The record is stored in the user's PDS and will be indexed by Chive
+ * when it appears on the firehose.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Collection data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record creation fails
+ *
+ * @example
+ * ```typescript
+ * const result = await createCollectionNode(agent, {
+ *   name: 'Reading List: NLP',
+ *   description: 'Papers on natural language processing',
+ *   visibility: 'public',
+ *   tags: ['nlp', 'machine-learning'],
+ * });
+ * ```
+ */
+export async function createCollectionNode(
+  agent: Agent,
+  input: CreateCollectionNodeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: CollectionNodeRecord = {
+    $type: 'pub.chive.graph.node',
+    id,
+    kind: 'object',
+    subkind: 'collection',
+    label: input.name,
+    metadata: {
+      visibility: input.visibility,
+      itemOrder: [],
+    },
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.description) {
+    record.description = input.description;
+  }
+  if (input.tags && input.tags.length > 0) {
+    record.metadata.tags = input.tags;
+  }
+  if (input.enableSembleMirror !== undefined) {
+    record.metadata.enableSembleMirror = input.enableSembleMirror;
+  }
+
+  recordLogger.info('Creating collection node', { name: input.name });
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Input for updating a collection node.
+ */
+export interface UpdateCollectionNodeInput {
+  /** AT-URI of the collection node */
+  uri: string;
+  /** Updated name */
+  name?: string;
+  /** Updated description */
+  description?: string;
+  /** Updated visibility */
+  visibility?: 'public' | 'unlisted' | 'private';
+  /** Updated tags */
+  tags?: string[];
+}
+
+/**
+ * Update a collection node record in the user's PDS.
+ *
+ * @remarks
+ * Uses putRecord to update the graph node. Preserves existing fields
+ * that are not specified in the input.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Updated collection data
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * const result = await updateCollectionNode(agent, {
+ *   uri: 'at://did:plc:abc/pub.chive.graph.node/uuid-123',
+ *   name: 'Updated Reading List',
+ *   visibility: 'unlisted',
+ * });
+ * ```
+ */
+export async function updateCollectionNode(
+  agent: Agent,
+  input: UpdateCollectionNodeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(input.uri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  // Fetch existing record to preserve unchanged fields
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+
+  const record: CollectionNodeRecord = {
+    ...existing,
+    label: input.name ?? existing.label,
+    metadata: {
+      ...existing.metadata,
+      visibility: input.visibility ?? existing.metadata.visibility,
+    },
+  };
+
+  if (input.description !== undefined) {
+    record.description = input.description;
+  }
+  if (input.tags !== undefined) {
+    record.metadata.tags = input.tags;
+  }
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Options for deleting a collection node.
+ */
+export interface DeleteCollectionOptions {
+  /** Whether to re-parent subcollections to the deleted collection's parent */
+  cascadeSubcollections?: boolean;
+}
+
+/**
+ * Delete a collection node and its associated edges from the user's PDS.
+ *
+ * @remarks
+ * Cascade logic:
+ * 1. Queries subcollections and parent of this collection
+ * 2. Lists all edges from this collection (CONTAINS and SUBCOLLECTION_OF)
+ * 3. Deletes SUBCOLLECTION_OF edges from subcollections to this collection
+ * 4. If a parent exists and cascadeSubcollections is true, creates new
+ *    SUBCOLLECTION_OF edges from each subcollection to the parent
+ * 5. Deletes all CONTAINS edges from this collection
+ * 6. Deletes the SUBCOLLECTION_OF edge from this collection to its parent
+ * 7. Deletes the collection node itself
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param uri - AT-URI of the collection node to delete
+ * @param options - Deletion options
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * await deleteCollectionNode(agent, collectionUri, {
+ *   cascadeSubcollections: true,
+ * });
+ * ```
+ */
+export async function deleteCollectionNode(
+  agent: Agent,
+  uri: string,
+  options?: DeleteCollectionOptions
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(uri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot delete records belonging to other users');
+  }
+
+  // List all edges where this collection is the source (CONTAINS and SUBCOLLECTION_OF edges)
+  const edgesFromThis = await listPersonalEdgesForSource(agent, did, uri);
+
+  // List all edges where this collection is the target (SUBCOLLECTION_OF from children)
+  const edgesToThis = await listPersonalEdgesForTarget(agent, did, uri);
+
+  // Identify subcollection edges (edges where children have SUBCOLLECTION_OF pointing to this)
+  const subcollectionEdgesFromChildren = edgesToThis.filter(
+    (e) => e.relationSlug === 'subcollection-of'
+  );
+
+  // Identify the SUBCOLLECTION_OF edge from this collection to its parent
+  const parentEdge = edgesFromThis.find((e) => e.relationSlug === 'subcollection-of');
+
+  // Step 1: Delete SUBCOLLECTION_OF edges from subcollections to this collection
+  for (const edge of subcollectionEdgesFromChildren) {
+    await deleteRecord(agent, edge.uri);
+  }
+
+  // Step 2: If parent exists and cascade is enabled, re-parent subcollections
+  if (parentEdge && options?.cascadeSubcollections) {
+    const parentUri = parentEdge.targetUri;
+    for (const edge of subcollectionEdgesFromChildren) {
+      await addSubcollection(agent, {
+        childCollectionUri: edge.sourceUri,
+        parentCollectionUri: parentUri,
+      });
+    }
+  }
+
+  // Step 3: Delete all CONTAINS edges from this collection
+  const containsEdges = edgesFromThis.filter((e) => e.relationSlug === 'contains');
+  for (const edge of containsEdges) {
+    await deleteRecord(agent, edge.uri);
+  }
+
+  // Step 4: Delete SUBCOLLECTION_OF edge from this collection to parent
+  if (parentEdge) {
+    await deleteRecord(agent, parentEdge.uri);
+  }
+
+  // Step 5: Delete the collection node itself
+  await deleteRecord(agent, uri);
+}
+
+// =============================================================================
+// COLLECTION EDGE OPERATIONS
+// =============================================================================
+
+/**
+ * Input for adding an item to a collection.
+ */
+export interface AddItemToCollectionInput {
+  /** AT-URI of the collection */
+  collectionUri: string;
+  /** AT-URI of the item to add */
+  itemUri: string;
+  /** Type of item (e.g., 'eprint', 'external-paper', 'url') */
+  itemType: string;
+  /** Optional note about why this item is in the collection */
+  note?: string;
+  /** Optional sort order within the collection */
+  order?: number;
+}
+
+/**
+ * Add an item to a collection by creating a CONTAINS edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Item addition data
+ * @returns Created edge record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await addItemToCollection(agent, {
+ *   collectionUri: 'at://did:plc:abc/pub.chive.graph.node/uuid-123',
+ *   itemUri: 'at://did:plc:xyz/pub.chive.eprint.submission/tid-456',
+ *   itemType: 'eprint',
+ *   note: 'Foundational transformer paper',
+ * });
+ * ```
+ */
+export async function addItemToCollection(
+  agent: Agent,
+  input: AddItemToCollectionInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalEdgeRecord = {
+    $type: 'pub.chive.graph.edge',
+    id,
+    sourceUri: input.collectionUri,
+    targetUri: input.itemUri,
+    relationSlug: 'contains',
+    metadata: {
+      itemType: input.itemType,
+    },
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.note) {
+    record.metadata.note = input.note;
+  }
+  if (input.order !== undefined) {
+    record.metadata.order = input.order;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Remove an item from a collection by deleting the CONTAINS edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the CONTAINS edge to delete
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * await removeItemFromCollection(agent, edgeUri);
+ * ```
+ */
+export async function removeItemFromCollection(agent: Agent, edgeUri: string): Promise<void> {
+  await deleteRecord(agent, edgeUri);
+}
+
+/**
+ * Input for adding a subcollection relationship.
+ */
+export interface AddSubcollectionInput {
+  /** AT-URI of the child collection */
+  childCollectionUri: string;
+  /** AT-URI of the parent collection */
+  parentCollectionUri: string;
+}
+
+/**
+ * Add a subcollection relationship by creating a SUBCOLLECTION_OF edge.
+ *
+ * @remarks
+ * Creates a 'subcollection-of' edge from the child to the parent.
+ * The child is the source, the parent is the target.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Subcollection relationship data
+ * @returns Created edge record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await addSubcollection(agent, {
+ *   childCollectionUri: 'at://did:plc:abc/pub.chive.graph.node/child-uuid',
+ *   parentCollectionUri: 'at://did:plc:abc/pub.chive.graph.node/parent-uuid',
+ * });
+ * ```
+ */
+export async function addSubcollection(
+  agent: Agent,
+  input: AddSubcollectionInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalEdgeRecord = {
+    $type: 'pub.chive.graph.edge',
+    id,
+    sourceUri: input.childCollectionUri,
+    targetUri: input.parentCollectionUri,
+    relationSlug: 'subcollection-of',
+    metadata: {},
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Remove a subcollection relationship by deleting the SUBCOLLECTION_OF edge.
+ *
+ * @remarks
+ * Only deletes the edge; the subcollection node itself is not removed.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the SUBCOLLECTION_OF edge to delete
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * await removeSubcollection(agent, edgeUri);
+ * ```
+ */
+export async function removeSubcollection(agent: Agent, edgeUri: string): Promise<void> {
+  await deleteRecord(agent, edgeUri);
+}
+
+/**
+ * Input for moving a subcollection to a new parent.
+ */
+export interface MoveSubcollectionInput {
+  /** AT-URI of the subcollection being moved */
+  subcollectionUri: string;
+  /** AT-URI of the old SUBCOLLECTION_OF edge to delete */
+  oldParentEdgeUri: string;
+  /** AT-URI of the new parent collection */
+  newParentUri: string;
+}
+
+/**
+ * Move a subcollection from one parent to another.
+ *
+ * @remarks
+ * Deletes the old SUBCOLLECTION_OF edge and creates a new one to the new parent.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Move operation data
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * await moveSubcollection(agent, {
+ *   subcollectionUri: childUri,
+ *   oldParentEdgeUri: existingEdgeUri,
+ *   newParentUri: newParentCollectionUri,
+ * });
+ * ```
+ */
+export async function moveSubcollection(
+  agent: Agent,
+  input: MoveSubcollectionInput
+): Promise<void> {
+  // Delete old parent edge
+  await deleteRecord(agent, input.oldParentEdgeUri);
+
+  // Create new parent edge
+  await addSubcollection(agent, {
+    childCollectionUri: input.subcollectionUri,
+    parentCollectionUri: input.newParentUri,
+  });
+}
+
+/**
+ * Update the note on a collection item edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the edge to update
+ * @param note - New note text
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * const result = await updateEdgeNote(agent, edgeUri, 'Updated annotation');
+ * ```
+ */
+export async function updateEdgeNote(
+  agent: Agent,
+  edgeUri: string,
+  note: string
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(edgeUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as PersonalEdgeRecord;
+
+  const record: PersonalEdgeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      note,
+    },
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Reorder items within a collection by updating the node's itemOrder metadata.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param collectionUri - AT-URI of the collection node
+ * @param itemOrder - Ordered array of item AT-URIs
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * const result = await reorderCollectionItems(agent, collectionUri, [
+ *   'at://did:plc:abc/pub.chive.eprint.submission/item-1',
+ *   'at://did:plc:abc/pub.chive.eprint.submission/item-2',
+ * ]);
+ * ```
+ */
+export async function reorderCollectionItems(
+  agent: Agent,
+  collectionUri: string,
+  itemOrder: string[]
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(collectionUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+
+  const record: CollectionNodeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      itemOrder,
+    },
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// PERSONAL GRAPH OPERATIONS
+// =============================================================================
+
+/**
+ * Personal graph edge record as stored in ATProto.
+ */
+export interface PersonalEdgeRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.graph.edge';
+  id: string;
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
+  metadata: Record<string, unknown>;
+  status: 'established';
+  createdAt: string;
+}
+
+/**
+ * Personal graph node record as stored in ATProto.
+ */
+export interface PersonalNodeRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.graph.node';
+  id: string;
+  kind: string;
+  subkind: string;
+  label: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  status: 'established';
+  createdAt: string;
+}
+
+/**
+ * Input for creating a personal graph node.
+ */
+export interface CreatePersonalNodeInput {
+  /** Node kind (e.g., 'object', 'type') */
+  kind: string;
+  /** Node subkind (e.g., 'concept', 'reading-list') */
+  subkind: string;
+  /** Display label */
+  label: string;
+  /** Optional description */
+  description?: string;
+  /** Optional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Create a personal graph node in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Node data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await createPersonalNode(agent, {
+ *   kind: 'object',
+ *   subkind: 'concept',
+ *   label: 'Attention Mechanism',
+ *   description: 'Self-attention and variants',
+ * });
+ * ```
+ */
+export async function createPersonalNode(
+  agent: Agent,
+  input: CreatePersonalNodeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalNodeRecord = {
+    $type: 'pub.chive.graph.node',
+    id,
+    kind: input.kind,
+    subkind: input.subkind,
+    label: input.label,
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.description) {
+    record.description = input.description;
+  }
+  if (input.metadata) {
+    record.metadata = input.metadata;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Input for creating a personal graph edge.
+ */
+export interface CreatePersonalEdgeInput {
+  /** AT-URI of the source node */
+  sourceUri: string;
+  /** AT-URI of the target node */
+  targetUri: string;
+  /** Relation type slug (e.g., 'related-to', 'depends-on') */
+  relationSlug: string;
+  /** Optional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Create a personal graph edge in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Edge data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await createPersonalEdge(agent, {
+ *   sourceUri: 'at://did:plc:abc/pub.chive.graph.node/node-1',
+ *   targetUri: 'at://did:plc:abc/pub.chive.graph.node/node-2',
+ *   relationSlug: 'related-to',
+ * });
+ * ```
+ */
+export async function createPersonalEdge(
+  agent: Agent,
+  input: CreatePersonalEdgeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalEdgeRecord = {
+    $type: 'pub.chive.graph.edge',
+    id,
+    sourceUri: input.sourceUri,
+    targetUri: input.targetUri,
+    relationSlug: input.relationSlug,
+    metadata: input.metadata ?? {},
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// PROFILE CONFIGURATION
+// =============================================================================
+
+/**
+ * Profile config record as stored in ATProto.
+ */
+export interface ProfileConfigRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.actor.profileConfig';
+  profileType?: string;
+  sections: Array<{
+    id: string;
+    visible: boolean;
+    order: number;
+  }>;
+  featuredCollectionUri?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Input for updating profile configuration.
+ */
+export interface UpdateProfileConfigInput {
+  /** Profile type (e.g., 'individual', 'lab', 'organization') */
+  profileType?: string;
+  /** Ordered list of profile sections with visibility */
+  sections: Array<{
+    id: string;
+    visible: boolean;
+    order: number;
+  }>;
+  /** AT-URI of the featured collection on the profile */
+  featuredCollectionUri?: string;
+}
+
+/**
+ * Create or update the user's profile configuration in their PDS.
+ *
+ * @remarks
+ * Uses putRecord with 'self' as rkey (ATProto convention for singleton records).
+ * Controls how the user's profile page is rendered, including section visibility,
+ * ordering, and which collection to feature prominently.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Profile configuration data
+ * @returns Created/updated record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await updateProfileConfig(agent, {
+ *   profileType: 'individual',
+ *   sections: [
+ *     { id: 'publications', visible: true, order: 0 },
+ *     { id: 'collections', visible: true, order: 1 },
+ *     { id: 'endorsements', visible: false, order: 2 },
+ *   ],
+ *   featuredCollectionUri: 'at://did:plc:abc/pub.chive.graph.node/uuid-123',
+ * });
+ * ```
+ */
+export async function updateProfileConfig(
+  agent: Agent,
+  input: UpdateProfileConfigInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: ProfileConfigRecord = {
+    $type: 'pub.chive.actor.profileConfig',
+    sections: input.sections,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (input.profileType) {
+    record.profileType = input.profileType;
+  }
+  if (input.featuredCollectionUri) {
+    record.featuredCollectionUri = input.featuredCollectionUri;
+  }
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.actor.profileConfig',
+    rkey: 'self',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// SEMBLE INTEGRATION
+// =============================================================================
+
+/**
+ * Semble card record as stored in ATProto.
+ *
+ * @remarks
+ * Cards are individual items in Semble collections, representing URLs or
+ * references with metadata. Used for dual-write mirroring of Chive
+ * collection items to the Semble ecosystem.
+ */
+export interface SembleCardRecord {
+  [key: string]: unknown;
+  $type: 'xyz.semble.card';
+  type: 'url';
+  url: string;
+  title?: string;
+  description?: string;
+  createdAt: string;
+}
+
+/**
+ * Semble collection record as stored in ATProto.
+ *
+ * @remarks
+ * Groups Semble cards into named collections with visibility controls.
+ */
+export interface SembleCollectionRecord {
+  [key: string]: unknown;
+  $type: 'xyz.semble.collection';
+  title: string;
+  description?: string;
+  visibility: 'public' | 'private' | 'unlisted';
+  items: Array<{ uri: string; addedAt: string; note?: string }>;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Create a Semble card record for a collection item.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Card data
+ * @returns Created record result
+ *
+ * @internal
+ */
+export async function createSembleCard(
+  agent: Agent,
+  input: {
+    url: string;
+    title?: string;
+    description?: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: SembleCardRecord = {
+    $type: 'xyz.semble.card',
+    type: 'url',
+    url: input.url,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.title) {
+    record.title = input.title;
+  }
+  if (input.description) {
+    record.description = input.description;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'xyz.semble.card',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Create a Semble collection with cards for each item.
+ *
+ * @remarks
+ * Creates individual Semble card records for each item in the collection,
+ * then creates a Semble collection record grouping them together.
+ * Updates the Chive collection node's metadata with the Semble collection URI.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Mirror data
+ * @returns Created Semble collection URI and card URIs
+ */
+export async function createSembleMirror(
+  agent: Agent,
+  input: {
+    /** AT-URI of the Chive collection node */
+    collectionUri: string;
+    /** Display title for the Semble collection */
+    title: string;
+    /** Optional description */
+    description?: string;
+    /** Visibility setting */
+    visibility: 'public' | 'unlisted' | 'private';
+    /** Items to create cards for */
+    items: Array<{
+      /** URL or AT-URI of the item */
+      url: string;
+      /** Display title */
+      title?: string;
+      /** Optional note */
+      note?: string;
+    }>;
+  }
+): Promise<{ sembleCollectionUri: string; cardUris: string[] }> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  recordLogger.info('Creating Semble mirror', {
+    collectionUri: input.collectionUri,
+    itemCount: input.items.length,
+  });
+
+  // Step 1: Create Semble cards for each item
+  const cardUris: string[] = [];
+  const sembleItems: Array<{ uri: string; addedAt: string; note?: string }> = [];
+
+  for (const item of input.items) {
+    const card = await createSembleCard(agent, {
+      url: item.url,
+      title: item.title,
+    });
+    cardUris.push(card.uri);
+    sembleItems.push({
+      uri: card.uri,
+      addedAt: new Date().toISOString(),
+      ...(item.note ? { note: item.note } : {}),
+    });
+  }
+
+  // Step 2: Create Semble collection grouping the cards
+  const collectionRecord: SembleCollectionRecord = {
+    $type: 'xyz.semble.collection',
+    title: input.title,
+    visibility: input.visibility,
+    items: sembleItems,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.description) {
+    collectionRecord.description = input.description;
+  }
+
+  const collectionResponse = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'xyz.semble.collection',
+    record: collectionRecord,
+  });
+
+  const sembleCollectionUri = collectionResponse.data.uri;
+
+  // Step 3: Update the Chive collection node's metadata with Semble URI
+  const parsed = parseAtUri(input.collectionUri);
+  if (parsed && parsed.did === did) {
+    const existingResponse = await agent.com.atproto.repo.getRecord({
+      repo: did,
+      collection: 'pub.chive.graph.node',
+      rkey: parsed.rkey,
+    });
+
+    const existing = existingResponse.data.value as CollectionNodeRecord;
+
+    const updatedRecord: CollectionNodeRecord = {
+      ...existing,
+      metadata: {
+        ...existing.metadata,
+        sembleCollectionUri,
+      },
+    };
+
+    await agent.com.atproto.repo.putRecord({
+      repo: did,
+      collection: 'pub.chive.graph.node',
+      rkey: parsed.rkey,
+      record: updatedRecord,
+    });
+  }
+
+  recordLogger.info('Semble mirror created', {
+    sembleCollectionUri,
+    cardCount: cardUris.length,
+  });
+
+  return { sembleCollectionUri, cardUris };
+}
+
+// =============================================================================
+// INTERNAL HELPERS (for collection cascade operations)
+// =============================================================================
+
+/**
+ * Minimal edge representation for cascade operations.
+ */
+interface MinimalEdge {
+  uri: string;
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
+}
+
+/**
+ * Lists personal graph edges where the given URI is the source.
+ *
+ * @remarks
+ * Uses listRecords to scan the user's edge collection. This is used
+ * internally for cascade deletion of collection nodes.
+ */
+async function listPersonalEdgesForSource(
+  agent: Agent,
+  did: string,
+  sourceUri: string
+): Promise<MinimalEdge[]> {
+  const edges: MinimalEdge[] = [];
+
+  try {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'pub.chive.graph.edge',
+      limit: 100,
+    });
+
+    for (const item of response.data.records) {
+      const record = item.value as PersonalEdgeRecord;
+      if (record.sourceUri === sourceUri) {
+        edges.push({
+          uri: item.uri,
+          sourceUri: record.sourceUri,
+          targetUri: record.targetUri,
+          relationSlug: record.relationSlug,
+        });
+      }
+    }
+  } catch {
+    recordLogger.warn('Failed to list edges for source', { sourceUri });
+  }
+
+  return edges;
+}
+
+/**
+ * Lists personal graph edges where the given URI is the target.
+ *
+ * @remarks
+ * Uses listRecords to scan the user's edge collection. This is used
+ * internally for cascade deletion of collection nodes.
+ */
+async function listPersonalEdgesForTarget(
+  agent: Agent,
+  did: string,
+  targetUri: string
+): Promise<MinimalEdge[]> {
+  const edges: MinimalEdge[] = [];
+
+  try {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'pub.chive.graph.edge',
+      limit: 100,
+    });
+
+    for (const item of response.data.records) {
+      const record = item.value as PersonalEdgeRecord;
+      if (record.targetUri === targetUri) {
+        edges.push({
+          uri: item.uri,
+          sourceUri: record.sourceUri,
+          targetUri: record.targetUri,
+          relationSlug: record.relationSlug,
+        });
+      }
+    }
+  } catch {
+    recordLogger.warn('Failed to list edges for target', { targetUri });
+  }
+
+  return edges;
+}

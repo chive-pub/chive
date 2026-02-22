@@ -5,6 +5,7 @@ import {
   FileText,
   MessageSquare,
   ThumbsUp,
+  Library,
   Settings,
   Upload,
   Bell,
@@ -32,6 +33,7 @@ const navItems = [
   { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
   { href: '/dashboard/reviews', label: 'My Reviews', icon: MessageSquare },
   { href: '/dashboard/endorsements', label: 'My Endorsements', icon: ThumbsUp },
+  { href: '/dashboard/collections', label: 'My Collections', icon: Library },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 

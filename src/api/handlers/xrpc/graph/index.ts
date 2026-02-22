@@ -17,6 +17,8 @@ import { getRelations } from './getRelations.js';
 import { getSubkinds } from './getSubkinds.js';
 import { listEdges } from './listEdges.js';
 import { listNodes } from './listNodes.js';
+import { listPersonalEdgeTypes } from './listPersonalEdgeTypes.js';
+import { listPersonalNodes } from './listPersonalNodes.js';
 import { searchNodes } from './searchNodes.js';
 
 // Re-export individual methods
@@ -29,6 +31,8 @@ export { getRelations } from './getRelations.js';
 export { getSubkinds } from './getSubkinds.js';
 export { listEdges } from './listEdges.js';
 export { listNodes } from './listNodes.js';
+export { listPersonalEdgeTypes } from './listPersonalEdgeTypes.js';
+export { listPersonalNodes } from './listPersonalNodes.js';
 export { searchNodes } from './searchNodes.js';
 
 /**
@@ -45,4 +49,6 @@ export const graphMethods = {
   'pub.chive.graph.getRelations': getRelations,
   'pub.chive.graph.browseFaceted': browseFaceted,
   'pub.chive.graph.getCommunities': getCommunities,
+  'pub.chive.graph.listPersonalNodes': listPersonalNodes,
+  'pub.chive.graph.listPersonalEdgeTypes': listPersonalEdgeTypes,
 } as const;

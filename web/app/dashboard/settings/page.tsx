@@ -1,6 +1,7 @@
 'use client';
 
-import { User, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { User, ExternalLink, LayoutGrid, ChevronRight } from 'lucide-react';
 
 import { useCurrentUser } from '@/lib/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -107,6 +108,33 @@ export default function SettingsPage() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Profile Display Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5" />
+            Profile Display
+          </CardTitle>
+          <CardDescription>
+            Configure the layout and sections visible on your public profile page
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/dashboard/settings/profile-display"
+            className="flex items-center justify-between rounded-lg bg-muted/50 p-4 transition-colors hover:bg-muted"
+          >
+            <div>
+              <p className="text-sm font-medium">Customize profile layout</p>
+              <p className="text-xs text-muted-foreground">
+                Reorder sections, toggle visibility, set profile type, and feature a collection
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </Link>
         </CardContent>
       </Card>
 

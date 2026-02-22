@@ -27,6 +27,7 @@
 
 import type { Pool } from 'pg';
 
+import { GRAPH_PDS_DID } from '../../config/graph.js';
 import type { CitationExtractionJob } from '../../jobs/citation-extraction-job.js';
 import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type {
@@ -45,11 +46,13 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { AnnotationService } from '../annotation/annotation-service.js';
+import type { CollectionService } from '../collection/collection-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecordWithSchema } from '../eprint/pds-record-transformer.js';
 import type { AutomaticProposalService } from '../governance/automatic-proposal-service.js';
 import type { EdgeService } from '../governance/edge-service.js';
 import type { NodeService } from '../governance/node-service.js';
+import type { PersonalGraphService } from '../graph/personal-graph-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
 import type { IPDSRegistry } from '../pds-discovery/pds-registry.js';
 import type { ReviewService } from '../review/review-service.js';
@@ -255,6 +258,23 @@ export interface EdgeRecord {
 }
 
 /**
+ * Profile configuration record from lexicon.
+ */
+export interface ProfileConfigRecord {
+  readonly profileType?: string;
+  readonly sections?: readonly {
+    readonly kind: string;
+    readonly label?: string;
+    readonly collectionUri?: string;
+    readonly limit?: number;
+    readonly visible?: boolean;
+  }[];
+  readonly featuredCollectionUri?: string;
+  readonly createdAt: string;
+  readonly updatedAt?: string;
+}
+
+/**
  * Event processor configuration.
  */
 export interface EventProcessorOptions {
@@ -299,6 +319,16 @@ export interface EventProcessorOptions {
    * When provided, citation extraction runs asynchronously after eprint indexing.
    */
   readonly citationExtractionJob?: CitationExtractionJob;
+  /**
+   * Optional collection service for indexing user-curated collections.
+   * When provided, personal graph nodes with subkind=collection are indexed.
+   */
+  readonly collectionService?: CollectionService;
+  /**
+   * Optional personal graph service for indexing user-owned nodes and edges.
+   * When provided, personal (non-governance) graph records are indexed.
+   */
+  readonly personalGraphService?: PersonalGraphService;
 }
 
 /**
@@ -334,6 +364,8 @@ export function createEventProcessor(
     citationGraph,
     tagManager,
     citationExtractionJob,
+    collectionService,
+    personalGraphService,
   } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
@@ -377,6 +409,8 @@ export function createEventProcessor(
         citationGraph,
         tagManager,
         citationExtractionJob,
+        collectionService,
+        personalGraphService,
       },
       {
         uri,
@@ -455,6 +489,8 @@ interface ProcessRecordContext {
   readonly citationGraph?: ICitationGraph;
   readonly tagManager?: TagManager;
   readonly citationExtractionJob?: CitationExtractionJob;
+  readonly collectionService?: CollectionService;
+  readonly personalGraphService?: PersonalGraphService;
 }
 
 interface RecordData {
@@ -497,6 +533,8 @@ async function processRecord(
     citationGraph,
     tagManager,
     citationExtractionJob,
+    collectionService,
+    personalGraphService,
   } = ctx;
   const { uri, cid, collection, action, record, pdsUrl } = data;
 
@@ -1010,41 +1048,106 @@ async function processRecord(
     case 'pub.chive.graph.node': {
       logger.debug('Processing node record', { action, uri });
 
-      if (action === 'delete') {
-        if (nodeService) {
-          try {
-            await nodeService.deleteNode(uri);
-            logger.info('Deleted node from index', { uri });
-          } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            logger.error('Failed to delete node', err, { uri });
-            return failure('Failed to delete node', false, err);
+      // Determine if this is a personal node (not from the Governance PDS)
+      const isPersonalNode = data.repo !== GRAPH_PDS_DID;
+
+      if (isPersonalNode) {
+        // Personal node: index via personalGraphService and collectionService
+        const nodeRecord = record as NodeRecord;
+
+        if (action === 'delete') {
+          // Delete from collection index if it was a collection node
+          if (collectionService) {
+            try {
+              const deleteResult = await collectionService.deleteCollection(uri);
+              if (!deleteResult.ok) {
+                logger.debug('Collection deletion skipped (may not be a collection)', {
+                  uri,
+                  error: deleteResult.error.message,
+                });
+              }
+            } catch (error) {
+              logger.debug('Collection deletion skipped', {
+                uri,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+
+          // Delete from personal graph index
+          if (personalGraphService) {
+            const deleteResult = await personalGraphService.deleteNode(uri);
+            if (!deleteResult.ok) {
+              const err = deleteResult.error;
+              logger.error('Failed to delete personal graph node', err, { uri });
+              return failure('Failed to delete personal graph node', false, err);
+            }
+          }
+        } else if (record) {
+          // Index collection if subkind is 'collection'
+          if (collectionService && nodeRecord.subkind === 'collection') {
+            const collectionResult =
+              action === 'update'
+                ? await collectionService.updateCollection(uri, record, metadata)
+                : await collectionService.indexCollection(record, metadata);
+            if (!collectionResult.ok) {
+              const err = collectionResult.error;
+              logger.error('Failed to index collection', err, { uri, action });
+              return failure('Failed to index collection', false, err);
+            }
+          }
+
+          // Index all personal nodes in the personal graph
+          if (personalGraphService) {
+            const pgResult =
+              action === 'update'
+                ? await personalGraphService.updateNode(uri, record, metadata)
+                : await personalGraphService.indexNode(record, metadata);
+            if (!pgResult.ok) {
+              const err = pgResult.error;
+              logger.error('Failed to index personal graph node', err, { uri, action });
+              return failure('Failed to index personal graph node', false, err);
+            }
           }
         }
-      } else if (record && nodeService) {
-        const nodeRecord = record as NodeRecord;
-        try {
-          await nodeService.indexNode({
-            id: nodeRecord.id,
-            uri,
-            kind: nodeRecord.kind,
-            subkind: nodeRecord.subkind,
-            subkindUri: nodeRecord.subkindUri as AtUri | undefined,
-            label: nodeRecord.label,
-            alternateLabels: nodeRecord.alternateLabels as string[] | undefined,
-            description: nodeRecord.description,
-            externalIds: nodeRecord.externalIds as ExternalId[] | undefined,
-            metadata: nodeRecord.metadata,
-            status: nodeRecord.status,
-            deprecatedBy: nodeRecord.deprecatedBy as AtUri | undefined,
-            proposalUri: nodeRecord.proposalUri as AtUri | undefined,
-            createdBy: data.repo,
-          });
-          logger.info('Indexed node', { uri, label: nodeRecord.label, kind: nodeRecord.kind });
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error));
-          logger.error('Failed to index node', err, { uri, action });
-          return failure('Failed to index node', false, err);
+      } else {
+        // Governance node: use existing nodeService workflow
+        if (action === 'delete') {
+          if (nodeService) {
+            try {
+              await nodeService.deleteNode(uri);
+              logger.info('Deleted node from index', { uri });
+            } catch (error) {
+              const err = error instanceof Error ? error : new Error(String(error));
+              logger.error('Failed to delete node', err, { uri });
+              return failure('Failed to delete node', false, err);
+            }
+          }
+        } else if (record && nodeService) {
+          const nodeRecord = record as NodeRecord;
+          try {
+            await nodeService.indexNode({
+              id: nodeRecord.id,
+              uri,
+              kind: nodeRecord.kind,
+              subkind: nodeRecord.subkind,
+              subkindUri: nodeRecord.subkindUri as AtUri | undefined,
+              label: nodeRecord.label,
+              alternateLabels: nodeRecord.alternateLabels as string[] | undefined,
+              description: nodeRecord.description,
+              externalIds: nodeRecord.externalIds as ExternalId[] | undefined,
+              metadata: nodeRecord.metadata,
+              status: nodeRecord.status,
+              deprecatedBy: nodeRecord.deprecatedBy as AtUri | undefined,
+              proposalUri: nodeRecord.proposalUri as AtUri | undefined,
+              createdBy: data.repo,
+            });
+            logger.info('Indexed node', { uri, label: nodeRecord.label, kind: nodeRecord.kind });
+          } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error('Failed to index node', err, { uri, action });
+            return failure('Failed to index node', false, err);
+          }
         }
       }
       return success();
@@ -1053,43 +1156,101 @@ async function processRecord(
     case 'pub.chive.graph.edge': {
       logger.debug('Processing edge record', { action, uri });
 
-      if (action === 'delete') {
-        if (edgeService) {
-          try {
-            await edgeService.deleteEdge(uri);
-            logger.info('Deleted edge from index', { uri });
-          } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            logger.error('Failed to delete edge', err, { uri });
-            return failure('Failed to delete edge', false, err);
+      // Determine if this is a personal edge (not from the Governance PDS)
+      const isPersonalEdge = data.repo !== GRAPH_PDS_DID;
+
+      if (isPersonalEdge) {
+        // Personal edge: index via collectionService and personalGraphService
+        const edgeRecord = record as EdgeRecord;
+        const isCollectionRelation =
+          edgeRecord?.relationSlug === 'contains' ||
+          edgeRecord?.relationSlug === 'subcollection-of';
+
+        if (action === 'delete') {
+          // Delete from collection edges if it was a collection relation
+          if (collectionService && isCollectionRelation) {
+            const deleteResult = await collectionService.deleteCollectionEdge(uri);
+            if (!deleteResult.ok) {
+              logger.debug('Collection edge deletion skipped', {
+                uri,
+                error: deleteResult.error.message,
+              });
+            }
+          }
+
+          // Delete from personal graph edges
+          if (personalGraphService) {
+            const deleteResult = await personalGraphService.deleteEdge(uri);
+            if (!deleteResult.ok) {
+              const err = deleteResult.error;
+              logger.error('Failed to delete personal graph edge', err, { uri });
+              return failure('Failed to delete personal graph edge', false, err);
+            }
+          }
+        } else if (record) {
+          // Index collection edge if relation is contains or subcollection-of
+          if (collectionService && isCollectionRelation) {
+            const collectionResult = await collectionService.indexCollectionEdge(record, metadata);
+            if (!collectionResult.ok) {
+              const err = collectionResult.error;
+              logger.error('Failed to index collection edge', err, { uri, action });
+              return failure('Failed to index collection edge', false, err);
+            }
+          }
+
+          // Index all personal edges in the personal graph
+          if (personalGraphService) {
+            const pgResult =
+              action === 'update'
+                ? await personalGraphService.updateEdge(uri, record, metadata)
+                : await personalGraphService.indexEdge(record, metadata);
+            if (!pgResult.ok) {
+              const err = pgResult.error;
+              logger.error('Failed to index personal graph edge', err, { uri, action });
+              return failure('Failed to index personal graph edge', false, err);
+            }
           }
         }
-      } else if (record && edgeService) {
-        const edgeRecord = record as EdgeRecord;
-        try {
-          await edgeService.indexEdge({
-            id: edgeRecord.id,
-            uri,
-            sourceUri: edgeRecord.sourceUri as AtUri,
-            targetUri: edgeRecord.targetUri as AtUri,
-            relationUri: edgeRecord.relationUri as AtUri | undefined,
-            relationSlug: edgeRecord.relationSlug,
-            weight: edgeRecord.weight,
-            metadata: edgeRecord.metadata,
-            status: edgeRecord.status,
-            proposalUri: edgeRecord.proposalUri as AtUri | undefined,
-            createdBy: data.repo,
-          });
-          logger.info('Indexed edge', {
-            uri,
-            sourceUri: edgeRecord.sourceUri,
-            targetUri: edgeRecord.targetUri,
-            relationSlug: edgeRecord.relationSlug,
-          });
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error));
-          logger.error('Failed to index edge', err, { uri, action });
-          return failure('Failed to index edge', false, err);
+      } else {
+        // Governance edge: use existing edgeService workflow
+        if (action === 'delete') {
+          if (edgeService) {
+            try {
+              await edgeService.deleteEdge(uri);
+              logger.info('Deleted edge from index', { uri });
+            } catch (error) {
+              const err = error instanceof Error ? error : new Error(String(error));
+              logger.error('Failed to delete edge', err, { uri });
+              return failure('Failed to delete edge', false, err);
+            }
+          }
+        } else if (record && edgeService) {
+          const edgeRecord = record as EdgeRecord;
+          try {
+            await edgeService.indexEdge({
+              id: edgeRecord.id,
+              uri,
+              sourceUri: edgeRecord.sourceUri as AtUri,
+              targetUri: edgeRecord.targetUri as AtUri,
+              relationUri: edgeRecord.relationUri as AtUri | undefined,
+              relationSlug: edgeRecord.relationSlug,
+              weight: edgeRecord.weight,
+              metadata: edgeRecord.metadata,
+              status: edgeRecord.status,
+              proposalUri: edgeRecord.proposalUri as AtUri | undefined,
+              createdBy: data.repo,
+            });
+            logger.info('Indexed edge', {
+              uri,
+              sourceUri: edgeRecord.sourceUri,
+              targetUri: edgeRecord.targetUri,
+              relationSlug: edgeRecord.relationSlug,
+            });
+          } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error('Failed to index edge', err, { uri, action });
+            return failure('Failed to index edge', false, err);
+          }
         }
       }
       return success();
@@ -1220,6 +1381,70 @@ async function processRecord(
       return success();
     }
 
+    case 'pub.chive.actor.profileConfig': {
+      logger.debug('Processing profile config', { action, uri });
+
+      if (action === 'delete') {
+        try {
+          const did = data.repo;
+          await pool.query('DELETE FROM profile_config WHERE did = $1', [did]);
+          logger.info('Deleted profile config from index', { did });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete profile config', error, { uri });
+          return failure(
+            'Failed to delete profile config',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
+      } else if (record) {
+        try {
+          const configRecord = record as ProfileConfigRecord;
+          const did = data.repo;
+
+          await pool.query(
+            `INSERT INTO profile_config (
+              did, uri, cid, profile_type, sections, featured_collection_uri,
+              created_at, updated_at, pds_url, indexed_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            ON CONFLICT (did) DO UPDATE SET
+              uri = EXCLUDED.uri,
+              cid = EXCLUDED.cid,
+              profile_type = EXCLUDED.profile_type,
+              sections = EXCLUDED.sections,
+              featured_collection_uri = EXCLUDED.featured_collection_uri,
+              updated_at = EXCLUDED.updated_at,
+              pds_url = EXCLUDED.pds_url`,
+            [
+              did,
+              uri,
+              cid ?? '',
+              configRecord.profileType ?? 'individual',
+              JSON.stringify(configRecord.sections ?? []),
+              configRecord.featuredCollectionUri ?? null,
+              new Date(configRecord.createdAt),
+              configRecord.updatedAt ? new Date(configRecord.updatedAt) : null,
+              pdsUrl,
+            ]
+          );
+          logger.info('Indexed profile config', {
+            did,
+            profileType: configRecord.profileType,
+          });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index profile config', error, { uri, action });
+          return failure(
+            'Failed to index profile config',
+            false,
+            new DatabaseError('INSERT', error.message, error)
+          );
+        }
+      }
+      return success();
+    }
+
     default:
       if (collection.startsWith('pub.chive.')) {
         logger.warn('Unhandled Chive collection', { collection, action });
@@ -1324,6 +1549,8 @@ export function createBatchEventProcessor(
     storage,
     citationGraph,
     tagManager,
+    collectionService,
+    personalGraphService,
   } = options;
 
   return async (events: readonly ProcessedEvent[]): Promise<BatchProcessResult> => {
@@ -1359,6 +1586,8 @@ export function createBatchEventProcessor(
           storage,
           citationGraph,
           tagManager,
+          collectionService,
+          personalGraphService,
         },
         {
           uri,
