@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Mail, ExternalLink } from 'lucide-react';
 
@@ -209,9 +212,25 @@ export function AuthorChipList({
   size = 'default',
   className,
 }: AuthorChipListProps) {
-  const displayedAuthors = max > 0 ? authors.slice(0, max) : authors;
-  const remainingCount = authors.length - displayedAuthors.length;
+  const [expanded, setExpanded] = useState(false);
   const textSize = size === 'sm' ? 'text-xs' : 'text-sm';
+
+  // Contribution-aware display: always show all highlighted (equal contribution)
+  // authors, then fill remaining slots from the rest
+  const highlighted = authors.filter((a) => a.isHighlighted);
+  const rest = authors.filter((a) => !a.isHighlighted);
+
+  let displayedAuthors: EprintAuthor[];
+  let remainingCount: number;
+
+  if (expanded || max <= 0) {
+    displayedAuthors = [...highlighted, ...rest];
+    remainingCount = 0;
+  } else {
+    const restToShow = Math.max(0, max - highlighted.length);
+    displayedAuthors = [...highlighted, ...rest.slice(0, restToShow)];
+    remainingCount = authors.length - displayedAuthors.length;
+  }
 
   // Count highlighted authors - only show legend if multiple authors have equal contribution
   const highlightedCount = displayedAuthors.filter((a) => a.isHighlighted).length;
@@ -221,20 +240,22 @@ export function AuthorChipList({
     <div className={cn('space-y-1', className)}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {displayedAuthors.map((author, index) => (
-          <span key={author.did ?? `author-${index}`} className="inline-flex items-center">
-            <AuthorChip
-              author={author}
-              showAvatar={showAvatars}
-              showBadges={showBadges}
-              size={size}
-            />
-            {index < displayedAuthors.length - 1 && (
-              <span className="ml-2 text-muted-foreground">,</span>
-            )}
-          </span>
+          <AuthorChip
+            key={author.did ?? `author-${index}`}
+            author={author}
+            showAvatar={showAvatars}
+            showBadges={showBadges}
+            size={size}
+          />
         ))}
         {remainingCount > 0 && (
-          <span className={cn('text-muted-foreground', textSize)}>+{remainingCount} more</span>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className={cn('text-muted-foreground hover:text-foreground', textSize)}
+          >
+            +{remainingCount} more
+          </button>
         )}
       </div>
 

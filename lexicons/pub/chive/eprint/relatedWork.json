@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.relatedWork",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "User-curated related paper link between eprints",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["eprintUri", "relatedUri", "relationType", "createdAt"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the source eprint"
+          },
+          "relatedUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the related eprint"
+          },
+          "relationType": {
+            "type": "string",
+            "knownValues": [
+              "related",
+              "extends",
+              "replicates",
+              "contradicts",
+              "reviews",
+              "is-supplement-to"
+            ],
+            "description": "Type of relationship between the two eprints"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Description of how the eprints are related"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

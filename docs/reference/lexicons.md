@@ -6,28 +6,28 @@ For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.c
 
 ## Namespace overview
 
-| Namespace                  | Purpose                                      |
-| -------------------------- | -------------------------------------------- |
-| `pub.chive.activity.*`     | Activity feed and correlation metrics        |
-| `pub.chive.actor.*`        | User profiles and autocomplete               |
-| `pub.chive.alpha.*`        | Alpha program enrollment                     |
-| `pub.chive.annotation.*`   | Inline text annotations and entity links     |
-| `pub.chive.author.*`       | Author profiles and search                   |
-| `pub.chive.backlink.*`     | Cross-reference backlinks                    |
-| `pub.chive.claiming.*`     | Eprint ownership claiming and coauthorship   |
-| `pub.chive.defs`           | Shared enum definitions                      |
-| `pub.chive.discovery.*`    | Recommendations and citation networks        |
-| `pub.chive.endorsement.*`  | Endorsement aggregation queries              |
-| `pub.chive.eprint.*`       | Eprint submissions, versions, and changelogs |
-| `pub.chive.governance.*`   | Community governance and editor management   |
-| `pub.chive.graph.*`        | Knowledge graph nodes, edges, and proposals  |
-| `pub.chive.import.*`       | External eprint import                       |
-| `pub.chive.metrics.*`      | View counts, downloads, and trending         |
-| `pub.chive.notification.*` | Review and endorsement notifications         |
-| `pub.chive.review.*`       | Document-level reviews and entity links      |
-| `pub.chive.richtext.*`     | Shared rich text definitions and facets      |
-| `pub.chive.sync.*`         | PDS synchronization and staleness checking   |
-| `pub.chive.tag.*`          | User-generated tags and tag search           |
+| Namespace                  | Purpose                                                    |
+| -------------------------- | ---------------------------------------------------------- |
+| `pub.chive.activity.*`     | Activity feed and correlation metrics                      |
+| `pub.chive.actor.*`        | User profiles and autocomplete                             |
+| `pub.chive.alpha.*`        | Alpha program enrollment                                   |
+| `pub.chive.annotation.*`   | Inline text annotations and entity links                   |
+| `pub.chive.author.*`       | Author profiles and search                                 |
+| `pub.chive.backlink.*`     | Cross-reference backlinks                                  |
+| `pub.chive.claiming.*`     | Eprint ownership claiming and coauthorship                 |
+| `pub.chive.defs`           | Shared enum definitions                                    |
+| `pub.chive.discovery.*`    | Recommendations and citation networks                      |
+| `pub.chive.endorsement.*`  | Endorsement aggregation queries                            |
+| `pub.chive.eprint.*`       | Eprint submissions, versions, citations, and related works |
+| `pub.chive.governance.*`   | Community governance and editor management                 |
+| `pub.chive.graph.*`        | Knowledge graph nodes, edges, and proposals                |
+| `pub.chive.import.*`       | External eprint import                                     |
+| `pub.chive.metrics.*`      | View counts, downloads, and trending                       |
+| `pub.chive.notification.*` | Review and endorsement notifications                       |
+| `pub.chive.review.*`       | Document-level reviews and entity links                    |
+| `pub.chive.richtext.*`     | Shared rich text definitions and facets                    |
+| `pub.chive.sync.*`         | PDS synchronization and staleness checking                 |
+| `pub.chive.tag.*`          | User-generated tags and tag search                         |
 
 ## Shared definitions (pub.chive.defs)
 
@@ -614,6 +614,67 @@ User-contributed tag on an eprint.
 }
 ```
 
+### pub.chive.eprint.citation
+
+User-curated citation linking an eprint to a cited work. Stored in the citing author's PDS.
+
+```typescript
+{
+  "$type": "pub.chive.eprint.citation",
+  "eprintUri": string,          // Required, AT-URI of the eprint that cites this work
+  "citedWork": {                // Required, metadata about the cited work
+    "title": string,            // Required, max 1000 chars
+    "doi": string,              // Optional, max 200 chars
+    "arxivId": string,          // Optional, max 50 chars
+    "url": string,              // Optional, URI format, max 1000 chars
+    "authors": string[],        // Optional, max 50 entries, each max 200 chars
+    "year": number,             // Optional, publication year
+    "venue": string,            // Optional, journal/conference, max 500 chars
+    "chiveUri": string          // Optional, AT-URI if cited work exists in Chive
+  },
+  "citationType": string,      // Optional, semantic type of citation
+  "context": string,           // Optional, contextual note, max 1000 chars
+  "createdAt": string          // Required, ISO 8601
+}
+```
+
+**Citation types** (knownValues, open enum):
+
+| Value         | Description                      |
+| ------------- | -------------------------------- |
+| `cites`       | General citation                 |
+| `extends`     | Builds upon the cited work       |
+| `refutes`     | Contradicts or challenges        |
+| `reviews`     | Reviews or surveys               |
+| `uses-data`   | Uses data from cited work        |
+| `uses-method` | Uses methodology from cited work |
+
+### pub.chive.eprint.relatedWork
+
+User-curated related paper link between eprints. Both eprints must exist in Chive.
+
+```typescript
+{
+  "$type": "pub.chive.eprint.relatedWork",
+  "eprintUri": string,          // Required, AT-URI of the source eprint
+  "relatedUri": string,         // Required, AT-URI of the related eprint
+  "relationType": string,       // Required, type of relationship
+  "description": string,        // Optional, max 500 chars
+  "createdAt": string           // Required, ISO 8601
+}
+```
+
+**Relation types** (knownValues, open enum):
+
+| Value              | Description            |
+| ------------------ | ---------------------- |
+| `related`          | Generally related      |
+| `extends`          | Extends or builds upon |
+| `replicates`       | Replication study      |
+| `contradicts`      | Contradicts findings   |
+| `reviews`          | Reviews or surveys     |
+| `is-supplement-to` | Supplementary to       |
+
 ### Eprint queries and procedures
 
 | Lexicon                              | Type      | Description                            |
@@ -623,6 +684,8 @@ User-contributed tag on an eprint.
 | `pub.chive.eprint.listByAuthor`      | Query     | List eprints by a specific author DID  |
 | `pub.chive.eprint.getChangelog`      | Query     | Get a single changelog entry           |
 | `pub.chive.eprint.listChangelogs`    | Query     | List changelogs for an eprint          |
+| `pub.chive.eprint.listCitations`     | Query     | List citations for an eprint           |
+| `pub.chive.eprint.listRelatedWorks`  | Query     | List related works for an eprint       |
 | `pub.chive.eprint.updateSubmission`  | Procedure | Authorize and prepare an eprint update |
 | `pub.chive.eprint.deleteSubmission`  | Procedure | Authorize an eprint deletion           |
 

@@ -236,18 +236,18 @@ interface FacetEntry {
 }
 
 /**
- * Merge selected field nodes into the facets array as personality (discipline) facets.
- * Deduplicates against any personality facets the user already selected manually.
+ * Merge selected field nodes into the facets array as discipline facets.
+ * Deduplicates against any discipline facets the user already selected manually.
  */
 export function mergeFieldsIntoFacets(
   facets: FacetEntry[],
   fieldNodes: ReadonlyArray<{ uri: string; label: string }>
 ): FacetEntry[] {
-  const existing = new Set(facets.filter((f) => f.slug === 'personality').map((f) => f.value));
+  const existing = new Set(facets.filter((f) => f.slug === 'discipline').map((f) => f.value));
   const additions: FacetEntry[] = [];
   for (const field of fieldNodes) {
     if (!existing.has(field.uri)) {
-      additions.push({ slug: 'personality', value: field.uri, label: field.label });
+      additions.push({ slug: 'discipline', value: field.uri, label: field.label });
     }
   }
   return [...facets, ...additions];
@@ -715,7 +715,7 @@ export function SubmissionWizard({
         order: m.order,
       }));
 
-      // Transform facets and auto-add fields as personality (discipline) facets
+      // Transform facets and auto-add fields as discipline facets
       const baseFacets = (values.facets ?? []).map((f) => ({
         slug: f.slug,
         value: f.value,

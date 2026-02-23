@@ -815,6 +815,168 @@ export interface IStorageBackend {
    * @public
    */
   getTagsForEprint(eprintUri: AtUri): Promise<readonly IndexedUserTag[]>;
+
+  /**
+   * Retrieves distinct eprint URIs that match a normalized term as either
+   * a community tag (user_tags_index) or an author keyword (eprints_index.keywords).
+   *
+   * @param normalizedTerm - Normalized tag/keyword string (hyphen-separated)
+   * @param limit - Maximum results (0 for count only)
+   * @param offset - Pagination offset
+   * @returns Deduplicated eprint URIs and total count
+   *
+   * @public
+   */
+  getEprintUrisForTerm(
+    normalizedTerm: string,
+    limit: number,
+    offset: number
+  ): Promise<{ uris: AtUri[]; total: number }>;
+
+  /**
+   * Searches distinct keywords from eprints_index matching a search term.
+   *
+   * @param searchText - Normalized search text
+   * @param limit - Maximum results
+   * @returns Keywords with usage counts
+   *
+   * @public
+   */
+  searchKeywords(
+    searchText: string,
+    limit: number
+  ): Promise<{ normalizedForm: string; displayForm: string; usageCount: number }[]>;
+
+  /**
+   * Indexes a user tag record into the user_tags_index table.
+   *
+   * @param tag - Tag data to index
+   * @returns void
+   *
+   * @public
+   */
+  indexTag(tag: {
+    readonly uri: AtUri;
+    readonly cid: CID;
+    readonly eprintUri: AtUri;
+    readonly taggerDid: DID;
+    readonly tag: string;
+    readonly createdAt: Date;
+    readonly pdsUrl: string;
+  }): Promise<void>;
+
+  /**
+   * Deletes a record from an index table by AT-URI.
+   */
+  deleteByUri(table: string, uri: AtUri): Promise<void>;
+
+  /**
+   * Retrieves citations for an eprint.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset, source filter)
+   * @returns Paginated list of citations
+   *
+   * @remarks
+   * Returns both auto-extracted and user-provided citations.
+   * Filter by source to get only one type.
+   *
+   * @example
+   * ```typescript
+   * const result = await storage.getCitationsForEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
+   *   { limit: 50, source: 'all' }
+   * );
+   *
+   * for (const citation of result.citations) {
+   *   console.log(citation.title, citation.source);
+   * }
+   * ```
+   *
+   * @public
+   */
+  getCitationsForEprint(
+    eprintUri: AtUri,
+    options?: EprintCitationQueryOptions
+  ): Promise<CitationListResult>;
+
+  /**
+   * Indexes a user-provided citation from the firehose.
+   *
+   * @param citation - Citation data to index
+   * @returns void
+   *
+   * @remarks
+   * Upserts into the extracted_citations table using user_record_uri
+   * as the deduplication key. Sets source to 'user-provided'.
+   *
+   * @public
+   */
+  indexCitation(citation: IndexCitationInput): Promise<void>;
+
+  /**
+   * Deletes a user-provided citation by its record URI.
+   *
+   * @param userRecordUri - AT URI of the user citation record
+   * @returns void
+   *
+   * @public
+   */
+  deleteCitation(userRecordUri: AtUri): Promise<void>;
+
+  /**
+   * Retrieves related works for an eprint.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Query options (limit, offset)
+   * @returns Paginated list of related works
+   *
+   * @remarks
+   * Returns user-curated related work links. Each link includes the
+   * target eprint URI and the relationship type.
+   *
+   * @example
+   * ```typescript
+   * const result = await storage.getRelatedWorksForEprint(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
+   *   { limit: 50 }
+   * );
+   *
+   * for (const rw of result.relatedWorks) {
+   *   console.log(rw.targetEprintUri, rw.relationshipType);
+   * }
+   * ```
+   *
+   * @public
+   */
+  getRelatedWorksForEprint(
+    eprintUri: AtUri,
+    options?: RelatedWorkQueryOptions
+  ): Promise<RelatedWorkListResult>;
+
+  /**
+   * Indexes a related work record from the firehose.
+   *
+   * @param relatedWork - Related work data to index
+   * @returns void
+   *
+   * @remarks
+   * Upserts into the user_related_works_index table using uri
+   * as the primary key.
+   *
+   * @public
+   */
+  indexRelatedWork(relatedWork: IndexRelatedWorkInput): Promise<void>;
+
+  /**
+   * Deletes a related work record by its URI.
+   *
+   * @param uri - AT URI of the related work record
+   * @returns void
+   *
+   * @public
+   */
+  deleteRelatedWork(uri: AtUri): Promise<void>;
 }
 
 /**
@@ -910,4 +1072,180 @@ export interface ChangelogQueryOptions {
 export interface ChangelogListResult {
   readonly changelogs: readonly StoredChangelog[];
   readonly total: number;
+}
+
+// =============================================================================
+// CITATION TYPES
+// =============================================================================
+
+/**
+ * Query options for citation listing.
+ *
+ * @public
+ */
+export interface EprintCitationQueryOptions {
+  readonly limit?: number;
+  readonly offset?: number;
+  /**
+   * Filter by citation source.
+   *
+   * @remarks
+   * - 'all': return all citations
+   * - 'user': return only user-provided citations
+   * - 'auto': return only auto-extracted citations (semantic-scholar, crossref, grobid)
+   *
+   * @defaultValue 'all'
+   */
+  readonly source?: 'all' | 'user' | 'auto';
+}
+
+/**
+ * Result of listing citations.
+ *
+ * @public
+ */
+export interface CitationListResult {
+  readonly citations: readonly IndexedCitation[];
+  readonly total: number;
+}
+
+/**
+ * Indexed citation from the extracted_citations table.
+ *
+ * @public
+ */
+export interface IndexedCitation {
+  /** Database row ID */
+  readonly id: number;
+  /** AT-URI of the citing eprint */
+  readonly eprintUri: AtUri;
+  /** Raw citation text (if extracted from document) */
+  readonly rawText?: string;
+  /** Title of the cited work */
+  readonly title?: string;
+  /** DOI of the cited work */
+  readonly doi?: string;
+  /** arXiv identifier */
+  readonly arxivId?: string;
+  /** Author names */
+  readonly authors?: readonly string[];
+  /** Publication year */
+  readonly year?: number;
+  /** Publication venue */
+  readonly venue?: string;
+  /** Source of the citation data */
+  readonly source: string;
+  /** Confidence score (0-1) */
+  readonly confidence: number;
+  /** AT-URI of the matched Chive eprint */
+  readonly chiveMatchUri?: AtUri;
+  /** Confidence of the Chive match */
+  readonly matchConfidence?: number;
+  /** Whether this is an influential citation */
+  readonly isInfluential?: boolean;
+  /** Semantic citation type */
+  readonly citationType?: string;
+  /** Contextual note */
+  readonly context?: string;
+  /** AT-URI of the user-provided citation record */
+  readonly userRecordUri?: AtUri;
+  /** DID of the curator (for user-provided citations) */
+  readonly curatorDid?: DID;
+  /** When the citation was extracted or indexed */
+  readonly extractedAt: Date;
+  /** When the citation was last updated */
+  readonly updatedAt: Date;
+}
+
+/**
+ * Input for indexing a user-provided citation.
+ *
+ * @public
+ */
+export interface IndexCitationInput {
+  readonly userRecordUri: AtUri;
+  readonly eprintUri: AtUri;
+  readonly curatorDid: DID;
+  readonly title: string;
+  readonly doi?: string;
+  readonly arxivId?: string;
+  readonly authors?: readonly string[];
+  readonly year?: number;
+  readonly venue?: string;
+  readonly chiveUri?: AtUri;
+  readonly citationType?: string;
+  readonly context?: string;
+  readonly createdAt: Date;
+  readonly pdsUrl: string;
+}
+
+// =============================================================================
+// RELATED WORK TYPES
+// =============================================================================
+
+/**
+ * Query options for related works listing.
+ *
+ * @public
+ */
+export interface RelatedWorkQueryOptions {
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
+/**
+ * Result of listing related works.
+ *
+ * @public
+ */
+export interface RelatedWorkListResult {
+  readonly relatedWorks: readonly IndexedRelatedWork[];
+  readonly total: number;
+}
+
+/**
+ * Indexed related work from the user_related_works_index table.
+ *
+ * @public
+ */
+export interface IndexedRelatedWork {
+  /** Record AT-URI */
+  readonly uri: AtUri;
+  /** Record CID */
+  readonly cid: CID;
+  /** AT-URI of the source eprint */
+  readonly sourceEprintUri: AtUri;
+  /** AT-URI of the related eprint */
+  readonly targetEprintUri: AtUri;
+  /** Relationship type */
+  readonly relationshipType: string;
+  /** Description of the relationship */
+  readonly description?: string;
+  /** DID of the curator */
+  readonly curatorDid: DID;
+  /** When the link was created */
+  readonly createdAt: Date;
+  /** PDS URL for the record */
+  readonly pdsUrl?: string;
+  /** When the record was indexed */
+  readonly indexedAt: Date;
+  /** When the record was last synced */
+  readonly lastSyncedAt: Date;
+}
+
+/**
+ * Input for indexing a related work record.
+ *
+ * @public
+ */
+export interface IndexRelatedWorkInput {
+  readonly uri: AtUri;
+  readonly cid: CID;
+  readonly sourceEprintUri: AtUri;
+  readonly targetEprintUri: AtUri;
+  readonly relationshipType: string;
+  readonly description?: string;
+  readonly curatorDid: DID;
+  readonly createdAt: Date;
+  readonly pdsUrl: string;
 }

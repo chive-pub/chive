@@ -45,6 +45,7 @@ The service combines multiple signals for recommendations:
 | Citation overlap    | OpenAlex/Semantic Scholar |
 | Field match         | Local knowledge graph     |
 | Author co-citation  | Citation analysis         |
+| Elasticsearch MLT   | Local Elasticsearch       |
 | Recency             | Publication date          |
 
 Signals are combined dynamically based on availability and user context.
@@ -126,6 +127,8 @@ async enrichEprint(eprint: Eprint): Promise<EnrichedEprint> {
 
 ## Citation graph
 
+Citations come from two sources: automated GROBID extraction from eprint PDFs, and user-curated `pub.chive.eprint.citation` records indexed from the firehose.
+
 The service provides citation graph traversal:
 
 ```typescript
@@ -144,6 +147,30 @@ const references = await discovery.getReferences(eprintUri, {
 const stats = await discovery.getCitationCounts(eprintUri);
 // { total: 42, influential: 8, recent: 15 }
 ```
+
+## GROBID citation extraction
+
+The citation extraction pipeline uses GROBID (GeneRation Of BIbliographic Data) to parse PDF documents and extract structured reference data. Extraction runs as a background job after eprint indexing.
+
+### Pipeline flow
+
+1. Eprint PDF is indexed from the firehose
+2. A citation extraction job is queued
+3. GROBID parses the PDF and returns TEI-XML with structured references
+4. References are stored in PostgreSQL (`citations_index` table)
+5. Citations matching existing Chive eprints create `CITES` edges in Neo4j
+
+### Configuration
+
+| Variable             | Default                 | Description                        |
+| -------------------- | ----------------------- | ---------------------------------- |
+| `GROBID_URL`         | `http://localhost:8070` | GROBID service URL                 |
+| `GROBID_TIMEOUT`     | `120000`                | Request timeout (ms)               |
+| `GROBID_CONSOLIDATE` | `1`                     | Citation consolidation level (0-2) |
+
+### Resilience
+
+The discovery service wraps citation graph queries in try-catch blocks. When Neo4j is unavailable or has no citation data, the service falls back to Elasticsearch More Like This (MLT) queries for related paper suggestions.
 
 ## Interaction tracking
 

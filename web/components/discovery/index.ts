@@ -2,7 +2,8 @@
  * Discovery components for personalized recommendations.
  *
  * @remarks
- * Components for the "For You" feed and related papers features.
+ * Components for the "For You" feed, related papers features,
+ * user-curated related works, and citation management.
  * All components work with the discovery API endpoints.
  *
  * @packageDocumentation
@@ -34,7 +35,17 @@ export {
   RelationshipBadgeList,
   type RelationshipBadgeProps,
   type RelationshipBadgeListProps,
+  AddRelatedPaperDialog,
+  type AddRelatedPaperDialogProps,
 } from './related';
+
+// Citation components
+export {
+  CitationListPanel,
+  type CitationListPanelProps,
+  AddCitationDialog,
+  type AddCitationDialogProps,
+} from './citations';
 
 // Onboarding components
 export { AccountLinkingWizard, AccountLinkingDialog } from './onboarding';

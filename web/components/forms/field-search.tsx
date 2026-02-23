@@ -1,40 +1,21 @@
 'use client';
 
 /**
- * Field search component with autocomplete.
+ * Multi-select field search component.
  *
  * @remarks
- * Provides a search interface for selecting knowledge graph fields.
- * Uses the same Command/Popover pattern as TagInput for consistency.
- *
- * @example
- * ```tsx
- * <FieldSearch
- *   selectedFields={fields}
- *   onFieldAdd={handleAdd}
- *   onFieldRemove={handleRemove}
- *   maxFields={10}
- * />
- * ```
+ * Thin wrapper around NodeAutocomplete for selecting multiple knowledge graph
+ * field nodes. Manages the selected badges and delegates search to NodeAutocomplete.
  *
  * @packageDocumentation
  */
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Search, Loader2, X, ChevronRight } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
+import { X, ChevronRight } from 'lucide-react';
 
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useNodeSearch } from '@/lib/hooks/use-nodes';
+import { NodeAutocomplete, type NodeSuggestion } from './node-autocomplete';
 
 // =============================================================================
 // TYPES
@@ -42,13 +23,9 @@ import { useNodeSearch } from '@/lib/hooks/use-nodes';
 
 /**
  * Field reference for form state.
- *
- * @remarks
- * The `uri` field contains the AT-URI of the knowledge graph node.
- * This matches the FieldNodeRef schema used in eprint submissions.
  */
 export interface FieldSelection {
-  /** AT-URI of the field node (matches FieldNodeRef.uri) */
+  /** AT-URI of the field node */
   uri: string;
   /** Field display label */
   label: string;
@@ -62,28 +39,20 @@ export interface FieldSelection {
 export interface FieldSearchProps {
   /** Currently selected fields */
   selectedFields: FieldSelection[];
-
   /** Callback when field is added */
   onFieldAdd: (field: FieldSelection) => void;
-
   /** Callback when field is removed */
   onFieldRemove: (field: FieldSelection) => void;
-
   /** Maximum number of fields allowed (default: 10) */
   maxFields?: number;
-
   /** Placeholder text */
   placeholder?: string;
-
   /** Disabled state */
   disabled?: boolean;
-
   /** Additional CSS classes */
   className?: string;
-
   /** Label for the field list */
   label?: string;
-
   /** Help text displayed below input */
   helpText?: string;
 }
@@ -93,10 +62,7 @@ export interface FieldSearchProps {
 // =============================================================================
 
 /**
- * Search and select knowledge graph fields with autocomplete.
- *
- * @param props - Component props
- * @returns Field search element
+ * Multi-select field search using NodeAutocomplete.
  */
 export function FieldSearch({
   selectedFields,
@@ -109,61 +75,16 @@ export function FieldSearch({
   label,
   helpText,
 }: FieldSearchProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Server-side search for fields
-  const { data: searchData, isLoading } = useNodeSearch(
-    query,
-    {
-      subkind: 'field',
-      status: 'established',
-      limit: 20,
-    },
-    { enabled: query.length >= 2 }
-  );
-
-  // selectedUris contains AT-URIs for deduplication
-  const selectedUris = useMemo(() => new Set(selectedFields.map((f) => f.uri)), [selectedFields]);
   const canAddMore = selectedFields.length < maxFields;
+  const selectedUris = useMemo(() => new Set(selectedFields.map((f) => f.uri)), [selectedFields]);
 
-  // Map search results to field format and exclude already selected (by URI)
-  const filteredFields = useMemo(() => {
-    if (!searchData?.nodes) return [];
-    return searchData.nodes
-      .filter((node) => !selectedUris.has(node.uri))
-      .map((node) => ({
-        uri: node.uri,
-        label: node.label,
-        description: node.description,
-      }));
-  }, [searchData, selectedUris]);
-
-  const handleAddField = useCallback(
-    (field: FieldSelection) => {
-      if (!canAddMore) return;
-      if (selectedUris.has(field.uri)) return;
-
-      onFieldAdd(field);
-      setQuery('');
-      setIsOpen(false);
+  const handleSelect = useCallback(
+    (node: NodeSuggestion) => {
+      if (!canAddMore || selectedUris.has(node.uri)) return;
+      onFieldAdd({ uri: node.uri, label: node.label, description: node.description });
     },
     [canAddMore, selectedUris, onFieldAdd]
   );
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-    }
-  }, []);
-
-  // Open popover when typing
-  useEffect(() => {
-    if (query.length >= 1) {
-      setIsOpen(true);
-    }
-  }, [query]);
 
   return (
     <div className={cn('space-y-3', className)} data-testid="field-search">
@@ -198,71 +119,17 @@ export function FieldSearch({
         </div>
       )}
 
-      {/* Search input with autocomplete */}
+      {/* Autocomplete - key resets component after each selection */}
       {canAddMore && (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => setIsOpen(true)}
-                placeholder={placeholder}
-                disabled={disabled}
-                className="pl-9"
-                aria-label="Field search"
-              />
-            </div>
-          </PopoverTrigger>
-
-          <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-0"
-            align="start"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-          >
-            <Command>
-              <CommandList>
-                {isLoading && (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-
-                {!isLoading && filteredFields.length === 0 && (
-                  <CommandEmpty className="py-3 text-center text-sm">
-                    No fields found matching &quot;{query}&quot;
-                  </CommandEmpty>
-                )}
-
-                {filteredFields.length > 0 && (
-                  <CommandGroup heading="Fields">
-                    {filteredFields.slice(0, 10).map((field) => (
-                      <CommandItem
-                        key={field.uri}
-                        value={field.uri}
-                        onSelect={() => handleAddField(field)}
-                        className="cursor-pointer"
-                        data-testid="field-suggestion"
-                      >
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium">{field.label}</span>
-                          {field.description && (
-                            <span className="text-xs text-muted-foreground line-clamp-1">
-                              {field.description}
-                            </span>
-                          )}
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+        <NodeAutocomplete
+          key={selectedFields.length}
+          subkind="field"
+          label="Field"
+          placeholder={placeholder}
+          disabled={disabled}
+          onSelect={handleSelect}
+          onClear={() => {}}
+        />
       )}
 
       {/* Help text and count */}

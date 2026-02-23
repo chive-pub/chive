@@ -420,7 +420,7 @@ describe('PDSSyncService Integration', () => {
   });
 
   describe('detectStaleRecords', () => {
-    it('returns empty array (storage method not yet implemented)', async () => {
+    it('returns an array of stale AT-URIs', async () => {
       const service = new PDSSyncService({
         pool,
         storage,
@@ -431,9 +431,11 @@ describe('PDSSyncService Integration', () => {
 
       const staleRecords = await service.detectStaleRecords();
 
-      // Currently returns empty array as storage method is not implemented
       expect(Array.isArray(staleRecords)).toBe(true);
-      expect(staleRecords.length).toBe(0);
+      for (const uri of staleRecords) {
+        expect(typeof uri).toBe('string');
+        expect(uri).toMatch(/^at:\/\//);
+      }
     });
 
     it('accepts custom max age parameter', async () => {

@@ -3,7 +3,8 @@
  *
  * @remarks
  * Components for displaying related papers, citation networks,
- * and relationship badges on eprint detail pages.
+ * relationship badges, and user-curated related work links
+ * on eprint detail pages.
  *
  * @packageDocumentation
  */
@@ -26,3 +27,5 @@ export {
   type RelationshipBadgeProps,
   type RelationshipBadgeListProps,
 } from './relationship-badge';
+
+export { AddRelatedPaperDialog, type AddRelatedPaperDialogProps } from './add-related-paper-dialog';

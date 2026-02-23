@@ -142,6 +142,7 @@ export function createMockSearchEngine(): ISearchEngine {
     } satisfies FacetedSearchResults),
     autocomplete: vi.fn().mockResolvedValue([]),
     deleteDocument: vi.fn().mockResolvedValue(undefined),
+    findSimilarByText: vi.fn().mockResolvedValue([]),
   };
 }
 

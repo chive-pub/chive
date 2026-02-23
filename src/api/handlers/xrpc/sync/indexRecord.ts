@@ -19,6 +19,8 @@
  * - `pub.chive.eprint.submission` - Eprint submissions
  * - `pub.chive.review.comment` - Review comments and annotations
  * - `pub.chive.review.endorsement` - Endorsements
+ * - `pub.chive.eprint.citation` - User-curated citations
+ * - `pub.chive.eprint.relatedWork` - User-curated related work links
  *
  * @packageDocumentation
  * @public
@@ -172,6 +174,9 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       'pub.chive.review.endorsement',
       'pub.chive.annotation.comment',
       'pub.chive.annotation.entityLink',
+      'pub.chive.eprint.userTag',
+      'pub.chive.eprint.citation',
+      'pub.chive.eprint.relatedWork',
     ];
 
     if (!supportedCollections.includes(collection)) {
@@ -203,7 +208,22 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       // Fetch the record from the PDS
       const record = await fetchRecordFromPds(pdsUrl, did, collection, rkey);
       if (!record) {
-        throw new NotFoundError('Record', input.uri);
+        // Record was deleted from PDS -- remove from our index
+        logger.info('Record not found at PDS, removing from index', { uri: input.uri, pdsUrl });
+        try {
+          await eprintService.deleteFromIndex(input.uri as AtUri, collection);
+        } catch (deleteErr) {
+          logger.debug('Index deletion skipped (may not exist)', {
+            uri: input.uri,
+            error: deleteErr instanceof Error ? deleteErr.message : String(deleteErr),
+          });
+        }
+        const body: OutputSchema = {
+          uri: input.uri,
+          indexed: false,
+          error: 'Record deleted from PDS; removed from index',
+        };
+        return { encoding: 'application/json', body };
       }
 
       logger.debug('Fetched record from PDS', {
@@ -257,6 +277,12 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
           throw new DatabaseError('INDEX', 'Annotation service not available');
         }
         result = await annotationService.indexEntityLink(record.value, metadata);
+      } else if (collection === 'pub.chive.eprint.userTag') {
+        result = await eprintService.indexTag(record.value, metadata);
+      } else if (collection === 'pub.chive.eprint.citation') {
+        result = await eprintService.indexCitation(record.value, metadata);
+      } else if (collection === 'pub.chive.eprint.relatedWork') {
+        result = await eprintService.indexRelatedWork(record.value, metadata);
       } else {
         throw new ValidationError(`Collection ${collection} not supported`, 'uri');
       }

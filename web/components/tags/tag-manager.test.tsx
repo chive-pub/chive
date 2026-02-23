@@ -52,7 +52,7 @@ describe('TagManager', () => {
       render(<TagManager eprintUri={eprintUri} />);
 
       expect(screen.getByTestId('tag-manager')).toBeInTheDocument();
-      expect(screen.getByText('Tags')).toBeInTheDocument();
+      expect(screen.getByText('Community Tags')).toBeInTheDocument();
     });
 
     it('shows loading skeleton', () => {

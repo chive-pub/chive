@@ -181,6 +181,32 @@ services:
       - "traefik.http.services.docs.loadbalancer.server.port=80"
 
   # ---------------------------------------------------------------------------
+  # GROBID - PDF Reference Extraction
+  # ---------------------------------------------------------------------------
+  grobid:
+    image: lfoppiano/grobid:0.8.0
+    container_name: chive-grobid
+    restart: unless-stopped
+    environment:
+      - GROBID_MAX_CONCURRENCY=4
+    networks:
+      - chive-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8070'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ---------------------------------------------------------------------------
   # Database Migrations (runs once before API starts)
   # ---------------------------------------------------------------------------
   chive-migrate:
@@ -244,6 +270,7 @@ services:
       - PORT=3000
       - OTEL_SERVICE_NAME=chive-appview
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
+      - GROBID_URL=http://grobid:8070
     depends_on:
       postgres:
         condition: service_healthy
@@ -308,12 +335,15 @@ services:
       - NODE_ENV=production
       - OTEL_SERVICE_NAME=chive-indexer
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
+      - GROBID_URL=http://grobid:8070
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      grobid:
         condition: service_healthy
       chive-migrate:
         condition: service_completed_successfully

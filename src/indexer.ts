@@ -25,8 +25,14 @@ import { Redis, type RedisOptions } from 'ioredis';
 
 import { ATRepository } from './atproto/repository/at-repository.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
+import { getGrobidConfig } from './config/grobid.js';
+import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
+import { FieldPromotionJob } from './jobs/field-promotion-job.js';
 import { PinoLogger } from './observability/logger.js';
 import { ActivityService } from './services/activity/activity-service.js';
+import { CitationExtractionService } from './services/citation/citation-extraction-service.js';
+import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
+import { GrobidClient } from './services/citation/grobid-client.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { EprintService } from './services/eprint/eprint-service.js';
 import { AutomaticProposalService } from './services/governance/automatic-proposal-service.js';
@@ -39,6 +45,7 @@ import { ReviewService } from './services/review/review-service.js';
 import { ElasticsearchAdapter } from './storage/elasticsearch/adapter.js';
 import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.js';
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
+import { CitationGraph } from './storage/neo4j/citation-graph.js';
 import { Neo4jConnection } from './storage/neo4j/connection.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
@@ -145,6 +152,7 @@ interface IndexerState {
   readonly esPool: ElasticsearchConnectionPool;
   readonly neo4jConnection: Neo4jConnection;
   indexingService?: IndexingService;
+  fieldPromotionJob?: FieldPromotionJob;
 }
 
 /**
@@ -215,6 +223,11 @@ function parseRedisUrl(url: string): RedisOptions {
  */
 async function shutdown(state: IndexerState, signal: string): Promise<void> {
   state.logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+  // Stop jobs
+  if (state.fieldPromotionJob) {
+    state.fieldPromotionJob.stop();
+  }
 
   // Stop indexing service
   if (state.indexingService) {
@@ -363,6 +376,29 @@ async function main(): Promise<void> {
     // Create PDS registry for automatic PDS discovery
     const pdsRegistry = new PDSRegistry(pgPool, logger);
 
+    // Create citation extraction pipeline
+    const grobidConfig = getGrobidConfig();
+    const grobidClient = new GrobidClient({ config: grobidConfig, logger });
+    const documentTextExtractor = new DocumentTextExtractor({ logger });
+    const citationGraph = new CitationGraph(neo4jConnection);
+
+    const citationExtractionService = new CitationExtractionService({
+      grobidClient,
+      repository,
+      db: pgPool,
+      citationGraph,
+      logger,
+      documentTextExtractor,
+    });
+
+    const citationExtractionJob = new CitationExtractionJob({
+      citationExtractionService,
+      db: pgPool,
+      logger,
+    });
+
+    logger.info('Citation extraction pipeline initialized');
+
     // Create automatic proposal service if graph PDS is configured
     let automaticProposalService: AutomaticProposalService | undefined;
     if (config.graphPdsUrl && config.graphPdsDid && config.graphPdsSigningKey) {
@@ -381,12 +417,23 @@ async function main(): Promise<void> {
         logger,
         governancePdsWriter: graphPdsWriter,
         graphPdsDid: config.graphPdsDid as DID,
+        tagManager,
       });
 
       logger.info('Automatic proposal service initialized', {
         graphPdsDid: config.graphPdsDid,
         graphPdsUrl: config.graphPdsUrl,
       });
+
+      // Start field promotion job (daily check for tag-to-field promotions)
+      state.fieldPromotionJob = new FieldPromotionJob({
+        automaticProposalService,
+        logger,
+        intervalMs: 86_400_000, // 24 hours
+        runOnStartup: false,
+      });
+      await state.fieldPromotionJob.start();
+      logger.info('Field promotion job started');
     } else {
       logger.info('Automatic proposal service disabled (graph PDS not configured)');
     }
@@ -402,6 +449,8 @@ async function main(): Promise<void> {
       identity: identityResolver,
       logger,
       pdsRegistry, // Auto-register PDSes discovered during indexing
+      tagManager, // Mirror tag creates/deletes to Neo4j tag graph
+      citationExtractionJob, // Async citation extraction after eprint indexing
     });
 
     // Create indexing service

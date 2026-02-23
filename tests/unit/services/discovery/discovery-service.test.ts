@@ -123,6 +123,8 @@ interface MockCitationGraph {
   findCoCitedPapers: ReturnType<typeof vi.fn>;
   getCitationCounts: ReturnType<typeof vi.fn>;
   deleteCitationsForPaper: ReturnType<typeof vi.fn>;
+  upsertRelatedWorksBatch: ReturnType<typeof vi.fn>;
+  deleteRelatedWorksForPaper: ReturnType<typeof vi.fn>;
 }
 
 const createMockCitationGraph = (): MockCitationGraph => ({
@@ -144,6 +146,8 @@ const createMockCitationGraph = (): MockCitationGraph => ({
     influentialCitedByCount: 0,
   }),
   deleteCitationsForPaper: vi.fn().mockResolvedValue(undefined),
+  upsertRelatedWorksBatch: vi.fn().mockResolvedValue(0),
+  deleteRelatedWorksForPaper: vi.fn().mockResolvedValue(undefined),
 });
 
 /**

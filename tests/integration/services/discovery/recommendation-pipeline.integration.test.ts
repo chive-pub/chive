@@ -108,6 +108,8 @@ function createMockCitationGraph(): ICitationGraph {
       influentialCitedByCount: 0,
     }),
     deleteCitationsForPaper: vi.fn().mockResolvedValue(undefined),
+    upsertRelatedWorksBatch: vi.fn().mockResolvedValue(0),
+    deleteRelatedWorksForPaper: vi.fn().mockResolvedValue(undefined),
   };
 }
 

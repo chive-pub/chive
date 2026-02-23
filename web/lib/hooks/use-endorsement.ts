@@ -491,6 +491,14 @@ export function useDeleteEndorsement() {
       }
 
       await deleteRecord(agent, uri);
+
+      // Immediately mark as deleted in Chive's index for instant UI feedback.
+      // The firehose will eventually also process the deletion.
+      try {
+        await authApi.pub.chive.sync.deleteRecord({ uri });
+      } catch {
+        logger.warn('Immediate deletion indexing failed; firehose will handle', { uri });
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

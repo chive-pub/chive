@@ -67,6 +67,19 @@ services:
       timeout: 5s
       retries: 10
 
+  grobid:
+    image: lfoppiano/grobid:0.8.0
+    container_name: chive-grobid
+    restart: unless-stopped
+    environment:
+      - GROBID_MAX_CONCURRENCY=4
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8070/api/isalive || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 volumes:
   postgres_data:
   redis_data:

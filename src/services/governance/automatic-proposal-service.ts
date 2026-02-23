@@ -16,6 +16,8 @@ import type { Pool } from 'pg';
 import { singleton } from 'tsyringe';
 
 import { nodeUuid } from '../../../scripts/db/lib/deterministic-uuid.js';
+import { withSpan, addSpanAttributes } from '../../observability/tracer.js';
+import type { TagManager } from '../../storage/neo4j/tag-manager.js';
 import type { AtUri, DID, NSID } from '../../types/atproto.js';
 import type { IGraphDatabase } from '../../types/interfaces/graph.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
@@ -34,6 +36,27 @@ export interface AutomaticProposalServiceOptions {
   readonly logger: ILogger;
   readonly governancePdsWriter: GovernancePDSWriter;
   readonly graphPdsDid: DID;
+  readonly tagManager?: TagManager;
+}
+
+/**
+ * Result of a field promotion check.
+ */
+export interface FieldPromotionResult {
+  /**
+   * Number of field proposals created.
+   */
+  readonly proposalsCreated: number;
+
+  /**
+   * Number of candidates evaluated.
+   */
+  readonly candidatesEvaluated: number;
+
+  /**
+   * Number of candidates skipped (already have proposals).
+   */
+  readonly candidatesSkipped: number;
 }
 
 /**
@@ -46,6 +69,7 @@ export class AutomaticProposalService {
   private readonly logger: ILogger;
   private readonly governancePdsWriter: GovernancePDSWriter;
   private readonly graphPdsDid: DID;
+  private tagManager: TagManager | null;
 
   constructor(options: AutomaticProposalServiceOptions) {
     this.pool = options.pool;
@@ -53,6 +77,16 @@ export class AutomaticProposalService {
     this.logger = options.logger;
     this.governancePdsWriter = options.governancePdsWriter;
     this.graphPdsDid = options.graphPdsDid;
+    this.tagManager = options.tagManager ?? null;
+  }
+
+  /**
+   * Sets the tag manager for field promotion checks.
+   *
+   * @param tagManager - TagManager instance
+   */
+  setTagManager(tagManager: TagManager): void {
+    this.tagManager = tagManager;
   }
 
   /**
@@ -429,6 +463,173 @@ export class AutomaticProposalService {
       );
       return null;
     }
+  }
+
+  /**
+   * Check tags meeting field promotion criteria and create field proposals.
+   *
+   * @remarks
+   * Queries the tag manager for tags that have reached the promotion threshold
+   * (usageCount >= 10, uniqueUsers >= 5, qualityScore >= 0.7, spamScore < 0.3).
+   * For each candidate, checks whether a field proposal already exists in the
+   * governance system. Creates new `pub.chive.graph.fieldProposal` records
+   * via GovernancePDSWriter for candidates without existing proposals.
+   *
+   * @returns Summary of the promotion check: proposals created, evaluated, and skipped
+   */
+  async checkAndCreateFieldProposals(): Promise<FieldPromotionResult> {
+    return withSpan('AutomaticProposalService.checkAndCreateFieldProposals', async () => {
+      if (!this.tagManager) {
+        this.logger.warn('Tag manager not available; skipping field promotion check');
+        return { proposalsCreated: 0, candidatesEvaluated: 0, candidatesSkipped: 0 };
+      }
+
+      this.logger.info('Starting field promotion check');
+
+      const candidates = await this.tagManager.findFieldCandidates(0.7);
+
+      addSpanAttributes({
+        'field_promotion.candidates_found': candidates.length,
+      });
+
+      this.logger.info('Found field promotion candidates', {
+        count: candidates.length,
+      });
+
+      let proposalsCreated = 0;
+      let candidatesSkipped = 0;
+
+      for (const candidate of candidates) {
+        const tagNormalized = candidate.tag.normalizedForm;
+
+        // Check if a field proposal already exists for this tag
+        const existingProposals = await this.graph.listProposals({
+          proposalType: ['create'],
+          subkind: 'field',
+          limit: 1,
+        });
+
+        // Search for proposals whose label matches this tag
+        const alreadyProposed = existingProposals.proposals.some((proposal) => {
+          const proposedLabel = proposal.proposedNode?.label;
+          if (!proposedLabel) {
+            return false;
+          }
+          return proposedLabel.toLowerCase() === candidate.suggestedFieldName.toLowerCase();
+        });
+
+        if (alreadyProposed) {
+          this.logger.debug('Skipping field candidate: proposal already exists', {
+            tag: tagNormalized,
+            suggestedFieldName: candidate.suggestedFieldName,
+          });
+          candidatesSkipped++;
+          continue;
+        }
+
+        // Check if a field node already exists with this label
+        const existingNodes = await this.graph.searchNodes(candidate.suggestedFieldName, {
+          kind: 'type',
+          subkind: 'field',
+          limit: 5,
+        });
+
+        const fieldExists = existingNodes.nodes.some(
+          (node) => node.label.toLowerCase() === candidate.suggestedFieldName.toLowerCase()
+        );
+
+        if (fieldExists) {
+          this.logger.debug('Skipping field candidate: field node already exists', {
+            tag: tagNormalized,
+            suggestedFieldName: candidate.suggestedFieldName,
+          });
+          candidatesSkipped++;
+          continue;
+        }
+
+        // Create a field proposal
+        const proposalRkey = `proposal-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+        const proposalRecord = {
+          $type: 'pub.chive.graph.nodeProposal',
+          proposalType: 'create',
+          kind: 'type',
+          subkind: 'field',
+          proposedNode: {
+            label: candidate.suggestedFieldName,
+            description:
+              `Automatically proposed field based on user tag "${tagNormalized}" ` +
+              `(used ${candidate.evidence.usageCount} times by ${candidate.evidence.uniqueUsers} users, ` +
+              `quality score ${candidate.evidence.qualityScore.toFixed(2)}).`,
+          },
+          rationale:
+            `Automatic field promotion: Tag "${tagNormalized}" meets promotion criteria ` +
+            `with ${candidate.evidence.usageCount} uses across ${candidate.evidence.uniqueUsers} unique users, ` +
+            `quality score ${candidate.evidence.qualityScore.toFixed(2)}, ` +
+            `confidence ${candidate.confidence.toFixed(2)}.`,
+          evidence: [
+            {
+              type: 'usage',
+              description:
+                `Tag "${tagNormalized}" has ${candidate.evidence.usageCount} uses, ` +
+                `${candidate.evidence.uniqueUsers} unique users, ` +
+                `${candidate.evidence.paperCount} papers`,
+            },
+          ],
+          createdAt: new Date().toISOString(),
+        };
+
+        try {
+          const result = await this.governancePdsWriter.createProposalBootstrap(
+            'pub.chive.graph.nodeProposal' as NSID,
+            proposalRkey,
+            proposalRecord
+          );
+
+          if (!result.ok) {
+            this.logger.error('Failed to create field proposal', undefined, {
+              tag: tagNormalized,
+              error: result.error.message,
+            });
+            continue;
+          }
+
+          proposalsCreated++;
+
+          this.logger.info('Created automatic field proposal', {
+            tag: tagNormalized,
+            suggestedFieldName: candidate.suggestedFieldName,
+            proposalUri: result.value.uri,
+            confidence: candidate.confidence,
+            usageCount: candidate.evidence.usageCount,
+            uniqueUsers: candidate.evidence.uniqueUsers,
+          });
+        } catch (error) {
+          this.logger.error(
+            'Error creating field proposal',
+            error instanceof Error ? error : undefined,
+            { tag: tagNormalized }
+          );
+        }
+      }
+
+      addSpanAttributes({
+        'field_promotion.proposals_created': proposalsCreated,
+        'field_promotion.candidates_skipped': candidatesSkipped,
+      });
+
+      this.logger.info('Field promotion check completed', {
+        candidatesEvaluated: candidates.length,
+        proposalsCreated,
+        candidatesSkipped,
+      });
+
+      return {
+        proposalsCreated,
+        candidatesEvaluated: candidates.length,
+        candidatesSkipped,
+      };
+    });
   }
 
   /**

@@ -4,6 +4,7 @@ import { Scale, ExternalLink, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { FieldBadgeList } from './field-badge';
 import { cn } from '@/lib/utils';
+import { normalizeTag } from '@/lib/utils/normalize-tag';
 import type { FieldRef } from '@/lib/api/schema';
 
 /**
@@ -70,7 +71,7 @@ export function EprintMetadata({
       )}
 
       {keywords && keywords.length > 0 && (
-        <MetadataSection label="Keywords">
+        <MetadataSection label="Keywords" description="Author-specified research terms">
           <KeywordList keywords={keywords} />
         </MetadataSection>
       )}
@@ -90,15 +91,17 @@ export function EprintMetadata({
 
 interface MetadataSectionProps {
   label: string;
+  description?: string;
   children: React.ReactNode;
 }
 
-function MetadataSection({ label, children }: MetadataSectionProps) {
+function MetadataSection({ label, description, children }: MetadataSectionProps) {
   return (
     <div>
       <h4 className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </h4>
+      {description && <p className="mb-2 text-xs text-muted-foreground">{description}</p>}
       {children}
     </div>
   );
@@ -128,7 +131,7 @@ export function KeywordList({ keywords, max = 10, className }: KeywordListProps)
       {visibleKeywords.map((keyword) => (
         <Link
           key={keyword}
-          href={`/search?q=${encodeURIComponent(keyword)}`}
+          href={`/tags/${encodeURIComponent(normalizeTag(keyword))}`}
           className="inline-block"
         >
           <Badge variant="outline" className="cursor-pointer hover:bg-accent">

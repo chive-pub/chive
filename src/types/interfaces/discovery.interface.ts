@@ -733,7 +733,7 @@ export interface CitationRelationship {
   /**
    * Source of the citation data.
    */
-  readonly source: 'semantic-scholar' | 'openalex' | 'user-provided';
+  readonly source: 'semantic-scholar' | 'openalex' | 'user-provided' | 'grobid' | 'crossref';
 
   /**
    * When the citation was discovered.
@@ -899,6 +899,60 @@ export interface ICitationGraph {
    * Used when an eprint is removed from Chive's index.
    */
   deleteCitationsForPaper(paperUri: AtUri): Promise<void>;
+
+  /**
+   * Creates RELATES_TO edges between eprints for related work records.
+   *
+   * @param relationships - Related work relationships to upsert
+   * @returns Number of edges created or updated
+   *
+   * @remarks
+   * Creates or updates RELATES_TO edges. Only creates edges where both
+   * eprints exist as Eprint nodes in the graph.
+   */
+  upsertRelatedWorksBatch(relationships: readonly RelatedWorkInput[]): Promise<number>;
+
+  /**
+   * Deletes all RELATES_TO edges for an eprint.
+   *
+   * @param paperUri - AT-URI of the eprint
+   *
+   * @remarks
+   * Used when an eprint is removed from Chive's index.
+   */
+  deleteRelatedWorksForPaper(paperUri: AtUri): Promise<void>;
+}
+
+/**
+ * Input for creating a RELATES_TO edge between eprints.
+ *
+ * @remarks
+ * Represents a user-declared related work relationship (from
+ * `pub.chive.eprint.relatedWork` records).
+ *
+ * @public
+ * @since 0.2.0
+ */
+export interface RelatedWorkInput {
+  /**
+   * AT-URI of the source eprint.
+   */
+  readonly sourceUri: AtUri;
+
+  /**
+   * AT-URI of the target eprint.
+   */
+  readonly targetUri: AtUri;
+
+  /**
+   * DID of the user who created the related work record.
+   */
+  readonly createdBy?: string;
+
+  /**
+   * AT-URI of the `pub.chive.eprint.relatedWork` record that created this edge.
+   */
+  readonly relatedWorkUri?: AtUri;
 }
 
 // =============================================================================

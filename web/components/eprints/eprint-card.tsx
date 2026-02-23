@@ -182,7 +182,7 @@ export function EprintCard({
 
   return (
     <Card
-      className={cn('transition-shadow hover:shadow-md', className)}
+      className={cn('flex flex-col transition-shadow hover:shadow-md', className)}
       onMouseEnter={handleMouseEnter}
     >
       <CardHeader className="pb-3">
@@ -208,7 +208,7 @@ export function EprintCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="mt-auto space-y-3">
         <StaticAbstract text={eprint.abstract} maxLines={3} />
 
         {fields.length > 0 && <FieldBadgeList fields={fields} max={3} />}

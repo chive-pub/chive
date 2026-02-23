@@ -84,6 +84,16 @@ function createMockStorage(): IStorageBackend {
     storeChangelog: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     deleteChangelog: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     getTagsForEprint: vi.fn().mockResolvedValue([]),
+    getEprintUrisForTerm: vi.fn().mockResolvedValue({ uris: [], total: 0 }),
+    searchKeywords: vi.fn().mockResolvedValue([]),
+    indexTag: vi.fn().mockResolvedValue(undefined),
+    deleteByUri: vi.fn().mockResolvedValue(undefined),
+    getCitationsForEprint: vi.fn().mockResolvedValue({ citations: [], total: 0 }),
+    indexCitation: vi.fn().mockResolvedValue(undefined),
+    deleteCitation: vi.fn().mockResolvedValue(undefined),
+    getRelatedWorksForEprint: vi.fn().mockResolvedValue({ relatedWorks: [], total: 0 }),
+    indexRelatedWork: vi.fn().mockResolvedValue(undefined),
+    deleteRelatedWork: vi.fn().mockResolvedValue(undefined),
   };
 }
 

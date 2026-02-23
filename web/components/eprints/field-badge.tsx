@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
@@ -76,12 +79,14 @@ export function FieldBadgeList({
   clickable = true,
   className,
 }: FieldBadgeListProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (!fields || fields.length === 0) {
     return null;
   }
 
-  const visibleFields = fields.slice(0, max);
-  const hiddenCount = fields.length - max;
+  const visibleFields = expanded ? fields : fields.slice(0, max);
+  const hiddenCount = expanded ? 0 : fields.length - max;
 
   return (
     <div className={cn('flex flex-wrap gap-1', className)}>
@@ -94,9 +99,11 @@ export function FieldBadgeList({
         />
       ))}
       {hiddenCount > 0 && (
-        <Badge variant="outline" className="text-muted-foreground">
-          +{hiddenCount} more
-        </Badge>
+        <button type="button" onClick={() => setExpanded(true)}>
+          <Badge variant="outline" className="cursor-pointer text-muted-foreground hover:bg-accent">
+            +{hiddenCount} more
+          </Badge>
+        </button>
       )}
     </div>
   );

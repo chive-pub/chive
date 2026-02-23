@@ -2,7 +2,9 @@
  * XRPC handler for pub.chive.tag.search.
  *
  * @remarks
- * Searches for tags matching a query.
+ * Searches for tags and keywords matching a query.
+ * Merges community tag results from Neo4j with author keyword
+ * results from PostgreSQL.
  *
  * @packageDocumentation
  * @public
@@ -24,6 +26,7 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const logger = c.get('logger');
     const tagManager = c.get('services').tagManager;
+    const eprintService = c.get('services').eprint;
 
     logger.debug('Searching tags', {
       query: params.q,
@@ -33,7 +36,7 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     const limit = params.limit ?? 50;
 
-    // Search tags using TagManager
+    // Search community tags from Neo4j
     const searchResults = await tagManager.searchTags(params.q, limit);
 
     // Filter by minimum quality if specified
@@ -49,7 +52,7 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
       filteredTags = filteredTags.filter((tag) => (tag.spamScore ?? 0) < 0.5);
     }
 
-    // Map to TagSummary format
+    // Map Neo4j results to TagSummary format
     // Lexicon expects qualityScore as integer 0-100 (scaled from 0-1)
     const tags: OutputSchema['tags'] = filteredTags.map((tag) => ({
       normalizedForm: tag.normalizedForm,
@@ -60,10 +63,32 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
       promotedTo: undefined,
     }));
 
+    // Also search author keywords from PostgreSQL
+    const keywordResults = await eprintService.searchKeywords(params.q, limit);
+
+    // Merge keyword-only results (not already in Neo4j results)
+    const existingForms = new Set(tags.map((t) => t.normalizedForm));
+    for (const kw of keywordResults) {
+      if (!existingForms.has(kw.normalizedForm)) {
+        tags.push({
+          normalizedForm: kw.normalizedForm,
+          displayForms: [kw.displayForm],
+          usageCount: kw.usageCount,
+          qualityScore: 0,
+          isPromoted: false,
+          promotedTo: undefined,
+        });
+        existingForms.add(kw.normalizedForm);
+      }
+    }
+
+    // Trim to limit
+    const trimmedTags = tags.slice(0, limit);
+
     const response: OutputSchema = {
-      tags,
-      hasMore: searchResults.total > limit,
-      total: searchResults.total,
+      tags: trimmedTags,
+      hasMore: tags.length > limit || searchResults.total > limit,
+      total: tags.length,
     };
 
     logger.info('Tag search completed', {

@@ -388,4 +388,104 @@ export interface ISearchEngine {
    * @public
    */
   deleteDocument(uri: AtUri): Promise<void>;
+
+  /**
+   * Finds documents similar to a given document using text content.
+   *
+   * @param documentUri - AT-URI of the source document
+   * @param options - Options controlling the More Like This query
+   * @returns Matching documents sorted by similarity score
+   *
+   * @remarks
+   * Uses Elasticsearch More Like This query on title, abstract, and keywords
+   * to find content-similar documents. Serves as a fallback when embedding-based
+   * similarity (SPECTER2) is unavailable.
+   *
+   * @example
+   * ```typescript
+   * const similar = await searchEngine.findSimilarByText(
+   *   toAtUri('at://did:plc:abc/pub.chive.eprint.submission/xyz')!,
+   *   { limit: 10, minimumShouldMatch: '30%' }
+   * );
+   *
+   * for (const result of similar) {
+   *   console.log(`${result.uri} (score: ${result.score})`);
+   * }
+   * ```
+   *
+   * @public
+   */
+  findSimilarByText(documentUri: AtUri, options?: MLTOptions): Promise<readonly MLTResult[]>;
+}
+
+/**
+ * Options for More Like This queries.
+ *
+ * @public
+ */
+export interface MLTOptions {
+  /**
+   * Maximum number of similar documents to return.
+   *
+   * @defaultValue 10
+   */
+  readonly limit?: number;
+
+  /**
+   * Minimum term frequency in the source document.
+   *
+   * @defaultValue 1
+   */
+  readonly minTermFreq?: number;
+
+  /**
+   * Minimum document frequency across the index.
+   *
+   * @defaultValue 2
+   */
+  readonly minDocFreq?: number;
+
+  /**
+   * Maximum number of query terms to extract from the source document.
+   *
+   * @defaultValue 25
+   */
+  readonly maxQueryTerms?: number;
+
+  /**
+   * Minimum percentage of terms that must match.
+   *
+   * @defaultValue '30%'
+   */
+  readonly minimumShouldMatch?: string;
+
+  /**
+   * Pivot value for saturation score normalization.
+   * The raw BM25 score at which the normalized similarity equals 0.5.
+   *
+   * @defaultValue 8
+   */
+  readonly saturationPivot?: number;
+}
+
+/**
+ * Result from a More Like This query.
+ *
+ * @public
+ */
+export interface MLTResult {
+  /**
+   * AT-URI of the similar document.
+   */
+  readonly uri: AtUri;
+
+  /**
+   * Similarity score (higher is more similar).
+   */
+  readonly score: number;
+
+  /**
+   * Document title.
+   */
+  readonly title?: string;
 }

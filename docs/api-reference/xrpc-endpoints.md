@@ -129,6 +129,81 @@ List eprints by a specific author.
 | `limit`  | integer | No       | Results per page (default: 25) |
 | `cursor` | string  | No       | Pagination cursor              |
 
+### pub.chive.eprint.listCitations
+
+List citations for an eprint.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+#### Parameters
+
+| Name     | Type    | Required | Description                              |
+| -------- | ------- | -------- | ---------------------------------------- |
+| `uri`    | string  | Yes      | AT URI of the eprint                     |
+| `limit`  | integer | No       | Results per page (default: 50, max: 100) |
+| `cursor` | string  | No       | Pagination cursor                        |
+
+#### Response
+
+```json
+{
+  "citations": [
+    {
+      "uri": "at://did:plc:abc123.../pub.chive.eprint.citation/3k5...",
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "citedWork": {
+        "title": "Attention Is All You Need",
+        "doi": "10.48550/arXiv.1706.03762",
+        "authors": ["Vaswani, A.", "Shazeer, N."],
+        "year": 2017,
+        "venue": "NeurIPS"
+      },
+      "citationType": "extends",
+      "createdAt": "2025-01-15T10:30:00Z"
+    }
+  ],
+  "cursor": "eyJvZmZzZXQiOjUwfQ=="
+}
+```
+
+### pub.chive.eprint.listRelatedWorks
+
+List user-curated related works for an eprint.
+
+| Property | Value       |
+| -------- | ----------- |
+| Method   | Query (GET) |
+| Auth     | Optional    |
+
+#### Parameters
+
+| Name     | Type    | Required | Description                              |
+| -------- | ------- | -------- | ---------------------------------------- |
+| `uri`    | string  | Yes      | AT URI of the eprint                     |
+| `limit`  | integer | No       | Results per page (default: 50, max: 100) |
+| `cursor` | string  | No       | Pagination cursor                        |
+
+#### Response
+
+```json
+{
+  "relatedWorks": [
+    {
+      "uri": "at://did:plc:abc123.../pub.chive.eprint.relatedWork/3k5...",
+      "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "relatedUri": "at://did:plc:def456.../pub.chive.eprint.submission/4m7...",
+      "relationType": "extends",
+      "description": "Extends the optimization approach to multi-modal inputs",
+      "createdAt": "2025-01-16T14:00:00Z"
+    }
+  ],
+  "cursor": "eyJvZmZzZXQiOjUwfQ=="
+}
+```
+
 ---
 
 ## Review namespace
@@ -1838,7 +1913,7 @@ Notify the AppView that a record has been deleted from a PDS.
 
 This endpoint is used by PDS operators to notify the AppView of record deletions when firehose delivery is delayed or unreliable. The AppView removes the record from its index.
 
-**Supported collections:** `pub.chive.review.comment`, `pub.chive.review.endorsement`, `pub.chive.annotation.comment`, `pub.chive.annotation.entityLink`.
+**Supported collections:** `pub.chive.review.comment`, `pub.chive.review.endorsement`, `pub.chive.annotation.comment`, `pub.chive.annotation.entityLink`, `pub.chive.eprint.userTag`, `pub.chive.eprint.citation`, `pub.chive.eprint.relatedWork`.
 
 ---
 

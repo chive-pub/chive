@@ -64,7 +64,11 @@ const createMockTagData = (overrides?: Partial<MockTagData>): MockTagData => ({
 describe('XRPC Tag Handlers', () => {
   let mockLogger: ILogger;
   let mockTagManager: MockTagManager;
-  let mockEprintService: { getTagsForEprint: ReturnType<typeof vi.fn> };
+  let mockEprintService: {
+    getTagsForEprint: ReturnType<typeof vi.fn>;
+    getEprintUrisForTerm: ReturnType<typeof vi.fn>;
+    searchKeywords: ReturnType<typeof vi.fn>;
+  };
   let mockContext: {
     get: ReturnType<typeof vi.fn>;
     set: ReturnType<typeof vi.fn>;
@@ -75,6 +79,8 @@ describe('XRPC Tag Handlers', () => {
     mockTagManager = createMockTagManager();
     mockEprintService = {
       getTagsForEprint: vi.fn().mockResolvedValue([]),
+      getEprintUrisForTerm: vi.fn().mockResolvedValue({ uris: [], total: 0 }),
+      searchKeywords: vi.fn().mockResolvedValue([]),
     };
 
     mockContext = {
@@ -299,6 +305,7 @@ describe('XRPC Tag Handlers', () => {
     it('returns tag details with usage statistics', async () => {
       const tagDetail = createMockTagData();
       mockTagManager.getTag.mockResolvedValue(tagDetail);
+      mockEprintService.getEprintUrisForTerm.mockResolvedValue({ uris: [], total: 150 });
 
       const result = await getDetail.handler({
         params: { tag: 'machine-learning' },

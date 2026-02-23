@@ -59,6 +59,7 @@ const createMockSearchEngine = (): MockSearchEngine => {
     facetedSearch: vi.fn().mockResolvedValue({ hits: [], total: 0, took: 0, facets: {} }),
     deleteDocument: deleteDocumentMock,
     autocomplete: autocompleteMock,
+    findSimilarByText: vi.fn().mockResolvedValue([]),
     indexEprintMock,
     searchMock,
     deleteDocumentMock,
