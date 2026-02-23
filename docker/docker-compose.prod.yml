@@ -184,7 +184,7 @@ services:
   # GROBID - PDF Reference Extraction
   # ---------------------------------------------------------------------------
   grobid:
-    image: lfoppiano/grobid:0.8.2
+    image: lfoppiano/grobid:0.8.2.1-crf
     container_name: chive-grobid
     restart: unless-stopped
     environment:
