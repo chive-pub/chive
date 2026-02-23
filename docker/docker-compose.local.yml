@@ -70,7 +70,7 @@ services:
       retries: 10
 
   grobid:
-    image: lfoppiano/grobid:0.8.0
+    image: lfoppiano/grobid:0.8.2
     container_name: chive-grobid
     restart: unless-stopped
     ports:
