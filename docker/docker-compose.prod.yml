@@ -344,7 +344,7 @@ services:
       elasticsearch:
         condition: service_healthy
       grobid:
-        condition: service_healthy
+        condition: service_started
       chive-migrate:
         condition: service_completed_successfully
     networks:
