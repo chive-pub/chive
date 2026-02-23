@@ -106,15 +106,16 @@ export class PersonalGraphService {
       await this.pool.query(
         `INSERT INTO personal_graph_nodes_index (
           uri, cid, owner_did, node_id, kind, subkind, label,
-          alternate_labels, description, status,
+          alternate_labels, description, status, metadata,
           created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           label = EXCLUDED.label,
           alternate_labels = EXCLUDED.alternate_labels,
           description = EXCLUDED.description,
           status = EXCLUDED.status,
+          metadata = EXCLUDED.metadata,
           updated_at = NOW(),
           last_synced_at = NOW()`,
         [
@@ -128,6 +129,7 @@ export class PersonalGraphService {
           record.alternateLabels ? JSON.stringify(record.alternateLabels) : null,
           record.description ?? null,
           record.status ?? 'established',
+          record.metadata ? JSON.stringify(record.metadata) : '{}',
           record.createdAt ? new Date(record.createdAt) : metadata.indexedAt,
           metadata.pdsUrl,
         ]

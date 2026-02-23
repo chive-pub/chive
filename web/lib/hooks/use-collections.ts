@@ -34,7 +34,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
-import { authApi, getApiBaseUrl } from '@/lib/api/client';
+import { api, authApi } from '@/lib/api/client';
 import { createLogger } from '@/lib/observability/logger';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
@@ -47,6 +47,7 @@ import {
   removeSubcollection,
   moveSubcollection,
   updateEdgeNote,
+  updateEdgeMetadata,
   reorderCollectionItems,
   createSembleMirror,
   type CreateCollectionNodeInput,
@@ -69,12 +70,14 @@ export interface CollectionView {
   uri: string;
   cid: string;
   ownerDid: string;
-  name: string;
+  ownerHandle?: string;
+  label: string;
   description?: string;
   visibility: 'public' | 'unlisted' | 'private';
   itemCount: number;
   tags?: string[];
   parentCollectionUri?: string;
+  sembleCollectionUri?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -93,6 +96,29 @@ export interface CollectionItemView {
   title?: string;
   /** Resolved authors (for eprints) */
   authors?: string[];
+  /** Resolved label (for graph nodes) */
+  label?: string;
+  /** Node kind (for graph nodes) */
+  kind?: string;
+  /** Node subkind (for graph nodes) */
+  subkind?: string;
+  /** Description (for graph nodes) */
+  description?: string;
+  /** Avatar URL (for authors) */
+  avatar?: string;
+  /** Whether the node is from the community graph or user-created. */
+  source?: 'community' | 'personal';
+  /** Subkind-specific metadata (e.g., eprintUri, did, handle, clonedFrom). */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * An edge between two items within a collection.
+ */
+export interface InterItemEdge {
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
 }
 
 /**
@@ -112,6 +138,7 @@ export interface CollectionDetailResponse {
   collection: CollectionView;
   items: CollectionItemView[];
   subcollections: CollectionView[];
+  interItemEdges: InterItemEdge[];
 }
 
 /**
@@ -186,7 +213,7 @@ export const collectionKeys = {
  * ```tsx
  * const { data, isLoading } = useCollection(collectionUri);
  * if (data) {
- *   console.log(data.collection.name, data.items.length);
+ *   console.log(data.collection.label, data.items.length);
  * }
  * ```
  */
@@ -194,28 +221,8 @@ export function useCollection(uri: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: collectionKeys.detail(uri),
     queryFn: async (): Promise<CollectionDetailResponse> => {
-      try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ uri });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.get?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch collection',
-            response.status,
-            'pub.chive.collection.get'
-          );
-        }
-        return (await response.json()) as CollectionDetailResponse;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch collection',
-          undefined,
-          'pub.chive.collection.get'
-        );
-      }
+      const response = await api.pub.chive.collection.get({ uri });
+      return response.data as unknown as CollectionDetailResponse;
     },
     enabled: !!uri && (options?.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -239,28 +246,8 @@ export function useMyCollections(did: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: collectionKeys.myCollections(did),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ did, limit: '100' });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.listByOwner?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch collections',
-            response.status,
-            'pub.chive.collection.listByOwner'
-          );
-        }
-        return (await response.json()) as ListCollectionsResponse;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch collections',
-          undefined,
-          'pub.chive.collection.listByOwner'
-        );
-      }
+      const response = await api.pub.chive.collection.listByOwner({ did, limit: 100 });
+      return response.data as unknown as ListCollectionsResponse;
     },
     enabled: !!did && (options?.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -289,36 +276,11 @@ export function usePublicCollections(options?: {
   return useQuery({
     queryKey: collectionKeys.public(filters),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({
-          visibility: 'public',
-          limit: String(options?.limit ?? 20),
-        });
-        if (options?.tag) {
-          searchParams.set('tag', options.tag);
-        }
-        const url = `${baseUrl}/xrpc/pub.chive.collection.listPublic?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string'
-              ? body['message']
-              : 'Failed to fetch public collections',
-            response.status,
-            'pub.chive.collection.listPublic'
-          );
-        }
-        return (await response.json()) as ListCollectionsResponse;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch public collections',
-          undefined,
-          'pub.chive.collection.listPublic'
-        );
-      }
+      const response = await api.pub.chive.collection.listPublic({
+        tag: options?.tag,
+        limit: options?.limit ?? 20,
+      });
+      return response.data as unknown as ListCollectionsResponse;
     },
     enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000,
@@ -341,28 +303,8 @@ export function useCollectionsContaining(itemUri: string, options?: { enabled?: 
   return useQuery({
     queryKey: collectionKeys.containing(itemUri),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ itemUri });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.getContaining?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch collections',
-            response.status,
-            'pub.chive.collection.getContaining'
-          );
-        }
-        return (await response.json()) as ListCollectionsResponse;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch collections containing item',
-          undefined,
-          'pub.chive.collection.getContaining'
-        );
-      }
+      const response = await api.pub.chive.collection.getContaining({ itemUri });
+      return response.data as unknown as ListCollectionsResponse;
     },
     enabled: !!itemUri && (options?.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -385,28 +327,8 @@ export function useSearchCollections(query: string, options?: { enabled?: boolea
   return useQuery({
     queryKey: collectionKeys.search(query),
     queryFn: async (): Promise<SearchCollectionsResponse> => {
-      try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ query, limit: '20' });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.search?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string' ? body['message'] : 'Failed to search collections',
-            response.status,
-            'pub.chive.collection.search'
-          );
-        }
-        return (await response.json()) as SearchCollectionsResponse;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to search collections',
-          undefined,
-          'pub.chive.collection.search'
-        );
-      }
+      const response = await api.pub.chive.collection.search({ query, limit: 20 });
+      return response.data as unknown as SearchCollectionsResponse;
     },
     enabled: query.length >= 2 && (options?.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -425,30 +347,12 @@ export function useSubcollections(uri: string, options?: { enabled?: boolean }) 
   return useQuery({
     queryKey: collectionKeys.subcollections(uri),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ parentUri: uri });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.getSubcollections?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string'
-              ? body['message']
-              : 'Failed to fetch subcollections',
-            response.status,
-            'pub.chive.collection.getSubcollections'
-          );
-        }
-        return (await response.json()) as ListCollectionsResponse;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch subcollections',
-          undefined,
-          'pub.chive.collection.getSubcollections'
-        );
-      }
+      const response = await api.pub.chive.collection.getSubcollections({ uri });
+      const data = response.data;
+      return {
+        collections: data.subcollections,
+        hasMore: false,
+      } as unknown as ListCollectionsResponse;
     },
     enabled: !!uri && (options?.enabled ?? true),
     staleTime: 2 * 60 * 1000,
@@ -467,32 +371,10 @@ export function useParentCollection(uri: string, options?: { enabled?: boolean }
     queryKey: collectionKeys.parent(uri),
     queryFn: async (): Promise<CollectionView | null> => {
       try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ uri });
-        const url = `${baseUrl}/xrpc/pub.chive.collection.getParent?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          if (response.status === 404) return null;
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string'
-              ? body['message']
-              : 'Failed to fetch parent collection',
-            response.status,
-            'pub.chive.collection.getParent'
-          );
-        }
-        return (await response.json()) as CollectionView;
-      } catch (error) {
-        if (error instanceof APIError) {
-          if (error.statusCode === 404) return null;
-          throw error;
-        }
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch parent collection',
-          undefined,
-          'pub.chive.collection.getParent'
-        );
+        const response = await api.pub.chive.collection.getParent({ uri });
+        return (response.data.parent as unknown as CollectionView) ?? null;
+      } catch {
+        return null;
       }
     },
     enabled: !!uri && (options?.enabled ?? true),
@@ -596,7 +478,7 @@ export function useCreateCollection() {
         uri: result.uri,
         cid: result.cid,
         ownerDid: agent.did ?? '',
-        name: input.name,
+        label: input.name,
         description: input.description,
         visibility: input.visibility,
         itemCount: 0,
@@ -646,7 +528,7 @@ export function useUpdateCollection() {
         uri: result.uri,
         cid: result.cid,
         ownerDid: input.ownerDid,
-        name: input.name ?? '',
+        label: input.name ?? '',
         description: input.description,
         visibility: input.visibility ?? 'public',
         itemCount: 0,
@@ -705,7 +587,8 @@ export function useDeleteCollection() {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.myCollections(variables.ownerDid),
       });
-      queryClient.invalidateQueries({
+      // Remove the detail cache instead of refetching (the collection no longer exists)
+      queryClient.removeQueries({
         queryKey: collectionKeys.detail(variables.uri),
       });
       queryClient.invalidateQueries({
@@ -858,6 +741,48 @@ export function useUpdateItemNote() {
       }
 
       const result = await updateEdgeNote(agent, edgeUri, note);
+
+      // Request immediate re-indexing
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for updating a collection item's label and/or note.
+ *
+ * @returns Mutation object for updating item metadata
+ */
+export function useUpdateCollectionItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      edgeUri,
+      label,
+      note,
+    }: {
+      edgeUri: string;
+      collectionUri: string;
+      label?: string;
+      note?: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'updateCollectionItem');
+      }
+
+      const result = await updateEdgeMetadata(agent, edgeUri, { label, note });
 
       // Request immediate re-indexing
       try {

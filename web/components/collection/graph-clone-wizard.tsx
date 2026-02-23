@@ -63,6 +63,8 @@ import {
   type SubgraphNode,
   type SubgraphEdge,
 } from '@/lib/hooks/use-graph-clone';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api/client';
 import { RELATION_LABELS } from '@/lib/hooks/use-edges';
 
 // =============================================================================
@@ -109,20 +111,30 @@ const WIZARD_STEPS: WizardStep[] = [
 ];
 
 /**
- * Common relationship types for the edge type filter.
+ * Fallback relationship types used while the API is loading.
  */
-const EDGE_TYPE_OPTIONS = [
+const FALLBACK_EDGE_TYPE_OPTIONS = [
   { slug: 'broader', label: 'Broader' },
   { slug: 'narrower', label: 'Narrower' },
   { slug: 'related', label: 'Related' },
-  { slug: 'part-of', label: 'Part Of' },
-  { slug: 'has-part', label: 'Has Part' },
-  { slug: 'interdisciplinary-with', label: 'Interdisciplinary With' },
-  { slug: 'exact-match', label: 'Exact Match' },
-  { slug: 'close-match', label: 'Close Match' },
-  { slug: 'studies', label: 'Studies' },
-  { slug: 'applies-to', label: 'Applies To' },
 ] as const;
+
+/**
+ * Fetches relation types from the API for the edge type filter.
+ */
+function useRelationTypes() {
+  return useQuery({
+    queryKey: ['graph', 'relations'],
+    queryFn: async () => {
+      const response = await api.pub.chive.graph.getRelations({});
+      return response.data.relations.map((r) => ({
+        slug: r.slug,
+        label: r.label ?? RELATION_LABELS[r.slug] ?? r.slug,
+      }));
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
 
 // =============================================================================
 // STEP 1: SELECT ROOTS
@@ -204,6 +216,8 @@ interface StepExpandProps {
   onDepthChange: (depth: number) => void;
   selectedEdgeTypes: string[];
   onEdgeTypeToggle: (slug: string) => void;
+  edgeTypeOptions: Array<{ slug: string; label: string }>;
+  edgeTypesLoading: boolean;
   subgraphData: { nodes: SubgraphNode[]; edges: SubgraphEdge[]; capped: boolean } | undefined;
   isLoading: boolean;
   rootCount: number;
@@ -214,6 +228,8 @@ function StepExpand({
   onDepthChange,
   selectedEdgeTypes,
   onEdgeTypeToggle,
+  edgeTypeOptions,
+  edgeTypesLoading,
   subgraphData,
   isLoading,
   rootCount,
@@ -262,21 +278,28 @@ function StepExpand({
         <div className="space-y-2">
           <Label>Relationship types</Label>
           <div className="space-y-2 max-h-60 overflow-y-auto rounded-md border p-3">
-            {EDGE_TYPE_OPTIONS.map((option) => (
-              <div key={option.slug} className="flex items-center gap-2">
-                <Checkbox
-                  id={`edge-type-${option.slug}`}
-                  checked={selectedEdgeTypes.includes(option.slug)}
-                  onCheckedChange={() => onEdgeTypeToggle(option.slug)}
-                />
-                <label
-                  htmlFor={`edge-type-${option.slug}`}
-                  className="text-sm cursor-pointer select-none"
-                >
-                  {option.label}
-                </label>
+            {edgeTypesLoading ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading relationship types...
               </div>
-            ))}
+            ) : (
+              edgeTypeOptions.map((option) => (
+                <div key={option.slug} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`edge-type-${option.slug}`}
+                    checked={selectedEdgeTypes.includes(option.slug)}
+                    onCheckedChange={() => onEdgeTypeToggle(option.slug)}
+                  />
+                  <label
+                    htmlFor={`edge-type-${option.slug}`}
+                    className="text-sm cursor-pointer select-none"
+                  >
+                    {option.label}
+                  </label>
+                </div>
+              ))
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {selectedEdgeTypes.length === 0
@@ -731,6 +754,12 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Fetch relation types from API
+  const { data: relationTypes, isLoading: relationTypesLoading } = useRelationTypes();
+  const edgeTypeOptions =
+    relationTypes ??
+    (FALLBACK_EDGE_TYPE_OPTIONS as unknown as Array<{ slug: string; label: string }>);
+
   // Subgraph expansion query
   const rootUris = useMemo(() => rootNodes.map((n) => n.uri), [rootNodes]);
   const edgeTypesForQuery = selectedEdgeTypes.length > 0 ? selectedEdgeTypes : undefined;
@@ -1016,6 +1045,8 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
             onDepthChange={handleDepthChange}
             selectedEdgeTypes={selectedEdgeTypes}
             onEdgeTypeToggle={handleEdgeTypeToggle}
+            edgeTypeOptions={edgeTypeOptions}
+            edgeTypesLoading={relationTypesLoading}
             subgraphData={subgraphData}
             isLoading={subgraphLoading}
             rootCount={rootNodes.length}

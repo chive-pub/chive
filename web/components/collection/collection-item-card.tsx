@@ -13,7 +13,6 @@
  * Provides optional callbacks for removing an item or editing its note.
  */
 
-import Link from 'next/link';
 import {
   FileText,
   User as UserIcon,
@@ -75,6 +74,8 @@ interface CollectionItemCardProps {
   onRemove?: (item: CollectionItemCardData) => void;
   /** Callback to edit the note on this item */
   onEditNote?: (item: CollectionItemCardData) => void;
+  /** Callback when the card is clicked */
+  onClick?: (item: CollectionItemCardData) => void;
   /** Additional CSS class names */
   className?: string;
 }
@@ -105,25 +106,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-/**
- * Returns the link target for an item based on its type.
- */
-function getItemLink(item: CollectionItemCardData): string | null {
-  switch (item.itemType) {
-    case 'eprint':
-      return `/eprints/${encodeURIComponent(item.itemUri)}`;
-    case 'author':
-      return `/authors/${item.itemUri.split('/')[2] ?? item.itemUri}`;
-    case 'graphNode':
-      return `/graph/nodes/${encodeURIComponent(item.itemUri)}`;
-    case 'review':
-    case 'endorsement':
-      return null;
-    default:
-      return null;
-  }
-}
 
 /**
  * Extracts initials from a display name for avatar fallback.
@@ -187,7 +169,7 @@ function GraphNodeContent({ item }: { item: CollectionItemCardData }) {
 
   return (
     <div className="min-w-0 space-y-1.5">
-      <p className="font-medium line-clamp-1">{nodeLabel}</p>
+      <p className="font-medium line-clamp-2">{nodeLabel}</p>
       <div className="flex flex-wrap gap-1.5">
         {item.kind && (
           <Badge variant="secondary" className="text-xs">
@@ -263,7 +245,7 @@ function GenericContent({ item }: { item: CollectionItemCardData }) {
  * - **Review/Endorsement**: preview text
  * - **Generic fallback**: URI with type badge
  *
- * The card is optionally wrapped in a link to the item's detail page.
+ * An optional `onClick` callback makes the card clickable with hover styling.
  * Provides remove and edit-note action buttons via callbacks.
  *
  * @example
@@ -279,11 +261,11 @@ export function CollectionItemCard({
   item,
   onRemove,
   onEditNote,
+  onClick,
   className,
 }: CollectionItemCardProps) {
   const ItemIcon = ITEM_TYPE_ICONS[item.itemType] ?? ExternalLink;
   const typeLabel = ITEM_TYPE_LABELS[item.itemType] ?? item.itemType;
-  const link = getItemLink(item);
 
   const typeSpecificContent = (() => {
     switch (item.itemType) {
@@ -310,13 +292,13 @@ export function CollectionItemCard({
 
       {/* Main content area */}
       <div className="min-w-0 flex-1 space-y-2">
-        {/* Type badge row */}
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1">{typeSpecificContent}</div>
-          <Badge variant="outline" className="flex-shrink-0 text-xs">
-            {typeLabel}
-          </Badge>
-        </div>
+        {/* Type badge */}
+        <Badge variant="outline" className="text-xs">
+          {typeLabel}
+        </Badge>
+
+        {/* Type-specific content (full width) */}
+        {typeSpecificContent}
 
         {/* User note */}
         {item.note && (
@@ -366,16 +348,11 @@ export function CollectionItemCard({
   );
 
   return (
-    <Card className={cn('transition-colors', link && 'hover:bg-muted/50', className)}>
-      <CardContent className="p-4">
-        {link ? (
-          <Link href={link} className="block">
-            {cardBody}
-          </Link>
-        ) : (
-          cardBody
-        )}
-      </CardContent>
+    <Card
+      className={cn('transition-colors', onClick && 'hover:bg-muted/50 cursor-pointer', className)}
+      onClick={onClick ? () => onClick(item) : undefined}
+    >
+      <CardContent className="p-4">{cardBody}</CardContent>
     </Card>
   );
 }

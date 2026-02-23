@@ -414,6 +414,31 @@ export class EdgeRepository {
   }
 
   /**
+   * Get all edges where both source and target are in a given set of URIs.
+   *
+   * @param uris - Set of node AT-URIs to find edges among
+   * @returns Edges between nodes in the set (excludes deprecated)
+   */
+  async getEdgesAmongUris(uris: readonly string[]): Promise<GraphEdge[]> {
+    if (uris.length < 2) {
+      return [];
+    }
+
+    const query = `
+      MATCH (source:Node)-[e:EDGE]->(target:Node)
+      WHERE source.uri IN $uris AND target.uri IN $uris
+        AND e.status <> 'deprecated'
+      RETURN e
+    `;
+
+    const result = await this.connection.executeQuery<{ e: Neo4jEdgeRecord }>(query, {
+      uris: [...uris],
+    });
+
+    return result.records.map((record) => this.mapRecordToEdge(record.get('e')));
+  }
+
+  /**
    * Convert Neo4j datetime value to JavaScript Date.
    */
   private toDate(value: unknown): Date {

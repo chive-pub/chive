@@ -251,7 +251,7 @@ function FeaturedCollectionPicker({
             <SelectItem key={collection.uri} value={collection.uri}>
               <div className="flex items-center gap-2">
                 <Star className="h-3.5 w-3.5 text-amber-500" />
-                <span>{collection.name}</span>
+                <span>{collection.label}</span>
                 <span className="text-xs text-muted-foreground">
                   ({collection.itemCount} {collection.itemCount === 1 ? 'item' : 'items'})
                 </span>

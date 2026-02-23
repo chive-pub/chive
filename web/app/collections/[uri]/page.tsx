@@ -9,30 +9,33 @@
  * Uses TanStack Query hooks for data fetching.
  */
 
-import { useCallback, use } from 'react';
+import { useCallback, use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { X } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   CollectionHeader,
   CollectionHeaderSkeleton,
 } from '@/components/collection/collection-header';
-import { CollectionItemList } from '@/components/collection/collection-item-list';
 import { SubcollectionTree } from '@/components/collection/subcollection-tree';
-import {
-  CollectionEdgeDisplay,
-  type CollectionEdge,
-} from '@/components/collection/collection-edge-display';
+import { NodeCard } from '@/components/knowledge-graph/node-card';
+import { NodeDetailModal } from '@/components/knowledge-graph/node-detail-modal';
+import { collectionItemToCardData } from '@/components/knowledge-graph/types';
 import { useCurrentUser } from '@/lib/auth';
 import {
   useCollection,
   useParentCollection,
   useDeleteCollection,
   useRemoveFromCollection,
+  useUpdateCollectionItem,
   type CollectionItemView,
+  type InterItemEdge,
 } from '@/lib/hooks/use-collections';
 
 /**
@@ -101,16 +104,16 @@ export default function CollectionDetailPage({ params }: CollectionPageProps) {
   const { data: parentCollection } = useParentCollection(decodedUri);
   const deleteCollection = useDeleteCollection();
   const removeFromCollection = useRemoveFromCollection();
+  const updateCollectionItem = useUpdateCollectionItem();
 
   const collection = data?.collection;
   const items = data?.items ?? [];
   const subcollections = data?.subcollections ?? [];
   const isOwner = !!currentUser?.did && currentUser.did === collection?.ownerDid;
 
-  // Extract custom edges from items (edges beyond CONTAINS)
-  // These would come from additional API data; for now we filter
-  // based on edge metadata if available
-  const customEdges: CollectionEdge[] = [];
+  const interItemEdges: InterItemEdge[] = data?.interItemEdges ?? [];
+
+  const [selectedItem, setSelectedItem] = useState<CollectionItemView | null>(null);
 
   const handleDelete = useCallback(async () => {
     if (!collection) return;
@@ -144,6 +147,23 @@ export default function CollectionDetailPage({ params }: CollectionPageProps) {
       }
     },
     [collection, removeFromCollection]
+  );
+
+  const handleSaveItem = useCallback(
+    async (updates: { label?: string; note?: string }) => {
+      if (!collection || !selectedItem) return;
+      try {
+        await updateCollectionItem.mutateAsync({
+          edgeUri: selectedItem.edgeUri,
+          collectionUri: collection.uri,
+          ...updates,
+        });
+        toast.success('Item updated');
+      } catch (saveError) {
+        toast.error(saveError instanceof Error ? saveError.message : 'Failed to update item');
+      }
+    },
+    [collection, selectedItem, updateCollectionItem]
   );
 
   if (isLoading) {
@@ -187,7 +207,7 @@ export default function CollectionDetailPage({ params }: CollectionPageProps) {
       <CollectionHeader
         collection={collection}
         isOwner={isOwner}
-        subcollectionNames={subcollections.map((s) => s.name)}
+        subcollectionNames={subcollections.map((s) => s.label)}
         onDelete={handleDelete}
         isDeleting={deleteCollection.isPending}
       />
@@ -204,7 +224,7 @@ export default function CollectionDetailPage({ params }: CollectionPageProps) {
       {/* Separator between subcollections and items */}
       {subcollections.length > 0 && items.length > 0 && <Separator />}
 
-      {/* 4. Items list */}
+      {/* 4. Items */}
       <section>
         <h2 className="text-lg font-semibold mb-3">
           Items
@@ -212,21 +232,53 @@ export default function CollectionDetailPage({ params }: CollectionPageProps) {
             <span className="ml-2 text-sm font-normal text-muted-foreground">({items.length})</span>
           )}
         </h2>
-        <CollectionItemList
-          items={items}
-          editable={isOwner}
-          onRemove={handleRemoveItem}
-          isRemoving={removeFromCollection.isPending}
-        />
+        {items.length === 0 ? (
+          <div className="rounded-lg border-2 border-dashed p-8 text-center">
+            <p className="text-sm text-muted-foreground">This collection has no items yet.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => (
+              <NodeCard
+                key={item.edgeUri}
+                node={collectionItemToCardData(item)}
+                onClick={() => setSelectedItem(item)}
+                showSubkind
+                actions={
+                  isOwner ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveItem(item);
+                      }}
+                      title="Remove from collection"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* 5. Custom edge relationships */}
-      {customEdges.length > 0 && (
-        <>
-          <Separator />
-          <CollectionEdgeDisplay edges={customEdges} items={items} />
-        </>
-      )}
+      {/* Node detail modal */}
+      <NodeDetailModal
+        node={selectedItem ? collectionItemToCardData(selectedItem) : null}
+        open={!!selectedItem}
+        onOpenChange={(open) => {
+          if (!open) setSelectedItem(null);
+        }}
+        collectionEdges={interItemEdges}
+        collectionItems={items}
+        editable={isOwner}
+        onSave={handleSaveItem}
+        isSaving={updateCollectionItem.isPending}
+      />
     </div>
   );
 }

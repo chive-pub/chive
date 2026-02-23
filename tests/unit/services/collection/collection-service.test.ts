@@ -995,6 +995,241 @@ describe('CollectionService', () => {
   });
 
   // ==========================================================================
+  // getCollectionItems
+  // ==========================================================================
+
+  describe('getCollectionItems', () => {
+    it('returns items with node label, kind, subkind, description, and metadata', async () => {
+      pool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/e1',
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/syntax-primer',
+            weight: 1,
+            created_at: new Date('2025-06-15T10:00:00Z'),
+            edge_label: null,
+            node_label: 'Syntax Primer',
+            node_kind: 'object',
+            node_subkind: 'concept',
+            node_description: 'An intro concept',
+            node_metadata: {},
+          },
+        ],
+      });
+
+      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+
+      expect(items).toHaveLength(1);
+      expect(items[0]?.itemType).toBe('concept');
+      expect(items[0]?.label).toBe('Syntax Primer');
+      expect(items[0]?.kind).toBe('object');
+      expect(items[0]?.subkind).toBe('concept');
+      expect(items[0]?.description).toBe('An intro concept');
+      expect(items[0]?.metadata).toEqual({});
+    });
+
+    it('derives authors from node_metadata for eprint nodes', async () => {
+      pool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/e2',
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/mega-attitude',
+            weight: null,
+            created_at: new Date('2025-06-16T10:00:00Z'),
+            edge_label: null,
+            node_label: 'MegaAttitude',
+            node_kind: 'object',
+            node_subkind: 'eprint',
+            node_description: null,
+            node_metadata: {
+              eprintUri: 'at://did:plc:aswhite/pub.chive.eprint.submission/abc123',
+              authors: ['Aaron Steven White'],
+            },
+          },
+        ],
+      });
+
+      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+
+      expect(items).toHaveLength(1);
+      expect(items[0]?.itemType).toBe('eprint');
+      expect(items[0]?.authors).toEqual(['Aaron Steven White']);
+      expect(items[0]?.label).toBe('MegaAttitude');
+      expect(items[0]?.metadata).toHaveProperty('eprintUri');
+    });
+
+    it('uses edge_label over node_label when both are present', async () => {
+      pool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/e3',
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/some-node',
+            weight: null,
+            created_at: new Date('2025-06-17T10:00:00Z'),
+            edge_label: 'Custom Label',
+            node_label: 'Original Label',
+            node_kind: 'object',
+            node_subkind: 'concept',
+            node_description: null,
+            node_metadata: {},
+          },
+        ],
+      });
+
+      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+
+      expect(items[0]?.label).toBe('Custom Label');
+      expect(items[0]?.title).toBe('Custom Label');
+    });
+
+    it('returns metadata with clonedFrom for community-cloned nodes', async () => {
+      pool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/e4',
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/local-field',
+            weight: null,
+            created_at: new Date('2025-06-18T10:00:00Z'),
+            edge_label: null,
+            node_label: 'Semantics',
+            node_kind: 'field',
+            node_subkind: null,
+            node_description: 'Study of meaning',
+            node_metadata: { clonedFrom: 'at://gov/pub.chive.graph.node/field1' },
+          },
+        ],
+      });
+
+      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+
+      expect(items).toHaveLength(1);
+      expect(items[0]?.metadata).toHaveProperty('clonedFrom');
+      expect(items[0]?.metadata?.clonedFrom).toBe('at://gov/pub.chive.graph.node/field1');
+    });
+
+    it('returns empty array on database error', async () => {
+      pool.query.mockRejectedValueOnce(new Error('Connection error'));
+
+      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+
+      expect(items).toEqual([]);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('orders items by weight then created_at', async () => {
+      pool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/e1',
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/first',
+            weight: 1,
+            created_at: new Date('2025-06-20T10:00:00Z'),
+            edge_label: null,
+            node_label: 'First',
+            node_kind: 'object',
+            node_subkind: 'concept',
+            node_description: null,
+            node_metadata: {},
+          },
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/e2',
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/second',
+            weight: 2,
+            created_at: new Date('2025-06-15T10:00:00Z'),
+            edge_label: null,
+            node_label: 'Second',
+            node_kind: 'object',
+            node_subkind: 'concept',
+            node_description: null,
+            node_metadata: {},
+          },
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/e3',
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/third',
+            weight: null,
+            created_at: new Date('2025-06-10T10:00:00Z'),
+            edge_label: null,
+            node_label: 'Third',
+            node_kind: 'object',
+            node_subkind: null,
+            node_description: null,
+            node_metadata: {},
+          },
+        ],
+      });
+
+      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+
+      expect(items).toHaveLength(3);
+      expect(items[0]?.label).toBe('First');
+      expect(items[0]?.order).toBe(1);
+      expect(items[1]?.label).toBe('Second');
+      expect(items[1]?.order).toBe(2);
+      expect(items[2]?.label).toBe('Third');
+      // Null weight falls back to index + 1
+      expect(items[2]?.order).toBe(3);
+      // itemType falls back to node_kind when node_subkind is null
+      expect(items[2]?.itemType).toBe('object');
+    });
+  });
+
+  // ==========================================================================
+  // getInterItemEdges
+  // ==========================================================================
+
+  describe('getInterItemEdges', () => {
+    it('returns edges between items in a collection', async () => {
+      pool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:aswhite/pub.chive.graph.edge/cites1',
+            source_uri: SAMPLE_EPRINT_URI,
+            target_uri: 'at://did:plc:aswhite/pub.chive.graph.node/syntax-primer',
+            relation_slug: 'cites',
+          },
+        ],
+      });
+
+      const edges = await service.getInterItemEdges(SAMPLE_COLLECTION_URI);
+
+      expect(edges).toHaveLength(1);
+      expect(edges[0]?.sourceUri).toBe(SAMPLE_EPRINT_URI);
+      expect(edges[0]?.targetUri).toBe('at://did:plc:aswhite/pub.chive.graph.node/syntax-primer');
+      expect(edges[0]?.relationSlug).toBe('cites');
+    });
+
+    it('excludes contains and subcollection-of edges via SQL filter', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      await service.getInterItemEdges(SAMPLE_COLLECTION_URI);
+
+      const queryArg = pool.query.mock.calls[0]?.[0] as string;
+      expect(queryArg).toContain("NOT IN ('contains', 'subcollection-of')");
+    });
+
+    it('returns empty array when no inter-item edges exist', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      const edges = await service.getInterItemEdges(SAMPLE_COLLECTION_URI);
+
+      expect(edges).toEqual([]);
+    });
+
+    it('returns empty array on database error', async () => {
+      pool.query.mockRejectedValueOnce(new Error('Query timeout'));
+
+      const edges = await service.getInterItemEdges(SAMPLE_COLLECTION_URI);
+
+      expect(edges).toEqual([]);
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to get inter-item edges',
+        expect.any(Error),
+        expect.objectContaining({ collectionUri: SAMPLE_COLLECTION_URI })
+      );
+    });
+  });
+
+  // ==========================================================================
   // getProfileConfig
   // ==========================================================================
 

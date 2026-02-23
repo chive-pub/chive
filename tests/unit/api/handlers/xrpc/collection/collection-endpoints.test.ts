@@ -6,6 +6,16 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock DIDResolver before importing the handler
+const mockGetAtprotoData = vi.fn().mockResolvedValue({ handle: 'aswhite.bsky.social' });
+vi.mock('../../../../../../src/auth/did/did-resolver.js', () => {
+  return {
+    DIDResolver: class MockDIDResolver {
+      getAtprotoData = mockGetAtprotoData;
+    },
+  };
+});
+
 import { get } from '../../../../../../src/api/handlers/xrpc/collection/get.js';
 import { getContaining } from '../../../../../../src/api/handlers/xrpc/collection/getContaining.js';
 import { getParent } from '../../../../../../src/api/handlers/xrpc/collection/getParent.js';
@@ -31,6 +41,8 @@ const createMockLogger = (): ILogger => ({
 
 interface MockCollectionService {
   getCollection: ReturnType<typeof vi.fn>;
+  getCollectionItems: ReturnType<typeof vi.fn>;
+  getInterItemEdges: ReturnType<typeof vi.fn>;
   listByOwner: ReturnType<typeof vi.fn>;
   listPublic: ReturnType<typeof vi.fn>;
   searchCollections: ReturnType<typeof vi.fn>;
@@ -41,6 +53,8 @@ interface MockCollectionService {
 
 const createMockCollectionService = (): MockCollectionService => ({
   getCollection: vi.fn().mockResolvedValue(null),
+  getCollectionItems: vi.fn().mockResolvedValue([]),
+  getInterItemEdges: vi.fn().mockResolvedValue([]),
   listByOwner: vi
     .fn()
     .mockResolvedValue({ items: [], cursor: undefined, hasMore: false, total: 0 }),
@@ -84,6 +98,7 @@ const createSampleCollection = (overrides?: Partial<IndexedCollection>): Indexed
 describe('XRPC Collection Handlers', () => {
   let mockLogger: ILogger;
   let mockCollectionService: MockCollectionService;
+  let mockRedis: Record<string, ReturnType<typeof vi.fn>>;
   let mockContext: {
     get: ReturnType<typeof vi.fn>;
     set: ReturnType<typeof vi.fn>;
@@ -102,6 +117,7 @@ describe('XRPC Collection Handlers', () => {
   beforeEach(() => {
     mockLogger = createMockLogger();
     mockCollectionService = createMockCollectionService();
+    mockRedis = { get: vi.fn(), set: vi.fn() };
 
     mockContext = {
       get: vi.fn((key: string) => {
@@ -110,6 +126,8 @@ describe('XRPC Collection Handlers', () => {
             return { collection: mockCollectionService };
           case 'logger':
             return mockLogger;
+          case 'redis':
+            return mockRedis;
           case 'user':
             return mockOwner;
           default:
@@ -125,7 +143,7 @@ describe('XRPC Collection Handlers', () => {
   // ==========================================================================
 
   describe('get', () => {
-    it('returns collection by URI', async () => {
+    it('returns collection by URI with ownerHandle', async () => {
       const collection = createSampleCollection();
       mockCollectionService.getCollection.mockResolvedValue(collection);
 
@@ -140,6 +158,85 @@ describe('XRPC Collection Handlers', () => {
       expect(result.body.collection.uri).toBe(SAMPLE_COLLECTION_URI);
       expect(result.body.collection.label).toBe('NLP Reading List');
       expect(result.body.collection.itemCount).toBe(5);
+      expect(result.body.collection.ownerHandle).toBe('aswhite.bsky.social');
+    });
+
+    it('returns items with label, kind, subkind, and description fields', async () => {
+      const collection = createSampleCollection();
+      mockCollectionService.getCollection.mockResolvedValue(collection);
+      mockCollectionService.getCollectionItems.mockResolvedValue([
+        {
+          edgeUri: 'at://did:plc:aswhite/pub.chive.graph.edge/e1',
+          itemUri: 'at://did:plc:aswhite/pub.chive.graph.node/syntax-primer',
+          itemType: 'concept',
+          order: 1,
+          addedAt: new Date('2025-06-15T10:00:00Z'),
+          label: 'Syntax Primer',
+          kind: 'object',
+          subkind: 'concept',
+          description: 'An intro to syntax',
+          metadata: {},
+        },
+        {
+          edgeUri: 'at://did:plc:aswhite/pub.chive.graph.edge/e2',
+          itemUri: 'at://did:plc:aswhite/pub.chive.graph.node/megaattitude-clone',
+          itemType: 'eprint',
+          order: 2,
+          addedAt: new Date('2025-06-16T10:00:00Z'),
+          title: 'MegaAttitude',
+          label: 'MegaAttitude',
+          kind: 'object',
+          subkind: 'eprint',
+          metadata: { eprintUri: SAMPLE_EPRINT_URI, authors: ['Aaron Steven White'] },
+        },
+      ]);
+
+      const result = await get.handler({
+        params: { uri: SAMPLE_COLLECTION_URI as string },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      expect(result.body.items).toHaveLength(2);
+
+      const graphNodeItem = result.body.items[0];
+      expect(graphNodeItem?.label).toBe('Syntax Primer');
+      expect(graphNodeItem?.kind).toBe('object');
+      expect(graphNodeItem?.subkind).toBe('concept');
+      expect(graphNodeItem?.description).toBe('An intro to syntax');
+      expect(graphNodeItem?.itemType).toBe('concept');
+      expect((graphNodeItem as unknown as Record<string, unknown>)?.source).toBe('personal');
+
+      const eprintItem = result.body.items[1];
+      expect(eprintItem?.title).toBe('MegaAttitude');
+      expect(eprintItem?.authors).toEqual(['Aaron Steven White']);
+      expect(eprintItem?.itemType).toBe('eprint');
+      expect((eprintItem as unknown as Record<string, unknown>)?.source).toBe('personal');
+    });
+
+    it('returns interItemEdges array in response', async () => {
+      const collection = createSampleCollection();
+      mockCollectionService.getCollection.mockResolvedValue(collection);
+      mockCollectionService.getInterItemEdges.mockResolvedValue([
+        {
+          uri: 'at://did:plc:aswhite/pub.chive.graph.edge/cites1',
+          sourceUri: SAMPLE_EPRINT_URI,
+          targetUri: 'at://did:plc:aswhite/pub.chive.graph.node/syntax-primer',
+          relationSlug: 'cites',
+        },
+      ]);
+
+      const result = await get.handler({
+        params: { uri: SAMPLE_COLLECTION_URI as string },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      expect(result.body.interItemEdges).toHaveLength(1);
+      expect(result.body.interItemEdges[0]?.sourceUri).toBe(SAMPLE_EPRINT_URI);
+      expect(result.body.interItemEdges[0]?.relationSlug).toBe('cites');
     });
 
     it('returns 404 for non-existent collection', async () => {
@@ -167,6 +264,8 @@ describe('XRPC Collection Handlers', () => {
               return { collection: mockCollectionService };
             case 'logger':
               return mockLogger;
+            case 'redis':
+              return mockRedis;
             case 'user':
               return mockStranger;
             default:
@@ -266,7 +365,7 @@ describe('XRPC Collection Handlers', () => {
       });
 
       const result = await listByOwner.handler({
-        params: { did: SAMPLE_DID as string },
+        params: { did: SAMPLE_DID as string, limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
@@ -299,6 +398,8 @@ describe('XRPC Collection Handlers', () => {
               return { collection: mockCollectionService };
             case 'logger':
               return mockLogger;
+            case 'redis':
+              return mockRedis;
             case 'user':
               return null;
             default:
@@ -309,7 +410,7 @@ describe('XRPC Collection Handlers', () => {
       };
 
       const result = await listByOwner.handler({
-        params: { did: SAMPLE_DID as string },
+        params: { did: SAMPLE_DID as string, limit: 50 },
         input: undefined,
         auth: null,
         c: unauthContext as never,
@@ -335,7 +436,7 @@ describe('XRPC Collection Handlers', () => {
       });
 
       const result = await listByOwner.handler({
-        params: { did: SAMPLE_DID as string },
+        params: { did: SAMPLE_DID as string, limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
@@ -347,7 +448,7 @@ describe('XRPC Collection Handlers', () => {
     it('throws ValidationError when did parameter is missing', async () => {
       await expect(
         listByOwner.handler({
-          params: { did: '' },
+          params: { did: '', limit: 50 },
           input: undefined,
           auth: null,
           c: mockContext as never,
@@ -395,7 +496,7 @@ describe('XRPC Collection Handlers', () => {
       });
 
       const result = await listPublic.handler({
-        params: {},
+        params: { limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
@@ -421,7 +522,7 @@ describe('XRPC Collection Handlers', () => {
       };
 
       const result = await listPublic.handler({
-        params: {},
+        params: { limit: 50 },
         input: undefined,
         auth: null,
         c: noServiceContext as never,
@@ -468,7 +569,7 @@ describe('XRPC Collection Handlers', () => {
       });
 
       const result = await search.handler({
-        params: { query: 'linguistics' },
+        params: { query: 'linguistics', limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
@@ -487,14 +588,14 @@ describe('XRPC Collection Handlers', () => {
       });
 
       await search.handler({
-        params: { query: 'semantics' },
+        params: { query: 'semantics', limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
       });
 
       expect(mockCollectionService.searchCollections).toHaveBeenCalledWith('semantics', {
-        limit: 20,
+        limit: 50,
         cursor: undefined,
         visibility: 'public',
       });
@@ -503,7 +604,7 @@ describe('XRPC Collection Handlers', () => {
     it('throws ValidationError when query is missing', async () => {
       await expect(
         search.handler({
-          params: { query: '' },
+          params: { query: '', limit: 50 },
           input: undefined,
           auth: null,
           c: mockContext as never,
@@ -527,7 +628,7 @@ describe('XRPC Collection Handlers', () => {
       };
 
       const result = await search.handler({
-        params: { query: 'test' },
+        params: { query: 'test', limit: 50 },
         input: undefined,
         auth: null,
         c: noServiceContext as never,
@@ -547,7 +648,7 @@ describe('XRPC Collection Handlers', () => {
       mockCollectionService.getCollectionsContaining.mockResolvedValue([collection]);
 
       const result = await getContaining.handler({
-        params: { itemUri: SAMPLE_EPRINT_URI as string },
+        params: { itemUri: SAMPLE_EPRINT_URI as string, limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
@@ -561,7 +662,7 @@ describe('XRPC Collection Handlers', () => {
       mockCollectionService.getCollectionsContaining.mockResolvedValue([]);
 
       const result = await getContaining.handler({
-        params: { itemUri: 'at://did:plc:unknown/pub.chive.eprint.submission/orphan' },
+        params: { itemUri: 'at://did:plc:unknown/pub.chive.eprint.submission/orphan', limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
@@ -574,7 +675,7 @@ describe('XRPC Collection Handlers', () => {
       mockCollectionService.getCollectionsContaining.mockResolvedValue([]);
 
       await getContaining.handler({
-        params: { itemUri: SAMPLE_EPRINT_URI as string },
+        params: { itemUri: SAMPLE_EPRINT_URI as string, limit: 50 },
         input: undefined,
         auth: null,
         c: mockContext as never,
@@ -589,7 +690,7 @@ describe('XRPC Collection Handlers', () => {
     it('throws ValidationError when itemUri is missing', async () => {
       await expect(
         getContaining.handler({
-          params: { itemUri: '' },
+          params: { itemUri: '', limit: 50 },
           input: undefined,
           auth: null,
           c: mockContext as never,

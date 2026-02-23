@@ -19,12 +19,36 @@
         "encoding": "application/json",
         "schema": {
           "type": "object",
-          "required": ["collection"],
+          "required": ["collection", "items", "subcollections", "interItemEdges"],
           "properties": {
             "collection": {
               "type": "ref",
               "ref": "pub.chive.collection.defs#collectionView",
               "description": "The requested collection"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#collectionItemView"
+              },
+              "description": "Items contained in the collection"
+            },
+            "subcollections": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#collectionView"
+              },
+              "description": "Child subcollections"
+            },
+            "interItemEdges": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#interItemEdgeView"
+              },
+              "description": "Edges between items within this collection"
             }
           }
         }

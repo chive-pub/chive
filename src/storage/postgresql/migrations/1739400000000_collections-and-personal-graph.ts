@@ -270,12 +270,12 @@ export function up(pgm: MigrationBuilder): void {
     },
     tags: {
       type: 'jsonb',
-      default: "'[]'",
+      default: pgm.func("'[]'::jsonb"),
       comment: 'Tags applied to this collection as a JSON array',
     },
     metadata: {
       type: 'jsonb',
-      default: "'{}'",
+      default: pgm.func("'{}'::jsonb"),
       comment: 'Additional metadata as a JSON object',
     },
     semble_collection_uri: {
@@ -378,6 +378,10 @@ export function up(pgm: MigrationBuilder): void {
       type: 'real',
       comment: 'Optional numeric weight for ordering',
     },
+    label: {
+      type: 'text',
+      comment: 'User-entered label for the item in this collection',
+    },
     created_at: {
       type: 'timestamptz',
       notNull: true,
@@ -453,7 +457,7 @@ export function up(pgm: MigrationBuilder): void {
     sections: {
       type: 'jsonb',
       notNull: true,
-      default: "'[]'",
+      default: pgm.func("'[]'::jsonb"),
       comment: 'Ordered list of profile sections as a JSON array',
     },
     featured_collection_uri: {

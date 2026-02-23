@@ -87,7 +87,7 @@ export function CollectionHeader({
   const shareContent = {
     type: 'eprint' as const,
     url: `${typeof window !== 'undefined' ? window.location.origin : ''}/collections/${encodeURIComponent(collection.uri)}`,
-    title: collection.name,
+    title: collection.label,
     description: collection.description ?? `A collection with ${collection.itemCount} items`,
     ogImageUrl: '/api/og?type=default',
   };
@@ -97,7 +97,7 @@ export function CollectionHeader({
       {/* Title row */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{collection.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{collection.label}</h1>
           {collection.description && (
             <p className="mt-2 text-lg text-muted-foreground">{collection.description}</p>
           )}
@@ -112,7 +112,7 @@ export function CollectionHeader({
           className="flex items-center gap-1.5 hover:text-foreground transition-colors"
         >
           <UserIcon className="h-4 w-4" />
-          <span>{collection.ownerDid}</span>
+          <span>{collection.ownerHandle ?? collection.ownerDid}</span>
         </Link>
 
         <Separator orientation="vertical" className="h-4" />
@@ -188,7 +188,7 @@ export function CollectionHeader({
                   <AlertDialogTitle>Delete collection</AlertDialogTitle>
                   <AlertDialogDescription className="space-y-2">
                     <span className="block">
-                      Are you sure you want to delete &ldquo;{collection.name}&rdquo;? This action
+                      Are you sure you want to delete &ldquo;{collection.label}&rdquo;? This action
                       cannot be undone.
                     </span>
                     {subcollectionNames && subcollectionNames.length > 0 && (
@@ -226,10 +226,10 @@ export function CollectionHeader({
           </Button>
         )}
 
-        {collection.uri && (
+        {collection.sembleCollectionUri && (
           <Button variant="ghost" size="sm" asChild>
             <a
-              href={`https://semble.app/collection/${collection.ownerDid}/${collection.uri.split('/').pop()}`}
+              href={`https://semble.social/collection/${encodeURIComponent(collection.sembleCollectionUri)}`}
               target="_blank"
               rel="noopener noreferrer"
             >

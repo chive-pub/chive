@@ -36,7 +36,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
-import { authApi, getApiBaseUrl } from '@/lib/api/client';
+import { authApi } from '@/lib/api/client';
 import { createLogger } from '@/lib/observability/logger';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
@@ -154,24 +154,12 @@ export function usePersonalNodes(did: string, options?: { subkind?: string; enab
     queryKey: personalGraphKeys.nodes(did, { subkind: options?.subkind }),
     queryFn: async (): Promise<ListPersonalNodesResponse> => {
       try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ ownerDid: did, limit: '100' });
+        const params: { limit: number; subkind?: string } = { limit: 100 };
         if (options?.subkind) {
-          searchParams.set('subkind', options.subkind);
+          params.subkind = options.subkind;
         }
-        const url = `${baseUrl}/xrpc/pub.chive.graph.listPersonalNodes?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string'
-              ? body['message']
-              : 'Failed to fetch personal nodes',
-            response.status,
-            'pub.chive.graph.listPersonalNodes'
-          );
-        }
-        return (await response.json()) as ListPersonalNodesResponse;
+        const response = await authApi.pub.chive.graph.listPersonalNodes(params);
+        return response.data as unknown as ListPersonalNodesResponse;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
@@ -205,25 +193,14 @@ export function usePersonalEdgeTypes(did: string, options?: { enabled?: boolean 
     queryKey: personalGraphKeys.edgeTypes(did),
     queryFn: async (): Promise<PersonalEdgeTypesResponse> => {
       try {
-        const baseUrl = getApiBaseUrl();
-        const searchParams = new URLSearchParams({ ownerDid: did });
-        const url = `${baseUrl}/xrpc/pub.chive.graph.getPersonalEdgeTypes?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch edge types',
-            response.status,
-            'pub.chive.graph.getPersonalEdgeTypes'
-          );
-        }
-        return (await response.json()) as PersonalEdgeTypesResponse;
+        const response = await authApi.pub.chive.graph.listPersonalEdgeTypes({});
+        return response.data as unknown as PersonalEdgeTypesResponse;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
           error instanceof Error ? error.message : 'Failed to fetch edge types',
           undefined,
-          'pub.chive.graph.getPersonalEdgeTypes'
+          'pub.chive.graph.listPersonalEdgeTypes'
         );
       }
     },

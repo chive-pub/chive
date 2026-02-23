@@ -33,10 +33,12 @@ import { ActivityService } from './services/activity/activity-service.js';
 import { CitationExtractionService } from './services/citation/citation-extraction-service.js';
 import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
 import { GrobidClient } from './services/citation/grobid-client.js';
+import { CollectionService } from './services/collection/collection-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { EprintService } from './services/eprint/eprint-service.js';
 import { AutomaticProposalService } from './services/governance/automatic-proposal-service.js';
 import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
+import { PersonalGraphService } from './services/graph/personal-graph-service.js';
 import { createEventProcessor } from './services/indexing/event-processor.js';
 import { IndexingService } from './services/indexing/indexing-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
@@ -438,6 +440,10 @@ async function main(): Promise<void> {
       logger.info('Automatic proposal service disabled (graph PDS not configured)');
     }
 
+    // Create personal graph and collection services for firehose indexing
+    const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
+    const collectionService = new CollectionService({ pool: pgPool, logger });
+
     // Create event processor with PDS auto-discovery
     const processor = createEventProcessor({
       pool: pgPool,
@@ -451,6 +457,8 @@ async function main(): Promise<void> {
       pdsRegistry, // Auto-register PDSes discovered during indexing
       tagManager, // Mirror tag creates/deletes to Neo4j tag graph
       citationExtractionJob, // Async citation extraction after eprint indexing
+      collectionService, // Index collections from personal PDSes
+      personalGraphService, // Index personal graph nodes/edges from PDSes
     });
 
     // Create indexing service

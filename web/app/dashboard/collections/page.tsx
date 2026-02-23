@@ -118,7 +118,7 @@ export default function MyCollectionsPage() {
             <CollectionCard
               key={collection.uri}
               uri={collection.uri}
-              name={collection.name}
+              name={collection.label}
               description={collection.description}
               itemCount={collection.itemCount}
               visibility={collection.visibility}

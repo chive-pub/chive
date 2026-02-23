@@ -30,12 +30,14 @@ import type { AnnotationService } from '../services/annotation/annotation-servic
 import type { BacklinkService } from '../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../services/blob-proxy/proxy-service.js';
 import type { ClaimingService } from '../services/claiming/claiming-service.js';
+import type { CollectionService } from '../services/collection/collection-service.js';
 import type { DiscoveryService } from '../services/discovery/discovery-service.js';
 import type { EprintService } from '../services/eprint/eprint-service.js';
 import type { EdgeService } from '../services/governance/edge-service.js';
 import type { GovernancePDSWriter } from '../services/governance/governance-pds-writer.js';
 import type { NodeService } from '../services/governance/node-service.js';
 import type { TrustedEditorService } from '../services/governance/trusted-editor-service.js';
+import type { PersonalGraphService } from '../services/graph/personal-graph-service.js';
 import type { ImportService } from '../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../services/metrics/metrics-service.js';
@@ -247,6 +249,16 @@ export interface ServerConfig {
    * If not provided, a default verifier is created using serviceDid.
    */
   readonly serviceAuthVerifier?: IServiceAuthVerifier;
+
+  /**
+   * Personal graph service for user-created nodes and edges (optional).
+   */
+  readonly personalGraphService?: PersonalGraphService;
+
+  /**
+   * Collection service for indexing and querying collections (optional).
+   */
+  readonly collectionService?: CollectionService;
 }
 
 /**
@@ -342,6 +354,8 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       pdsRegistry: config.pdsRegistry,
       pdsScanner: config.pdsScanner,
       indexRetryWorker: config.indexRetryWorker,
+      personalGraph: config.personalGraphService,
+      collection: config.collectionService,
     } as ChiveServices);
     c.set('redis', config.redis);
     c.set('logger', config.logger);

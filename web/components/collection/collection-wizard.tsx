@@ -17,7 +17,7 @@
  * @packageDocumentation
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,14 +36,9 @@ import {
   FileText,
   User,
   Globe,
-  BookOpen,
-  Newspaper,
   Hash,
-  MapPin,
-  Banknote,
-  Database,
-  FileCode,
-  Stethoscope,
+  Search,
+  Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,7 +50,6 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -69,22 +63,9 @@ import { useAuth, useAgent } from '@/lib/auth/auth-context';
 import { WizardProgress, WizardProgressCompact, type WizardStep } from '../submit/wizard-progress';
 
 import { NodeAutocomplete, type NodeSuggestion } from '@/components/forms/node-autocomplete';
+import { TagAutocomplete } from '@/components/forms/tag-autocomplete';
 import { FieldSearch, type FieldSelection } from '@/components/forms/field-search';
-import { EprintSearchAutocomplete } from '@/components/search/eprint-search-autocomplete';
-import { DoiAutocomplete, type CrossRefWork } from '@/components/forms/doi-autocomplete';
-import { ArxivAutocomplete, type ArxivEntry } from '@/components/forms/arxiv-autocomplete';
-import {
-  DidAutocompleteInput,
-  type SelectedAtprotoUser,
-} from '@/components/forms/did-autocomplete-input';
-import {
-  ConferenceAutocomplete,
-  type Conference,
-} from '@/components/forms/conference-autocomplete';
-import { JournalAutocomplete, type CrossRefJournal } from '@/components/forms/journal-autocomplete';
-import { FunderAutocomplete, type FunderResult } from '@/components/forms/funder-autocomplete';
-import { ZenodoAutocomplete, type ZenodoRecord } from '@/components/forms/zenodo-autocomplete';
-import { PubmedAutocomplete, type PubmedEntry } from '@/components/forms/pubmed-autocomplete';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 import {
   useCreateCollection,
@@ -93,7 +74,11 @@ import {
   type CollectionView,
 } from '@/lib/hooks/use-collections';
 import { useCreatePersonalEdge, useCreatePersonalNode } from '@/lib/hooks/use-personal-graph';
-import { useEprintSearchState } from '@/lib/hooks/use-eprint-search';
+import { useInstantSearch } from '@/lib/hooks/use-search';
+import { useAuthorSearch, type AuthorSearchResult } from '@/lib/hooks/use-author';
+import { useDebounce } from '@/lib/hooks/use-eprint-search';
+import { SUBKIND_BY_SLUG } from '@/components/knowledge-graph/types';
+import type { EnrichedSearchHit } from '@/lib/api/schema';
 
 const wizardLogger = logger.child({ component: 'collection-wizard' });
 
@@ -113,6 +98,16 @@ export interface CollectionItemFormData {
   label: string;
   /** Optional annotation note */
   note?: string;
+  /** Optional metadata for richer rendering */
+  metadata?: {
+    avatarUrl?: string;
+    handle?: string;
+    authors?: string[];
+    subkind?: string;
+    kind?: string;
+    description?: string;
+    isPersonal?: boolean;
+  };
 }
 
 /**
@@ -192,6 +187,7 @@ const collectionFormSchema = z.object({
       type: z.string(),
       label: z.string(),
       note: z.string().optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     })
   ),
   edges: z
@@ -250,17 +246,9 @@ const WIZARD_STEPS: WizardStep[] = [
  */
 const ITEM_TYPE_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string }> = {
   eprint: { label: 'Eprint', icon: FileText, color: 'bg-blue-100 text-blue-800' },
-  doi: { label: 'DOI', icon: BookOpen, color: 'bg-green-100 text-green-800' },
-  arxiv: { label: 'arXiv', icon: FileText, color: 'bg-orange-100 text-orange-800' },
   'at-uri': { label: 'AT-URI', icon: Link2, color: 'bg-purple-100 text-purple-800' },
   author: { label: 'Author', icon: User, color: 'bg-pink-100 text-pink-800' },
   graphNode: { label: 'Node', icon: Globe, color: 'bg-cyan-100 text-cyan-800' },
-  conference: { label: 'Conference', icon: MapPin, color: 'bg-amber-100 text-amber-800' },
-  journal: { label: 'Journal', icon: Newspaper, color: 'bg-teal-100 text-teal-800' },
-  funder: { label: 'Funder', icon: Banknote, color: 'bg-emerald-100 text-emerald-800' },
-  dataset: { label: 'Dataset', icon: Database, color: 'bg-indigo-100 text-indigo-800' },
-  software: { label: 'Software', icon: FileCode, color: 'bg-violet-100 text-violet-800' },
-  pubmed: { label: 'PubMed', icon: Stethoscope, color: 'bg-rose-100 text-rose-800' },
 };
 
 // =============================================================================
@@ -282,11 +270,10 @@ function StepBasics({ form }: StepBasicsProps) {
   const fields = watch('fields') ?? [];
 
   const handleTagSelect = useCallback(
-    (node: NodeSuggestion) => {
+    (tag: string) => {
       if (tags.length >= 20) return;
-      const tagValue = node.label;
-      if (!tags.includes(tagValue)) {
-        setValue('tags', [...tags, tagValue], { shouldDirty: true });
+      if (!tags.includes(tag)) {
+        setValue('tags', [...tags, tag], { shouldDirty: true });
       }
     },
     [tags, setValue]
@@ -403,14 +390,11 @@ function StepBasics({ form }: StepBasicsProps) {
           </div>
         )}
         {tags.length < 20 && (
-          <NodeAutocomplete
+          <TagAutocomplete
             key={tags.length}
-            subkind="tag"
-            includePersonal
-            label="Tag"
-            placeholder="Search or create tags..."
             onSelect={handleTagSelect}
-            onClear={() => {}}
+            placeholder="Search tags..."
+            existingTags={tags}
           />
         )}
         <p className="text-xs text-muted-foreground">{tags.length}/20 tags</p>
@@ -437,37 +421,252 @@ interface StepItemsProps {
 }
 
 /**
+ * Returns initials from a display name (up to 2 characters).
+ */
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return (parts[0]?.[0] ?? '?').toUpperCase();
+  return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase();
+}
+
+/**
  * Renders a single item in the items list with type badge, label, note, and remove.
+ * Supports inline label editing and subkind-sensitive rendering.
  */
 function CollectionItemRow({
   item,
   index,
   onNoteChange,
+  onLabelChange,
   onRemove,
 }: {
   item: CollectionItemFormData;
   index: number;
   onNoteChange: (index: number, note: string) => void;
+  onLabelChange: (index: number, label: string) => void;
   onRemove: (index: number) => void;
 }) {
   const [showNote, setShowNote] = useState(!!item.note);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editLabelValue, setEditLabelValue] = useState(item.label);
   const config = ITEM_TYPE_CONFIG[item.type] ?? {
     label: item.type,
     icon: FileText,
     color: 'bg-gray-100 text-gray-800',
   };
-  const Icon = config.icon;
+  const metadata = item.metadata;
+
+  const confirmLabelEdit = useCallback(() => {
+    const trimmed = editLabelValue.trim();
+    if (trimmed && trimmed !== item.label) {
+      onLabelChange(index, trimmed);
+    }
+    setIsEditingLabel(false);
+  }, [editLabelValue, item.label, index, onLabelChange]);
+
+  const cancelLabelEdit = useCallback(() => {
+    setEditLabelValue(item.label);
+    setIsEditingLabel(false);
+  }, [item.label]);
+
+  // Render the type-specific content area
+  const renderItemContent = () => {
+    if (item.type === 'author') {
+      return (
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <Avatar className="h-8 w-8 shrink-0">
+            <AvatarImage src={metadata?.avatarUrl} alt={item.label} />
+            <AvatarFallback>{getInitials(item.label)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            {isEditingLabel ? (
+              <Input
+                value={editLabelValue}
+                onChange={(e) => setEditLabelValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmLabelEdit();
+                  } else if (e.key === 'Escape') {
+                    cancelLabelEdit();
+                  }
+                }}
+                onBlur={confirmLabelEdit}
+                className="h-7 text-sm"
+                autoFocus
+              />
+            ) : (
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-medium truncate">{item.label}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditLabelValue(item.label);
+                    setIsEditingLabel(true);
+                  }}
+                  className="text-muted-foreground hover:text-foreground p-0.5"
+                  aria-label="Edit label"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            {metadata?.handle && (
+              <p className="text-xs text-muted-foreground truncate">@{metadata.handle}</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (item.type === 'eprint') {
+      return (
+        <div className="flex-1 min-w-0 space-y-1">
+          {isEditingLabel ? (
+            <Input
+              value={editLabelValue}
+              onChange={(e) => setEditLabelValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  confirmLabelEdit();
+                } else if (e.key === 'Escape') {
+                  cancelLabelEdit();
+                }
+              }}
+              onBlur={confirmLabelEdit}
+              className="h-7 text-sm"
+              autoFocus
+            />
+          ) : (
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-medium truncate">{item.label}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditLabelValue(item.label);
+                  setIsEditingLabel(true);
+                }}
+                className="text-muted-foreground hover:text-foreground p-0.5"
+                aria-label="Edit label"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          {metadata?.authors && metadata.authors.length > 0 && (
+            <p className="text-xs text-muted-foreground truncate">{metadata.authors.join(', ')}</p>
+          )}
+        </div>
+      );
+    }
+
+    if (item.type === 'graphNode') {
+      const subkindConfig = SUBKIND_BY_SLUG.get(metadata?.subkind ?? '');
+      const NodeIcon = subkindConfig?.icon ?? Globe;
+
+      return (
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <NodeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            {isEditingLabel ? (
+              <Input
+                value={editLabelValue}
+                onChange={(e) => setEditLabelValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmLabelEdit();
+                  } else if (e.key === 'Escape') {
+                    cancelLabelEdit();
+                  }
+                }}
+                onBlur={confirmLabelEdit}
+                className="h-7 text-sm"
+                autoFocus
+              />
+            ) : (
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-medium truncate">{item.label}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditLabelValue(item.label);
+                    setIsEditingLabel(true);
+                  }}
+                  className="text-muted-foreground hover:text-foreground p-0.5"
+                  aria-label="Edit label"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-1 mt-0.5">
+              {subkindConfig && (
+                <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                  {subkindConfig.label}
+                </Badge>
+              )}
+              {metadata?.isPersonal && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                  Personal
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Default / AT-URI rendering
+    return (
+      <div className="flex-1 min-w-0 space-y-1">
+        {isEditingLabel ? (
+          <Input
+            value={editLabelValue}
+            onChange={(e) => setEditLabelValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmLabelEdit();
+              } else if (e.key === 'Escape') {
+                cancelLabelEdit();
+              }
+            }}
+            onBlur={confirmLabelEdit}
+            className="h-7 text-sm"
+            autoFocus
+          />
+        ) : (
+          <div className="flex items-center gap-1">
+            <p className="text-sm font-medium truncate">{item.label}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setEditLabelValue(item.label);
+                setIsEditingLabel(true);
+              }}
+              className="text-muted-foreground hover:text-foreground p-0.5"
+              aria-label="Edit label"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground truncate">{item.uri}</p>
+      </div>
+    );
+  };
 
   return (
     <Card>
       <CardContent className="flex items-start gap-3 p-3">
         <Badge variant="outline" className={cn('shrink-0 gap-1', config.color)}>
-          <Icon className="h-3 w-3" />
+          <config.icon className="h-3 w-3" />
           {config.label}
         </Badge>
         <div className="flex-1 min-w-0 space-y-2">
-          <p className="text-sm font-medium truncate">{item.label}</p>
-          <p className="text-xs text-muted-foreground truncate">{item.uri}</p>
+          {renderItemContent()}
           <button
             type="button"
             onClick={() => setShowNote(!showNote)}
@@ -504,12 +703,77 @@ function StepItems({ form }: StepItemsProps) {
   const { setValue, watch } = form;
   const items = watch('items') ?? [];
 
-  // Eprint search state for the Eprints tab
-  const eprintSearch = useEprintSearchState();
+  // Unified search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Search hooks
+  const eprintSearch = useInstantSearch(debouncedSearch);
+  const authorSearch = useAuthorSearch(debouncedSearch, { limit: 5 });
+
+  // Graph node search via direct fetch
+  const [nodeResults, setNodeResults] = useState<
+    Array<{
+      uri: string;
+      label: string;
+      subkind?: string;
+      kind?: string;
+      description?: string;
+      isPersonal?: boolean;
+    }>
+  >([]);
+
+  useEffect(() => {
+    if (debouncedSearch.length < 2) {
+      setNodeResults([]);
+      return;
+    }
+    const params = new URLSearchParams({
+      query: debouncedSearch,
+      limit: '5',
+      status: 'established',
+    });
+    fetch(`/xrpc/pub.chive.graph.searchNodes?${params}`)
+      .then((r) => (r.ok ? r.json() : { nodes: [] }))
+      .then((data) => {
+        setNodeResults(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ((data as { nodes?: any[] }).nodes ?? []).map((n: any) => ({
+            uri: n.uri as string,
+            label: n.label as string,
+            subkind: n.subkind as string | undefined,
+            kind: n.kind as string | undefined,
+            description: n.description as string | undefined,
+            isPersonal: (n.isPersonal as boolean | undefined) ?? false,
+          }))
+        );
+      })
+      .catch(() => setNodeResults([]));
+  }, [debouncedSearch]);
+
+  // Click-outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Collapsible AT-URI section
+  const [showAtUriInput, setShowAtUriInput] = useState(false);
+
+  const eprintHits = (eprintSearch.data?.hits ?? []) as unknown as EnrichedSearchHit[];
+  const authorHits = authorSearch.data?.authors ?? [];
+  const isSearching = eprintSearch.isLoading || authorSearch.isLoading;
+  const hasResults = eprintHits.length > 0 || authorHits.length > 0 || nodeResults.length > 0;
 
   const addItem = useCallback(
     (item: CollectionItemFormData) => {
-      // Deduplicate by URI
       if (items.some((existing) => existing.uri === item.uri)) {
         toast.info('This item is already in the collection.');
         return;
@@ -537,6 +801,15 @@ function StepItems({ form }: StepItemsProps) {
     [items, setValue]
   );
 
+  const updateLabel = useCallback(
+    (index: number, label: string) => {
+      const updated = [...items];
+      updated[index] = { ...updated[index], label };
+      setValue('items', updated, { shouldDirty: true });
+    },
+    [items, setValue]
+  );
+
   // AT-URI manual input
   const [atUriInput, setAtUriInput] = useState('');
 
@@ -555,72 +828,187 @@ function StepItems({ form }: StepItemsProps) {
       <div>
         <h2 className="text-xl font-semibold">Add Items</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Search for eprints, papers, authors, or graph nodes to add to your collection.
+          Add eprints, authors, or graph nodes to your collection.
         </p>
       </div>
 
-      <Tabs defaultValue="eprints">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-6 xl:grid-cols-12">
-          <TabsTrigger value="eprints">Eprints</TabsTrigger>
-          <TabsTrigger value="doi">By DOI</TabsTrigger>
-          <TabsTrigger value="arxiv">By arXiv</TabsTrigger>
-          <TabsTrigger value="at-uri">By AT-URI</TabsTrigger>
-          <TabsTrigger value="authors">Authors</TabsTrigger>
-          <TabsTrigger value="nodes">Graph Nodes</TabsTrigger>
-          <TabsTrigger value="conferences">Conferences</TabsTrigger>
-          <TabsTrigger value="journals">Journals</TabsTrigger>
-          <TabsTrigger value="funders">Funders</TabsTrigger>
-          <TabsTrigger value="datasets">Datasets</TabsTrigger>
-          <TabsTrigger value="software">Software</TabsTrigger>
-          <TabsTrigger value="pubmed">PubMed</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="eprints" className="mt-4">
-          <EprintSearchAutocomplete
-            value={eprintSearch.query}
-            onChange={eprintSearch.setQuery}
-            suggestions={eprintSearch.autocomplete.suggestions}
-            isLoading={eprintSearch.autocomplete.isLoading}
-            placeholder="Search Chive eprints..."
-            onSelectSuggestion={(suggestion) => {
-              addItem({
-                uri: `eprint:${suggestion.externalId}`,
-                type: 'eprint',
-                label: suggestion.title,
-              });
-              eprintSearch.setQuery('');
+      {/* Unified search */}
+      <div className="relative" ref={dropdownRef}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowDropdown(true);
             }}
-          />
-        </TabsContent>
-
-        <TabsContent value="doi" className="mt-4">
-          <DoiAutocomplete
-            onSelect={(work: CrossRefWork) => {
-              addItem({
-                uri: `doi:${work.doi}`,
-                type: 'doi',
-                label: work.title,
-              });
+            onFocus={() => {
+              if (searchQuery.length >= 2) setShowDropdown(true);
             }}
-            placeholder="Search by DOI or title..."
+            placeholder="Search eprints, authors, or graph nodes..."
+            className="pl-9"
           />
-        </TabsContent>
+        </div>
 
-        <TabsContent value="arxiv" className="mt-4">
-          <ArxivAutocomplete
-            onSelect={(entry: ArxivEntry) => {
-              addItem({
-                uri: `arxiv:${entry.id}`,
-                type: 'arxiv',
-                label: entry.title,
-              });
-            }}
-            placeholder="Search by arXiv ID or title..."
-          />
-        </TabsContent>
+        {/* Search results dropdown */}
+        {showDropdown && searchQuery.length >= 2 && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg max-h-[400px] overflow-y-auto">
+            {/* Loading state */}
+            {isSearching && !hasResults && (
+              <div className="flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Searching...
+              </div>
+            )}
 
-        <TabsContent value="at-uri" className="mt-4">
-          <div className="flex gap-2">
+            {/* No results */}
+            {!isSearching && !hasResults && (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No results found for &quot;{searchQuery}&quot;
+              </div>
+            )}
+
+            {/* Eprint results */}
+            {eprintHits.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                  <FileText className="h-3 w-3" />
+                  Eprints
+                </div>
+                {eprintHits.slice(0, 5).map((hit) => (
+                  <button
+                    key={hit.uri}
+                    type="button"
+                    className="w-full text-left px-3 py-2 hover:bg-accent transition-colors"
+                    onClick={() => {
+                      addItem({
+                        uri: hit.uri,
+                        type: 'eprint',
+                        label: hit.title ?? 'Untitled',
+                        metadata: {
+                          authors: hit.authors?.map((a) => a.name ?? 'Unknown'),
+                        },
+                      });
+                      setSearchQuery('');
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <p className="text-sm font-medium truncate">{hit.title ?? 'Untitled'}</p>
+                    {hit.authors && hit.authors.length > 0 && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {hit.authors.map((a) => a.name ?? 'Unknown').join(', ')}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Author results */}
+            {authorHits.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                  <User className="h-3 w-3" />
+                  Authors
+                </div>
+                {authorHits.slice(0, 5).map((author: AuthorSearchResult) => (
+                  <button
+                    key={author.did}
+                    type="button"
+                    className="w-full text-left px-3 py-2 hover:bg-accent transition-colors flex items-center gap-2"
+                    onClick={() => {
+                      addItem({
+                        uri: author.did,
+                        type: 'author',
+                        label: author.displayName ?? author.handle ?? author.did,
+                        metadata: {
+                          avatarUrl: author.avatar,
+                          handle: author.handle,
+                        },
+                      });
+                      setSearchQuery('');
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <Avatar className="h-6 w-6 shrink-0">
+                      <AvatarImage src={author.avatar} alt={author.displayName ?? author.handle} />
+                      <AvatarFallback className="text-[10px]">
+                        {getInitials(author.displayName ?? author.handle ?? '?')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {author.displayName ?? author.handle ?? author.did}
+                      </p>
+                      {author.handle && (
+                        <p className="text-xs text-muted-foreground truncate">@{author.handle}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Graph node results */}
+            {nodeResults.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                  <Globe className="h-3 w-3" />
+                  Graph Nodes
+                </div>
+                {nodeResults.slice(0, 5).map((node) => {
+                  const subkindConfig = SUBKIND_BY_SLUG.get(node.subkind ?? '');
+                  const NodeIcon = subkindConfig?.icon ?? Globe;
+
+                  return (
+                    <button
+                      key={node.uri}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-accent transition-colors flex items-center gap-2"
+                      onClick={() => {
+                        addItem({
+                          uri: node.uri,
+                          type: 'graphNode',
+                          label: node.label,
+                          metadata: {
+                            subkind: node.subkind,
+                            kind: node.kind,
+                            description: node.description,
+                            isPersonal: node.isPersonal,
+                          },
+                        });
+                        setSearchQuery('');
+                        setShowDropdown(false);
+                      }}
+                    >
+                      <NodeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="text-sm truncate">{node.label}</span>
+                      {subkindConfig && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">
+                          {subkindConfig.label}
+                        </Badge>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Collapsible AT-URI input */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAtUriInput(!showAtUriInput)}
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          {showAtUriInput ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          Add by AT-URI
+        </button>
+        {showAtUriInput && (
+          <div className="flex gap-2 mt-2">
             <Input
               value={atUriInput}
               onChange={(e) => setAtUriInput(e.target.value)}
@@ -641,116 +1029,8 @@ function StepItems({ form }: StepItemsProps) {
               Add
             </Button>
           </div>
-        </TabsContent>
-
-        <TabsContent value="authors" className="mt-4">
-          <DidAutocompleteInput
-            onSelect={(user: SelectedAtprotoUser) => {
-              addItem({
-                uri: user.did,
-                type: 'author',
-                label: user.displayName ?? user.handle,
-              });
-            }}
-            placeholder="Search by handle..."
-          />
-        </TabsContent>
-
-        <TabsContent value="nodes" className="mt-4">
-          <NodeAutocomplete
-            label="Graph Node"
-            includePersonal
-            placeholder="Search all graph nodes..."
-            onSelect={(node: NodeSuggestion) => {
-              addItem({
-                uri: node.uri,
-                type: 'graphNode',
-                label: node.label,
-              });
-            }}
-            onClear={() => {}}
-          />
-        </TabsContent>
-
-        <TabsContent value="conferences" className="mt-4">
-          <ConferenceAutocomplete
-            onSelect={(conference: Conference) => {
-              const label = conference.name;
-              const uri = conference.type === 'chive' ? conference.uri : `dblp:${conference.id}`;
-              addItem({ uri, type: 'conference', label });
-            }}
-            placeholder="Search conferences..."
-          />
-        </TabsContent>
-
-        <TabsContent value="journals" className="mt-4">
-          <JournalAutocomplete
-            onSelect={(journal: CrossRefJournal) => {
-              addItem({
-                uri: `issn:${journal.issn}`,
-                type: 'journal',
-                label: journal.title,
-              });
-            }}
-            placeholder="Search journals..."
-          />
-        </TabsContent>
-
-        <TabsContent value="funders" className="mt-4">
-          <FunderAutocomplete
-            onSelect={(funder: FunderResult) => {
-              const uri = funder.type === 'chive' ? funder.uri : `doi:${funder.doi}`;
-              addItem({
-                uri,
-                type: 'funder',
-                label: funder.name,
-              });
-            }}
-            placeholder="Search funding organizations..."
-          />
-        </TabsContent>
-
-        <TabsContent value="datasets" className="mt-4">
-          <ZenodoAutocomplete
-            recordType="dataset"
-            onSelect={(record: ZenodoRecord) => {
-              addItem({
-                uri: record.doi ? `doi:${record.doi}` : record.url,
-                type: 'dataset',
-                label: record.title,
-              });
-            }}
-            placeholder="Search Zenodo datasets..."
-          />
-        </TabsContent>
-
-        <TabsContent value="software" className="mt-4">
-          <ZenodoAutocomplete
-            recordType="software"
-            onSelect={(record: ZenodoRecord) => {
-              addItem({
-                uri: record.doi ? `doi:${record.doi}` : record.url,
-                type: 'software',
-                label: record.title,
-              });
-            }}
-            placeholder="Search Zenodo software..."
-          />
-        </TabsContent>
-
-        <TabsContent value="pubmed" className="mt-4">
-          <PubmedAutocomplete
-            onSelect={(entry: PubmedEntry) => {
-              addItem({
-                uri: `pmid:${entry.pmid}`,
-                type: 'pubmed',
-                label: entry.title,
-              });
-            }}
-            placeholder="Search PubMed by title or PMID..."
-          />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       {/* Item list */}
       {items.length > 0 && (
@@ -762,6 +1042,7 @@ function StepItems({ form }: StepItemsProps) {
               item={item}
               index={index}
               onNoteChange={updateNote}
+              onLabelChange={updateLabel}
               onRemove={removeItem}
             />
           ))}
@@ -770,7 +1051,7 @@ function StepItems({ form }: StepItemsProps) {
 
       {items.length === 0 && (
         <div className="rounded-lg border-2 border-dashed p-8 text-center text-muted-foreground">
-          <p>No items added yet. Use the tabs above to search and add items.</p>
+          <p>No items added yet. Use the search above to find and add items.</p>
         </div>
       )}
     </div>
@@ -988,7 +1269,7 @@ function StepEdges({ form }: StepEdgesProps) {
             <Card key={index}>
               <CardContent className="flex items-center gap-3 p-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm">
+                  <div className="text-sm flex items-center flex-wrap gap-y-1">
                     <span className="font-medium">{getItemLabel(edge.sourceUri)}</span>
                     <span className="mx-2 text-muted-foreground">&rarr;</span>
                     <Badge variant="outline" className="mx-1">
@@ -996,7 +1277,7 @@ function StepEdges({ form }: StepEdgesProps) {
                     </Badge>
                     <span className="mx-2 text-muted-foreground">&rarr;</span>
                     <span className="font-medium">{getItemLabel(edge.targetUri)}</span>
-                  </p>
+                  </div>
                   {edge.note && <p className="text-xs text-muted-foreground mt-1">{edge.note}</p>}
                 </div>
                 <Button
@@ -1568,6 +1849,7 @@ export function CollectionWizard({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const createCollection = useCreateCollection();
+  const createPersonalNode = useCreatePersonalNode();
   const addToCollection = useAddToCollection();
   const addSubcollectionMutation = useAddSubcollection();
   const createPersonalEdge = useCreatePersonalEdge();
@@ -1674,28 +1956,107 @@ export function CollectionWizard({
 
       wizardLogger.info('Collection node created', { uri: collection.uri });
 
-      // 2. Add each item via CONTAINS edge
+      // 2. Create personal graph nodes for all items, building a URI mapping
+      // Every collection item must be a pub.chive.graph.node in the user's PDS.
+      const uriMap = new Map<string, string>(); // original URI -> personal node URI
+
+      for (const item of values.items) {
+        try {
+          // Already-personal graph nodes can be used directly
+          if (item.type === 'graphNode' && item.metadata?.isPersonal) {
+            uriMap.set(item.uri, item.uri);
+            continue;
+          }
+
+          let nodeInput: {
+            kind: string;
+            subkind: string;
+            label: string;
+            description?: string;
+            metadata?: Record<string, unknown>;
+          };
+
+          if (item.type === 'eprint') {
+            nodeInput = {
+              kind: 'object',
+              subkind: 'eprint',
+              label: item.label,
+              metadata: {
+                eprintUri: item.uri,
+                ...(item.metadata?.authors && { authors: item.metadata.authors }),
+              },
+            };
+          } else if (item.type === 'author') {
+            nodeInput = {
+              kind: 'object',
+              subkind: 'person',
+              label: item.label,
+              metadata: {
+                did: item.uri.startsWith('did:') ? item.uri : item.uri.split('/')[2],
+                ...(item.metadata?.handle && { handle: item.metadata.handle }),
+                ...(item.metadata?.avatarUrl && { avatarUrl: item.metadata.avatarUrl }),
+              },
+            };
+          } else if (item.type === 'graphNode') {
+            // Community graph node: clone into personal graph
+            nodeInput = {
+              kind: item.metadata?.kind ?? 'object',
+              subkind: item.metadata?.subkind ?? 'concept',
+              label: item.label,
+              description: item.metadata?.description,
+              metadata: { clonedFrom: item.uri },
+            };
+          } else {
+            // at-uri or unknown: create a reference node
+            nodeInput = {
+              kind: 'object',
+              subkind: 'reference',
+              label: item.label,
+              metadata: { referenceUri: item.uri },
+            };
+          }
+
+          const personalNode = await createPersonalNode.mutateAsync(nodeInput);
+          uriMap.set(item.uri, personalNode.uri);
+
+          wizardLogger.info('Created personal node for item', {
+            originalUri: item.uri,
+            personalUri: personalNode.uri,
+            type: item.type,
+          });
+        } catch (nodeError) {
+          wizardLogger.warn('Failed to create personal node for item', {
+            itemUri: item.uri,
+            error: nodeError instanceof Error ? nodeError.message : String(nodeError),
+          });
+          // Fall back to using the original URI
+          uriMap.set(item.uri, item.uri);
+        }
+      }
+
+      // 3. Add each item to the collection via CONTAINS edge using personal node URIs
       const itemResults: Array<{ itemUri: string; edgeUri: string }> = [];
       for (let i = 0; i < values.items.length; i++) {
         const item = values.items[i];
+        const personalNodeUri = uriMap.get(item.uri) ?? item.uri;
         try {
           const result = await addToCollection.mutateAsync({
             collectionUri: collection.uri,
-            itemUri: item.uri,
-            itemType: item.type,
+            itemUri: personalNodeUri,
+            label: item.label,
             note: item.note,
             order: i,
           });
-          itemResults.push({ itemUri: item.uri, edgeUri: result.edgeUri });
+          itemResults.push({ itemUri: personalNodeUri, edgeUri: result.edgeUri });
         } catch (itemError) {
           wizardLogger.warn('Failed to add item to collection', {
-            itemUri: item.uri,
+            itemUri: personalNodeUri,
             error: itemError instanceof Error ? itemError.message : String(itemError),
           });
         }
       }
 
-      // 3. Create subcollections and link them
+      // 4. Create subcollections and link them
       for (const sub of values.subcollections) {
         try {
           // Create child collection node
@@ -1710,19 +2071,21 @@ export function CollectionWizard({
             parentCollectionUri: collection.uri,
           });
 
-          // Add items to subcollection
+          // Add items to subcollection using remapped URIs
           for (let i = 0; i < sub.items.length; i++) {
-            const itemUri = sub.items[i];
+            const originalItemUri = sub.items[i];
+            const personalNodeUri = uriMap.get(originalItemUri) ?? originalItemUri;
             try {
+              const matchingItem = values.items.find((it) => it.uri === originalItemUri);
               await addToCollection.mutateAsync({
                 collectionUri: childCollection.uri,
-                itemUri,
-                itemType: values.items.find((it) => it.uri === itemUri)?.type ?? 'unknown',
+                itemUri: personalNodeUri,
+                label: matchingItem?.label,
                 order: i,
               });
             } catch {
               wizardLogger.warn('Failed to add item to subcollection', {
-                itemUri,
+                itemUri: personalNodeUri,
                 subcollection: sub.name,
               });
             }
@@ -1735,13 +2098,13 @@ export function CollectionWizard({
         }
       }
 
-      // 4. Create custom edges
+      // 5. Create custom edges using remapped URIs
       const ownerDid = (agent as unknown as { did?: string }).did ?? '';
       for (const edge of values.edges ?? []) {
         try {
           await createPersonalEdge.mutateAsync({
-            sourceUri: edge.sourceUri,
-            targetUri: edge.targetUri,
+            sourceUri: uriMap.get(edge.sourceUri) ?? edge.sourceUri,
+            targetUri: uriMap.get(edge.targetUri) ?? edge.targetUri,
             relationSlug: edge.relationSlug,
             metadata: edge.note ? { note: edge.note } : undefined,
             ownerDid,
@@ -1770,6 +2133,7 @@ export function CollectionWizard({
     isAuthenticated,
     form,
     createCollection,
+    createPersonalNode,
     addToCollection,
     addSubcollectionMutation,
     createPersonalEdge,

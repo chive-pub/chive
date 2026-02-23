@@ -54,7 +54,7 @@ export function SubcollectionTree({
           >
             <FolderOpen className="h-4 w-4" />
             <span>Parent:</span>
-            <span className="font-medium">{parentCollection.name}</span>
+            <span className="font-medium">{parentCollection.label}</span>
             <ChevronRight className="h-3 w-3" />
           </Link>
         </div>
@@ -69,7 +69,7 @@ export function SubcollectionTree({
               <CollectionCard
                 key={sub.uri}
                 uri={sub.uri}
-                name={sub.name}
+                name={sub.label}
                 description={sub.description}
                 itemCount={sub.itemCount}
                 visibility={sub.visibility}

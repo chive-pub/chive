@@ -37,6 +37,7 @@ import { createLogger } from '@/lib/observability/logger';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
   createCollectionNode,
+  createPersonalNode,
   addItemToCollection,
   createPersonalEdge,
 } from '@/lib/atproto/record-creator';
@@ -395,14 +396,44 @@ export function useCloneSubgraph() {
         });
       }
 
-      // 2. Add each node as a CONTAINS item
+      // 2. Clone each community graph node into the user's personal graph
+      const uriMap = new Map<string, string>(); // community URI -> personal node URI
+
+      for (const node of input.nodes) {
+        try {
+          const personalNode = await createPersonalNode(agent, {
+            kind: 'object',
+            subkind: 'concept',
+            label: node.label,
+            metadata: { clonedFrom: node.uri },
+          });
+
+          uriMap.set(node.uri, personalNode.uri);
+
+          // Request immediate indexing of the personal node
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: personalNode.uri });
+          } catch {
+            // Firehose will handle
+          }
+        } catch (nodeError) {
+          logger.warn('Failed to clone node to personal graph', {
+            nodeUri: node.uri,
+            error: nodeError instanceof Error ? nodeError.message : String(nodeError),
+          });
+          // Fall back to using community URI directly
+          uriMap.set(node.uri, node.uri);
+        }
+      }
+
+      // 3. Add each cloned personal node as a CONTAINS item
       for (let i = 0; i < input.nodes.length; i++) {
         const node = input.nodes[i];
+        const personalUri = uriMap.get(node.uri) ?? node.uri;
         try {
           const edgeResult = await addItemToCollection(agent, {
             collectionUri: collectionResult.uri,
-            itemUri: node.uri,
-            itemType: 'graph-node',
+            itemUri: personalUri,
             note: node.note,
             order: i + 1,
           });
@@ -416,19 +447,18 @@ export function useCloneSubgraph() {
         } catch (itemError) {
           logger.warn('Failed to add node to collection', {
             collectionUri: collectionResult.uri,
-            nodeUri: node.uri,
+            nodeUri: personalUri,
             error: itemError instanceof Error ? itemError.message : String(itemError),
           });
         }
       }
 
-      // 3. Create personal edges for the cloned relationships
-      const ownerDid = agent.did ?? '';
+      // 4. Create personal edges for the cloned relationships using remapped URIs
       for (const edge of input.edges) {
         try {
           const edgeResult = await createPersonalEdge(agent, {
-            sourceUri: edge.sourceUri,
-            targetUri: edge.targetUri,
+            sourceUri: uriMap.get(edge.sourceUri) ?? edge.sourceUri,
+            targetUri: uriMap.get(edge.targetUri) ?? edge.targetUri,
             relationSlug: edge.relationSlug,
             metadata: { clonedFrom: 'graph-clone-wizard' },
           });

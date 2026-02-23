@@ -2,8 +2,10 @@
  * XRPC handler for pub.chive.author.searchAuthors.
  *
  * @remarks
- * Searches for authors who have eprints on Chive or have Chive profiles.
- * This endpoint returns Chive-relevant authors only, not all ATProto users.
+ * Searches for authors by combining Chive's eprint index with the Bluesky
+ * public actor search API. Chive-indexed authors (those with eprints) are
+ * returned first, with Bluesky network results as a fallback so that any
+ * ATProto user can be found by name or handle.
  *
  * @packageDocumentation
  * @public
@@ -20,6 +22,8 @@ import type {
 import type { DID } from '../../../../types/atproto.js';
 import type { ChiveEnv } from '../../../types/context.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+
+const BLUESKY_PUBLIC_API = 'https://public.api.bsky.app';
 
 /**
  * Searches for authors by querying Elasticsearch for eprints with matching author names.
@@ -42,6 +46,9 @@ async function searchAuthorsInIndex(
     const authorMap = new Map<string, { did: string; name?: string; eprintCount: number }>();
 
     // Extract unique authors from search results
+    const queryLower = query.toLowerCase();
+    const queryWords = queryLower.split(/\s+/).filter(Boolean);
+
     for (const hit of searchResults.hits) {
       // Get the full eprint data to access authors
       const eprint = await c.get('services').eprint.getEprint(hit.uri);
@@ -49,10 +56,20 @@ async function searchAuthorsInIndex(
 
       for (const author of eprint.authors) {
         if (author.did) {
-          // Check if the author name matches the query
+          // Check if the author name matches the query using word-prefix matching.
+          // Each query word must prefix-match at least one name word, so
+          // "aarons" matches "Aaron Steven White" (prefix of "aarons" -> "aaron").
           const authorNameLower = author.name?.toLowerCase() ?? '';
-          const queryLower = query.toLowerCase();
-          if (authorNameLower.includes(queryLower) || author.did.includes(queryLower)) {
+          const nameWords = authorNameLower.split(/\s+/).filter(Boolean);
+
+          const matches =
+            authorNameLower.includes(queryLower) ||
+            author.did.includes(queryLower) ||
+            queryWords.every((qw) =>
+              nameWords.some((nw) => nw.startsWith(qw) || qw.startsWith(nw))
+            );
+
+          if (matches) {
             const existing = authorMap.get(author.did);
             if (existing) {
               existing.eprintCount += 1;
@@ -75,6 +92,52 @@ async function searchAuthorsInIndex(
     logger.error('Author search failed', error instanceof Error ? error : undefined, {
       query,
     });
+    return [];
+  }
+}
+
+/**
+ * Searches Bluesky's public actor search API as a fallback.
+ *
+ * @remarks
+ * Enables finding any ATProto user by name or handle, not just
+ * authors with eprints indexed on Chive.
+ */
+async function searchBlueskyActors(
+  logger: { warn: (msg: string, ctx?: Record<string, unknown>) => void },
+  query: string,
+  limit: number
+): Promise<AuthorSearchResult[]> {
+  try {
+    const response = await fetch(
+      `${BLUESKY_PUBLIC_API}/xrpc/app.bsky.actor.searchActors?q=${encodeURIComponent(query)}&limit=${limit}`,
+      {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      actors?: {
+        did: string;
+        handle?: string;
+        displayName?: string;
+        avatar?: string;
+      }[];
+    };
+
+    return (data.actors ?? []).map((actor) => ({
+      did: actor.did,
+      handle: actor.handle,
+      displayName: actor.displayName,
+      avatar: actor.avatar,
+    }));
+  } catch {
+    logger.warn('Bluesky actor search fallback failed', { query });
     return [];
   }
 }
@@ -168,7 +231,8 @@ async function enrichAuthorsWithProfiles(
  *
  * @remarks
  * Searches for authors who have eprints on Chive or have Chive profiles.
- * Results include handle, avatar, and ORCID when available.
+ * Falls back to Bluesky's public actor search API when the Chive index
+ * returns no results, enabling any ATProto user to be found.
  *
  * @public
  */
@@ -180,21 +244,29 @@ export const searchAuthors: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     logger.debug('Searching authors', { q, limit });
 
-    // Search for authors in the index
+    // 1. Search Chive's eprint index for authors
     const dbResults = await searchAuthorsInIndex(c, q, limit);
 
-    if (dbResults.length === 0) {
-      return { encoding: 'application/json', body: { authors: [] } };
+    if (dbResults.length > 0) {
+      // Enrich Chive results with profile data
+      const enrichedAuthors = await enrichAuthorsWithProfiles(c, dbResults);
+
+      logger.info('Author search completed (chive index)', {
+        q,
+        resultCount: enrichedAuthors.length,
+      });
+
+      return { encoding: 'application/json', body: { authors: enrichedAuthors } };
     }
 
-    // Enrich results with profile data
-    const enrichedAuthors = await enrichAuthorsWithProfiles(c, dbResults);
+    // 2. Fall back to Bluesky public actor search
+    const blueskyResults = await searchBlueskyActors(logger, q, limit);
 
-    logger.info('Author search completed', {
+    logger.info('Author search completed (bluesky fallback)', {
       q,
-      resultCount: enrichedAuthors.length,
+      resultCount: blueskyResults.length,
     });
 
-    return { encoding: 'application/json', body: { authors: enrichedAuthors } };
+    return { encoding: 'application/json', body: { authors: blueskyResults } };
   },
 };

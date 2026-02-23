@@ -2515,14 +2515,18 @@ export async function deleteCollectionNode(
 
 /**
  * Input for adding an item to a collection.
+ *
+ * @remarks
+ * All collection items are personal graph nodes. The `itemUri` must be the
+ * AT-URI of a `pub.chive.graph.node` record in the user's PDS.
  */
 export interface AddItemToCollectionInput {
   /** AT-URI of the collection */
   collectionUri: string;
-  /** AT-URI of the item to add */
+  /** AT-URI of the personal graph node to add */
   itemUri: string;
-  /** Type of item (e.g., 'eprint', 'external-paper', 'url') */
-  itemType: string;
+  /** User-entered display label for this item */
+  label?: string;
   /** Optional note about why this item is in the collection */
   note?: string;
   /** Optional sort order within the collection */
@@ -2565,13 +2569,14 @@ export async function addItemToCollection(
     sourceUri: input.collectionUri,
     targetUri: input.itemUri,
     relationSlug: 'contains',
-    metadata: {
-      itemType: input.itemType,
-    },
+    metadata: {} as Record<string, unknown>,
     status: 'established',
     createdAt: new Date().toISOString(),
   };
 
+  if (input.label) {
+    record.metadata.label = input.label;
+  }
   if (input.note) {
     record.metadata.note = input.note;
   }
@@ -2785,6 +2790,62 @@ export async function updateEdgeNote(
     metadata: {
       ...existing.metadata,
       note,
+    },
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Update metadata fields (label, note) on a collection item edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the edge to update
+ * @param updates - Fields to update
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ */
+export async function updateEdgeMetadata(
+  agent: Agent,
+  edgeUri: string,
+  updates: { label?: string; note?: string }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(edgeUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as PersonalEdgeRecord;
+
+  const record: PersonalEdgeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      ...(updates.label !== undefined && { label: updates.label }),
+      ...(updates.note !== undefined && { note: updates.note }),
     },
   };
 

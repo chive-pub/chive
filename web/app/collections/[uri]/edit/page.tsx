@@ -58,7 +58,7 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
 
     const collection = data.collection;
     return {
-      name: collection.name,
+      name: collection.label,
       description: collection.description,
       visibility: collection.visibility,
       tags: collection.tags ?? [],
@@ -70,7 +70,7 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
         note: item.note,
       })),
       subcollections: (data.subcollections ?? []).map((sub) => ({
-        name: sub.name,
+        name: sub.label,
         items: [],
       })),
       edges: [],
@@ -118,7 +118,7 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Edit Collection</h1>
         <p className="mt-1 text-muted-foreground">
-          Update &quot;{data.collection.name}&quot; and its contents.
+          Update &quot;{data.collection.label}&quot; and its contents.
         </p>
       </div>
       <CollectionWizard

@@ -47,6 +47,88 @@
           "type": "string",
           "format": "datetime",
           "description": "Last update timestamp"
+        },
+        "ownerHandle": {
+          "type": "string",
+          "description": "Resolved handle of the collection owner"
+        }
+      }
+    },
+    "collectionItemView": {
+      "type": "object",
+      "description": "View of an item in a collection",
+      "required": ["edgeUri", "itemUri", "itemType", "order", "addedAt"],
+      "properties": {
+        "edgeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the CONTAINS edge record"
+        },
+        "itemUri": {
+          "type": "string",
+          "description": "AT-URI or identifier of the contained item"
+        },
+        "itemType": {
+          "type": "string",
+          "knownValues": ["eprint", "author", "graphNode", "review", "endorsement", "external"],
+          "description": "Inferred type of the item"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional user annotation on the item"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order within the collection"
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the item was added to the collection"
+        },
+        "title": {
+          "type": "string",
+          "description": "Resolved title for eprint items"
+        },
+        "authors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resolved author names for eprint items"
+        },
+        "label": {
+          "type": "string",
+          "description": "Resolved label for graph node items"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Node kind for graph node items"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Node subkind for graph node items"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description for graph node items"
+        }
+      }
+    },
+    "interItemEdgeView": {
+      "type": "object",
+      "description": "An edge between two items within a collection",
+      "required": ["sourceUri", "targetUri", "relationSlug"],
+      "properties": {
+        "sourceUri": {
+          "type": "string",
+          "description": "AT-URI of the source item"
+        },
+        "targetUri": {
+          "type": "string",
+          "description": "AT-URI of the target item"
+        },
+        "relationSlug": {
+          "type": "string",
+          "description": "Relation type slug"
         }
       }
     }

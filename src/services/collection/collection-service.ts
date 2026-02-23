@@ -108,6 +108,39 @@ export interface IndexedCollection {
 }
 
 /**
+ * Collection item view as returned by getCollectionItems.
+ *
+ * @public
+ */
+export interface CollectionItem {
+  readonly edgeUri: string;
+  readonly itemUri: string;
+  readonly itemType: string;
+  readonly note?: string;
+  readonly order: number;
+  readonly addedAt: Date;
+  readonly title?: string;
+  readonly authors?: string[];
+  readonly label?: string;
+  readonly kind?: string;
+  readonly subkind?: string;
+  readonly description?: string;
+  readonly metadata?: Record<string, unknown>;
+}
+
+/**
+ * Inter-item edge between two items within a collection.
+ *
+ * @public
+ */
+export interface InterItemEdge {
+  readonly uri: string;
+  readonly sourceUri: string;
+  readonly targetUri: string;
+  readonly relationSlug: string;
+}
+
+/**
  * Collection service configuration.
  *
  * @public
@@ -250,15 +283,22 @@ export class CollectionService {
     try {
       const ownerDid = extractDidFromUri(metadata.uri);
 
+      // Extract label from edge metadata if present
+      const edgeLabel =
+        record.metadata && typeof record.metadata === 'object' && 'label' in record.metadata
+          ? (record.metadata as Record<string, unknown>).label
+          : null;
+
       await this.pool.query(
         `INSERT INTO collection_edges_index (
           uri, cid, owner_did, source_uri, target_uri, relation_slug,
-          weight, created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+          weight, label, created_at, pds_url, indexed_at, last_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           relation_slug = EXCLUDED.relation_slug,
           weight = EXCLUDED.weight,
+          label = EXCLUDED.label,
           updated_at = NOW(),
           last_synced_at = NOW()`,
         [
@@ -269,6 +309,7 @@ export class CollectionService {
           record.targetUri,
           record.relationSlug,
           record.weight ?? null,
+          typeof edgeLabel === 'string' ? edgeLabel : null,
           record.createdAt ? new Date(record.createdAt) : metadata.indexedAt,
           metadata.pdsUrl,
         ]
@@ -510,6 +551,121 @@ export class CollectionService {
         uri,
       });
       return null;
+    }
+  }
+
+  /**
+   * Retrieves all items in a collection, with resolved metadata for eprints.
+   *
+   * @param collectionUri - AT URI of the collection
+   * @returns Ordered list of collection items
+   *
+   * @public
+   */
+  async getCollectionItems(collectionUri: AtUri): Promise<CollectionItem[]> {
+    try {
+      const result = await this.pool.query<{
+        uri: string;
+        target_uri: string;
+        weight: number | null;
+        edge_label: string | null;
+        created_at: Date;
+        node_label: string | null;
+        node_kind: string | null;
+        node_subkind: string | null;
+        node_description: string | null;
+        node_metadata: Record<string, unknown> | null;
+      }>(
+        `SELECT e.uri, e.target_uri, e.weight, e.label AS edge_label, e.created_at,
+                pgn.label AS node_label, pgn.kind AS node_kind,
+                pgn.subkind AS node_subkind, pgn.description AS node_description,
+                pgn.metadata AS node_metadata
+         FROM collection_edges_index e
+         INNER JOIN personal_graph_nodes_index pgn ON pgn.uri = e.target_uri
+         WHERE e.source_uri = $1 AND e.relation_slug = 'contains'
+         ORDER BY COALESCE(e.weight, 999999), e.created_at ASC`,
+        [collectionUri]
+      );
+
+      return result.rows.map((row, index) => {
+        const nodeMetadata = row.node_metadata ?? {};
+        const authors = Array.isArray(nodeMetadata.authors)
+          ? (nodeMetadata.authors as string[])
+          : undefined;
+
+        return {
+          edgeUri: row.uri,
+          itemUri: row.target_uri,
+          itemType: row.node_subkind ?? row.node_kind ?? 'unknown',
+          order: row.weight ?? index + 1,
+          addedAt: new Date(row.created_at),
+          title: row.edge_label ?? row.node_label ?? undefined,
+          label: row.edge_label ?? row.node_label ?? undefined,
+          authors,
+          kind: row.node_kind ?? undefined,
+          subkind: row.node_subkind ?? undefined,
+          description: row.node_description ?? undefined,
+          metadata: nodeMetadata,
+        };
+      });
+    } catch (error) {
+      this.logger.error(
+        'Failed to get collection items',
+        error instanceof Error ? error : undefined,
+        { collectionUri }
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Retrieves inter-item edges between items within a collection.
+   *
+   * @remarks
+   * Finds edges in `personal_graph_edges_index` where both source and target
+   * are items in the given collection. Excludes `contains` and `subcollection-of`
+   * edges which are structural, not semantic.
+   *
+   * @param collectionUri - AT URI of the collection
+   * @returns Edges between items in the collection
+   *
+   * @public
+   */
+  async getInterItemEdges(collectionUri: AtUri): Promise<InterItemEdge[]> {
+    try {
+      const result = await this.pool.query<{
+        uri: string;
+        source_uri: string;
+        target_uri: string;
+        relation_slug: string;
+      }>(
+        `SELECT pge.uri, pge.source_uri, pge.target_uri, pge.relation_slug
+         FROM personal_graph_edges_index pge
+         WHERE pge.source_uri IN (
+           SELECT ce.target_uri FROM collection_edges_index ce
+           WHERE ce.source_uri = $1 AND ce.relation_slug = 'contains'
+         )
+         AND pge.target_uri IN (
+           SELECT ce.target_uri FROM collection_edges_index ce
+           WHERE ce.source_uri = $1 AND ce.relation_slug = 'contains'
+         )
+         AND pge.relation_slug NOT IN ('contains', 'subcollection-of')`,
+        [collectionUri]
+      );
+
+      return result.rows.map((row) => ({
+        uri: row.uri,
+        sourceUri: row.source_uri,
+        targetUri: row.target_uri,
+        relationSlug: row.relation_slug,
+      }));
+    } catch (error) {
+      this.logger.error(
+        'Failed to get inter-item edges',
+        error instanceof Error ? error : undefined,
+        { collectionUri }
+      );
+      return [];
     }
   }
 

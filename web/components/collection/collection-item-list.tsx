@@ -73,7 +73,7 @@ function getItemLink(item: CollectionItemView): string | null {
     case 'author':
       return `/authors/${item.itemUri.split('/')[2] ?? item.itemUri}`;
     case 'graphNode':
-      return `/graph/nodes/${encodeURIComponent(item.itemUri)}`;
+      return null;
     case 'review':
     case 'endorsement':
       return null;

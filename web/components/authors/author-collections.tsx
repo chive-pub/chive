@@ -61,7 +61,7 @@ function FeaturedCollectionCard({ collection }: { collection: CollectionView }) 
               Featured
             </Badge>
           </div>
-          <CardTitle className="text-lg">{collection.name}</CardTitle>
+          <CardTitle className="text-lg">{collection.label}</CardTitle>
           {collection.description && (
             <p className="text-sm text-muted-foreground">{collection.description}</p>
           )}
@@ -170,7 +170,7 @@ export function AuthorCollections({
             <CollectionCard
               key={collection.uri}
               uri={collection.uri}
-              name={collection.name}
+              name={collection.label}
               description={collection.description}
               itemCount={collection.itemCount}
               visibility={collection.visibility}

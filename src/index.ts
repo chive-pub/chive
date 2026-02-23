@@ -52,12 +52,14 @@ import { CitationExtractionService } from './services/citation/citation-extracti
 import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
 import { GrobidClient } from './services/citation/grobid-client.js';
 import { ClaimingService } from './services/claiming/claiming-service.js';
+import { CollectionService } from './services/collection/collection-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { DiscoveryService } from './services/discovery/discovery-service.js';
 import { EprintService } from './services/eprint/eprint-service.js';
 import { EdgeService } from './services/governance/edge-service.js';
 import { NodeService } from './services/governance/node-service.js';
 import { TrustedEditorService } from './services/governance/trusted-editor-service.js';
+import { PersonalGraphService } from './services/graph/personal-graph-service.js';
 import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
@@ -554,6 +556,10 @@ function createServices(
     baseDelayMs: 60_000, // 1 minute base delay
   });
 
+  // Create personal graph and collection services
+  const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
+  const collectionService = new CollectionService({ pool: pgPool, logger });
+
   return {
     eprintService,
     searchService,
@@ -584,6 +590,8 @@ function createServices(
     indexRetryWorker,
     identityResolver,
     citationExtractionService,
+    personalGraphService,
+    collectionService,
     redis,
     logger,
     serviceDid: config.serviceDid,

@@ -21,28 +21,12 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Network,
-  Search,
-  Layers,
-  Building2,
-  User,
-  Tag,
-  FileType,
-  Scale,
-  Award,
-  Clock,
-  ExternalLink,
-  ChevronRight,
-  Filter,
-  Grid3X3,
-  List,
-} from 'lucide-react';
+import { Network, Search, Filter, Grid3X3, List } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -54,55 +38,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-// =============================================================================
-// TYPES
-// =============================================================================
-
-/**
- * Node kind in the unified model.
- */
-export type NodeKind = 'type' | 'object';
-
-/**
- * Node status.
- */
-export type NodeStatus = 'proposed' | 'provisional' | 'established' | 'deprecated';
-
-/**
- * External ID entry.
- */
-export interface ExternalId {
-  system: string;
-  identifier: string;
-  uri?: string;
-}
-
-/**
- * Node from the knowledge graph.
- */
-export interface GraphNode {
-  uri: string;
-  id: string;
-  label: string;
-  alternateLabels?: string[];
-  description?: string;
-  kind: NodeKind;
-  subkind: string;
-  status: NodeStatus;
-  externalIds?: ExternalId[];
-  createdAt: string;
-}
-
-/**
- * Edge in the knowledge graph.
- */
-export interface GraphEdge {
-  uri: string;
-  sourceUri: string;
-  targetUri: string;
-  relationSlug: string;
-  status: string;
-}
+import type { GraphNode, NodeKind, NodeStatus, NodeCardData } from './types';
+import { SUBKIND_CONFIGS, SUBKIND_BY_SLUG, graphNodeToCardData } from './types';
+import { NodeCard } from './node-card';
+import { NodeDetailModal } from './node-detail-modal';
 
 /**
  * Props for KnowledgeGraphViewer.
@@ -117,102 +56,9 @@ export interface KnowledgeGraphViewerProps {
   /** Callback when a node is selected */
   onNodeSelect?: (node: GraphNode) => void;
 
-  /** Show edge relationships */
-  showEdges?: boolean;
-
   /** Additional CSS classes */
   className?: string;
 }
-
-// =============================================================================
-// SUBKIND CONFIGURATION
-// =============================================================================
-
-interface SubkindConfig {
-  slug: string;
-  kind: NodeKind;
-  label: string;
-  icon: typeof Network;
-  description: string;
-}
-
-const SUBKIND_CONFIGS: SubkindConfig[] = [
-  // Type nodes
-  {
-    slug: 'field',
-    kind: 'type',
-    label: 'Academic Fields',
-    icon: Layers,
-    description: 'Research disciplines and subject areas',
-  },
-  {
-    slug: 'facet',
-    kind: 'type',
-    label: 'Facets',
-    icon: Tag,
-    description: 'Classification dimensions',
-  },
-  {
-    slug: 'contribution-type',
-    kind: 'type',
-    label: 'Contribution Types',
-    icon: Award,
-    description: 'CRediT contributor roles',
-  },
-  {
-    slug: 'document-format',
-    kind: 'type',
-    label: 'Document Formats',
-    icon: FileType,
-    description: 'File format types',
-  },
-  {
-    slug: 'license',
-    kind: 'type',
-    label: 'Licenses',
-    icon: Scale,
-    description: 'Distribution licenses',
-  },
-  {
-    slug: 'publication-status',
-    kind: 'type',
-    label: 'Publication Statuses',
-    icon: Clock,
-    description: 'Publication lifecycle stages',
-  },
-  {
-    slug: 'institution-type',
-    kind: 'type',
-    label: 'Institution Types',
-    icon: Building2,
-    description: 'Organization classifications',
-  },
-  {
-    slug: 'paper-type',
-    kind: 'type',
-    label: 'Paper Types',
-    icon: FileType,
-    description: 'Research document types',
-  },
-  // Object nodes
-  {
-    slug: 'institution',
-    kind: 'object',
-    label: 'Institutions',
-    icon: Building2,
-    description: 'Research organizations',
-  },
-  { slug: 'person', kind: 'object', label: 'People', icon: User, description: 'Named individuals' },
-  {
-    slug: 'event',
-    kind: 'object',
-    label: 'Events',
-    icon: Clock,
-    description: 'Conferences and workshops',
-  },
-];
-
-const SUBKIND_BY_SLUG = new Map(SUBKIND_CONFIGS.map((c) => [c.slug, c]));
 
 // =============================================================================
 // API
@@ -277,110 +123,6 @@ async function searchNodesApi(
   return data.nodes ?? [];
 }
 
-async function fetchEdges(nodeUri: string): Promise<GraphEdge[]> {
-  const params = new URLSearchParams({ sourceUri: nodeUri });
-  const response = await fetch(`/xrpc/pub.chive.graph.listEdges?${params.toString()}`);
-
-  if (!response.ok) return [];
-
-  const data = (await response.json()) as { edges: GraphEdge[] };
-  return data.edges ?? [];
-}
-
-// =============================================================================
-// NODE CARD
-// =============================================================================
-
-interface NodeCardProps {
-  node: GraphNode;
-  onClick?: () => void;
-  showSubkind?: boolean;
-  compact?: boolean;
-}
-
-function NodeCard({ node, onClick, showSubkind = false, compact = false }: NodeCardProps) {
-  const config = SUBKIND_BY_SLUG.get(node.subkind);
-  const Icon = config?.icon ?? Network;
-
-  const getStatusColor = (status: NodeStatus) => {
-    switch (status) {
-      case 'established':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-      case 'provisional':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
-      case 'proposed':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'deprecated':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-    }
-  };
-
-  if (compact) {
-    return (
-      <button
-        onClick={onClick}
-        className="flex items-center gap-2 rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 w-full"
-      >
-        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="flex-1 truncate font-medium text-sm">{node.label}</span>
-        <Badge variant="secondary" className={cn('text-[10px]', getStatusColor(node.status))}>
-          {node.status}
-        </Badge>
-      </button>
-    );
-  }
-
-  return (
-    <Card
-      className={cn(
-        'transition-colors cursor-pointer hover:border-primary/50',
-        onClick && 'hover:shadow-sm'
-      )}
-      onClick={onClick}
-    >
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base">{node.label}</CardTitle>
-          </div>
-          <div className="flex items-center gap-1">
-            {showSubkind && config && (
-              <Badge variant="outline" className="text-[10px]">
-                {config.label}
-              </Badge>
-            )}
-            <Badge variant="secondary" className={cn('text-[10px]', getStatusColor(node.status))}>
-              {node.status}
-            </Badge>
-          </div>
-        </div>
-        {node.description && (
-          <CardDescription className="line-clamp-2">{node.description}</CardDescription>
-        )}
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex flex-wrap items-center gap-2">
-          {node.alternateLabels && node.alternateLabels.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              Also: {node.alternateLabels.slice(0, 3).join(', ')}
-              {node.alternateLabels.length > 3 && '...'}
-            </span>
-          )}
-          {node.externalIds && node.externalIds.length > 0 && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <ExternalLink className="h-3 w-3" />
-              <span>
-                {node.externalIds.length} external ID{node.externalIds.length > 1 ? 's' : ''}
-              </span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 // =============================================================================
 // NODE LIST SKELETON
 // =============================================================================
@@ -428,8 +170,7 @@ function NodeListSkeleton({ count = 6, compact = false }: { count?: number; comp
 export function KnowledgeGraphViewer({
   initialSubkind = 'field',
   initialKind,
-  onNodeSelect,
-  showEdges = true,
+  onNodeSelect: _onNodeSelect,
   className,
 }: KnowledgeGraphViewerProps) {
   const [activeSubkind, setActiveSubkind] = useState(initialSubkind);
@@ -437,7 +178,7 @@ export function KnowledgeGraphViewer({
   const [statusFilter, setStatusFilter] = useState<NodeStatus | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [modalNode, setModalNode] = useState<NodeCardData | null>(null);
 
   const activeConfig = SUBKIND_BY_SLUG.get(activeSubkind);
 
@@ -474,21 +215,9 @@ export function KnowledgeGraphViewer({
     staleTime: 30 * 1000,
   });
 
-  // Fetch edges for selected node
-  const { data: nodeEdges } = useQuery({
-    queryKey: ['edges', 'list', selectedNode?.uri],
-    queryFn: () => (selectedNode ? fetchEdges(selectedNode.uri) : Promise.resolve([])),
-    enabled: !!selectedNode && showEdges,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const handleNodeClick = useCallback(
-    (node: GraphNode) => {
-      setSelectedNode(node);
-      onNodeSelect?.(node);
-    },
-    [onNodeSelect]
-  );
+  const handleNodeClick = useCallback((node: GraphNode) => {
+    setModalNode(graphNodeToCardData(node));
+  }, []);
 
   const displayNodes = searchQuery.length >= 2 ? searchResults : nodes;
 
@@ -668,7 +397,7 @@ export function KnowledgeGraphViewer({
                 {displayNodes.map((node) => (
                   <NodeCard
                     key={node.uri}
-                    node={node}
+                    node={graphNodeToCardData(node)}
                     onClick={() => handleNodeClick(node)}
                     showSubkind={searchQuery.length >= 2}
                   />
@@ -679,7 +408,7 @@ export function KnowledgeGraphViewer({
                 {displayNodes.map((node) => (
                   <NodeCard
                     key={node.uri}
-                    node={node}
+                    node={graphNodeToCardData(node)}
                     onClick={() => handleNodeClick(node)}
                     showSubkind={searchQuery.length >= 2}
                     compact
@@ -690,71 +419,13 @@ export function KnowledgeGraphViewer({
         </div>
       </div>
 
-      {/* Selected node detail panel */}
-      {selectedNode && showEdges && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ChevronRight className="h-5 w-5" />
-                {selectedNode.label}
-              </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedNode(null)}>
-                Close
-              </Button>
-            </div>
-            {selectedNode.description && (
-              <CardDescription>{selectedNode.description}</CardDescription>
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* External IDs */}
-              {selectedNode.externalIds && selectedNode.externalIds.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2">External Identifiers</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedNode.externalIds.map((ext, i) => (
-                      <Badge key={i} variant="outline">
-                        {ext.system}: {ext.identifier}
-                        {ext.uri && (
-                          <a
-                            href={ext.uri}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-1 text-primary"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="h-3 w-3 inline" />
-                          </a>
-                        )}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Edges */}
-              {nodeEdges && nodeEdges.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Relationships</h4>
-                  <div className="space-y-1">
-                    {nodeEdges.map((edge, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <Badge variant="outline" className="text-[10px]">
-                          {edge.relationSlug}
-                        </Badge>
-                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-muted-foreground truncate">{edge.targetUri}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <NodeDetailModal
+        node={modalNode}
+        open={!!modalNode}
+        onOpenChange={(open) => {
+          if (!open) setModalNode(null);
+        }}
+      />
     </div>
   );
 }
