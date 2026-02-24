@@ -229,9 +229,13 @@ jobs:
               docker compose -f docker-compose.prod.yml --profile observability logs --tail=50 2>&1 | head -100
             fi
 
-            # Cleanup old images
-            echo "Cleaning up old images..."
-            docker system prune -f
+            # Cleanup old images, build cache, and containerd layers
+            # CRITICAL: -a flag removes ALL unused images (not just dangling)
+            # docker builder prune cleans buildkit cache stored in containerd
+            # Without this, --no-cache builds accumulate ~5GB/deploy in containerd
+            echo "Cleaning up old images and build cache..."
+            docker builder prune -af 2>/dev/null || true
+            docker system prune -af
 
             echo "=== Deployment complete ==="
             echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
