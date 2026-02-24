@@ -188,17 +188,17 @@ services:
     container_name: chive-grobid
     restart: unless-stopped
     environment:
-      - GROBID_MAX_CONCURRENCY=4
+      - GROBID_MAX_CONCURRENCY=2
     networks:
       - chive-network
     deploy:
       resources:
         limits:
           cpus: '1.0'
-          memory: 2G
+          memory: 3G
         reservations:
           cpus: '0.25'
-          memory: 1G
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8070'"]
       interval: 30s
