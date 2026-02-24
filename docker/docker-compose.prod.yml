@@ -204,7 +204,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s
+      start_period: 300s
 
   # ---------------------------------------------------------------------------
   # Database Migrations (runs once before API starts)
