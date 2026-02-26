@@ -114,6 +114,10 @@
           "format": "at-uri",
           "description": "AT-URI of the eprint being reviewed"
         },
+        "eprintTitle": {
+          "type": "string",
+          "description": "Title of the reviewed eprint"
+        },
         "content": {
           "type": "string",
           "description": "Plain text content of the review"

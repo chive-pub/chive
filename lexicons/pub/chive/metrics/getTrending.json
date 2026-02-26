@@ -24,6 +24,15 @@
           "cursor": {
             "type": "string",
             "description": "Pagination cursor"
+          },
+          "fieldUris": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "at-uri"
+            },
+            "maxLength": 50,
+            "description": "Optional field URIs to flag matching eprints as in-field"
           }
         }
       },
@@ -156,6 +165,10 @@
         "velocity": {
           "type": "integer",
           "description": "Rate of view increase (optional)"
+        },
+        "inUserFields": {
+          "type": "boolean",
+          "description": "Whether this eprint matches the requested fieldUris"
         }
       }
     },

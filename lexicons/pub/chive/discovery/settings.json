@@ -41,6 +41,16 @@
           "type": "boolean",
           "description": "Show topic/concept-based relationships",
           "default": true
+        },
+        "authors": {
+          "type": "boolean",
+          "description": "Show papers by overlapping authors",
+          "default": true
+        },
+        "bibliographicCoupling": {
+          "type": "boolean",
+          "description": "Show papers that cite the same references",
+          "default": true
         }
       }
     },
@@ -81,6 +91,30 @@
             "type": "boolean",
             "description": "Show explanations for why papers are recommended",
             "default": true
+          },
+          "recommendationDiversity": {
+            "type": "string",
+            "description": "How diverse recommendations should be relative to user's fields",
+            "knownValues": ["low", "medium", "high"],
+            "default": "medium"
+          },
+          "minimumEndorsementThreshold": {
+            "type": "integer",
+            "description": "Minimum number of endorsements for a paper to appear in recommendations",
+            "minimum": 0,
+            "maximum": 10,
+            "default": 0
+          },
+          "followedFieldUris": {
+            "type": "array",
+            "items": { "type": "string", "format": "at-uri" },
+            "maxLength": 50,
+            "description": "Field URIs the user follows for discovery (distinct from work fields in profile)"
+          },
+          "followingTabIncludesWorkFields": {
+            "type": "boolean",
+            "description": "Whether the Following tab also includes the user's work fields",
+            "default": false
           }
         }
       }
