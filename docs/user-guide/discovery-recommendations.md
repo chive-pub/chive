@@ -2,38 +2,21 @@
 
 Chive helps you find relevant eprints through personalized recommendations, related paper suggestions, and citation networks.
 
-## For You feed
+## Browsing eprints
 
-The For You feed on your homepage shows personalized recommendations based on:
+The `/eprints` page is the main entry point for discovering new papers. What you see depends on your authentication state and profile configuration.
 
-| Signal               | Description                                            |
-| -------------------- | ------------------------------------------------------ |
-| Your research fields | Papers in fields you follow or publish in              |
-| Citation network     | Papers citing your work or cited by papers you've read |
-| Semantic similarity  | Papers similar to ones you've engaged with             |
+### Authenticated users with research fields
 
-Signals are combined using a scoring algorithm that considers recency, relevance, and diversity.
+If you are signed in and have research fields set in your profile, the page displays **New in Your Fields**: recently submitted eprints matching your fields, sorted chronologically. This view uses the `searchSubmissions` endpoint with `sort=recent` and field URI filtering.
 
-### Customizing recommendations
+### Authenticated users without research fields
 
-1. Go to **Settings** → **Discovery**
-2. Adjust your preferences:
-   - **Follow fields**: Add or remove research areas
-   - **Discovery mode**: Balance between relevance and serendipity
-   - **Exclude sources**: Hide papers from specific archives
+If you are signed in but have not set any research fields, the page prompts you to configure your profile with at least one research field. Until you do, it falls back to the trending view described below.
 
-### Feedback loop
+### Anonymous users
 
-Your interactions improve recommendations:
-
-| Action                        | Effect                              |
-| ----------------------------- | ----------------------------------- |
-| Reading a paper (>30 seconds) | Increases weight for similar papers |
-| Downloading PDF               | Strong signal for related topics    |
-| Endorsing or reviewing        | Strongest positive signal           |
-| Dismissing                    | Reduces weight for similar papers   |
-
-Click the **X** on any recommendation to dismiss it and improve future suggestions.
+Visitors who are not signed in see **Trending This Week**, the same global trending feed shown on the `/trending` page.
 
 ## Related papers
 
@@ -41,13 +24,23 @@ Each eprint page shows related papers in the sidebar:
 
 ### How related papers are found
 
-Related papers come from two sources:
+Related papers are ranked using five weighted signals:
+
+| Signal                               | Weight | Source                      |
+| ------------------------------------ | ------ | --------------------------- |
+| SPECTER2 semantic similarity         | 30%    | Semantic Scholar embeddings |
+| Co-citation + bibliographic coupling | 25%    | Neo4j citation graph        |
+| OpenAlex concept/topic overlap       | 20%    | OpenAlex 4-level taxonomy   |
+| Author network                       | 15%    | Co-author overlap           |
+| Collaborative filtering              | 10%    | User engagement patterns    |
 
 **Auto-detected**: The system finds related papers using:
 
-1. **Elasticsearch MLT**: Text similarity based on title, abstract, and keywords
-2. **Citation overlap**: Papers that cite the same references (when citation data is available)
-3. **Co-citation**: Papers frequently cited together
+1. **SPECTER2 embeddings**: Dense vector similarity from Semantic Scholar (with Elasticsearch MLT fallback when embeddings are unavailable)
+2. **Co-citation analysis**: Papers that are frequently cited together
+3. **Bibliographic coupling**: Papers that cite the same references
+4. **OpenAlex concept overlap**: Shared topics in the 4-level hierarchy (domain > field > subfield > topic)
+5. **Author network**: Papers sharing one or more authors
 
 **User-curated**: Any authenticated user can add related papers manually using the "Add Related Paper" button. User-curated links include a relationship type (extends, replicates, contradicts, etc.) and optional description.
 
@@ -77,7 +70,7 @@ Chive can extract citations from eprint PDFs using GROBID. When citations are av
 
 ### Exploring by field
 
-1. Go to **Browse** → **Fields**
+1. Go to **Browse** > **Fields**
 2. Navigate the hierarchy
 3. Each field shows:
    - Recent papers
@@ -99,11 +92,16 @@ Each field page displays:
 
 ### Trending now
 
-The **Trending** section shows papers gaining attention:
+The `/trending` page shows papers gaining attention based on views, downloads, and engagement in the last 24-48 hours, weighted toward recency.
 
-- Based on views, downloads, and engagement in the last 24-48 hours
-- Weighted toward recency
-- Filtered by your followed fields (optional)
+**Authenticated users with research fields** see two sections:
+
+1. **Trending in Your Fields**: Papers matching your research fields, shown first
+2. **Trending Globally**: Papers trending across all fields
+
+A toggle at the top of the page switches between **My Fields** and **All** views.
+
+**Anonymous users** see the global trending feed with no field filtering.
 
 ### Most discussed
 
@@ -119,7 +117,7 @@ Papers with active review threads and endorsements:
 
 1. Go to any field page
 2. Click **Follow**
-3. New papers appear in your For You feed
+3. New papers appear on your `/eprints` page and in field-filtered trending
 
 ### Following authors
 
@@ -129,7 +127,20 @@ Papers with active review threads and endorsements:
 
 ### Managing follows
 
-Go to **Profile** → **Following** to see and manage all your follows.
+Go to **Profile** > **Following** to see and manage all your follows.
+
+## Managing suggestions
+
+Your interactions improve recommendations over time:
+
+| Action                        | Effect                                |
+| ----------------------------- | ------------------------------------- |
+| Reading a paper (>30 seconds) | Increases weight for similar papers   |
+| Downloading PDF               | Strong signal for related topics      |
+| Endorsing or reviewing        | Strongest positive signal             |
+| Dismissing (click **X**)      | Paper is hidden and will not reappear |
+
+To dismiss a recommendation, click the **X** button on any suggested paper. Dismissed papers are removed from all recommendation surfaces and will not reappear.
 
 ## Discovery settings
 
@@ -146,10 +157,9 @@ Your discovery activity is private by default:
 
 - Reading history is not shared
 - Followed fields are private unless you choose to display them
-- Dismissed papers are not disclosed
+- Dismissed papers are stored server-side but not disclosed to other users
 
 ## Related topics
 
 - [Searching](./searching.md): Full search guide
-- [For You personalization](../concepts/data-sovereignty.md): How data is used
 - [Profiles](./profiles.md): Managing your followed fields

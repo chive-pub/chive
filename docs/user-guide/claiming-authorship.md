@@ -19,7 +19,58 @@ After you complete your profile (especially ORCID linking), Chive suggests paper
 
 1. Go to **Dashboard** → **Import Your Papers**
 2. Review the **Suggested For You** tab
-3. Papers are matched by name variants, ORCID, and affiliations from your profile
+
+Suggestions are ranked by a multi-signal scoring system. Each paper receives a score from 0 to 100; only papers scoring 10 or above appear in your suggestions.
+
+**Identity signals (0-50 pts)**
+
+| Signal                                                   | Points |
+| -------------------------------------------------------- | ------ |
+| ORCID exact match                                        | 50     |
+| External ID match (Semantic Scholar, OpenAlex author ID) | 40     |
+
+**Name matching (0-30 pts)**
+
+Name matching is token-based: your name is split into tokens and compared against each author entry on the paper.
+
+| Match type                         | Points |
+| ---------------------------------- | ------ |
+| Exact full name                    | 30     |
+| Partial match (2+ matching tokens) | 15     |
+| Single token match                 | 5      |
+
+Name scores are penalized by author count to reduce false matches on large collaborations:
+
+| Author count | Score multiplier |
+| ------------ | ---------------- |
+| 1-10         | 100%             |
+| 11-50        | 50%              |
+| 51-200       | 20%              |
+| 200+         | 5%               |
+
+**Content overlap (0-30 pts, acts as a gate)**
+
+Papers are checked against your research fields using the OpenAlex topic taxonomy. If a paper has no field overlap with your profile AND scores below 40 from identity and name signals alone, its score is capped at 5 (effectively filtered out). This prevents irrelevant matches; for example, a linguist named "White" will not see ATLAS particle physics papers authored by a different "White."
+
+**Network signals (0-20 pts)**
+
+| Signal                                     | Points |
+| ------------------------------------------ | ------ |
+| Affiliation match                          | 10     |
+| Co-author overlap with your claimed papers | 10     |
+
+#### Suggestion sources
+
+Suggestions come from two places:
+
+- **On Chive**: Papers already on Chive that may be yours. These appear first and include "View on Chive" and "Request Co-authorship" options.
+- **External sources**: Papers from arXiv, Semantic Scholar, OpenAlex, and other indexed sources. These include an "Import Paper" option.
+
+Duplicates across sources are automatically removed by matching on DOI.
+
+#### Dismissing suggestions
+
+To dismiss a suggestion you are not interested in, click the **X** button on the suggestion card. Dismissed papers will not appear in future suggestions. Dismissals are stored server-side and persist across sessions.
 
 ### Manual search
 
@@ -29,6 +80,8 @@ If a paper isn't suggested:
 2. Enter the paper title, DOI, or arXiv ID
 3. Select the paper from results
 4. Click **Start Claim**
+
+If a particular external source is temporarily unavailable, a warning banner indicates which sources encountered errors. Results from the remaining working sources are still displayed.
 
 ## The verification process
 
@@ -90,11 +143,13 @@ You own this record. It stays in your PDS even if you leave Chive.
 
 ### Improving your suggestions
 
-To get better paper suggestions:
+To get better paper suggestions, listed from highest to lowest impact:
 
-- Link your ORCID to your Chive profile
-- Add name variants (maiden name, initials, etc.) in profile settings
-- Add your institutional affiliations
+- **Link your ORCID** (50 pts): The strongest identity signal. An exact ORCID match guarantees a paper appears in your suggestions.
+- **Add research keywords** to your profile: Enables content overlap scoring, which filters out papers outside your fields.
+- **Claim papers on Chive**: Each claimed paper builds your topic profile and co-author network, improving network signal scores.
+- **Add institutional affiliations**: Enables affiliation matching (10 pts per match).
+- **Add name variants** (maiden name, initials, etc.) in profile settings: Improves token-based name matching accuracy.
 
 ### The wrong person claimed my paper
 
