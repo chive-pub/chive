@@ -517,29 +517,23 @@ export function EprintEditSections({
       osf: eprint.externalIds?.osf ?? '',
       zenodoDoi: eprint.externalIds?.zenodoDoi ?? '',
       openAlexId: eprint.externalIds?.openAlexId ?? '',
-      codeRepositories: (eprint.repositories?.code ?? []).map((repo: Record<string, unknown>) => ({
-        url: (repo.url as string) ?? '',
-        platformUri: (repo.platformUri as string) ?? '',
-        platformName: (repo.platformSlug as string) ?? '',
-        label: (repo.label as string) ?? '',
+      codeRepositories: (eprint.repositories?.code ?? []).map((repo) => ({
+        url: repo.url ?? '',
+        platformUri: repo.platformUri ?? '',
+        platformName: repo.platformSlug ?? '',
+        label: repo.label ?? '',
       })),
-      dataRepositories: (eprint.repositories?.data ?? []).map((repo: Record<string, unknown>) => ({
-        url: (repo.url as string) ?? '',
-        platformUri: (repo.platformUri as string) ?? '',
-        platformName: (repo.platformSlug as string) ?? '',
-        label: (repo.label as string) ?? '',
+      dataRepositories: (eprint.repositories?.data ?? []).map((repo) => ({
+        url: repo.url ?? '',
+        platformUri: repo.platformUri ?? '',
+        platformName: repo.platformSlug ?? '',
+        label: repo.label ?? '',
       })),
       preregistration: eprint.repositories?.preregistration
         ? {
-            url:
-              ((eprint.repositories.preregistration as Record<string, unknown>).url as string) ??
-              '',
-            platformUri:
-              ((eprint.repositories.preregistration as Record<string, unknown>)
-                .platformUri as string) ?? '',
-            platformName:
-              ((eprint.repositories.preregistration as Record<string, unknown>)
-                .platformSlug as string) ?? '',
+            url: eprint.repositories.preregistration.url ?? '',
+            platformUri: eprint.repositories.preregistration.platformUri ?? '',
+            platformName: eprint.repositories.preregistration.platformSlug ?? '',
           }
         : { url: '', platformUri: '', platformName: '' },
       // Initialize funding from eprint
