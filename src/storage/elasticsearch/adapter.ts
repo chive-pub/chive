@@ -199,9 +199,16 @@ export class ElasticsearchAdapter implements ISearchEngine {
 
       const esQuery = this.buildSearchQuery(query);
 
+      // When sorting by recency, use created_at descending
+      const sortClause =
+        query.sort === 'recent'
+          ? ([{ created_at: { order: 'desc' as const } }] as estypes.Sort)
+          : undefined;
+
       const response = await this.client.search<IndexableEprintDocument>({
         index: this.config.indexName,
         query: esQuery,
+        sort: sortClause,
         size: limit,
         from: offset,
         _source: ['uri', 'title', 'abstract', 'authors', 'created_at'],

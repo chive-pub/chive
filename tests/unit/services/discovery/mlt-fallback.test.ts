@@ -368,16 +368,19 @@ describe('DiscoveryService MLT fallback', () => {
 
       const results = await service.findRelatedEprints(EPRINT_URI, {
         signals: ['semantic'],
+        minScore: 0,
       });
 
       expect(results).toHaveLength(1);
 
       const result = results[0];
-      // MLT score = raw_score * 0.6 (scores already 0-1 via ES saturation)
+      // MLT per-signal score = raw_score * 0.6 (scores already 0-1 via ES saturation)
       // 0.85 * 0.6 = 0.51
-      const expectedScore = 0.85 * 0.6;
-      expect(result?.score).toBeCloseTo(expectedScore, 5);
-      expect(result?.signalScores?.semantic).toBeCloseTo(expectedScore, 5);
+      const semanticScore = 0.85 * 0.6;
+      // Combined score applies discovery weight (specter2 = 0.30)
+      const expectedCombinedScore = semanticScore * 0.3;
+      expect(result?.score).toBeCloseTo(expectedCombinedScore, 5);
+      expect(result?.signalScores?.semantic).toBeCloseTo(semanticScore, 5);
     });
 
     it('applies 0.6 discount to high MLT scores', async () => {
@@ -395,11 +398,13 @@ describe('DiscoveryService MLT fallback', () => {
 
       const results = await service.findRelatedEprints(EPRINT_URI, {
         signals: ['semantic'],
+        minScore: 0,
       });
 
       expect(results).toHaveLength(1);
-      // 0.98 * 0.6 = 0.588
-      expect(results[0]?.score).toBeCloseTo(0.98 * 0.6, 5);
+      // MLT per-signal score: 0.98 * 0.6 = 0.588
+      // Combined score with discovery weight: 0.588 * 0.30 = 0.1764
+      expect(results[0]?.score).toBeCloseTo(0.98 * 0.6 * 0.3, 5);
     });
 
     it('handles MLT returning no results gracefully', async () => {

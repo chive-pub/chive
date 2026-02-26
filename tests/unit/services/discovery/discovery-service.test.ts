@@ -3,7 +3,10 @@
  *
  * @remarks
  * Tests the discovery service orchestration including enrichment,
- * paper lookup, related papers, and recommendations.
+ * paper lookup, related papers, and recommendations. Covers the
+ * multi-signal paper relatedness system: concept overlap, citation
+ * graph (co-citation + bibliographic coupling), author network,
+ * weighted scoring, and user recommendation enhancements.
  *
  * @packageDocumentation
  */
@@ -12,11 +15,17 @@ import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { DiscoveryService } from '../../../../src/services/discovery/discovery-service.js';
+import type {
+  RecommendationService,
+  SimilarPaper,
+} from '../../../../src/storage/neo4j/recommendations.js';
 import type { AtUri, DID } from '../../../../src/types/atproto.js';
 import type {
   EnrichmentInput,
   ICitationGraph,
   CoCitedPaper,
+  OpenAlexTopicMatch,
+  OpenAlexConceptMatch,
 } from '../../../../src/types/interfaces/discovery.interface.js';
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
 import type {
@@ -77,6 +86,7 @@ interface MockSearchEngine {
   deleteDocument: ReturnType<typeof vi.fn>;
   findRelated: ReturnType<typeof vi.fn>;
   findByConceptOverlap: ReturnType<typeof vi.fn>;
+  findSimilarByText: ReturnType<typeof vi.fn>;
 }
 
 const createMockSearchEngine = (): MockSearchEngine => ({
@@ -87,6 +97,7 @@ const createMockSearchEngine = (): MockSearchEngine => ({
   deleteDocument: vi.fn().mockResolvedValue(undefined),
   findRelated: vi.fn().mockResolvedValue([]),
   findByConceptOverlap: vi.fn().mockResolvedValue([]),
+  findSimilarByText: vi.fn().mockResolvedValue([]),
 });
 
 /**
@@ -148,6 +159,23 @@ const createMockCitationGraph = (): MockCitationGraph => ({
   deleteCitationsForPaper: vi.fn().mockResolvedValue(undefined),
   upsertRelatedWorksBatch: vi.fn().mockResolvedValue(0),
   deleteRelatedWorksForPaper: vi.fn().mockResolvedValue(undefined),
+});
+
+/**
+ * Mock recommendation engine (Neo4j RecommendationService).
+ */
+interface MockRecommendationEngine {
+  getPersonalized: ReturnType<typeof vi.fn>;
+  getTrending: ReturnType<typeof vi.fn>;
+  getSimilar: ReturnType<typeof vi.fn>;
+  getRecommendedFields: ReturnType<typeof vi.fn>;
+}
+
+const createMockRecommendationEngine = (): MockRecommendationEngine => ({
+  getPersonalized: vi.fn().mockResolvedValue([]),
+  getTrending: vi.fn().mockResolvedValue([]),
+  getSimilar: vi.fn().mockResolvedValue([]),
+  getRecommendedFields: vi.fn().mockResolvedValue([]),
 });
 
 /**
@@ -285,6 +313,10 @@ const SAMPLE_EPRINT_ROW = {
   publication_date: new Date('2024-01-15'),
   semantic_scholar_id: '649def34f8be52c8b66281af98ae884c09aef38b',
   openalex_id: 'https://openalex.org/W2741809807',
+  authors: [
+    { did: 'did:plc:author1', name: 'Alice Researcher' },
+    { did: 'did:plc:author2', name: 'Bob Scientist' },
+  ],
 };
 
 const SAMPLE_ENRICHMENT_ROW = {
@@ -315,6 +347,95 @@ const SAMPLE_ENRICHMENT_ROW = {
   ],
   enriched_at: new Date('2024-01-15T12:00:00Z'),
 };
+
+// ============================================================================
+// Realistic OpenAlex Concept/Topic Data for Multi-Signal Tests
+// ============================================================================
+
+const MOCK_CONCEPTS_A: readonly OpenAlexConceptMatch[] = [
+  { id: 'C1', displayName: 'Computational Linguistics', score: 0.85, level: 2 },
+  { id: 'C2', displayName: 'Natural Language Processing', score: 0.78, level: 2 },
+  { id: 'C3', displayName: 'Machine Learning', score: 0.65, level: 1 },
+];
+
+const MOCK_CONCEPTS_B: readonly OpenAlexConceptMatch[] = [
+  { id: 'C1', displayName: 'Computational Linguistics', score: 0.82, level: 2 },
+  { id: 'C4', displayName: 'Speech Recognition', score: 0.72, level: 2 },
+];
+
+const MOCK_TOPICS_A: readonly OpenAlexTopicMatch[] = [
+  {
+    id: 'T1',
+    displayName: 'Formal Semantics',
+    subfield: 'Semantics',
+    field: 'Linguistics',
+    domain: 'Social Sciences',
+    score: 0.91,
+  },
+  {
+    id: 'T2',
+    displayName: 'Discourse Analysis',
+    subfield: 'Pragmatics',
+    field: 'Linguistics',
+    domain: 'Social Sciences',
+    score: 0.8,
+  },
+];
+
+const MOCK_TOPICS_B_SAME_TOPIC: readonly OpenAlexTopicMatch[] = [
+  {
+    id: 'T1', // Same topic ID as MOCK_TOPICS_A
+    displayName: 'Formal Semantics',
+    subfield: 'Semantics',
+    field: 'Linguistics',
+    domain: 'Social Sciences',
+    score: 0.88,
+  },
+];
+
+const MOCK_TOPICS_C_SAME_SUBFIELD: readonly OpenAlexTopicMatch[] = [
+  {
+    id: 'T5',
+    displayName: 'Lexical Semantics',
+    subfield: 'Semantics', // Same subfield as MOCK_TOPICS_A
+    field: 'Linguistics',
+    domain: 'Social Sciences',
+    score: 0.85,
+  },
+];
+
+const MOCK_TOPICS_D_SAME_FIELD: readonly OpenAlexTopicMatch[] = [
+  {
+    id: 'T6',
+    displayName: 'Phonetics',
+    subfield: 'Phonology', // Different subfield
+    field: 'Linguistics', // Same field as MOCK_TOPICS_A
+    domain: 'Social Sciences',
+    score: 0.75,
+  },
+];
+
+const MOCK_TOPICS_E_SAME_DOMAIN: readonly OpenAlexTopicMatch[] = [
+  {
+    id: 'T7',
+    displayName: 'Political Economy',
+    subfield: 'Political Science',
+    field: 'Economics',
+    domain: 'Social Sciences', // Same domain as MOCK_TOPICS_A
+    score: 0.7,
+  },
+];
+
+const MOCK_TOPICS_F_NO_OVERLAP: readonly OpenAlexTopicMatch[] = [
+  {
+    id: 'T8',
+    displayName: 'Quantum Mechanics',
+    subfield: 'Quantum Physics',
+    field: 'Physics',
+    domain: 'Natural Sciences',
+    score: 0.9,
+  },
+];
 
 // ============================================================================
 // Tests
@@ -575,7 +696,7 @@ describe('DiscoveryService', () => {
   });
 
   // ==========================================================================
-  // findRelatedEprints
+  // findRelatedEprints (existing tests)
   // ==========================================================================
 
   describe('findRelatedEprints', () => {
@@ -707,6 +828,977 @@ describe('DiscoveryService', () => {
       });
 
       expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ==========================================================================
+  // collectConceptSignals (via findRelatedEprints)
+  // ==========================================================================
+
+  describe('collectConceptSignals', () => {
+    beforeEach(() => {
+      service.setPluginManager(pluginManager);
+    });
+
+    it('scores papers with matching topic IDs at ~0.9', async () => {
+      // getEprintByUri for the source paper
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        // getEnrichment for source paper
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: MOCK_CONCEPTS_A }],
+        })
+        // Query eprint_enrichment for candidates
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/sametopic',
+              topics: MOCK_TOPICS_B_SAME_TOPIC,
+              concepts: [],
+            },
+          ],
+        })
+        // getEprintByUri for the candidate
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/sametopic',
+              title: 'Same Topic Paper',
+              categories: ['linguistics'],
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      const conceptResult = result.find(
+        (r) => r.uri === 'at://did:plc:other/pub.chive.eprint/sametopic'
+      );
+      expect(conceptResult).toBeDefined();
+      // Topic score 0.9 * conceptOverlap weight 0.2 = 0.18 combined score
+      // The signalScores.concepts should be ~0.9
+      if (conceptResult) {
+        expect(conceptResult.signalScores?.concepts).toBeCloseTo(0.9, 1);
+      }
+    });
+
+    it('scores papers with matching subfield at ~0.7', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: [] }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/samesubfield',
+              topics: MOCK_TOPICS_C_SAME_SUBFIELD,
+              concepts: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/samesubfield',
+              title: 'Same Subfield Paper',
+              categories: ['linguistics'],
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      const conceptResult = result.find(
+        (r) => r.uri === 'at://did:plc:other/pub.chive.eprint/samesubfield'
+      );
+      expect(conceptResult).toBeDefined();
+      if (conceptResult) {
+        expect(conceptResult.signalScores?.concepts).toBeCloseTo(0.7, 1);
+      }
+    });
+
+    it('scores papers with matching field at ~0.5', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: [] }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/samefield',
+              topics: MOCK_TOPICS_D_SAME_FIELD,
+              concepts: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/samefield',
+              title: 'Same Field Paper',
+              categories: ['linguistics'],
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      const conceptResult = result.find(
+        (r) => r.uri === 'at://did:plc:other/pub.chive.eprint/samefield'
+      );
+      expect(conceptResult).toBeDefined();
+      if (conceptResult) {
+        expect(conceptResult.signalScores?.concepts).toBeCloseTo(0.5, 1);
+      }
+    });
+
+    it('scores papers with matching domain at ~0.3', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: [] }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/samedomain',
+              topics: MOCK_TOPICS_E_SAME_DOMAIN,
+              concepts: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/samedomain',
+              title: 'Same Domain Paper',
+              categories: ['economics'],
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      const conceptResult = result.find(
+        (r) => r.uri === 'at://did:plc:other/pub.chive.eprint/samedomain'
+      );
+      expect(conceptResult).toBeDefined();
+      if (conceptResult) {
+        expect(conceptResult.signalScores?.concepts).toBeCloseTo(0.3, 1);
+      }
+    });
+
+    it('returns empty results when no enrichment data exists', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        // getEnrichment returns no data
+        .mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty results when no overlapping concepts exist', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: MOCK_CONCEPTS_A }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/nooverlap',
+              topics: MOCK_TOPICS_F_NO_OVERLAP,
+              concepts: [],
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      // No overlapping topics/concepts, so no results should match
+      expect(result).toEqual([]);
+    });
+
+    it('generates the correct explanation text for each overlap level', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: [] }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/sametopic',
+              topics: MOCK_TOPICS_B_SAME_TOPIC,
+              concepts: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/sametopic',
+              title: 'Same Topic Paper',
+              categories: [],
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      const match = result[0];
+      expect(match).toBeDefined();
+      if (match) {
+        expect(match.explanation).toBe('Shares the same research topic');
+        expect(match.relationshipType).toBe('similar-topics');
+      }
+    });
+  });
+
+  // ==========================================================================
+  // collectCitationSignals (via findRelatedEprints)
+  // ==========================================================================
+
+  describe('collectCitationSignals', () => {
+    it('uses getSimilar when recommendationEngine is provided', async () => {
+      const mockRecommendationEngine = createMockRecommendationEngine();
+      const similarPapers: SimilarPaper[] = [
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/similar1' as AtUri,
+          title: 'Similar Paper 1',
+          authors: ['Author A'],
+          similarity: 8.0,
+          reason: 'co-citation',
+          sharedReferences: 3,
+          sharedCiters: 2,
+        },
+      ];
+      mockRecommendationEngine.getSimilar.mockResolvedValueOnce(similarPapers);
+
+      const serviceWithRecEngine = new DiscoveryService(
+        logger,
+        db,
+        searchEngine as unknown as ISearchEngine,
+        ranking as unknown as IRankingService,
+        citationGraph as unknown as ICitationGraph,
+        mockRecommendationEngine as unknown as RecommendationService
+      );
+
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      const result = await serviceWithRecEngine.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+        minScore: 0.0,
+      });
+
+      expect(mockRecommendationEngine.getSimilar).toHaveBeenCalledWith(SAMPLE_EPRINT_URI, 20);
+      // findCoCitedPapers should NOT be called when recommendationEngine is available
+      expect(citationGraph.findCoCitedPapers).not.toHaveBeenCalled();
+      expect(result.length).toBeGreaterThan(0);
+      const firstResult = result[0];
+      expect(firstResult?.relationshipType).toBe('co-cited');
+    });
+
+    it('falls back to findCoCitedPapers without recommendationEngine', async () => {
+      const coCitedPapers: CoCitedPaper[] = [
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/cocited1' as AtUri,
+          title: 'Co-cited Paper',
+          coCitationCount: 3,
+          strength: 0.6,
+        },
+      ];
+      citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
+
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+        minScore: 0.0,
+      });
+
+      expect(citationGraph.findCoCitedPapers).toHaveBeenCalledWith(SAMPLE_EPRINT_URI, 2);
+      expect(result.length).toBeGreaterThan(0);
+    });
+
+    it('normalizes similarity=5 to approximately 0.5', () => {
+      // Access the private method via type assertion
+      const normalizedScore = (
+        service as unknown as { normalizeSimilarityScore: (s: number) => number }
+      ).normalizeSimilarityScore(5);
+      // k=5: 5/(5+5) = 0.5
+      expect(normalizedScore).toBeCloseTo(0.5, 2);
+    });
+
+    it('normalizes similarity=20 to approximately 0.8', () => {
+      const normalizedScore = (
+        service as unknown as { normalizeSimilarityScore: (s: number) => number }
+      ).normalizeSimilarityScore(20);
+      // k=5: 20/(20+5) = 0.8
+      expect(normalizedScore).toBeCloseTo(0.8, 2);
+    });
+
+    it('normalizes similarity=0 to 0', () => {
+      const normalizedScore = (
+        service as unknown as { normalizeSimilarityScore: (s: number) => number }
+      ).normalizeSimilarityScore(0);
+      expect(normalizedScore).toBe(0);
+    });
+
+    it('normalizes similarity=100 to approximately 0.95', () => {
+      const normalizedScore = (
+        service as unknown as { normalizeSimilarityScore: (s: number) => number }
+      ).normalizeSimilarityScore(100);
+      // k=5: 100/(100+5) ≈ 0.952
+      expect(normalizedScore).toBeCloseTo(0.952, 2);
+    });
+
+    it('maps co-citation reason to co-cited relationship type', async () => {
+      const mockRecommendationEngine = createMockRecommendationEngine();
+      const similarPapers: SimilarPaper[] = [
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/cocited' as AtUri,
+          title: 'Co-cited Paper',
+          authors: [],
+          similarity: 6.0,
+          reason: 'co-citation',
+          sharedReferences: 0,
+          sharedCiters: 3,
+        },
+      ];
+      mockRecommendationEngine.getSimilar.mockResolvedValueOnce(similarPapers);
+
+      const serviceWithRecEngine = new DiscoveryService(
+        logger,
+        db,
+        searchEngine as unknown as ISearchEngine,
+        ranking as unknown as IRankingService,
+        citationGraph as unknown as ICitationGraph,
+        mockRecommendationEngine as unknown as RecommendationService
+      );
+
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      const result = await serviceWithRecEngine.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+        minScore: 0.0,
+      });
+
+      expect(result[0]?.relationshipType).toBe('co-cited');
+    });
+
+    it('maps bibliographic-coupling reason to bibliographic-coupling type', async () => {
+      const mockRecommendationEngine = createMockRecommendationEngine();
+      const similarPapers: SimilarPaper[] = [
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/bibcoupled' as AtUri,
+          title: 'Bib Coupled Paper',
+          authors: [],
+          similarity: 4.5,
+          reason: 'bibliographic-coupling',
+          sharedReferences: 3,
+          sharedCiters: 0,
+        },
+      ];
+      mockRecommendationEngine.getSimilar.mockResolvedValueOnce(similarPapers);
+
+      const serviceWithRecEngine = new DiscoveryService(
+        logger,
+        db,
+        searchEngine as unknown as ISearchEngine,
+        ranking as unknown as IRankingService,
+        citationGraph as unknown as ICitationGraph,
+        mockRecommendationEngine as unknown as RecommendationService
+      );
+
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      const result = await serviceWithRecEngine.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+        minScore: 0.0,
+      });
+
+      expect(result[0]?.relationshipType).toBe('bibliographic-coupling');
+    });
+
+    it('builds citation explanation from shared citers and references', async () => {
+      const mockRecommendationEngine = createMockRecommendationEngine();
+      const similarPapers: SimilarPaper[] = [
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/explained' as AtUri,
+          title: 'Explained Paper',
+          authors: [],
+          similarity: 7.0,
+          reason: 'co-citation',
+          sharedReferences: 4,
+          sharedCiters: 3,
+        },
+      ];
+      mockRecommendationEngine.getSimilar.mockResolvedValueOnce(similarPapers);
+
+      const serviceWithRecEngine = new DiscoveryService(
+        logger,
+        db,
+        searchEngine as unknown as ISearchEngine,
+        ranking as unknown as IRankingService,
+        citationGraph as unknown as ICitationGraph,
+        mockRecommendationEngine as unknown as RecommendationService
+      );
+
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      const result = await serviceWithRecEngine.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+        minScore: 0.0,
+      });
+
+      expect(result[0]?.explanation).toContain('3 shared citing papers');
+      expect(result[0]?.explanation).toContain('4 shared references');
+    });
+  });
+
+  // ==========================================================================
+  // collectAuthorSignals (via findRelatedEprints)
+  // ==========================================================================
+
+  describe('collectAuthorSignals', () => {
+    beforeEach(() => {
+      service.setPluginManager(pluginManager);
+    });
+
+    it('scores papers sharing 1 of 2 authors at ~0.7', async () => {
+      // getEprintByUri for source paper (has 2 authors with DIDs)
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        // Author query: find papers sharing at least one author DID
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/sameauthor1',
+              title: 'One Shared Author Paper',
+              abstract: 'Some abstract',
+              categories: ['cs.CL'],
+              publication_date: new Date('2024-03-01'),
+              overlap_count: 1, // 1 of 2 authors
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['authors'],
+        minScore: 0.0,
+      });
+
+      const authorResult = result.find(
+        (r) => r.uri === 'at://did:plc:other/pub.chive.eprint/sameauthor1'
+      );
+      expect(authorResult).toBeDefined();
+      if (authorResult) {
+        // overlapRatio = 1/2 = 0.5, score = 0.4 + 0.5 * 0.6 = 0.7
+        // Combined: 0.7 * authorNetwork weight (0.15) = 0.105
+        expect(authorResult.signalScores?.authors).toBeCloseTo(0.7, 1);
+      }
+    });
+
+    it('scores papers sharing all authors at 1.0', async () => {
+      db.query.mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }).mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:other/pub.chive.eprint/allauthors',
+            title: 'All Authors Paper',
+            abstract: null,
+            categories: null,
+            publication_date: null,
+            overlap_count: 2, // Both authors
+          },
+        ],
+      });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['authors'],
+        minScore: 0.0,
+      });
+
+      const authorResult = result.find(
+        (r) => r.uri === 'at://did:plc:other/pub.chive.eprint/allauthors'
+      );
+      expect(authorResult).toBeDefined();
+      if (authorResult) {
+        // overlapRatio = 2/2 = 1.0, score = min(1.0, 0.4 + 1.0 * 0.6) = 1.0
+        expect(authorResult.signalScores?.authors).toBeCloseTo(1.0, 1);
+      }
+    });
+
+    it('returns empty when source paper has no author DIDs', async () => {
+      const eprintNoAuthorDids = {
+        ...SAMPLE_EPRINT_ROW,
+        authors: [{ name: 'Alice' }, { name: 'Bob' }], // No DIDs
+      };
+      db.query.mockResolvedValueOnce({ rows: [eprintNoAuthorDids] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['authors'],
+        minScore: 0.0,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty when source paper has no authors at all', async () => {
+      const eprintNoAuthors = {
+        ...SAMPLE_EPRINT_ROW,
+        authors: null,
+      };
+      db.query.mockResolvedValueOnce({ rows: [eprintNoAuthors] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['authors'],
+        minScore: 0.0,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('excludes the source paper from results', async () => {
+      // The SQL query includes "e.uri != $1" to exclude source,
+      // but also the weighted combination filters out the source URI.
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        // Author query returns no additional papers (only source matched)
+        .mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['authors'],
+        minScore: 0.0,
+      });
+
+      const selfResult = result.find((r) => r.uri === SAMPLE_EPRINT_URI);
+      expect(selfResult).toBeUndefined();
+    });
+
+    it('includes correct explanation for single shared author', async () => {
+      db.query.mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }).mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:other/pub.chive.eprint/shared1',
+            title: 'Shared Author Paper',
+            abstract: null,
+            categories: null,
+            publication_date: null,
+            overlap_count: 1,
+          },
+        ],
+      });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['authors'],
+        minScore: 0.0,
+      });
+
+      expect(result[0]?.explanation).toBe('Shares an author with this paper');
+      expect(result[0]?.relationshipType).toBe('same-author');
+    });
+
+    it('includes correct explanation for multiple shared authors', async () => {
+      db.query.mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }).mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:other/pub.chive.eprint/shared2',
+            title: 'Multi Author Paper',
+            abstract: null,
+            categories: null,
+            publication_date: null,
+            overlap_count: 2,
+          },
+        ],
+      });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['authors'],
+        minScore: 0.0,
+      });
+
+      expect(result[0]?.explanation).toBe('Shares 2 authors with this paper');
+    });
+  });
+
+  // ==========================================================================
+  // Weighted Scoring (via findRelatedEprints)
+  // ==========================================================================
+
+  describe('weighted scoring', () => {
+    it('uses correct default weights: SPECTER2 0.30, co-citation 0.25, concepts 0.20, authors 0.15', async () => {
+      // Create a service with the recommendation engine for full signal coverage
+      const mockRecommendationEngine = createMockRecommendationEngine();
+
+      const serviceWithRec = new DiscoveryService(
+        logger,
+        db,
+        searchEngine as unknown as ISearchEngine,
+        ranking as unknown as IRankingService,
+        citationGraph as unknown as ICitationGraph,
+        mockRecommendationEngine as unknown as RecommendationService
+      );
+
+      const candidateUri = 'at://did:plc:other/pub.chive.eprint/weighted' as AtUri;
+      const candidateRow = {
+        uri: candidateUri,
+        title: 'Weighted Test Paper',
+        categories: ['cs.CL'],
+        authors: [{ did: 'did:plc:author1', name: 'Alice Researcher' }],
+      };
+
+      // Set up: citation signal via recommendation engine
+      mockRecommendationEngine.getSimilar.mockResolvedValueOnce([
+        {
+          uri: candidateUri,
+          title: 'Weighted Test Paper',
+          authors: [],
+          similarity: 5, // normalize to 0.5
+          reason: 'co-citation' as const,
+          sharedReferences: 0,
+          sharedCiters: 2,
+        },
+      ]);
+
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }) // getEprintByUri (source)
+        // Concept signal: getEnrichment for source
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: MOCK_CONCEPTS_A }],
+        })
+        // Concept signal: query eprint_enrichment candidates
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              topics: MOCK_TOPICS_B_SAME_TOPIC, // 0.9 topic score
+              concepts: MOCK_CONCEPTS_B, // 1/3 concept overlap
+            },
+          ],
+        })
+        // getEprintByUri for concept candidate
+        .mockResolvedValueOnce({ rows: [candidateRow] })
+        // Author signal query
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              title: 'Weighted Test Paper',
+              abstract: null,
+              categories: ['cs.CL'],
+              publication_date: null,
+              overlap_count: 1,
+            },
+          ],
+        });
+
+      const result = await serviceWithRec.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations', 'concepts', 'authors'],
+        minScore: 0.0,
+      });
+
+      const paper = result.find((r) => r.uri === candidateUri);
+      expect(paper).toBeDefined();
+      if (paper) {
+        const scores = paper.signalScores ?? {};
+
+        // Check that individual signal scores are present
+        expect(scores.citations).toBeDefined();
+        expect(scores.concepts).toBeDefined();
+        expect(scores.authors).toBeDefined();
+
+        // Verify the combined score uses weights:
+        // citations (normalized 5/(5+5)=0.5) * 0.25 + concepts (0.9) * 0.20 + authors (0.7) * 0.15
+        // = 0.125 + 0.18 + 0.105 = 0.41
+        const citationsScore = scores.citations ?? 0;
+        const conceptsScore = scores.concepts ?? 0;
+        const authorsScore = scores.authors ?? 0;
+        const expectedScore = citationsScore * 0.25 + conceptsScore * 0.2 + authorsScore * 0.15;
+
+        expect(paper.score).toBeCloseTo(expectedScore, 2);
+      }
+    });
+
+    it('takes max score per signal via mergeSignal when paper appears in multiple signal sources', async () => {
+      // Test mergeSignal by having the same URI appear from both citation and
+      // concept signals. mergeSignal takes the max of each signal dimension.
+      const candidateUri = 'at://did:plc:other/pub.chive.eprint/multi' as AtUri;
+      const candidateRow = {
+        uri: candidateUri,
+        title: 'Multi Signal Paper',
+        categories: ['cs.CL'],
+      };
+
+      // Citation signal provides citations score of 0.3
+      const coCitedPapers: CoCitedPaper[] = [
+        {
+          uri: candidateUri,
+          title: 'Multi Signal Paper',
+          coCitationCount: 2,
+          strength: 0.3,
+        },
+      ];
+      citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
+
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }) // getEprintByUri (source)
+        // Concept signal: getEnrichment for source
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: [] }],
+        })
+        // Concept signal: query eprint_enrichment candidates
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              topics: MOCK_TOPICS_B_SAME_TOPIC, // 0.9 topic score
+              concepts: [],
+            },
+          ],
+        })
+        // getEprintByUri for concept candidate
+        .mockResolvedValueOnce({ rows: [candidateRow] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations', 'concepts'],
+        minScore: 0.0,
+      });
+
+      const paper = result.find((r) => r.uri === candidateUri);
+      expect(paper).toBeDefined();
+      if (paper) {
+        // mergeSignal preserves both dimensions independently
+        expect(paper.signalScores?.citations).toBeCloseTo(0.3, 1);
+        expect(paper.signalScores?.concepts).toBeCloseTo(0.9, 1);
+      }
+    });
+
+    it('sorts results by combined score descending', async () => {
+      const coCitedPapers: CoCitedPaper[] = [
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/low' as AtUri,
+          title: 'Low Score Paper',
+          coCitationCount: 2,
+          strength: 0.3,
+        },
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/high' as AtUri,
+          title: 'High Score Paper',
+          coCitationCount: 10,
+          strength: 0.9,
+        },
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/mid' as AtUri,
+          title: 'Mid Score Paper',
+          coCitationCount: 5,
+          strength: 0.6,
+        },
+      ];
+      citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
+
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+        minScore: 0.0,
+      });
+
+      // Verify descending order
+      for (let i = 0; i < result.length - 1; i++) {
+        const current = result[i];
+        const next = result[i + 1];
+        if (current && next) {
+          expect(current.score).toBeGreaterThanOrEqual(next.score);
+        }
+      }
+    });
+
+    it('excludes papers with zero total score', async () => {
+      // A paper with 0 citation strength will get 0 combined score
+      const coCitedPapers: CoCitedPaper[] = [
+        {
+          uri: 'at://did:plc:other/pub.chive.eprint/zero' as AtUri,
+          title: 'Zero Score Paper',
+          coCitationCount: 0,
+          strength: 0.0,
+        },
+      ];
+      citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
+
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+        minScore: 0.2, // Default minScore
+      });
+
+      // Paper with 0 combined score should be filtered out
+      const zeroResult = result.find((r) => r.uri === 'at://did:plc:other/pub.chive.eprint/zero');
+      expect(zeroResult).toBeUndefined();
+    });
+  });
+
+  // ==========================================================================
+  // findRelatedEprints integration tests
+  // ==========================================================================
+
+  describe('findRelatedEprints integration', () => {
+    it('combines citation + concept + author signals when all enabled', async () => {
+      // Test a simpler combination without semantic signal (which requires
+      // S2 plugin setup and external ID lookups). Verifying that three signal
+      // types produce accumulator entries for the same paper.
+      const candidateUri = 'at://did:plc:other/pub.chive.eprint/allsignals' as AtUri;
+      const candidateRow = {
+        uri: candidateUri,
+        title: 'All Signals Paper',
+        abstract: 'About semantics',
+        categories: ['cs.CL'],
+      };
+
+      // Citation signal via co-citation
+      const coCitedPapers: CoCitedPaper[] = [
+        {
+          uri: candidateUri,
+          title: 'All Signals Paper',
+          coCitationCount: 4,
+          strength: 0.6,
+        },
+      ];
+      citationGraph.findCoCitedPapers.mockResolvedValueOnce(coCitedPapers);
+
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }) // getEprintByUri (source)
+        // Concept signal: getEnrichment for source
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: [] }],
+        })
+        // Concept signal: query eprint_enrichment candidates
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              topics: MOCK_TOPICS_C_SAME_SUBFIELD, // 0.7 topic overlap
+              concepts: [],
+            },
+          ],
+        })
+        // getEprintByUri for concept candidate
+        .mockResolvedValueOnce({ rows: [candidateRow] })
+        // Author signal query
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              title: 'All Signals Paper',
+              abstract: null,
+              categories: ['cs.CL'],
+              publication_date: null,
+              overlap_count: 1,
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations', 'concepts', 'authors'],
+        minScore: 0.0,
+      });
+
+      const paper = result.find((r) => r.uri === candidateUri);
+      expect(paper).toBeDefined();
+      if (paper) {
+        // Paper should have scores from all three signal types
+        expect(paper.signalScores?.citations).toBeDefined();
+        expect(paper.signalScores?.concepts).toBeDefined();
+        expect(paper.signalScores?.authors).toBeDefined();
+        // Combined score should use weights
+        expect(paper.score).toBeGreaterThan(0);
+      }
+    });
+
+    it('uses only concept overlap when signals is ["concepts"]', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] })
+        .mockResolvedValueOnce({
+          rows: [{ uri: SAMPLE_EPRINT_URI, topics: MOCK_TOPICS_A, concepts: [] }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/conceptonly',
+              topics: MOCK_TOPICS_B_SAME_TOPIC,
+              concepts: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: 'at://did:plc:other/pub.chive.eprint/conceptonly',
+              title: 'Concept Only Paper',
+              categories: [],
+            },
+          ],
+        });
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['concepts'],
+        minScore: 0.0,
+      });
+
+      // Citation graph should not be called
+      expect(citationGraph.findCoCitedPapers).not.toHaveBeenCalled();
+      expect(citationGraph.getCitingPapers).not.toHaveBeenCalled();
+      // Only concept-based results
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0]?.signalScores?.citations).toBeUndefined();
+      expect(result[0]?.signalScores?.concepts).toBeDefined();
+    });
+
+    it('uses default signals when none specified', async () => {
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+
+      await service.findRelatedEprints(SAMPLE_EPRINT_URI);
+
+      // Default signals: ['citations', 'concepts', 'semantic']
+      // Citation graph should be called
+      expect(citationGraph.findCoCitedPapers).toHaveBeenCalled();
+    });
+
+    it('handles empty results gracefully', async () => {
+      db.query.mockResolvedValue({ rows: [SAMPLE_EPRINT_ROW] });
+      citationGraph.findCoCitedPapers.mockResolvedValueOnce([]);
+
+      const result = await service.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations'],
+      });
+
+      expect(result).toEqual([]);
     });
   });
 
@@ -850,6 +1942,282 @@ describe('DiscoveryService', () => {
       if (firstRecommendation) {
         expect(firstRecommendation.explanation).toBeDefined();
         expect(firstRecommendation.explanation.text).toBeDefined();
+      }
+    });
+  });
+
+  // ==========================================================================
+  // collectTopicRecommendations (via getRecommendationsForUser)
+  // ==========================================================================
+
+  describe('collectTopicRecommendations', () => {
+    beforeEach(() => {
+      service.setPluginManager(pluginManager);
+    });
+
+    it('finds papers with overlapping topics from claimed paper enrichments', async () => {
+      const claimedUri = 'at://did:plc:test/pub.chive.eprint/claimed1' as AtUri;
+      const candidateUri = 'at://did:plc:other/pub.chive.eprint/topicmatch' as AtUri;
+
+      db.query
+        // getUserClaimedPapers
+        .mockResolvedValueOnce({ rows: [{ uri: claimedUri }] })
+        // getDismissedRecommendations
+        .mockResolvedValueOnce({ rows: [] })
+        // getEnrichment for claimed paper (called by collectTopicRecommendations)
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: claimedUri,
+              semantic_scholar_id: null,
+              openalex_id: null,
+              citation_count: null,
+              influential_citation_count: null,
+              references_count: null,
+              concepts: MOCK_CONCEPTS_A,
+              topics: MOCK_TOPICS_A,
+              enriched_at: new Date(),
+            },
+          ],
+        })
+        // Query eprint_enrichment for candidate papers
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              topics: MOCK_TOPICS_B_SAME_TOPIC, // Same topic ID as claimed
+            },
+          ],
+        })
+        // getEprintByUri for the candidate
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              title: 'Topic Match Paper',
+              abstract: 'Abstract about semantics',
+              categories: ['linguistics'],
+              publication_date: new Date('2024-02-01'),
+            },
+          ],
+        });
+
+      await service.getRecommendationsForUser(SAMPLE_USER_DID, {
+        // Only trigger topic-based signal (no fields/citations/semantic)
+        signals: [],
+      });
+
+      // Topic recommendations are always collected when claimedPapers.size > 0
+      expect(ranking.rank).toHaveBeenCalled();
+      const rankedItems = ranking.rank.mock.calls[0]?.[0] as
+        | { uri: string; signalType: string }[]
+        | undefined;
+      const topicCandidate = rankedItems?.find(
+        (item) => item.uri === candidateUri && item.signalType === 'concepts'
+      );
+      expect(topicCandidate).toBeDefined();
+    });
+
+    it('skips topic recommendations when no enrichment topics exist', async () => {
+      const claimedUri = 'at://did:plc:test/pub.chive.eprint/claimed1' as AtUri;
+
+      db.query
+        .mockResolvedValueOnce({ rows: [{ uri: claimedUri }] }) // getUserClaimedPapers
+        .mockResolvedValueOnce({ rows: [] }) // getDismissedRecommendations
+        // getEnrichment returns no topics
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: claimedUri,
+              semantic_scholar_id: null,
+              openalex_id: null,
+              citation_count: null,
+              influential_citation_count: null,
+              references_count: null,
+              concepts: [],
+              topics: [],
+              enriched_at: new Date(),
+            },
+          ],
+        });
+
+      const result = await service.getRecommendationsForUser(SAMPLE_USER_DID, {
+        signals: [],
+      });
+
+      expect(result.recommendations).toEqual([]);
+    });
+  });
+
+  // ==========================================================================
+  // collectCoauthorRecommendations (via getRecommendationsForUser)
+  // ==========================================================================
+
+  describe('collectCoauthorRecommendations', () => {
+    beforeEach(() => {
+      service.setPluginManager(pluginManager);
+    });
+
+    it('finds papers by co-authors that user has not claimed', async () => {
+      const claimedUri = 'at://did:plc:test/pub.chive.eprint/claimed1' as AtUri;
+      const coauthorPaperUri = 'at://did:plc:coauthor/pub.chive.eprint/paper1' as AtUri;
+
+      db.query
+        // getUserClaimedPapers
+        .mockResolvedValueOnce({ rows: [{ uri: claimedUri }] })
+        // getDismissedRecommendations
+        .mockResolvedValueOnce({ rows: [] })
+        // getEnrichment for claimed paper (topic recommendations)
+        .mockResolvedValueOnce({ rows: [] })
+        // Co-author query: find co-author DIDs from claimed papers
+        .mockResolvedValueOnce({
+          rows: [{ did: 'did:plc:coauthor1', name: 'Dr. Collaborator' }],
+        })
+        // Papers by co-authors
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: coauthorPaperUri,
+              title: 'Coauthor Recent Paper',
+              abstract: 'A paper by the co-author',
+              categories: ['cs.AI'],
+              publication_date: new Date('2024-05-01'),
+              coauthor_name: 'Dr. Collaborator',
+            },
+          ],
+        });
+
+      await service.getRecommendationsForUser(SAMPLE_USER_DID, {
+        signals: ['collaborators'],
+      });
+
+      expect(ranking.rank).toHaveBeenCalled();
+      const rankedItems = ranking.rank.mock.calls[0]?.[0] as
+        | { uri: string; signalType: string; explanation: string }[]
+        | undefined;
+      const coauthorCandidate = rankedItems?.find(
+        (item) => item.uri === coauthorPaperUri && item.signalType === 'collaborators'
+      );
+      expect(coauthorCandidate).toBeDefined();
+      expect(coauthorCandidate?.explanation).toBe('By your co-author Dr. Collaborator');
+    });
+
+    it('skips when no co-authors found', async () => {
+      const claimedUri = 'at://did:plc:test/pub.chive.eprint/claimed1' as AtUri;
+
+      db.query
+        .mockResolvedValueOnce({ rows: [{ uri: claimedUri }] }) // getUserClaimedPapers
+        .mockResolvedValueOnce({ rows: [] }) // getDismissedRecommendations
+        .mockResolvedValueOnce({ rows: [] }) // getEnrichment (topic recommendations)
+        // Co-author query returns empty
+        .mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.getRecommendationsForUser(SAMPLE_USER_DID, {
+        signals: ['collaborators'],
+      });
+
+      // No candidates should be added from collaborator signal
+      expect(result.recommendations).toEqual([]);
+    });
+
+    it('uses generic explanation when co-author name is null', async () => {
+      const claimedUri = 'at://did:plc:test/pub.chive.eprint/claimed1' as AtUri;
+      const coauthorPaperUri = 'at://did:plc:coauthor/pub.chive.eprint/anon' as AtUri;
+
+      db.query
+        .mockResolvedValueOnce({ rows: [{ uri: claimedUri }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }) // enrichment
+        .mockResolvedValueOnce({
+          rows: [{ did: 'did:plc:coauthor1', name: null }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: coauthorPaperUri,
+              title: 'Anon Coauthor Paper',
+              abstract: null,
+              categories: null,
+              publication_date: null,
+              coauthor_name: null,
+            },
+          ],
+        });
+
+      await service.getRecommendationsForUser(SAMPLE_USER_DID, {
+        signals: ['collaborators'],
+      });
+
+      const rankedItems = ranking.rank.mock.calls[0]?.[0] as
+        | { uri: string; explanation: string }[]
+        | undefined;
+      const candidate = rankedItems?.find((item) => item.uri === coauthorPaperUri);
+      expect(candidate?.explanation).toBe('By one of your co-authors');
+    });
+  });
+
+  // ==========================================================================
+  // mergeSignal (tested indirectly)
+  // ==========================================================================
+
+  describe('mergeSignal', () => {
+    it('preserves first-seen metadata when merging signals', async () => {
+      // When a paper appears in both citation and author signals,
+      // the first-seen title/abstract/categories should be kept.
+      const mockRecommendationEngine = createMockRecommendationEngine();
+      const candidateUri = 'at://did:plc:other/pub.chive.eprint/merge' as AtUri;
+
+      // Citation signal provides title "Citation Title"
+      mockRecommendationEngine.getSimilar.mockResolvedValueOnce([
+        {
+          uri: candidateUri,
+          title: 'Citation Title',
+          authors: [],
+          similarity: 5.0,
+          reason: 'co-citation' as const,
+          sharedReferences: 1,
+          sharedCiters: 2,
+        },
+      ]);
+
+      const serviceWithRec = new DiscoveryService(
+        logger,
+        db,
+        searchEngine as unknown as ISearchEngine,
+        ranking as unknown as IRankingService,
+        citationGraph as unknown as ICitationGraph,
+        mockRecommendationEngine as unknown as RecommendationService
+      );
+
+      db.query
+        .mockResolvedValueOnce({ rows: [SAMPLE_EPRINT_ROW] }) // source
+        // Author signal also returns the same paper (but with potentially different metadata)
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              uri: candidateUri,
+              title: 'Author Signal Title',
+              abstract: 'Author abstract',
+              categories: ['cs.AI'],
+              publication_date: null,
+              overlap_count: 1,
+            },
+          ],
+        });
+
+      const result = await serviceWithRec.findRelatedEprints(SAMPLE_EPRINT_URI, {
+        signals: ['citations', 'authors'],
+        minScore: 0.0,
+      });
+
+      const paper = result.find((r) => r.uri === candidateUri);
+      expect(paper).toBeDefined();
+      if (paper) {
+        // First-seen title (from citations) should be preserved
+        expect(paper.title).toBe('Citation Title');
+        // Both signal scores should be present
+        expect(paper.signalScores?.citations).toBeDefined();
+        expect(paper.signalScores?.authors).toBeDefined();
       }
     });
   });

@@ -332,6 +332,18 @@ export function createMockClaimingService(): ServerConfig['claimingService'] {
     getCoauthorRequestsByClaimant: vi.fn().mockResolvedValue([]),
     approveCoauthorRequest: vi.fn().mockResolvedValue(undefined),
     rejectCoauthorRequest: vi.fn().mockResolvedValue(undefined),
+    dismissSuggestion: vi.fn().mockResolvedValue(undefined),
+    searchAllSources: vi.fn().mockResolvedValue({ results: [], sourceErrors: [] }),
+    autocompleteExternal: vi.fn().mockResolvedValue([]),
+    getSuggestedPapers: vi.fn().mockResolvedValue({
+      papers: [],
+      profileUsed: {
+        displayName: undefined,
+        nameVariants: [],
+        hasOrcid: false,
+        hasExternalIds: false,
+      },
+    }),
   } as unknown as ServerConfig['claimingService'];
 }
 
