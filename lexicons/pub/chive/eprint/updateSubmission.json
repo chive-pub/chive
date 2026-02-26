@@ -89,6 +89,35 @@
               "type": "ref",
               "ref": "#changelogInput",
               "description": "Structured changelog for this update"
+            },
+            "publishedVersion": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission#publishedVersion",
+              "description": "Published version metadata (journal, DOI, etc.)"
+            },
+            "externalIds": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission#externalIds",
+              "description": "External identifiers (arXiv, PubMed, SSRN, etc.)"
+            },
+            "repositories": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission#repositories",
+              "description": "Code, data, and other repositories"
+            },
+            "conferencePresentation": {
+              "type": "ref",
+              "ref": "pub.chive.eprint.submission#conferencePresentation",
+              "description": "Conference presentation metadata"
+            },
+            "funding": {
+              "type": "array",
+              "description": "Funding sources",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.eprint.submission#fundingSource"
+              },
+              "maxLength": 20
             }
           }
         }

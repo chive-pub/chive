@@ -81,6 +81,7 @@ import { Neo4jConnection } from './storage/neo4j/connection.js';
 import { EdgeRepository } from './storage/neo4j/edge-repository.js';
 import { FacetManager } from './storage/neo4j/facet-manager.js';
 import { NodeRepository } from './storage/neo4j/node-repository.js';
+import { RecommendationService } from './storage/neo4j/recommendations.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
 import { getDatabaseConfig } from './storage/postgresql/config.js';
@@ -495,6 +496,7 @@ function createServices(
   const categoryMatcher = new TaxonomyCategoryMatcher();
   const rankingService = new RankingService(pgPool, logger, textScorer, categoryMatcher);
   const citationGraph = new CitationGraph(neo4jConnection);
+  const recommendationEngine = new RecommendationService(neo4jConnection, logger);
 
   // Create discovery service
   const discoveryService = new DiscoveryService(
@@ -502,7 +504,8 @@ function createServices(
     pgPool,
     searchAdapter,
     rankingService,
-    citationGraph
+    citationGraph,
+    recommendationEngine
   );
 
   // Create authorization service for role-based access control

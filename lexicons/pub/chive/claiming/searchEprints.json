@@ -45,6 +45,14 @@
             "facets": {
               "type": "ref",
               "ref": "#searchFacets"
+            },
+            "sourceErrors": {
+              "type": "array",
+              "description": "Per-source errors from sources that failed during the search",
+              "items": {
+                "type": "ref",
+                "ref": "#sourceError"
+              }
             }
           }
         }
@@ -172,6 +180,21 @@
         "name": {
           "type": "string",
           "description": "Author name"
+        }
+      }
+    },
+    "sourceError": {
+      "type": "object",
+      "required": ["source", "message"],
+      "description": "Error from a specific external source during search",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source identifier that failed (e.g., arxiv, openreview)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message"
         }
       }
     },

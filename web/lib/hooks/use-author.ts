@@ -397,7 +397,21 @@ export function useUpdateChiveProfile() {
       }
       return updateChiveProfileRecord(agent, input);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Bust the server-side Redis cache so refetch gets fresh PDS data
+      const agent = getCurrentAgent();
+      const did = agent?.did;
+      if (did) {
+        try {
+          await api.pub.chive.author.getProfile(
+            { did },
+            { headers: { 'Cache-Control': 'no-cache' } }
+          );
+        } catch {
+          // Best-effort cache bust; TanStack refetch will still work after TTL
+        }
+      }
+
       // Invalidate all author profile queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: authorKeys.profiles() });
       queryClient.invalidateQueries({ queryKey: ['my-chive-profile'] });

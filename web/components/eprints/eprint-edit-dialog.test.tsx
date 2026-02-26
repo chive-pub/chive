@@ -53,6 +53,13 @@ vi.mock('@/lib/observability', () => ({
   },
 }));
 
+// Mock record-creator for changelog creation
+vi.mock('@/lib/atproto/record-creator', () => ({
+  createChangelogRecord: vi
+    .fn()
+    .mockResolvedValue({ uri: 'at://did:plc:test/pub.chive.eprint.changelog/mock' }),
+}));
+
 // Mock API client
 vi.mock('@/lib/api/client', () => ({
   authApi: {

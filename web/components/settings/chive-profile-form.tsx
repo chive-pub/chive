@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,6 +16,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
+  GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,6 +34,7 @@ import { AffiliationAutocompleteInput } from './affiliation-autocomplete-input';
 import { KeywordAutocompleteInput } from './keyword-autocomplete-input';
 import { OrcidAutocompleteInput } from './orcid-autocomplete-input';
 import { AuthorIdAutocompleteInput } from './author-id-autocomplete-input';
+import { FieldSearch, type FieldSelection } from '@/components/forms/field-search';
 
 /**
  * Converts API affiliations (may be string[] or structured) to structured format.
@@ -237,6 +239,20 @@ export function ChiveProfileForm() {
   const { data: existingProfile, isLoading } = useMyChiveProfile();
   const { mutate: updateProfile, isPending } = useUpdateChiveProfile();
 
+  // Field selections managed outside react-hook-form (FieldSearch has its own UI)
+  const [selectedFields, setSelectedFields] = useState<FieldSelection[]>([]);
+
+  const handleFieldAdd = useCallback((field: FieldSelection) => {
+    setSelectedFields((prev) => {
+      if (prev.some((f) => f.uri === field.uri)) return prev;
+      return [...prev, field];
+    });
+  }, []);
+
+  const handleFieldRemove = useCallback((field: FieldSelection) => {
+    setSelectedFields((prev) => prev.filter((f) => f.uri !== field.uri));
+  }, []);
+
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -265,6 +281,8 @@ export function ChiveProfileForm() {
         bio?: string;
         orcid?: string;
         affiliations?: Array<string | { name: string; rorId?: string }>;
+        fieldUris?: string[];
+        fields?: string[];
         nameVariants?: string[];
         previousAffiliations?: Array<string | { name: string; rorId?: string }>;
         researchKeywords?: Array<string | { label: string; fastId?: string; wikidataId?: string }>;
@@ -275,6 +293,25 @@ export function ChiveProfileForm() {
         dblpId?: string;
         scopusAuthorId?: string;
       };
+
+      // Load existing field URIs (new format: fieldUris, old format: fields)
+      const existingFieldUris = profile.fieldUris ?? profile.fields ?? [];
+      if (existingFieldUris.length > 0) {
+        // Set URIs immediately, then resolve labels asynchronously
+        setSelectedFields(existingFieldUris.map((uri) => ({ uri, label: 'Loading...' })));
+        // Resolve labels from the node API
+        Promise.all(
+          existingFieldUris.map(async (uri) => {
+            try {
+              const { api: publicApi } = await import('@/lib/api/client');
+              const response = await publicApi.pub.chive.graph.getNode({ id: uri });
+              return { uri, label: response.data.label ?? uri };
+            } catch {
+              return { uri, label: uri };
+            }
+          })
+        ).then((resolved) => setSelectedFields(resolved));
+      }
 
       form.reset({
         displayName: profile.displayName ?? '',
@@ -301,6 +338,7 @@ export function ChiveProfileForm() {
       bio: data.bio || undefined,
       orcid: data.orcid || undefined,
       affiliations: data.affiliations?.length ? data.affiliations : undefined,
+      fields: selectedFields.length > 0 ? selectedFields.map((f) => f.uri) : undefined,
       nameVariants: data.nameVariants?.length ? data.nameVariants : undefined,
       previousAffiliations: data.previousAffiliations?.length
         ? data.previousAffiliations
@@ -372,6 +410,20 @@ export function ChiveProfileForm() {
                 {...form.register('bio')}
               />
             </div>
+          </div>
+
+          {/* Research Fields - prominent, always visible */}
+          <div className="space-y-2 pb-2">
+            <FieldSearch
+              selectedFields={selectedFields}
+              onFieldAdd={handleFieldAdd}
+              onFieldRemove={handleFieldRemove}
+              maxFields={20}
+              label="Research Fields"
+              placeholder="Search for a research field..."
+              helpText="Select your research fields to personalize your eprints feed and trending page"
+              disabled={isPending}
+            />
           </div>
 
           <div className="space-y-3">

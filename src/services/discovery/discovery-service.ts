@@ -50,6 +50,7 @@
 
 import type { OpenAlexPlugin } from '../../plugins/builtin/openalex.js';
 import type { SemanticScholarPlugin } from '../../plugins/builtin/semantic-scholar.js';
+import type { RecommendationService, SimilarPaper } from '../../storage/neo4j/recommendations.js';
 import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, ValidationError } from '../../types/errors.js';
 import type { IDatabasePool } from '../../types/interfaces/database.interface.js';
@@ -75,6 +76,7 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IPluginManager } from '../../types/interfaces/plugin.interface.js';
 import type { IRankingService, RankableItem } from '../../types/interfaces/ranking.interface.js';
 import type { ISearchEngine } from '../../types/interfaces/search.interface.js';
+import type { DiscoverySignalWeights } from '../search/ranking-service.js';
 
 /**
  * Database row for user interactions.
@@ -118,6 +120,14 @@ export interface EnrichmentData {
 }
 
 /**
+ * Author entry in the eprints_index authors JSONB array.
+ */
+interface AuthorEntry {
+  readonly did?: string;
+  readonly name?: string;
+}
+
+/**
  * Database row for eprints.
  */
 interface EprintRow {
@@ -130,6 +140,40 @@ interface EprintRow {
   readonly publication_date: Date | null;
   readonly semantic_scholar_id: string | null;
   readonly openalex_id: string | null;
+  readonly authors: readonly AuthorEntry[] | null;
+}
+
+/**
+ * Default discovery signal weights matching RankingService.
+ *
+ * @remarks
+ * SPECTER2: 0.30, co-citation: 0.25, concept overlap: 0.20,
+ * author network: 0.15, collaborative: 0.10.
+ */
+const DEFAULT_DISCOVERY_WEIGHTS: Required<DiscoverySignalWeights> = {
+  specter2: 0.3,
+  coCitation: 0.25,
+  conceptOverlap: 0.2,
+  authorNetwork: 0.15,
+  collaborative: 0.1,
+};
+
+/**
+ * Entry in the signal accumulator map, tracking per-signal scores for each candidate.
+ */
+interface SignalAccumulatorEntry {
+  title: string;
+  abstract?: string;
+  categories?: readonly string[];
+  publicationDate?: Date;
+  relationshipType: RelatedEprint['relationshipType'];
+  explanation: string;
+  scores: {
+    citations?: number;
+    concepts?: number;
+    semantic?: number;
+    authors?: number;
+  };
 }
 
 /**
@@ -171,13 +215,15 @@ export class DiscoveryService implements IDiscoveryService {
    * @param searchEngine - Elasticsearch search engine
    * @param ranking - Ranking service for personalization
    * @param citationGraph - Neo4j citation graph
+   * @param recommendationEngine - Neo4j recommendation engine for combined co-citation and bibliographic coupling
    */
   constructor(
     private readonly logger: ILogger,
     private readonly db: IDatabasePool,
     private readonly searchEngine: ISearchEngine,
     private readonly ranking: IRankingService,
-    private readonly citationGraph: ICitationGraph
+    private readonly citationGraph: ICitationGraph,
+    private readonly recommendationEngine?: RecommendationService
   ) {}
 
   /**
@@ -444,8 +490,12 @@ export class DiscoveryService implements IDiscoveryService {
    * @returns Related eprints with relationship metadata
    *
    * @remarks
-   * Combines citation graph, concept overlap, and semantic similarity
-   * to find related eprints. All results are from Chive's index.
+   * Combines five signal types: citation graph (co-citation + bibliographic
+   * coupling), concept overlap, semantic similarity, and author network.
+   * Each paper accumulates per-signal scores that are combined using
+   * configurable discovery weights from RankingService.
+   *
+   * All results are from Chive's index.
    */
   async findRelatedEprints(
     eprintUri: AtUri,
@@ -455,7 +505,24 @@ export class DiscoveryService implements IDiscoveryService {
     const minScore = options?.minScore ?? 0.2;
     const signals = options?.signals ?? ['citations', 'concepts', 'semantic'];
 
-    const relatedMap = new Map<string, RelatedEprint>();
+    // Accumulator: track per-signal scores for weighted combination
+    const signalAccumulator = new Map<
+      string,
+      {
+        title: string;
+        abstract?: string;
+        categories?: readonly string[];
+        publicationDate?: Date;
+        relationshipType: RelatedEprint['relationshipType'];
+        explanation: string;
+        scores: {
+          citations?: number;
+          concepts?: number;
+          semantic?: number;
+          authors?: number;
+        };
+      }
+    >();
 
     // Get eprint data
     const eprint = await this.getEprintByUri(eprintUri);
@@ -463,152 +530,304 @@ export class DiscoveryService implements IDiscoveryService {
       return [];
     }
 
-    // Signal 1 & 2: Citation-based (co-citation + direct citations)
+    // Signal 1: Citation-based (co-citation + bibliographic coupling + direct citations)
     if (signals.includes('citations')) {
-      try {
-        const coCited = await this.citationGraph.findCoCitedPapers(eprintUri, 2);
+      await this.collectCitationSignals(eprintUri, signalAccumulator);
+    }
 
-        for (const paper of coCited) {
-          if (paper.strength >= minScore) {
-            relatedMap.set(paper.uri, {
-              uri: paper.uri,
-              title: paper.title,
-              abstract: paper.abstract,
-              categories: paper.categories,
-              publicationDate: paper.publicationDate,
-              score: paper.strength,
-              relationshipType: 'co-cited',
-              explanation: `Frequently cited together (${paper.coCitationCount} co-citations)`,
-              signalScores: { citations: paper.strength },
-            });
-          }
-        }
-
-        const [citingResult, referencesResult] = await Promise.all([
-          this.citationGraph.getCitingPapers(eprintUri, { limit: 5 }),
-          this.citationGraph.getReferences(eprintUri, { limit: 5 }),
-        ]);
-
-        for (const citation of citingResult.citations) {
-          const citingEprint = await this.getEprintByUri(citation.citingUri);
-          if (citingEprint && !relatedMap.has(citation.citingUri)) {
-            relatedMap.set(citation.citingUri, {
-              uri: citation.citingUri,
-              title: citingEprint.title,
-              abstract: citingEprint.abstract ?? undefined,
-              categories: citingEprint.categories ?? undefined,
-              publicationDate: citingEprint.publication_date ?? undefined,
-              score: citation.isInfluential ? 0.9 : 0.7,
-              relationshipType: 'cited-by',
-              explanation: 'Cites this paper',
-              signalScores: { citations: citation.isInfluential ? 0.9 : 0.7 },
-            });
-          }
-        }
-
-        for (const reference of referencesResult.citations) {
-          const refEprint = await this.getEprintByUri(reference.citedUri);
-          if (refEprint && !relatedMap.has(reference.citedUri)) {
-            relatedMap.set(reference.citedUri, {
-              uri: reference.citedUri,
-              title: refEprint.title,
-              abstract: refEprint.abstract ?? undefined,
-              categories: refEprint.categories ?? undefined,
-              publicationDate: refEprint.publication_date ?? undefined,
-              score: reference.isInfluential ? 0.9 : 0.7,
-              relationshipType: 'cites',
-              explanation: 'Referenced by this paper',
-              signalScores: { citations: reference.isInfluential ? 0.9 : 0.7 },
-            });
-          }
-        }
-      } catch (error) {
-        this.logger.debug('Citation graph signals unavailable', {
-          uri: eprintUri,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+    // Signal 2: Concept overlap (OpenAlex topics and concepts)
+    if (signals.includes('concepts')) {
+      await this.collectConceptSignals(eprintUri, signalAccumulator);
     }
 
     // Signal 3: Semantic similarity (via S2 recommendations or ES MLT fallback)
     if (signals.includes('semantic')) {
-      let usedSpecter2 = false;
+      await this.collectSemanticSignals(eprintUri, eprint, minScore, signalAccumulator);
+    }
 
-      // Prefer SPECTER2 embeddings via Semantic Scholar when available
-      if (eprint.semantic_scholar_id) {
-        const s2Plugin = this.getSemanticScholarPlugin();
-        if (s2Plugin) {
-          try {
-            const recommendations = await s2Plugin.getRecommendations(eprint.semantic_scholar_id, {
-              limit: 10,
-            });
+    // Signal 4: Author network (papers sharing authors)
+    if (signals.includes('authors')) {
+      await this.collectAuthorSignals(eprintUri, eprint, signalAccumulator);
+    }
 
-            for (const rec of recommendations) {
-              // Only include if paper is in Chive
-              const chiveEprint = await this.findEprintByExternalId(
-                rec.paperId,
-                rec.externalIds?.DOI ?? undefined
-              );
-              if (chiveEprint && !relatedMap.has(chiveEprint.uri)) {
-                relatedMap.set(chiveEprint.uri, {
-                  uri: chiveEprint.uri as AtUri,
-                  title: chiveEprint.title,
-                  abstract: chiveEprint.abstract ?? undefined,
-                  categories: chiveEprint.categories ?? undefined,
-                  publicationDate: chiveEprint.publication_date ?? undefined,
-                  score: 0.7, // SPECTER2 similarity
-                  relationshipType: 'semantically-similar',
-                  explanation: 'Semantically similar based on content',
-                  signalScores: { semantic: 0.7 },
-                });
-              }
-            }
-            usedSpecter2 = true;
-          } catch (error) {
-            this.logger.debug('S2 recommendations unavailable, falling back to ES MLT', {
-              uri: eprintUri,
-              error: error instanceof Error ? error.message : String(error),
+    // Compute weighted combined scores and build RelatedEprint results
+    const weights = DEFAULT_DISCOVERY_WEIGHTS;
+    const related: RelatedEprint[] = [];
+
+    for (const [uri, entry] of signalAccumulator) {
+      // Filter out the source eprint itself
+      if (uri === eprintUri) continue;
+
+      const combinedScore =
+        (entry.scores.semantic ?? 0) * weights.specter2 +
+        (entry.scores.citations ?? 0) * weights.coCitation +
+        (entry.scores.concepts ?? 0) * weights.conceptOverlap +
+        (entry.scores.authors ?? 0) * weights.authorNetwork;
+
+      if (combinedScore < minScore) continue;
+
+      related.push({
+        uri: uri as AtUri,
+        title: entry.title,
+        abstract: entry.abstract,
+        categories: entry.categories,
+        publicationDate: entry.publicationDate,
+        score: combinedScore,
+        relationshipType: entry.relationshipType,
+        explanation: entry.explanation,
+        signalScores: {
+          citations: entry.scores.citations,
+          concepts: entry.scores.concepts,
+          semantic: entry.scores.semantic,
+          authors: entry.scores.authors,
+        },
+      });
+    }
+
+    // Sort by combined score and limit
+    related.sort((a, b) => b.score - a.score);
+    return related.slice(0, limit);
+  }
+
+  /**
+   * Collects citation-based signals: co-citation, bibliographic coupling, and direct citations.
+   *
+   * @param eprintUri - Source eprint URI
+   * @param accumulator - Signal accumulator map
+   */
+  private async collectCitationSignals(
+    eprintUri: AtUri,
+    accumulator: Map<string, SignalAccumulatorEntry>
+  ): Promise<void> {
+    try {
+      // Use RecommendationService.getSimilar() if available; it combines
+      // co-citation AND bibliographic coupling in a single Cypher query.
+      if (this.recommendationEngine) {
+        const similarPapers = await this.recommendationEngine.getSimilar(eprintUri, 20);
+
+        for (const paper of similarPapers) {
+          this.mergeSignal(accumulator, paper.uri, {
+            title: paper.title,
+            relationshipType: this.mapSimilarityReason(paper.reason),
+            explanation: this.buildCitationExplanation(paper),
+            scores: { citations: this.normalizeSimilarityScore(paper.similarity) },
+          });
+        }
+      } else {
+        // Fallback: use findCoCitedPapers (co-citation only)
+        const coCited = await this.citationGraph.findCoCitedPapers(eprintUri, 2);
+
+        for (const paper of coCited) {
+          this.mergeSignal(accumulator, paper.uri, {
+            title: paper.title,
+            abstract: paper.abstract,
+            categories: paper.categories,
+            publicationDate: paper.publicationDate,
+            relationshipType: 'co-cited',
+            explanation: `Frequently cited together (${paper.coCitationCount} co-citations)`,
+            scores: { citations: paper.strength },
+          });
+        }
+      }
+
+      // Direct citations (citing papers and references)
+      const [citingResult, referencesResult] = await Promise.all([
+        this.citationGraph.getCitingPapers(eprintUri, { limit: 5 }),
+        this.citationGraph.getReferences(eprintUri, { limit: 5 }),
+      ]);
+
+      for (const citation of citingResult.citations) {
+        if (accumulator.has(citation.citingUri)) continue;
+        const citingEprint = await this.getEprintByUri(citation.citingUri);
+        if (citingEprint) {
+          const score = citation.isInfluential ? 0.9 : 0.7;
+          this.mergeSignal(accumulator, citation.citingUri, {
+            title: citingEprint.title,
+            abstract: citingEprint.abstract ?? undefined,
+            categories: citingEprint.categories ?? undefined,
+            publicationDate: citingEprint.publication_date ?? undefined,
+            relationshipType: 'cited-by',
+            explanation: 'Cites this paper',
+            scores: { citations: score },
+          });
+        }
+      }
+
+      for (const reference of referencesResult.citations) {
+        if (accumulator.has(reference.citedUri)) continue;
+        const refEprint = await this.getEprintByUri(reference.citedUri);
+        if (refEprint) {
+          const score = reference.isInfluential ? 0.9 : 0.7;
+          this.mergeSignal(accumulator, reference.citedUri, {
+            title: refEprint.title,
+            abstract: refEprint.abstract ?? undefined,
+            categories: refEprint.categories ?? undefined,
+            publicationDate: refEprint.publication_date ?? undefined,
+            relationshipType: 'cites',
+            explanation: 'Referenced by this paper',
+            scores: { citations: score },
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.debug('Citation graph signals unavailable', {
+        uri: eprintUri,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Collects concept overlap signals from OpenAlex enrichment data.
+   *
+   * @param eprintUri - Source eprint URI
+   * @param accumulator - Signal accumulator map
+   *
+   * @remarks
+   * Scores overlap depth in the OpenAlex hierarchy:
+   * - Same domain: 0.3
+   * - Same field: 0.5
+   * - Same subfield: 0.7
+   * - Same topic: 0.9
+   */
+  private async collectConceptSignals(
+    eprintUri: AtUri,
+    accumulator: Map<string, SignalAccumulatorEntry>
+  ): Promise<void> {
+    try {
+      const enrichment = await this.getEnrichment(eprintUri);
+      if (!enrichment) return;
+
+      const sourceTopics = enrichment.topics ?? [];
+      const sourceConcepts = enrichment.concepts ?? [];
+
+      if (sourceTopics.length === 0 && sourceConcepts.length === 0) return;
+
+      // Build lookup sets for fast matching at each hierarchy level
+      const sourceDomains = new Set(sourceTopics.map((t) => t.domain).filter(Boolean));
+      const sourceFields = new Set(sourceTopics.map((t) => t.field).filter(Boolean));
+      const sourceSubfields = new Set(sourceTopics.map((t) => t.subfield).filter(Boolean));
+      const sourceTopicIds = new Set(sourceTopics.map((t) => t.id));
+      const sourceConceptIds = new Set(sourceConcepts.map((c) => c.id));
+
+      // Query eprint_enrichment for papers with overlapping topics/concepts.
+      // Uses jsonb containment and array overlap to find candidates efficiently.
+      const candidateResult = await this.db.query<{
+        readonly uri: string;
+        readonly topics: readonly OpenAlexTopicMatch[] | null;
+        readonly concepts: readonly OpenAlexConceptMatch[] | null;
+      }>(
+        `SELECT uri, topics, concepts
+         FROM eprint_enrichment
+         WHERE uri != $1
+           AND (topics IS NOT NULL OR concepts IS NOT NULL)
+         LIMIT 200`,
+        [eprintUri]
+      );
+
+      for (const row of candidateResult.rows) {
+        const candidateTopics = row.topics ?? [];
+        const candidateConcepts = row.concepts ?? [];
+
+        // Score topic hierarchy overlap (highest match wins)
+        let topicScore = 0;
+
+        for (const topic of candidateTopics) {
+          if (sourceTopicIds.has(topic.id)) {
+            topicScore = Math.max(topicScore, 0.9);
+            break; // Already at max topic score
+          }
+          if (topic.subfield && sourceSubfields.has(topic.subfield)) {
+            topicScore = Math.max(topicScore, 0.7);
+          }
+          if (topic.field && sourceFields.has(topic.field)) {
+            topicScore = Math.max(topicScore, 0.5);
+          }
+          if (topic.domain && sourceDomains.has(topic.domain)) {
+            topicScore = Math.max(topicScore, 0.3);
+          }
+        }
+
+        // Score concept overlap (ratio of shared concepts)
+        let conceptScore = 0;
+        if (candidateConcepts.length > 0 && sourceConceptIds.size > 0) {
+          const sharedCount = candidateConcepts.filter((c) => sourceConceptIds.has(c.id)).length;
+          conceptScore = sharedCount / Math.max(sourceConceptIds.size, candidateConcepts.length);
+        }
+
+        // Combined concept signal: weight topic hierarchy more than flat concept overlap
+        const overallScore = Math.max(topicScore, conceptScore * 0.8);
+
+        if (overallScore > 0) {
+          // Fetch the eprint metadata to populate the accumulator
+          const candidateEprint = await this.getEprintByUri(row.uri as AtUri);
+          if (candidateEprint) {
+            this.mergeSignal(accumulator, row.uri, {
+              title: candidateEprint.title,
+              abstract: candidateEprint.abstract ?? undefined,
+              categories: candidateEprint.categories ?? undefined,
+              publicationDate: candidateEprint.publication_date ?? undefined,
+              relationshipType: 'similar-topics',
+              explanation: this.buildConceptExplanation(topicScore, conceptScore),
+              scores: { concepts: overallScore },
             });
           }
         }
       }
+    } catch (error) {
+      this.logger.debug('Concept overlap signals unavailable', {
+        uri: eprintUri,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
-      // Fallback: Elasticsearch More Like This when SPECTER2 is unavailable
-      if (!usedSpecter2) {
+  /**
+   * Collects semantic similarity signals via SPECTER2 or ES MLT fallback.
+   *
+   * @param eprintUri - Source eprint URI
+   * @param eprint - Source eprint data
+   * @param minScore - Minimum score threshold
+   * @param accumulator - Signal accumulator map
+   */
+  private async collectSemanticSignals(
+    eprintUri: AtUri,
+    eprint: EprintRow,
+    minScore: number,
+    accumulator: Map<string, SignalAccumulatorEntry>
+  ): Promise<void> {
+    let usedSpecter2 = false;
+
+    // Prefer SPECTER2 embeddings via Semantic Scholar when available
+    if (eprint.semantic_scholar_id) {
+      const s2Plugin = this.getSemanticScholarPlugin();
+      if (s2Plugin) {
         try {
-          const mltResults = await this.searchEngine.findSimilarByText(eprintUri, {
+          const recommendations = await s2Plugin.getRecommendations(eprint.semantic_scholar_id, {
             limit: 10,
-            minTermFreq: 1,
-            minDocFreq: 1,
-            maxQueryTerms: 25,
-            minimumShouldMatch: '30%',
           });
 
-          for (const mltResult of mltResults) {
-            // Scores are already 0-1 via ES saturation normalization.
-            // Discount by 0.6 relative to SPECTER2 embeddings.
-            const score = mltResult.score * 0.6;
-
-            if (score < minScore || relatedMap.has(mltResult.uri)) {
-              continue;
+          for (const rec of recommendations) {
+            // Only include if paper is in Chive
+            const chiveEprint = await this.findEprintByExternalId(
+              rec.paperId,
+              rec.externalIds?.DOI ?? undefined
+            );
+            if (chiveEprint) {
+              this.mergeSignal(accumulator, chiveEprint.uri, {
+                title: chiveEprint.title,
+                abstract: chiveEprint.abstract ?? undefined,
+                categories: chiveEprint.categories ?? undefined,
+                publicationDate: chiveEprint.publication_date ?? undefined,
+                relationshipType: 'semantically-similar',
+                explanation: 'Semantically similar based on content',
+                scores: { semantic: 0.7 },
+              });
             }
-
-            relatedMap.set(mltResult.uri, {
-              uri: mltResult.uri,
-              title: mltResult.title ?? '',
-              score,
-              relationshipType: 'semantically-similar',
-              explanation: 'Similar content based on title, abstract, and keywords',
-              signalScores: { semantic: score },
-            });
           }
-
-          this.logger.debug('ES MLT fallback produced results', {
-            uri: eprintUri,
-            resultCount: mltResults.length,
-          });
+          usedSpecter2 = true;
         } catch (error) {
-          this.logger.debug('ES MLT fallback unavailable', {
+          this.logger.debug('S2 recommendations unavailable, falling back to ES MLT', {
             uri: eprintUri,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -616,12 +835,124 @@ export class DiscoveryService implements IDiscoveryService {
       }
     }
 
-    // Sort by score and limit
-    const related = Array.from(relatedMap.values())
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    // Fallback: Elasticsearch More Like This when SPECTER2 is unavailable
+    if (!usedSpecter2) {
+      try {
+        const mltResults = await this.searchEngine.findSimilarByText(eprintUri, {
+          limit: 10,
+          minTermFreq: 1,
+          minDocFreq: 1,
+          maxQueryTerms: 25,
+          minimumShouldMatch: '30%',
+        });
 
-    return related;
+        for (const mltResult of mltResults) {
+          // Scores are already 0-1 via ES saturation normalization.
+          // Discount by 0.6 relative to SPECTER2 embeddings.
+          const score = mltResult.score * 0.6;
+
+          if (score < minScore) continue;
+
+          this.mergeSignal(accumulator, mltResult.uri, {
+            title: mltResult.title ?? '',
+            relationshipType: 'semantically-similar',
+            explanation: 'Similar content based on title, abstract, and keywords',
+            scores: { semantic: score },
+          });
+        }
+
+        this.logger.debug('ES MLT fallback produced results', {
+          uri: eprintUri,
+          resultCount: mltResults.length,
+        });
+      } catch (error) {
+        this.logger.debug('ES MLT fallback unavailable', {
+          uri: eprintUri,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  /**
+   * Collects author network signals by finding papers sharing authors.
+   *
+   * @param eprintUri - Source eprint URI
+   * @param eprint - Source eprint data
+   * @param accumulator - Signal accumulator map
+   *
+   * @remarks
+   * Queries eprints_index for papers with overlapping authors using
+   * JSONB array element matching. Scores based on author overlap count.
+   */
+  private async collectAuthorSignals(
+    eprintUri: AtUri,
+    eprint: EprintRow,
+    accumulator: Map<string, SignalAccumulatorEntry>
+  ): Promise<void> {
+    try {
+      const authors = eprint.authors;
+      if (!authors || authors.length === 0) return;
+
+      // Extract author DIDs for matching
+      const authorDids = authors.map((a) => a.did).filter(Boolean) as string[];
+      if (authorDids.length === 0) return;
+
+      // Find papers sharing at least one author DID.
+      // Uses jsonb_array_elements to unnest the authors array and match by DID.
+      const result = await this.db.query<{
+        readonly uri: string;
+        readonly title: string;
+        readonly abstract: string | null;
+        readonly categories: string[] | null;
+        readonly publication_date: Date | null;
+        readonly overlap_count: number;
+      }>(
+        `SELECT DISTINCT e.uri, e.title, e.abstract, e.keywords AS categories,
+                e.created_at AS publication_date,
+                (
+                  SELECT COUNT(DISTINCT a->>'did')
+                  FROM jsonb_array_elements(e.authors) AS a
+                  WHERE a->>'did' = ANY($2)
+                )::int AS overlap_count
+         FROM eprints_index e
+         WHERE e.uri != $1
+           AND EXISTS (
+             SELECT 1 FROM jsonb_array_elements(e.authors) AS a
+             WHERE a->>'did' = ANY($2)
+           )
+         ORDER BY overlap_count DESC
+         LIMIT 30`,
+        [eprintUri, authorDids]
+      );
+
+      const totalAuthors = authorDids.length;
+
+      for (const row of result.rows) {
+        // Score based on proportion of shared authors (more overlap = higher score)
+        const overlapRatio = row.overlap_count / totalAuthors;
+        // Scale to 0-1: single author overlap gets at least 0.4, full overlap gets 1.0
+        const score = Math.min(1.0, 0.4 + overlapRatio * 0.6);
+
+        this.mergeSignal(accumulator, row.uri, {
+          title: row.title,
+          abstract: row.abstract ?? undefined,
+          categories: row.categories ?? undefined,
+          publicationDate: row.publication_date ?? undefined,
+          relationshipType: 'same-author',
+          explanation:
+            row.overlap_count === 1
+              ? 'Shares an author with this paper'
+              : `Shares ${row.overlap_count} authors with this paper`,
+          scores: { authors: score },
+        });
+      }
+    } catch (error) {
+      this.logger.debug('Author network signals unavailable', {
+        uri: eprintUri,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /**
@@ -632,8 +963,12 @@ export class DiscoveryService implements IDiscoveryService {
    * @returns Paginated recommendations with explanations
    *
    * @remarks
-   * Uses user's research fields, claimed papers, and citation network
-   * to generate personalized recommendations.
+   * Uses five signal types for personalized recommendations:
+   * 1. Field-based: text search matching user's research fields
+   * 2. Citation-based: papers citing user's claimed work
+   * 3. SPECTER2-based: semantic similarity to claimed papers
+   * 4. Topic-based: OpenAlex concept overlap with user's claimed paper topics
+   * 5. Co-author: papers by the user's co-authors
    */
   async getRecommendationsForUser(
     userDid: DID,
@@ -653,6 +988,10 @@ export class DiscoveryService implements IDiscoveryService {
       string,
       RankableItem & { explanation: string; signalType: string }
     >();
+
+    /** Checks whether a URI should be excluded from recommendations. */
+    const shouldExclude = (uri: string): boolean =>
+      dismissedUris.has(uri) || claimedPapers.has(uri) || candidateMap.has(uri);
 
     // Signal 1: Field-based recommendations
     if (signals.includes('fields') && userFields.length > 0) {
@@ -685,9 +1024,9 @@ export class DiscoveryService implements IDiscoveryService {
         const citing = await this.citationGraph.getCitingPapers(claimedUri as AtUri, { limit: 5 });
 
         for (const citation of citing.citations) {
-          if (!dismissedUris.has(citation.citingUri) && !claimedPapers.has(citation.citingUri)) {
+          if (!shouldExclude(citation.citingUri)) {
             const eprint = await this.getEprintByUri(citation.citingUri);
-            if (eprint && !candidateMap.has(citation.citingUri)) {
+            if (eprint) {
               candidateMap.set(citation.citingUri, {
                 title: eprint.title,
                 abstract: eprint.abstract ?? undefined,
@@ -723,12 +1062,7 @@ export class DiscoveryService implements IDiscoveryService {
                 rec.paperId,
                 rec.externalIds?.DOI ?? undefined
               );
-              if (
-                chiveEprint &&
-                !dismissedUris.has(chiveEprint.uri) &&
-                !claimedPapers.has(chiveEprint.uri) &&
-                !candidateMap.has(chiveEprint.uri)
-              ) {
+              if (chiveEprint && !shouldExclude(chiveEprint.uri)) {
                 candidateMap.set(chiveEprint.uri, {
                   title: chiveEprint.title,
                   abstract: chiveEprint.abstract ?? undefined,
@@ -745,6 +1079,34 @@ export class DiscoveryService implements IDiscoveryService {
             });
           }
         }
+      }
+    }
+
+    // Signal 4: OpenAlex topic-based discovery from claimed paper enrichments
+    if (claimedPapers.size > 0) {
+      try {
+        await this.collectTopicRecommendations(claimedPapers, dismissedUris, candidateMap, limit);
+      } catch (error) {
+        this.logger.debug('Topic-based recommendation signal unavailable', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Signal 5: Co-author papers (papers by the user's co-authors)
+    if (signals.includes('collaborators') && claimedPapers.size > 0) {
+      try {
+        await this.collectCoauthorRecommendations(
+          userDid,
+          claimedPapers,
+          dismissedUris,
+          candidateMap,
+          limit
+        );
+      } catch (error) {
+        this.logger.debug('Co-author recommendation signal unavailable', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -780,12 +1142,7 @@ export class DiscoveryService implements IDiscoveryService {
           publicationDate: r.item.publicationDate,
           score: r.score,
           explanation: {
-            type:
-              item.signalType === 'fields'
-                ? 'field-match'
-                : item.signalType === 'citations'
-                  ? 'citation-overlap'
-                  : 'semantic-similarity',
+            type: this.mapSignalTypeToReasonType(item.signalType),
             text: item.explanation,
             weight: r.fieldMatchScore > 0 ? r.fieldMatchScore : r.textRelevanceScore,
           },
@@ -952,6 +1309,288 @@ export class DiscoveryService implements IDiscoveryService {
   // =============================================================================
 
   /**
+   * Collects topic-based recommendations from claimed paper enrichments.
+   *
+   * @param claimedPapers - User's claimed paper URIs
+   * @param dismissedUris - URIs the user has dismissed
+   * @param candidateMap - Candidate accumulator map
+   * @param limit - Maximum candidates to add
+   *
+   * @remarks
+   * Aggregates OpenAlex topics from the user's claimed papers, then
+   * finds other papers with overlapping topics from eprint_enrichment.
+   * This provides richer semantic matching than the field-text-search
+   * approach because it uses structured topic hierarchy data.
+   */
+  private async collectTopicRecommendations(
+    claimedPapers: Set<string>,
+    dismissedUris: Set<string>,
+    candidateMap: Map<string, RankableItem & { explanation: string; signalType: string }>,
+    limit: number
+  ): Promise<void> {
+    // Gather topics from all claimed papers' enrichments
+    const allTopicIds = new Set<string>();
+    const allDomains = new Set<string>();
+    const allFields = new Set<string>();
+
+    for (const claimedUri of Array.from(claimedPapers).slice(0, 10)) {
+      const enrichment = await this.getEnrichment(claimedUri as AtUri);
+      if (enrichment?.topics) {
+        for (const topic of enrichment.topics) {
+          allTopicIds.add(topic.id);
+          if (topic.domain) allDomains.add(topic.domain);
+          if (topic.field) allFields.add(topic.field);
+        }
+      }
+    }
+
+    if (allTopicIds.size === 0) return;
+
+    // Find papers with overlapping topics
+    const candidateResult = await this.db.query<{
+      readonly uri: string;
+      readonly topics: readonly OpenAlexTopicMatch[] | null;
+    }>(
+      `SELECT uri, topics
+       FROM eprint_enrichment
+       WHERE uri != ALL($1)
+         AND topics IS NOT NULL
+       LIMIT 200`,
+      [Array.from(claimedPapers)]
+    );
+
+    for (const row of candidateResult.rows) {
+      if (dismissedUris.has(row.uri) || claimedPapers.has(row.uri) || candidateMap.has(row.uri)) {
+        continue;
+      }
+
+      const candidateTopics = row.topics ?? [];
+      let bestMatch = 0;
+
+      for (const topic of candidateTopics) {
+        if (allTopicIds.has(topic.id)) {
+          bestMatch = Math.max(bestMatch, 0.9);
+          break;
+        }
+        if (topic.field && allFields.has(topic.field)) {
+          bestMatch = Math.max(bestMatch, 0.5);
+        }
+        if (topic.domain && allDomains.has(topic.domain)) {
+          bestMatch = Math.max(bestMatch, 0.3);
+        }
+      }
+
+      if (bestMatch > 0.2) {
+        const eprint = await this.getEprintByUri(row.uri as AtUri);
+        if (eprint) {
+          candidateMap.set(row.uri, {
+            title: eprint.title,
+            abstract: eprint.abstract ?? undefined,
+            categories: eprint.categories ?? undefined,
+            publicationDate: eprint.publication_date ?? undefined,
+            explanation: 'Shares research topics with your papers',
+            signalType: 'concepts',
+          });
+        }
+      }
+
+      // Stop once we have enough candidates
+      if (candidateMap.size >= limit * 3) break;
+    }
+  }
+
+  /**
+   * Collects co-author paper recommendations.
+   *
+   * @param userDid - User's DID
+   * @param claimedPapers - User's claimed paper URIs
+   * @param dismissedUris - URIs the user has dismissed
+   * @param candidateMap - Candidate accumulator map
+   * @param limit - Maximum candidates to add
+   *
+   * @remarks
+   * Finds co-authors from the user's claimed papers, then retrieves
+   * papers by those co-authors that the user has not claimed.
+   */
+  private async collectCoauthorRecommendations(
+    userDid: DID,
+    claimedPapers: Set<string>,
+    dismissedUris: Set<string>,
+    candidateMap: Map<string, RankableItem & { explanation: string; signalType: string }>,
+    limit: number
+  ): Promise<void> {
+    // Get co-author DIDs from user's claimed papers
+    const coauthorResult = await this.db.query<{ did: string; name: string | null }>(
+      `SELECT DISTINCT a->>'did' AS did, a->>'name' AS name
+       FROM eprints_index e,
+            jsonb_array_elements(e.authors) AS a
+       WHERE e.uri = ANY($1)
+         AND a->>'did' IS NOT NULL
+         AND a->>'did' != $2`,
+      [Array.from(claimedPapers), userDid]
+    );
+
+    const coauthorDids = coauthorResult.rows.map((r) => r.did).filter(Boolean);
+    if (coauthorDids.length === 0) return;
+
+    // Find papers by co-authors that the user has not claimed
+    const papersResult = await this.db.query<{
+      readonly uri: string;
+      readonly title: string;
+      readonly abstract: string | null;
+      readonly categories: string[] | null;
+      readonly publication_date: Date | null;
+      readonly coauthor_name: string | null;
+    }>(
+      `SELECT DISTINCT ON (e.uri)
+              e.uri, e.title, e.abstract, e.keywords AS categories,
+              e.created_at AS publication_date,
+              a->>'name' AS coauthor_name
+       FROM eprints_index e,
+            jsonb_array_elements(e.authors) AS a
+       WHERE a->>'did' = ANY($1)
+         AND e.uri != ALL($2)
+       ORDER BY e.uri, e.created_at DESC
+       LIMIT $3`,
+      [coauthorDids, Array.from(claimedPapers), limit]
+    );
+
+    for (const row of papersResult.rows) {
+      if (dismissedUris.has(row.uri) || candidateMap.has(row.uri)) continue;
+
+      candidateMap.set(row.uri, {
+        title: row.title,
+        abstract: row.abstract ?? undefined,
+        categories: row.categories ?? undefined,
+        publicationDate: row.publication_date ?? undefined,
+        explanation: row.coauthor_name
+          ? `By your co-author ${row.coauthor_name}`
+          : 'By one of your co-authors',
+        signalType: 'collaborators',
+      });
+    }
+  }
+
+  /**
+   * Merges a signal score into the accumulator for a given URI.
+   *
+   * @remarks
+   * If the URI already exists, merges the new signal scores (taking the
+   * max of each signal) and keeps the first-seen metadata. If it does not
+   * exist, creates a new entry.
+   */
+  private mergeSignal(
+    accumulator: Map<string, SignalAccumulatorEntry>,
+    uri: string,
+    entry: SignalAccumulatorEntry
+  ): void {
+    const existing = accumulator.get(uri);
+    if (existing) {
+      // Merge signal scores: take max of each
+      if (entry.scores.citations !== undefined) {
+        existing.scores.citations = Math.max(
+          existing.scores.citations ?? 0,
+          entry.scores.citations
+        );
+      }
+      if (entry.scores.concepts !== undefined) {
+        existing.scores.concepts = Math.max(existing.scores.concepts ?? 0, entry.scores.concepts);
+      }
+      if (entry.scores.semantic !== undefined) {
+        existing.scores.semantic = Math.max(existing.scores.semantic ?? 0, entry.scores.semantic);
+      }
+      if (entry.scores.authors !== undefined) {
+        existing.scores.authors = Math.max(existing.scores.authors ?? 0, entry.scores.authors);
+      }
+    } else {
+      accumulator.set(uri, {
+        title: entry.title,
+        abstract: entry.abstract,
+        categories: entry.categories,
+        publicationDate: entry.publicationDate,
+        relationshipType: entry.relationshipType,
+        explanation: entry.explanation,
+        scores: { ...entry.scores },
+      });
+    }
+  }
+
+  /**
+   * Maps SimilarityReason from RecommendationService to RelatedEprintRelationship.
+   */
+  private mapSimilarityReason(reason: string): RelatedEprint['relationshipType'] {
+    switch (reason) {
+      case 'co-citation':
+        return 'co-cited';
+      case 'bibliographic-coupling':
+        return 'bibliographic-coupling';
+      default:
+        return 'co-cited';
+    }
+  }
+
+  /**
+   * Normalizes the similarity score from RecommendationService to 0-1 range.
+   *
+   * @remarks
+   * The RecommendationService uses `(sharedCiters * 2.0 + sharedRefs * 1.5)` which
+   * can produce values well above 1. Apply a saturation function to normalize.
+   */
+  private normalizeSimilarityScore(similarity: number): number {
+    // Saturation: score / (score + k), where k controls curve steepness
+    const k = 5;
+    return similarity / (similarity + k);
+  }
+
+  /**
+   * Builds an explanation string for citation-based similarity results.
+   */
+  private buildCitationExplanation(paper: SimilarPaper): string {
+    const parts: string[] = [];
+    if (paper.sharedCiters > 0) {
+      parts.push(`${paper.sharedCiters} shared citing paper${paper.sharedCiters > 1 ? 's' : ''}`);
+    }
+    if (paper.sharedReferences > 0) {
+      parts.push(
+        `${paper.sharedReferences} shared reference${paper.sharedReferences > 1 ? 's' : ''}`
+      );
+    }
+    return parts.length > 0 ? parts.join(', ') : 'Related via citation network';
+  }
+
+  /**
+   * Builds an explanation string for concept overlap results.
+   */
+  private buildConceptExplanation(topicScore: number, conceptScore: number): string {
+    if (topicScore >= 0.9) return 'Shares the same research topic';
+    if (topicScore >= 0.7) return 'Shares the same research subfield';
+    if (topicScore >= 0.5) return 'Shares the same research field';
+    if (topicScore >= 0.3) return 'Shares the same research domain';
+    if (conceptScore > 0) return 'Shares overlapping research concepts';
+    return 'Related research area';
+  }
+
+  /**
+   * Maps a signal type string to a RecommendationReasonType.
+   */
+  private mapSignalTypeToReasonType(
+    signalType: string
+  ): 'field-match' | 'citation-overlap' | 'semantic-similarity' | 'concept-match' | 'collaborator' {
+    switch (signalType) {
+      case 'fields':
+        return 'field-match';
+      case 'citations':
+        return 'citation-overlap';
+      case 'concepts':
+        return 'concept-match';
+      case 'collaborators':
+        return 'collaborator';
+      default:
+        return 'semantic-similarity';
+    }
+  }
+
+  /**
    * Gets the Semantic Scholar plugin if available.
    */
   private getSemanticScholarPlugin(): SemanticScholarPlugin | undefined {
@@ -976,7 +1615,7 @@ export class DiscoveryService implements IDiscoveryService {
    */
   private async getEprintByUri(uri: AtUri): Promise<EprintRow | null> {
     const result = await this.db.query<EprintRow>(
-      `SELECT uri, title, keywords,
+      `SELECT uri, title, keywords, authors,
               external_ids->>'doi' AS doi,
               external_ids->>'arxivId' AS arxiv_id,
               created_at AS publication_date,

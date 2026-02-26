@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  User,
+  LayoutDashboard,
   UserCircle,
   FileText,
   MessageSquare,
@@ -12,7 +12,7 @@ import {
   Vote,
   Settings,
   LogOut,
-  ClipboardCheck,
+  Upload,
   Bell,
 } from 'lucide-react';
 
@@ -86,7 +86,7 @@ export function UserMenu() {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/dashboard">
-              <User className="mr-2 h-4 w-4" />
+              <LayoutDashboard className="mr-2 h-4 w-4" />
               Dashboard
             </Link>
           </DropdownMenuItem>
@@ -98,7 +98,7 @@ export function UserMenu() {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/dashboard/claims">
-              <ClipboardCheck className="mr-2 h-4 w-4" />
+              <Upload className="mr-2 h-4 w-4" />
               Import Papers
             </Link>
           </DropdownMenuItem>

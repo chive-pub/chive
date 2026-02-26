@@ -184,27 +184,27 @@ services:
   # GROBID - PDF Reference Extraction
   # ---------------------------------------------------------------------------
   grobid:
-    image: lfoppiano/grobid:0.8.0
+    image: lfoppiano/grobid:0.8.2.1-crf
     container_name: chive-grobid
     restart: unless-stopped
     environment:
-      - GROBID_MAX_CONCURRENCY=4
+      - GROBID_MAX_CONCURRENCY=2
     networks:
       - chive-network
     deploy:
       resources:
         limits:
           cpus: '1.0'
-          memory: 2G
+          memory: 3G
         reservations:
           cpus: '0.25'
-          memory: 1G
+          memory: 2G
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8070'"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s
+      start_period: 300s
 
   # ---------------------------------------------------------------------------
   # Database Migrations (runs once before API starts)
@@ -344,7 +344,7 @@ services:
       elasticsearch:
         condition: service_healthy
       grobid:
-        condition: service_healthy
+        condition: service_started
       chive-migrate:
         condition: service_completed_successfully
     networks:

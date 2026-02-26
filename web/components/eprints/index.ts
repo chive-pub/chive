@@ -122,6 +122,18 @@ export type { RepositoriesPanelProps } from './repositories-panel';
 export { FundingPanel } from './funding-panel';
 export type { FundingPanelProps, FundingSource } from './funding-panel';
 
+// External identifiers panel
+export { ExternalIdsPanel } from './external-ids-panel';
+export type { ExternalIdsPanelProps } from './external-ids-panel';
+
+// Related works panel
+export { RelatedWorksPanel } from './related-works-panel';
+export type { RelatedWorksPanelProps } from './related-works-panel';
+
+// Conference presentation panel
+export { ConferencePanel } from './conference-panel';
+export type { ConferencePanelProps } from './conference-panel';
+
 // Citation visualization
 export { CitationVisualization, CitationVisualizationSkeleton } from './citation-visualization';
 export type { CitationVisualizationProps } from './citation-visualization';

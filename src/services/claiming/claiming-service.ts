@@ -45,7 +45,10 @@ import type {
   ImportedEprint,
   ImportSource,
 } from '../../types/interfaces/plugin.interface.js';
-import { isSearchablePlugin } from '../../types/interfaces/plugin.interface.js';
+import {
+  isSearchablePlugin,
+  type SearchablePlugin,
+} from '../../types/interfaces/plugin.interface.js';
 
 /**
  * External eprint with source metadata.
@@ -61,6 +64,47 @@ export interface ExternalEprintWithSource extends ExternalEprint {
    * Source system the eprint came from.
    */
   readonly source: ImportSource;
+
+  /**
+   * AT-URI of the paper if it exists in Chive's index.
+   *
+   * @remarks
+   * Present only when `source` is `'chive'`, linking directly to the
+   * indexed eprint record.
+   */
+  readonly chiveUri?: string;
+}
+
+/**
+ * Per-source error from a federated search.
+ *
+ * @remarks
+ * Tracks which external sources failed during a search so that the
+ * frontend can display partial-failure warnings.
+ *
+ * @public
+ */
+export interface SourceError {
+  /** Source identifier that failed (e.g., 'arxiv', 'openreview'). */
+  readonly source: string;
+  /** Human-readable error message. */
+  readonly message: string;
+}
+
+/**
+ * Result from a federated search across all sources.
+ *
+ * @remarks
+ * Contains both the results that succeeded and per-source error
+ * information for sources that failed.
+ *
+ * @public
+ */
+export interface SearchAllSourcesResult {
+  /** Eprints that were successfully retrieved. */
+  readonly results: readonly ExternalEprintWithSource[];
+  /** Errors from sources that failed to respond. */
+  readonly sourceErrors: readonly SourceError[];
 }
 
 /**
@@ -809,7 +853,10 @@ export class ClaimingService implements IClaimingService {
     sources?: readonly ImportSource[];
     limit?: number;
     timeoutMs?: number;
-  }): Promise<readonly ExternalEprintWithSource[]> {
+    authorProfileIds?: Readonly<Record<string, string>>;
+  }): Promise<SearchAllSourcesResult> {
+    const sourceErrors: SourceError[] = [];
+
     if (!this.pluginManager) {
       this.logger.warn('Plugin manager not configured, falling back to local search');
       const localResults = await this.importService.search({
@@ -817,10 +864,13 @@ export class ClaimingService implements IClaimingService {
         authorName: options.author,
         limit: options.limit,
       });
-      return localResults.eprints.map((p) => ({
-        ...this.importedEprintToExternal(p),
-        source: p.source,
-      }));
+      return {
+        results: localResults.eprints.map((p) => ({
+          ...this.importedEprintToExternal(p),
+          source: p.source,
+        })),
+        sourceErrors,
+      };
     }
 
     const results: ExternalEprintWithSource[] = [];
@@ -833,11 +883,26 @@ export class ClaimingService implements IClaimingService {
       title: options.query,
       author: options.author,
       limit,
+      authorProfileIds: options.authorProfileIds,
     };
+
+    // Log plugin discovery for diagnostics
+    const allPluginIds = plugins.map((p) => p.id);
+    const searchablePlugins = plugins.filter((p) => isSearchablePlugin(p));
+    const searchablePluginIds = searchablePlugins.map((p) => p.id);
+
+    this.logger.debug('Plugin search discovery', {
+      allPluginIds,
+      searchablePluginIds,
+      totalPlugins: plugins.length,
+      searchableCount: searchablePlugins.length,
+      query: searchQuery,
+    });
 
     // Search each source in parallel with timeout
     const searchPromises = plugins
-      .filter((plugin) => {
+      .filter((plugin): plugin is SearchablePlugin => {
+        if (!isSearchablePlugin(plugin)) return false;
         // Skip if sources filter is specified and this source is not included
         if (options.sources && options.sources.length > 0) {
           const pluginSource = this.getPluginSource(plugin.id);
@@ -845,12 +910,24 @@ export class ClaimingService implements IClaimingService {
             return false;
           }
         }
-        return isSearchablePlugin(plugin);
+        // Skip plugins that have nothing to search for: no text query, no
+        // author name, and no profile ID for this specific source.
+        const pluginSource = this.getPluginSource(plugin.id);
+        const hasProfileId = pluginSource && options.authorProfileIds?.[pluginSource];
+        if (!searchQuery.title && !searchQuery.author && !hasProfileId) {
+          return false;
+        }
+        return true;
       })
       .map(async (plugin) => {
-        if (!isSearchablePlugin(plugin)) {
-          return [];
-        }
+        const source = this.getPluginSource(plugin.id) ?? ('other' as ImportSource);
+
+        this.logger.debug('Sending search to plugin', {
+          pluginId: plugin.id,
+          source,
+          searchQuery,
+          timeoutMs,
+        });
 
         try {
           const pluginResults = await this.withTimeout(
@@ -859,16 +936,24 @@ export class ClaimingService implements IClaimingService {
             `Search timeout for ${plugin.id}`
           );
 
-          const source = this.getPluginSource(plugin.id);
+          this.logger.debug('Plugin search returned results', {
+            pluginId: plugin.id,
+            source,
+            resultCount: pluginResults.length,
+          });
+
           return pluginResults.map((p) => ({
             ...p,
-            source: source ?? ('other' as ImportSource),
+            source,
           }));
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.warn('Plugin search failed', {
             pluginId: plugin.id,
-            error: error instanceof Error ? error.message : String(error),
+            source,
+            error: errorMessage,
           });
+          sourceErrors.push({ source, message: errorMessage });
           return [];
         }
       });
@@ -886,30 +971,51 @@ export class ClaimingService implements IClaimingService {
       options.sources.some((s) => nonSearchableSources.includes(s));
 
     if (shouldSearchLocal && options.query) {
-      const localResults = await this.importService.search({
-        query: options.query,
-        authorName: options.author,
-        limit,
-      });
+      try {
+        const localResults = await this.importService.search({
+          query: options.query,
+          authorName: options.author,
+          limit,
+        });
 
-      // Add local results that are from non-searchable sources
-      for (const imported of localResults.eprints) {
-        if (nonSearchableSources.includes(imported.source)) {
-          results.push({
-            ...this.importedEprintToExternal(imported),
-            source: imported.source,
-          });
+        // Add local results that are from non-searchable sources
+        for (const imported of localResults.eprints) {
+          if (nonSearchableSources.includes(imported.source)) {
+            results.push({
+              ...this.importedEprintToExternal(imported),
+              source: imported.source,
+            });
+          }
         }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn('Local import search failed', { error: errorMessage });
+        sourceErrors.push({ source: 'local', message: errorMessage });
       }
+    }
+
+    // Deduplicate by normalized title within each source. OpenReview in
+    // particular returns multiple versions of the same paper (one per venue
+    // submission), each with a different externalId.
+    const seenTitles = new Set<string>();
+    const deduped: typeof results = [];
+    for (const paper of results) {
+      const key = `${paper.source}:${paper.title.toLowerCase().trim()}`;
+      if (seenTitles.has(key)) continue;
+      seenTitles.add(key);
+      deduped.push(paper);
     }
 
     this.logger.debug('External search completed', {
       query: options.query,
       author: options.author,
-      resultCount: results.length,
+      resultCount: deduped.length,
+      beforeDedup: results.length,
+      sourceErrorCount: sourceErrors.length,
+      sourceErrors: sourceErrors.length > 0 ? sourceErrors : undefined,
     });
 
-    return results;
+    return { results: deduped, sourceErrors };
   }
 
   /**
@@ -942,11 +1048,12 @@ export class ClaimingService implements IClaimingService {
     const timeoutMs = options?.timeoutMs ?? 500;
     const limit = options?.limit ?? 8;
 
-    return this.searchAllSources({
+    const { results } = await this.searchAllSources({
       query,
       limit,
       timeoutMs,
     });
+    return results;
   }
 
   /**
@@ -1050,9 +1157,29 @@ export class ClaimingService implements IClaimingService {
       };
     }
 
-    // Search for papers using each name variant (limit searches to avoid overload)
+    // Collect source-specific author profile IDs for direct lookups
+    const authorProfileIds: Record<string, string> = {};
+    if (profile.openReviewId) authorProfileIds.openreview = profile.openReviewId;
+    if (profile.arxivAuthorId) authorProfileIds.arxiv = profile.arxivAuthorId;
+    if (profile.semanticScholarId) authorProfileIds.semanticscholar = profile.semanticScholarId;
+
+    // Fetch user's claimed paper topics in parallel with the search
     const searchPromises: Promise<readonly ExternalEprintWithSource[]>[] = [];
     const maxNameSearches = 3; // Limit to top 3 name variants
+
+    // If we have profile IDs, do a single profile-based search (avoids
+    // repeating the same profile lookup for each name variant).
+    if (Object.keys(authorProfileIds).length > 0) {
+      searchPromises.push(
+        this.searchAllSources({
+          limit,
+          timeoutMs,
+          authorProfileIds,
+        })
+          .then(({ results }) => results)
+          .catch(() => [])
+      );
+    }
 
     for (const name of namesToSearch.slice(0, maxNameSearches)) {
       searchPromises.push(
@@ -1060,43 +1187,90 @@ export class ClaimingService implements IClaimingService {
           author: name,
           limit: Math.ceil(limit / maxNameSearches),
           timeoutMs,
-        }).catch(() => [])
+        })
+          .then(({ results }) => results)
+          .catch(() => [])
       );
     }
 
-    // Wait for all searches
-    const searchResults = await Promise.all(searchPromises);
+    // Fetch claimed topics, external search, and internal search concurrently
+    const [searchResults, claimedTopics, internalResults] = await Promise.all([
+      Promise.all(searchPromises),
+      this.getUserClaimedTopics(claimantDid),
+      this.searchInternalPapers(namesToSearch, claimantDid, limit).catch((err) => {
+        this.logger.warn('Internal paper search failed', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return [] as ExternalEprintWithSource[];
+      }),
+    ]);
 
     // Deduplicate results by external ID
     const seenIds = new Set<string>();
+    // Track DOIs from Chive papers so we can deduplicate external papers
+    const chiveDois = new Set<string>();
     const allPapers: (ExternalEprintWithSource & {
       matchScore: number;
       matchReason: string;
     })[] = [];
 
+    // Process internal Chive results first so they take priority in dedup
+    for (const paper of internalResults) {
+      const uniqueKey = `${paper.source}:${paper.externalId}`;
+      if (seenIds.has(uniqueKey)) continue;
+      seenIds.add(uniqueKey);
+
+      if (paper.doi) {
+        chiveDois.add(paper.doi.toLowerCase());
+      }
+
+      const { score, reasons } = this.scorePaperMatch(paper, profile, claimedTopics);
+      if (score < 10) continue;
+
+      allPapers.push({
+        ...paper,
+        matchScore: score,
+        matchReason: reasons.join(', '),
+      });
+    }
+
+    // Process external results, skipping papers already present from Chive (by DOI)
     for (const results of searchResults) {
       for (const paper of results) {
         const uniqueKey = `${paper.source}:${paper.externalId}`;
         if (seenIds.has(uniqueKey)) continue;
+
+        // Deduplicate by DOI: prefer the Chive version
+        if (paper.doi && chiveDois.has(paper.doi.toLowerCase())) continue;
+
         seenIds.add(uniqueKey);
 
-        // Score the match
-        const { score, reason } = this.scorePaperMatch(paper, profile, namesToSearch);
+        // Score the match with multi-signal scoring
+        const { score, reasons } = this.scorePaperMatch(paper, profile, claimedTopics);
+
+        // Filter out papers below minimum threshold
+        if (score < 10) continue;
 
         allPapers.push({
           ...paper,
           matchScore: score,
-          matchReason: reason,
+          matchReason: reasons.join(', '),
         });
       }
     }
 
+    // Filter out dismissed suggestions
+    const dismissedKeys = await this.getDismissedSuggestions(claimantDid);
+    const filteredPapers = allPapers.filter(
+      (paper) => !dismissedKeys.has(`${paper.source}:${paper.externalId}`)
+    );
+
     // Sort by match score descending
-    allPapers.sort((a, b) => b.matchScore - a.matchScore);
+    filteredPapers.sort((a, b) => b.matchScore - a.matchScore);
 
     // Return top results
     return {
-      papers: allPapers.slice(0, limit),
+      papers: filteredPapers.slice(0, limit),
       profileUsed: {
         displayName: profile.displayName,
         nameVariants: profile.nameVariants ?? [],
@@ -1107,72 +1281,339 @@ export class ClaimingService implements IClaimingService {
   }
 
   /**
-   * Scores how well a paper matches a user's profile.
+   * Dismisses a paper suggestion so it is not shown again.
+   *
+   * @param userDid - DID of the user dismissing the suggestion
+   * @param source - External source of the paper (e.g., 'arxiv')
+   * @param externalId - Source-specific identifier of the paper
+   */
+  async dismissSuggestion(userDid: string, source: string, externalId: string): Promise<void> {
+    await this.db.query(
+      `INSERT INTO dismissed_suggestions (user_did, source, external_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_did, source, external_id) DO NOTHING`,
+      [userDid, source, externalId]
+    );
+  }
+
+  /**
+   * Gets the set of dismissed suggestion keys for a user.
+   *
+   * @param userDid - DID of the user
+   * @returns Set of composite keys in the form 'source:externalId'
+   */
+  private async getDismissedSuggestions(userDid: string): Promise<Set<string>> {
+    const result = await this.db.query<{ source: string; external_id: string }>(
+      'SELECT source, external_id FROM dismissed_suggestions WHERE user_did = $1',
+      [userDid]
+    );
+    return new Set(result.rows.map((row) => `${row.source}:${row.external_id}`));
+  }
+
+  /**
+   * Searches Chive's own eprints_index for papers matching the user's name variants.
+   *
+   * @param nameVariants - Name forms to search for in the authors JSONB column
+   * @param userDid - DID of the user (excluded from results to skip already-confirmed authorship)
+   * @param limit - Maximum number of results
+   * @returns Matching papers formatted as ExternalEprintWithSource with source 'chive'
+   *
+   * @private
+   */
+  private async searchInternalPapers(
+    nameVariants: readonly string[],
+    userDid: string,
+    limit: number
+  ): Promise<ExternalEprintWithSource[]> {
+    if (nameVariants.length === 0) {
+      return [];
+    }
+
+    // Build ILIKE patterns with wildcards for fuzzy matching
+    const patterns = nameVariants.map((name) => `%${name}%`);
+
+    const result = await this.db.query<{
+      uri: string;
+      title: string;
+      abstract: string;
+      keywords: string[] | null;
+      authors: unknown;
+      doi: string | null;
+      created_at: Date;
+    }>(
+      `SELECT
+         e.uri,
+         e.title,
+         e.abstract,
+         e.keywords,
+         e.authors,
+         e.published_version->>'doi' AS doi,
+         e.created_at
+       FROM eprints_index e
+       WHERE EXISTS (
+         SELECT 1 FROM jsonb_array_elements(e.authors) a
+         WHERE a->>'name' ILIKE ANY($1)
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM jsonb_array_elements(e.authors) a
+         WHERE a->>'did' = $2
+       )
+       ORDER BY e.created_at DESC
+       LIMIT $3`,
+      [patterns, userDid, limit]
+    );
+
+    return result.rows.map((row) => {
+      const authors = Array.isArray(row.authors)
+        ? (row.authors as { name?: string; did?: string }[])
+        : typeof row.authors === 'string'
+          ? (JSON.parse(row.authors) as { name?: string; did?: string }[])
+          : [];
+
+      return {
+        externalId: row.uri,
+        url: `/eprints/${encodeURIComponent(row.uri)}`,
+        title: row.title,
+        abstract: row.abstract,
+        authors: authors.map((a) => ({ name: a.name ?? '' })),
+        publicationDate: row.created_at,
+        doi: row.doi ?? undefined,
+        categories: row.keywords ?? undefined,
+        source: 'chive' as ImportSource,
+        chiveUri: row.uri,
+      };
+    });
+  }
+
+  /**
+   * Scores how well a paper matches a user's profile using multi-signal scoring.
+   *
+   * Four independent signals are combined into a final score (max 100):
+   *
+   * 1. Identity verification (0 or 40-50 pts): ORCID or external ID match
+   * 2. Name matching (0-30 pts): Token-based matching with author count penalty
+   * 3. Content overlap (0-30 pts): Topic, keyword, and field overlap
+   * 4. Network context (0-20 pts): Affiliation and co-author overlap
+   *
+   * A content gate prevents name-only matches with no field overlap from
+   * being surfaced. If (Signal 1 + Signal 2 < 40) AND (Signal 3 == 0),
+   * the final score is capped at 5.
    *
    * @param paper - External eprint to score
    * @param profile - User's profile
-   * @param namesToMatch - Normalized name variants
-   * @returns Score (0-100) and reason
+   * @param userClaimedTopics - Aggregated topics from the user's claimed papers
+   * @returns Score (0-100) and descriptive reasons
    *
    * @private
    */
   private scorePaperMatch(
     paper: ExternalEprintWithSource,
     profile: UserProfile,
-    namesToMatch: readonly string[]
-  ): { score: number; reason: string } {
-    let score = 0;
+    userClaimedTopics?: {
+      concepts: string[];
+      topics: string[];
+      keywords: string[];
+      coauthorNames: string[];
+    }
+  ): { score: number; reasons: string[] } {
     const reasons: string[] = [];
+    const authorCount = paper.authors?.length ?? 0;
 
-    // 1. ORCID match (highest confidence)
+    // ================================================================
+    // Signal 1: Identity verification (0 or 40-50 pts)
+    // ================================================================
+    let identityScore = 0;
+    let identityMatched = false;
+
+    // ORCID exact match on paper author
     if (profile.orcid) {
       const authorWithOrcid = paper.authors?.find((a) => a.orcid === profile.orcid);
       if (authorWithOrcid) {
-        score += 50;
+        identityScore = 50;
+        identityMatched = true;
         reasons.push('ORCID match');
       }
     }
 
-    // 2. Name match scoring
-    let bestNameScore = 0;
-    let matchedAuthorName: string | undefined;
-
-    for (const author of paper.authors ?? []) {
-      for (const name of namesToMatch) {
-        const similarity = this.calculateNameSimilarity(name, author.name);
-        if (similarity > bestNameScore) {
-          bestNameScore = similarity;
-          matchedAuthorName = author.name;
+    // External ID match (Semantic Scholar or OpenAlex author ID in paper metadata)
+    if (!identityMatched && (profile.semanticScholarId ?? profile.openAlexId)) {
+      const paperMeta = paper.metadata as
+        | {
+            semanticScholarAuthorIds?: string[];
+            openAlexAuthorIds?: string[];
+          }
+        | undefined;
+      if (paperMeta) {
+        if (
+          profile.semanticScholarId &&
+          paperMeta.semanticScholarAuthorIds?.includes(profile.semanticScholarId)
+        ) {
+          identityScore = 40;
+          identityMatched = true;
+          reasons.push('Semantic Scholar author ID match');
+        } else if (
+          profile.openAlexId &&
+          paperMeta.openAlexAuthorIds?.includes(profile.openAlexId)
+        ) {
+          identityScore = 40;
+          identityMatched = true;
+          reasons.push('OpenAlex author ID match');
         }
       }
     }
 
-    if (bestNameScore > 0.95) {
-      score += 30;
-      reasons.push(`Exact name match: ${matchedAuthorName}`);
-    } else if (bestNameScore > 0.8) {
-      score += 20;
-      reasons.push(`Strong name match: ${matchedAuthorName}`);
-    } else if (bestNameScore > 0.7) {
-      score += 10;
-      reasons.push(`Fuzzy name match: ${matchedAuthorName}`);
+    // ================================================================
+    // Signal 2: Name matching (0-30 pts, with author count penalty)
+    // Skip if identity was already verified.
+    // ================================================================
+    let nameScore = 0;
+
+    if (!identityMatched) {
+      let bestMatch: {
+        score: number;
+        matchType: 'exact' | 'partial' | 'single' | 'none';
+        authorName: string;
+      } = { score: 0, matchType: 'none', authorName: '' };
+
+      // Collect all name forms to check
+      const namesToCheck: string[] = [];
+      if (profile.displayName) {
+        namesToCheck.push(profile.displayName);
+      }
+      if (profile.nameVariants) {
+        for (const v of profile.nameVariants) {
+          if (!namesToCheck.includes(v)) {
+            namesToCheck.push(v);
+          }
+        }
+      }
+
+      for (const author of paper.authors ?? []) {
+        for (const name of namesToCheck) {
+          const match = this.calculateTokenNameMatch(name, author.name);
+          if (match.score > bestMatch.score) {
+            bestMatch = { ...match, authorName: author.name };
+          }
+        }
+      }
+
+      if (bestMatch.score > 0) {
+        // Apply author count penalty multiplier
+        let penalty = 1.0;
+        if (authorCount > 200) {
+          penalty = 0.05;
+        } else if (authorCount > 50) {
+          penalty = 0.2;
+        } else if (authorCount > 10) {
+          penalty = 0.5;
+        }
+
+        nameScore = Math.round(bestMatch.score * penalty);
+
+        const matchLabel =
+          bestMatch.matchType === 'exact'
+            ? 'Exact name match'
+            : bestMatch.matchType === 'partial'
+              ? 'Partial name match'
+              : 'Single token name match';
+        reasons.push(`${matchLabel}: ${bestMatch.authorName}`);
+
+        if (penalty < 1.0) {
+          reasons.push(`Author count penalty: ${authorCount} authors (${penalty}x)`);
+        }
+      }
     }
 
-    // 3. Affiliation match
+    // ================================================================
+    // Signal 3: Content overlap (0-30 pts, acts as gate)
+    // ================================================================
+    let contentScore = 0;
+    const paperText = `${paper.title} ${paper.abstract ?? ''}`.toLowerCase();
+
+    // 3a. OpenAlex topic overlap
+    if (userClaimedTopics && userClaimedTopics.topics.length > 0) {
+      for (const topic of userClaimedTopics.topics) {
+        if (paperText.includes(topic.toLowerCase())) {
+          contentScore += 15;
+          reasons.push(`Topic overlap: ${topic}`);
+          break; // Only count once for topic-level overlap
+        }
+      }
+    }
+
+    if (contentScore === 0 && userClaimedTopics && userClaimedTopics.concepts.length > 0) {
+      for (const concept of userClaimedTopics.concepts) {
+        if (paperText.includes(concept.toLowerCase())) {
+          contentScore += 15;
+          reasons.push(`Concept overlap: ${concept}`);
+          break;
+        }
+      }
+    }
+
+    // 3b. Keyword matching (user profile keywords vs paper text)
+    let keywordMatches = 0;
+    if (profile.researchKeywords && profile.researchKeywords.length > 0) {
+      for (const keyword of profile.researchKeywords) {
+        if (paperText.includes(keyword.toLowerCase())) {
+          keywordMatches++;
+        }
+      }
+    }
+
+    // Also check claimed paper keywords against paper text
+    if (userClaimedTopics && userClaimedTopics.keywords.length > 0) {
+      for (const kw of userClaimedTopics.keywords) {
+        if (paperText.includes(kw)) {
+          keywordMatches++;
+        }
+      }
+    }
+
+    if (keywordMatches > 0) {
+      const kwScore = Math.min(keywordMatches * 3, 10);
+      contentScore += kwScore;
+      reasons.push(`${keywordMatches} keyword match(es)`);
+    }
+
+    // 3c. Inferred field match from claimed paper keywords
+    if (userClaimedTopics && userClaimedTopics.keywords.length > 0 && paper.categories) {
+      const paperCats = paper.categories.map((c) => c.toLowerCase());
+      const hasFieldOverlap = userClaimedTopics.keywords.some((kw) =>
+        paperCats.some((cat) => cat.includes(kw) || kw.includes(cat))
+      );
+      if (hasFieldOverlap) {
+        contentScore += 5;
+        reasons.push('Inferred field match from claimed papers');
+      }
+    }
+
+    // Cap content score at 30
+    contentScore = Math.min(contentScore, 30);
+
+    // ================================================================
+    // Signal 4: Network context (0-20 pts)
+    // ================================================================
+    let networkScore = 0;
+
+    // 4a. Affiliation match
     const allAffiliations = [
       ...(profile.affiliations ?? []),
       ...(profile.previousAffiliations ?? []),
     ];
     if (allAffiliations.length > 0) {
+      let affiliationMatched = false;
       for (const author of paper.authors ?? []) {
+        if (affiliationMatched) break;
         if (author.affiliation) {
           for (const userAff of allAffiliations) {
             if (
               author.affiliation.toLowerCase().includes(userAff.toLowerCase()) ||
               userAff.toLowerCase().includes(author.affiliation.toLowerCase())
             ) {
-              score += 10;
-              reasons.push(`Affiliation: ${author.affiliation}`);
+              networkScore += 10;
+              reasons.push(`Affiliation match: ${author.affiliation}`);
+              affiliationMatched = true;
               break;
             }
           }
@@ -1180,27 +1621,57 @@ export class ClaimingService implements IClaimingService {
       }
     }
 
-    // 4. Research keyword match (boost papers in user's fields)
-    if (profile.researchKeywords && profile.researchKeywords.length > 0) {
-      const paperText = `${paper.title} ${paper.abstract ?? ''}`.toLowerCase();
-      let keywordMatches = 0;
-      for (const keyword of profile.researchKeywords) {
-        if (paperText.includes(keyword.toLowerCase())) {
-          keywordMatches++;
+    // 4b. Co-author overlap
+    if (userClaimedTopics && userClaimedTopics.coauthorNames.length > 0) {
+      let coauthorMatched = false;
+      for (const author of paper.authors ?? []) {
+        if (coauthorMatched) break;
+        const authorNameLower = author.name.toLowerCase();
+        for (const coauthor of userClaimedTopics.coauthorNames) {
+          if (authorNameLower === coauthor || authorNameLower.includes(coauthor)) {
+            networkScore += 10;
+            reasons.push(`Co-author overlap: ${author.name}`);
+            coauthorMatched = true;
+            break;
+          }
         }
-      }
-      if (keywordMatches > 0) {
-        score += Math.min(keywordMatches * 2, 10);
-        reasons.push(`${keywordMatches} keyword match(es)`);
       }
     }
 
-    // Cap score at 100
-    score = Math.min(score, 100);
+    // Cap network score at 20
+    networkScore = Math.min(networkScore, 20);
+
+    // ================================================================
+    // Final score with content gate
+    // ================================================================
+    let finalScore = identityScore + nameScore + contentScore + networkScore;
+
+    // Detect bootstrap mode: user has no claimed papers yet, so
+    // userClaimedTopics is empty. In this case, the content gate would
+    // block ALL suggestions, creating a chicken-and-egg problem.
+    const isBootstrap =
+      !userClaimedTopics ||
+      (userClaimedTopics.topics.length === 0 &&
+        userClaimedTopics.concepts.length === 0 &&
+        userClaimedTopics.keywords.length === 0 &&
+        userClaimedTopics.coauthorNames.length === 0);
+
+    // CONTENT GATE: If no identity match and weak name match, and no
+    // content overlap at all, cap the score at 5. This prevents
+    // name-only matches with no field relevance from being surfaced.
+    // Skip in bootstrap mode so first-time users can discover papers.
+    if (!isBootstrap && identityScore + nameScore < 40 && contentScore === 0) {
+      finalScore = Math.min(finalScore, 5);
+      if (reasons.length > 0) {
+        reasons.push('Content gate: no field overlap');
+      }
+    }
+
+    finalScore = Math.min(finalScore, 100);
 
     return {
-      score,
-      reason: reasons.length > 0 ? reasons.join(', ') : 'Weak match',
+      score: finalScore,
+      reasons: reasons.length > 0 ? reasons : ['Weak match'],
     };
   }
 
@@ -1640,44 +2111,176 @@ export class ClaimingService implements IClaimingService {
   }
 
   /**
-   * Calculates name similarity using Dice coefficient.
+   * Token-based name matching that compares individual name tokens.
    *
-   * @param name1 - First name
-   * @param name2 - Second name
-   * @returns Similarity score (0-1)
+   * Unlike Dice coefficient bigrams, this method avoids false positives
+   * from partial string overlaps (e.g., "White" matching "Whitehead").
+   * Tokens shorter than 2 characters are filtered out to ignore initials.
+   *
+   * @param userName - User's name to match
+   * @param paperAuthorName - Author name from the paper
+   * @returns Score (0-30) and match type classification
    *
    * @private
    */
-  private calculateNameSimilarity(name1: string, name2: string): number {
-    // Normalize names
-    const n1 = name1.toLowerCase().replace(/[^a-z\s]/g, '');
-    const n2 = name2.toLowerCase().replace(/[^a-z\s]/g, '');
+  private calculateTokenNameMatch(
+    userName: string,
+    paperAuthorName: string
+  ): { score: number; matchType: 'exact' | 'partial' | 'single' | 'none' } {
+    const normalize = (s: string): string => s.toLowerCase().trim();
+    const userTokens = normalize(userName)
+      .split(/\s+/)
+      .filter((t) => t.length > 1);
+    const paperTokens = normalize(paperAuthorName)
+      .split(/\s+/)
+      .filter((t) => t.length > 1);
 
-    if (n1 === n2) return 1.0;
-
-    // Generate bigrams
-    const getBigrams = (str: string): Set<string> => {
-      const bigrams = new Set<string>();
-      for (let i = 0; i < str.length - 1; i++) {
-        bigrams.add(str.slice(i, i + 2));
-      }
-      return bigrams;
-    };
-
-    const bigrams1 = getBigrams(n1);
-    const bigrams2 = getBigrams(n2);
-
-    if (bigrams1.size === 0 || bigrams2.size === 0) return 0;
-
-    // Calculate intersection
-    let intersection = 0;
-    for (const bg of bigrams1) {
-      if (bigrams2.has(bg)) {
-        intersection++;
-      }
+    if (userTokens.length === 0 || paperTokens.length === 0) {
+      return { score: 0, matchType: 'none' };
     }
 
-    // Dice coefficient
-    return (2 * intersection) / (bigrams1.size + bigrams2.size);
+    const matchingTokens = userTokens.filter((ut) => paperTokens.some((pt) => pt === ut));
+    const matchCount = matchingTokens.length;
+    const coverage = matchCount / Math.max(userTokens.length, paperTokens.length);
+
+    // Exact: all tokens present (any order)
+    if (matchCount === userTokens.length && matchCount === paperTokens.length) {
+      return { score: 30, matchType: 'exact' };
+    }
+    // Partial: >= 2 matching tokens AND >= 50% coverage
+    if (matchCount >= 2 && coverage >= 0.5) {
+      return { score: 15, matchType: 'partial' };
+    }
+    // Single token match
+    if (matchCount >= 1) {
+      return { score: 5, matchType: 'single' };
+    }
+
+    return { score: 0, matchType: 'none' };
+  }
+
+  /**
+   * Fetches topic and co-author context from a user's previously claimed papers.
+   *
+   * @param userDid - DID of the user
+   * @returns Aggregated concepts, topics, keywords, and co-author names
+   *
+   * @remarks
+   * This data is used as a content overlap signal when scoring paper
+   * suggestions. If the user has no approved claims or the query fails,
+   * empty arrays are returned so that scoring degrades gracefully.
+   *
+   * @private
+   */
+  private async getUserClaimedTopics(userDid: string): Promise<{
+    concepts: string[];
+    topics: string[];
+    keywords: string[];
+    coauthorNames: string[];
+  }> {
+    const result = {
+      concepts: [] as string[],
+      topics: [] as string[],
+      keywords: [] as string[],
+      coauthorNames: [] as string[],
+    };
+
+    try {
+      // Get canonical URIs for the user's approved claims
+      const claimsResult = await this.db.query<{
+        canonical_uri: string | null;
+      }>(
+        `SELECT ie.canonical_uri
+         FROM claim_requests cr
+         JOIN imported_eprints ie ON cr.import_id = ie.id
+         WHERE cr.claimant_did = $1
+           AND cr.status = 'approved'
+           AND ie.canonical_uri IS NOT NULL`,
+        [userDid]
+      );
+
+      if (claimsResult.rows.length === 0) return result;
+
+      const uris = claimsResult.rows
+        .map((r) => r.canonical_uri)
+        .filter((u): u is string => u !== null);
+
+      if (uris.length === 0) return result;
+
+      // Get enrichment data (concepts + topics) for claimed papers
+      const enrichmentResult = await this.db.query<{
+        concepts: unknown;
+        topics: unknown;
+      }>(`SELECT concepts, topics FROM eprint_enrichment WHERE uri = ANY($1)`, [uris]);
+
+      for (const row of enrichmentResult.rows) {
+        if (row.concepts) {
+          const concepts =
+            typeof row.concepts === 'string'
+              ? (JSON.parse(row.concepts) as { display_name?: string }[])
+              : (row.concepts as { display_name?: string }[]);
+          for (const c of concepts) {
+            if (c.display_name && !result.concepts.includes(c.display_name)) {
+              result.concepts.push(c.display_name);
+            }
+          }
+        }
+        if (row.topics) {
+          const topics =
+            typeof row.topics === 'string'
+              ? (JSON.parse(row.topics) as { display_name?: string }[])
+              : (row.topics as { display_name?: string }[]);
+          for (const t of topics) {
+            if (t.display_name && !result.topics.includes(t.display_name)) {
+              result.topics.push(t.display_name);
+            }
+          }
+        }
+      }
+
+      // Get keywords and co-author names from claimed eprints
+      const eprintsResult = await this.db.query<{
+        keywords: unknown;
+        authors: unknown;
+      }>(`SELECT keywords, authors FROM eprints_index WHERE uri = ANY($1)`, [uris]);
+
+      for (const row of eprintsResult.rows) {
+        if (row.keywords) {
+          const kws = Array.isArray(row.keywords)
+            ? (row.keywords as unknown[])
+            : typeof row.keywords === 'string'
+              ? (JSON.parse(row.keywords) as unknown[])
+              : [];
+          for (const kw of kws) {
+            const kwStr = typeof kw === 'string' ? kw : '';
+            if (kwStr && !result.keywords.includes(kwStr.toLowerCase())) {
+              result.keywords.push(kwStr.toLowerCase());
+            }
+          }
+        }
+        if (row.authors) {
+          const authors = Array.isArray(row.authors)
+            ? (row.authors as { name?: string; displayName?: string; did?: string }[])
+            : typeof row.authors === 'string'
+              ? (JSON.parse(row.authors) as {
+                  name?: string;
+                  displayName?: string;
+                  did?: string;
+                }[])
+              : [];
+          for (const a of authors) {
+            const name = a.name ?? a.displayName ?? '';
+            if (name && a.did !== userDid && !result.coauthorNames.includes(name.toLowerCase())) {
+              result.coauthorNames.push(name.toLowerCase());
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Log but do not fail; topics are a bonus signal
+      this.logger.warn('Failed to fetch user claimed topics', { userDid, error });
+    }
+
+    return result;
   }
 }

@@ -89,6 +89,16 @@ interface UpdateEprintParams {
   authors?: AuthorContribution[];
   /** Structured changelog data (optional) */
   changelog?: ChangelogInput;
+  /** Published version metadata (optional) */
+  publishedVersion?: Record<string, unknown>;
+  /** External identifiers such as arXiv, PubMed (optional) */
+  externalIds?: Record<string, unknown>;
+  /** Code and data repository links (optional) */
+  repositories?: Record<string, unknown>;
+  /** Conference presentation metadata (optional) */
+  conferencePresentation?: Record<string, unknown>;
+  /** Funding sources (optional) */
+  funding?: Record<string, unknown>[];
 }
 
 /**
@@ -177,7 +187,20 @@ export function useUpdateEprint() {
   const queryClient = useQueryClient();
 
   return useMutation<UpdateOutput, APIError, UpdateEprintParams>({
-    mutationFn: async ({ uri, versionBump, title, keywords, fieldUris, authors, changelog }) => {
+    mutationFn: async ({
+      uri,
+      versionBump,
+      title,
+      keywords,
+      fieldUris,
+      authors,
+      changelog,
+      publishedVersion,
+      externalIds,
+      repositories,
+      conferencePresentation,
+      funding,
+    }) => {
       try {
         const response = await authApi.pub.chive.eprint.updateSubmission({
           uri,
@@ -185,10 +208,13 @@ export function useUpdateEprint() {
           title,
           keywords,
           fieldUris,
-          // Authors already match the generated AuthorContribution type
           authors,
-          // Changelog already matches the generated ChangelogInput type
           changelog,
+          publishedVersion,
+          externalIds,
+          repositories,
+          conferencePresentation,
+          funding,
         });
         return response.data;
       } catch (error) {

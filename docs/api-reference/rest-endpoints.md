@@ -101,7 +101,85 @@ List eprints by an author.
 GET /api/v1/eprints/:uri/integrations
 ```
 
-Get external integrations for an eprint (DOI, arXiv links, etc.).
+Returns cached integration data from external platforms for an eprint. When no cached data exists, the endpoint fetches live from external APIs (GitHub, GitLab, Zenodo, Software Heritage) and caches the result for one hour.
+
+#### Path parameters
+
+| Name  | Type   | Description                      |
+| ----- | ------ | -------------------------------- |
+| `uri` | string | URL-encoded AT URI of the eprint |
+
+#### Response
+
+```json
+{
+  "eprintUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+  "github": [
+    {
+      "type": "github",
+      "owner": "user",
+      "repo": "repo-name",
+      "url": "https://github.com/user/repo-name",
+      "stars": 42,
+      "forks": 8,
+      "language": "Python",
+      "description": "Repository description",
+      "license": "MIT",
+      "lastUpdated": "2025-01-15T10:30:00Z",
+      "topics": ["machine-learning", "nlp"]
+    }
+  ],
+  "gitlab": [
+    {
+      "type": "gitlab",
+      "pathWithNamespace": "group/project",
+      "name": "project",
+      "url": "https://gitlab.com/group/project",
+      "stars": 5,
+      "forks": 2,
+      "description": "Project description",
+      "visibility": "public",
+      "topics": ["data-science"],
+      "lastActivityAt": "2025-01-10T08:00:00Z"
+    }
+  ],
+  "zenodo": [
+    {
+      "type": "zenodo",
+      "doi": "10.5281/zenodo.12345",
+      "conceptDoi": "10.5281/zenodo.12340",
+      "title": "Dataset Title",
+      "url": "https://zenodo.org/records/12345",
+      "resourceType": "dataset",
+      "accessRight": "open",
+      "version": "1.0.0",
+      "stats": { "downloads": 150, "views": 500 }
+    }
+  ],
+  "softwareHeritage": [
+    {
+      "type": "software-heritage",
+      "originUrl": "https://github.com/user/repo-name",
+      "archived": true,
+      "lastVisit": "2025-01-12T14:00:00Z",
+      "lastSnapshotSwhid": "swh:1:snp:abc123...",
+      "browseUrl": "https://archive.softwareheritage.org/browse/origin/..."
+    }
+  ],
+  "datasets": [
+    {
+      "type": "figshare",
+      "doi": "10.6084/m9.figshare.12345",
+      "title": "Supplementary Dataset",
+      "url": "https://figshare.com/articles/12345",
+      "description": "Dataset description"
+    }
+  ],
+  "lastUpdated": "2025-01-15T10:30:00Z"
+}
+```
+
+All integration arrays are optional and only present when corresponding links exist in the eprint's supplementary materials. Each integration type returns data specific to its platform.
 
 ---
 

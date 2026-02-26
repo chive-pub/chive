@@ -50,7 +50,47 @@ Drag and drop your PDF or click to select. The file uploads directly to your PDS
 
 Add datasets, code, or additional figures. Each file has a 50 MB limit. Supported formats: PDF, ZIP, TAR.GZ.
 
-### Step 6: Classification
+### Step 6: Publication Details
+
+This step collects optional metadata about the eprint's publication and linked resources.
+
+**Code & Data Repositories**
+
+Link code and data repositories associated with your eprint. Each entry includes:
+
+- **URL**: Link to the repository (e.g., `https://github.com/user/repo`)
+- **Platform**: Select from the knowledge graph (GitHub, GitLab, Zenodo, Figshare, Dryad, OSF, Software Heritage, etc.)
+- **Label**: Optional description (e.g., "Experiment scripts", "Training data")
+
+You can add multiple code repositories and multiple data repositories.
+
+**Pre-registration**
+
+If your study was pre-registered, provide the registration URL and select the platform (e.g., OSF Registries, ClinicalTrials.gov, AsPredicted).
+
+**External IDs**
+
+Link your eprint to records on other platforms:
+
+| Field       | Description                               | Autocomplete |
+| ----------- | ----------------------------------------- | ------------ |
+| arXiv ID    | arXiv paper identifier (e.g., 2401.12345) | Yes          |
+| PMID        | PubMed identifier                         | Yes          |
+| PMC ID      | PubMed Central identifier                 | No           |
+| SSRN ID     | SSRN paper identifier                     | No           |
+| OSF ID      | Open Science Framework identifier         | No           |
+| Zenodo DOI  | Zenodo deposit DOI                        | No           |
+| OpenAlex ID | OpenAlex work identifier                  | No           |
+
+**Funding**
+
+Add funding sources with funder name, grant number, grant title, and grant URL.
+
+**Conference**
+
+If the eprint was presented at a conference, add the conference name, location, date, and presentation type.
+
+### Step 7: Classification
 
 Select fields from the knowledge graph:
 
@@ -59,7 +99,7 @@ Select fields from the knowledge graph:
 3. Selected fields appear as tags
 4. Click X to remove a field
 
-### Step 7: Review and Submit
+### Step 8: Review and Submit
 
 Review all information on the summary page. Click "Submit" to create the eprint record in your PDS.
 

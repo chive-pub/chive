@@ -9,13 +9,18 @@
  * The plugins detect external URLs in eprint supplementary materials and fetch
  * metadata from external APIs, caching the results in Redis.
  *
+ * When no cached data exists (cache expired or plugin never processed the eprint),
+ * this endpoint fetches live data from the public APIs as a fallback, then caches
+ * the result so subsequent requests are fast.
+ *
  * **Architecture Flow:**
- * 1. Eprint indexed → `eprint.indexed` event emitted
+ * 1. Eprint indexed -> `eprint.indexed` event emitted
  * 2. Integration plugins (GitHub, GitLab, etc.) listen for this event
  * 3. Plugins detect URLs in `supplementaryLinks` field
  * 4. Plugins fetch metadata from external APIs
  * 5. Plugins cache metadata with keys like `plugin:{pluginId}:github:{owner}:{repo}`
  * 6. This endpoint aggregates from individual plugin caches
+ * 7. On cache miss, this endpoint fetches live data from public APIs as a fallback
  *
  * **ATProto Compliance:**
  * - All data is AppView cache (ephemeral, rebuildable)
@@ -30,6 +35,7 @@ import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 
 import type { AtUri } from '../../../../types/atproto.js';
+import type { ILogger } from '../../../../types/interfaces/logger.interface.js';
 import { REST_PATH_PREFIX } from '../../../config.js';
 import { validateParams } from '../../../middleware/validation.js';
 import type { ChiveEnv } from '../../../types/context.js';
@@ -245,6 +251,442 @@ function categorizeUrls(urls: readonly string[]): {
 }
 
 /**
+ * Cache TTL in seconds for live-fetched integration data (1 hour).
+ */
+const LIVE_FETCH_CACHE_TTL = 3600;
+
+/**
+ * GitHub API response for a public repository.
+ *
+ * @internal
+ */
+interface GitHubApiResponse {
+  stargazers_count: number;
+  forks_count: number;
+  updated_at: string;
+  license: { spdx_id: string } | null;
+  language: string | null;
+  description: string | null;
+  topics: string[];
+}
+
+/**
+ * GitLab API project response for a public project.
+ *
+ * @internal
+ */
+interface GitLabApiProjectResponse {
+  path_with_namespace?: string;
+  name?: string;
+  description?: string;
+  visibility?: string;
+  web_url?: string;
+  star_count?: number;
+  forks_count?: number;
+  topics?: string[];
+  last_activity_at?: string;
+}
+
+/**
+ * Zenodo API record response for a public record.
+ *
+ * @internal
+ */
+interface ZenodoApiRecordResponse {
+  doi?: string;
+  conceptdoi?: string;
+  metadata?: {
+    title?: string;
+    resource_type?: { type?: string };
+    access_right?: string;
+    version?: string;
+  };
+  stats?: {
+    downloads?: number;
+    views?: number;
+  };
+  links?: {
+    html?: string;
+  };
+}
+
+/**
+ * Software Heritage API visit response.
+ *
+ * @internal
+ */
+interface SwhApiVisitResponse {
+  date?: string;
+  snapshot?: string;
+  status?: string;
+}
+
+/**
+ * Fetches GitHub repository data from the public API and caches the result.
+ *
+ * Falls back to placeholder data if the fetch fails.
+ *
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param url - Original GitHub URL from the eprint
+ * @param redis - Redis client for caching
+ * @param logger - Logger instance
+ * @returns GitHub integration data
+ */
+async function fetchGitHubLive(
+  owner: string,
+  repo: string,
+  url: string,
+  redis: import('ioredis').Redis,
+  logger: ILogger
+): Promise<GitHubIntegration> {
+  try {
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'Chive-AppView/1.0 (https://chive.pub; contact@chive.pub)',
+      },
+    });
+
+    if (!response.ok) {
+      logger.debug('GitHub API returned non-OK status during live fetch', {
+        owner,
+        repo,
+        status: response.status,
+      });
+      return makeGitHubPlaceholder(owner, repo, url);
+    }
+
+    const data = (await response.json()) as GitHubApiResponse;
+
+    const cacheValue = {
+      owner,
+      repo,
+      stars: data.stargazers_count,
+      forks: data.forks_count,
+      lastUpdated: data.updated_at,
+      license: data.license?.spdx_id ?? null,
+      language: data.language,
+      description: data.description,
+      topics: data.topics ?? [],
+    };
+
+    // Cache using the same key pattern as the plugin
+    const cacheKey = `plugin:pub.chive.plugin.github:github:${owner}:${repo}`;
+    await redis.set(cacheKey, JSON.stringify(cacheValue), 'EX', LIVE_FETCH_CACHE_TTL);
+
+    return {
+      type: 'github',
+      owner,
+      repo,
+      url: `https://github.com/${owner}/${repo}`,
+      stars: cacheValue.stars,
+      forks: cacheValue.forks,
+      language: cacheValue.language,
+      description: cacheValue.description,
+      license: cacheValue.license,
+      lastUpdated: cacheValue.lastUpdated,
+      topics: cacheValue.topics,
+    };
+  } catch (err) {
+    logger.warn('Live GitHub API fetch failed', {
+      error: (err as Error).message,
+      owner,
+      repo,
+    });
+    return makeGitHubPlaceholder(owner, repo, url);
+  }
+}
+
+/**
+ * Creates placeholder GitHub integration data when no cache or live data is available.
+ *
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param url - Original GitHub URL
+ * @returns Placeholder integration data with zero stats
+ */
+function makeGitHubPlaceholder(owner: string, repo: string, url: string): GitHubIntegration {
+  return {
+    type: 'github',
+    owner,
+    repo,
+    url,
+    stars: 0,
+    forks: 0,
+    language: null,
+    description: null,
+    license: null,
+    lastUpdated: '',
+    topics: [],
+  };
+}
+
+/**
+ * Fetches GitLab project data from the public API and caches the result.
+ *
+ * Falls back to placeholder data if the fetch fails.
+ *
+ * @param path - Project path (namespace/project)
+ * @param url - Original GitLab URL from the eprint
+ * @param redis - Redis client for caching
+ * @param logger - Logger instance
+ * @returns GitLab integration data
+ */
+async function fetchGitLabLive(
+  path: string,
+  url: string,
+  redis: import('ioredis').Redis,
+  logger: ILogger
+): Promise<GitLabIntegration> {
+  try {
+    const encodedPath = encodeURIComponent(path);
+    const response = await fetch(`https://gitlab.com/api/v4/projects/${encodedPath}`, {
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      logger.debug('GitLab API returned non-OK status during live fetch', {
+        path,
+        status: response.status,
+      });
+      return makeGitLabPlaceholder(path, url);
+    }
+
+    const data = (await response.json()) as GitLabApiProjectResponse;
+
+    const cacheValue = {
+      pathWithNamespace: data.path_with_namespace ?? path,
+      name: data.name ?? path.split('/')[1] ?? path,
+      description: data.description,
+      visibility: data.visibility ?? 'public',
+      webUrl: data.web_url ?? url,
+      starCount: data.star_count ?? 0,
+      forksCount: data.forks_count ?? 0,
+      topics: data.topics ?? [],
+      lastActivityAt: data.last_activity_at ?? '',
+    };
+
+    // Cache using the same key pattern as the plugin
+    const cacheKey = `plugin:pub.chive.plugin.gitlab:gitlab:project:https://gitlab.com/api/v4:${path}`;
+    await redis.set(cacheKey, JSON.stringify(cacheValue), 'EX', LIVE_FETCH_CACHE_TTL);
+
+    return {
+      type: 'gitlab',
+      pathWithNamespace: cacheValue.pathWithNamespace,
+      name: cacheValue.name,
+      url: cacheValue.webUrl,
+      stars: cacheValue.starCount,
+      forks: cacheValue.forksCount,
+      description: cacheValue.description ?? null,
+      visibility: cacheValue.visibility,
+      topics: cacheValue.topics,
+      lastActivityAt: cacheValue.lastActivityAt,
+    };
+  } catch (err) {
+    logger.warn('Live GitLab API fetch failed', {
+      error: (err as Error).message,
+      path,
+    });
+    return makeGitLabPlaceholder(path, url);
+  }
+}
+
+/**
+ * Creates placeholder GitLab integration data when no cache or live data is available.
+ *
+ * @param path - Project path
+ * @param url - Original GitLab URL
+ * @returns Placeholder integration data with zero stats
+ */
+function makeGitLabPlaceholder(path: string, url: string): GitLabIntegration {
+  return {
+    type: 'gitlab',
+    pathWithNamespace: path,
+    name: path.split('/')[1] ?? path,
+    url,
+    stars: 0,
+    forks: 0,
+    description: null,
+    visibility: 'unknown',
+    topics: [],
+    lastActivityAt: '',
+  };
+}
+
+/**
+ * Fetches Zenodo record data from the public API and caches the result.
+ *
+ * Falls back to placeholder data if the fetch fails.
+ *
+ * @param recordId - Zenodo record ID
+ * @param url - Original Zenodo URL from the eprint
+ * @param redis - Redis client for caching
+ * @param logger - Logger instance
+ * @returns Zenodo integration data
+ */
+async function fetchZenodoLive(
+  recordId: number,
+  url: string,
+  redis: import('ioredis').Redis,
+  logger: ILogger
+): Promise<ZenodoIntegration> {
+  try {
+    const response = await fetch(`https://zenodo.org/api/records/${recordId}`, {
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      logger.debug('Zenodo API returned non-OK status during live fetch', {
+        recordId,
+        status: response.status,
+      });
+      return makeZenodoPlaceholder(recordId, url);
+    }
+
+    const data = (await response.json()) as ZenodoApiRecordResponse;
+
+    const cacheValue = {
+      doi: data.doi ?? `10.5281/zenodo.${recordId}`,
+      conceptDoi: data.conceptdoi,
+      title: data.metadata?.title ?? 'Zenodo Record',
+      resourceType: { type: data.metadata?.resource_type?.type ?? 'unknown' },
+      accessRight: data.metadata?.access_right ?? 'unknown',
+      version: data.metadata?.version,
+      stats: data.stats
+        ? { downloads: data.stats.downloads ?? 0, views: data.stats.views ?? 0 }
+        : undefined,
+      links: { html: data.links?.html ?? url },
+    };
+
+    // Cache using the same key pattern as the plugin
+    const cacheKey = `plugin:pub.chive.plugin.zenodo:zenodo:record:${recordId}`;
+    await redis.set(cacheKey, JSON.stringify(cacheValue), 'EX', LIVE_FETCH_CACHE_TTL);
+
+    return {
+      type: 'zenodo',
+      doi: cacheValue.doi,
+      conceptDoi: cacheValue.conceptDoi,
+      title: cacheValue.title,
+      url: cacheValue.links.html,
+      resourceType: cacheValue.resourceType.type,
+      accessRight: cacheValue.accessRight,
+      version: cacheValue.version,
+      stats: cacheValue.stats,
+    };
+  } catch (err) {
+    logger.warn('Live Zenodo API fetch failed', {
+      error: (err as Error).message,
+      recordId,
+    });
+    return makeZenodoPlaceholder(recordId, url);
+  }
+}
+
+/**
+ * Creates placeholder Zenodo integration data when no cache or live data is available.
+ *
+ * @param recordId - Zenodo record ID
+ * @param url - Original Zenodo URL
+ * @returns Placeholder integration data
+ */
+function makeZenodoPlaceholder(recordId: number, url: string): ZenodoIntegration {
+  return {
+    type: 'zenodo',
+    doi: `10.5281/zenodo.${recordId}`,
+    title: 'Zenodo Record',
+    url,
+    resourceType: 'unknown',
+    accessRight: 'unknown',
+  };
+}
+
+/**
+ * Fetches Software Heritage origin data from the public API and caches the result.
+ *
+ * Falls back to placeholder data if the fetch fails. Also fetches the latest
+ * visit to determine snapshot SWHID.
+ *
+ * @param repoUrl - Repository URL to check archival status for
+ * @param redis - Redis client for caching
+ * @param logger - Logger instance
+ * @returns Software Heritage integration data
+ */
+async function fetchSoftwareHeritageLive(
+  repoUrl: string,
+  redis: import('ioredis').Redis,
+  logger: ILogger
+): Promise<SoftwareHeritageIntegration> {
+  try {
+    const encodedUrl = encodeURIComponent(repoUrl);
+    const response = await fetch(
+      `https://archive.softwareheritage.org/api/1/origin/${encodedUrl}/get/`,
+      { headers: { Accept: 'application/json' } }
+    );
+
+    if (response.status === 404) {
+      // Not archived
+      return { type: 'software-heritage', originUrl: repoUrl, archived: false };
+    }
+
+    if (!response.ok) {
+      logger.debug('Software Heritage API returned non-OK status during live fetch', {
+        repoUrl,
+        status: response.status,
+      });
+      return { type: 'software-heritage', originUrl: repoUrl, archived: false };
+    }
+
+    // Origin exists; consume the response body, then fetch visit info
+    await response.json();
+    let lastVisit: string | undefined;
+    let lastSnapshotSwhid: string | undefined;
+
+    try {
+      const visitResponse = await fetch(
+        `https://archive.softwareheritage.org/api/1/origin/${encodedUrl}/visit/latest/`,
+        { headers: { Accept: 'application/json' } }
+      );
+
+      if (visitResponse.ok) {
+        const visitData = (await visitResponse.json()) as SwhApiVisitResponse;
+        lastVisit = visitData.date;
+        if (visitData.snapshot) {
+          lastSnapshotSwhid = `swh:1:snp:${visitData.snapshot}`;
+        }
+      }
+    } catch {
+      // Visit fetch failed; proceed without visit data
+    }
+
+    const cacheValue = {
+      url: repoUrl,
+      lastVisit,
+      lastSnapshotSwhid,
+    };
+
+    // Cache using the same key pattern as the plugin
+    const cacheKey = `plugin:pub.chive.plugin.software-heritage:swh:origin:${repoUrl}`;
+    await redis.set(cacheKey, JSON.stringify(cacheValue), 'EX', LIVE_FETCH_CACHE_TTL);
+
+    return {
+      type: 'software-heritage',
+      originUrl: repoUrl,
+      archived: true,
+      lastVisit,
+      lastSnapshotSwhid,
+      browseUrl: `https://archive.softwareheritage.org/browse/origin/directory/?origin_url=${encodeURIComponent(repoUrl)}`,
+    };
+  } catch (err) {
+    logger.warn('Live Software Heritage API fetch failed', {
+      error: (err as Error).message,
+      repoUrl,
+    });
+    return { type: 'software-heritage', originUrl: repoUrl, archived: false };
+  }
+}
+
+/**
  * Handler for GET /api/v1/eprints/:uri/integrations
  *
  * @remarks
@@ -363,21 +805,9 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
             topics: cached.topics,
           });
         } else {
-          // No cached data yet; return basic info
-          // The plugin will populate cache when it processes the eprint event
-          githubIntegrations.push({
-            type: 'github',
-            owner,
-            repo,
-            url,
-            stars: 0,
-            forks: 0,
-            language: null,
-            description: null,
-            license: null,
-            lastUpdated: '',
-            topics: [],
-          });
+          // No cached data; fetch live from GitHub public API
+          const liveData = await fetchGitHubLive(owner, repo, url, redis, logger);
+          githubIntegrations.push(liveData);
         }
       } catch (err) {
         logger.warn('Failed to fetch GitHub integration cache', {
@@ -429,19 +859,9 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
             lastActivityAt: cached.lastActivityAt,
           });
         } else {
-          // No cached data yet
-          gitlabIntegrations.push({
-            type: 'gitlab',
-            pathWithNamespace: path,
-            name: path.split('/')[1] ?? path,
-            url,
-            stars: 0,
-            forks: 0,
-            description: null,
-            visibility: 'unknown',
-            topics: [],
-            lastActivityAt: '',
-          });
+          // No cached data; fetch live from GitLab public API
+          const liveData = await fetchGitLabLive(path, url, redis, logger);
+          gitlabIntegrations.push(liveData);
         }
       } catch (err) {
         logger.warn('Failed to fetch GitLab integration cache', {
@@ -490,15 +910,9 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
             stats: cached.stats,
           });
         } else {
-          // No cached data yet
-          zenodoIntegrations.push({
-            type: 'zenodo',
-            doi: `10.5281/zenodo.${recordId}`,
-            title: 'Zenodo Record',
-            url,
-            resourceType: 'unknown',
-            accessRight: 'unknown',
-          });
+          // No cached data; fetch live from Zenodo public API
+          const liveData = await fetchZenodoLive(recordId, url, redis, logger);
+          zenodoIntegrations.push(liveData);
         }
       } catch (err) {
         logger.warn('Failed to fetch Zenodo integration cache', {
@@ -545,12 +959,9 @@ async function getIntegrationsHandler(c: Context<ChiveEnv>): Promise<Response> {
             browseUrl: `https://archive.softwareheritage.org/browse/origin/directory/?origin_url=${encodeURIComponent(repoUrl)}`,
           });
         } else {
-          // Not yet checked or not archived
-          swhIntegrations.push({
-            type: 'software-heritage',
-            originUrl: repoUrl,
-            archived: false,
-          });
+          // No cached data; fetch live from Software Heritage public API
+          const liveData = await fetchSoftwareHeritageLive(repoUrl, redis, logger);
+          swhIntegrations.push(liveData);
         }
       } catch (err) {
         logger.warn('Failed to fetch Software Heritage integration cache', {

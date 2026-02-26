@@ -46,6 +46,7 @@ import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/editor';
 import { useAgent } from '@/lib/auth/auth-context';
 import { authApi } from '@/lib/api/client';
+import { createChangelogRecord } from '@/lib/atproto/record-creator';
 import {
   formatVersion,
   useUpdateEprint,
@@ -307,6 +308,45 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
           record: updatedRecord,
           swapRecord: authResult.expectedCid,
         });
+
+        // Step 5.5: Create changelog record in PDS (if changelog provided)
+        if (hasChangelog && changelogInput) {
+          try {
+            const changelogResult = await createChangelogRecord(agent, {
+              eprintUri: eprint.uri,
+              version: authResult.version,
+              previousVersion: eprint.version || undefined,
+              summary: changelogInput.summary || undefined,
+              sections: changelogInput.sections.map((section) => ({
+                category: section.category,
+                items: section.items.map((item) => ({
+                  description: item.description,
+                  changeType: item.changeType || undefined,
+                  location: item.location || undefined,
+                  reviewReference: item.reviewReference || undefined,
+                })),
+              })),
+              reviewerResponse: changelogInput.reviewerResponse || undefined,
+            });
+            editLogger.info('Changelog record created', { uri: changelogResult.uri });
+
+            // Request immediate indexing for the changelog record (best-effort)
+            try {
+              await authApi.pub.chive.sync.indexRecord({ uri: changelogResult.uri });
+            } catch {
+              editLogger.warn('Immediate changelog indexing failed; firehose will handle', {
+                uri: changelogResult.uri,
+              });
+            }
+          } catch (changelogError) {
+            editLogger.warn('Failed to create changelog record', {
+              uri: eprint.uri,
+              error:
+                changelogError instanceof Error ? changelogError.message : String(changelogError),
+            });
+            // Non-critical: do not fail the whole update
+          }
+        }
 
         // Request immediate re-indexing as a UX optimization.
         // The firehose is the primary indexing mechanism, but there may be latency.

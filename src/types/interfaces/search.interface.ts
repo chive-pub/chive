@@ -153,6 +153,17 @@ export interface SearchQuery {
    * For deep pagination, use search_after instead.
    */
   readonly offset?: number;
+
+  /**
+   * Sort order for results.
+   *
+   * @remarks
+   * - 'relevance': default Elasticsearch BM25 scoring
+   * - 'recent': sort by created_at descending (newest first)
+   *
+   * @defaultValue 'relevance'
+   */
+  readonly sort?: 'relevance' | 'recent';
 }
 
 /**

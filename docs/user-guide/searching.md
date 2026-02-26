@@ -42,9 +42,10 @@ Click "Filters" to open the facet panel. Facets narrow results without changing 
 Results can be sorted by:
 
 - **Relevance** (default): Text match score combined with citation signals
-- **Date (newest)**: Most recent submissions first
-- **Date (oldest)**: Earliest submissions first
+- **Recent**: Most recent submissions first
 - **Citations**: Most cited eprints first
+
+The API accepts a `sort` parameter with values `relevance` (default) or `recent`.
 
 ## Search Tips
 

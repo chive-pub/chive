@@ -102,6 +102,91 @@ export interface EprintRecord {
   fundingInfo?: FundingSource[];
   conflictOfInterest?: string;
   preregistration?: string;
+  publishedVersion?: {
+    doi?: string;
+    url?: string;
+    publishedAt?: string;
+    journal?: string;
+    journalAbbreviation?: string;
+    journalIssn?: string;
+    publisher?: string;
+    volume?: string;
+    issue?: string;
+    pages?: string;
+    articleNumber?: string;
+    eLocationId?: string;
+    accessType?: string;
+    licenseUrl?: string;
+  };
+  externalIds?: {
+    arxivId?: string;
+    pmid?: string;
+    pmcid?: string;
+    ssrnId?: string;
+    osf?: string;
+    zenodoDoi?: string;
+    openAlexId?: string;
+    semanticScholarId?: string;
+    coreSid?: string;
+    magId?: string;
+  };
+  repositories?: {
+    code?: Array<{
+      url?: string;
+      platformUri?: string;
+      platformSlug?: string;
+      label?: string;
+      archiveUrl?: string;
+      swhid?: string;
+    }>;
+    data?: Array<{
+      url?: string;
+      doi?: string;
+      platformUri?: string;
+      platformSlug?: string;
+      label?: string;
+      accessStatement?: string;
+    }>;
+    preregistration?: {
+      url?: string;
+      platformUri?: string;
+      platformSlug?: string;
+      registrationDate?: string;
+    };
+    protocols?: Array<{
+      url?: string;
+      doi?: string;
+      platformUri?: string;
+      platformSlug?: string;
+    }>;
+    materials?: Array<{
+      url?: string;
+      rrid?: string;
+      label?: string;
+    }>;
+  };
+  funding?: Array<{
+    funderName?: string;
+    funderUri?: string;
+    funderDoi?: string;
+    funderRor?: string;
+    grantNumber?: string;
+    grantTitle?: string;
+    grantUrl?: string;
+  }>;
+  conferencePresentation?: {
+    conferenceName?: string;
+    conferenceAcronym?: string;
+    conferenceUri?: string;
+    conferenceUrl?: string;
+    conferenceIteration?: string;
+    conferenceLocation?: string;
+    presentationDate?: string;
+    presentationTypeUri?: string;
+    presentationTypeSlug?: string;
+    proceedingsDoi?: string;
+  };
+  publicationStatus?: string;
 }
 
 /**
@@ -445,6 +530,69 @@ export async function createEprintRecord(
   }
   if (data.fundingInfo && data.fundingInfo.length > 0) {
     record.fundingInfo = data.fundingInfo;
+  }
+
+  // Publication status
+  if (data.publicationStatus) {
+    record.publicationStatus = data.publicationStatus;
+  }
+
+  // Published version metadata
+  if (data.publishedVersion) {
+    const pv = Object.fromEntries(
+      Object.entries(data.publishedVersion).filter(([_, v]) => v !== undefined && v !== '')
+    );
+    if (Object.keys(pv).length > 0) {
+      record.publishedVersion = pv;
+    }
+  }
+
+  // External identifiers
+  if (data.externalIds) {
+    const ids = Object.fromEntries(
+      Object.entries(data.externalIds).filter(([_, v]) => v !== undefined && v !== '')
+    );
+    if (Object.keys(ids).length > 0) {
+      record.externalIds = ids;
+    }
+  }
+
+  // Repositories (code, data, preregistration)
+  if (data.repositories) {
+    const repos: EprintRecord['repositories'] = {};
+    if (data.repositories.code && data.repositories.code.length > 0) {
+      repos.code = data.repositories.code;
+    }
+    if (data.repositories.data && data.repositories.data.length > 0) {
+      repos.data = data.repositories.data;
+    }
+    if (data.repositories.preregistration?.url) {
+      repos.preregistration = data.repositories.preregistration;
+    }
+    if (data.repositories.protocols && data.repositories.protocols.length > 0) {
+      repos.protocols = data.repositories.protocols;
+    }
+    if (data.repositories.materials && data.repositories.materials.length > 0) {
+      repos.materials = data.repositories.materials;
+    }
+    if (Object.keys(repos).length > 0) {
+      record.repositories = repos;
+    }
+  }
+
+  // Funding (canonical field; fundingInfo above is for backward compatibility)
+  if (data.funding && data.funding.length > 0) {
+    record.funding = data.funding;
+  }
+
+  // Conference presentation
+  if (data.conferencePresentation) {
+    const cp = Object.fromEntries(
+      Object.entries(data.conferencePresentation).filter(([_, v]) => v !== undefined && v !== '')
+    );
+    if (Object.keys(cp).length > 0) {
+      record.conferencePresentation = cp;
+    }
   }
 
   // 4. Create the record in target PDS (user's or paper's)
@@ -1524,7 +1672,7 @@ export interface ChiveProfileRecord {
   bio?: string;
   orcid?: string;
   affiliations?: Array<{ name: string; rorId?: string }>;
-  fields?: string[];
+  fieldUris?: string[];
   nameVariants?: string[];
   previousAffiliations?: Array<{ name: string; rorId?: string }>;
   researchKeywords?: Array<{ label: string; fastId?: string; wikidataId?: string }>;
@@ -1602,7 +1750,7 @@ export async function updateChiveProfileRecord(
   if (data.bio) record.bio = data.bio;
   if (data.orcid) record.orcid = data.orcid;
   if (data.affiliations?.length) record.affiliations = data.affiliations;
-  if (data.fields?.length) record.fields = data.fields;
+  if (data.fields?.length) record.fieldUris = data.fields;
   if (data.nameVariants?.length) record.nameVariants = data.nameVariants;
   if (data.previousAffiliations?.length) record.previousAffiliations = data.previousAffiliations;
   if (data.researchKeywords?.length) record.researchKeywords = data.researchKeywords;
@@ -3405,6 +3553,103 @@ export async function createSembleMirror(
   });
 
   return { sembleCollectionUri, cardUris };
+}
+
+// =============================================================================
+// CHANGELOG RECORDS
+// =============================================================================
+
+/**
+ * Input for creating a changelog record.
+ */
+export interface CreateChangelogInput {
+  /** AT-URI of the eprint this changelog belongs to */
+  eprintUri: string;
+  /** Semantic version this changelog describes */
+  version: { major: number; minor: number; patch: number };
+  /** Previous semantic version */
+  previousVersion?: { major: number; minor: number; patch: number };
+  /** One-line summary of changes */
+  summary?: string;
+  /** Structured changelog sections */
+  sections: Array<{
+    category: string;
+    items: Array<{
+      description: string;
+      changeType?: string;
+      location?: string;
+      reviewReference?: string;
+    }>;
+  }>;
+  /** Response to peer review feedback */
+  reviewerResponse?: string;
+}
+
+/**
+ * Creates a changelog record in the user's PDS.
+ *
+ * @param agent - authenticated ATProto agent
+ * @param input - changelog data including version, sections, and optional summary
+ * @returns the created record's URI and CID
+ *
+ * @example
+ * ```typescript
+ * const result = await createChangelogRecord(agent, {
+ *   eprintUri: 'at://did:plc:abc/pub.chive.eprint.submission/123',
+ *   version: { major: 1, minor: 1, patch: 0 },
+ *   previousVersion: { major: 1, minor: 0, patch: 0 },
+ *   summary: 'Updated methodology section',
+ *   sections: [{
+ *     category: 'methodology',
+ *     items: [{ description: 'Replaced sampling method', changeType: 'changed' }],
+ *   }],
+ * });
+ * ```
+ */
+export async function createChangelogRecord(
+  agent: Agent,
+  input: CreateChangelogInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: Record<string, unknown> = {
+    $type: 'pub.chive.eprint.changelog',
+    eprintUri: input.eprintUri,
+    version: input.version,
+    sections: input.sections,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.previousVersion) {
+    record.previousVersion = input.previousVersion;
+  }
+
+  if (input.summary) {
+    record.summary = input.summary;
+  }
+
+  if (input.reviewerResponse) {
+    record.reviewerResponse = input.reviewerResponse;
+  }
+
+  recordLogger.info('Creating changelog record', {
+    eprintUri: input.eprintUri,
+    version: `${input.version.major}.${input.version.minor}.${input.version.patch}`,
+  });
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.eprint.changelog',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
 }
 
 // =============================================================================

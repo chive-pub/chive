@@ -1,8 +1,21 @@
-import { ExternalLink, Globe, Building2, Tag, GraduationCap, BookOpen } from 'lucide-react';
+'use client';
+
+import { useState, useCallback } from 'react';
+import {
+  ExternalLink,
+  Globe,
+  Building2,
+  Tag,
+  GraduationCap,
+  BookOpen,
+  Copy,
+  Check,
+} from 'lucide-react';
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { OrcidBadge } from './orcid-badge';
 import { cn } from '@/lib/utils';
 import type { AuthorProfile } from '@/lib/api/schema';
@@ -84,6 +97,14 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
             <p className="mt-1 text-lg text-muted-foreground">@{profile.handle}</p>
           )}
 
+          {/* DID */}
+          {profile.did && (
+            <div className="mt-1 flex items-center gap-1">
+              <code className="text-xs text-muted-foreground font-mono">{profile.did}</code>
+              <CopyButton value={profile.did} />
+            </div>
+          )}
+
           {/* Name variants */}
           {hasNameVariants && (
             <p className="mt-1 text-sm text-muted-foreground">
@@ -131,7 +152,11 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
           )}
 
           {/* Bio */}
-          {profile.bio && <p className="mt-4 max-w-2xl text-muted-foreground">{profile.bio}</p>}
+          {profile.bio && (
+            <p className="mt-4 max-w-2xl text-muted-foreground">
+              <Linkify text={profile.bio} />
+            </p>
+          )}
 
           {/* Primary links row */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
@@ -354,6 +379,35 @@ export function AuthorHeaderSkeleton({ className }: AuthorHeaderSkeletonProps) {
 }
 
 /**
+ * Small button that copies a value to the clipboard.
+ */
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [value]);
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 shrink-0"
+      onClick={handleCopy}
+      aria-label="Copy DID to clipboard"
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-green-500" />
+      ) : (
+        <Copy className="h-3 w-3 text-muted-foreground" />
+      )}
+    </Button>
+  );
+}
+
+/**
  * Gets initials from a display name.
  */
 function getInitials(name: string): string {
@@ -362,6 +416,34 @@ function getInitials(name: string): string {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
+}
+
+/**
+ * Renders text with URLs converted to clickable links.
+ */
+function Linkify({ text }: { text: string }) {
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  const parts = text.split(urlRegex);
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        urlRegex.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            {part}
+          </a>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
 }
 
 /**

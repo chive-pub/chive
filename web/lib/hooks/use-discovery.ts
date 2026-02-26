@@ -35,6 +35,14 @@ export interface DiscoverySettings {
   citationNetworkDisplay: CitationNetworkDisplay;
   /** Show explanations for why papers are recommended */
   showRecommendationReasons: boolean;
+  /** How diverse recommendations should be */
+  recommendationDiversity: 'low' | 'medium' | 'high';
+  /** Minimum endorsements for a paper to appear in recommendations */
+  minimumEndorsementThreshold: number;
+  /** Field URIs the user follows for discovery (distinct from work fields) */
+  followedFieldUris: string[];
+  /** Whether the Following tab also includes the user's work fields */
+  followingTabIncludesWorkFields: boolean;
 }
 
 /**
@@ -50,6 +58,10 @@ export interface UpdateDiscoverySettingsInput {
   relatedPapersSignals?: Partial<Omit<RelatedPapersSignals, '$type'>>;
   citationNetworkDisplay?: CitationNetworkDisplay;
   showRecommendationReasons?: boolean;
+  recommendationDiversity?: 'low' | 'medium' | 'high';
+  minimumEndorsementThreshold?: number;
+  followedFieldUris?: string[];
+  followingTabIncludesWorkFields?: boolean;
 }
 
 /**
@@ -418,9 +430,15 @@ export const DEFAULT_DISCOVERY_SETTINGS: DiscoverySettings = {
   relatedPapersSignals: {
     citations: true,
     topics: true,
+    authors: true,
+    bibliographicCoupling: false,
   },
   citationNetworkDisplay: 'preview',
   showRecommendationReasons: true,
+  recommendationDiversity: 'medium',
+  minimumEndorsementThreshold: 0,
+  followedFieldUris: [],
+  followingTabIncludesWorkFields: false,
 };
 
 interface UseDiscoverySettingsOptions {
@@ -524,6 +542,12 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
               topics:
                 data.relatedPapersSignals?.topics ??
                 DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.topics,
+              authors:
+                data.relatedPapersSignals?.authors ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.authors,
+              bibliographicCoupling:
+                data.relatedPapersSignals?.bibliographicCoupling ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.bibliographicCoupling,
             },
             citationNetworkDisplay: validateCitationNetworkDisplay(
               data.citationNetworkDisplay,
@@ -532,6 +556,17 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
             showRecommendationReasons:
               data.showRecommendationReasons ??
               DEFAULT_DISCOVERY_SETTINGS.showRecommendationReasons,
+            recommendationDiversity:
+              (data.recommendationDiversity as DiscoverySettings['recommendationDiversity']) ??
+              DEFAULT_DISCOVERY_SETTINGS.recommendationDiversity,
+            minimumEndorsementThreshold:
+              (data.minimumEndorsementThreshold as number) ??
+              DEFAULT_DISCOVERY_SETTINGS.minimumEndorsementThreshold,
+            followedFieldUris:
+              (data.followedFieldUris as string[]) ?? DEFAULT_DISCOVERY_SETTINGS.followedFieldUris,
+            followingTabIncludesWorkFields:
+              (data.followingTabIncludesWorkFields as boolean) ??
+              DEFAULT_DISCOVERY_SETTINGS.followingTabIncludesWorkFields,
           };
         } catch {
           // Fall back to localStorage on API error
@@ -605,6 +640,10 @@ export function useUpdateDiscoverySettings() {
               relatedPapersSignals: newSettings.relatedPapersSignals,
               citationNetworkDisplay: newSettings.citationNetworkDisplay,
               showRecommendationReasons: newSettings.showRecommendationReasons,
+              recommendationDiversity: newSettings.recommendationDiversity,
+              minimumEndorsementThreshold: newSettings.minimumEndorsementThreshold,
+              followedFieldUris: newSettings.followedFieldUris,
+              followingTabIncludesWorkFields: newSettings.followingTabIncludesWorkFields,
             },
           });
         } catch {

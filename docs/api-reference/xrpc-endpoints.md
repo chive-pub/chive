@@ -91,6 +91,7 @@ Search for eprints by query string.
 | `dateFrom` | string   | No       | Start date (ISO 8601)                        |
 | `dateTo`   | string   | No       | End date (ISO 8601)                          |
 | `sortBy`   | string   | No       | Sort order: `relevance`, `date`, `citations` |
+| `sort`     | string   | No       | Sort order: `relevance` (default), `recent`  |
 | `limit`    | integer  | No       | Results per page (default: 25, max: 100)     |
 | `cursor`   | string   | No       | Pagination cursor                            |
 
@@ -1201,11 +1202,29 @@ Get trending eprints.
 
 #### Parameters
 
-| Name     | Type    | Required | Description                         |
-| -------- | ------- | -------- | ----------------------------------- |
-| `period` | string  | No       | Time period: `day`, `week`, `month` |
-| `field`  | string  | No       | Filter by field                     |
-| `limit`  | integer | No       | Number of results                   |
+| Name        | Type    | Required | Description                                           |
+| ----------- | ------- | -------- | ----------------------------------------------------- |
+| `period`    | string  | No       | Time period: `day`, `week`, `month`                   |
+| `field`     | string  | No       | Filter by field                                       |
+| `fieldUris` | string  | No       | Comma-separated field URIs to filter by user's fields |
+| `limit`     | integer | No       | Number of results                                     |
+
+#### Response
+
+```json
+{
+  "trending": [
+    {
+      "uri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5...",
+      "title": "Paper Title",
+      "score": 0.95,
+      "inUserFields": true
+    }
+  ]
+}
+```
+
+When `fieldUris` is provided, results include an `inUserFields` boolean per entry and are partitioned with in-field papers sorted first.
 
 ### pub.chive.metrics.recordView
 
@@ -1549,6 +1568,22 @@ Search eprints for claiming.
 | Method   | Query (GET) |
 | Auth     | Required    |
 
+#### Response
+
+```json
+{
+  "eprints": [...],
+  "sourceErrors": [
+    {
+      "source": "arxiv",
+      "message": "Request timeout after 10000ms"
+    }
+  ]
+}
+```
+
+The `sourceErrors` array contains per-source error information when individual external sources fail. Results from working sources are still returned.
+
 ### pub.chive.claiming.getSuggestions
 
 Get claim suggestions for the user.
@@ -1557,6 +1592,59 @@ Get claim suggestions for the user.
 | -------- | ----------- |
 | Method   | Query (GET) |
 | Auth     | Required    |
+
+#### Response
+
+```json
+{
+  "suggestions": [
+    {
+      "title": "Paper Title",
+      "source": "chive",
+      "externalId": "10.1234/example",
+      "score": 85,
+      "chiveUri": "at://did:plc:abc123.../pub.chive.eprint.submission/3k5..."
+    },
+    {
+      "title": "External Paper",
+      "source": "arxiv",
+      "externalId": "2401.12345",
+      "score": 42
+    }
+  ]
+}
+```
+
+Papers with `source: "chive"` include a `chiveUri` field pointing to the existing Chive record. Papers from external sources do not have this field.
+
+### pub.chive.claiming.dismissSuggestion
+
+Dismiss a paper suggestion so it no longer appears.
+
+| Property | Value            |
+| -------- | ---------------- |
+| Method   | Procedure (POST) |
+| Auth     | Required         |
+
+#### Input
+
+```json
+{
+  "source": "arxiv",
+  "externalId": "2401.12345"
+}
+```
+
+#### Parameters
+
+| Name         | Type   | Required | Description                                                     |
+| ------------ | ------ | -------- | --------------------------------------------------------------- |
+| `source`     | string | Yes      | Source of the paper (e.g., `arxiv`, `semanticscholar`, `chive`) |
+| `externalId` | string | Yes      | External identifier for the paper                               |
+
+#### Response
+
+Returns empty object on success. Uses `INSERT ... ON CONFLICT DO NOTHING` so dismissing the same paper twice is a no-op.
 
 ### pub.chive.claiming.startClaimFromExternal
 

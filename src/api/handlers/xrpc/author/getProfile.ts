@@ -134,6 +134,7 @@ async function fetchProfileFromPDS(
           avatar?: { ref?: { $link?: string } };
           orcid?: string;
           affiliations?: { name: string; rorId?: string }[];
+          fieldUris?: string[];
           fields?: string[];
           nameVariants?: string[];
           previousAffiliations?: { name: string; rorId?: string }[];
@@ -163,7 +164,7 @@ async function fetchProfileFromPDS(
         result.orcid = chiveProfile.orcid;
         result.affiliations = chiveProfile.affiliations;
         result.affiliation = chiveProfile.affiliations?.[0]?.name; // Primary affiliation name for display
-        result.fields = chiveProfile.fields;
+        result.fields = chiveProfile.fieldUris ?? chiveProfile.fields;
 
         // Paper matching fields
         result.nameVariants = chiveProfile.nameVariants;
@@ -309,19 +310,26 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
     const { eprint, metrics } = c.get('services');
 
     const did = params.did as DID;
+    const cacheControl = c.req.header('Cache-Control') ?? '';
+    const skipCache = cacheControl.includes('no-cache');
 
-    logger.debug('Fetching author profile', { did });
+    logger.debug('Fetching author profile', { did, skipCache });
 
-    // Try to get cached profile first
+    // Try to get cached profile first (skip if Cache-Control: no-cache)
     const cacheKey = `chive:author:profile:${did}`;
-    const cached = await redis.get(cacheKey);
+    if (!skipCache) {
+      const cached = await redis.get(cacheKey);
 
-    if (cached) {
-      try {
-        return { encoding: 'application/json', body: JSON.parse(cached) as OutputSchema };
-      } catch {
-        // Invalid cache, continue to fetch
+      if (cached) {
+        try {
+          return { encoding: 'application/json', body: JSON.parse(cached) as OutputSchema };
+        } catch {
+          // Invalid cache, continue to fetch
+        }
       }
+    } else {
+      // Delete stale cache entry so subsequent requests get fresh data
+      await redis.del(cacheKey);
     }
 
     // Resolve DID to get PDS endpoint and handle
