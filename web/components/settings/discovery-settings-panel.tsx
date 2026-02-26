@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Sparkles,
   Quote,
@@ -11,6 +11,12 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
+  Shuffle,
+  ThumbsUp,
+  GitBranch,
+  UserCheck,
+  Eye,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,6 +32,8 @@ import {
   useUpdateDiscoverySettings,
   DEFAULT_DISCOVERY_SETTINGS,
 } from '@/lib/hooks/use-discovery';
+import type { DiscoverySettings } from '@/lib/hooks/use-discovery';
+import { FieldSearch, type FieldSelection } from '@/components/forms/field-search';
 import type { CitationNetworkDisplay } from '@/lib/api/schema';
 
 /**
@@ -121,60 +129,97 @@ function DiscoverySettingsSkeleton() {
  * @remarks
  * Allows users to configure their discovery preferences including
  * For You feed settings, related papers signals, and citation network display.
+ * Changes are collected locally and saved with an explicit Save button.
  */
 export function DiscoverySettingsPanel() {
   const { data: settings, isLoading } = useDiscoverySettings();
   const { mutate: updateSettings, isPending } = useUpdateDiscoverySettings();
 
-  // Use settings or defaults
-  const currentSettings = settings ?? DEFAULT_DISCOVERY_SETTINGS;
+  // Local draft state - user edits this, then saves explicitly
+  const [draft, setDraft] = useState<DiscoverySettings>(DEFAULT_DISCOVERY_SETTINGS);
+  const [initialized, setInitialized] = useState(false);
 
-  const handleToggle = (
-    key: keyof typeof currentSettings,
-    value: boolean | CitationNetworkDisplay
-  ) => {
-    updateSettings(
-      { [key]: value },
-      {
-        onError: (error) => {
-          toast.error('Failed to save', {
-            description: error.message || 'Could not update discovery settings',
-          });
-        },
-      }
-    );
-  };
+  // Followed fields with labels (separate from draft.followedFieldUris which only stores URIs)
+  const [followedFields, setFollowedFields] = useState<FieldSelection[]>([]);
 
-  const handleForYouSignal = (
-    signal: keyof typeof currentSettings.forYouSignals,
-    value: boolean
-  ) => {
-    updateSettings(
-      { forYouSignals: { [signal]: value } },
-      {
-        onError: (error) => {
-          toast.error('Failed to save', {
-            description: error.message || 'Could not update discovery settings',
-          });
-        },
-      }
-    );
-  };
+  // Sync from server settings when they load
+  useEffect(() => {
+    if (settings && !initialized) {
+      setDraft(settings);
+      setInitialized(true);
+    }
+  }, [settings, initialized]);
 
-  const handleRelatedSignal = (
-    signal: keyof typeof currentSettings.relatedPapersSignals,
-    value: boolean
-  ) => {
-    updateSettings(
-      { relatedPapersSignals: { [signal]: value } },
-      {
-        onError: (error) => {
-          toast.error('Failed to save', {
-            description: error.message || 'Could not update discovery settings',
-          });
-        },
-      }
-    );
+  // Resolve followed field labels when settings load
+  useEffect(() => {
+    const uris = settings?.followedFieldUris ?? [];
+    if (uris.length > 0 && followedFields.length === 0) {
+      setFollowedFields(uris.map((uri) => ({ uri, label: 'Loading...' })));
+      Promise.all(
+        uris.map(async (uri) => {
+          try {
+            const { api: publicApi } = await import('@/lib/api/client');
+            const response = await publicApi.pub.chive.graph.getNode({ id: uri });
+            return { uri, label: response.data.label ?? uri };
+          } catch {
+            return { uri, label: uri };
+          }
+        })
+      ).then((resolved) => setFollowedFields(resolved));
+    }
+  }, [settings?.followedFieldUris]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check if draft differs from saved settings
+  const isDirty = initialized && JSON.stringify(draft) !== JSON.stringify(settings);
+
+  // Local update helpers - modify draft only, don't save
+  const updateDraft = useCallback((partial: Partial<DiscoverySettings>) => {
+    setDraft((prev) => ({ ...prev, ...partial }));
+  }, []);
+
+  const updateDraftForYouSignal = useCallback((signal: string, value: boolean) => {
+    setDraft((prev) => ({
+      ...prev,
+      forYouSignals: { ...prev.forYouSignals, [signal]: value },
+    }));
+  }, []);
+
+  const updateDraftRelatedSignal = useCallback((signal: string, value: boolean) => {
+    setDraft((prev) => ({
+      ...prev,
+      relatedPapersSignals: { ...prev.relatedPapersSignals, [signal]: value },
+    }));
+  }, []);
+
+  const handleFollowedFieldAdd = useCallback(
+    (field: FieldSelection) => {
+      const updated = [...followedFields, field];
+      setFollowedFields(updated);
+      setDraft((prev) => ({ ...prev, followedFieldUris: updated.map((f) => f.uri) }));
+    },
+    [followedFields]
+  );
+
+  const handleFollowedFieldRemove = useCallback(
+    (field: FieldSelection) => {
+      const updated = followedFields.filter((f) => f.uri !== field.uri);
+      setFollowedFields(updated);
+      setDraft((prev) => ({ ...prev, followedFieldUris: updated.map((f) => f.uri) }));
+    },
+    [followedFields]
+  );
+
+  const handleSave = () => {
+    updateSettings(draft, {
+      onSuccess: () => {
+        toast.success('Discovery settings saved');
+      },
+      onError: (error) => {
+        toast.error('Failed to save', {
+          description: error.message || 'Could not update discovery settings',
+        });
+      },
+    });
   };
 
   if (isLoading) {
@@ -199,8 +244,8 @@ export function DiscoverySettingsPanel() {
             id="enablePersonalization"
             label="Enable Personalization"
             description="Use your profile and activity to improve recommendations"
-            checked={currentSettings.enablePersonalization}
-            onCheckedChange={(checked) => handleToggle('enablePersonalization', checked)}
+            checked={draft.enablePersonalization}
+            onCheckedChange={(checked) => updateDraft({ enablePersonalization: checked })}
             disabled={isPending}
           />
 
@@ -208,17 +253,17 @@ export function DiscoverySettingsPanel() {
             id="enableForYouFeed"
             label="Show For You Feed"
             description="Display personalized paper recommendations on your home page"
-            checked={currentSettings.enableForYouFeed}
-            onCheckedChange={(checked) => handleToggle('enableForYouFeed', checked)}
-            disabled={isPending || !currentSettings.enablePersonalization}
+            checked={draft.enableForYouFeed}
+            onCheckedChange={(checked) => updateDraft({ enableForYouFeed: checked })}
+            disabled={isPending || !draft.enablePersonalization}
           />
 
           <SettingToggle
             id="showRecommendationReasons"
             label="Show Recommendation Reasons"
             description="Display explanations for why papers are recommended"
-            checked={currentSettings.showRecommendationReasons}
-            onCheckedChange={(checked) => handleToggle('showRecommendationReasons', checked)}
+            checked={draft.showRecommendationReasons}
+            onCheckedChange={(checked) => updateDraft({ showRecommendationReasons: checked })}
             disabled={isPending}
           />
         </div>
@@ -235,9 +280,9 @@ export function DiscoverySettingsPanel() {
               label="Research Fields"
               description="Papers in your research areas"
               icon={Tag}
-              checked={currentSettings.forYouSignals.fields ?? true}
-              onCheckedChange={(checked) => handleForYouSignal('fields', checked)}
-              disabled={isPending || !currentSettings.enableForYouFeed}
+              checked={draft.forYouSignals.fields ?? true}
+              onCheckedChange={(checked) => updateDraftForYouSignal('fields', checked)}
+              disabled={isPending || !draft.enableForYouFeed}
             />
 
             <SettingToggle
@@ -245,9 +290,9 @@ export function DiscoverySettingsPanel() {
               label="Citations"
               description="Papers citing or related to your work"
               icon={Quote}
-              checked={currentSettings.forYouSignals.citations ?? true}
-              onCheckedChange={(checked) => handleForYouSignal('citations', checked)}
-              disabled={isPending || !currentSettings.enableForYouFeed}
+              checked={draft.forYouSignals.citations ?? true}
+              onCheckedChange={(checked) => updateDraftForYouSignal('citations', checked)}
+              disabled={isPending || !draft.enableForYouFeed}
             />
 
             <SettingToggle
@@ -255,9 +300,9 @@ export function DiscoverySettingsPanel() {
               label="Collaborators"
               description="Papers from your co-authors and collaborators"
               icon={Users}
-              checked={currentSettings.forYouSignals.collaborators ?? true}
-              onCheckedChange={(checked) => handleForYouSignal('collaborators', checked)}
-              disabled={isPending || !currentSettings.enableForYouFeed}
+              checked={draft.forYouSignals.collaborators ?? true}
+              onCheckedChange={(checked) => updateDraftForYouSignal('collaborators', checked)}
+              disabled={isPending || !draft.enableForYouFeed}
             />
 
             <SettingToggle
@@ -265,9 +310,9 @@ export function DiscoverySettingsPanel() {
               label="Trending"
               description="Popular papers in your fields"
               icon={TrendingUp}
-              checked={currentSettings.forYouSignals.trending ?? true}
-              onCheckedChange={(checked) => handleForYouSignal('trending', checked)}
-              disabled={isPending || !currentSettings.enableForYouFeed}
+              checked={draft.forYouSignals.trending ?? true}
+              onCheckedChange={(checked) => updateDraftForYouSignal('trending', checked)}
+              disabled={isPending || !draft.enableForYouFeed}
             />
           </div>
         </CollapsibleSection>
@@ -284,8 +329,8 @@ export function DiscoverySettingsPanel() {
               label="Citation Relationships"
               description="Papers that cite or are cited by this paper"
               icon={Quote}
-              checked={currentSettings.relatedPapersSignals.citations ?? true}
-              onCheckedChange={(checked) => handleRelatedSignal('citations', checked)}
+              checked={draft.relatedPapersSignals.citations ?? true}
+              onCheckedChange={(checked) => updateDraftRelatedSignal('citations', checked)}
               disabled={isPending}
             />
 
@@ -294,8 +339,33 @@ export function DiscoverySettingsPanel() {
               label="Topic Similarity"
               description="Papers on similar topics and concepts"
               icon={Tag}
-              checked={currentSettings.relatedPapersSignals.topics ?? true}
-              onCheckedChange={(checked) => handleRelatedSignal('topics', checked)}
+              checked={draft.relatedPapersSignals.topics ?? true}
+              onCheckedChange={(checked) => updateDraftRelatedSignal('topics', checked)}
+              disabled={isPending}
+            />
+
+            <SettingToggle
+              id="related-authors"
+              label="Author Overlap"
+              description="Papers sharing one or more authors"
+              icon={UserCheck}
+              checked={(draft.relatedPapersSignals as Record<string, boolean>).authors ?? true}
+              onCheckedChange={(checked) => updateDraftRelatedSignal('authors', checked)}
+              disabled={isPending}
+            />
+
+            <SettingToggle
+              id="related-bibcoupling"
+              label="Bibliographic Coupling"
+              description="Papers that cite the same references"
+              icon={GitBranch}
+              checked={
+                (draft.relatedPapersSignals as Record<string, boolean>).bibliographicCoupling ??
+                true
+              }
+              onCheckedChange={(checked) =>
+                updateDraftRelatedSignal('bibliographicCoupling', checked)
+              }
               disabled={isPending}
             />
           </div>
@@ -308,9 +378,9 @@ export function DiscoverySettingsPanel() {
           </p>
 
           <RadioGroup
-            value={currentSettings.citationNetworkDisplay}
+            value={draft.citationNetworkDisplay}
             onValueChange={(value) =>
-              handleToggle('citationNetworkDisplay', value as CitationNetworkDisplay)
+              updateDraft({ citationNetworkDisplay: value as CitationNetworkDisplay })
             }
             disabled={isPending}
             className="space-y-2"
@@ -339,13 +409,122 @@ export function DiscoverySettingsPanel() {
           </RadioGroup>
         </CollapsibleSection>
 
-        {/* Saving indicator */}
-        {isPending && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Saving...
-          </div>
-        )}
+        {/* Recommendation Diversity */}
+        <CollapsibleSection title="Recommendation Diversity" icon={Shuffle}>
+          <p className="text-sm text-muted-foreground mb-3">
+            Control how varied your recommendations are relative to your research fields.
+          </p>
+
+          <RadioGroup
+            value={draft.recommendationDiversity ?? 'medium'}
+            onValueChange={(value) =>
+              updateDraft({ recommendationDiversity: value as 'low' | 'medium' | 'high' })
+            }
+            disabled={isPending}
+            className="space-y-2"
+          >
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem value="low" id="diversity-low" />
+              <Label htmlFor="diversity-low" className="cursor-pointer">
+                <span className="font-medium">Low</span>
+                <p className="text-xs text-muted-foreground">Closely match your fields</p>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem value="medium" id="diversity-medium" />
+              <Label htmlFor="diversity-medium" className="cursor-pointer">
+                <span className="font-medium">Medium</span>
+                <p className="text-xs text-muted-foreground">
+                  Balance between relevance and variety
+                </p>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-3">
+              <RadioGroupItem value="high" id="diversity-high" />
+              <Label htmlFor="diversity-high" className="cursor-pointer">
+                <span className="font-medium">High</span>
+                <p className="text-xs text-muted-foreground">
+                  Include more interdisciplinary papers
+                </p>
+              </Label>
+            </div>
+          </RadioGroup>
+        </CollapsibleSection>
+
+        {/* Minimum Endorsement Threshold */}
+        <CollapsibleSection title="Quality Filter" icon={ThumbsUp}>
+          <p className="text-sm text-muted-foreground mb-3">
+            Set a minimum number of endorsements for papers to appear in your recommendations.
+          </p>
+
+          <RadioGroup
+            value={String(draft.minimumEndorsementThreshold ?? 0)}
+            onValueChange={(value) =>
+              updateDraft({ minimumEndorsementThreshold: parseInt(value, 10) })
+            }
+            disabled={isPending}
+            className="space-y-2"
+          >
+            {[0, 1, 3, 5].map((threshold) => (
+              <div key={threshold} className="flex items-center space-x-3">
+                <RadioGroupItem value={String(threshold)} id={`endorsement-${threshold}`} />
+                <Label htmlFor={`endorsement-${threshold}`} className="cursor-pointer">
+                  <span className="font-medium">
+                    {threshold === 0 ? 'No minimum' : `${threshold}+ endorsements`}
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    {threshold === 0
+                      ? 'Show all papers regardless of endorsements'
+                      : `Only show papers with at least ${threshold} endorsement${threshold > 1 ? 's' : ''}`}
+                  </p>
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </CollapsibleSection>
+
+        {/* Followed Fields */}
+        <CollapsibleSection title="Followed Fields" icon={Eye}>
+          <p className="text-sm text-muted-foreground mb-3">
+            Follow fields to see their trending papers on the Trending page, separate from the
+            fields you work in. For example, a computational linguist might follow NLP without
+            listing it as a work field.
+          </p>
+
+          <FieldSearch
+            selectedFields={followedFields}
+            onFieldAdd={handleFollowedFieldAdd}
+            onFieldRemove={handleFollowedFieldRemove}
+            maxFields={50}
+            disabled={isPending}
+          />
+
+          <SettingToggle
+            id="followingTabIncludesWorkFields"
+            label="Include work fields in Following tab"
+            description="When enabled, the Following tab on Trending also shows papers from your work fields"
+            checked={draft.followingTabIncludesWorkFields ?? false}
+            onCheckedChange={(checked) => updateDraft({ followingTabIncludesWorkFields: checked })}
+            disabled={isPending}
+          />
+        </CollapsibleSection>
+
+        {/* Save Button */}
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={handleSave} disabled={isPending || !isDirty}>
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Settings
+              </>
+            )}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

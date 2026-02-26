@@ -77,6 +77,9 @@ async function fetchWithAuth<T>(path: string, options: RequestInit = {}): Promis
 
 /**
  * Import source type from API.
+ *
+ * @remarks
+ * Open union to match lexicon definition, allowing for future extensions.
  */
 export type ImportSource =
   | 'arxiv'
@@ -90,7 +93,8 @@ export type ImportSource =
   | 'osf'
   | 'zenodo'
   | 'philpapers'
-  | 'other';
+  | 'other'
+  | (string & {});
 
 /**
  * External eprint author.
@@ -131,6 +135,14 @@ export interface AutocompleteSuggestion {
 }
 
 /**
+ * Per-source error from a federated search.
+ */
+export interface SearchSourceError {
+  readonly source: string;
+  readonly message: string;
+}
+
+/**
  * Search results response.
  */
 export interface SearchEprintsResponse {
@@ -138,6 +150,7 @@ export interface SearchEprintsResponse {
   readonly facets?: {
     readonly sources: Record<string, number>;
   };
+  readonly sourceErrors?: readonly SearchSourceError[];
 }
 
 /**
@@ -343,6 +356,7 @@ export function useEprintSearch(query: string, options: UseEprintSearchOptions =
   return {
     eprints: result.data?.eprints ?? [],
     facets: result.data?.facets,
+    sourceErrors: result.data?.sourceErrors,
     isLoading: result.isLoading,
     isFetching: result.isFetching,
     error: result.error,
@@ -586,6 +600,7 @@ export function useEprintSearchState(options: UseEprintSearchStateOptions = {}) 
     // Search results
     searchResults: search.eprints,
     facets: search.facets,
+    sourceErrors: search.sourceErrors,
     availableSources,
     isSearchLoading: search.isLoading,
     isSearchFetching: search.isFetching,

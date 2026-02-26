@@ -469,6 +469,101 @@ export function usePaperSuggestions(options: UsePaperSuggestionsOptions = {}) {
   });
 }
 
+/**
+ * Mutation hook to dismiss a paper suggestion.
+ *
+ * @remarks
+ * Records that the user does not want to see a particular paper suggestion.
+ * Uses optimistic updates to remove the paper from the list immediately.
+ *
+ * @returns Mutation for dismissing a suggestion
+ */
+export function useDismissSuggestion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      source,
+      externalId,
+    }: {
+      source: string;
+      externalId: string;
+    }): Promise<{ success: boolean }> => {
+      const agent = getCurrentAgent();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (agent) {
+        try {
+          const token = await getServiceAuthToken(agent, 'pub.chive.claiming.dismissSuggestion');
+          headers['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+          claimingLogger.error('Failed to get service auth token for dismiss', error, {
+            source,
+            externalId,
+          });
+        }
+      }
+
+      const baseUrl = getApiBaseUrl();
+      const url = `${baseUrl}/xrpc/pub.chive.claiming.dismissSuggestion`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ source, externalId }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new APIError(
+          errorText || 'Failed to dismiss suggestion',
+          response.status,
+          '/xrpc/pub.chive.claiming.dismissSuggestion'
+        );
+      }
+
+      return (await response.json()) as { success: boolean };
+    },
+    onMutate: async ({ source, externalId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: claimingKeys.all });
+
+      // Snapshot current suggestions cache entries
+      const previousData = queryClient.getQueriesData<GetSuggestionsResponse>({
+        queryKey: [...claimingKeys.all, 'suggestions'],
+      });
+
+      // Optimistically remove the dismissed paper from all suggestion caches
+      queryClient.setQueriesData<GetSuggestionsResponse>(
+        { queryKey: [...claimingKeys.all, 'suggestions'] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            papers: old.papers.filter((p) => !(p.source === source && p.externalId === externalId)),
+          };
+        }
+      );
+
+      return { previousData };
+    },
+    onError: (_error, _variables, context) => {
+      // Roll back to previous data on error
+      if (context?.previousData) {
+        for (const [queryKey, data] of context.previousData) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
+    onSettled: () => {
+      // Refetch suggestions to sync with server
+      queryClient.invalidateQueries({ queryKey: [...claimingKeys.all, 'suggestions'] });
+    },
+  });
+}
+
 // =============================================================================
 // CO-AUTHOR CLAIM HOOKS
 // =============================================================================

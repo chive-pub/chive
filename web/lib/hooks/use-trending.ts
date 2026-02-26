@@ -9,7 +9,7 @@ import type { GetTrendingResponse } from '@/lib/api/schema';
  *
  * @remarks
  * Follows TanStack Query best practices for cache key management.
- * Uses the time window as part of the key for separate caching per window.
+ * Uses the time window and field URIs as part of the key for separate caching.
  *
  * @example
  * ```typescript
@@ -25,6 +25,9 @@ export const trendingKeys = {
   all: ['trending'] as const,
   /** Key for trending query with specific time window */
   window: (window: '24h' | '7d' | '30d') => [...trendingKeys.all, window] as const,
+  /** Key for trending query with time window and field URIs */
+  personalized: (window: '24h' | '7d' | '30d', fieldUris: string[]) =>
+    [...trendingKeys.all, window, 'fields', ...fieldUris.slice().sort()] as const,
 };
 
 /**
@@ -37,6 +40,8 @@ interface UseTrendingParams {
   limit?: number;
   /** Cursor for pagination */
   cursor?: string;
+  /** Optional field URIs to flag matching eprints for personalization */
+  fieldUris?: string[];
 }
 
 /**
@@ -45,6 +50,8 @@ interface UseTrendingParams {
  * @remarks
  * Uses TanStack Query with a 1-minute stale time for near-real-time updates.
  * Trending is calculated based on views within the specified time window.
+ * When fieldUris are provided, the API flags entries that match the user's
+ * fields with `inUserFields: true` and sorts them first.
  *
  * @example
  * ```tsx
@@ -62,22 +69,27 @@ interface UseTrendingParams {
  * );
  * ```
  *
- * @param params - Query parameters (window, limit, cursor)
+ * @param params - Query parameters (window, limit, cursor, fieldUris)
  * @returns Query result with trending eprints, loading state, and error
  *
  * @throws {Error} When the trending API request fails
  */
 export function useTrending(params: UseTrendingParams = {}) {
   const window = params.window ?? '7d';
+  const fieldUris = params.fieldUris;
+  const hasFields = fieldUris && fieldUris.length > 0;
 
   return useQuery({
-    queryKey: trendingKeys.window(window),
+    queryKey: hasFields
+      ? trendingKeys.personalized(window, fieldUris)
+      : trendingKeys.window(window),
     queryFn: async (): Promise<GetTrendingResponse> => {
       try {
         const response = await api.pub.chive.metrics.getTrending({
           ...params,
           window,
           limit: params.limit ?? 20,
+          ...(hasFields ? { fieldUris } : {}),
         });
         return response.data;
       } catch (error) {
