@@ -39,6 +39,10 @@ const DEFAULT_DISCOVERY_SETTINGS: OutputSchema = {
   },
   citationNetworkDisplay: 'preview',
   showRecommendationReasons: true,
+  recommendationDiversity: 'medium',
+  minimumEndorsementThreshold: 0,
+  followedFieldUris: [],
+  followingTabIncludesWorkFields: false,
 };
 
 /**
@@ -59,6 +63,10 @@ interface RawPDSSettings {
   };
   citationNetworkDisplay?: 'hidden' | 'preview' | 'expanded';
   showRecommendationReasons?: boolean;
+  recommendationDiversity?: 'low' | 'medium' | 'high';
+  minimumEndorsementThreshold?: number;
+  followedFieldUris?: string[];
+  followingTabIncludesWorkFields?: boolean;
 }
 
 /**
@@ -91,6 +99,14 @@ function normalizeSettings(raw: RawPDSSettings): OutputSchema {
       raw.citationNetworkDisplay ?? DEFAULT_DISCOVERY_SETTINGS.citationNetworkDisplay,
     showRecommendationReasons:
       raw.showRecommendationReasons ?? DEFAULT_DISCOVERY_SETTINGS.showRecommendationReasons,
+    recommendationDiversity:
+      raw.recommendationDiversity ?? DEFAULT_DISCOVERY_SETTINGS.recommendationDiversity,
+    minimumEndorsementThreshold:
+      raw.minimumEndorsementThreshold ?? DEFAULT_DISCOVERY_SETTINGS.minimumEndorsementThreshold,
+    followedFieldUris: raw.followedFieldUris ?? DEFAULT_DISCOVERY_SETTINGS.followedFieldUris,
+    followingTabIncludesWorkFields:
+      raw.followingTabIncludesWorkFields ??
+      DEFAULT_DISCOVERY_SETTINGS.followingTabIncludesWorkFields,
   };
 }
 

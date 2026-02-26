@@ -266,6 +266,44 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
           | 'accepted'
           | 'published'
           | (string & {}),
+        publishedVersion: result.publishedVersion
+          ? {
+              ...result.publishedVersion,
+              ...(result.publishedVersion.publishedAt != null && {
+                publishedAt: new Date(result.publishedVersion.publishedAt).toISOString(),
+              }),
+            }
+          : undefined,
+        externalIds: result.externalIds,
+        relatedWorks: result.relatedWorks
+          ? result.relatedWorks.map((rw) => ({ ...rw }))
+          : undefined,
+        repositories: result.repositories
+          ? {
+              ...result.repositories,
+              ...(result.repositories.preregistration && {
+                preregistration: {
+                  ...result.repositories.preregistration,
+                  ...(result.repositories.preregistration.registrationDate != null && {
+                    registrationDate: new Date(
+                      result.repositories.preregistration.registrationDate
+                    ).toISOString(),
+                  }),
+                },
+              }),
+            }
+          : undefined,
+        funding: result.funding ? result.funding.map((f) => ({ ...f })) : undefined,
+        conferencePresentation: result.conferencePresentation
+          ? {
+              ...result.conferencePresentation,
+              ...(result.conferencePresentation.presentationDate != null && {
+                presentationDate: new Date(
+                  result.conferencePresentation.presentationDate
+                ).toISOString(),
+              }),
+            }
+          : undefined,
         createdAt: result.createdAt.toISOString(),
       },
       indexedAt: result.indexedAt.toISOString(),

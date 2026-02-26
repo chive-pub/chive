@@ -71,6 +71,7 @@ export const getSuggestions: XRPCMethod<QueryParams, void, OutputSchema> = {
       source: p.source,
       matchScore: p.matchScore,
       matchReason: p.matchReason,
+      chiveUri: p.chiveUri,
     }));
 
     logger.info('Paper suggestions returned', {

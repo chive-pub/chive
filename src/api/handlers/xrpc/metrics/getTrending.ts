@@ -15,6 +15,7 @@ import type {
   TrendingEntry,
 } from '../../../../lexicons/generated/types/pub/chive/metrics/getTrending.js';
 import type { AtUri } from '../../../../types/atproto.js';
+import { expandFieldsWithNarrower } from '../../../../utils/field-expansion.js';
 import { extractPlainText } from '../../../../utils/rich-text.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
@@ -27,16 +28,21 @@ import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: false,
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
-    const { metrics, eprint, graphAlgorithmCache } = c.get('services');
+    const { metrics, eprint, graph, graphAlgorithmCache } = c.get('services');
     const logger = c.get('logger');
 
     const limit = params.limit ?? 20;
     const window: QueryParams['window'] = params.window ?? '7d';
 
+    // Expand field URIs to include child fields for consistent matching
+    const expandedFieldUris = await expandFieldsWithNarrower(graph, params.fieldUris);
+    const fieldUriSet = expandedFieldUris.length > 0 ? new Set(expandedFieldUris) : null;
+
     logger.debug('Getting trending eprints', {
       window,
       limit,
       usingCache: !!graphAlgorithmCache,
+      fieldUriCount: fieldUriSet?.size ?? 0,
     });
 
     // Try graph algorithm cache first for faster response
@@ -156,9 +162,12 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
           }),
           submittedBy: eprintData.submittedBy,
           paperDid: eprintData.paperDid,
-          fields: undefined as
-            | { id?: string; uri: string; label: string; parentUri?: string }[]
-            | undefined,
+          fields: eprintData.fields?.map((f) => ({
+            id: f.id,
+            uri: f.uri,
+            label: f.label,
+            parentUri: f.parentUri,
+          })),
           license: eprintData.license,
           createdAt: eprintData.createdAt.toISOString(),
           indexedAt: eprintData.indexedAt.toISOString(),
@@ -180,12 +189,37 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
           rank: index + 1,
           // Lexicon expects velocity as integer percentage (scaled from 0-1 ratio)
           velocity: entry.velocity !== undefined ? Math.round(entry.velocity * 100) : undefined,
+          inUserFields: undefined as boolean | undefined,
         };
       })
     );
 
     // Filter out null entries and build response
     const validEntries = enrichedTrending.filter((e): e is NonNullable<typeof e> => e !== null);
+
+    // If fieldUris were provided, flag entries that match and sort in-field first
+    if (fieldUriSet) {
+      for (const entry of validEntries) {
+        const eprintFieldUris = entry.fields?.map((f) => f.uri) ?? [];
+        entry.inUserFields = eprintFieldUris.some((uri) => fieldUriSet.has(uri));
+      }
+
+      // Stable sort: in-field entries first, preserving original rank order within groups
+      validEntries.sort((a, b) => {
+        const aInField = a.inUserFields ? 1 : 0;
+        const bInField = b.inUserFields ? 1 : 0;
+        if (aInField !== bInField) return bInField - aInField;
+        return a.rank - b.rank;
+      });
+
+      // Re-assign ranks after sorting
+      for (let i = 0; i < validEntries.length; i++) {
+        const entry = validEntries[i];
+        if (entry) {
+          entry.rank = i + 1;
+        }
+      }
+    }
 
     const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
     const hasMore = validEntries.length >= limit;

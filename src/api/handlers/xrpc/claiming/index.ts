@@ -14,6 +14,7 @@ import { approveClaim } from './approveClaim.js';
 import { approveCoauthor } from './approveCoauthor.js';
 import { autocomplete } from './autocomplete.js';
 import { completeClaim } from './completeClaim.js';
+import { dismissSuggestion } from './dismissSuggestion.js';
 import { fetchExternalPdfEndpoint } from './fetchExternalPdf.js';
 import { findClaimable } from './findClaimable.js';
 import { getClaim } from './getClaim.js';
@@ -35,6 +36,7 @@ export { approveClaim } from './approveClaim.js';
 export { approveCoauthor } from './approveCoauthor.js';
 export { autocomplete } from './autocomplete.js';
 export { completeClaim } from './completeClaim.js';
+export { dismissSuggestion } from './dismissSuggestion.js';
 export { findClaimable } from './findClaimable.js';
 export { getClaim } from './getClaim.js';
 export { getCoauthorRequests } from './getCoauthorRequests.js';
@@ -64,6 +66,7 @@ export const claimingMethods: Record<string, XRPCMethod<any, any, any>> = {
   'pub.chive.claiming.approveCoauthor': approveCoauthor,
   'pub.chive.claiming.autocomplete': autocomplete,
   'pub.chive.claiming.completeClaim': completeClaim,
+  'pub.chive.claiming.dismissSuggestion': dismissSuggestion,
   'pub.chive.claiming.findClaimable': findClaimable,
   'pub.chive.claiming.getClaim': getClaim,
   'pub.chive.claiming.getCoauthorRequests': getCoauthorRequests,

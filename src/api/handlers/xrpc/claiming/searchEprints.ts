@@ -50,12 +50,20 @@ export const searchEprints: XRPCMethod<QueryParams, void, OutputSchema> = {
       : undefined;
 
     // Perform federated search
-    const results = await claiming.searchAllSources({
+    const { results, sourceErrors } = await claiming.searchAllSources({
       query: params.query,
       author: params.author,
       sources: sourcesFilter,
       limit: params.limit ?? 20,
     });
+
+    if (sourceErrors.length > 0) {
+      logger.warn('Some sources failed during search', {
+        sourceErrors,
+        query: params.query,
+        author: params.author,
+      });
+    }
 
     // Build facets (result counts by source)
     const sourceCounts: Record<string, number> = {};
@@ -138,6 +146,7 @@ export const searchEprints: XRPCMethod<QueryParams, void, OutputSchema> = {
         facets: {
           sources: sourceCounts,
         },
+        sourceErrors: sourceErrors.length > 0 ? [...sourceErrors] : undefined,
       },
     };
   },

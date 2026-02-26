@@ -82,6 +82,7 @@ export interface ReviewView {
   readonly cid: string;
   readonly author: string;
   readonly subject: AtUri;
+  readonly eprintTitle?: string;
   readonly text: string;
   /** Rich text body array */
   readonly body?: readonly unknown[];
@@ -518,7 +519,7 @@ export class ReviewService {
       }>(
         `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
-         WHERE eprint_uri = $1
+         WHERE eprint_uri = $1 AND deleted_at IS NULL
          ORDER BY created_at DESC`,
         [eprintUri]
       );
@@ -556,7 +557,7 @@ export class ReviewService {
       }>(
         `SELECT c as contribution, COUNT(*) as count
          FROM endorsements_index, unnest(contributions) as c
-         WHERE eprint_uri = $1
+         WHERE eprint_uri = $1 AND deleted_at IS NULL
          GROUP BY c`,
         [eprintUri]
       );
@@ -565,7 +566,7 @@ export class ReviewService {
       const uniqueResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(DISTINCT endorser_did) as count
          FROM endorsements_index
-         WHERE eprint_uri = $1`,
+         WHERE eprint_uri = $1 AND deleted_at IS NULL`,
         [eprintUri]
       );
 
@@ -573,7 +574,7 @@ export class ReviewService {
       const totalResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(*) as count
          FROM endorsements_index
-         WHERE eprint_uri = $1`,
+         WHERE eprint_uri = $1 AND deleted_at IS NULL`,
         [eprintUri]
       );
 
@@ -585,7 +586,7 @@ export class ReviewService {
       }>(
         `SELECT DISTINCT ON (endorser_did) endorser_did, contributions, created_at
          FROM endorsements_index
-         WHERE eprint_uri = $1
+         WHERE eprint_uri = $1 AND deleted_at IS NULL
          ORDER BY endorser_did, created_at DESC
          LIMIT 5`,
         [eprintUri]
@@ -645,7 +646,7 @@ export class ReviewService {
       }>(
         `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
-         WHERE eprint_uri = $1 AND endorser_did = $2
+         WHERE eprint_uri = $1 AND endorser_did = $2 AND deleted_at IS NULL
          LIMIT 1`,
         [eprintUri, userDid]
       );
@@ -693,7 +694,7 @@ export class ReviewService {
       const countResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(*) as count
          FROM endorsements_index
-         WHERE eprint_uri = $1`,
+         WHERE eprint_uri = $1 AND deleted_at IS NULL`,
         [eprintUri]
       );
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
@@ -701,7 +702,7 @@ export class ReviewService {
       // Build query with cursor support
       let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
-         WHERE eprint_uri = $1`;
+         WHERE eprint_uri = $1 AND deleted_at IS NULL`;
       const params: unknown[] = [eprintUri];
 
       if (options.cursor) {
@@ -780,7 +781,7 @@ export class ReviewService {
       const countResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(*) as count
          FROM endorsements_index
-         WHERE endorser_did = $1`,
+         WHERE endorser_did = $1 AND deleted_at IS NULL`,
         [endorserDid]
       );
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
@@ -788,7 +789,7 @@ export class ReviewService {
       // Build query with cursor support
       let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
-         WHERE endorser_did = $1`;
+         WHERE endorser_did = $1 AND deleted_at IS NULL`;
       const params: unknown[] = [endorserDid];
 
       if (options.cursor) {
@@ -1003,22 +1004,25 @@ export class ReviewService {
       );
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
-      // Get reviews with reply counts
+      // Get reviews with reply counts and eprint titles
       const result = await this.pool.query<{
         uri: string;
         cid: string;
         reviewer_did: string;
         eprint_uri: string;
+        eprint_title: string | null;
         text: string;
         parent_comment: string | null;
         created_at: Date;
         reply_count: number;
       }>(
         `SELECT r.uri, r.cid, r.reviewer_did, r.eprint_uri,
+                e.title as eprint_title,
                 COALESCE(r.body->0->>'content', '') as text,
                 r.parent_comment, r.created_at,
                 COALESCE((SELECT COUNT(*) FROM reviews_index r2 WHERE r2.parent_comment = r.uri), 0)::int as reply_count
          FROM reviews_index r
+         LEFT JOIN eprints_index e ON e.uri = r.eprint_uri
          WHERE r.reviewer_did = $1
          ORDER BY r.created_at DESC
          LIMIT $2 OFFSET $3`,
@@ -1030,6 +1034,7 @@ export class ReviewService {
         cid: row.cid,
         author: row.reviewer_did,
         subject: row.eprint_uri as AtUri,
+        eprintTitle: row.eprint_title ?? undefined,
         text: row.text,
         parent: (row.parent_comment as AtUri) ?? undefined,
         createdAt: new Date(row.created_at),
@@ -1189,7 +1194,8 @@ export class ReviewService {
          FROM endorsements_index en
          INNER JOIN eprints_index e ON en.eprint_uri = e.uri
          WHERE e.authors @> $1::jsonb
-           AND en.endorser_did != $2`,
+           AND en.endorser_did != $2
+           AND en.deleted_at IS NULL`,
         [JSON.stringify([{ did: authorDid }]), authorDid]
       );
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
@@ -1210,7 +1216,8 @@ export class ReviewService {
         INNER JOIN eprints_index e ON en.eprint_uri = e.uri
         LEFT JOIN authors_index a ON en.endorser_did = a.did
         WHERE e.authors @> $1::jsonb
-          AND en.endorser_did != $2`;
+          AND en.endorser_did != $2
+          AND en.deleted_at IS NULL`;
       const params: unknown[] = [JSON.stringify([{ did: authorDid }]), authorDid];
 
       if (options.cursor) {
