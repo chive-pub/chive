@@ -21,6 +21,9 @@ import {
   SupplementaryPanel,
   FundingPanel,
   RepositoriesPanel,
+  ExternalIdsPanel,
+  RelatedWorksPanel,
+  ConferencePanel,
   SchemaMigrationBanner,
   DeleteEprintDialog,
   PaperAuthGate,
@@ -665,23 +668,32 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
       />
 
       {/* Publication status badge */}
-      {eprint.publicationStatus &&
-        eprint.publicationStatus !== 'preprint' &&
-        eprint.publicationStatus !== 'eprint' && (
-          <PublicationBadge
-            status={
-              eprint.publicationStatus as
-                | 'under_review'
-                | 'revision_requested'
-                | 'accepted'
-                | 'in_press'
-                | 'published'
-                | 'retracted'
-            }
-            publishedVersion={eprint.publishedVersion}
-            variant="card"
-          />
-        )}
+      {/* Show when status is explicitly set beyond eprint/preprint, OR when publishedVersion exists */}
+      {(eprint.publishedVersion?.doi ||
+        eprint.publishedVersion?.url ||
+        (eprint.publicationStatus &&
+          eprint.publicationStatus !== 'preprint' &&
+          eprint.publicationStatus !== 'eprint')) && (
+        <PublicationBadge
+          status={
+            (eprint.publicationStatus &&
+            eprint.publicationStatus !== 'eprint' &&
+            eprint.publicationStatus !== 'preprint'
+              ? eprint.publicationStatus
+              : eprint.publishedVersion?.doi || eprint.publishedVersion?.url
+                ? 'published'
+                : (eprint.publicationStatus ?? 'eprint')) as
+              | 'under_review'
+              | 'revision_requested'
+              | 'accepted'
+              | 'in_press'
+              | 'published'
+              | 'retracted'
+          }
+          publishedVersion={eprint.publishedVersion}
+          variant="card"
+        />
+      )}
 
       {/* Version selector (if multiple versions) */}
       {eprint.versions && eprint.versions.length > 1 && (
@@ -1190,6 +1202,10 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           {/* No separator: EnrichmentPanel returns null when no data */}
           <EnrichmentPanel eprintUri={uri} />
 
+          {/* Conference presentation */}
+          {/* No separator: ConferencePanel returns null when no data */}
+          <ConferencePanel conferencePresentation={eprint.conferencePresentation} />
+
           {/* Funding sources */}
           {eprint.funding && eprint.funding.length > 0 && (
             <>
@@ -1245,6 +1261,14 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               <RepositoriesPanel repositories={eprint.repositories} />
             </>
           )}
+
+          {/* Related works */}
+          {/* No separator: RelatedWorksPanel returns null when empty */}
+          <RelatedWorksPanel relatedWorks={eprint.relatedWorks} />
+
+          {/* External identifiers */}
+          {/* No separator: ExternalIdsPanel returns null when no IDs */}
+          <ExternalIdsPanel externalIds={eprint.externalIds} />
 
           {/* Linked resources (GitHub, Zenodo, etc.) */}
           {/* No separator: IntegrationPanel returns null when no data */}

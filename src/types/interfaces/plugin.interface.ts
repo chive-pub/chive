@@ -1308,6 +1308,18 @@ export interface ExternalSearchQuery {
    * Filter by categories/subjects (source-specific).
    */
   readonly categories?: readonly string[];
+
+  /**
+   * Source-specific author profile ID for direct author lookup.
+   *
+   * @remarks
+   * When provided, plugins that support profile-based search (e.g., OpenReview)
+   * can use this to fetch papers directly by author ID instead of text search.
+   * Keys are source names, values are profile IDs.
+   *
+   * @example { openreview: "~Aaron_Steven_White1", arxiv: "white_a_1" }
+   */
+  readonly authorProfileIds?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -1886,4 +1898,13 @@ export interface IClaimingService {
    * @param requestId - Request ID
    */
   getCoauthorRequest(requestId: number): Promise<CoauthorClaimRequest | null>;
+
+  /**
+   * Dismisses a paper suggestion so it is not shown again.
+   *
+   * @param userDid - DID of the user dismissing the suggestion
+   * @param source - External source of the paper (e.g., 'arxiv')
+   * @param externalId - Source-specific identifier of the paper
+   */
+  dismissSuggestion(userDid: string, source: string, externalId: string): Promise<void>;
 }

@@ -209,7 +209,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
     this.rateLimitDelayMs = 3000;
 
     this.logger.info('arXiv plugin initialized (search-based)', {
-      searchEndpoint: 'http://export.arxiv.org/api/query',
+      searchEndpoint: 'https://export.arxiv.org/api/query',
       rateLimit: `${this.rateLimitDelayMs / 1000}s between requests`,
     });
 
@@ -670,8 +670,17 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
     }
 
     if (query.title) {
-      // Search title field with the query text
-      searchTerms.push(`ti:${encodeURIComponent(query.title)}`);
+      // Split title into individual words and search each with ti: prefix.
+      // arXiv treats spaces after a field prefix as delimiters between
+      // separate search terms, so "ti:word1 word2" searches ti:word1 OR all:word2.
+      // Joining as "ti:word1+AND+ti:word2" ensures all words match in the title.
+      const words = query.title
+        .split(/\s+/)
+        .filter((w) => w.length > 0)
+        .map((w) => `ti:${encodeURIComponent(w)}`);
+      if (words.length > 0) {
+        searchTerms.push(words.join('+AND+'));
+      }
     }
 
     if (query.categories && query.categories.length > 0) {
@@ -689,7 +698,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
     const maxResults = query.limit ?? 10;
 
     // Sort by submission date, newest first
-    return `http://export.arxiv.org/api/query?search_query=${searchQuery}&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
+    return `https://export.arxiv.org/api/query?search_query=${searchQuery}&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
   }
 
   /**

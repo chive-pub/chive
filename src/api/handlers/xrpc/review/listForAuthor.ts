@@ -50,6 +50,7 @@ export const listForAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
         handle: 'unknown', // Handle would need DID resolution
       },
       eprintUri: item.subject as string,
+      eprintTitle: item.eprintTitle,
       content: item.text,
       body: undefined,
       target: undefined,

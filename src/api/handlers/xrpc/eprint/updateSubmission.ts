@@ -149,6 +149,11 @@ export const updateSubmission: XRPCMethod<void, InputSchema, OutputSchema> = {
       did: user.did,
       hasAuthors: !!authors,
       authorCount: authors?.length,
+      hasPublishedVersion: !!input.publishedVersion,
+      hasExternalIds: !!input.externalIds,
+      hasRepositories: !!input.repositories,
+      hasConferencePresentation: !!input.conferencePresentation,
+      hasFunding: !!input.funding,
     });
 
     // Fetch the eprint to verify ownership and get current version

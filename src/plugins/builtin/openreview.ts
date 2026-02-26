@@ -826,6 +826,16 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
       return [];
     }
 
+    // Use profile-based author lookup when an OpenReview profile ID is available.
+    // This is far more accurate than text search for finding a specific author's papers.
+    const openReviewProfileId = query.authorProfileIds?.openreview;
+    if (openReviewProfileId) {
+      const papers = await this.getAuthorSubmissions(openReviewProfileId, {
+        limit: query.limit,
+      });
+      return papers.map((paper) => this.paperToExternalEprint(paper));
+    }
+
     await this.rateLimit();
 
     const searchUrl = this.buildSearchUrl(query);
@@ -906,7 +916,8 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
     }
 
     if (query.author) {
-      searchTerms.push(query.author);
+      // Quote multi-word author names for exact phrase matching
+      searchTerms.push(query.author.includes(' ') ? `"${query.author}"` : query.author);
     }
 
     if (searchTerms.length > 0) {

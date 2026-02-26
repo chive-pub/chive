@@ -50,7 +50,7 @@ interface OsfEprintResponse {
  */
 interface OsfEprint {
   id: string;
-  type: 'eprints';
+  type: 'preprints' | 'eprints';
   attributes: {
     title: string;
     description?: string;
@@ -59,16 +59,24 @@ interface OsfEprint {
     date_published?: string;
     doi?: string;
     is_published: boolean;
-    is_eprint_orphan: boolean;
+    is_preprint_orphan?: boolean;
+    is_eprint_orphan?: boolean;
     license_record?: {
       copyright_holders: string[];
       year: string;
     };
     tags?: string[];
-    subjects?: {
-      id: string;
-      text: string;
-    }[];
+    // OSF v2 preprints returns subjects as nested arrays: [[{id,text},...],...]
+    subjects?: (
+      | {
+          id: string;
+          text: string;
+        }
+      | {
+          id: string;
+          text: string;
+        }[]
+    )[];
   };
   relationships: {
     contributors: {
@@ -89,6 +97,7 @@ interface OsfEprint {
   links: {
     self: string;
     html: string;
+    preprint_doi?: string;
     eprint_doi?: string;
   };
 }
@@ -286,7 +295,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
    */
   async *fetchEprints(options?: FetchOptions): AsyncIterable<ExternalEprint> {
     let nextUrl: string | null =
-      `${this.API_BASE_URL}/eprints/?filter[provider]=${this.PROVIDER_ID}&sort=-date_created`;
+      `${this.API_BASE_URL}/preprints/?filter[provider]=${this.PROVIDER_ID}&sort=-date_created`;
 
     // If cursor provided, use it as the next URL
     if (options?.cursor) {
@@ -359,13 +368,13 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
    * @returns Eprint ID or null
    */
   override parseExternalId(url: string): string | null {
-    // Match psyarxiv.com/{id} or osf.io/eprints/psyarxiv/{id}
-    const psyarxivMatch = /psyarxiv\.com\/([a-z0-9]+)/i.exec(url);
+    // Match psyarxiv.com/{id} or osf.io/preprints/psyarxiv/{id}
+    const psyarxivMatch = /psyarxiv\.com\/([a-z0-9_]+)/i.exec(url);
     if (psyarxivMatch?.[1]) {
       return psyarxivMatch[1];
     }
 
-    const osfMatch = /osf\.io\/eprints\/psyarxiv\/([a-z0-9]+)/i.exec(url);
+    const osfMatch = /osf\.io\/(?:preprints|eprints)\/psyarxiv\/([a-z0-9_]+)/i.exec(url);
     return osfMatch?.[1] ?? null;
   }
 
@@ -380,8 +389,18 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
       // Fetch contributors to get author names
       const authors = await this.fetchContributors(eprint);
 
-      // Extract subjects as categories
-      const subjects = eprint.attributes.subjects?.map((s) => s.text) ?? [];
+      // Extract subjects as categories. OSF v2 preprints returns nested arrays:
+      // [[{id,text},{id,text}], [{id,text}]] - flatten and deduplicate.
+      const subjects: string[] = [];
+      for (const entry of eprint.attributes.subjects ?? []) {
+        if (Array.isArray(entry)) {
+          for (const s of entry) {
+            if (s.text && !subjects.includes(s.text)) subjects.push(s.text);
+          }
+        } else if (entry.text && !subjects.includes(entry.text)) {
+          subjects.push(entry.text);
+        }
+      }
 
       return {
         id: eprint.id,
@@ -497,7 +516,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
     await this.rateLimit();
 
     try {
-      const response = await fetch(`${this.API_BASE_URL}/eprints/${eprintId}/`, {
+      const response = await fetch(`${this.API_BASE_URL}/preprints/${eprintId}/`, {
         headers: {
           'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
           Accept: 'application/vnd.api+json',
@@ -549,7 +568,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
 
     try {
       const response = await fetch(
-        `${this.API_BASE_URL}/eprints/?filter[provider]=${this.PROVIDER_ID}&filter[title]=${encodedQuery}&page[size]=${limit}`,
+        `${this.API_BASE_URL}/preprints/?filter[provider]=${this.PROVIDER_ID}&filter[title]=${encodedQuery}&page[size]=${limit}`,
         {
           headers: {
             'User-Agent': 'Chive-AppView/1.0 (Academic eprint aggregator; contact@chive.pub)',
@@ -714,7 +733,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
    * @internal
    */
   private buildSearchUrl(query: ExternalSearchQuery): string {
-    const url = new URL(`${this.API_BASE_URL}/eprints/`);
+    const url = new URL(`${this.API_BASE_URL}/preprints/`);
 
     url.searchParams.set('filter[provider]', this.PROVIDER_ID);
 

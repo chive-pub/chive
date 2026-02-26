@@ -101,6 +101,10 @@
         "matchReason": {
           "type": "string",
           "description": "Human-readable match reason"
+        },
+        "chiveUri": {
+          "type": "string",
+          "description": "AT-URI of the paper in Chive's index (present when source is 'chive')"
         }
       }
     },

@@ -79,7 +79,7 @@ function getSourceVariant(source: ImportSource): 'default' | 'secondary' | 'outl
  * Get display name for source.
  */
 function getSourceDisplayName(source: ImportSource): string {
-  const displayNames: Record<ImportSource, string> = {
+  const displayNames: Record<string, string> = {
     arxiv: 'arXiv',
     biorxiv: 'bioRxiv',
     medrxiv: 'medRxiv',

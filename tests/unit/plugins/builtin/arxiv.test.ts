@@ -174,7 +174,7 @@ describe('ArxivPlugin', () => {
         'arXiv plugin initialized (search-based)',
         expect.objectContaining({
           rateLimit: '3s between requests',
-          searchEndpoint: 'http://export.arxiv.org/api/query',
+          searchEndpoint: 'https://export.arxiv.org/api/query',
         })
       );
     });

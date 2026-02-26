@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { getApiBaseUrl } from '@/lib/api/client';
+
 /**
  * GitHub repository integration data.
  */
@@ -100,25 +102,6 @@ export const integrationKeys = {
  */
 interface UseIntegrationsOptions {
   enabled?: boolean;
-}
-
-/**
- * Get the API base URL for integrations.
- */
-function getApiBaseUrl(): string {
-  const isServer = typeof window === 'undefined';
-  const isTunnelMode =
-    typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEV_MODE === 'tunnel';
-
-  if (isServer) {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
-  }
-
-  if (isTunnelMode) {
-    return '';
-  }
-
-  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
 }
 
 /**

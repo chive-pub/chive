@@ -56,6 +56,7 @@ const PDS_WRITE_EXCLUDED_PATHS = [
   'components/governance', // User-initiated governance proposal writes to user's own PDS
   'components/eprints', // User-initiated eprint edit/delete writes to user's own PDS
   'app/eprints', // User-initiated eprint delete on their own PDS via page actions
+  'app/dashboard', // User-initiated settings writes to user's own PDS
 ];
 
 function findTsFiles(dir: string, files: string[] = []): string[] {

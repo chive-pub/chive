@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
         source: '/xrpc/:path*',
         destination: `${apiUrl}/xrpc/:path*`,
       },
+      {
+        source: '/api/v1/:path*',
+        destination: `${apiUrl}/api/v1/:path*`,
+      },
     ];
   },
 };

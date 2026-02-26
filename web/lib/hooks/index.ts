@@ -19,6 +19,8 @@ export { useSearchTracking, markEprintViewStart } from './use-search-tracking';
 
 export { useTrending, trendingKeys } from './use-trending';
 
+export { usePersonalizedFeed, personalizedFeedKeys } from './use-personalized-feed';
+
 export {
   useField,
   useFields,
@@ -106,6 +108,7 @@ export {
   useApproveClaim,
   useRejectClaim,
   usePaperSuggestions,
+  useDismissSuggestion,
   useMyCoauthorRequests,
   useCoauthorRequests,
   useRequestCoauthorship,
@@ -128,6 +131,7 @@ export {
   type ExternalEprint,
   type ExternalEprintAuthor,
   type AutocompleteSuggestion,
+  type SearchSourceError,
 } from './use-eprint-search';
 
 export {

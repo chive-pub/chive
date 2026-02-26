@@ -862,6 +862,11 @@ describe('XRPC updateSubmission Handler', () => {
         did: SUBMITTER_DID,
         hasAuthors: false,
         authorCount: undefined,
+        hasPublishedVersion: false,
+        hasExternalIds: false,
+        hasRepositories: false,
+        hasConferencePresentation: false,
+        hasFunding: false,
       });
     });
 

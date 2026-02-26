@@ -32,9 +32,22 @@ import type {
   EprintAuthorContribution,
 } from '../../types/models/author.js';
 import type {
+  AccessType,
+  CodePlatform,
+  ConferencePresentation,
+  DataPlatform,
   Eprint,
-  SupplementaryMaterial,
+  ExternalIds,
+  PresentationType,
+  PreregistrationPlatform,
+  ProtocolPlatform,
+  PublishedVersion,
+  RelatedWork,
+  RelatedWorkIdentifierType,
+  RelationType,
+  Repositories,
   SupplementaryCategory,
+  SupplementaryMaterial,
 } from '../../types/models/eprint.js';
 import { normalizeFieldUri } from '../../utils/at-uri.js';
 
@@ -195,8 +208,110 @@ export interface PDSEprintRecord {
     grantTitle?: string;
     grantUrl?: string;
   }[];
+  /** Lexicon-canonical field name for funding sources. */
+  funding?: {
+    funderName?: string;
+    funderUri?: string;
+    funderDoi?: string;
+    funderRor?: string;
+    grantNumber?: string;
+    grantTitle?: string;
+    grantUrl?: string;
+  }[];
   conflictOfInterest?: string;
   preregistration?: string;
+
+  /** Published version metadata (Version of Record). */
+  publishedVersion?: {
+    doi?: string;
+    url?: string;
+    publishedAt?: string;
+    journal?: string;
+    journalAbbreviation?: string;
+    journalIssn?: string;
+    publisher?: string;
+    volume?: string;
+    issue?: string;
+    pages?: string;
+    articleNumber?: string;
+    eLocationId?: string;
+    accessType?: string;
+    licenseUrl?: string;
+  };
+
+  /** External persistent identifiers. */
+  externalIds?: {
+    arxivId?: string;
+    pmid?: string;
+    pmcid?: string;
+    ssrnId?: string;
+    osf?: string;
+    zenodoDoi?: string;
+    openAlexId?: string;
+    semanticScholarId?: string;
+    coreSid?: string;
+    magId?: string;
+  };
+
+  /** Related works with DataCite-compatible relation types. */
+  relatedWorks?: {
+    identifier: string;
+    identifierType: string;
+    relationType: string;
+    title?: string;
+    description?: string;
+  }[];
+
+  /** Linked code, data, and materials repositories. */
+  repositories?: {
+    code?: {
+      url?: string;
+      platformUri?: string;
+      platformSlug?: string;
+      label?: string;
+      archiveUrl?: string;
+      swhid?: string;
+    }[];
+    data?: {
+      url?: string;
+      doi?: string;
+      platformUri?: string;
+      platformSlug?: string;
+      label?: string;
+      accessStatement?: string;
+    }[];
+    preregistration?: {
+      url?: string;
+      platformUri?: string;
+      platformSlug?: string;
+      registrationDate?: string;
+    };
+    protocols?: {
+      url?: string;
+      doi?: string;
+      platformUri?: string;
+      platformSlug?: string;
+    }[];
+    materials?: {
+      url?: string;
+      rrid?: string;
+      label?: string;
+    }[];
+  };
+
+  /** Conference presentation metadata. */
+  conferencePresentation?: {
+    conferenceName?: string;
+    conferenceAcronym?: string;
+    conferenceUri?: string;
+    conferenceUrl?: string;
+    conferenceIteration?: string;
+    conferenceLocation?: string;
+    presentationDate?: string;
+    presentationTypeUri?: string;
+    presentationTypeSlug?: string;
+    proceedingsDoi?: string;
+  };
 }
 
 // =============================================================================
@@ -736,8 +851,9 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
     submittedBy = uriMatch[1] as DID;
   }
 
-  // Transform funding
-  const funding = record.fundingInfo?.map((f) => ({
+  // Transform funding (prefer lexicon-canonical `funding` over legacy `fundingInfo`)
+  const fundingSource = record.funding ?? record.fundingInfo;
+  const funding = fundingSource?.map((f) => ({
     funderName: f.funderName,
     funderDoi: f.funderDoi,
     funderRor: f.funderRor,
@@ -745,6 +861,111 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
     grantTitle: f.grantTitle,
     grantUrl: f.grantUrl,
   }));
+
+  // Transform publishedVersion (convert publishedAt string to Timestamp)
+  const publishedVersion: PublishedVersion | undefined = record.publishedVersion
+    ? {
+        doi: record.publishedVersion.doi,
+        url: record.publishedVersion.url,
+        publishedAt: record.publishedVersion.publishedAt
+          ? toTimestamp(new Date(record.publishedVersion.publishedAt))
+          : undefined,
+        journal: record.publishedVersion.journal,
+        journalAbbreviation: record.publishedVersion.journalAbbreviation,
+        journalIssn: record.publishedVersion.journalIssn,
+        publisher: record.publishedVersion.publisher,
+        volume: record.publishedVersion.volume,
+        issue: record.publishedVersion.issue,
+        pages: record.publishedVersion.pages,
+        articleNumber: record.publishedVersion.articleNumber,
+        eLocationId: record.publishedVersion.eLocationId,
+        accessType: record.publishedVersion.accessType as AccessType | undefined,
+        licenseUrl: record.publishedVersion.licenseUrl,
+      }
+    : undefined;
+
+  // Transform externalIds (all optional strings, pass through directly)
+  const externalIds: ExternalIds | undefined = record.externalIds
+    ? {
+        arxivId: record.externalIds.arxivId,
+        pmid: record.externalIds.pmid,
+        pmcid: record.externalIds.pmcid,
+        ssrnId: record.externalIds.ssrnId,
+        osf: record.externalIds.osf,
+        zenodoDoi: record.externalIds.zenodoDoi,
+        openAlexId: record.externalIds.openAlexId,
+        semanticScholarId: record.externalIds.semanticScholarId,
+        coreSid: record.externalIds.coreSid,
+        magId: record.externalIds.magId,
+      }
+    : undefined;
+
+  // Transform relatedWorks (pass through with type casts for branded types)
+  const relatedWorks: readonly RelatedWork[] | undefined = record.relatedWorks?.map((rw) => ({
+    identifier: rw.identifier,
+    identifierType: rw.identifierType as RelatedWorkIdentifierType,
+    relationType: rw.relationType as RelationType,
+    title: rw.title,
+    description: rw.description,
+  }));
+
+  // Transform repositories (convert preregistration registrationDate to Timestamp)
+  const repositories: Repositories | undefined = record.repositories
+    ? {
+        code: record.repositories.code?.map((c) => ({
+          url: c.url,
+          platform: c.platformSlug as CodePlatform | undefined,
+          label: c.label,
+          archiveUrl: c.archiveUrl,
+          swhid: c.swhid,
+        })),
+        data: record.repositories.data?.map((d) => ({
+          url: d.url,
+          doi: d.doi,
+          platform: d.platformSlug as DataPlatform | undefined,
+          label: d.label,
+          accessStatement: d.accessStatement,
+        })),
+        preregistration: record.repositories.preregistration
+          ? {
+              url: record.repositories.preregistration.url,
+              platform: record.repositories.preregistration.platformSlug as
+                | PreregistrationPlatform
+                | undefined,
+              registrationDate: record.repositories.preregistration.registrationDate
+                ? toTimestamp(new Date(record.repositories.preregistration.registrationDate))
+                : undefined,
+            }
+          : undefined,
+        protocols: record.repositories.protocols?.map((p) => ({
+          url: p.url,
+          doi: p.doi,
+          platform: p.platformSlug as ProtocolPlatform | undefined,
+        })),
+        materials: record.repositories.materials?.map((m) => ({
+          url: m.url,
+          rrid: m.rrid,
+          label: m.label,
+        })),
+      }
+    : undefined;
+
+  // Transform conferencePresentation (convert presentationDate to Timestamp)
+  const conferencePresentation: ConferencePresentation | undefined = record.conferencePresentation
+    ? {
+        conferenceName: record.conferencePresentation.conferenceName,
+        conferenceAcronym: record.conferencePresentation.conferenceAcronym,
+        conferenceUrl: record.conferencePresentation.conferenceUrl,
+        conferenceLocation: record.conferencePresentation.conferenceLocation,
+        presentationDate: record.conferencePresentation.presentationDate
+          ? toTimestamp(new Date(record.conferencePresentation.presentationDate))
+          : undefined,
+        presentationType: record.conferencePresentation.presentationTypeSlug as
+          | PresentationType
+          | undefined,
+        proceedingsDoi: record.conferencePresentation.proceedingsDoi,
+      }
+    : undefined;
 
   // ==========================================================================
   // BUILD EPRINT MODEL
@@ -781,6 +1002,13 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
 
     // Funding
     funding,
+
+    // Publication metadata
+    publishedVersion,
+    externalIds,
+    relatedWorks,
+    repositories,
+    conferencePresentation,
   };
 
   return {

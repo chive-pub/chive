@@ -520,13 +520,186 @@ export const stepDestinationSchema = z.object({
 export type StepDestinationData = z.infer<typeof stepDestinationSchema>;
 
 /**
+ * Step: Publication - Publication status, identifiers, repositories, funding.
+ *
+ * @remarks
+ * Captures published version metadata, external identifiers, code/data
+ * repositories, preregistration, funding, and conference presentation data.
+ */
+export const stepPublicationSchema = z.object({
+  /** Publication status (e.g., 'eprint', 'submitted', 'published') */
+  publicationStatus: z.string().optional(),
+
+  /** Published version metadata (journal, DOI, etc.) */
+  publishedVersion: z
+    .object({
+      doi: z.string().optional(),
+      url: z.union([z.url(), z.literal('')]).optional(),
+      publishedAt: z.string().optional(),
+      journal: z.string().optional(),
+      journalAbbreviation: z.string().optional(),
+      journalIssn: z.string().optional(),
+      publisher: z.string().optional(),
+      volume: z.string().optional(),
+      issue: z.string().optional(),
+      pages: z.string().optional(),
+      articleNumber: z.string().optional(),
+      eLocationId: z.string().optional(),
+      accessType: z.string().optional(),
+      licenseUrl: z.string().optional(),
+    })
+    .optional(),
+
+  /** External identifiers (arXiv, PubMed, SSRN, etc.) */
+  externalIds: z
+    .object({
+      arxivId: z.string().optional(),
+      pmid: z.string().optional(),
+      pmcid: z.string().optional(),
+      ssrnId: z.string().optional(),
+      osf: z.string().optional(),
+      zenodoDoi: z.string().optional(),
+      openAlexId: z.string().optional(),
+      semanticScholarId: z.string().optional(),
+      coreSid: z.string().optional(),
+      magId: z.string().optional(),
+    })
+    .optional(),
+
+  /** Code repositories */
+  codeRepositories: z
+    .array(
+      z.object({
+        url: z.union([z.url(), z.literal('')]).optional(),
+        platformUri: z.string().optional(),
+        platformName: z.string().optional(),
+        label: z.string().optional(),
+      })
+    )
+    .optional(),
+
+  /** Data repositories */
+  dataRepositories: z
+    .array(
+      z.object({
+        url: z.union([z.url(), z.literal('')]).optional(),
+        platformUri: z.string().optional(),
+        platformName: z.string().optional(),
+        label: z.string().optional(),
+      })
+    )
+    .optional(),
+
+  /** Preregistration link */
+  preregistrationInfo: z
+    .object({
+      url: z.union([z.url(), z.literal('')]).optional(),
+      platformUri: z.string().optional(),
+      platformName: z.string().optional(),
+      registrationDate: z.string().optional(),
+    })
+    .optional(),
+
+  /** Funding sources */
+  funding: z
+    .array(
+      z.object({
+        funderName: z.string().optional(),
+        funderUri: z.string().optional(),
+        funderDoi: z.string().optional(),
+        funderRor: z.string().optional(),
+        grantNumber: z.string().optional(),
+        grantTitle: z.string().optional(),
+        grantUrl: z.string().optional(),
+      })
+    )
+    .optional(),
+
+  /** Conference presentation metadata */
+  conferencePresentation: z
+    .object({
+      conferenceName: z.string().optional(),
+      conferenceAcronym: z.string().optional(),
+      conferenceUri: z.string().optional(),
+      conferenceUrl: z.union([z.url(), z.literal('')]).optional(),
+      conferenceIteration: z.string().optional(),
+      conferenceLocation: z.string().optional(),
+      presentationDate: z.string().optional(),
+      presentationTypeUri: z.string().optional(),
+      presentationTypeSlug: z.string().optional(),
+      proceedingsDoi: z.string().optional(),
+    })
+    .optional(),
+
+  /** Pre-built nested repositories object (assembled from flat form fields by the wizard) */
+  repositories: z
+    .object({
+      code: z
+        .array(
+          z.object({
+            url: z.string().optional(),
+            platformUri: z.string().optional(),
+            platformSlug: z.string().optional(),
+            label: z.string().optional(),
+            archiveUrl: z.string().optional(),
+            swhid: z.string().optional(),
+          })
+        )
+        .optional(),
+      data: z
+        .array(
+          z.object({
+            url: z.string().optional(),
+            doi: z.string().optional(),
+            platformUri: z.string().optional(),
+            platformSlug: z.string().optional(),
+            label: z.string().optional(),
+            accessStatement: z.string().optional(),
+          })
+        )
+        .optional(),
+      preregistration: z
+        .object({
+          url: z.string().optional(),
+          platformUri: z.string().optional(),
+          platformSlug: z.string().optional(),
+          registrationDate: z.string().optional(),
+        })
+        .optional(),
+      protocols: z
+        .array(
+          z.object({
+            url: z.string().optional(),
+            doi: z.string().optional(),
+            platformUri: z.string().optional(),
+            platformSlug: z.string().optional(),
+          })
+        )
+        .optional(),
+      materials: z
+        .array(
+          z.object({
+            url: z.string().optional(),
+            rrid: z.string().optional(),
+            label: z.string().optional(),
+          })
+        )
+        .optional(),
+    })
+    .optional(),
+});
+
+export type StepPublicationData = z.infer<typeof stepPublicationSchema>;
+
+/**
  * Combined form data for all wizard steps.
  */
 export const eprintFormDataSchema = stepFilesSchema
   .merge(stepMetadataSchema)
   .merge(stepAuthorsSchema)
   .merge(stepFieldsSchema)
-  .merge(stepDestinationSchema);
+  .merge(stepDestinationSchema)
+  .merge(stepPublicationSchema);
 
 export type EprintFormData = z.infer<typeof eprintFormDataSchema>;
 

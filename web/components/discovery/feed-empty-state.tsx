@@ -118,7 +118,7 @@ export function FeedEmptyState({
           </p>
           <div className="flex justify-center">
             <Button asChild>
-              <Link href="/dashboard/claiming">
+              <Link href="/dashboard/claims">
                 Review papers
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

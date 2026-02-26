@@ -14,16 +14,19 @@ import {
   Settings,
   Info,
   AlertCircle,
+  X,
 } from 'lucide-react';
 
 import {
   useEprintSearchState,
   usePaperSuggestions,
+  useDismissSuggestion,
   useMyCoauthorRequests,
   type ExternalEprint,
   type ImportSource,
   type SuggestedPaper,
   type SuggestedPaperAuthor,
+  type SearchSourceError,
 } from '@/lib/hooks';
 import type { CoauthorClaimRequest } from '@/lib/api/schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -196,6 +199,10 @@ function PaperSuggestions() {
     );
   }
 
+  // Partition suggestions into Chive papers and external papers
+  const chivePapers = data.papers.filter((p) => p.chiveUri);
+  const externalPapers = data.papers.filter((p) => !p.chiveUri);
+
   // Show suggestions
   return (
     <>
@@ -204,9 +211,26 @@ function PaperSuggestions() {
         <p className="text-sm text-muted-foreground">
           Found {data.papers.length} paper{data.papers.length !== 1 ? 's' : ''} that may be yours
         </p>
-        {data.papers.map((paper) => (
-          <SuggestedPaperCard key={`${paper.source}:${paper.externalId}`} paper={paper} />
-        ))}
+
+        {chivePapers.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold tracking-tight">On Chive</h3>
+            {chivePapers.map((paper) => (
+              <SuggestedPaperCard key={`${paper.source}:${paper.externalId}`} paper={paper} />
+            ))}
+          </div>
+        )}
+
+        {externalPapers.length > 0 && (
+          <div className="space-y-4">
+            {chivePapers.length > 0 && (
+              <h3 className="text-sm font-semibold tracking-tight">External Sources</h3>
+            )}
+            {externalPapers.map((paper) => (
+              <SuggestedPaperCard key={`${paper.source}:${paper.externalId}`} paper={paper} />
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
@@ -289,9 +313,15 @@ function ProfileInfoCard({
  */
 function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
   const router = useRouter();
+  const dismissMutation = useDismissSuggestion();
 
   const handleClaim = () => {
     router.push(`/submit/claim/${paper.source}/${encodeURIComponent(paper.externalId)}`);
+  };
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    dismissMutation.mutate({ source: paper.source, externalId: paper.externalId });
   };
 
   // Format author names
@@ -307,8 +337,18 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-foreground"
+        onClick={handleDismiss}
+        disabled={dismissMutation.isPending}
+        aria-label="Dismiss suggestion"
+      >
+        <X className="h-4 w-4" />
+      </Button>
+      <CardHeader className="pr-10">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 min-w-0">
             <CardTitle className="text-lg line-clamp-2">{paper.title}</CardTitle>
@@ -349,7 +389,12 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {paper.url && (
+            {paper.chiveUri && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/eprints/${encodeURIComponent(paper.chiveUri)}`}>View on Chive</Link>
+              </Button>
+            )}
+            {paper.url && !paper.chiveUri && (
               <Button variant="outline" size="sm" asChild>
                 <a href={paper.url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-2" />
@@ -358,7 +403,8 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
               </Button>
             )}
             <Button onClick={handleClaim}>
-              Import Paper <ArrowRight className="ml-2 h-4 w-4" />
+              {paper.chiveUri ? 'Claim Paper' : 'Import Paper'}{' '}
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -371,6 +417,7 @@ function SuggestedPaperCard({ paper }: { paper: SuggestedPaper }) {
  * Available import sources for filtering.
  */
 const AVAILABLE_SOURCES: { id: ImportSource; label: string }[] = [
+  { id: 'chive', label: 'Chive' },
   { id: 'arxiv', label: 'arXiv' },
   { id: 'openreview', label: 'OpenReview' },
   { id: 'psyarxiv', label: 'PsyArXiv' },
@@ -408,6 +455,7 @@ function ClaimableSearch() {
     selectedSources,
     suggestions,
     searchResults,
+    sourceErrors,
     availableSources,
     isAutocompleteLoading,
     isSearchLoading,
@@ -507,6 +555,23 @@ function ClaimableSearch() {
                   {getSourceDisplayName(source as ImportSource)} ({count})
                 </Badge>
               ))}
+            </div>
+          )}
+
+          {/* Source error warnings */}
+          {sourceErrors && sourceErrors.length > 0 && (
+            <div className="flex items-start gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Some sources could not be searched:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {sourceErrors.map((e: SearchSourceError, i: number) => (
+                    <li key={i}>
+                      {getSourceDisplayName(e.source as ImportSource)}: {e.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
 

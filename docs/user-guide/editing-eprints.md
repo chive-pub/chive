@@ -37,26 +37,53 @@ For quick title changes, click the pencil icon next to the title on the eprint p
 
 The edit page organizes fields into logical sections:
 
-| Section       | Fields                            |
-| ------------- | --------------------------------- |
-| Metadata      | Title, abstract, keywords         |
-| Authors       | Author list, affiliations, ORCID  |
-| Fields        | Academic field classifications    |
-| Publication   | Publication status, DOI, journal  |
-| Files         | PDF document, supplementary files |
-| Supplementary | Code, data, appendices            |
-| Facets        | PMEST classification values       |
-| Review        | Version bump, changelog           |
+| Section                         | Fields                                                           |
+| ------------------------------- | ---------------------------------------------------------------- |
+| Metadata                        | Title, abstract, keywords                                        |
+| Authors                         | Author list, affiliations, ORCID                                 |
+| Fields                          | Academic field classifications                                   |
+| Publication                     | Publication status, DOI, journal, volume, pages, published date  |
+| External IDs                    | arXiv ID, PMID, PMC ID, SSRN ID, OSF ID, Zenodo DOI, OpenAlex ID |
+| Files                           | PDF document, supplementary files                                |
+| Repositories & Pre-registration | Code repositories, data repositories, pre-registration links     |
+| Facets                          | PMEST classification values                                      |
+| Review                          | Version bump, changelog                                          |
 
 Sections with unsaved changes display a badge indicator. Expand or collapse sections to focus on what you need to edit.
 
 ### Editable Fields
 
-| Field    | Description                  |
-| -------- | ---------------------------- |
-| Title    | Eprint title (max 500 chars) |
-| Keywords | Comma-separated keyword list |
-| Document | Replace the manuscript file  |
+The edit form supports the same fields as the submission wizard:
+
+| Field             | Description                                                         |
+| ----------------- | ------------------------------------------------------------------- |
+| Title             | Eprint title (max 500 chars)                                        |
+| Abstract          | Plain text or rich text abstract                                    |
+| Keywords          | Comma-separated keyword list                                        |
+| Document          | Replace the manuscript file                                         |
+| Code Repositories | Multiple entries, each with URL, platform (e.g., GitHub), and label |
+| Data Repositories | Multiple entries, each with URL, platform, and label                |
+| Pre-registration  | URL and platform for pre-registration records                       |
+| External IDs      | arXiv ID, PMID, PMC ID, SSRN ID, OSF ID, Zenodo DOI, OpenAlex ID    |
+| Published Version | DOI, journal, volume, pages, published date, publisher URL          |
+| Funding           | Funder name, grant number, grant title, grant URL                   |
+| Conference        | Conference name, location, date, presentation type                  |
+
+### Repositories
+
+The Repositories & Pre-registration section supports multiple code and data repository entries. Each entry includes:
+
+- **URL**: Link to the repository
+- **Platform**: Selected from the knowledge graph (GitHub, GitLab, Zenodo, Figshare, Dryad, etc.)
+- **Label**: Optional description (e.g., "Main analysis code")
+
+Click "Add Repository" to add additional entries. Click the X button on any entry to remove it.
+
+Pre-registration links follow the same pattern but without a label field. Select a platform (e.g., OSF Registries, ClinicalTrials.gov) and provide the URL.
+
+### External IDs
+
+The External IDs section provides autocomplete-assisted entry for arXiv IDs and PubMed IDs. Type a query to search, then select from results to populate the field automatically. The remaining IDs (PMC ID, SSRN ID, OSF ID, Zenodo DOI, OpenAlex ID) are plain text inputs.
 
 ### Schema Migration
 

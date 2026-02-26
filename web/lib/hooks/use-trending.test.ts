@@ -168,4 +168,86 @@ describe('useTrending', () => {
     expect(result.current.data?.hasMore).toBe(true);
     expect(result.current.data?.cursor).toBe('next-page');
   });
+
+  describe('with fieldUris', () => {
+    it('uses personalized query key when fieldUris provided', async () => {
+      const fieldUris = ['at://did:plc:gov/pub.chive.graph.node/ml-field'];
+      mockGetTrending.mockResolvedValueOnce({
+        data: createMockTrendingResponse(),
+        error: undefined,
+      });
+
+      const { Wrapper } = createWrapper();
+      const { result } = renderHook(() => useTrending({ fieldUris }), { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      // Should have passed fieldUris to the API call
+      expect(mockGetTrending).toHaveBeenCalledWith(
+        expect.objectContaining({
+          window: '7d',
+          limit: 20,
+          fieldUris,
+        })
+      );
+    });
+
+    it('uses standard query key without fieldUris', async () => {
+      mockGetTrending.mockResolvedValueOnce({
+        data: createMockTrendingResponse(),
+        error: undefined,
+      });
+
+      const { Wrapper } = createWrapper();
+      const { result } = renderHook(() => useTrending({ window: '24h' }), { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      // Should NOT include fieldUris in the API call
+      expect(mockGetTrending).toHaveBeenCalledWith({ window: '24h', limit: 20 });
+    });
+
+    it('uses standard query key when fieldUris array is empty', async () => {
+      mockGetTrending.mockResolvedValueOnce({
+        data: createMockTrendingResponse(),
+        error: undefined,
+      });
+
+      const { Wrapper } = createWrapper();
+      const { result } = renderHook(() => useTrending({ fieldUris: [] }), { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      // Empty fieldUris is passed through in params spread but hasFields is false,
+      // so the query key uses the standard (non-personalized) window key
+      expect(mockGetTrending).toHaveBeenCalledWith(
+        expect.objectContaining({ window: '7d', limit: 20 })
+      );
+    });
+  });
+});
+
+describe('trendingKeys.personalized', () => {
+  it('generates personalized key with window and sorted fieldUris', () => {
+    const fieldUris = ['at://b-field', 'at://a-field'];
+    expect(trendingKeys.personalized('7d', fieldUris)).toEqual([
+      'trending',
+      '7d',
+      'fields',
+      'at://a-field',
+      'at://b-field',
+    ]);
+  });
+
+  it('generates different keys for different field sets', () => {
+    const key1 = trendingKeys.personalized('7d', ['at://field-a']);
+    const key2 = trendingKeys.personalized('7d', ['at://field-b']);
+    expect(key1).not.toEqual(key2);
+  });
 });

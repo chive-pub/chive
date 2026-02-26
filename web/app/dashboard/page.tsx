@@ -1,46 +1,29 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, MessageSquare, ThumbsUp, Plus } from 'lucide-react';
+import {
+  FileText,
+  MessageSquare,
+  ThumbsUp,
+  Plus,
+  Vote,
+  Bell,
+  Upload,
+  TrendingUp,
+  Scroll,
+} from 'lucide-react';
 
 import { useCurrentUser } from '@/lib/auth';
 import { useEprintsByAuthor } from '@/lib/hooks/use-eprint';
+import { useAuthorReviews } from '@/lib/hooks/use-review';
+import { useMyEndorsements } from '@/lib/hooks/use-endorsement';
+import { useProposals } from '@/lib/hooks/use-governance';
+import { useReviewNotifications, useEndorsementNotifications } from '@/lib/hooks/use-notifications';
 import { useUserClaims } from '@/lib/hooks/use-claiming';
-import { useAuthorProfile } from '@/lib/hooks/use-author';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ForYouFeed } from '@/components/discovery/for-you-feed';
-
-/**
- * Check if an author profile has any linked external accounts.
- *
- * @param profile - the author profile to check
- * @returns true if any external account ID is present
- */
-function hasAnyLinkedAccount(profile?: {
-  orcid?: string;
-  semanticScholarId?: string;
-  openAlexId?: string;
-  googleScholarId?: string;
-  arxivAuthorId?: string;
-  openReviewId?: string;
-  dblpId?: string;
-  scopusAuthorId?: string;
-}): boolean {
-  if (!profile) return false;
-  return !!(
-    profile.orcid ||
-    profile.semanticScholarId ||
-    profile.openAlexId ||
-    profile.googleScholarId ||
-    profile.arxivAuthorId ||
-    profile.openReviewId ||
-    profile.dblpId ||
-    profile.scopusAuthorId
-  );
-}
+import { Badge } from '@/components/ui/badge';
 
 /**
  * Dashboard overview page.
@@ -50,48 +33,34 @@ function hasAnyLinkedAccount(profile?: {
  */
 export default function DashboardPage() {
   const user = useCurrentUser();
-  const { data: eprints, isLoading } = useEprintsByAuthor({ did: user?.did ?? '' });
-  const { data: claims } = useUserClaims();
-  const { data: authorProfile } = useAuthorProfile(user?.did ?? '');
+  const did = user?.did ?? '';
+
+  const { data: eprints, isLoading: eprintsLoading } = useEprintsByAuthor({ did });
+  const { data: reviews, isLoading: reviewsLoading } = useAuthorReviews(did, { enabled: !!did });
+  const { data: endorsements, isLoading: endorsementsLoading } = useMyEndorsements(did, {
+    enabled: !!did,
+  });
+  const { data: proposals, isLoading: proposalsLoading } = useProposals({ limit: 50 });
+  const { data: reviewNotifs, isLoading: reviewNotifsLoading } = useReviewNotifications({
+    limit: 20,
+  });
+  const { data: endorsementNotifs, isLoading: endorsementNotifsLoading } =
+    useEndorsementNotifications({ limit: 20 });
+  const { data: claims, isLoading: claimsLoading } = useUserClaims({});
 
   const eprintCount = eprints?.eprints?.length ?? 0;
+  const reviewCount = reviews?.total ?? reviews?.reviews?.length ?? 0;
+  const endorsementCount = endorsements?.total ?? endorsements?.endorsements?.length ?? 0;
+  const myProposals = proposals?.proposals?.filter((p) => p.proposedBy === did) ?? [];
+  const notifCount =
+    (reviewNotifs?.notifications?.length ?? 0) + (endorsementNotifs?.notifications?.length ?? 0);
+  const claimCount = claims?.pages?.flatMap((p) => p.claims)?.length ?? 0;
 
-  // Check if user has claimed papers (from API or localStorage for testing)
-  const hasClaimedPapersFromApi = (claims?.pages?.[0]?.claims?.length ?? 0) > 0;
-  // Check if user has linked accounts (ORCID, Semantic Scholar, etc.) from their author profile
-  const hasLinkedAccountsFromApi = hasAnyLinkedAccount(authorProfile);
+  const notifsLoading = reviewNotifsLoading || endorsementNotifsLoading;
 
-  // Support localStorage override for E2E testing
-  const [hasLinkedAccounts, setHasLinkedAccounts] = useState(hasLinkedAccountsFromApi);
-  const [hasClaimedPapers, setHasClaimedPapers] = useState(hasClaimedPapersFromApi);
-
-  useEffect(() => {
-    // Check localStorage for test profile state
-    const testProfile = localStorage.getItem('chive:userProfile');
-    if (testProfile) {
-      try {
-        const profile = JSON.parse(testProfile);
-        if (profile.hasLinkedAccounts !== undefined) {
-          setHasLinkedAccounts(profile.hasLinkedAccounts);
-        } else {
-          setHasLinkedAccounts(hasLinkedAccountsFromApi);
-        }
-        if (profile.hasClaimedPapers !== undefined) {
-          setHasClaimedPapers(profile.hasClaimedPapers);
-        } else {
-          setHasClaimedPapers(hasClaimedPapersFromApi);
-        }
-      } catch {
-        // Invalid JSON, use API values
-        setHasLinkedAccounts(hasLinkedAccountsFromApi);
-        setHasClaimedPapers(hasClaimedPapersFromApi);
-      }
-    } else {
-      // No test profile, use API values
-      setHasLinkedAccounts(hasLinkedAccountsFromApi);
-      setHasClaimedPapers(hasClaimedPapersFromApi);
-    }
-  }, [hasLinkedAccountsFromApi, hasClaimedPapersFromApi]);
+  // Recent activity: combine reviews and endorsements, sort by date
+  const recentReviews = (reviews?.reviews ?? []).slice(0, 3);
+  const recentEndorsements = (endorsements?.endorsements ?? []).slice(0, 3);
 
   return (
     <div className="space-y-8">
@@ -107,24 +76,45 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-3" role="region" aria-label="Your statistics">
         <StatsCard
           title="Eprints"
-          value={isLoading ? null : eprintCount}
+          value={eprintsLoading ? null : eprintCount}
           description="Authored or co-authored"
           icon={FileText}
           href="/dashboard/eprints"
         />
         <StatsCard
           title="Reviews"
-          value={isLoading ? null : 0}
+          value={reviewsLoading ? null : reviewCount}
           description="Reviews written"
           icon={MessageSquare}
           href="/dashboard/reviews"
         />
         <StatsCard
           title="Endorsements"
-          value={isLoading ? null : 0}
+          value={endorsementsLoading ? null : endorsementCount}
           description="Endorsements given"
           icon={ThumbsUp}
           href="/dashboard/endorsements"
+        />
+        <StatsCard
+          title="Proposals"
+          value={proposalsLoading ? null : myProposals.length}
+          description="Governance proposals"
+          icon={Vote}
+          href="/dashboard/proposals"
+        />
+        <StatsCard
+          title="Notifications"
+          value={notifsLoading ? null : notifCount}
+          description="On your papers"
+          icon={Bell}
+          href="/dashboard/notifications"
+        />
+        <StatsCard
+          title="Imports"
+          value={claimsLoading ? null : claimCount}
+          description="Papers claimed"
+          icon={Upload}
+          href="/dashboard/claims"
         />
       </div>
 
@@ -142,26 +132,109 @@ export default function DashboardPage() {
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/eprints">Browse Eprints</Link>
+            <Link href="/dashboard/claims">
+              <Upload className="mr-2 h-4 w-4" />
+              Import Papers
+            </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/browse">Faceted Search</Link>
+            <Link href="/eprints">
+              <FileText className="mr-2 h-4 w-4" />
+              Browse Eprints
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/trending">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Browse Trending
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/governance/proposals/new">
+              <Scroll className="mr-2 h-4 w-4" />
+              New Proposal
+            </Link>
           </Button>
         </CardContent>
       </Card>
 
-      {/* For You Feed - Personalized Recommendations */}
-      <section role="region" aria-label="For You recommendations">
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold tracking-tight">For You</h2>
-          <p className="text-muted-foreground">Personalized paper recommendations</p>
-        </div>
-        <ForYouFeed
-          isAuthenticated={!!user}
-          hasLinkedAccounts={hasLinkedAccounts}
-          hasClaimedPapers={hasClaimedPapers}
-        />
-      </section>
+      {/* Recent Activity */}
+      <Card role="region" aria-label="Recent activity">
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+          <CardDescription>Your latest reviews and endorsements</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {reviewsLoading || endorsementsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : recentReviews.length === 0 && recentEndorsements.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No recent activity. Write a review or endorse a paper to get started.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentReviews.map((review) => (
+                <Link
+                  key={review.uri}
+                  href={`/eprints/${encodeURIComponent(review.eprintUri)}`}
+                  className="flex items-start gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                >
+                  <MessageSquare className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        Review
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium mt-1 truncate">
+                      {review.eprintTitle ?? 'Untitled'}
+                    </p>
+                    {review.content && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                        {review.content}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+              {recentEndorsements.map((endorsement) => (
+                <Link
+                  key={endorsement.uri}
+                  href={`/eprints/${encodeURIComponent(endorsement.eprintUri)}`}
+                  className="flex items-start gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                >
+                  <ThumbsUp className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        Endorsement
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(endorsement.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium mt-1 truncate">
+                      {endorsement.eprintTitle ?? 'Untitled'}
+                    </p>
+                    {endorsement.comment && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                        {endorsement.comment}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
