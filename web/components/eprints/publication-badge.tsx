@@ -35,6 +35,10 @@ export interface PublishedVersion {
   volume?: string;
   issue?: string;
   pages?: string;
+  publishedAt?: string;
+  articleNumber?: string;
+  eLocationId?: string;
+  accessType?: string;
 }
 
 /**
@@ -141,6 +145,18 @@ function getStatusConfig(status: string): StatusConfig {
   return STATUS_CONFIG[status] ?? DEFAULT_STATUS_CONFIG;
 }
 
+/**
+ * Human-readable labels for access type values.
+ */
+const ACCESS_TYPE_LABELS: Record<string, string> = {
+  open_access: 'Open Access',
+  green_oa: 'Green OA',
+  gold_oa: 'Gold OA',
+  hybrid_oa: 'Hybrid OA',
+  bronze_oa: 'Bronze OA',
+  closed: 'Closed',
+};
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -215,13 +231,34 @@ export function PublicationBadge({
                     Warning
                   </Badge>
                 )}
+                {publishedVersion?.accessType && (
+                  <Badge variant="outline" className="text-xs">
+                    {ACCESS_TYPE_LABELS[publishedVersion.accessType] ?? publishedVersion.accessType}
+                  </Badge>
+                )}
               </div>
               {hasPublishedVersion && publishedVersion.journal && (
                 <p className="text-sm text-muted-foreground">
                   {publishedVersion.journal}
                   {publishedVersion.volume && ` ${publishedVersion.volume}`}
                   {publishedVersion.issue && `(${publishedVersion.issue})`}
-                  {publishedVersion.pages && `: ${publishedVersion.pages}`}
+                  {': '}
+                  {publishedVersion.pages ??
+                    publishedVersion.articleNumber ??
+                    publishedVersion.eLocationId}
+                </p>
+              )}
+              {hasPublishedVersion && publishedVersion.publisher && (
+                <p className="text-xs text-muted-foreground">{publishedVersion.publisher}</p>
+              )}
+              {hasPublishedVersion && publishedVersion.publishedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Published{' '}
+                  {new Date(publishedVersion.publishedAt).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
                 </p>
               )}
             </div>

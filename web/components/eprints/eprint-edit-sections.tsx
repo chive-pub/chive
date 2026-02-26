@@ -30,6 +30,7 @@ import {
   Upload,
   X,
   Plus,
+  Github,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -66,12 +67,20 @@ import {
   type Conference,
   LocationAutocomplete,
   type LocationResult,
+  ArxivAutocomplete,
+  type ArxivEntry,
+  PubmedAutocomplete,
+  type PubmedEntry,
 } from '@/components/forms';
 import { useAuth } from '@/lib/auth/auth-context';
 import { VersionSelector } from './version-selector';
 import { ChangelogForm, type ChangelogFormData } from './changelog-form';
 import { cn } from '@/lib/utils';
 import { useAgent } from '@/lib/auth/auth-context';
+import { authApi } from '@/lib/api/client';
+import { parseAtUri } from '@/lib/utils/atproto';
+import { createChangelogRecord } from '@/lib/atproto/record-creator';
+import { logger } from '@/lib/observability';
 import {
   formatVersion,
   useUpdateEprint,
@@ -80,6 +89,8 @@ import {
 } from '@/lib/hooks/use-eprint-mutations';
 import { useContributionTypeNodes } from '@/lib/hooks/use-nodes';
 import type { Eprint } from '@/lib/api/schema';
+
+const editLogger = logger.child({ component: 'eprint-edit-sections' });
 
 // =============================================================================
 // TYPES
@@ -122,6 +133,8 @@ const fundingSourceSchema = z.object({
   funderDoi: z.string().optional(),
   funderRor: z.string().optional(),
   grantNumber: z.string().optional(),
+  grantTitle: z.string().optional(),
+  grantUrl: z.string().url().optional().or(z.literal('')),
 });
 
 // Conference presentation schema
@@ -137,6 +150,14 @@ const conferencePresentationSchema = z
     presentationTypeName: z.string().optional(),
   })
   .optional();
+
+// Repository entry schema
+const repositoryEntrySchema = z.object({
+  url: z.union([z.string().url(), z.literal('')]).optional(),
+  platformUri: z.string().optional(),
+  platformName: z.string().optional(),
+  label: z.string().optional(),
+});
 
 // Form schema for the edit form
 const editFormSchema = z.object({
@@ -170,10 +191,21 @@ const editFormSchema = z.object({
   arxivId: z.string().optional(),
   pmid: z.string().optional(),
   pmcid: z.string().optional(),
+  ssrnId: z.string().optional(),
+  osf: z.string().optional(),
+  zenodoDoi: z.string().optional(),
+  openAlexId: z.string().optional(),
 
   // Repositories
-  codeRepoUrl: z.string().url().optional().or(z.literal('')),
-  dataRepoUrl: z.string().url().optional().or(z.literal('')),
+  codeRepositories: z.array(repositoryEntrySchema).optional(),
+  dataRepositories: z.array(repositoryEntrySchema).optional(),
+  preregistration: z
+    .object({
+      url: z.union([z.string().url(), z.literal('')]).optional(),
+      platformUri: z.string().optional(),
+      platformName: z.string().optional(),
+    })
+    .optional(),
 
   // Funding sources
   funding: z.array(fundingSourceSchema).optional(),
@@ -234,9 +266,9 @@ const SECTIONS: SectionConfig[] = [
   },
   {
     id: 'repositories',
-    title: 'Code & Data',
-    icon: <Database className="h-5 w-5" />,
-    description: 'Code and data repository links',
+    title: 'Repositories & Pre-registration',
+    icon: <Github className="h-5 w-5" />,
+    description: 'Code, data, and pre-registration links',
   },
   {
     id: 'funding',
@@ -481,8 +513,35 @@ export function EprintEditSections({
       arxivId: eprint.externalIds?.arxivId ?? '',
       pmid: eprint.externalIds?.pmid ?? '',
       pmcid: eprint.externalIds?.pmcid ?? '',
-      codeRepoUrl: eprint.repositories?.code?.[0]?.url ?? '',
-      dataRepoUrl: eprint.repositories?.data?.[0]?.url ?? '',
+      ssrnId: eprint.externalIds?.ssrnId ?? '',
+      osf: eprint.externalIds?.osf ?? '',
+      zenodoDoi: eprint.externalIds?.zenodoDoi ?? '',
+      openAlexId: eprint.externalIds?.openAlexId ?? '',
+      codeRepositories: (eprint.repositories?.code ?? []).map((repo: Record<string, unknown>) => ({
+        url: (repo.url as string) ?? '',
+        platformUri: (repo.platformUri as string) ?? '',
+        platformName: (repo.platformSlug as string) ?? '',
+        label: (repo.label as string) ?? '',
+      })),
+      dataRepositories: (eprint.repositories?.data ?? []).map((repo: Record<string, unknown>) => ({
+        url: (repo.url as string) ?? '',
+        platformUri: (repo.platformUri as string) ?? '',
+        platformName: (repo.platformSlug as string) ?? '',
+        label: (repo.label as string) ?? '',
+      })),
+      preregistration: eprint.repositories?.preregistration
+        ? {
+            url:
+              ((eprint.repositories.preregistration as Record<string, unknown>).url as string) ??
+              '',
+            platformUri:
+              ((eprint.repositories.preregistration as Record<string, unknown>)
+                .platformUri as string) ?? '',
+            platformName:
+              ((eprint.repositories.preregistration as Record<string, unknown>)
+                .platformSlug as string) ?? '',
+          }
+        : { url: '', platformUri: '', platformName: '' },
       // Initialize funding from eprint
       funding:
         eprint.funding?.map((f) => ({
@@ -491,6 +550,8 @@ export function EprintEditSections({
           funderDoi: f.funderDoi ?? '',
           funderRor: f.funderRor ?? '',
           grantNumber: f.grantNumber ?? '',
+          grantTitle: f.grantTitle ?? '',
+          grantUrl: f.grantUrl ?? '',
         })) ?? [],
       // Initialize conference presentation from eprint
       conferencePresentation: eprint.conferencePresentation
@@ -609,6 +670,17 @@ export function EprintEditSections({
     name: 'funding',
   });
 
+  // Repository field arrays
+  const codeReposArray = useFieldArray({
+    control: form.control,
+    name: 'codeRepositories',
+  });
+
+  const dataReposArray = useFieldArray({
+    control: form.control,
+    name: 'dataRepositories',
+  });
+
   // Add funding source
   const handleAddFunding = useCallback(() => {
     fundingArray.append({
@@ -617,6 +689,8 @@ export function EprintEditSections({
       funderDoi: '',
       funderRor: '',
       grantNumber: '',
+      grantTitle: '',
+      grantUrl: '',
     });
   }, [fundingArray]);
 
@@ -691,6 +765,87 @@ export function EprintEditSections({
     form.setValue('conferencePresentation.presentationTypeName', '', { shouldValidate: true });
   }, [form]);
 
+  // Repository handlers
+  const handleAddCodeRepo = useCallback(() => {
+    codeReposArray.append({ url: '', platformUri: '', platformName: '', label: '' });
+  }, [codeReposArray]);
+
+  const handleAddDataRepo = useCallback(() => {
+    dataReposArray.append({ url: '', platformUri: '', platformName: '', label: '' });
+  }, [dataReposArray]);
+
+  const handleCodePlatformSelect = useCallback(
+    (node: NodeSuggestion, index: number) => {
+      form.setValue(`codeRepositories.${index}.platformUri`, node.uri, { shouldValidate: true });
+      form.setValue(`codeRepositories.${index}.platformName`, node.label, {
+        shouldValidate: true,
+      });
+    },
+    [form]
+  );
+
+  const handleCodePlatformClear = useCallback(
+    (index: number) => {
+      form.setValue(`codeRepositories.${index}.platformUri`, '', { shouldValidate: true });
+      form.setValue(`codeRepositories.${index}.platformName`, '', { shouldValidate: true });
+    },
+    [form]
+  );
+
+  const handleDataPlatformSelect = useCallback(
+    (node: NodeSuggestion, index: number) => {
+      form.setValue(`dataRepositories.${index}.platformUri`, node.uri, { shouldValidate: true });
+      form.setValue(`dataRepositories.${index}.platformName`, node.label, {
+        shouldValidate: true,
+      });
+    },
+    [form]
+  );
+
+  const handleDataPlatformClear = useCallback(
+    (index: number) => {
+      form.setValue(`dataRepositories.${index}.platformUri`, '', { shouldValidate: true });
+      form.setValue(`dataRepositories.${index}.platformName`, '', { shouldValidate: true });
+    },
+    [form]
+  );
+
+  const handlePreregPlatformSelect = useCallback(
+    (node: NodeSuggestion) => {
+      form.setValue('preregistration.platformUri', node.uri, { shouldValidate: true });
+      form.setValue('preregistration.platformName', node.label, { shouldValidate: true });
+    },
+    [form]
+  );
+
+  const handlePreregPlatformClear = useCallback(() => {
+    form.setValue('preregistration.platformUri', '', { shouldValidate: true });
+    form.setValue('preregistration.platformName', '', { shouldValidate: true });
+  }, [form]);
+
+  // External ID autocomplete handlers
+  const handleArxivSelect = useCallback(
+    (entry: ArxivEntry) => {
+      form.setValue('arxivId', entry.id, { shouldValidate: true });
+    },
+    [form]
+  );
+
+  const handleArxivClear = useCallback(() => {
+    form.setValue('arxivId', '', { shouldValidate: true });
+  }, [form]);
+
+  const handlePubmedSelect = useCallback(
+    (entry: PubmedEntry) => {
+      form.setValue('pmid', entry.pmid, { shouldValidate: true });
+    },
+    [form]
+  );
+
+  const handlePubmedClear = useCallback(() => {
+    form.setValue('pmid', '', { shouldValidate: true });
+  }, [form]);
+
   // Handle form submission
   const onSubmit = useCallback(
     async (data: EditFormValues) => {
@@ -721,12 +876,24 @@ export function EprintEditSections({
           updates.abstract = data.abstract;
         }
 
-        // External IDs
-        if (data.arxivId || data.pmid || data.pmcid) {
+        // External IDs (form values only; merged with PDS data in Step 4)
+        if (
+          data.arxivId ||
+          data.pmid ||
+          data.pmcid ||
+          data.ssrnId ||
+          data.osf ||
+          data.zenodoDoi ||
+          data.openAlexId
+        ) {
           updates.externalIds = {
             ...(data.arxivId && { arxivId: data.arxivId }),
             ...(data.pmid && { pmid: data.pmid }),
             ...(data.pmcid && { pmcid: data.pmcid }),
+            ...(data.ssrnId && { ssrnId: data.ssrnId }),
+            ...(data.osf && { osf: data.osf }),
+            ...(data.zenodoDoi && { zenodoDoi: data.zenodoDoi }),
+            ...(data.openAlexId && { openAlexId: data.openAlexId }),
           };
         }
 
@@ -742,14 +909,45 @@ export function EprintEditSections({
           };
         }
 
-        // Repositories - store for future API expansion
-        const repositories: { code?: { url: string }[]; data?: { url: string }[] } = {};
-        if (data.codeRepoUrl) {
-          repositories.code = [{ url: data.codeRepoUrl }];
-        }
-        if (data.dataRepoUrl) {
-          repositories.data = [{ url: data.dataRepoUrl }];
-        }
+        // Build repositories from multi-entry arrays
+        const codeRepos = (data.codeRepositories ?? [])
+          .filter((r) => r.url)
+          .map((r) => ({
+            url: r.url,
+            ...(r.platformUri && { platformUri: r.platformUri }),
+            ...(r.platformName && { platformSlug: r.platformName }),
+            ...(r.label && { label: r.label }),
+          }));
+
+        const dataRepos = (data.dataRepositories ?? [])
+          .filter((r) => r.url)
+          .map((r) => ({
+            url: r.url,
+            ...(r.platformUri && { platformUri: r.platformUri }),
+            ...(r.platformName && { platformSlug: r.platformName }),
+            ...(r.label && { label: r.label }),
+          }));
+
+        const preregData = data.preregistration?.url
+          ? {
+              url: data.preregistration.url,
+              ...(data.preregistration.platformUri && {
+                platformUri: data.preregistration.platformUri,
+              }),
+              ...(data.preregistration.platformName && {
+                platformSlug: data.preregistration.platformName,
+              }),
+            }
+          : undefined;
+
+        const hasRepositories = codeRepos.length > 0 || dataRepos.length > 0 || preregData;
+        const repositoriesPayload = hasRepositories
+          ? {
+              ...(codeRepos.length > 0 && { code: codeRepos }),
+              ...(dataRepos.length > 0 && { data: dataRepos }),
+              ...(preregData && { preregistration: preregData }),
+            }
+          : undefined;
 
         // Get field URIs from form
         const fieldUris = data.fieldNodes?.map((f) => f.uri);
@@ -776,10 +974,41 @@ export function EprintEditSections({
           isHighlighted: author.isHighlighted ?? false,
         }));
 
-        // Note: The current API supports title, keywords, fieldUris, authors, versionBump, and changelog.
-        // Additional fields (abstract, external IDs, repositories, etc.) would require
-        // backend API expansion.
-        await updateEprint({
+        // Build conference presentation payload if any fields are filled
+        const confData = data.conferencePresentation;
+        const hasConference = confData?.conferenceName || confData?.conferenceUri;
+        const conferencePresentationPayload = hasConference
+          ? {
+              ...(confData?.conferenceName && { conferenceName: confData.conferenceName }),
+              ...(confData?.conferenceUri && { conferenceUri: confData.conferenceUri }),
+              ...(confData?.conferenceUrl && { conferenceUrl: confData.conferenceUrl }),
+              ...(confData?.conferenceLocation && {
+                conferenceLocation: confData.conferenceLocation,
+              }),
+              ...(confData?.presentationDate && { presentationDate: confData.presentationDate }),
+              ...(confData?.presentationTypeUri && {
+                presentationTypeUri: confData.presentationTypeUri,
+              }),
+            }
+          : undefined;
+
+        // Build funding payload
+        const fundingPayload = data.funding?.length
+          ? data.funding
+              .filter((f) => f.funderName.trim())
+              .map((f) => ({
+                funderName: f.funderName,
+                ...(f.funderUri && { funderUri: f.funderUri }),
+                ...(f.funderDoi && { funderDoi: f.funderDoi }),
+                ...(f.funderRor && { funderRor: f.funderRor }),
+                ...(f.grantNumber && { grantNumber: f.grantNumber }),
+                ...(f.grantTitle && { grantTitle: f.grantTitle }),
+                ...(f.grantUrl && { grantUrl: f.grantUrl }),
+              }))
+          : undefined;
+
+        // Step 1: Call backend authorization endpoint with all metadata
+        const authResult = await updateEprint({
           uri: eprint.uri,
           versionBump: data.versionBump as VersionBumpType,
           title: data.title,
@@ -793,16 +1022,266 @@ export function EprintEditSections({
                   sections: changelog.sections,
                 }
               : undefined,
+          publishedVersion: updates.publishedVersion as Record<string, unknown> | undefined,
+          externalIds: updates.externalIds as Record<string, unknown> | undefined,
+          repositories: repositoriesPayload as Record<string, unknown> | undefined,
+          conferencePresentation: conferencePresentationPayload as
+            | Record<string, unknown>
+            | undefined,
+          funding: fundingPayload as Record<string, unknown>[] | undefined,
+        });
+
+        editLogger.info('Authorization successful', {
+          uri: eprint.uri,
+          newVersion: formatVersion(authResult.version),
+        });
+
+        // Step 2: Upload new document if provided
+        let documentBlobRef = undefined;
+        if (selectedFile) {
+          const fileBytes = new Uint8Array(await selectedFile.arrayBuffer());
+          const uploadResult = await agent.uploadBlob(fileBytes, {
+            encoding: selectedFile.type || 'application/pdf',
+          });
+          documentBlobRef = uploadResult.data.blob;
+          editLogger.info('Document uploaded', { cid: documentBlobRef.ref.toString() });
+        }
+
+        // Step 3: Fetch current record from PDS to merge with updates
+        const parsed = parseAtUri(eprint.uri);
+        if (!parsed) {
+          throw new Error('Invalid AT-URI: ' + eprint.uri);
+        }
+
+        const currentRecord = await agent.com.atproto.repo.getRecord({
+          repo: parsed.did,
+          collection: parsed.collection,
+          rkey: parsed.rkey,
+        });
+
+        // Step 4: Build updated record, merging form data with existing PDS data
+        // to preserve sub-fields that the form does not expose.
+        const currentRecordValue = currentRecord.data.value as Record<string, unknown>;
+
+        // Merge externalIds: preserve sub-fields not in form
+        const mergedExternalIds = updates.externalIds
+          ? {
+              ...((currentRecordValue.externalIds as Record<string, unknown>) ?? {}),
+              ...(data.arxivId !== undefined && { arxivId: data.arxivId || undefined }),
+              ...(data.pmid !== undefined && { pmid: data.pmid || undefined }),
+              ...(data.pmcid !== undefined && { pmcid: data.pmcid || undefined }),
+              ...(data.ssrnId !== undefined && { ssrnId: data.ssrnId || undefined }),
+              ...(data.osf !== undefined && { osf: data.osf || undefined }),
+              ...(data.zenodoDoi !== undefined && { zenodoDoi: data.zenodoDoi || undefined }),
+              ...(data.openAlexId !== undefined && { openAlexId: data.openAlexId || undefined }),
+            }
+          : undefined;
+
+        // Merge publishedVersion: preserve sub-fields not in form (publishedAt, publisher, etc.)
+        const mergedPublishedVersion = updates.publishedVersion
+          ? {
+              ...((currentRecordValue.publishedVersion as Record<string, unknown>) ?? {}),
+              ...(data.publishedDoi !== undefined && { doi: data.publishedDoi || undefined }),
+              ...(data.publishedUrl !== undefined && { url: data.publishedUrl || undefined }),
+              ...(data.publishedJournal !== undefined && {
+                journal: data.publishedJournal || undefined,
+              }),
+              ...(data.publishedVolume !== undefined && {
+                volume: data.publishedVolume || undefined,
+              }),
+              ...(data.publishedIssue !== undefined && {
+                issue: data.publishedIssue || undefined,
+              }),
+              ...(data.publishedPages !== undefined && {
+                pages: data.publishedPages || undefined,
+              }),
+            }
+          : undefined;
+
+        // Merge repositories with PDS data to preserve sub-fields
+        const existingRepos = (currentRecordValue.repositories as Record<string, unknown>) ?? {};
+        const mergedRepositories: Record<string, unknown> = { ...existingRepos };
+
+        if (codeRepos.length > 0) {
+          const existingCode = Array.isArray(existingRepos.code) ? existingRepos.code : [];
+          mergedRepositories.code = codeRepos.map((repo, i) => ({
+            ...((existingCode[i] as Record<string, unknown>) ?? {}),
+            ...repo,
+          }));
+        } else if (data.codeRepositories !== undefined && data.codeRepositories.length === 0) {
+          delete mergedRepositories.code;
+        }
+
+        if (dataRepos.length > 0) {
+          const existingData = Array.isArray(existingRepos.data) ? existingRepos.data : [];
+          mergedRepositories.data = dataRepos.map((repo, i) => ({
+            ...((existingData[i] as Record<string, unknown>) ?? {}),
+            ...repo,
+          }));
+        } else if (data.dataRepositories !== undefined && data.dataRepositories.length === 0) {
+          delete mergedRepositories.data;
+        }
+
+        if (preregData) {
+          mergedRepositories.preregistration = {
+            ...((existingRepos.preregistration as Record<string, unknown>) ?? {}),
+            ...preregData,
+          };
+        }
+
+        const mergedHasRepositories = Object.keys(mergedRepositories).some(
+          (k) => k !== '$type' && mergedRepositories[k] !== undefined
+        );
+        const mergedRepositoriesPayload = mergedHasRepositories ? mergedRepositories : undefined;
+
+        // Merge conferencePresentation: preserve sub-fields not in form
+        // (conferenceAcronym, conferenceIteration, presentationTypeSlug, proceedingsDoi)
+        const existingConf =
+          (currentRecordValue.conferencePresentation as Record<string, unknown>) ?? {};
+        const mergedConferencePresentation = hasConference
+          ? {
+              ...existingConf,
+              ...(confData?.conferenceName && { conferenceName: confData.conferenceName }),
+              ...(confData?.conferenceUri && { conferenceUri: confData.conferenceUri }),
+              ...(confData?.conferenceUrl && { conferenceUrl: confData.conferenceUrl }),
+              ...(confData?.conferenceLocation && {
+                conferenceLocation: confData.conferenceLocation,
+              }),
+              ...(confData?.presentationDate && { presentationDate: confData.presentationDate }),
+              ...(confData?.presentationTypeUri && {
+                presentationTypeUri: confData.presentationTypeUri,
+              }),
+            }
+          : undefined;
+
+        // Merge funding: preserve any sub-fields not in form from existing PDS data
+        const existingFunding = Array.isArray(currentRecordValue.funding)
+          ? (currentRecordValue.funding as Record<string, unknown>[])
+          : [];
+        const mergedFunding = data.funding?.length
+          ? data.funding
+              .filter((f) => f.funderName.trim())
+              .map((f, i) => ({
+                ...(existingFunding[i] ?? {}),
+                funderName: f.funderName,
+                ...(f.funderUri && { funderUri: f.funderUri }),
+                ...(f.funderDoi && { funderDoi: f.funderDoi }),
+                ...(f.funderRor && { funderRor: f.funderRor }),
+                ...(f.grantNumber && { grantNumber: f.grantNumber }),
+                ...(f.grantTitle && { grantTitle: f.grantTitle }),
+                ...(f.grantUrl && { grantUrl: f.grantUrl }),
+              }))
+          : undefined;
+
+        const updatedRecord = {
+          ...currentRecordValue,
+          title: data.title,
+          ...(data.abstract && data.abstract !== eprint.abstract && { abstract: data.abstract }),
+          keywords: keywords ?? currentRecordValue.keywords,
+          version: authResult.version,
+          ...(fieldUris && { fieldNodes: fieldUris.map((uri) => ({ uri })) }),
+          ...(authorsPayload.length > 0 && { authors: authorsPayload }),
+          ...(documentBlobRef && { document: documentBlobRef }),
+          ...(mergedPublishedVersion ? { publishedVersion: mergedPublishedVersion } : {}),
+          ...(mergedExternalIds ? { externalIds: mergedExternalIds } : {}),
+          ...(mergedRepositoriesPayload ? { repositories: mergedRepositoriesPayload } : {}),
+          ...(mergedConferencePresentation
+            ? { conferencePresentation: mergedConferencePresentation }
+            : {}),
+          ...(mergedFunding ? { funding: mergedFunding } : {}),
+        };
+
+        // Step 5: Make PDS putRecord call with optimistic concurrency control
+        await agent.com.atproto.repo.putRecord({
+          repo: parsed.did,
+          collection: parsed.collection,
+          rkey: parsed.rkey,
+          record: updatedRecord,
+          swapRecord: authResult.expectedCid,
+        });
+
+        // Step 5.5: Create changelog record in PDS (if changelog provided)
+        const hasChangelog = changelog.summary || changelog.sections.length > 0;
+        if (hasChangelog) {
+          try {
+            const changelogResult = await createChangelogRecord(agent, {
+              eprintUri: eprint.uri,
+              version: authResult.version,
+              previousVersion: eprint.version || undefined,
+              summary: changelog.summary || undefined,
+              sections: changelog.sections
+                .map((section) => ({
+                  category: section.category,
+                  items: section.items
+                    .filter((item) => item.description.trim())
+                    .map((item) => ({
+                      description: item.description,
+                      changeType: item.changeType || undefined,
+                      location: item.location || undefined,
+                      reviewReference: item.reviewReference || undefined,
+                    })),
+                }))
+                .filter((section) => section.items.length > 0),
+              reviewerResponse: changelog.reviewerResponse || undefined,
+            });
+            editLogger.info('Changelog record created', { uri: changelogResult.uri });
+
+            // Request immediate indexing for the changelog record (best-effort)
+            try {
+              await authApi.pub.chive.sync.indexRecord({ uri: changelogResult.uri });
+            } catch {
+              editLogger.warn('Immediate changelog indexing failed; firehose will handle', {
+                uri: changelogResult.uri,
+              });
+            }
+          } catch (changelogError) {
+            editLogger.warn('Failed to create changelog record', {
+              uri: eprint.uri,
+              error:
+                changelogError instanceof Error ? changelogError.message : String(changelogError),
+            });
+            // Non-critical: do not fail the whole update
+          }
+        }
+
+        // Step 6: Request immediate re-indexing (best-effort)
+        try {
+          await authApi.pub.chive.sync.indexRecord({ uri: eprint.uri });
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        } catch {
+          editLogger.warn('Immediate re-indexing failed; firehose will handle', {
+            uri: eprint.uri,
+          });
+        }
+
+        toast.success('Eprint updated successfully', {
+          description: `Version ${formatVersion(authResult.version)}`,
         });
 
         onSaveSuccess?.();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to update eprint');
+        editLogger.error('Failed to update eprint', error);
+
+        if (error instanceof Error) {
+          if (error.message.includes('swapRecord')) {
+            toast.error('Update conflict', {
+              description: 'The eprint was modified by someone else. Please refresh and try again.',
+            });
+          } else if (error.message.includes('Unauthorized')) {
+            toast.error('Not authorized to edit this eprint');
+          } else {
+            toast.error('Failed to update eprint', {
+              description: error.message,
+            });
+          }
+        } else {
+          toast.error('Failed to update eprint');
+        }
       } finally {
         setIsSaving(false);
       }
     },
-    [agent, eprint, changelog, updateEprint, onSaveSuccess, setIsSaving, authors]
+    [agent, eprint, changelog, updateEprint, onSaveSuccess, setIsSaving, authors, selectedFile]
   );
 
   const currentVersion = formatVersion(eprint.version);
@@ -1201,7 +1680,14 @@ export function EprintEditSections({
                   <FormItem>
                     <FormLabel>arXiv ID</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="2301.00000" disabled={isSaving} />
+                      <ArxivAutocomplete
+                        value={field.value}
+                        onSelect={handleArxivSelect}
+                        onChange={field.onChange}
+                        onClear={handleArxivClear}
+                        placeholder="Search by title or arXiv ID..."
+                        disabled={isSaving}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1215,7 +1701,14 @@ export function EprintEditSections({
                   <FormItem>
                     <FormLabel>PubMed ID</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="12345678" disabled={isSaving} />
+                      <PubmedAutocomplete
+                        value={field.value}
+                        onSelect={handlePubmedSelect}
+                        onChange={field.onChange}
+                        onClear={handlePubmedClear}
+                        placeholder="Search by title or PMID..."
+                        disabled={isSaving}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1235,6 +1728,62 @@ export function EprintEditSections({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="ssrnId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SSRN ID</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="1234567" disabled={isSaving} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="osf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>OSF ID</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="abc12" disabled={isSaving} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="zenodoDoi"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Zenodo DOI</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="10.5281/zenodo.1234567" disabled={isSaving} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="openAlexId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>OpenAlex ID</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="W1234567890" disabled={isSaving} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </EditSection>
 
@@ -1244,38 +1793,178 @@ export function EprintEditSections({
             expanded={expandedSections.has('repositories')}
             onToggle={() => toggleSection('repositories')}
           >
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="codeRepoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Code Repository</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="https://github.com/..." disabled={isSaving} />
-                    </FormControl>
-                    <FormDescription>GitHub, GitLab, or other code hosting URL</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="space-y-6">
+              {/* Code Repositories */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-medium">Code Repositories</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Link to code repositories for reproducibility.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddCodeRepo}
+                    disabled={isSaving}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Repository
+                  </Button>
+                </div>
+                {codeReposArray.fields.map((field, index) => (
+                  <div key={field.id} className="flex gap-3 items-start p-4 border rounded-lg">
+                    <div className="flex-1 grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>URL</Label>
+                        <Input
+                          type="url"
+                          placeholder="https://github.com/..."
+                          {...form.register(`codeRepositories.${index}.url`)}
+                          disabled={isSaving}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Platform</Label>
+                        <NodeAutocomplete
+                          kind="object"
+                          subkind="platform-code"
+                          label="Code Platform"
+                          value={form.watch(`codeRepositories.${index}.platformUri`)}
+                          onSelect={(node) => handleCodePlatformSelect(node, index)}
+                          onClear={() => handleCodePlatformClear(index)}
+                          placeholder="Search platforms..."
+                          disabled={isSaving}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Label</Label>
+                        <Input
+                          placeholder="Analysis code"
+                          {...form.register(`codeRepositories.${index}.label`)}
+                          disabled={isSaving}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => codeReposArray.remove(index)}
+                      disabled={isSaving}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
 
-              <FormField
-                control={form.control}
-                name="dataRepoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data Repository</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="https://zenodo.org/..." disabled={isSaving} />
-                    </FormControl>
-                    <FormDescription>
-                      Zenodo, Figshare, Dryad, or other data repository
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <Separator />
+
+              {/* Data Repositories */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-medium">Data Repositories</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Link to data repositories for reproducibility.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddDataRepo}
+                    disabled={isSaving}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Repository
+                  </Button>
+                </div>
+                {dataReposArray.fields.map((field, index) => (
+                  <div key={field.id} className="flex gap-3 items-start p-4 border rounded-lg">
+                    <div className="flex-1 grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>URL</Label>
+                        <Input
+                          type="url"
+                          placeholder="https://zenodo.org/..."
+                          {...form.register(`dataRepositories.${index}.url`)}
+                          disabled={isSaving}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Platform</Label>
+                        <NodeAutocomplete
+                          kind="object"
+                          subkind="platform-data"
+                          label="Data Platform"
+                          value={form.watch(`dataRepositories.${index}.platformUri`)}
+                          onSelect={(node) => handleDataPlatformSelect(node, index)}
+                          onClear={() => handleDataPlatformClear(index)}
+                          placeholder="Search platforms..."
+                          disabled={isSaving}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Label</Label>
+                        <Input
+                          placeholder="Experiment data"
+                          {...form.register(`dataRepositories.${index}.label`)}
+                          disabled={isSaving}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => dataReposArray.remove(index)}
+                      disabled={isSaving}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Separator />
+
+              {/* Pre-registration */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-medium">Pre-registration</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Link to pre-registration or registered report.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>URL</Label>
+                    <Input
+                      type="url"
+                      placeholder="https://osf.io/..."
+                      {...form.register('preregistration.url')}
+                      disabled={isSaving}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Platform</Label>
+                    <NodeAutocomplete
+                      kind="object"
+                      subkind="platform-preregistration"
+                      label="Preregistration Platform"
+                      value={form.watch('preregistration.platformUri')}
+                      onSelect={handlePreregPlatformSelect}
+                      onClear={handlePreregPlatformClear}
+                      placeholder="Search preregistration platforms..."
+                      disabled={isSaving}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </EditSection>
 
@@ -1318,6 +2007,24 @@ export function EprintEditSections({
                             id={`funding-grant-${index}`}
                             placeholder="R01-GM123456"
                             {...form.register(`funding.${index}.grantNumber`)}
+                            disabled={isSaving}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`funding-title-${index}`}>Grant Title</Label>
+                          <Input
+                            id={`funding-title-${index}`}
+                            placeholder="Grant title (optional)"
+                            {...form.register(`funding.${index}.grantTitle`)}
+                            disabled={isSaving}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`funding-url-${index}`}>Grant URL</Label>
+                          <Input
+                            id={`funding-url-${index}`}
+                            placeholder="https://..."
+                            {...form.register(`funding.${index}.grantUrl`)}
                             disabled={isSaving}
                           />
                         </div>

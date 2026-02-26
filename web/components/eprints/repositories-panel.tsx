@@ -456,6 +456,46 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
             </div>
           </div>
         )}
+
+        {/* Materials */}
+        {hasMaterials && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Box className="h-4 w-4" />
+              Materials
+            </h4>
+            <div className="space-y-2">
+              {materials!.map((material, index) => (
+                <div
+                  key={`material-${index}`}
+                  className="flex items-center justify-between rounded-lg border bg-card p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Box className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{material.label || 'Material'}</p>
+                      {material.rrid && (
+                        <p className="text-xs text-muted-foreground font-mono">
+                          RRID: {material.rrid}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {material.url && (
+                    <a
+                      href={material.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 text-muted-foreground hover:text-foreground"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

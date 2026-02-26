@@ -9,8 +9,16 @@
 import { BlobRef } from '@atproto/lexicon';
 export { BlobRef };
 
-// Import SemanticVersion for local use in interfaces
-import type { SemanticVersion as _SemanticVersion } from './generated/types/pub/chive/eprint/submission.js';
+// Import types for local use in Eprint interface
+import type {
+  SemanticVersion as _SemanticVersion,
+  PublishedVersion as _PublishedVersion,
+  RelatedWork as _RelatedWork,
+  ExternalIds as _ExternalIds,
+  Repositories as _Repositories,
+  FundingSource as _FundingSource,
+  ConferencePresentation as _ConferencePresentation,
+} from './generated/types/pub/chive/eprint/submission.js';
 
 // =============================================================================
 // EPRINT TYPES
@@ -28,6 +36,7 @@ export type {
   DataRepository,
   Preregistration,
   Protocol,
+  Material,
   FundingSource,
   ConferencePresentation,
   TextItem as EprintTextItem,
@@ -246,68 +255,17 @@ export interface Eprint {
   /** Paper type slug */
   paperTypeSlug?: string;
   /** Published version info */
-  publishedVersion?: {
-    doi?: string;
-    url?: string;
-    publishedAt?: string;
-    journal?: string;
-    journalAbbreviation?: string;
-    volume?: string;
-    issue?: string;
-    pages?: string;
-  };
+  publishedVersion?: _PublishedVersion;
   /** Related works */
-  relatedWorks?: Array<{
-    identifier: string;
-    identifierType: string;
-    relationType: string;
-    title?: string;
-    description?: string;
-  }>;
+  relatedWorks?: _RelatedWork[];
   /** External IDs */
-  externalIds?: {
-    arxivId?: string;
-    pmid?: string;
-    pmcid?: string;
-    zenodoDoi?: string;
-    openAlexId?: string;
-    semanticScholarId?: string;
-  };
+  externalIds?: _ExternalIds;
   /** Repositories */
-  repositories?: {
-    code?: Array<{
-      url?: string;
-      platformSlug?: string;
-      label?: string;
-    }>;
-    data?: Array<{
-      url?: string;
-      doi?: string;
-      platformSlug?: string;
-      label?: string;
-    }>;
-  };
+  repositories?: _Repositories;
   /** Funding sources */
-  funding?: Array<{
-    funderName?: string;
-    funderUri?: string;
-    funderDoi?: string;
-    funderRor?: string;
-    grantNumber?: string;
-    grantTitle?: string;
-    grantUrl?: string;
-  }>;
+  funding?: _FundingSource[];
   /** Conference presentation */
-  conferencePresentation?: {
-    conferenceName?: string;
-    conferenceAcronym?: string;
-    conferenceUri?: string;
-    conferenceUrl?: string;
-    conferenceLocation?: string;
-    presentationDate?: string;
-    presentationTypeSlug?: string;
-    proceedingsDoi?: string;
-  };
+  conferencePresentation?: _ConferencePresentation;
   /** Creation timestamp */
   createdAt: string;
 

@@ -29,7 +29,12 @@ import { Button } from '@/components/ui/button';
 const submitLogger = logger.child({ component: 'submission-wizard' });
 import { cn } from '@/lib/utils';
 import { useAuth, useAgent } from '@/lib/auth/auth-context';
-import { createEprintRecord, createStandardDocument, type CreateRecordResult } from '@/lib/atproto';
+import {
+  createEprintRecord,
+  createStandardDocument,
+  type CreateRecordResult,
+  type EprintRecord,
+} from '@/lib/atproto';
 import { SUPPORTED_DOCUMENT_FORMATS } from '@/lib/schemas/eprint';
 import { authApi } from '@/lib/api/client';
 
@@ -251,6 +256,48 @@ export function mergeFieldsIntoFacets(
     }
   }
   return [...facets, ...additions];
+}
+
+/**
+ * Transform the wizard's flat repository fields into the nested
+ * `repositories` structure expected by the PDS record.
+ */
+function buildRepositories(values: EprintFormValues): EprintRecord['repositories'] | undefined {
+  const repos: NonNullable<EprintRecord['repositories']> = {};
+
+  if (values.codeRepositories && values.codeRepositories.length > 0) {
+    repos.code = values.codeRepositories
+      .filter((r) => r.url)
+      .map((r) => ({
+        url: r.url,
+        platformUri: r.platformUri,
+        platformSlug: r.platformName,
+        label: r.label,
+      }));
+    if (repos.code.length === 0) delete repos.code;
+  }
+
+  if (values.dataRepositories && values.dataRepositories.length > 0) {
+    repos.data = values.dataRepositories
+      .filter((r) => r.url)
+      .map((r) => ({
+        url: r.url,
+        platformUri: r.platformUri,
+        platformSlug: r.platformName,
+        label: r.label,
+      }));
+    if (repos.data.length === 0) delete repos.data;
+  }
+
+  if (values.preregistration?.url) {
+    repos.preregistration = {
+      url: values.preregistration.url,
+      platformUri: values.preregistration.platformUri,
+      platformSlug: values.preregistration.platformName,
+    };
+  }
+
+  return Object.keys(repos).length > 0 ? repos : undefined;
 }
 
 // =============================================================================
@@ -753,6 +800,16 @@ export function SubmissionWizard({
           authors: transformedAuthors,
           fieldNodes: transformedFieldNodes,
           facets: transformedFacets.length > 0 ? transformedFacets : undefined,
+          // Publication metadata
+          publicationStatus: values.publicationStatus,
+          publishedVersion: values.publishedVersion,
+          externalIds: values.externalIds,
+          // Repositories (transformed from flat wizard fields to nested record structure)
+          repositories: buildRepositories(values),
+          // Funding
+          funding: values.funding,
+          // Conference
+          conferencePresentation: values.conferencePresentation,
         },
         targetAgent
       );
