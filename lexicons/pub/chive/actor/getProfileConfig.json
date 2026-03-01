@@ -49,6 +49,24 @@
         }
       }
     },
+    "sectionConfig": {
+      "type": "object",
+      "description": "Section-specific display configuration. Properties vary by section type.",
+      "properties": {
+        "maxItems": {
+          "type": "integer",
+          "description": "Maximum number of items to display"
+        },
+        "collectionUri": {
+          "type": "string",
+          "description": "AT-URI of a collection to feature"
+        },
+        "sortBy": {
+          "type": "string",
+          "description": "Sort order for section items"
+        }
+      }
+    },
     "profileSectionView": {
       "type": "object",
       "description": "Configuration for a profile display section",
@@ -67,7 +85,8 @@
           "description": "Display order of the section"
         },
         "config": {
-          "type": "unknown",
+          "type": "ref",
+          "ref": "#sectionConfig",
           "description": "Section-specific configuration"
         }
       }

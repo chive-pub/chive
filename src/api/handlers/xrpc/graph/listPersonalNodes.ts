@@ -86,6 +86,7 @@ export const listPersonalNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
         description: node.description,
         status: node.status,
         createdAt: node.createdAt.toISOString(),
+        metadata: node.metadata,
       })),
     };
 

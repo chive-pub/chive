@@ -54,7 +54,7 @@ export interface NodeInput {
   readonly alternateLabels?: readonly string[];
   readonly description?: string;
   readonly externalIds?: readonly ExternalId[];
-  readonly metadata?: Record<string, string | string[] | number | undefined>;
+  readonly metadata?: Record<string, string | string[] | number | boolean | undefined>;
   readonly status: NodeStatus;
 }
 

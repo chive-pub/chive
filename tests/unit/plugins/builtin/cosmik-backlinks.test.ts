@@ -1,8 +1,8 @@
 /**
- * Unit tests for SembleBacklinksPlugin.
+ * Unit tests for CosmikBacklinksPlugin.
  *
  * @remarks
- * Tests backlink tracking from Semble collections to Chive eprints.
+ * Tests backlink tracking from Cosmik cards to Chive eprints.
  *
  * @packageDocumentation
  */
@@ -10,7 +10,7 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { SembleBacklinksPlugin } from '../../../../src/plugins/builtin/semble-backlinks.js';
+import { CosmikBacklinksPlugin } from '../../../../src/plugins/builtin/cosmik-backlinks.js';
 import type { FirehoseRecord } from '../../../../src/plugins/core/backlink-plugin.js';
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
 import type {
@@ -65,17 +65,17 @@ const createMockEventBus = (): IPluginEventBus => ({
 const createMockBacklinkService = (): IBacklinkService => ({
   createBacklink: vi.fn().mockResolvedValue({
     id: 1,
-    sourceUri: 'at://did:plc:user/xyz.semble.collection/abc123',
-    sourceType: 'semble.collection',
+    sourceUri: 'at://did:plc:user/network.cosmik.card/abc123',
+    sourceType: 'cosmik.collection',
     targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz789',
-    context: 'Test Collection',
+    context: 'Test Card',
     indexedAt: new Date(),
     deleted: false,
   }),
   deleteBacklink: vi.fn().mockResolvedValue(undefined),
   getBacklinks: vi.fn().mockResolvedValue({ backlinks: [], cursor: undefined }),
   getCounts: vi.fn().mockResolvedValue({
-    sembleCollections: 0,
+    cosmikCollections: 0,
     leafletLists: 0,
     whitewindBlogs: 0,
     blueskyShares: 0,
@@ -101,84 +101,61 @@ const createMockContext = (overrides?: Partial<IPluginContext>): IPluginContext 
 // ============================================================================
 
 /**
- * Sample Semble collection with eprint references.
+ * Sample Cosmik card with an eprint URL.
  */
-const SAMPLE_PUBLIC_COLLECTION = {
-  $type: 'xyz.semble.collection',
-  title: 'Linguistics Reading List',
-  description: 'Papers on semantic theory',
-  visibility: 'public' as const,
-  items: [
-    {
-      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-      addedAt: '2024-01-15T00:00:00Z',
-      note: 'Great paper on semantics',
+const SAMPLE_EPRINT_CARD = {
+  $type: 'network.cosmik.card',
+  type: 'URL' as const,
+  url: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
+  content: {
+    $type: 'network.cosmik.card#urlContent',
+    url: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
+    metadata: {
+      title: 'Semantics of Natural Language',
+      description: 'A paper on semantic theory',
     },
-    {
-      uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
-      addedAt: '2024-01-16T00:00:00Z',
-    },
-    {
-      uri: 'https://example.com/some-article',
-      addedAt: '2024-01-17T00:00:00Z',
-      note: 'Not a Chive eprint',
-    },
-  ],
-  createdAt: '2024-01-15T00:00:00Z',
-  updatedAt: '2024-01-17T00:00:00Z',
-};
-
-/**
- * Sample private Semble collection.
- */
-const SAMPLE_PRIVATE_COLLECTION = {
-  $type: 'xyz.semble.collection',
-  title: 'Private Collection',
-  description: 'Private research notes',
-  visibility: 'private' as const,
-  items: [
-    {
-      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-      addedAt: '2024-01-15T00:00:00Z',
-    },
-  ],
+  },
   createdAt: '2024-01-15T00:00:00Z',
 };
 
 /**
- * Sample unlisted Semble collection.
+ * Sample Cosmik card with a non-eprint URL.
  */
-const SAMPLE_UNLISTED_COLLECTION = {
-  $type: 'xyz.semble.collection',
-  title: 'Unlisted Collection',
-  visibility: 'unlisted' as const,
-  items: [
-    {
-      uri: 'at://did:plc:author1/pub.chive.eprint.submission/xyz789',
-      addedAt: '2024-01-15T00:00:00Z',
+const SAMPLE_EXTERNAL_CARD = {
+  $type: 'network.cosmik.card',
+  type: 'URL' as const,
+  url: 'https://example.com/some-article',
+  content: {
+    $type: 'network.cosmik.card#urlContent',
+    url: 'https://example.com/some-article',
+    metadata: {
+      title: 'External Article',
     },
-  ],
+  },
   createdAt: '2024-01-15T00:00:00Z',
 };
 
 /**
- * Sample collection with no items.
+ * Sample Cosmik card with no content block.
  */
-const SAMPLE_EMPTY_COLLECTION = {
-  $type: 'xyz.semble.collection',
-  title: 'Empty Collection',
-  visibility: 'public' as const,
-  items: [],
+const SAMPLE_MINIMAL_CARD = {
+  $type: 'network.cosmik.card',
+  type: 'URL' as const,
+  url: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
   createdAt: '2024-01-15T00:00:00Z',
 };
 
 /**
- * Sample collection with missing items field.
+ * Sample Cosmik card with no metadata in content.
  */
-const SAMPLE_MALFORMED_COLLECTION = {
-  $type: 'xyz.semble.collection',
-  title: 'Malformed Collection',
-  visibility: 'public' as const,
+const SAMPLE_NO_METADATA_CARD = {
+  $type: 'network.cosmik.card',
+  type: 'URL' as const,
+  url: 'at://did:plc:author3/pub.chive.eprint.submission/ghi789',
+  content: {
+    $type: 'network.cosmik.card#urlContent',
+    url: 'at://did:plc:author3/pub.chive.eprint.submission/ghi789',
+  },
   createdAt: '2024-01-15T00:00:00Z',
 };
 
@@ -189,7 +166,7 @@ const SAMPLE_MALFORMED_COLLECTION = {
 /**
  * Testable subclass that exposes protected methods for testing.
  */
-class TestableSembleBacklinksPlugin extends SembleBacklinksPlugin {
+class TestableCosmikBacklinksPlugin extends CosmikBacklinksPlugin {
   /**
    * Exposes the protected extractContext method for testing.
    */
@@ -209,8 +186,8 @@ class TestableSembleBacklinksPlugin extends SembleBacklinksPlugin {
 // Tests
 // ============================================================================
 
-describe('SembleBacklinksPlugin', () => {
-  let plugin: TestableSembleBacklinksPlugin;
+describe('CosmikBacklinksPlugin', () => {
+  let plugin: TestableCosmikBacklinksPlugin;
   let context: IPluginContext;
   let backlinkService: IBacklinkService;
 
@@ -219,25 +196,25 @@ describe('SembleBacklinksPlugin', () => {
     context = createMockContext({
       config: { backlinkService },
     });
-    plugin = new TestableSembleBacklinksPlugin();
+    plugin = new TestableCosmikBacklinksPlugin();
   });
 
   describe('manifest', () => {
     it('should have correct plugin ID', () => {
-      expect(plugin.id).toBe('pub.chive.plugin.semble-backlinks');
+      expect(plugin.id).toBe('pub.chive.plugin.cosmik-backlinks');
     });
 
     it('should have correct name', () => {
-      expect(plugin.manifest.name).toBe('Semble Backlinks');
+      expect(plugin.manifest.name).toBe('Cosmik Backlinks');
     });
 
     it('should have correct version', () => {
-      expect(plugin.manifest.version).toBe('0.1.0');
+      expect(plugin.manifest.version).toBe('0.2.0');
     });
 
     it('should have descriptive text', () => {
       expect(plugin.manifest.description).toBe(
-        'Tracks references to Chive eprints from Semble collections'
+        'Tracks references to Chive eprints from Cosmik cards'
       );
     });
 
@@ -249,8 +226,8 @@ describe('SembleBacklinksPlugin', () => {
       expect(plugin.manifest.license).toBe('MIT');
     });
 
-    it('should declare firehose hook permission', () => {
-      expect(plugin.manifest.permissions.hooks).toContain('firehose.xyz.semble.collection');
+    it('should declare firehose hook permission for cards', () => {
+      expect(plugin.manifest.permissions.hooks).toContain('firehose.network.cosmik.card');
     });
 
     it('should declare storage permission', () => {
@@ -258,26 +235,26 @@ describe('SembleBacklinksPlugin', () => {
     });
 
     it('should have correct entrypoint', () => {
-      expect(plugin.manifest.entrypoint).toBe('semble-backlinks.js');
+      expect(plugin.manifest.entrypoint).toBe('cosmik-backlinks.js');
     });
   });
 
   describe('plugin properties', () => {
-    it('should have correct tracked collection', () => {
-      expect(plugin.trackedCollection).toBe('xyz.semble.collection');
+    it('should track network.cosmik.card collection', () => {
+      expect(plugin.trackedCollection).toBe('network.cosmik.card');
     });
 
     it('should have correct source type', () => {
-      expect(plugin.sourceType).toBe('semble.collection');
+      expect(plugin.sourceType).toBe('cosmik.collection');
     });
   });
 
   describe('initialize', () => {
-    it('should subscribe to firehose events', async () => {
+    it('should subscribe to firehose events for cards', async () => {
       await plugin.initialize(context);
 
       expect(context.eventBus.on).toHaveBeenCalledWith(
-        'firehose.xyz.semble.collection',
+        'firehose.network.cosmik.card',
         expect.any(Function)
       );
     });
@@ -285,19 +262,18 @@ describe('SembleBacklinksPlugin', () => {
     it('should store backlink service from context', async () => {
       await plugin.initialize(context);
 
-      // Verify backlink service is available by triggering a record event
       const firehoseHandler = vi
         .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.semble.collection')?.[1];
+        .mock.calls.find((call) => call[0] === 'firehose.network.cosmik.card')?.[1];
 
       expect(firehoseHandler).toBeDefined();
 
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/abc123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'abc123',
-        record: SAMPLE_PUBLIC_COLLECTION,
+        record: SAMPLE_EPRINT_CARD,
         deleted: false,
         cid: 'bafyreiabc123',
         timestamp: new Date(),
@@ -317,8 +293,8 @@ describe('SembleBacklinksPlugin', () => {
       expect(context.logger.info).toHaveBeenCalledWith(
         'Backlink tracking initialized',
         expect.objectContaining({
-          collection: 'xyz.semble.collection',
-          sourceType: 'semble.collection',
+          collection: 'network.cosmik.card',
+          sourceType: 'cosmik.collection',
         })
       );
     });
@@ -329,80 +305,60 @@ describe('SembleBacklinksPlugin', () => {
       await plugin.initialize(context);
     });
 
-    it('should extract eprint URIs from collection items', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_PUBLIC_COLLECTION);
+    it('should extract eprint URI from card url', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_EPRINT_CARD);
+
+      expect(refs).toHaveLength(1);
+      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
+    });
+
+    it('should extract eprint URI from minimal card without content block', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_MINIMAL_CARD);
+
+      expect(refs).toHaveLength(1);
+      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
+    });
+
+    it('should not duplicate when url and content.url match', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_EPRINT_CARD);
+
+      // Both url and content.url point to the same eprint
+      expect(refs).toHaveLength(1);
+    });
+
+    it('should extract both urls when they differ and both are eprints', () => {
+      const card = {
+        ...SAMPLE_EPRINT_CARD,
+        url: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
+        content: {
+          $type: 'network.cosmik.card#urlContent',
+          url: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
+        },
+      };
+
+      const refs = plugin.extractEprintRefs(card);
 
       expect(refs).toHaveLength(2);
       expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
       expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
     });
 
-    it('should filter out non-eprint URIs', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_PUBLIC_COLLECTION);
-
-      expect(refs).not.toContain('https://example.com/some-article');
-    });
-
-    it('should return empty array for collection with no items', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_EMPTY_COLLECTION);
+    it('should return empty array for non-eprint card', () => {
+      const refs = plugin.extractEprintRefs(SAMPLE_EXTERNAL_CARD);
 
       expect(refs).toEqual([]);
     });
 
-    it('should return empty array for collection with missing items field', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_MALFORMED_COLLECTION);
-
-      expect(refs).toEqual([]);
-    });
-
-    it('should handle collection with items not being an array', () => {
+    it('should handle card with no url field', () => {
       const malformed = {
-        ...SAMPLE_PUBLIC_COLLECTION,
-        items: 'not-an-array',
-      };
-
-      const refs = plugin.extractEprintRefs(malformed);
-
-      expect(refs).toEqual([]);
-    });
-
-    it('should handle collection with null items', () => {
-      const malformed = {
-        ...SAMPLE_PUBLIC_COLLECTION,
-        items: null,
-      };
-
-      const refs = plugin.extractEprintRefs(malformed);
-
-      expect(refs).toEqual([]);
-    });
-
-    it('should only extract URIs containing pub.chive.eprint.submission', () => {
-      const collection = {
-        $type: 'xyz.semble.collection',
-        title: 'Mixed Collection',
-        visibility: 'public' as const,
-        items: [
-          {
-            uri: 'at://did:plc:user/pub.chive.eprint.submission/abc123',
-            addedAt: '2024-01-15T00:00:00Z',
-          },
-          {
-            uri: 'at://did:plc:user/pub.chive.review.comment/def456',
-            addedAt: '2024-01-15T00:00:00Z',
-          },
-          {
-            uri: 'at://did:plc:user/app.bsky.feed.post/xyz789',
-            addedAt: '2024-01-15T00:00:00Z',
-          },
-        ],
+        $type: 'network.cosmik.card',
+        type: 'URL',
         createdAt: '2024-01-15T00:00:00Z',
       };
 
-      const refs = plugin.extractEprintRefs(collection);
+      const refs = plugin.extractEprintRefs(malformed);
 
-      expect(refs).toHaveLength(1);
-      expect(refs[0]).toBe('at://did:plc:user/pub.chive.eprint.submission/abc123');
+      expect(refs).toEqual([]);
     });
   });
 
@@ -411,44 +367,36 @@ describe('SembleBacklinksPlugin', () => {
       await plugin.initialize(context);
     });
 
-    it('should extract title and description when both present', () => {
-      const extractedContext = plugin.testExtractContext(SAMPLE_PUBLIC_COLLECTION);
+    it('should extract title from content metadata', () => {
+      const extractedContext = plugin.testExtractContext(SAMPLE_EPRINT_CARD);
 
-      expect(extractedContext).toBe('Linguistics Reading List: Papers on semantic theory');
+      expect(extractedContext).toBe('Semantics of Natural Language');
     });
 
-    it('should extract title only when description is missing', () => {
-      const collection = {
-        ...SAMPLE_PUBLIC_COLLECTION,
-        description: undefined,
-      };
-
-      const extractedContext = plugin.testExtractContext(collection);
-
-      expect(extractedContext).toBe('Linguistics Reading List');
-    });
-
-    it('should return undefined when title is missing', () => {
-      const collection = {
-        ...SAMPLE_PUBLIC_COLLECTION,
-        title: '',
-      };
-
-      const extractedContext = plugin.testExtractContext(collection);
+    it('should return undefined when content has no metadata', () => {
+      const extractedContext = plugin.testExtractContext(SAMPLE_NO_METADATA_CARD);
 
       expect(extractedContext).toBeUndefined();
     });
 
-    it('should handle collection with empty description', () => {
-      const collection = {
-        ...SAMPLE_PUBLIC_COLLECTION,
-        description: '',
+    it('should return undefined when content block is missing', () => {
+      const extractedContext = plugin.testExtractContext(SAMPLE_MINIMAL_CARD);
+
+      expect(extractedContext).toBeUndefined();
+    });
+
+    it('should return undefined for empty title', () => {
+      const card = {
+        ...SAMPLE_EPRINT_CARD,
+        content: {
+          ...SAMPLE_EPRINT_CARD.content,
+          metadata: { title: '' },
+        },
       };
 
-      const extractedContext = plugin.testExtractContext(collection);
+      const extractedContext = plugin.testExtractContext(card);
 
-      // Empty description is falsy, so it only returns the title
-      expect(extractedContext).toBe('Linguistics Reading List');
+      expect(extractedContext).toBeUndefined();
     });
   });
 
@@ -457,22 +405,10 @@ describe('SembleBacklinksPlugin', () => {
       await plugin.initialize(context);
     });
 
-    it('should return true for public collections', () => {
-      const shouldProcess = plugin.testShouldProcess(SAMPLE_PUBLIC_COLLECTION);
-
-      expect(shouldProcess).toBe(true);
-    });
-
-    it('should return true for unlisted collections', () => {
-      const shouldProcess = plugin.testShouldProcess(SAMPLE_UNLISTED_COLLECTION);
-
-      expect(shouldProcess).toBe(true);
-    });
-
-    it('should return false for private collections', () => {
-      const shouldProcess = plugin.testShouldProcess(SAMPLE_PRIVATE_COLLECTION);
-
-      expect(shouldProcess).toBe(false);
+    it('should always return true for cards', () => {
+      expect(plugin.testShouldProcess(SAMPLE_EPRINT_CARD)).toBe(true);
+      expect(plugin.testShouldProcess(SAMPLE_EXTERNAL_CARD)).toBe(true);
+      expect(plugin.testShouldProcess(SAMPLE_MINIMAL_CARD)).toBe(true);
     });
   });
 
@@ -484,7 +420,7 @@ describe('SembleBacklinksPlugin', () => {
 
       const call = vi
         .mocked(context.eventBus.on)
-        .mock.calls.find((c) => c[0] === 'firehose.xyz.semble.collection');
+        .mock.calls.find((c) => c[0] === 'firehose.network.cosmik.card');
       expect(call).toBeDefined();
       expect(call?.[1]).toBeDefined();
       firehoseHandler =
@@ -494,13 +430,13 @@ describe('SembleBacklinksPlugin', () => {
         });
     });
 
-    it('should create backlinks for public collection', async () => {
+    it('should create backlink for eprint card', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/abc123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'abc123',
-        record: SAMPLE_PUBLIC_COLLECTION,
+        record: SAMPLE_EPRINT_CARD,
         deleted: false,
         cid: 'bafyreiabc123',
         timestamp: new Date(),
@@ -511,30 +447,24 @@ describe('SembleBacklinksPlugin', () => {
       // Wait for async processing
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect(backlinkService.createBacklink).toHaveBeenCalledTimes(2);
+      expect(backlinkService.createBacklink).toHaveBeenCalledTimes(1);
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        sourceType: 'semble.collection',
+        sourceUri: 'at://did:plc:user/network.cosmik.card/abc123',
+        sourceType: 'cosmik.collection',
         targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-        context: 'Linguistics Reading List: Papers on semantic theory',
-      });
-      expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        sourceType: 'semble.collection',
-        targetUri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
-        context: 'Linguistics Reading List: Papers on semantic theory',
+        context: 'Semantics of Natural Language',
       });
     });
 
-    it('should not create backlinks for private collection', async () => {
+    it('should not create backlinks for non-eprint card', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/private123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/ext456',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
-        rkey: 'private123',
-        record: SAMPLE_PRIVATE_COLLECTION,
+        rkey: 'ext456',
+        record: SAMPLE_EXTERNAL_CARD,
         deleted: false,
-        cid: 'bafyreiprivate',
+        cid: 'bafyreiext456',
         timestamp: new Date(),
       };
 
@@ -546,15 +476,15 @@ describe('SembleBacklinksPlugin', () => {
       expect(backlinkService.createBacklink).not.toHaveBeenCalled();
     });
 
-    it('should create backlinks for unlisted collection', async () => {
+    it('should create backlink for minimal card with eprint url', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/unlisted123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/min789',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
-        rkey: 'unlisted123',
-        record: SAMPLE_UNLISTED_COLLECTION,
+        rkey: 'min789',
+        record: SAMPLE_MINIMAL_CARD,
         deleted: false,
-        cid: 'bafyreiunlisted',
+        cid: 'bafyreimin789',
         timestamp: new Date(),
       };
 
@@ -564,32 +494,18 @@ describe('SembleBacklinksPlugin', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.createBacklink).toHaveBeenCalledTimes(1);
-    });
-
-    it('should not create backlinks for empty collection', async () => {
-      const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/empty123',
-        collection: 'xyz.semble.collection',
-        did: 'did:plc:user',
-        rkey: 'empty123',
-        record: SAMPLE_EMPTY_COLLECTION,
-        deleted: false,
-        cid: 'bafyreiempty',
-        timestamp: new Date(),
-      };
-
-      firehoseHandler(record);
-
-      // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(backlinkService.createBacklink).not.toHaveBeenCalled();
+      expect(backlinkService.createBacklink).toHaveBeenCalledWith({
+        sourceUri: 'at://did:plc:user/network.cosmik.card/min789',
+        sourceType: 'cosmik.collection',
+        targetUri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
+        context: undefined,
+      });
     });
 
     it('should handle deletion events', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/deleted123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/deleted123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'deleted123',
         record: null,
@@ -603,21 +519,21 @@ describe('SembleBacklinksPlugin', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.deleteBacklink).toHaveBeenCalledWith(
-        'at://did:plc:user/xyz.semble.collection/deleted123'
+        'at://did:plc:user/network.cosmik.card/deleted123'
       );
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.deleted', {
-        sourceUri: 'at://did:plc:user/xyz.semble.collection/deleted123',
-        sourceType: 'semble.collection',
+        sourceUri: 'at://did:plc:user/network.cosmik.card/deleted123',
+        sourceType: 'cosmik.collection',
       });
     });
 
     it('should emit backlink.created event', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/abc123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'abc123',
-        record: SAMPLE_PUBLIC_COLLECTION,
+        record: SAMPLE_EPRINT_CARD,
         deleted: false,
         cid: 'bafyreiabc123',
         timestamp: new Date(),
@@ -631,7 +547,7 @@ describe('SembleBacklinksPlugin', () => {
       expect(context.eventBus.emit).toHaveBeenCalledWith(
         'backlink.created',
         expect.objectContaining({
-          sourceType: 'semble.collection',
+          sourceType: 'cosmik.collection',
           targetUri: expect.stringContaining('pub.chive.eprint.submission'),
         })
       );
@@ -639,11 +555,11 @@ describe('SembleBacklinksPlugin', () => {
 
     it('should record metrics on backlink creation', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/abc123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'abc123',
-        record: SAMPLE_PUBLIC_COLLECTION,
+        record: SAMPLE_EPRINT_CARD,
         deleted: false,
         cid: 'bafyreiabc123',
         timestamp: new Date(),
@@ -656,15 +572,15 @@ describe('SembleBacklinksPlugin', () => {
 
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
         'backlinks_created',
-        { source_type: 'semble.collection' },
+        { source_type: 'cosmik.collection' },
         undefined
       );
     });
 
     it('should record metrics on backlink deletion', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/deleted123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/deleted123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'deleted123',
         record: null,
@@ -679,7 +595,7 @@ describe('SembleBacklinksPlugin', () => {
 
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
         'backlinks_deleted',
-        { source_type: 'semble.collection' },
+        { source_type: 'cosmik.collection' },
         undefined
       );
     });
@@ -688,11 +604,11 @@ describe('SembleBacklinksPlugin', () => {
       vi.mocked(backlinkService.createBacklink).mockRejectedValueOnce(new Error('Database error'));
 
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/abc123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'abc123',
-        record: SAMPLE_PUBLIC_COLLECTION,
+        record: SAMPLE_EPRINT_CARD,
         deleted: false,
         cid: 'bafyreiabc123',
         timestamp: new Date(),
@@ -707,12 +623,12 @@ describe('SembleBacklinksPlugin', () => {
         'Failed to process firehose record',
         expect.objectContaining({
           error: 'Database error',
-          uri: 'at://did:plc:user/xyz.semble.collection/abc123',
+          uri: 'at://did:plc:user/network.cosmik.card/abc123',
         })
       );
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
         'backlink_errors',
-        { source_type: 'semble.collection' },
+        { source_type: 'cosmik.collection' },
         undefined
       );
     });
@@ -725,14 +641,14 @@ describe('SembleBacklinksPlugin', () => {
       contextWithoutService = createMockContext({
         config: {},
       });
-      plugin = new TestableSembleBacklinksPlugin();
+      plugin = new TestableCosmikBacklinksPlugin();
       await plugin.initialize(contextWithoutService);
     });
 
     it('should not create backlinks when service is unavailable', async () => {
       const handlerCall = vi
         .mocked(contextWithoutService.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.semble.collection');
+        .mock.calls.find((call) => call[0] === 'firehose.network.cosmik.card');
       expect(handlerCall).toBeDefined();
       expect(handlerCall?.[1]).toBeDefined();
       const firehoseHandler =
@@ -742,11 +658,11 @@ describe('SembleBacklinksPlugin', () => {
         });
 
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.semble.collection/abc123',
-        collection: 'xyz.semble.collection',
+        uri: 'at://did:plc:user/network.cosmik.card/abc123',
+        collection: 'network.cosmik.card',
         did: 'did:plc:user',
         rkey: 'abc123',
-        record: SAMPLE_PUBLIC_COLLECTION,
+        record: SAMPLE_EPRINT_CARD,
         deleted: false,
         cid: 'bafyreiabc123',
         timestamp: new Date(),

@@ -22,6 +22,11 @@
 
 import type { Pool } from 'pg';
 
+import type { SectionConfig } from '../../lexicons/generated/types/pub/chive/actor/getProfileConfig.js';
+import type {
+  CollectionItemRef,
+  FeedEventPayload,
+} from '../../lexicons/generated/types/pub/chive/collection/defs.js';
 import type { Main as EdgeRecord } from '../../lexicons/generated/types/pub/chive/graph/edge.js';
 import type { Main as NodeRecord } from '../../lexicons/generated/types/pub/chive/graph/node.js';
 import type { AtUri, DID } from '../../types/atproto.js';
@@ -87,7 +92,7 @@ export interface ProfileSection {
   readonly type: string;
   readonly visible: boolean;
   readonly order: number;
-  readonly config?: Record<string, unknown>;
+  readonly config?: SectionConfig;
 }
 
 /**
@@ -105,6 +110,12 @@ export interface IndexedCollection {
   readonly itemCount: number;
   readonly createdAt: Date;
   readonly updatedAt?: Date;
+  readonly cosmikCollectionUri?: string;
+  readonly cosmikCollectionCid?: string;
+  readonly cosmikItems?: Record<
+    string,
+    { cardUri: string; cardCid: string; linkUri: string; linkCid: string }
+  >;
 }
 
 /**
@@ -138,6 +149,33 @@ export interface InterItemEdge {
   readonly sourceUri: string;
   readonly targetUri: string;
   readonly relationSlug: string;
+}
+
+/**
+ * A single event in the collection feed.
+ *
+ * @public
+ */
+export interface CollectionFeedEvent {
+  type: string;
+  eventUri: string;
+  eventAt: Date;
+  collectionItemUri: string;
+  collectionItemSubkind: string;
+  /** Collection items that triggered this event (label + URI pairs). */
+  collectionItems: CollectionItemRef[];
+  payload: FeedEventPayload;
+}
+
+/**
+ * Paginated result from the collection feed query.
+ *
+ * @public
+ */
+export interface CollectionFeedResult {
+  events: CollectionFeedEvent[];
+  cursor?: string;
+  hasMore: boolean;
 }
 
 /**
@@ -213,16 +251,23 @@ export class CollectionService {
             : 'private'
           : 'private';
 
+      // Extract tags from record metadata
+      const tags =
+        record.metadata && 'tags' in record.metadata && Array.isArray(record.metadata.tags)
+          ? record.metadata.tags
+          : [];
+
       await this.pool.query(
         `INSERT INTO collections_index (
-          uri, cid, owner_did, label, description, visibility,
+          uri, cid, owner_did, label, description, visibility, tags,
           created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           label = EXCLUDED.label,
           description = EXCLUDED.description,
           visibility = EXCLUDED.visibility,
+          tags = EXCLUDED.tags,
           updated_at = NOW(),
           last_synced_at = NOW()`,
         [
@@ -232,10 +277,34 @@ export class CollectionService {
           record.label,
           record.description ?? null,
           visibility,
+          JSON.stringify(tags),
           record.createdAt ? new Date(record.createdAt) : metadata.indexedAt,
           metadata.pdsUrl,
         ]
       );
+
+      // Sync itemOrder metadata to edge weights so the server-side query
+      // returns items in the user-specified order.
+      const itemOrder =
+        record.metadata &&
+        'itemOrder' in record.metadata &&
+        Array.isArray(record.metadata.itemOrder)
+          ? (record.metadata.itemOrder as string[])
+          : null;
+
+      if (itemOrder && itemOrder.length > 0) {
+        await this.pool.query(
+          `UPDATE collection_edges_index
+           SET weight = data.new_weight
+           FROM (
+             SELECT uri, ord::real AS new_weight
+             FROM unnest($1::text[]) WITH ORDINALITY AS t(uri, ord)
+           ) data
+           WHERE collection_edges_index.uri = data.uri
+             AND collection_edges_index.source_uri = $2`,
+          [itemOrder, metadata.uri]
+        );
+      }
 
       this.logger.info('Indexed collection', {
         uri: metadata.uri,
@@ -278,6 +347,37 @@ export class CollectionService {
       );
       this.logger.warn('Invalid collection edge record', { uri: metadata.uri });
       return Err(validationError);
+    }
+
+    // Cycle detection for subcollection-of edges
+    if (record.relationSlug === 'subcollection-of') {
+      if (record.sourceUri === record.targetUri) {
+        const validationError = new ValidationError(
+          'Cannot create subcollection-of edge: self-loop detected',
+          'sourceUri',
+          'cycle'
+        );
+        this.logger.warn('Rejected subcollection-of self-loop', {
+          uri: metadata.uri,
+          sourceUri: record.sourceUri,
+        });
+        return Err(validationError);
+      }
+
+      const cycleDetected = await this.wouldCreateCycle(record.sourceUri, record.targetUri);
+      if (cycleDetected) {
+        const validationError = new ValidationError(
+          'Cannot create subcollection-of edge: would create a cycle',
+          'targetUri',
+          'cycle'
+        );
+        this.logger.warn('Rejected subcollection-of edge that would create a cycle', {
+          uri: metadata.uri,
+          sourceUri: record.sourceUri,
+          targetUri: record.targetUri,
+        });
+        return Err(validationError);
+      }
     }
 
     try {
@@ -463,6 +563,13 @@ export class CollectionService {
       // Step 5: Delete the collection itself
       await client.query('DELETE FROM collections_index WHERE uri = $1', [uri]);
 
+      // Step 6: Clean up personal graph rows referencing this collection
+      await client.query(
+        'DELETE FROM personal_graph_edges_index WHERE source_uri = $1 OR target_uri = $1',
+        [uri]
+      );
+      await client.query('DELETE FROM personal_graph_nodes_index WHERE uri = $1', [uri]);
+
       await client.query('COMMIT');
 
       this.logger.info('Deleted collection with cascade', { uri });
@@ -526,17 +633,26 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        cosmik_collection_uri: string | null;
+        cosmik_collection_cid: string | null;
+        cosmik_items: Record<string, unknown> | null;
       }>(
         `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                 c.created_at, c.updated_at,
-                COUNT(e.uri)::text AS item_count
+                COUNT(e.uri)::text AS item_count,
+                pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
+                pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid,
+                pgn.metadata->'cosmikItems' AS cosmik_items
          FROM collections_index c
          LEFT JOIN collection_edges_index e
            ON e.source_uri = c.uri AND e.relation_slug = 'contains'
+         LEFT JOIN personal_graph_nodes_index pgn
+           ON pgn.uri = c.uri
          WHERE c.uri = $1
            AND (c.visibility = 'public' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
-                  c.visibility, c.created_at, c.updated_at`,
+                  c.visibility, c.created_at, c.updated_at,
+                  pgn.metadata`,
         [uri, authDid ?? '']
       );
 
@@ -545,7 +661,18 @@ export class CollectionService {
         return null;
       }
 
-      return this.rowToIndexedCollection(row);
+      const collection = this.rowToIndexedCollection(row);
+      if (row.cosmik_collection_uri) {
+        return {
+          ...collection,
+          cosmikCollectionUri: row.cosmik_collection_uri,
+          cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
+          cosmikItems: row.cosmik_items as
+            | Record<string, { cardUri: string; cardCid: string; linkUri: string; linkCid: string }>
+            | undefined,
+        };
+      }
+      return collection;
     } catch (error) {
       this.logger.error('Failed to get collection', error instanceof Error ? error : undefined, {
         uri,
@@ -562,7 +689,7 @@ export class CollectionService {
    *
    * @public
    */
-  async getCollectionItems(collectionUri: AtUri): Promise<CollectionItem[]> {
+  async getCollectionItems(collectionUri: AtUri): Promise<Result<CollectionItem[], DatabaseError>> {
     try {
       const result = await this.pool.query<{
         uri: string;
@@ -587,34 +714,36 @@ export class CollectionService {
         [collectionUri]
       );
 
-      return result.rows.map((row, index) => {
-        const nodeMetadata = row.node_metadata ?? {};
-        const authors = Array.isArray(nodeMetadata.authors)
-          ? (nodeMetadata.authors as string[])
-          : undefined;
+      return Ok(
+        result.rows.map((row, index) => {
+          const nodeMetadata = row.node_metadata ?? {};
+          const authors = Array.isArray(nodeMetadata.authors)
+            ? (nodeMetadata.authors as string[])
+            : undefined;
 
-        return {
-          edgeUri: row.uri,
-          itemUri: row.target_uri,
-          itemType: row.node_subkind ?? row.node_kind ?? 'unknown',
-          order: row.weight ?? index + 1,
-          addedAt: new Date(row.created_at),
-          title: row.edge_label ?? row.node_label ?? undefined,
-          label: row.edge_label ?? row.node_label ?? undefined,
-          authors,
-          kind: row.node_kind ?? undefined,
-          subkind: row.node_subkind ?? undefined,
-          description: row.node_description ?? undefined,
-          metadata: nodeMetadata,
-        };
-      });
-    } catch (error) {
-      this.logger.error(
-        'Failed to get collection items',
-        error instanceof Error ? error : undefined,
-        { collectionUri }
+          return {
+            edgeUri: row.uri,
+            itemUri: row.target_uri,
+            itemType: row.node_subkind ?? row.node_kind ?? 'unknown',
+            order: row.weight ?? index + 1,
+            addedAt: new Date(row.created_at),
+            title: row.edge_label ?? row.node_label ?? undefined,
+            label: row.edge_label ?? row.node_label ?? undefined,
+            authors,
+            kind: row.node_kind ?? undefined,
+            subkind: row.node_subkind ?? undefined,
+            description: row.node_description ?? undefined,
+            metadata: nodeMetadata,
+          };
+        })
       );
-      return [];
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'READ',
+        `Failed to get collection items: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to get collection items', dbError, { collectionUri });
+      return Err(dbError);
     }
   }
 
@@ -752,20 +881,28 @@ export class CollectionService {
   }
 
   /**
-   * Lists public collections across all users.
+   * Lists public collections across all users, with optional tag filtering.
    *
-   * @param options - Pagination options
+   * @param options - Pagination and tag filter options
    * @returns Paginated list of public collections
    *
    * @public
    */
-  async listPublic(options: PaginationOptions = {}): Promise<PaginatedResult<IndexedCollection>> {
+  async listPublic(
+    options: PaginationOptions & { tag?: string } = {}
+  ): Promise<PaginatedResult<IndexedCollection>> {
     const limit = Math.min(options.limit ?? 50, 100);
 
     try {
-      const countResult = await this.pool.query<{ count: string }>(
-        `SELECT COUNT(*)::text AS count FROM collections_index WHERE visibility = 'public'`
-      );
+      let countSql = `SELECT COUNT(*)::text AS count FROM collections_index WHERE visibility = 'public'`;
+      const countParams: unknown[] = [];
+
+      if (options.tag) {
+        countSql += ` AND tags @> $${countParams.length + 1}::jsonb`;
+        countParams.push(JSON.stringify([options.tag]));
+      }
+
+      const countResult = await this.pool.query<{ count: string }>(countSql, countParams);
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       let query = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
@@ -777,11 +914,16 @@ export class CollectionService {
                    WHERE c.visibility = 'public'`;
       const params: unknown[] = [];
 
+      if (options.tag) {
+        params.push(JSON.stringify([options.tag]));
+        query += ` AND c.tags @> $${params.length}::jsonb`;
+      }
+
       if (options.cursor) {
         const parts = options.cursor.split('::');
         const timestamp = parts[0] ?? new Date().toISOString();
         const cursorUri = parts[1] ?? '';
-        query += ` AND (c.created_at, c.uri) < ($1, $2)`;
+        query += ` AND (c.created_at, c.uri) < ($${params.length + 1}, $${params.length + 2})`;
         params.push(new Date(timestamp), cursorUri);
       }
 
@@ -984,15 +1126,17 @@ export class CollectionService {
    * Retrieves subcollections of a given collection.
    *
    * @param collectionUri - AT URI of the parent collection
+   * @param authDid - Authenticated user DID (for visibility filtering)
    * @returns Subcollections linked via SUBCOLLECTION_OF edges
    *
    * @remarks
    * Finds collections where a SUBCOLLECTION_OF edge has source_uri = child
-   * and target_uri = collectionUri.
+   * and target_uri = collectionUri. Private subcollections are only visible
+   * to their owner.
    *
    * @public
    */
-  async getSubcollections(collectionUri: AtUri): Promise<IndexedCollection[]> {
+  async getSubcollections(collectionUri: AtUri, authDid?: DID): Promise<IndexedCollection[]> {
     try {
       const result = await this.pool.query<{
         uri: string;
@@ -1004,22 +1148,48 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        cosmik_collection_uri: string | null;
+        cosmik_collection_cid: string | null;
+        cosmik_items: Record<string, unknown> | null;
       }>(
         `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                 c.created_at, c.updated_at,
-                COUNT(e2.uri)::text AS item_count
+                COUNT(e2.uri)::text AS item_count,
+                pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
+                pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid,
+                pgn.metadata->'cosmikItems' AS cosmik_items
          FROM collections_index c
          INNER JOIN collection_edges_index e
            ON e.source_uri = c.uri AND e.target_uri = $1 AND e.relation_slug = 'subcollection-of'
          LEFT JOIN collection_edges_index e2
            ON e2.source_uri = c.uri AND e2.relation_slug = 'contains'
+         LEFT JOIN personal_graph_nodes_index pgn
+           ON pgn.uri = c.uri
+         WHERE (c.visibility = 'public' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
-                  c.visibility, c.created_at, c.updated_at
+                  c.visibility, c.created_at, c.updated_at,
+                  pgn.metadata
          ORDER BY c.label ASC`,
-        [collectionUri]
+        [collectionUri, authDid ?? '']
       );
 
-      return result.rows.map((row) => this.rowToIndexedCollection(row));
+      return result.rows.map((row) => {
+        const collection = this.rowToIndexedCollection(row);
+        if (row.cosmik_collection_uri) {
+          return {
+            ...collection,
+            cosmikCollectionUri: row.cosmik_collection_uri,
+            cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
+            cosmikItems: row.cosmik_items as
+              | Record<
+                  string,
+                  { cardUri: string; cardCid: string; linkUri: string; linkCid: string }
+                >
+              | undefined,
+          };
+        }
+        return collection;
+      });
     } catch (error) {
       this.logger.error(
         'Failed to get subcollections',
@@ -1034,11 +1204,15 @@ export class CollectionService {
    * Retrieves the parent collection of a given collection.
    *
    * @param collectionUri - AT URI of the child collection
-   * @returns Parent collection or null if this is a root collection
+   * @param authDid - Authenticated user DID (for visibility filtering)
+   * @returns Parent collection or null if this is a root collection or not authorized
    *
    * @public
    */
-  async getParentCollection(collectionUri: AtUri): Promise<IndexedCollection | null> {
+  async getParentCollection(
+    collectionUri: AtUri,
+    authDid?: DID
+  ): Promise<IndexedCollection | null> {
     try {
       const result = await this.pool.query<{
         uri: string;
@@ -1050,19 +1224,29 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        cosmik_collection_uri: string | null;
+        cosmik_collection_cid: string | null;
+        cosmik_items: Record<string, unknown> | null;
       }>(
         `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                 c.created_at, c.updated_at,
-                COUNT(e2.uri)::text AS item_count
+                COUNT(e2.uri)::text AS item_count,
+                pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
+                pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid,
+                pgn.metadata->'cosmikItems' AS cosmik_items
          FROM collections_index c
          INNER JOIN collection_edges_index e
            ON e.target_uri = c.uri AND e.source_uri = $1 AND e.relation_slug = 'subcollection-of'
          LEFT JOIN collection_edges_index e2
            ON e2.source_uri = c.uri AND e2.relation_slug = 'contains'
+         LEFT JOIN personal_graph_nodes_index pgn
+           ON pgn.uri = c.uri
+         WHERE (c.visibility = 'public' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
-                  c.visibility, c.created_at, c.updated_at
+                  c.visibility, c.created_at, c.updated_at,
+                  pgn.metadata
          LIMIT 1`,
-        [collectionUri]
+        [collectionUri, authDid ?? '']
       );
 
       const row = result.rows[0];
@@ -1070,7 +1254,18 @@ export class CollectionService {
         return null;
       }
 
-      return this.rowToIndexedCollection(row);
+      const collection = this.rowToIndexedCollection(row);
+      if (row.cosmik_collection_uri) {
+        return {
+          ...collection,
+          cosmikCollectionUri: row.cosmik_collection_uri,
+          cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
+          cosmikItems: row.cosmik_items as
+            | Record<string, { cardUri: string; cardCid: string; linkUri: string; linkCid: string }>
+            | undefined,
+        };
+      }
+      return collection;
     } catch (error) {
       this.logger.error(
         'Failed to get parent collection',
@@ -1131,6 +1326,387 @@ export class CollectionService {
         { did }
       );
       return null;
+    }
+  }
+
+  /**
+   * Checks whether adding a subcollection-of edge from sourceUri to
+   * targetUri would create a cycle in the hierarchy.
+   *
+   * @remarks
+   * Walks the ancestor chain starting from targetUri using a recursive CTE.
+   * If sourceUri appears among the ancestors of targetUri, adding this edge
+   * would create a cycle.
+   *
+   * @param sourceUri - The child collection URI
+   * @param targetUri - The proposed parent collection URI
+   * @returns True if a cycle would be created
+   *
+   * @internal
+   */
+  private async wouldCreateCycle(sourceUri: string, targetUri: string): Promise<boolean> {
+    const result = await this.pool.query<{ found: number }>(
+      `WITH RECURSIVE ancestors AS (
+        SELECT target_uri FROM collection_edges_index
+          WHERE source_uri = $1 AND relation_slug = 'subcollection-of'
+        UNION
+        SELECT e.target_uri FROM collection_edges_index e
+          INNER JOIN ancestors a ON a.target_uri = e.source_uri
+          WHERE e.relation_slug = 'subcollection-of'
+      ) SELECT 1 AS found FROM ancestors WHERE target_uri = $2 LIMIT 1`,
+      [targetUri, sourceUri]
+    );
+    return result.rows.length > 0;
+  }
+
+  /**
+   * Returns a chronological activity feed for a collection.
+   *
+   * @param collectionUri - AT-URI of the collection
+   * @param options - pagination options (limit, cursor)
+   * @returns paginated feed events or DatabaseError
+   */
+  async getCollectionFeed(
+    collectionUri: AtUri,
+    options: { limit?: number; cursor?: string } = {}
+  ): Promise<Result<CollectionFeedResult, DatabaseError>> {
+    const limit = Math.min(options.limit ?? 30, 100);
+    const innerLimit = Math.max(limit * 5, 200);
+
+    try {
+      // Parse compound cursor: "{ISO-8601}::{eventUri}"
+      let cursorTs: Date | null = null;
+      let cursorUri: string | null = null;
+      if (options.cursor) {
+        const sep = options.cursor.indexOf('::');
+        if (sep > 0) {
+          cursorTs = new Date(options.cursor.slice(0, sep));
+          cursorUri = options.cursor.slice(sep + 2);
+        }
+      }
+
+      const params: unknown[] = [collectionUri];
+      let paramIdx = 1;
+
+      const nextParam = (value: unknown): string => {
+        paramIdx++;
+        params.push(value);
+        return `$${paramIdx}`;
+      };
+
+      // CTE: materialize collection items once
+      const cte = `
+        WITH collection_items AS (
+          SELECT
+            cei.target_uri AS item_uri,
+            pgn.subkind,
+            pgn.node_id,
+            pgn.label,
+            pgn.metadata,
+            cei.created_at AS added_at
+          FROM collection_edges_index cei
+          JOIN personal_graph_nodes_index pgn ON cei.target_uri = pgn.uri
+          WHERE cei.source_uri = $1
+            AND cei.relation_slug = 'contains'
+        )`;
+
+      // Branch 2: eprint_by_author
+      const b2 = `
+        (SELECT 'eprint_by_author' AS type,
+               e.uri AS event_uri,
+               e.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'person' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'eprintUri', e.uri,
+                 'eprintTitle', e.title,
+                 'authorNames', (SELECT jsonb_agg(a->>'name') FROM jsonb_array_elements(e.authors) a)
+               ) AS payload
+        FROM collection_items ci
+        JOIN eprints_index e ON e.authors @> jsonb_build_array(jsonb_build_object('did', ci.metadata->>'did'))
+        WHERE ci.subkind = 'person'
+          AND ci.metadata->>'did' IS NOT NULL
+          AND e.deleted_at IS NULL
+        ORDER BY e.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 3: review_on_eprint
+      const b3 = `
+        (SELECT 'review_on_eprint' AS type,
+               r.uri AS event_uri,
+               r.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'eprint' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'reviewerDid', r.reviewer_did,
+                 'eprintTitle', ci.label,
+                 'snippet', LEFT((r.body->0->>'content'), 200)
+               ) AS payload
+        FROM collection_items ci
+        JOIN reviews_index r ON r.eprint_uri = ci.metadata->>'eprintUri'
+        WHERE ci.subkind = 'eprint'
+          AND ci.metadata->>'eprintUri' IS NOT NULL
+          AND r.deleted_at IS NULL
+          AND r.parent_comment IS NULL
+        ORDER BY r.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 4: endorsement_on_eprint
+      const b4 = `
+        (SELECT 'endorsement_on_eprint' AS type,
+               en.uri AS event_uri,
+               en.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'eprint' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'endorserDid', en.endorser_did,
+                 'eprintTitle', ci.label,
+                 'contributions', to_jsonb(en.contributions)
+               ) AS payload
+        FROM collection_items ci
+        JOIN endorsements_index en ON en.eprint_uri = ci.metadata->>'eprintUri'
+        WHERE ci.subkind = 'eprint'
+          AND ci.metadata->>'eprintUri' IS NOT NULL
+          AND en.deleted_at IS NULL
+        ORDER BY en.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 5: annotation_on_eprint
+      const b5 = `
+        (SELECT 'annotation_on_eprint' AS type,
+               an.uri AS event_uri,
+               an.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'eprint' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'annotatorDid', an.annotator_did,
+                 'eprintTitle', ci.label,
+                 'snippet', LEFT((an.body->0->>'content'), 200)
+               ) AS payload
+        FROM collection_items ci
+        JOIN annotations_index an ON an.eprint_uri = ci.metadata->>'eprintUri'
+        WHERE ci.subkind = 'eprint'
+          AND ci.metadata->>'eprintUri' IS NOT NULL
+          AND an.deleted_at IS NULL
+          AND an.parent_annotation IS NULL
+        ORDER BY an.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 6: review_by_author
+      const b6 = `
+        (SELECT 'review_by_author' AS type,
+               r.uri AS event_uri,
+               r.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'person' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'reviewerDid', r.reviewer_did,
+                 'eprintTitle', (SELECT title FROM eprints_index WHERE uri = r.eprint_uri),
+                 'snippet', LEFT((r.body->0->>'content'), 200)
+               ) AS payload
+        FROM collection_items ci
+        JOIN reviews_index r ON r.reviewer_did = ci.metadata->>'did'
+        WHERE ci.subkind = 'person'
+          AND ci.metadata->>'did' IS NOT NULL
+          AND r.deleted_at IS NULL
+          AND r.parent_comment IS NULL
+        ORDER BY r.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 7: endorsement_by_author
+      const b7 = `
+        (SELECT 'endorsement_by_author' AS type,
+               en.uri AS event_uri,
+               en.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'person' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'endorserDid', en.endorser_did,
+                 'eprintTitle', (SELECT title FROM eprints_index WHERE uri = en.eprint_uri),
+                 'contributions', to_jsonb(en.contributions)
+               ) AS payload
+        FROM collection_items ci
+        JOIN endorsements_index en ON en.endorser_did = ci.metadata->>'did'
+        WHERE ci.subkind = 'person'
+          AND ci.metadata->>'did' IS NOT NULL
+          AND en.deleted_at IS NULL
+        ORDER BY en.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 8: eprint_in_field
+      const b8 = `
+        (SELECT 'eprint_in_field' AS type,
+               e.uri AS event_uri,
+               e.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'field' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'fieldLabel', ci.label,
+                 'eprintTitle', e.title,
+                 'authorNames', (SELECT jsonb_agg(a->>'name') FROM jsonb_array_elements(e.authors) a)
+               ) AS payload
+        FROM collection_items ci
+        JOIN eprints_index e ON e.fields @> jsonb_build_array(jsonb_build_object('uri', ci.metadata->>'clonedFrom'))
+        WHERE ci.subkind = 'field'
+          AND ci.metadata->>'clonedFrom' IS NOT NULL
+          AND e.deleted_at IS NULL
+        ORDER BY e.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 9: eprint_by_institution (dual: institutionUri OR rorId)
+      const b9 = `
+        (SELECT 'eprint_by_institution' AS type,
+               e.uri AS event_uri,
+               e.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'institution' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'institutionLabel', ci.label,
+                 'eprintTitle', e.title,
+                 'authorNames', (SELECT jsonb_agg(a->>'name') FROM jsonb_array_elements(e.authors) a)
+               ) AS payload
+        FROM collection_items ci
+        JOIN eprints_index e ON (
+          (ci.metadata->>'clonedFrom' IS NOT NULL AND e.authors @> jsonb_build_array(jsonb_build_object('affiliations', jsonb_build_array(jsonb_build_object('institutionUri', ci.metadata->>'clonedFrom')))))
+          OR
+          (ci.metadata->>'rorId' IS NOT NULL AND e.authors @> jsonb_build_array(jsonb_build_object('affiliations', jsonb_build_array(jsonb_build_object('rorId', ci.metadata->>'rorId')))))
+        )
+        WHERE ci.subkind = 'institution'
+          AND e.deleted_at IS NULL
+        ORDER BY e.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 10: eprint_at_event (dual: conferenceUri OR conferenceName)
+      const b10 = `
+        (SELECT 'eprint_at_event' AS type,
+               e.uri AS event_uri,
+               e.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'event' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'eventLabel', ci.label,
+                 'eprintTitle', e.title,
+                 'authorNames', (SELECT jsonb_agg(a->>'name') FROM jsonb_array_elements(e.authors) a)
+               ) AS payload
+        FROM collection_items ci
+        JOIN eprints_index e ON (
+          (ci.metadata->>'clonedFrom' IS NOT NULL AND e.conference_presentation->>'conferenceUri' = ci.metadata->>'clonedFrom')
+          OR
+          (ci.metadata->>'conferenceName' IS NOT NULL AND e.conference_presentation->>'conferenceName' = ci.metadata->>'conferenceName')
+        )
+        WHERE ci.subkind = 'event'
+          AND e.conference_presentation IS NOT NULL
+          AND e.deleted_at IS NULL
+        ORDER BY e.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Branch 11: eprint_referencing_person (via entity links)
+      const b11 = `
+        (SELECT 'eprint_referencing_person' AS type,
+               el.uri AS event_uri,
+               el.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'person' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'personLabel', ci.label,
+                 'eprintUri', el.eprint_uri,
+                 'entityLabel', el.entity_label
+               ) AS payload
+        FROM collection_items ci
+        JOIN entity_links_index el ON (
+          (ci.metadata->>'did' IS NOT NULL AND el.entity_data->>'did' = ci.metadata->>'did')
+          OR
+          (ci.metadata->>'clonedFrom' IS NOT NULL AND el.entity_data->>'uri' = ci.metadata->>'clonedFrom' AND el.entity_data->>'type' = 'graphNode')
+        )
+        WHERE ci.subkind = 'person'
+          AND el.deleted_at IS NULL
+        ORDER BY el.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Assemble UNION ALL
+      const unionBranches = [b2, b3, b4, b5, b6, b7, b8, b9, b10, b11].join(
+        '\n        UNION ALL\n'
+      );
+
+      let outerWhere = '';
+      if (cursorTs && cursorUri) {
+        const tsParam = nextParam(cursorTs);
+        const uriParam = nextParam(cursorUri);
+        outerWhere = `WHERE (event_at, event_uri) < (${tsParam}, ${uriParam})`;
+      }
+
+      const limitParam = nextParam(limit + 1);
+
+      // Deduplicate: a paper co-authored by two tracked people should appear once,
+      // with all matching collection item labels aggregated into an array.
+      // Note: MAX(jsonb) is not supported, so we use (array_agg(payload))[1] to
+      // pick one payload (they're identical for the same event).
+      const sql = `
+        ${cte}
+        SELECT * FROM (
+          SELECT type, event_uri,
+                 MAX(event_at) AS event_at,
+                 MAX(collection_item_uri) AS collection_item_uri,
+                 MAX(collection_item_subkind) AS collection_item_subkind,
+                 jsonb_agg(jsonb_build_object('label', collection_item_label, 'uri', collection_item_uri) ORDER BY collection_item_label) AS collection_items,
+                 (array_agg(payload))[1] AS payload
+          FROM (
+            ${unionBranches}
+          ) raw_feed
+          GROUP BY type, event_uri
+        ) feed
+        ${outerWhere}
+        ORDER BY event_at DESC, event_uri DESC
+        LIMIT ${limitParam}
+      `;
+
+      const result = await this.pool.query<{
+        type: string;
+        event_uri: string;
+        event_at: Date;
+        collection_item_uri: string;
+        collection_item_subkind: string;
+        collection_items: { label: string; uri: string }[];
+        payload: Record<string, unknown>;
+      }>(sql, params);
+
+      const hasMore = result.rows.length > limit;
+      const rows = result.rows.slice(0, limit);
+
+      let cursor: string | undefined;
+      const lastRow = rows[rows.length - 1];
+      if (hasMore && lastRow) {
+        cursor = `${lastRow.event_at.toISOString()}::${lastRow.event_uri}`;
+      }
+
+      const events: CollectionFeedEvent[] = rows.map((row) => ({
+        type: row.type,
+        eventUri: row.event_uri,
+        eventAt: new Date(row.event_at),
+        collectionItemUri: row.collection_item_uri,
+        collectionItemSubkind: row.collection_item_subkind,
+        collectionItems: (row.collection_items ?? []) as CollectionItemRef[],
+        payload: (row.payload ?? {}) as FeedEventPayload,
+      }));
+
+      return Ok({ events, cursor, hasMore });
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'FEED_QUERY',
+        `Failed to get collection feed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to get collection feed', dbError, { collectionUri });
+      return Err(dbError);
     }
   }
 

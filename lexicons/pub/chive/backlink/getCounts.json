@@ -21,7 +21,7 @@
         "schema": {
           "type": "object",
           "required": [
-            "sembleCollections",
+            "cosmikCollections",
             "leafletLists",
             "whitewindBlogs",
             "blueskyPosts",
@@ -30,9 +30,9 @@
             "total"
           ],
           "properties": {
-            "sembleCollections": {
+            "cosmikCollections": {
               "type": "integer",
-              "description": "Count of Semble collection backlinks"
+              "description": "Count of Cosmik collection backlinks"
             },
             "leafletLists": {
               "type": "integer",

@@ -1457,7 +1457,7 @@ export function isImportingPlugin(plugin: IChivePlugin): plugin is ImportingPlug
  * @since 0.1.0
  */
 export type BacklinkSourceType =
-  | 'semble.collection'
+  | 'cosmik.collection'
   | 'leaflet.list'
   | 'whitewind.blog'
   | 'bluesky.post'
@@ -1477,7 +1477,7 @@ export interface Backlink {
   readonly id: number;
 
   /**
-   * AT-URI of the source record (e.g., Semble collection).
+   * AT-URI of the source record (e.g., Cosmik collection).
    */
   readonly sourceUri: string;
 
@@ -1515,9 +1515,9 @@ export interface Backlink {
  */
 export interface BacklinkCounts {
   /**
-   * Number of Semble collections.
+   * Number of Cosmik collections.
    */
-  readonly sembleCollections: number;
+  readonly cosmikCollections: number;
 
   /**
    * Number of Leaflet reading lists.
@@ -1559,7 +1559,7 @@ export interface BacklinkCounts {
  * Backlink service interface.
  *
  * @remarks
- * Tracks backlinks from ATProto ecosystem apps (Semble, Leaflet,
+ * Tracks backlinks from ATProto ecosystem apps (Cosmik, Leaflet,
  * WhiteWind, Bluesky) that reference Chive eprints.
  * All data is rebuildable from firehose (ATProto compliant).
  *

@@ -74,7 +74,7 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
         items: [],
       })),
       edges: [],
-      enableSembleMirror: false,
+      enableCosmikMirror: !!collection.cosmikCollectionUri,
     };
   }, [data]);
 

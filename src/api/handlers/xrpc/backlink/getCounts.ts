@@ -30,7 +30,7 @@ export const getCounts: XRPCMethod<QueryParams, void, OutputSchema> = {
     const counts = await backlink.getCounts(params.targetUri);
 
     const response: OutputSchema = {
-      sembleCollections: counts.sembleCollections,
+      cosmikCollections: counts.cosmikCollections,
       leafletLists: counts.leafletLists,
       whitewindBlogs: counts.whitewindBlogs,
       blueskyPosts: counts.blueskyPosts,

@@ -2,7 +2,8 @@
  * XRPC handler for pub.chive.collection.listPublic.
  *
  * @remarks
- * Lists publicly visible collections across all users. Supports pagination.
+ * Lists publicly visible collections across all users. Supports pagination
+ * and optional tag filtering via JSONB containment.
  *
  * @packageDocumentation
  * @public
@@ -61,6 +62,7 @@ export const listPublic: XRPCMethod<QueryParams, void, OutputSchema> = {
     const result = await collectionService.listPublic({
       limit,
       cursor: params.cursor,
+      tag: params.tag,
     });
 
     const response: OutputSchema = {

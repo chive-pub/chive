@@ -53,7 +53,7 @@ interface MockCollectionService {
 
 const createMockCollectionService = (): MockCollectionService => ({
   getCollection: vi.fn().mockResolvedValue(null),
-  getCollectionItems: vi.fn().mockResolvedValue([]),
+  getCollectionItems: vi.fn().mockResolvedValue({ ok: true, value: [] }),
   getInterItemEdges: vi.fn().mockResolvedValue([]),
   listByOwner: vi
     .fn()
@@ -164,32 +164,35 @@ describe('XRPC Collection Handlers', () => {
     it('returns items with label, kind, subkind, and description fields', async () => {
       const collection = createSampleCollection();
       mockCollectionService.getCollection.mockResolvedValue(collection);
-      mockCollectionService.getCollectionItems.mockResolvedValue([
-        {
-          edgeUri: 'at://did:plc:aswhite/pub.chive.graph.edge/e1',
-          itemUri: 'at://did:plc:aswhite/pub.chive.graph.node/syntax-primer',
-          itemType: 'concept',
-          order: 1,
-          addedAt: new Date('2025-06-15T10:00:00Z'),
-          label: 'Syntax Primer',
-          kind: 'object',
-          subkind: 'concept',
-          description: 'An intro to syntax',
-          metadata: {},
-        },
-        {
-          edgeUri: 'at://did:plc:aswhite/pub.chive.graph.edge/e2',
-          itemUri: 'at://did:plc:aswhite/pub.chive.graph.node/megaattitude-clone',
-          itemType: 'eprint',
-          order: 2,
-          addedAt: new Date('2025-06-16T10:00:00Z'),
-          title: 'MegaAttitude',
-          label: 'MegaAttitude',
-          kind: 'object',
-          subkind: 'eprint',
-          metadata: { eprintUri: SAMPLE_EPRINT_URI, authors: ['Aaron Steven White'] },
-        },
-      ]);
+      mockCollectionService.getCollectionItems.mockResolvedValue({
+        ok: true,
+        value: [
+          {
+            edgeUri: 'at://did:plc:aswhite/pub.chive.graph.edge/e1',
+            itemUri: 'at://did:plc:aswhite/pub.chive.graph.node/syntax-primer',
+            itemType: 'concept',
+            order: 1,
+            addedAt: new Date('2025-06-15T10:00:00Z'),
+            label: 'Syntax Primer',
+            kind: 'object',
+            subkind: 'concept',
+            description: 'An intro to syntax',
+            metadata: {},
+          },
+          {
+            edgeUri: 'at://did:plc:aswhite/pub.chive.graph.edge/e2',
+            itemUri: 'at://did:plc:aswhite/pub.chive.graph.node/megaattitude-clone',
+            itemType: 'eprint',
+            order: 2,
+            addedAt: new Date('2025-06-16T10:00:00Z'),
+            title: 'MegaAttitude',
+            label: 'MegaAttitude',
+            kind: 'object',
+            subkind: 'eprint',
+            metadata: { eprintUri: SAMPLE_EPRINT_URI, authors: ['Aaron Steven White'] },
+          },
+        ],
+      });
 
       const result = await get.handler({
         params: { uri: SAMPLE_COLLECTION_URI as string },
@@ -745,6 +748,22 @@ describe('XRPC Collection Handlers', () => {
         })
       ).rejects.toThrow('Missing required parameter');
     });
+
+    it('passes authenticated user DID for visibility filtering', async () => {
+      mockCollectionService.getParentCollection.mockResolvedValue(null);
+
+      await getParent.handler({
+        params: { uri: SAMPLE_CHILD_URI as string },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      expect(mockCollectionService.getParentCollection).toHaveBeenCalledWith(
+        SAMPLE_CHILD_URI,
+        SAMPLE_DID
+      );
+    });
   });
 
   // ==========================================================================
@@ -817,6 +836,22 @@ describe('XRPC Collection Handlers', () => {
       });
 
       expect(result.body.subcollections).toEqual([]);
+    });
+
+    it('passes authenticated user DID for visibility filtering', async () => {
+      mockCollectionService.getSubcollections.mockResolvedValue([]);
+
+      await getSubcollections.handler({
+        params: { uri: SAMPLE_COLLECTION_URI as string },
+        input: undefined,
+        auth: null,
+        c: mockContext as never,
+      });
+
+      expect(mockCollectionService.getSubcollections).toHaveBeenCalledWith(
+        SAMPLE_COLLECTION_URI,
+        SAMPLE_DID
+      );
     });
   });
 });

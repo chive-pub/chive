@@ -35,6 +35,7 @@ export const getSubcollections: XRPCMethod<QueryParams, void, OutputSchema> = {
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
+    const user = c.get('user');
 
     if (!params.uri) {
       throw new ValidationError('Missing required parameter: uri', 'uri');
@@ -49,7 +50,10 @@ export const getSubcollections: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     logger.debug('Getting subcollections', { uri: params.uri });
 
-    const subcollections = await collectionService.getSubcollections(params.uri as AtUri);
+    const subcollections = await collectionService.getSubcollections(
+      params.uri as AtUri,
+      user?.did
+    );
 
     const response: OutputSchema = {
       subcollections: subcollections.map(mapCollectionToView),

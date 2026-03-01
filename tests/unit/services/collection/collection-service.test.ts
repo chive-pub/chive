@@ -242,6 +242,85 @@ describe('CollectionService', () => {
       expect(params?.[5]).toBe('private');
     });
 
+    it('stores tags from record metadata', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+      const recordWithTags = {
+        ...SAMPLE_NODE_RECORD,
+        metadata: {
+          visibility: 'public',
+          tags: ['nlp', 'machine-learning'],
+        },
+      };
+
+      const result = await service.indexCollection(recordWithTags, SAMPLE_METADATA);
+
+      expect(isOk(result)).toBe(true);
+      const queryArg = pool.query.mock.calls[0]?.[0] as string;
+      expect(queryArg).toContain('tags');
+      const params = pool.query.mock.calls[0]?.[1] as unknown[];
+      // Tags is the 7th parameter (index 6), serialized as JSON
+      expect(params?.[6]).toBe(JSON.stringify(['nlp', 'machine-learning']));
+    });
+
+    it('stores empty tags array when metadata has no tags', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.indexCollection(SAMPLE_NODE_RECORD, SAMPLE_METADATA);
+
+      expect(isOk(result)).toBe(true);
+      const params = pool.query.mock.calls[0]?.[1] as unknown[];
+      // Tags is the 7th parameter (index 6)
+      expect(params?.[6]).toBe('[]');
+    });
+
+    it('syncs itemOrder metadata to edge weights', async () => {
+      const edgeUris = [
+        'at://did:plc:aswhite/pub.chive.graph.edge/edge-c',
+        'at://did:plc:aswhite/pub.chive.graph.edge/edge-a',
+        'at://did:plc:aswhite/pub.chive.graph.edge/edge-b',
+      ];
+      const recordWithOrder = {
+        ...SAMPLE_NODE_RECORD,
+        metadata: { visibility: 'public', itemOrder: edgeUris },
+      };
+      // First call: UPSERT collection, second call: UPDATE edge weights
+      pool.query.mockResolvedValueOnce({ rows: [] });
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.indexCollection(recordWithOrder, SAMPLE_METADATA);
+
+      expect(isOk(result)).toBe(true);
+      expect(pool.query).toHaveBeenCalledTimes(2);
+
+      const [sql, params] = pool.query.mock.calls[1] as [string, unknown[]];
+      expect(sql).toContain('UPDATE collection_edges_index');
+      expect(sql).toContain('SET weight');
+      expect(params?.[0]).toEqual(edgeUris);
+      expect(params?.[1]).toBe(SAMPLE_METADATA.uri);
+    });
+
+    it('skips edge weight update when itemOrder is absent', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.indexCollection(SAMPLE_NODE_RECORD, SAMPLE_METADATA);
+
+      expect(isOk(result)).toBe(true);
+      expect(pool.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips edge weight update when itemOrder is empty', async () => {
+      const recordWithEmptyOrder = {
+        ...SAMPLE_NODE_RECORD,
+        metadata: { visibility: 'public', itemOrder: [] },
+      };
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.indexCollection(recordWithEmptyOrder, SAMPLE_METADATA);
+
+      expect(isOk(result)).toBe(true);
+      expect(pool.query).toHaveBeenCalledTimes(1);
+    });
+
     it('returns database error on query failure', async () => {
       pool.query.mockRejectedValueOnce(new Error('Connection refused'));
 
@@ -360,6 +439,99 @@ describe('CollectionService', () => {
         expect(result.error).toBeInstanceOf(DatabaseError);
       }
     });
+    it('rejects self-loop for subcollection-of edge', async () => {
+      const selfLoopEdge = {
+        ...SAMPLE_SUBCOLLECTION_EDGE,
+        sourceUri: SAMPLE_COLLECTION_URI,
+        targetUri: SAMPLE_COLLECTION_URI,
+      };
+
+      const result = await service.indexCollectionEdge(selfLoopEdge, {
+        ...SAMPLE_METADATA,
+        uri: SAMPLE_SUBCOLLECTION_EDGE_URI,
+      });
+
+      expect(isErr(result)).toBe(true);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toContain('self-loop');
+      }
+      expect(pool.query).not.toHaveBeenCalled();
+    });
+
+    it('rejects subcollection-of edge that would create a direct cycle (A->B->A)', async () => {
+      // wouldCreateCycle query returns a row, indicating a cycle
+      pool.query.mockResolvedValueOnce({ rows: [{ found: 1 }] });
+
+      const result = await service.indexCollectionEdge(SAMPLE_SUBCOLLECTION_EDGE, {
+        ...SAMPLE_METADATA,
+        uri: SAMPLE_SUBCOLLECTION_EDGE_URI,
+      });
+
+      expect(isErr(result)).toBe(true);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toContain('cycle');
+      }
+    });
+
+    it('rejects subcollection-of edge that would create a deep cycle (A->B->C->A)', async () => {
+      // Recursive CTE finds the ancestor, indicating a cycle
+      pool.query.mockResolvedValueOnce({ rows: [{ found: 1 }] });
+
+      const deepEdge = {
+        ...SAMPLE_SUBCOLLECTION_EDGE,
+        sourceUri: SAMPLE_GRANDCHILD_URI,
+        targetUri: SAMPLE_CHILD_URI,
+      };
+
+      const result = await service.indexCollectionEdge(deepEdge, {
+        ...SAMPLE_METADATA,
+        uri: SAMPLE_SUBCOLLECTION_EDGE_URI,
+      });
+
+      expect(isErr(result)).toBe(true);
+      if (!result.ok) {
+        expect(result.error).toBeInstanceOf(ValidationError);
+        expect(result.error.message).toContain('cycle');
+      }
+    });
+
+    it('allows valid subcollection-of edge when no cycle exists', async () => {
+      // wouldCreateCycle query returns no rows (no cycle)
+      pool.query.mockResolvedValueOnce({ rows: [] });
+      // INSERT query
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      const validEdge = {
+        ...SAMPLE_SUBCOLLECTION_EDGE,
+        sourceUri: SAMPLE_GRANDCHILD_URI,
+        targetUri: SAMPLE_CHILD_URI,
+      };
+
+      const result = await service.indexCollectionEdge(validEdge, {
+        ...SAMPLE_METADATA,
+        uri: SAMPLE_SUBCOLLECTION_EDGE_URI,
+      });
+
+      expect(isOk(result)).toBe(true);
+      // First call is cycle detection, second is INSERT
+      expect(pool.query).toHaveBeenCalledTimes(2);
+      expect(pool.query.mock.calls[0]?.[0] as string).toContain('WITH RECURSIVE ancestors');
+    });
+
+    it('skips cycle detection for non-subcollection-of edges', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      await service.indexCollectionEdge(SAMPLE_CONTAINS_EDGE, {
+        ...SAMPLE_METADATA,
+        uri: SAMPLE_EDGE_URI,
+      });
+
+      // Only INSERT, no cycle detection query
+      expect(pool.query).toHaveBeenCalledTimes(1);
+      expect(pool.query.mock.calls[0]?.[0] as string).toContain('INSERT');
+    });
   });
 
   // ==========================================================================
@@ -384,6 +556,8 @@ describe('CollectionService', () => {
         .mockResolvedValueOnce({ rows: [] }) // Delete SUBCOLLECTION_OF from this
         .mockResolvedValueOnce({ rows: [] }) // Delete remaining edges
         .mockResolvedValueOnce({ rows: [] }) // Delete collection itself
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph edges
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph node
         .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
       const result = await service.deleteCollection(SAMPLE_COLLECTION_URI);
@@ -398,6 +572,15 @@ describe('CollectionService', () => {
       const deleteCollectionCall = mockClient.query.mock.calls[6];
       expect(deleteCollectionCall?.[0]).toContain('DELETE FROM collections_index');
       expect(deleteCollectionCall?.[1]).toEqual([SAMPLE_COLLECTION_URI]);
+
+      // Verify personal graph cleanup
+      const pgEdgesDeleteCall = mockClient.query.mock.calls[7];
+      expect(pgEdgesDeleteCall?.[0]).toContain('DELETE FROM personal_graph_edges_index');
+      expect(pgEdgesDeleteCall?.[1]).toEqual([SAMPLE_COLLECTION_URI]);
+
+      const pgNodeDeleteCall = mockClient.query.mock.calls[8];
+      expect(pgNodeDeleteCall?.[0]).toContain('DELETE FROM personal_graph_nodes_index');
+      expect(pgNodeDeleteCall?.[1]).toEqual([SAMPLE_COLLECTION_URI]);
 
       // Verify COMMIT
       const lastCallIndex = mockClient.query.mock.calls.length - 1;
@@ -423,6 +606,8 @@ describe('CollectionService', () => {
         .mockResolvedValueOnce({ rows: [] }) // Delete SUBCOLLECTION_OF from this
         .mockResolvedValueOnce({ rows: [] }) // Delete remaining edges
         .mockResolvedValueOnce({ rows: [] }) // Delete collection itself
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph edges
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph node
         .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
       const result = await service.deleteCollection(SAMPLE_CHILD_URI);
@@ -469,6 +654,8 @@ describe('CollectionService', () => {
         .mockResolvedValueOnce({ rows: [] }) // Delete SUBCOLLECTION_OF from this
         .mockResolvedValueOnce({ rows: [] }) // Delete remaining edges
         .mockResolvedValueOnce({ rows: [] }) // Delete collection itself
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph edges
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph node
         .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
       const result = await service.deleteCollection(SAMPLE_CHILD_URI);
@@ -503,6 +690,8 @@ describe('CollectionService', () => {
         .mockResolvedValueOnce({ rows: [] }) // Delete SUBCOLLECTION_OF from this
         .mockResolvedValueOnce({ rows: [] }) // Delete remaining edges
         .mockResolvedValueOnce({ rows: [] }) // Delete collection itself
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph edges
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph node
         .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
       const result = await service.deleteCollection(SAMPLE_COLLECTION_URI);
@@ -536,6 +725,8 @@ describe('CollectionService', () => {
         .mockResolvedValueOnce({ rows: [] }) // Delete SUBCOLLECTION_OF from this
         .mockResolvedValueOnce({ rows: [] }) // Delete remaining edges
         .mockResolvedValueOnce({ rows: [] }) // Delete collection itself
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph edges
+        .mockResolvedValueOnce({ rows: [] }) // Delete personal graph node
         .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
       const result = await service.deleteCollection(SAMPLE_COLLECTION_URI);
@@ -825,6 +1016,75 @@ describe('CollectionService', () => {
 
       expect(result.total).toBe(50);
     });
+
+    it('filters by tag using JSONB containment in both count and main queries', async () => {
+      pool.query
+        .mockResolvedValueOnce({ rows: [{ count: '2' }] })
+        .mockResolvedValueOnce({ rows: [SAMPLE_COLLECTION_ROW] });
+
+      const result = await service.listPublic({ tag: 'nlp' });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(2);
+
+      // Count query should contain JSONB containment
+      const countQuery = pool.query.mock.calls[0]?.[0] as string;
+      expect(countQuery).toContain('tags @>');
+      const countParams = pool.query.mock.calls[0]?.[1] as unknown[];
+      expect(countParams).toContain(JSON.stringify(['nlp']));
+
+      // Main query should also contain JSONB containment
+      const mainQuery = pool.query.mock.calls[1]?.[0] as string;
+      expect(mainQuery).toContain('tags @>');
+      const mainParams = pool.query.mock.calls[1]?.[1] as unknown[];
+      expect(mainParams).toContain(JSON.stringify(['nlp']));
+    });
+
+    it('does not include tag filter in SQL when tag is omitted', async () => {
+      pool.query
+        .mockResolvedValueOnce({ rows: [{ count: '5' }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await service.listPublic();
+
+      const countQuery = pool.query.mock.calls[0]?.[0] as string;
+      expect(countQuery).not.toContain('tags @>');
+      const mainQuery = pool.query.mock.calls[1]?.[0] as string;
+      expect(mainQuery).not.toContain('tags @>');
+    });
+
+    it('does not include tag filter in SQL when tag is undefined', async () => {
+      pool.query
+        .mockResolvedValueOnce({ rows: [{ count: '5' }] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await service.listPublic({ tag: undefined });
+
+      const countQuery = pool.query.mock.calls[0]?.[0] as string;
+      expect(countQuery).not.toContain('tags @>');
+      const mainQuery = pool.query.mock.calls[1]?.[0] as string;
+      expect(mainQuery).not.toContain('tags @>');
+    });
+
+    it('combines tag filter with cursor pagination', async () => {
+      const cursor = '2024-01-01T00:00:00.000Z::at://did:plc:abc/pub.chive.graph.node/xyz';
+      pool.query
+        .mockResolvedValueOnce({ rows: [{ count: '10' }] })
+        .mockResolvedValueOnce({ rows: [SAMPLE_COLLECTION_ROW] });
+
+      const result = await service.listPublic({ tag: 'ml', cursor });
+
+      expect(result.total).toBe(10);
+
+      // Main query should have both tag and cursor filters
+      const mainQuery = pool.query.mock.calls[1]?.[0] as string;
+      expect(mainQuery).toContain('tags @>');
+      expect(mainQuery).toContain('created_at');
+
+      // Tag param should come before cursor params
+      const mainParams = pool.query.mock.calls[1]?.[1] as unknown[];
+      expect(mainParams?.[0]).toBe(JSON.stringify(['ml']));
+    });
   });
 
   // ==========================================================================
@@ -954,6 +1214,27 @@ describe('CollectionService', () => {
 
       expect(result).toEqual([]);
     });
+
+    it('passes authDid for visibility filtering', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      await service.getSubcollections(SAMPLE_COLLECTION_URI, SAMPLE_DID);
+
+      const params = pool.query.mock.calls[0]?.[1] as unknown[];
+      expect(params?.[0]).toBe(SAMPLE_COLLECTION_URI);
+      expect(params?.[1]).toBe(SAMPLE_DID);
+    });
+
+    it('filters private subcollections for unauthenticated users', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      await service.getSubcollections(SAMPLE_COLLECTION_URI);
+
+      const queryArg = pool.query.mock.calls[0]?.[0] as string;
+      expect(queryArg).toContain("c.visibility = 'public' OR c.owner_did = $2");
+      const params = pool.query.mock.calls[0]?.[1] as unknown[];
+      expect(params?.[1]).toBe('');
+    });
   });
 
   // ==========================================================================
@@ -992,6 +1273,26 @@ describe('CollectionService', () => {
       expect(result).toBeNull();
       expect(logger.error).toHaveBeenCalled();
     });
+
+    it('passes authDid for visibility filtering', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      await service.getParentCollection(SAMPLE_CHILD_URI, SAMPLE_DID);
+
+      const params = pool.query.mock.calls[0]?.[1] as unknown[];
+      expect(params?.[0]).toBe(SAMPLE_CHILD_URI);
+      expect(params?.[1]).toBe(SAMPLE_DID);
+    });
+
+    it('returns null when private parent is accessed by non-owner', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await service.getParentCollection(SAMPLE_CHILD_URI, 'did:plc:stranger' as DID);
+
+      expect(result).toBeNull();
+      const queryArg = pool.query.mock.calls[0]?.[0] as string;
+      expect(queryArg).toContain("c.visibility = 'public' OR c.owner_did = $2");
+    });
   });
 
   // ==========================================================================
@@ -1017,8 +1318,11 @@ describe('CollectionService', () => {
         ],
       });
 
-      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+      const result = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
 
+      expect(isOk(result)).toBe(true);
+      if (!result.ok) return;
+      const items = result.value;
       expect(items).toHaveLength(1);
       expect(items[0]?.itemType).toBe('concept');
       expect(items[0]?.label).toBe('Syntax Primer');
@@ -1049,8 +1353,11 @@ describe('CollectionService', () => {
         ],
       });
 
-      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+      const result = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
 
+      expect(isOk(result)).toBe(true);
+      if (!result.ok) return;
+      const items = result.value;
       expect(items).toHaveLength(1);
       expect(items[0]?.itemType).toBe('eprint');
       expect(items[0]?.authors).toEqual(['Aaron Steven White']);
@@ -1076,8 +1383,11 @@ describe('CollectionService', () => {
         ],
       });
 
-      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+      const result = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
 
+      expect(isOk(result)).toBe(true);
+      if (!result.ok) return;
+      const items = result.value;
       expect(items[0]?.label).toBe('Custom Label');
       expect(items[0]?.title).toBe('Custom Label');
     });
@@ -1100,19 +1410,25 @@ describe('CollectionService', () => {
         ],
       });
 
-      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+      const result = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
 
+      expect(isOk(result)).toBe(true);
+      if (!result.ok) return;
+      const items = result.value;
       expect(items).toHaveLength(1);
       expect(items[0]?.metadata).toHaveProperty('clonedFrom');
       expect(items[0]?.metadata?.clonedFrom).toBe('at://gov/pub.chive.graph.node/field1');
     });
 
-    it('returns empty array on database error', async () => {
+    it('returns DatabaseError on database failure', async () => {
       pool.query.mockRejectedValueOnce(new Error('Connection error'));
 
-      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+      const result = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
 
-      expect(items).toEqual([]);
+      expect(isErr(result)).toBe(true);
+      if (result.ok) return;
+      expect(result.error).toBeInstanceOf(DatabaseError);
+      expect(result.error.message).toContain('Failed to get collection items');
       expect(logger.error).toHaveBeenCalled();
     });
 
@@ -1158,8 +1474,11 @@ describe('CollectionService', () => {
         ],
       });
 
-      const items = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
+      const result = await service.getCollectionItems(SAMPLE_COLLECTION_URI);
 
+      expect(isOk(result)).toBe(true);
+      if (!result.ok) return;
+      const items = result.value;
       expect(items).toHaveLength(3);
       expect(items[0]?.label).toBe('First');
       expect(items[0]?.order).toBe(1);

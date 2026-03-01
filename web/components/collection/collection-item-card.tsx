@@ -23,6 +23,7 @@ import {
   X,
   StickyNote,
   Pencil,
+  ArrowRight,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -30,7 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import type { CollectionItemView } from '@/lib/hooks/use-collections';
+import type { CollectionItemView, InterItemEdge } from '@/lib/hooks/use-collections';
 
 // =============================================================================
 // TYPES
@@ -76,6 +77,12 @@ interface CollectionItemCardProps {
   onEditNote?: (item: CollectionItemCardData) => void;
   /** Callback when the card is clicked */
   onClick?: (item: CollectionItemCardData) => void;
+  /** Inter-item edges involving this item */
+  edges?: InterItemEdge[];
+  /** Map from item URI to display label for resolving edge targets */
+  itemLabelMap?: Map<string, string>;
+  /** Callback when a related-item edge badge is clicked */
+  onRelatedItemClick?: (uri: string) => void;
   /** Additional CSS class names */
   className?: string;
 }
@@ -262,6 +269,9 @@ export function CollectionItemCard({
   onRemove,
   onEditNote,
   onClick,
+  edges,
+  itemLabelMap,
+  onRelatedItemClick,
   className,
 }: CollectionItemCardProps) {
   const ItemIcon = ITEM_TYPE_ICONS[item.itemType] ?? ExternalLink;
@@ -305,6 +315,34 @@ export function CollectionItemCard({
           <div className="flex items-start gap-1.5 rounded-md bg-muted/50 px-3 py-2">
             <StickyNote className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
             <p className="text-sm text-muted-foreground italic line-clamp-2">{item.note}</p>
+          </div>
+        )}
+
+        {/* Inter-item edge badges */}
+        {edges && edges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {edges.map((edge) => {
+              const otherUri = edge.sourceUri === item.itemUri ? edge.targetUri : edge.sourceUri;
+              const otherLabel =
+                itemLabelMap?.get(otherUri) ?? otherUri.split('/').pop() ?? otherUri;
+              return (
+                <button
+                  key={`${edge.relationSlug}-${otherUri}`}
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onRelatedItemClick?.(otherUri);
+                  }}
+                  title={`${edge.relationSlug}: ${otherLabel}`}
+                >
+                  <ArrowRight className="h-3 w-3 flex-shrink-0" />
+                  <span className="font-medium">{edge.relationSlug}:</span>
+                  <span className="truncate max-w-[120px]">{otherLabel}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

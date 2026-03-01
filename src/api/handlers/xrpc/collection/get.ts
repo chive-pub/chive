@@ -64,12 +64,16 @@ export const get: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     // Fetch items, subcollections, inter-item edges, and owner handle in parallel
-    const [items, subcollections, interItemEdges, ownerHandle] = await Promise.all([
-      collectionService.getCollectionItems(params.uri as AtUri).catch(() => []),
-      collectionService.getSubcollections(params.uri as AtUri).catch(() => []),
+    const [itemsResult, subcollections, interItemEdges, ownerHandle] = await Promise.all([
+      collectionService
+        .getCollectionItems(params.uri as AtUri)
+        .catch(() => ({ ok: false as const, error: null })),
+      collectionService.getSubcollections(params.uri as AtUri, user?.did).catch(() => []),
       collectionService.getInterItemEdges(params.uri as AtUri).catch(() => []),
       resolveOwnerHandle(result.ownerDid, redis, logger),
     ]);
+
+    const items = itemsResult.ok ? itemsResult.value : [];
 
     const response: OutputSchema = {
       collection: {

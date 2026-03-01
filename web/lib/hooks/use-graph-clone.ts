@@ -2,8 +2,9 @@
  * React hooks for graph subgraph expansion and cloning into collections.
  *
  * @remarks
- * Provides a BFS-based subgraph expansion hook that traverses the knowledge
- * graph from root nodes up to N hops, and a mutation hook that materializes
+ * Provides a server-side subgraph expansion hook that calls the
+ * `pub.chive.graph.expandSubgraph` XRPC endpoint to discover nodes and
+ * edges from root nodes up to N hops, and a mutation hook that materializes
  * the selected subgraph as a personal collection with CONTAINS edges and
  * personal relationship edges.
  *
@@ -63,8 +64,8 @@ export interface SubgraphNode {
   kind: string;
   /** Node subkind (field, institution, etc.) */
   subkind?: string;
-  /** Hop distance from root (0 = root node) */
-  depth: number;
+  /** Optional node metadata */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -79,6 +80,10 @@ export interface SubgraphEdge {
   targetUri: string;
   /** Relation type slug (broader, narrower, related, etc.) */
   relationSlug: string;
+  /** Optional display label */
+  label?: string;
+  /** Optional edge weight */
+  weight?: number;
 }
 
 /**
@@ -115,11 +120,8 @@ export interface CloneSubgraphInput {
 // CONSTANTS
 // =============================================================================
 
-/** Maximum number of nodes the BFS will collect */
+/** Maximum number of nodes the server-side BFS will collect. */
 const MAX_NODES = 100;
-
-/** Maximum edges to fetch per node during BFS */
-const EDGES_PER_NODE = 50;
 
 // =============================================================================
 // QUERY KEY FACTORY
@@ -135,162 +137,6 @@ export const graphCloneKeys = {
 };
 
 // =============================================================================
-// BFS EXPANSION
-// =============================================================================
-
-/**
- * Performs breadth-first expansion from root nodes, collecting nodes and edges.
- *
- * @param rootNodeUris - AT-URIs of the starting nodes
- * @param maxDepth - Maximum number of hops from root
- * @param edgeTypes - Optional filter for edge relation slugs
- * @returns The discovered subgraph
- */
-async function expandSubgraph(
-  rootNodeUris: string[],
-  maxDepth: number,
-  edgeTypes?: string[]
-): Promise<SubgraphResult> {
-  const visitedNodes = new Map<string, SubgraphNode>();
-  const collectedEdges: SubgraphEdge[] = [];
-  const seenEdgeUris = new Set<string>();
-  let capped = false;
-
-  // Initialize BFS queue with root nodes
-  const queue: Array<{ uri: string; depth: number }> = rootNodeUris.map((uri) => ({
-    uri,
-    depth: 0,
-  }));
-
-  // Fetch root node details first
-  for (const uri of rootNodeUris) {
-    if (visitedNodes.size >= MAX_NODES) {
-      capped = true;
-      break;
-    }
-    try {
-      const nodeResponse = await api.pub.chive.graph.getNode({
-        id: uri,
-        includeEdges: false,
-      });
-      if (nodeResponse.data) {
-        visitedNodes.set(uri, {
-          uri: nodeResponse.data.uri,
-          label: nodeResponse.data.label,
-          description: nodeResponse.data.description,
-          kind: nodeResponse.data.kind,
-          subkind: nodeResponse.data.subkind,
-          depth: 0,
-        });
-      }
-    } catch {
-      // Node may not exist; skip it
-      logger.warn('Failed to fetch root node during BFS', { uri });
-    }
-  }
-
-  // BFS traversal
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-
-    if (current.depth >= maxDepth) continue;
-    if (visitedNodes.size >= MAX_NODES) {
-      capped = true;
-      break;
-    }
-
-    // Fetch edges from this node (both outgoing and incoming)
-    try {
-      const [outgoing, incoming] = await Promise.all([
-        api.pub.chive.graph.listEdges({
-          sourceUri: current.uri,
-          status: 'established',
-          limit: EDGES_PER_NODE,
-        }),
-        api.pub.chive.graph.listEdges({
-          targetUri: current.uri,
-          status: 'established',
-          limit: EDGES_PER_NODE,
-        }),
-      ]);
-
-      const allEdges = [...outgoing.data.edges, ...incoming.data.edges];
-
-      for (const edge of allEdges) {
-        // Apply edge type filter if specified
-        if (edgeTypes && edgeTypes.length > 0 && !edgeTypes.includes(edge.relationSlug)) {
-          continue;
-        }
-
-        // Record the edge (deduplicate)
-        if (!seenEdgeUris.has(edge.uri)) {
-          seenEdgeUris.add(edge.uri);
-          collectedEdges.push({
-            uri: edge.uri,
-            sourceUri: edge.sourceUri,
-            targetUri: edge.targetUri,
-            relationSlug: edge.relationSlug,
-          });
-        }
-
-        // Determine the neighbor node URI
-        const neighborUri = edge.sourceUri === current.uri ? edge.targetUri : edge.sourceUri;
-
-        // Skip if already visited
-        if (visitedNodes.has(neighborUri)) continue;
-
-        // Check cap
-        if (visitedNodes.size >= MAX_NODES) {
-          capped = true;
-          break;
-        }
-
-        // Fetch the neighbor node
-        try {
-          const nodeResponse = await api.pub.chive.graph.getNode({
-            id: neighborUri,
-            includeEdges: false,
-          });
-          if (nodeResponse.data) {
-            const newDepth = current.depth + 1;
-            visitedNodes.set(neighborUri, {
-              uri: nodeResponse.data.uri,
-              label: nodeResponse.data.label,
-              description: nodeResponse.data.description,
-              kind: nodeResponse.data.kind,
-              subkind: nodeResponse.data.subkind,
-              depth: newDepth,
-            });
-
-            // Enqueue for further expansion
-            if (newDepth < maxDepth) {
-              queue.push({ uri: neighborUri, depth: newDepth });
-            }
-          }
-        } catch {
-          // Node fetch failed; skip this neighbor
-        }
-      }
-    } catch {
-      // Edge listing failed for this node; continue with others
-      logger.warn('Failed to list edges during BFS', { uri: current.uri });
-    }
-  }
-
-  // Filter edges to only include those where both endpoints are in the visited set
-  const nodeUris = new Set(visitedNodes.keys());
-  const filteredEdges = collectedEdges.filter(
-    (e) => nodeUris.has(e.sourceUri) && nodeUris.has(e.targetUri)
-  );
-
-  return {
-    nodes: Array.from(visitedNodes.values()),
-    edges: filteredEdges,
-    capped,
-  };
-}
-
-// =============================================================================
 // HOOKS
 // =============================================================================
 
@@ -298,15 +144,14 @@ async function expandSubgraph(
  * Fetches a subgraph starting from root node URIs up to N hops.
  *
  * @param rootNodeUris - AT-URIs of the root nodes to start expansion from
- * @param depth - Maximum number of hops from root (1-3)
+ * @param depth - Maximum number of hops from root (1-5)
  * @param options - Optional edge type filter and enabled flag
  * @returns Query result with the expanded subgraph
  *
  * @remarks
- * Uses client-side BFS because Chive does not have a dedicated subgraph
- * expansion endpoint. For each node, calls `listEdges` to discover
- * neighbors and `getNode` to fetch metadata. Tracks visited nodes
- * to avoid cycles and caps at 100 nodes maximum.
+ * Calls the `pub.chive.graph.expandSubgraph` XRPC endpoint which performs
+ * server-side BFS. This replaces the previous client-side BFS approach that
+ * required many sequential API calls.
  *
  * @example
  * ```tsx
@@ -326,7 +171,32 @@ export function useGraphSubgraph(
     queryKey: graphCloneKeys.subgraph(rootNodeUris, depth, options?.edgeTypes),
     queryFn: async (): Promise<SubgraphResult> => {
       try {
-        return await expandSubgraph(rootNodeUris, depth, options?.edgeTypes);
+        const response = await api.pub.chive.graph.expandSubgraph({
+          rootUris: rootNodeUris,
+          depth,
+          edgeTypes: options?.edgeTypes,
+          maxNodes: MAX_NODES,
+        });
+
+        return {
+          nodes: response.data.nodes.map((node) => ({
+            uri: node.uri,
+            label: node.label,
+            kind: node.kind,
+            subkind: node.subkind,
+            description: node.description,
+            metadata: node.metadata,
+          })),
+          edges: response.data.edges.map((edge) => ({
+            uri: edge.uri,
+            sourceUri: edge.sourceUri,
+            targetUri: edge.targetUri,
+            relationSlug: edge.relationSlug,
+            label: edge.label,
+            weight: edge.weight,
+          })),
+          capped: response.data.truncated,
+        };
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
@@ -367,10 +237,34 @@ export function useGraphSubgraph(
  * });
  * ```
  */
+/**
+ * A node that failed during the clone process.
+ */
+export interface FailedCloneNode {
+  /** Original community node URI */
+  uri: string;
+  /** Node label */
+  label: string;
+  /** Error message */
+  reason: string;
+}
+
+/**
+ * Result of the clone subgraph mutation.
+ */
+export interface CloneSubgraphResult {
+  /** AT-URI of the created collection */
+  collectionUri: string;
+  /** Number of nodes successfully cloned as personal nodes */
+  clonedNodes: number;
+  /** Nodes that failed personal creation and fell back to community URI */
+  failedNodes: FailedCloneNode[];
+}
+
 export function useCloneSubgraph() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ collectionUri: string }, APIError, CloneSubgraphInput>({
+  return useMutation<CloneSubgraphResult, APIError, CloneSubgraphInput>({
     mutationFn: async (input) => {
       const agent = getCurrentAgent();
       if (!agent) {
@@ -398,6 +292,8 @@ export function useCloneSubgraph() {
 
       // 2. Clone each community graph node into the user's personal graph
       const uriMap = new Map<string, string>(); // community URI -> personal node URI
+      const failedNodes: FailedCloneNode[] = [];
+      let clonedNodes = 0;
 
       for (const node of input.nodes) {
         try {
@@ -409,6 +305,7 @@ export function useCloneSubgraph() {
           });
 
           uriMap.set(node.uri, personalNode.uri);
+          clonedNodes++;
 
           // Request immediate indexing of the personal node
           try {
@@ -417,10 +314,12 @@ export function useCloneSubgraph() {
             // Firehose will handle
           }
         } catch (nodeError) {
+          const reason = nodeError instanceof Error ? nodeError.message : String(nodeError);
           logger.warn('Failed to clone node to personal graph', {
             nodeUri: node.uri,
-            error: nodeError instanceof Error ? nodeError.message : String(nodeError),
+            error: reason,
           });
+          failedNodes.push({ uri: node.uri, label: node.label, reason });
           // Fall back to using community URI directly
           uriMap.set(node.uri, node.uri);
         }
@@ -481,7 +380,11 @@ export function useCloneSubgraph() {
       // Brief delay before cache invalidation for DB commit
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      return { collectionUri: collectionResult.uri };
+      return {
+        collectionUri: collectionResult.uri,
+        clonedNodes,
+        failedNodes,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collectionKeys.all });

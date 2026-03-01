@@ -20,6 +20,7 @@ import type { Pool } from 'pg';
 
 import type { Main as EdgeRecord } from '../../lexicons/generated/types/pub/chive/graph/edge.js';
 import type { Main as NodeRecord } from '../../lexicons/generated/types/pub/chive/graph/node.js';
+import type { NodeMetadata } from '../../storage/neo4j/types.js';
 import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, ValidationError } from '../../types/errors.js';
 import type { GraphNode } from '../../types/interfaces/graph.interface.js';
@@ -38,6 +39,56 @@ import type { RecordMetadata } from '../eprint/eprint-service.js';
 function extractDidFromUri(uri: AtUri): DID {
   const parts = (uri as string).split('/');
   return parts[2] as DID;
+}
+
+/**
+ * A node in a subgraph expansion result.
+ *
+ * @public
+ */
+export interface SubgraphNode {
+  readonly uri: string;
+  readonly label: string;
+  readonly kind: string;
+  readonly subkind?: string;
+  readonly description?: string;
+  readonly metadata?: Record<string, unknown>;
+}
+
+/**
+ * An edge in a subgraph expansion result.
+ *
+ * @public
+ */
+export interface SubgraphEdge {
+  readonly uri: string;
+  readonly sourceUri: string;
+  readonly targetUri: string;
+  readonly relationSlug: string;
+  readonly label?: string;
+  readonly weight?: number;
+}
+
+/**
+ * Result of a BFS subgraph expansion.
+ *
+ * @public
+ */
+export interface ExpandSubgraphResult {
+  readonly nodes: SubgraphNode[];
+  readonly edges: SubgraphEdge[];
+  readonly truncated: boolean;
+}
+
+/**
+ * Options for BFS subgraph expansion.
+ *
+ * @public
+ */
+export interface ExpandSubgraphOptions {
+  readonly depth?: number;
+  readonly edgeTypes?: string[];
+  readonly maxNodes?: number;
 }
 
 /**
@@ -391,7 +442,7 @@ export class PersonalGraphService {
 
     try {
       let sql = `SELECT uri, node_id, kind, subkind, label,
-                        alternate_labels, description, status, created_at
+                        alternate_labels, description, status, metadata, created_at
                  FROM personal_graph_nodes_index
                  WHERE owner_did = $1
                    AND (label ILIKE $2 OR description ILIKE $2)`;
@@ -414,6 +465,7 @@ export class PersonalGraphService {
         alternate_labels: string | null;
         description: string | null;
         status: string;
+        metadata: Record<string, unknown> | string | null;
         created_at: Date;
       }>(sql, params);
 
@@ -426,6 +478,219 @@ export class PersonalGraphService {
       );
       return [];
     }
+  }
+
+  /**
+   * Expands a subgraph from root URIs using breadth-first search.
+   *
+   * Traverses edges in both `personal_graph_edges_index` and
+   * `collection_edges_index`, deduplicating by URI. Fetches node
+   * metadata from `personal_graph_nodes_index` for discovered URIs.
+   *
+   * @param rootUris - Starting node URIs for BFS expansion
+   * @param options - BFS depth, edge type filter, and max node cap
+   * @returns Result containing discovered nodes, edges, and truncation flag
+   *
+   * @public
+   */
+  async expandSubgraph(
+    rootUris: string[],
+    options?: ExpandSubgraphOptions
+  ): Promise<Result<ExpandSubgraphResult, DatabaseError>> {
+    const maxDepth = Math.min(Math.max(options?.depth ?? 2, 1), 5);
+    const maxNodes = Math.min(Math.max(options?.maxNodes ?? 100, 1), 200);
+    const edgeTypes = options?.edgeTypes;
+
+    try {
+      const visited = new Set<string>(rootUris);
+      let frontier = [...rootUris];
+      const allEdges = new Map<string, SubgraphEdge>();
+      let truncated = false;
+
+      for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
+        const edges = await this.fetchEdgesForUris(frontier, edgeTypes);
+
+        const nextFrontier: string[] = [];
+
+        for (const edge of edges) {
+          allEdges.set(edge.uri, edge);
+
+          for (const endpoint of [edge.sourceUri, edge.targetUri]) {
+            if (!visited.has(endpoint)) {
+              if (visited.size >= maxNodes) {
+                truncated = true;
+                break;
+              }
+              visited.add(endpoint);
+              nextFrontier.push(endpoint);
+            }
+          }
+
+          if (truncated) break;
+        }
+
+        if (truncated) break;
+        frontier = nextFrontier;
+      }
+
+      const allUris = [...visited];
+      const nodes = await this.fetchNodesForUris(allUris);
+
+      return Ok({
+        nodes,
+        edges: [...allEdges.values()],
+        truncated,
+      });
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'READ',
+        `Failed to expand subgraph: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to expand subgraph', dbError, {
+        rootUris,
+        maxDepth,
+        maxNodes,
+      });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Fetches edges from both personal_graph_edges_index and
+   * collection_edges_index for the given URIs.
+   *
+   * @param uris - Node URIs to fetch edges for
+   * @param edgeTypes - Optional filter by relation slug
+   * @returns Deduplicated edges from both tables
+   *
+   * @internal
+   */
+  private async fetchEdgesForUris(uris: string[], edgeTypes?: string[]): Promise<SubgraphEdge[]> {
+    const edgeMap = new Map<string, SubgraphEdge>();
+
+    const hasEdgeFilter = edgeTypes && edgeTypes.length > 0;
+    const personalEdgeSql = hasEdgeFilter
+      ? `SELECT uri, source_uri, target_uri, relation_slug, weight
+         FROM personal_graph_edges_index
+         WHERE (source_uri = ANY($1) OR target_uri = ANY($1))
+           AND relation_slug = ANY($2)`
+      : `SELECT uri, source_uri, target_uri, relation_slug, weight
+         FROM personal_graph_edges_index
+         WHERE (source_uri = ANY($1) OR target_uri = ANY($1))`;
+
+    const collectionEdgeSql = hasEdgeFilter
+      ? `SELECT uri, source_uri, target_uri, relation_slug, label, weight
+         FROM collection_edges_index
+         WHERE (source_uri = ANY($1) OR target_uri = ANY($1))
+           AND relation_slug = ANY($2)`
+      : `SELECT uri, source_uri, target_uri, relation_slug, label, weight
+         FROM collection_edges_index
+         WHERE (source_uri = ANY($1) OR target_uri = ANY($1))`;
+
+    const params: unknown[] = hasEdgeFilter ? [uris, edgeTypes] : [uris];
+
+    const [personalResult, collectionResult] = await Promise.all([
+      this.pool.query<{
+        uri: string;
+        source_uri: string;
+        target_uri: string;
+        relation_slug: string;
+        label?: string;
+        weight: number | null;
+      }>(personalEdgeSql, params),
+      this.pool.query<{
+        uri: string;
+        source_uri: string;
+        target_uri: string;
+        relation_slug: string;
+        label: string | null;
+        weight: number | null;
+      }>(collectionEdgeSql, params),
+    ]);
+
+    for (const row of personalResult.rows) {
+      edgeMap.set(row.uri, {
+        uri: row.uri,
+        sourceUri: row.source_uri,
+        targetUri: row.target_uri,
+        relationSlug: row.relation_slug,
+        weight: row.weight ?? undefined,
+      });
+    }
+
+    for (const row of collectionResult.rows) {
+      if (!edgeMap.has(row.uri)) {
+        edgeMap.set(row.uri, {
+          uri: row.uri,
+          sourceUri: row.source_uri,
+          targetUri: row.target_uri,
+          relationSlug: row.relation_slug,
+          label: row.label ?? undefined,
+          weight: row.weight ?? undefined,
+        });
+      }
+    }
+
+    return [...edgeMap.values()];
+  }
+
+  /**
+   * Fetches node metadata from personal_graph_nodes_index for the given URIs.
+   *
+   * @param uris - Node URIs to fetch metadata for
+   * @returns Array of subgraph nodes with metadata
+   *
+   * @internal
+   */
+  private async fetchNodesForUris(uris: string[]): Promise<SubgraphNode[]> {
+    if (uris.length === 0) return [];
+
+    const result = await this.pool.query<{
+      uri: string;
+      label: string;
+      kind: string;
+      subkind: string | null;
+      description: string | null;
+      metadata: Record<string, unknown> | null;
+    }>(
+      `SELECT uri, label, kind, subkind, description, metadata
+       FROM personal_graph_nodes_index
+       WHERE uri = ANY($1)`,
+      [uris]
+    );
+
+    const nodeMap = new Map<string, SubgraphNode>();
+
+    const parseJsonb = <T>(val: unknown): T | undefined => {
+      if (val == null) return undefined;
+      if (typeof val === 'string') return JSON.parse(val) as T;
+      return val as T;
+    };
+
+    for (const row of result.rows) {
+      nodeMap.set(row.uri, {
+        uri: row.uri,
+        label: row.label,
+        kind: row.kind,
+        subkind: row.subkind ?? undefined,
+        description: row.description ?? undefined,
+        metadata: parseJsonb<Record<string, unknown>>(row.metadata),
+      });
+    }
+
+    // Include stub nodes for URIs not in personal_graph_nodes_index
+    // (e.g., eprint URIs that are edge targets but not graph nodes)
+    for (const uri of uris) {
+      if (!nodeMap.has(uri)) {
+        nodeMap.set(uri, {
+          uri,
+          label: uri,
+          kind: 'unknown',
+        });
+      }
+    }
+
+    return [...nodeMap.values()];
   }
 
   /**
@@ -445,6 +710,7 @@ export class PersonalGraphService {
     alternate_labels: string | null;
     description: string | null;
     status: string;
+    metadata?: Record<string, unknown> | string | null;
     created_at: Date;
   }): GraphNode {
     const parseJsonb = <T>(val: unknown): T | undefined => {
@@ -461,6 +727,7 @@ export class PersonalGraphService {
       label: row.label,
       alternateLabels: parseJsonb<string[]>(row.alternate_labels),
       description: row.description ?? undefined,
+      metadata: parseJsonb<NodeMetadata>(row.metadata),
       status: row.status as 'proposed' | 'provisional' | 'established' | 'deprecated',
       createdAt: new Date(row.created_at),
     };

@@ -62,10 +62,12 @@ import {
   useCloneSubgraph,
   type SubgraphNode,
   type SubgraphEdge,
+  type CloneSubgraphResult,
 } from '@/lib/hooks/use-graph-clone';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { RELATION_LABELS } from '@/lib/hooks/use-edges';
+import { CloneDiffView } from './clone-diff-view';
 
 // =============================================================================
 // TYPES
@@ -753,6 +755,7 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
   const [tags, setTags] = useState<Array<{ uri: string; label: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [cloneResult, setCloneResult] = useState<CloneSubgraphResult | null>(null);
 
   // Fetch relation types from API
   const { data: relationTypes, isLoading: relationTypesLoading } = useRelationTypes();
@@ -1000,7 +1003,10 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
         description: `"${collectionName}" with ${selectedNodes.length} nodes`,
       });
 
-      if (onSuccess) {
+      // Show diff view if there are failed nodes; navigate directly otherwise
+      if (result.failedNodes.length > 0) {
+        setCloneResult(result);
+      } else if (onSuccess) {
         onSuccess(result.collectionUri);
       } else {
         router.push(`/collections/${encodeURIComponent(result.collectionUri)}`);
@@ -1023,6 +1029,15 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
     onSuccess,
     router,
   ]);
+
+  const handleDiffContinue = useCallback(() => {
+    if (!cloneResult) return;
+    if (onSuccess) {
+      onSuccess(cloneResult.collectionUri);
+    } else {
+      router.push(`/collections/${encodeURIComponent(cloneResult.collectionUri)}`);
+    }
+  }, [cloneResult, onSuccess, router]);
 
   // ==========================================================================
   // RENDER
@@ -1089,6 +1104,21 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
 
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === WIZARD_STEPS.length - 1;
+
+  // Show diff view after clone completes with failures
+  if (cloneResult) {
+    return (
+      <div className={cn('space-y-8', className)}>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Clone Graph to Collection</h1>
+          <p className="text-muted-foreground mt-1">
+            Your collection has been created. Review the clone results below.
+          </p>
+        </div>
+        <CloneDiffView result={cloneResult} onContinue={handleDiffContinue} />
+      </div>
+    );
+  }
 
   return (
     <div className={cn('space-y-8', className)}>

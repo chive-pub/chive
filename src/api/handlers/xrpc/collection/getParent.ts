@@ -35,6 +35,7 @@ export const getParent: XRPCMethod<QueryParams, void, OutputSchema> = {
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const { collection: collectionService } = c.get('services');
     const logger = c.get('logger');
+    const user = c.get('user');
 
     if (!params.uri) {
       throw new ValidationError('Missing required parameter: uri', 'uri');
@@ -49,7 +50,7 @@ export const getParent: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     logger.debug('Getting parent collection', { uri: params.uri });
 
-    const parent = await collectionService.getParentCollection(params.uri as AtUri);
+    const parent = await collectionService.getParentCollection(params.uri as AtUri, user?.did);
 
     const response: OutputSchema = {
       parent: parent ? mapCollectionToView(parent) : undefined,

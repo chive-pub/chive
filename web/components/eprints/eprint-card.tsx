@@ -9,6 +9,7 @@ import { FieldBadgeList } from './field-badge';
 import { StaticAbstract } from './eprint-abstract';
 import { EprintSource } from './eprint-source';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
+import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
 import type { EprintCardData, EprintAuthor, FieldRef, TrendingEntry } from '@/lib/api/schema';
@@ -205,6 +206,13 @@ export function EprintCard({
               </span>
             </div>
           </div>
+          <AddToCollectionButton
+            itemUri={eprint.uri}
+            itemType="eprint"
+            itemLabel={eprint.title}
+            variant="icon"
+            className="h-8 w-8 shrink-0"
+          />
         </div>
       </CardHeader>
 

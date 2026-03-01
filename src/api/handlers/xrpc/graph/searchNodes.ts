@@ -128,6 +128,7 @@ export const searchNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
             label: pn.label,
             alternateLabels: pn.alternateLabels,
             description: pn.description,
+            metadata: pn.metadata as GraphNode['metadata'],
             status: pn.status,
             createdAt: pn.createdAt.toISOString(),
             isPersonal: true,

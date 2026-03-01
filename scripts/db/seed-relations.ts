@@ -41,6 +41,13 @@ export async function seedRelations(nodeCreator: NodeCreator): Promise<number> {
       });
     }
 
+    const metadata: Record<string, string | boolean> = {};
+    if (relation.symmetric) metadata.symmetric = true;
+    if (relation.inverseSlug) metadata.inverseSlug = relation.inverseSlug;
+    if (relation.transitive) metadata.transitive = true;
+    if (relation.reflexive) metadata.reflexive = true;
+    if (relation.functional) metadata.functional = true;
+
     await nodeCreator.createNode({
       slug: relation.slug,
       kind: 'type',
@@ -48,6 +55,7 @@ export async function seedRelations(nodeCreator: NodeCreator): Promise<number> {
       label: relation.label,
       description: relation.description,
       externalIds: externalIds.length > 0 ? externalIds : undefined,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       status: 'established',
     });
     count++;

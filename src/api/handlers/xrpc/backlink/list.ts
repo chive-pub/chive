@@ -3,7 +3,7 @@
  *
  * @remarks
  * Lists backlinks to an eprint from ATProto ecosystem sources including
- * Semble collections, Leaflet lists, Whitewind blogs, and Bluesky shares.
+ * Cosmik collections, Leaflet lists, Whitewind blogs, and Bluesky shares.
  *
  * **ATProto Compliance:**
  * - Read-only query from Chive's backlink index
@@ -41,7 +41,7 @@ export const list: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     // Cast lexicon type to service type (lexicon uses (string & {}) for extensibility)
     type ServiceSourceType =
-      | 'semble.collection'
+      | 'cosmik.collection'
       | 'leaflet.list'
       | 'whitewind.blog'
       | 'bluesky.post'

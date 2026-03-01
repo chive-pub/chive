@@ -1480,7 +1480,7 @@
       "get": {
         "operationId": "pub_chive_backlink_list",
         "summary": "pub.chive.backlink.list",
-        "description": "List backlinks to an eprint from ATProto ecosystem sources including Semble collections, Leaflet lists, Whitewind blogs, and Bluesky shares",
+        "description": "List backlinks to an eprint from ATProto ecosystem sources including Cosmik collections, Leaflet lists, Whitewind blogs, and Bluesky shares",
         "tags": ["backlink"],
         "parameters": [
           {
@@ -1503,7 +1503,7 @@
               "type": "string",
               "description": "Filter by source type",
               "enum": [
-                "semble.collection",
+                "cosmik.collection",
                 "leaflet.list",
                 "whitewind.blog",
                 "bluesky.post",
@@ -1614,7 +1614,7 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "sembleCollections",
+                    "cosmikCollections",
                     "leafletLists",
                     "whitewindBlogs",
                     "blueskyPosts",
@@ -1623,9 +1623,9 @@
                     "total"
                   ],
                   "properties": {
-                    "sembleCollections": {
+                    "cosmikCollections": {
                       "type": "integer",
-                      "description": "Count of Semble collection backlinks"
+                      "description": "Count of Cosmik collection backlinks"
                     },
                     "leafletLists": {
                       "type": "integer",
@@ -9963,7 +9963,7 @@
             "type": "string",
             "description": "Type of the source record",
             "enum": [
-              "semble.collection",
+              "cosmik.collection",
               "leaflet.list",
               "whitewind.blog",
               "bluesky.post",
@@ -10010,7 +10010,7 @@
             "type": "string",
             "description": "Type of the source record",
             "enum": [
-              "semble.collection",
+              "cosmik.collection",
               "leaflet.list",
               "whitewind.blog",
               "bluesky.post",

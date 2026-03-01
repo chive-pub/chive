@@ -38,6 +38,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { ShareMenu } from '@/components/share/share-menu';
 import { formatDate } from '@/lib/utils/format-date';
 import type { CollectionView } from '@/lib/hooks/use-collections';
@@ -58,7 +60,7 @@ interface CollectionHeaderProps {
   collection: CollectionView;
   isOwner: boolean;
   subcollectionNames?: string[];
-  onDelete: () => void;
+  onDelete: (deleteSubcollections: boolean) => void;
   isDeleting?: boolean;
 }
 
@@ -77,6 +79,8 @@ export function CollectionHeader({
   isDeleting,
 }: CollectionHeaderProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteSubcollections, setDeleteSubcollections] = useState(false);
+  const hasSubcollections = !!subcollectionNames && subcollectionNames.length > 0;
 
   const {
     icon: VisibilityIcon,
@@ -186,26 +190,51 @@ export function CollectionHeader({
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete collection</AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <span className="block">
-                      Are you sure you want to delete &ldquo;{collection.label}&rdquo;? This action
-                      cannot be undone.
-                    </span>
-                    {subcollectionNames && subcollectionNames.length > 0 && (
-                      <span className="block rounded-md border bg-muted/50 p-3 text-sm">
-                        The following subcollections will be re-linked to the parent (or become
-                        top-level):
-                        <span className="mt-1 block font-medium">
-                          {subcollectionNames.join(', ')}
-                        </span>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3">
+                      <span className="block">
+                        Are you sure you want to delete &ldquo;{collection.label}&rdquo;? This
+                        action cannot be undone.
                       </span>
-                    )}
+                      {hasSubcollections && (
+                        <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-3">
+                          <span className="block">
+                            This collection has subcollections:{' '}
+                            <span className="font-medium">{subcollectionNames.join(', ')}</span>
+                          </span>
+                          <RadioGroup
+                            value={deleteSubcollections ? 'delete' : 'relink'}
+                            onValueChange={(v) => setDeleteSubcollections(v === 'delete')}
+                            className="gap-3"
+                          >
+                            <div className="flex items-start gap-2">
+                              <RadioGroupItem value="relink" id="relink" className="mt-0.5" />
+                              <Label
+                                htmlFor="relink"
+                                className="font-normal cursor-pointer leading-snug"
+                              >
+                                Relink to parent (or make top-level)
+                              </Label>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <RadioGroupItem value="delete" id="delete-subs" className="mt-0.5" />
+                              <Label
+                                htmlFor="delete-subs"
+                                className="font-normal cursor-pointer leading-snug"
+                              >
+                                Delete subcollections and all their items
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      )}
+                    </div>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={onDelete}
+                    onClick={() => onDelete(deleteSubcollections)}
                     disabled={isDeleting}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
@@ -226,18 +255,21 @@ export function CollectionHeader({
           </Button>
         )}
 
-        {collection.sembleCollectionUri && (
-          <Button variant="ghost" size="sm" asChild>
-            <a
-              href={`https://semble.social/collection/${encodeURIComponent(collection.sembleCollectionUri)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ExternalLink className="h-4 w-4 mr-1.5" />
-              View on Semble
-            </a>
-          </Button>
-        )}
+        {collection.cosmikCollectionUri &&
+          (() => {
+            const m = /^at:\/\/([^/]+)\/[^/]+\/(.+)$/.exec(collection.cosmikCollectionUri);
+            const cosmikUrl = m
+              ? `https://semble.so/collection/${m[1]}/${m[2]}`
+              : `https://semble.so/collection/${encodeURIComponent(collection.cosmikCollectionUri)}`;
+            return (
+              <Button variant="ghost" size="sm" asChild>
+                <a href={cosmikUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1.5" />
+                  View on Semble
+                </a>
+              </Button>
+            );
+          })()}
       </div>
     </header>
   );

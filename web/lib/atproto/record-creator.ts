@@ -2372,7 +2372,7 @@ export interface CollectionNodeRecord {
   metadata: {
     visibility: 'public' | 'unlisted' | 'private';
     itemOrder: string[];
-    enableSembleMirror?: boolean;
+    enableCosmikMirror?: boolean;
     [key: string]: unknown;
   };
   status: 'established';
@@ -2391,8 +2391,8 @@ export interface CreateCollectionNodeInput {
   visibility: 'public' | 'unlisted' | 'private';
   /** Optional tags for categorization */
   tags?: string[];
-  /** Whether to mirror to Semble */
-  enableSembleMirror?: boolean;
+  /** Whether to mirror to Cosmik */
+  enableCosmikMirror?: boolean;
 }
 
 /**
@@ -2451,8 +2451,8 @@ export async function createCollectionNode(
   if (input.tags && input.tags.length > 0) {
     record.metadata.tags = input.tags;
   }
-  if (input.enableSembleMirror !== undefined) {
-    record.metadata.enableSembleMirror = input.enableSembleMirror;
+  if (input.enableCosmikMirror !== undefined) {
+    record.metadata.enableCosmikMirror = input.enableCosmikMirror;
   }
 
   recordLogger.info('Creating collection node', { name: input.name });
@@ -3125,6 +3125,59 @@ export interface CreatePersonalNodeInput {
 }
 
 /**
+ * Update a personal graph node's label and/or description in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param nodeUri - AT-URI of the node to update
+ * @param updates - Fields to update
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ */
+export async function updatePersonalNode(
+  agent: Agent,
+  nodeUri: string,
+  updates: { label?: string; description?: string }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(nodeUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as PersonalNodeRecord;
+
+  const record: PersonalNodeRecord = {
+    ...existing,
+    ...(updates.label !== undefined && { label: updates.label }),
+    ...(updates.description !== undefined && { description: updates.description }),
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
  * Create a personal graph node in the user's PDS.
  *
  * @param agent - Authenticated ATProto Agent
@@ -3352,46 +3405,194 @@ export async function updateProfileConfig(
 }
 
 // =============================================================================
-// SEMBLE INTEGRATION
+// COSMIK INTEGRATION
 // =============================================================================
 
 /**
- * Semble card record as stored in ATProto.
+ * Maps Chive visibility to Semble's accessType values.
+ */
+function toCosmikAccessType(visibility: string): 'OPEN' | 'CLOSED' {
+  return visibility === 'private' ? 'CLOSED' : 'OPEN';
+}
+
+/**
+ * Semble URL metadata matching `network.cosmik.card#urlMetadata`.
  *
  * @remarks
- * Cards are individual items in Semble collections, representing URLs or
- * references with metadata. Used for dual-write mirroring of Chive
- * collection items to the Semble ecosystem.
+ * Semble requires `$type` on metadata objects for proper parsing. Confirmed
+ * by inspecting Semble's own card rewrites in the PDS.
+ *
+ * @see https://github.com/cosmik-network/semble
  */
-export interface SembleCardRecord {
-  [key: string]: unknown;
-  $type: 'xyz.semble.card';
-  type: 'url';
-  url: string;
+export interface CosmikUrlMetadata {
+  $type: 'network.cosmik.card#urlMetadata';
   title?: string;
   description?: string;
-  createdAt: string;
+  author?: string;
+  siteName?: string;
+  type?: string;
 }
 
 /**
- * Semble collection record as stored in ATProto.
+ * Converts an AT-URI or bare DID to a Chive HTTP URL for Semble cards.
  *
  * @remarks
- * Groups Semble cards into named collections with visibility controls.
+ * Semble fetches card URLs to build previews. AT-URIs and bare DIDs are not
+ * fetchable, so we convert them to proper Chive web URLs.
  */
-export interface SembleCollectionRecord {
-  [key: string]: unknown;
-  $type: 'xyz.semble.collection';
-  title: string;
-  description?: string;
-  visibility: 'public' | 'private' | 'unlisted';
-  items: Array<{ uri: string; addedAt: string; note?: string }>;
-  createdAt: string;
-  updatedAt?: string;
+function toChiveUrl(itemUri: string, itemType?: string, subkind?: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://chive.pub';
+
+  // Author/person items: URI is a bare DID
+  if (itemType === 'author' || subkind === 'person') {
+    const did = itemUri.startsWith('did:') ? itemUri : itemUri.split('/')[2];
+    return `${origin}/authors/${did}`;
+  }
+
+  // Eprints: URI is an AT-URI for an eprint submission
+  if (itemType === 'eprint' || subkind === 'eprint') {
+    return `${origin}/eprints/${encodeURIComponent(itemUri)}`;
+  }
+
+  // Collections
+  if (subkind === 'collection') {
+    return `${origin}/collections/${encodeURIComponent(itemUri)}`;
+  }
+
+  // Default: generic graph node link
+  return `${origin}/graph?node=${encodeURIComponent(itemUri)}`;
 }
 
 /**
- * Create a Semble card record for a collection item.
+ * Cosmik card record matching Semble's expected schema.
+ *
+ * @remarks
+ * Cards represent individual URLs with nested content blocks.
+ * Semble expects `type: 'URL'` (uppercase) and a `content` object.
+ *
+ * @see https://github.com/cosmik-network/semble
+ */
+export interface CosmikCardRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.card';
+  type: 'URL';
+  url: string;
+  content: {
+    $type: 'network.cosmik.card#urlContent';
+    url: string;
+    metadata?: CosmikUrlMetadata;
+  };
+  createdAt: string;
+}
+
+/**
+ * Item metadata from the collection wizard, used to build rich Semble card content.
+ */
+interface ItemMetadata {
+  subkind?: string;
+  description?: string;
+  authors?: string[];
+  handle?: string;
+  kind?: string;
+  avatarUrl?: string;
+  isPersonal?: boolean;
+}
+
+/**
+ * Builds typed Semble card metadata from a collection item's subkind and metadata.
+ *
+ * @param label - Display label for the item
+ * @param subkind - Node subkind (eprint, person, field, institution, event, concept, reference)
+ * @param metadata - Additional item metadata from the wizard
+ * @returns Typed UrlMetadata object for Semble
+ */
+function buildSembleCardMetadata(
+  label: string,
+  subkind?: string,
+  metadata?: ItemMetadata
+): CosmikUrlMetadata {
+  const result: CosmikUrlMetadata = {
+    $type: 'network.cosmik.card#urlMetadata',
+    title: label,
+    siteName: 'Chive',
+  };
+
+  switch (subkind) {
+    case 'eprint':
+      if (metadata?.authors?.length) {
+        result.author = metadata.authors.join(', ');
+      }
+      result.type = 'article';
+      break;
+    case 'field':
+      result.description = metadata?.description || 'Research field';
+      break;
+    case 'institution':
+      result.description = metadata?.description || 'Research institution';
+      break;
+    case 'event':
+      result.description = metadata?.description || 'Academic event';
+      break;
+    case 'concept':
+      result.description = metadata?.description || 'Concept';
+      break;
+    default:
+      if (metadata?.description) {
+        result.description = metadata.description;
+      }
+      break;
+  }
+
+  return result;
+}
+
+/**
+ * Cosmik collection record matching Semble's expected schema.
+ *
+ * @remarks
+ * Uses `name` (not `title`), `accessType` (not `visibility`), and does
+ * not embed items. Items are linked via separate collectionLink records.
+ */
+export interface CosmikCollectionRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.collection';
+  name: string;
+  description?: string;
+  accessType: 'OPEN' | 'CLOSED';
+  collaborators: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Cosmik collectionLink record matching Semble's expected schema.
+ *
+ * @remarks
+ * Links a card to a collection. Uses ATProto StrongRef format
+ * (`{ uri, cid }`) for both the card and collection references.
+ */
+export interface CosmikCollectionLinkRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.collectionLink';
+  card: { uri: string; cid: string };
+  collection: { uri: string; cid: string };
+  addedBy: string;
+  addedAt: string;
+  createdAt: string;
+}
+
+/**
+ * Mapping of a single Cosmik item's record URIs, stored in Chive node metadata.
+ */
+export interface CosmikItemMapping {
+  cardUri: string;
+  cardCid: string;
+  linkUri: string;
+  linkCid: string;
+}
+
+/**
+ * Create a Cosmik card record for a URL.
  *
  * @param agent - Authenticated ATProto Agent
  * @param input - Card data
@@ -3399,12 +3600,14 @@ export interface SembleCollectionRecord {
  *
  * @internal
  */
-export async function createSembleCard(
+export async function createCosmikCard(
   agent: Agent,
   input: {
     url: string;
     title?: string;
-    description?: string;
+    subkind?: string;
+    itemType?: string;
+    itemMetadata?: ItemMetadata;
   }
 ): Promise<CreateRecordResult> {
   const did = getAgentDid(agent);
@@ -3412,23 +3615,30 @@ export async function createSembleCard(
     throw new Error('Agent is not authenticated');
   }
 
-  const record: SembleCardRecord = {
-    $type: 'xyz.semble.card',
-    type: 'url',
-    url: input.url,
+  const metadata = buildSembleCardMetadata(
+    input.title ?? input.url,
+    input.subkind,
+    input.itemMetadata
+  );
+
+  // Convert AT-URIs/DIDs to fetchable Chive HTTP URLs
+  const httpUrl = toChiveUrl(input.url, input.itemType, input.subkind);
+
+  const record: CosmikCardRecord = {
+    $type: 'network.cosmik.card',
+    type: 'URL',
+    url: httpUrl,
+    content: {
+      $type: 'network.cosmik.card#urlContent',
+      url: httpUrl,
+      metadata,
+    },
     createdAt: new Date().toISOString(),
   };
 
-  if (input.title) {
-    record.title = input.title;
-  }
-  if (input.description) {
-    record.description = input.description;
-  }
-
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
-    collection: 'xyz.semble.card',
+    collection: 'network.cosmik.card',
     record,
   });
 
@@ -3439,23 +3649,69 @@ export async function createSembleCard(
 }
 
 /**
- * Create a Semble collection with cards for each item.
+ * Create a Cosmik collectionLink record linking a card to a collection.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Link data with StrongRefs
+ * @returns Created record result
+ *
+ * @internal
+ */
+export async function createCosmikCollectionLink(
+  agent: Agent,
+  input: {
+    cardUri: string;
+    cardCid: string;
+    collectionUri: string;
+    collectionCid: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const now = new Date().toISOString();
+
+  const record: CosmikCollectionLinkRecord = {
+    $type: 'network.cosmik.collectionLink',
+    card: { uri: input.cardUri, cid: input.cardCid },
+    collection: { uri: input.collectionUri, cid: input.collectionCid },
+    addedBy: did,
+    addedAt: now,
+    createdAt: now,
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.collectionLink',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Create a Cosmik mirror of a Chive collection using Semble's three-record model.
  *
  * @remarks
- * Creates individual Semble card records for each item in the collection,
- * then creates a Semble collection record grouping them together.
- * Updates the Chive collection node's metadata with the Semble collection URI.
+ * Creates a `network.cosmik.collection` record, then for each item creates
+ * a `network.cosmik.card` and `network.cosmik.collectionLink`. Updates the
+ * Chive collection node's metadata with all Cosmik URIs for future sync.
  *
  * @param agent - Authenticated ATProto Agent
  * @param input - Mirror data
- * @returns Created Semble collection URI and card URIs
+ * @returns Created Cosmik collection URI and item mappings
  */
-export async function createSembleMirror(
+export async function createCosmikMirror(
   agent: Agent,
   input: {
     /** AT-URI of the Chive collection node */
     collectionUri: string;
-    /** Display title for the Semble collection */
+    /** Display name for the Cosmik collection */
     title: string;
     /** Optional description */
     description?: string;
@@ -3467,45 +3723,39 @@ export async function createSembleMirror(
       url: string;
       /** Display title */
       title?: string;
-      /** Optional note */
-      note?: string;
+      /** Node subkind for rich card metadata */
+      subkind?: string;
+      /** Item type from the wizard (eprint, author, graphNode) */
+      itemType?: string;
+      /** Additional metadata for rich card content */
+      metadata?: ItemMetadata;
     }>;
   }
-): Promise<{ sembleCollectionUri: string; cardUris: string[] }> {
+): Promise<{
+  cosmikCollectionUri: string;
+  cosmikCollectionCid: string;
+  cosmikItems: Record<string, CosmikItemMapping>;
+}> {
   const did = getAgentDid(agent);
   if (!did) {
     throw new Error('Agent is not authenticated');
   }
 
-  recordLogger.info('Creating Semble mirror', {
+  recordLogger.info('Creating Cosmik mirror', {
     collectionUri: input.collectionUri,
     itemCount: input.items.length,
   });
 
-  // Step 1: Create Semble cards for each item
-  const cardUris: string[] = [];
-  const sembleItems: Array<{ uri: string; addedAt: string; note?: string }> = [];
+  const now = new Date().toISOString();
 
-  for (const item of input.items) {
-    const card = await createSembleCard(agent, {
-      url: item.url,
-      title: item.title,
-    });
-    cardUris.push(card.uri);
-    sembleItems.push({
-      uri: card.uri,
-      addedAt: new Date().toISOString(),
-      ...(item.note ? { note: item.note } : {}),
-    });
-  }
-
-  // Step 2: Create Semble collection grouping the cards
-  const collectionRecord: SembleCollectionRecord = {
-    $type: 'xyz.semble.collection',
-    title: input.title,
-    visibility: input.visibility,
-    items: sembleItems,
-    createdAt: new Date().toISOString(),
+  // Step 1: Create Cosmik collection record
+  const collectionRecord: CosmikCollectionRecord = {
+    $type: 'network.cosmik.collection',
+    name: input.title,
+    accessType: toCosmikAccessType(input.visibility),
+    collaborators: [],
+    createdAt: now,
+    updatedAt: now,
   };
 
   if (input.description) {
@@ -3514,13 +3764,41 @@ export async function createSembleMirror(
 
   const collectionResponse = await agent.com.atproto.repo.createRecord({
     repo: did,
-    collection: 'xyz.semble.collection',
+    collection: 'network.cosmik.collection',
     record: collectionRecord,
   });
 
-  const sembleCollectionUri = collectionResponse.data.uri;
+  const cosmikCollectionUri = collectionResponse.data.uri;
+  const cosmikCollectionCid = collectionResponse.data.cid;
 
-  // Step 3: Update the Chive collection node's metadata with Semble URI
+  // Step 2: Create cards and links for each item
+  const cosmikItems: Record<string, CosmikItemMapping> = {};
+
+  for (const item of input.items) {
+    const card = await createCosmikCard(agent, {
+      url: item.url,
+      title: item.title,
+      subkind: item.subkind,
+      itemType: item.itemType,
+      itemMetadata: item.metadata,
+    });
+
+    const link = await createCosmikCollectionLink(agent, {
+      cardUri: card.uri,
+      cardCid: card.cid,
+      collectionUri: cosmikCollectionUri,
+      collectionCid: cosmikCollectionCid,
+    });
+
+    cosmikItems[item.url] = {
+      cardUri: card.uri,
+      cardCid: card.cid,
+      linkUri: link.uri,
+      linkCid: link.cid,
+    };
+  }
+
+  // Step 3: Update the Chive collection node's metadata with Cosmik URIs
   const parsed = parseAtUri(input.collectionUri);
   if (parsed && parsed.did === did) {
     const existingResponse = await agent.com.atproto.repo.getRecord({
@@ -3535,7 +3813,9 @@ export async function createSembleMirror(
       ...existing,
       metadata: {
         ...existing.metadata,
-        sembleCollectionUri,
+        cosmikCollectionUri,
+        cosmikCollectionCid,
+        cosmikItems,
       },
     };
 
@@ -3547,12 +3827,306 @@ export async function createSembleMirror(
     });
   }
 
-  recordLogger.info('Semble mirror created', {
-    sembleCollectionUri,
-    cardCount: cardUris.length,
+  recordLogger.info('Cosmik mirror created', {
+    cosmikCollectionUri,
+    cardCount: Object.keys(cosmikItems).length,
   });
 
-  return { sembleCollectionUri, cardUris };
+  return { cosmikCollectionUri, cosmikCollectionCid, cosmikItems };
+}
+
+/**
+ * Update a Cosmik collection record (name, description, accessType).
+ *
+ * @remarks
+ * Fetches the existing record, merges changes, and puts it back.
+ * Fire-and-forget: callers should wrap in try/catch.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param cosmikCollectionUri - AT-URI of the Cosmik collection
+ * @param changes - Fields to update
+ */
+export async function updateCosmikCollection(
+  agent: Agent,
+  cosmikCollectionUri: string,
+  changes: {
+    name?: string;
+    description?: string;
+    visibility?: string;
+  }
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(cosmikCollectionUri);
+  if (!parsed) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.collection',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CosmikCollectionRecord;
+
+  const updatedRecord: CosmikCollectionRecord = {
+    ...existing,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (changes.name !== undefined) updatedRecord.name = changes.name;
+  if (changes.description !== undefined) updatedRecord.description = changes.description;
+  if (changes.visibility !== undefined)
+    updatedRecord.accessType = toCosmikAccessType(changes.visibility);
+
+  await agent.com.atproto.repo.putRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.collection',
+    rkey: parsed.rkey,
+    record: updatedRecord,
+  });
+
+  recordLogger.info('Cosmik collection updated', { cosmikCollectionUri });
+}
+
+/**
+ * Delete an entire Cosmik mirror: all links, cards, and the collection.
+ *
+ * @remarks
+ * Best-effort deletion. Logs warnings for individual failures but continues.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param cosmikCollectionUri - AT-URI of the Cosmik collection
+ * @param cosmikItems - Mapping of item URLs to Cosmik record URIs
+ */
+export async function deleteCosmikMirror(
+  agent: Agent,
+  cosmikCollectionUri: string,
+  cosmikItems?: Record<string, CosmikItemMapping>
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  recordLogger.info('Deleting Cosmik mirror', { cosmikCollectionUri });
+
+  // Delete all links and cards first
+  if (cosmikItems) {
+    for (const [url, mapping] of Object.entries(cosmikItems)) {
+      try {
+        await deleteCosmikRecord(agent, mapping.linkUri);
+      } catch (err) {
+        recordLogger.warn('Failed to delete Cosmik link', { url, linkUri: mapping.linkUri, err });
+      }
+      try {
+        await deleteCosmikRecord(agent, mapping.cardUri);
+      } catch (err) {
+        recordLogger.warn('Failed to delete Cosmik card', { url, cardUri: mapping.cardUri, err });
+      }
+    }
+  }
+
+  // Delete the collection record
+  try {
+    await deleteCosmikRecord(agent, cosmikCollectionUri);
+  } catch (err) {
+    recordLogger.warn('Failed to delete Cosmik collection', { cosmikCollectionUri, err });
+  }
+
+  recordLogger.info('Cosmik mirror deleted', { cosmikCollectionUri });
+}
+
+/**
+ * Delete a single ATProto record by AT-URI.
+ *
+ * @internal
+ */
+async function deleteCosmikRecord(agent: Agent, uri: string): Promise<void> {
+  const parsed = parseAtUri(uri);
+  if (!parsed) return;
+
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: parsed.collection,
+    rkey: parsed.rkey,
+  });
+}
+
+/**
+ * Add a single item to an existing Cosmik mirror.
+ *
+ * @remarks
+ * Creates a card and collectionLink, then updates the Chive node's
+ * `cosmikItems` metadata with the new mapping.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Item and collection data
+ * @returns The created card and link URIs
+ */
+export async function addCosmikItem(
+  agent: Agent,
+  input: {
+    chiveCollectionUri: string;
+    cosmikCollectionUri: string;
+    cosmikCollectionCid: string;
+    url: string;
+    title?: string;
+    subkind?: string;
+    itemType?: string;
+    itemMetadata?: ItemMetadata;
+  }
+): Promise<CosmikItemMapping> {
+  const card = await createCosmikCard(agent, {
+    url: input.url,
+    title: input.title,
+    subkind: input.subkind,
+    itemType: input.itemType,
+    itemMetadata: input.itemMetadata,
+  });
+
+  const link = await createCosmikCollectionLink(agent, {
+    cardUri: card.uri,
+    cardCid: card.cid,
+    collectionUri: input.cosmikCollectionUri,
+    collectionCid: input.cosmikCollectionCid,
+  });
+
+  const mapping: CosmikItemMapping = {
+    cardUri: card.uri,
+    cardCid: card.cid,
+    linkUri: link.uri,
+    linkCid: link.cid,
+  };
+
+  // Update node metadata with the new item mapping
+  await updateCosmikItemsMetadata(agent, input.chiveCollectionUri, {
+    [input.url]: mapping,
+  });
+
+  return mapping;
+}
+
+/**
+ * Remove a single item from a Cosmik mirror.
+ *
+ * @remarks
+ * Deletes the collectionLink and card records, then removes the entry
+ * from the Chive node's `cosmikItems` metadata.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - URIs of the records to delete
+ */
+export async function removeCosmikItem(
+  agent: Agent,
+  input: {
+    chiveCollectionUri: string;
+    url: string;
+    cardUri: string;
+    linkUri: string;
+  }
+): Promise<void> {
+  // Delete link first, then card
+  try {
+    await deleteCosmikRecord(agent, input.linkUri);
+  } catch (err) {
+    recordLogger.warn('Failed to delete Cosmik link', { linkUri: input.linkUri, err });
+  }
+  try {
+    await deleteCosmikRecord(agent, input.cardUri);
+  } catch (err) {
+    recordLogger.warn('Failed to delete Cosmik card', { cardUri: input.cardUri, err });
+  }
+
+  // Remove from node metadata
+  await removeCosmikItemMetadata(agent, input.chiveCollectionUri, input.url);
+}
+
+/**
+ * Merge new Cosmik item mappings into the Chive node's metadata.
+ *
+ * @internal
+ */
+async function updateCosmikItemsMetadata(
+  agent: Agent,
+  chiveCollectionUri: string,
+  newItems: Record<string, CosmikItemMapping>
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) return;
+
+  const parsed = parseAtUri(chiveCollectionUri);
+  if (!parsed || parsed.did !== did) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+  const currentItems = (existing.metadata.cosmikItems ?? {}) as Record<string, CosmikItemMapping>;
+
+  const updatedRecord: CollectionNodeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      cosmikItems: { ...currentItems, ...newItems },
+    },
+  };
+
+  await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record: updatedRecord,
+  });
+}
+
+/**
+ * Remove a single item's Cosmik mapping from the Chive node's metadata.
+ *
+ * @internal
+ */
+async function removeCosmikItemMetadata(
+  agent: Agent,
+  chiveCollectionUri: string,
+  url: string
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) return;
+
+  const parsed = parseAtUri(chiveCollectionUri);
+  if (!parsed || parsed.did !== did) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+  const currentItems = {
+    ...((existing.metadata.cosmikItems ?? {}) as Record<string, CosmikItemMapping>),
+  };
+  delete currentItems[url];
+
+  const updatedRecord: CollectionNodeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      cosmikItems: currentItems,
+    },
+  };
+
+  await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record: updatedRecord,
+  });
 }
 
 // =============================================================================

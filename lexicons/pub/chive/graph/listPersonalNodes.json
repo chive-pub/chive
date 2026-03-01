@@ -85,6 +85,11 @@
           "type": "string",
           "format": "datetime",
           "description": "Creation timestamp"
+        },
+        "metadata": {
+          "type": "ref",
+          "ref": "pub.chive.graph.node#nodeMetadata",
+          "description": "Subkind-specific metadata"
         }
       }
     }

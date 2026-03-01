@@ -89,6 +89,7 @@ import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
 import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
 import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
+import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { toast } from 'sonner';
 
@@ -776,6 +777,14 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 }}
               />
             )}
+
+            {/* Add to collection */}
+            <AddToCollectionButton
+              itemUri={uri}
+              itemType="eprint"
+              itemLabel={eprint.title}
+              variant="button"
+            />
           </div>
 
           {/* Share to Bluesky dialog */}

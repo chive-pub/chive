@@ -50,6 +50,14 @@ import { SUBKIND_BY_SLUG, getStatusColor } from './types';
 // =============================================================================
 
 /**
+ * Summary of inter-item edges for display on the card.
+ */
+export interface EdgeSummary {
+  /** Total number of edges involving this item. */
+  count: number;
+}
+
+/**
  * Props for the NodeCard component.
  */
 export interface NodeCardProps {
@@ -63,6 +71,8 @@ export interface NodeCardProps {
   compact?: boolean;
   /** Actions slot rendered in the header (before status badge). */
   actions?: ReactNode;
+  /** Compact summary of inter-item edges shown as colored pills on the card. */
+  edgeSummary?: EdgeSummary;
   /** Additional CSS classes. */
   className?: string;
 }
@@ -128,6 +138,7 @@ export function NodeCard({
   showSubkind = false,
   compact = false,
   actions,
+  edgeSummary,
   className,
 }: NodeCardProps) {
   const Icon = resolveIcon(node);
@@ -143,6 +154,7 @@ export function NodeCard({
         onClick={onClick}
         className={cn(
           'flex items-center gap-2 rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 w-full',
+          node.source === 'community' && 'border-l-2 border-l-blue-300 dark:border-l-blue-700',
           className
         )}
       >
@@ -185,8 +197,9 @@ export function NodeCard({
   return (
     <Card
       className={cn(
-        'transition-colors cursor-pointer hover:border-primary/50',
+        'flex h-full flex-col transition-colors cursor-pointer hover:border-primary/50',
         onClick && 'hover:shadow-sm',
+        node.source === 'community' && 'border-l-2 border-l-blue-300 dark:border-l-blue-700',
         className
       )}
       onClick={onClick}
@@ -225,8 +238,16 @@ export function NodeCard({
         {/* Badges row */}
         <div className="flex flex-wrap items-center gap-1.5">
           {showSubkind && subkindConfig && (
-            <Badge variant="outline" className="text-[10px]">
-              {subkindConfig.label}
+            <Badge
+              variant="secondary"
+              className={cn(
+                'text-[10px]',
+                subkindConfig.kind === 'type'
+                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                  : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+              )}
+            >
+              {subkindConfig.singularLabel}
             </Badge>
           )}
           {node.itemType && node.itemType !== 'graphNode' && !node.subkind && (
@@ -239,20 +260,12 @@ export function NodeCard({
               {node.status}
             </Badge>
           )}
-          {node.source === 'community' && (
+          {edgeSummary && edgeSummary.count > 0 && (
             <Badge
               variant="secondary"
-              className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+              className="text-[10px] bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-300"
             >
-              Community
-            </Badge>
-          )}
-          {node.source === 'personal' && (
-            <Badge
-              variant="secondary"
-              className="text-[10px] bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-            >
-              Personal
+              {edgeSummary.count} {edgeSummary.count === 1 ? 'relation' : 'relations'}
             </Badge>
           )}
         </div>
@@ -263,8 +276,8 @@ export function NodeCard({
         )}
       </CardHeader>
 
-      <CardContent className="pt-0">
-        <div className="space-y-2">
+      <CardContent className="pt-0 flex-1 flex flex-col">
+        <div className="space-y-2 flex-1">
           {/* Alternate labels and external IDs row */}
           <div className="flex flex-wrap items-center gap-2">
             {node.alternateLabels && node.alternateLabels.length > 0 && (

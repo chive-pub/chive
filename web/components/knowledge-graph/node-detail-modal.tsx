@@ -86,7 +86,7 @@ export interface NodeDetailModalProps {
   /** Whether the current user can edit this item (label/note). */
   editable?: boolean;
   /** Callback to save updated label and/or note. */
-  onSave?: (updates: { label?: string; note?: string }) => void;
+  onSave?: (updates: { label?: string; note?: string }) => Promise<void>;
   /** Whether a save is in progress. */
   isSaving?: boolean;
 }
@@ -273,9 +273,9 @@ export function NodeDetailModal({
   }, [currentNode]);
 
   /**
-   * Save edits and exit edit mode.
+   * Save edits and exit edit mode only after the mutation resolves.
    */
-  const handleSaveEdit = useCallback(() => {
+  const handleSaveEdit = useCallback(async () => {
     if (!onSave || !currentNode) return;
     const trimmedLabel = editLabel.trim();
     if (!trimmedLabel) return;
@@ -284,7 +284,12 @@ export function NodeDetailModal({
     const trimmedNote = editNote.trim();
     if (trimmedNote !== (currentNode.note ?? '')) updates.note = trimmedNote;
     if (Object.keys(updates).length > 0) {
-      onSave(updates);
+      try {
+        await onSave(updates);
+      } catch {
+        // Stay in edit mode so user can retry
+        return;
+      }
     }
     setIsEditing(false);
   }, [onSave, currentNode, editLabel, editNote]);
@@ -381,29 +386,21 @@ export function NodeDetailModal({
             ) : (
               <DialogTitle className="text-xl flex-1">{currentNode.label}</DialogTitle>
             )}
-            {editable && !isEditing && navStack.length === 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground"
-                onClick={handleStartEdit}
-                title="Edit item"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
           </div>
 
           {/* Badges row */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            {currentNode.kind && (
-              <Badge variant="outline" className="text-[10px]">
-                {currentNode.kind}
-              </Badge>
-            )}
             {subkindConfig && (
-              <Badge variant="outline" className="text-[10px]">
-                {subkindConfig.label}
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'text-[10px]',
+                  subkindConfig.kind === 'type'
+                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                )}
+              >
+                {subkindConfig.singularLabel}
               </Badge>
             )}
             {currentNode.status && (
@@ -414,7 +411,7 @@ export function NodeDetailModal({
                 {currentNode.status}
               </Badge>
             )}
-            {currentNode.itemType && currentNode.itemType !== 'graphNode' && (
+            {currentNode.itemType && currentNode.itemType !== 'graphNode' && !subkindConfig && (
               <Badge variant="outline" className="text-[10px]">
                 {currentNode.itemType}
               </Badge>
@@ -461,23 +458,16 @@ export function NodeDetailModal({
 
             <Separator />
 
-            {/* Relationships section (from graph edges) */}
+            {/* Unified relationships section */}
             <RelationshipsSection
               edgesData={edgesData}
               edgesLoading={edgesLoading}
               edgesError={edgesError}
+              collectionEdges={relevantCollectionEdges}
+              currentNodeUri={currentNode.uri}
+              itemLabelMap={itemLabelMap}
               onNavigate={handleNavigateToNode}
             />
-
-            {/* Collection edges section */}
-            {relevantCollectionEdges.length > 0 && (
-              <CollectionEdgesSection
-                edges={relevantCollectionEdges}
-                currentNodeUri={currentNode.uri}
-                itemLabelMap={itemLabelMap}
-                onNavigate={handleNavigateToNode}
-              />
-            )}
 
             {/* External IDs */}
             {mappedExternalIds.length > 0 && (
@@ -543,26 +533,58 @@ interface RelationshipsSectionProps {
   edgesData: { edges: ResolvedEdge[]; grouped: Record<string, ResolvedEdge[]> } | undefined;
   edgesLoading: boolean;
   edgesError: Error | null;
+  collectionEdges: InterItemEdge[];
+  currentNodeUri: string;
+  itemLabelMap: Map<string, string>;
   onNavigate: (uri: string, label: string) => void;
 }
 
 /**
- * Displays grouped relationships from the knowledge graph.
+ * Displays grouped relationships from graph edges and collection edges.
  */
 function RelationshipsSection({
   edgesData,
   edgesLoading,
   edgesError,
+  collectionEdges,
+  currentNodeUri,
+  itemLabelMap,
   onNavigate,
 }: RelationshipsSectionProps) {
+  // Merge collection edges into the same grouped structure
+  const collectionGrouped = useMemo(() => {
+    const groups: Record<string, Array<{ uri: string; label: string }>> = {};
+    for (const edge of collectionEdges) {
+      if (!groups[edge.relationSlug]) {
+        groups[edge.relationSlug] = [];
+      }
+      const otherUri = edge.sourceUri === currentNodeUri ? edge.targetUri : edge.sourceUri;
+      const label = itemLabelMap.get(otherUri) ?? otherUri.split('/').pop() ?? otherUri;
+      groups[edge.relationSlug]!.push({ uri: otherUri, label });
+    }
+    return groups;
+  }, [collectionEdges, currentNodeUri, itemLabelMap]);
+
+  const graphEdgeCount = edgesData?.edges.length ?? 0;
+  const totalCount = graphEdgeCount + collectionEdges.length;
+  const hasAnyEdges = totalCount > 0;
+  const allRelationSlugs = useMemo(() => {
+    const slugs = new Set<string>();
+    if (edgesData?.grouped) {
+      for (const slug of Object.keys(edgesData.grouped)) slugs.add(slug);
+    }
+    for (const slug of Object.keys(collectionGrouped)) slugs.add(slug);
+    return [...slugs].sort();
+  }, [edgesData?.grouped, collectionGrouped]);
+
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold flex items-center gap-1.5">
         <Link2 className="h-4 w-4" />
         Relationships
-        {edgesData && (
+        {!edgesLoading && (
           <Badge variant="secondary" className="text-[10px] ml-1">
-            {edgesData.edges.length}
+            {totalCount}
           </Badge>
         )}
       </h3>
@@ -578,14 +600,17 @@ function RelationshipsSection({
         <p className="text-sm text-muted-foreground py-1">Failed to load relationships</p>
       )}
 
-      {edgesData && edgesData.edges.length === 0 && (
+      {!edgesLoading && !hasAnyEdges && (
         <p className="text-sm text-muted-foreground py-1">No relationships found</p>
       )}
 
-      {edgesData && edgesData.edges.length > 0 && (
+      {hasAnyEdges && (
         <div className="space-y-3">
-          {Object.entries(edgesData.grouped).map(([slug, edges]) => {
+          {allRelationSlugs.map((slug) => {
             const Icon = getRelationIcon(slug);
+            const graphEdges = edgesData?.grouped[slug] ?? [];
+            const collectionItems = collectionGrouped[slug] ?? [];
+
             return (
               <div key={slug} className="space-y-1">
                 <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
@@ -593,7 +618,7 @@ function RelationshipsSection({
                   {formatRelationSlug(slug)}
                 </h4>
                 <ul className="space-y-0.5">
-                  {edges.map((edge) => (
+                  {graphEdges.map((edge) => (
                     <li key={edge.uri}>
                       <button
                         onClick={() => onNavigate(edge.otherUri, edge.otherLabel)}
@@ -604,85 +629,23 @@ function RelationshipsSection({
                       </button>
                     </li>
                   ))}
+                  {collectionItems.map((item) => (
+                    <li key={item.uri}>
+                      <button
+                        onClick={() => onNavigate(item.uri, item.label)}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors w-full text-left"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
             );
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-/**
- * Props for the CollectionEdgesSection component.
- */
-interface CollectionEdgesSectionProps {
-  edges: InterItemEdge[];
-  currentNodeUri: string;
-  itemLabelMap: Map<string, string>;
-  onNavigate: (uri: string, label: string) => void;
-}
-
-/**
- * Displays inter-item edges within a collection context.
- */
-function CollectionEdgesSection({
-  edges,
-  currentNodeUri,
-  itemLabelMap,
-  onNavigate,
-}: CollectionEdgesSectionProps) {
-  // Group by relation slug
-  const grouped = useMemo(() => {
-    const groups: Record<string, Array<{ uri: string; label: string }>> = {};
-    for (const edge of edges) {
-      if (!groups[edge.relationSlug]) {
-        groups[edge.relationSlug] = [];
-      }
-      const otherUri = edge.sourceUri === currentNodeUri ? edge.targetUri : edge.sourceUri;
-      const label = itemLabelMap.get(otherUri) ?? otherUri.split('/').pop() ?? otherUri;
-      groups[edge.relationSlug]!.push({ uri: otherUri, label });
-    }
-    return groups;
-  }, [edges, currentNodeUri, itemLabelMap]);
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold flex items-center gap-1.5">
-        <Link2 className="h-4 w-4" />
-        Collection Relationships
-        <Badge variant="secondary" className="text-[10px] ml-1">
-          {edges.length}
-        </Badge>
-      </h3>
-
-      <div className="space-y-3">
-        {Object.entries(grouped).map(([slug, items]) => {
-          const Icon = getRelationIcon(slug);
-          return (
-            <div key={slug} className="space-y-1">
-              <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
-                <Icon className="h-3.5 w-3.5" />
-                {formatRelationSlug(slug)}
-              </h4>
-              <ul className="space-y-0.5">
-                {items.map((item) => (
-                  <li key={item.uri}>
-                    <button
-                      onClick={() => onNavigate(item.uri, item.label)}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors w-full text-left"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

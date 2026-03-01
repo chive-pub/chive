@@ -20,8 +20,14 @@ export interface RelationDefinition {
   readonly description: string;
   /** Inverse relation slug (for bidirectional relations) */
   readonly inverseSlug?: string;
-  /** Whether this relation is symmetric (same as inverse) */
+  /** Whether this relation is symmetric (A rel B implies B rel A) */
   readonly symmetric?: boolean;
+  /** Whether this relation is transitive (A rel B and B rel C implies A rel C) */
+  readonly transitive?: boolean;
+  /** Whether this relation is reflexive (A rel A is always valid) */
+  readonly reflexive?: boolean;
+  /** Whether this relation is functional (each source has at most one target) */
+  readonly functional?: boolean;
   /** SKOS concept URI if applicable */
   readonly skosUri?: string;
   /** Wikidata property ID if applicable */
@@ -44,6 +50,7 @@ export const RELATIONS: readonly RelationDefinition[] = [
     label: 'Broader',
     description: 'Parent/superclass relationship (SKOS broader)',
     inverseSlug: 'narrower',
+    transitive: true,
     skosUri: 'http://www.w3.org/2004/02/skos/core#broader',
     wikidataProperty: 'P279', // subclass of
   },
@@ -52,6 +59,7 @@ export const RELATIONS: readonly RelationDefinition[] = [
     label: 'Narrower',
     description: 'Child/subclass relationship (SKOS narrower)',
     inverseSlug: 'broader',
+    transitive: true,
     skosUri: 'http://www.w3.org/2004/02/skos/core#narrower',
   },
 
@@ -71,6 +79,8 @@ export const RELATIONS: readonly RelationDefinition[] = [
     label: 'Exact Match',
     description: 'Same concept in different vocabularies (SKOS exactMatch)',
     symmetric: true,
+    transitive: true,
+    reflexive: true,
     skosUri: 'http://www.w3.org/2004/02/skos/core#exactMatch',
     wikidataProperty: 'P2888', // exact match
   },
@@ -130,6 +140,7 @@ export const RELATIONS: readonly RelationDefinition[] = [
     label: 'Part Of',
     description: 'Compositional relationship',
     inverseSlug: 'has-part',
+    transitive: true,
     wikidataProperty: 'P361', // part of
   },
   {
@@ -137,12 +148,14 @@ export const RELATIONS: readonly RelationDefinition[] = [
     label: 'Has Part',
     description: 'Contains component',
     inverseSlug: 'part-of',
+    transitive: true,
     wikidataProperty: 'P527', // has part
   },
   {
     slug: 'located-in',
     label: 'Located In',
     description: 'Geographic location relationship',
+    transitive: true,
     wikidataProperty: 'P131', // located in administrative territorial entity
   },
   {

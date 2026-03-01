@@ -159,9 +159,9 @@ const TEST_TAGS = [
  */
 const TEST_BACKLINKS = [
   {
-    sourceUri: 'at://did:plc:semble001/xyz.semble.collection/col001',
-    sourceType: 'semble.collection',
-    sourceDid: 'did:plc:semble001',
+    sourceUri: 'at://did:plc:cosmik001/network.cosmik.collection/col001',
+    sourceType: 'cosmik.collection',
+    sourceDid: 'did:plc:cosmik001',
     targetUri: 'at://did:plc:aswhite123abc/pub.chive.eprint.submission/3jt7k9xyzab01',
     context: 'Computational Semantics Reading List',
     indexedAt: '2024-01-15T10:00:00.000Z',

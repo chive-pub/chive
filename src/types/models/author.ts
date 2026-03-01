@@ -53,6 +53,11 @@ export interface EprintAuthorAffiliation {
    * Department or division within organization.
    */
   readonly department?: string;
+
+  /**
+   * AT-URI to institution node in the knowledge graph (subkind=institution).
+   */
+  readonly institutionUri?: string;
 }
 
 /**

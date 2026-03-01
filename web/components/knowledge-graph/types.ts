@@ -110,6 +110,7 @@ export interface SubkindConfig {
   slug: string;
   kind: NodeKind;
   label: string;
+  singularLabel: string;
   icon: typeof Network;
   description: string;
 }
@@ -123,6 +124,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'field',
     kind: 'type',
     label: 'Academic Fields',
+    singularLabel: 'Field',
     icon: Layers,
     description: 'Research disciplines and subject areas',
   },
@@ -130,6 +132,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'facet',
     kind: 'type',
     label: 'Facets',
+    singularLabel: 'Facet',
     icon: Tag,
     description: 'Classification dimensions',
   },
@@ -137,6 +140,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'contribution-type',
     kind: 'type',
     label: 'Contribution Types',
+    singularLabel: 'Contribution Type',
     icon: Award,
     description: 'CRediT contributor roles',
   },
@@ -144,6 +148,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'document-format',
     kind: 'type',
     label: 'Document Formats',
+    singularLabel: 'Document Format',
     icon: FileType,
     description: 'File format types',
   },
@@ -151,6 +156,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'license',
     kind: 'type',
     label: 'Licenses',
+    singularLabel: 'License',
     icon: Scale,
     description: 'Distribution licenses',
   },
@@ -158,6 +164,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'publication-status',
     kind: 'type',
     label: 'Publication Statuses',
+    singularLabel: 'Publication Status',
     icon: Clock,
     description: 'Publication lifecycle stages',
   },
@@ -165,6 +172,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'institution-type',
     kind: 'type',
     label: 'Institution Types',
+    singularLabel: 'Institution Type',
     icon: Building2,
     description: 'Organization classifications',
   },
@@ -172,6 +180,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'paper-type',
     kind: 'type',
     label: 'Paper Types',
+    singularLabel: 'Paper Type',
     icon: FileType,
     description: 'Research document types',
   },
@@ -180,6 +189,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'institution',
     kind: 'object',
     label: 'Institutions',
+    singularLabel: 'Institution',
     icon: Building2,
     description: 'Research organizations',
   },
@@ -187,6 +197,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'person',
     kind: 'object',
     label: 'People',
+    singularLabel: 'Person',
     icon: User,
     description: 'Named individuals',
   },
@@ -194,6 +205,7 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     slug: 'event',
     kind: 'object',
     label: 'Events',
+    singularLabel: 'Event',
     icon: Clock,
     description: 'Conferences and workshops',
   },
@@ -273,13 +285,18 @@ export function collectionItemToCardData(item: CollectionItemView): NodeCardData
   const id = item.itemUri.split('/').pop() ?? item.itemUri;
   const metadata = item.metadata ?? {};
 
+  // Link to detail pages when the underlying entity has a real page.
+  // Person items always link to /authors/{did} since the author page exists
+  // regardless of whether the collection item is personal or community-sourced.
   let detailPageUrl: string | null = null;
-  if (item.subkind === 'eprint' && metadata.eprintUri) {
-    detailPageUrl = `/eprints/${encodeURIComponent(metadata.eprintUri as string)}`;
-  } else if (item.subkind === 'person' && metadata.did) {
+  if (item.subkind === 'person' && metadata.did) {
     detailPageUrl = `/authors/${metadata.did as string}`;
-  } else if (item.subkind === 'field') {
-    detailPageUrl = `/fields/${id}`;
+  } else if (item.source !== 'personal') {
+    if (item.subkind === 'eprint' && metadata.eprintUri) {
+      detailPageUrl = `/eprints/${encodeURIComponent(metadata.eprintUri as string)}`;
+    } else if (item.subkind === 'field') {
+      detailPageUrl = `/fields/${id}`;
+    }
   }
 
   return {

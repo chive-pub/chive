@@ -9,6 +9,7 @@
  */
 
 import { browseFaceted } from './browseFaceted.js';
+import { expandSubgraph } from './expandSubgraph.js';
 import { getCommunities } from './getCommunities.js';
 import { getEdge } from './getEdge.js';
 import { getHierarchy } from './getHierarchy.js';
@@ -23,6 +24,7 @@ import { searchNodes } from './searchNodes.js';
 
 // Re-export individual methods
 export { browseFaceted } from './browseFaceted.js';
+export { expandSubgraph } from './expandSubgraph.js';
 export { getCommunities } from './getCommunities.js';
 export { getEdge } from './getEdge.js';
 export { getHierarchy } from './getHierarchy.js';
@@ -39,6 +41,7 @@ export { searchNodes } from './searchNodes.js';
  * All graph XRPC methods keyed by NSID.
  */
 export const graphMethods = {
+  'pub.chive.graph.expandSubgraph': expandSubgraph,
   'pub.chive.graph.getNode': getNode,
   'pub.chive.graph.listNodes': listNodes,
   'pub.chive.graph.searchNodes': searchNodes,

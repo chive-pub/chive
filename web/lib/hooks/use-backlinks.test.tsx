@@ -43,8 +43,8 @@ function createWrapper() {
 const mockBacklinks: Backlink[] = [
   {
     id: 1,
-    sourceUri: 'at://did:plc:abc123/semble.collection/xyz',
-    sourceType: 'semble.collection',
+    sourceUri: 'at://did:plc:abc123/cosmik.collection/xyz',
+    sourceType: 'cosmik.collection',
     targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     context: 'Added to "Machine Learning Papers" collection',
     indexedAt: '2024-01-15T10:30:00Z',
@@ -62,7 +62,7 @@ const mockBacklinks: Backlink[] = [
 ];
 
 const mockCounts = {
-  sembleCollections: 3,
+  cosmikCollections: 3,
   blueskyPosts: 5,
   blueskyEmbeds: 2,
   whitewindBlogs: 1,
@@ -106,7 +106,7 @@ describe('useBacklinks', () => {
     const { result } = renderHook(
       () =>
         useBacklinks('at://did:plc:user1/pub.chive.eprint/paper1', {
-          sourceType: 'semble.collection',
+          sourceType: 'cosmik.collection',
         }),
       { wrapper: createWrapper() }
     );
@@ -115,7 +115,7 @@ describe('useBacklinks', () => {
 
     expect(mockList).toHaveBeenCalledWith(
       expect.objectContaining({
-        sourceType: 'semble.collection',
+        sourceType: 'cosmik.collection',
       })
     );
   });
@@ -210,14 +210,14 @@ describe('backlinkKeys', () => {
 
     expect(
       backlinkKeys.list('at://did:plc:user1/pub.chive.eprint/paper1', {
-        sourceType: 'semble.collection',
+        sourceType: 'cosmik.collection',
         limit: 10,
       })
     ).toEqual([
       'backlinks',
       'list',
       'at://did:plc:user1/pub.chive.eprint/paper1',
-      { sourceType: 'semble.collection', limit: 10 },
+      { sourceType: 'cosmik.collection', limit: 10 },
     ]);
 
     expect(backlinkKeys.counts('at://did:plc:user1/pub.chive.eprint/paper1')).toEqual([

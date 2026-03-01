@@ -2,7 +2,7 @@
  * E2E tests for enrichment and backlinks panels on eprint pages.
  *
  * Tests external data display (Semantic Scholar, OpenAlex) and
- * backlinks from ATProto ecosystem apps (Semble, Bluesky, WhiteWind, Leaflet).
+ * backlinks from ATProto ecosystem apps (Cosmik, Bluesky, WhiteWind, Leaflet).
  *
  * @remarks
  * These tests use seeded test data from global.setup.ts. The first test eprint
@@ -15,7 +15,7 @@ import { EprintPage } from './fixtures/page-objects.js';
 
 /**
  * URI components for the test eprint with enrichment and backlinks.
- * This eprint has both enrichment data (S2/OpenAlex) and backlinks (Semble, Bluesky).
+ * This eprint has both enrichment data (S2/OpenAlex) and backlinks (Cosmik, Bluesky).
  */
 const TEST_EPRINT = {
   authorDid: 'did:plc:aswhite123abc',
@@ -219,10 +219,10 @@ test.describe('Backlinks Panel', () => {
     await relatedTab.click();
     await expect(relatedTab).toHaveAttribute('data-state', 'active');
 
-    // At least one section MUST be visible (we have Semble and Bluesky backlinks for first eprint)
+    // At least one section MUST be visible (we have Cosmik and Bluesky backlinks for first eprint)
     const sectionButtons = page
       .locator('button')
-      .filter({ hasText: /(Semble|Bluesky|WhiteWind|Leaflet)/i });
+      .filter({ hasText: /(Cosmik|Bluesky|WhiteWind|Leaflet)/i });
 
     await expect(sectionButtons.first()).toBeVisible();
 
@@ -241,7 +241,7 @@ test.describe('Backlinks Panel', () => {
     // Find and click first section button
     const sectionButtons = page
       .locator('button')
-      .filter({ hasText: /(Semble|Bluesky|WhiteWind|Leaflet)/i });
+      .filter({ hasText: /(Cosmik|Bluesky|WhiteWind|Leaflet)/i });
 
     await expect(sectionButtons.first()).toBeVisible();
 
@@ -267,7 +267,7 @@ test.describe('Backlinks Panel', () => {
     // Expand a section to show backlinks
     const sectionButtons = page
       .locator('button')
-      .filter({ hasText: /(Semble|Bluesky|WhiteWind|Leaflet)/i });
+      .filter({ hasText: /(Cosmik|Bluesky|WhiteWind|Leaflet)/i });
 
     if ((await sectionButtons.count()) > 0) {
       await sectionButtons.first().click();
@@ -276,7 +276,7 @@ test.describe('Backlinks Panel', () => {
     }
 
     // All external backlink links MUST have target="_blank" and rel="noopener"
-    const externalDomains = ['semble.app', 'bsky.app', 'whitewind.blog', 'leaflet.pub'];
+    const externalDomains = ['cosmik.network', 'bsky.app', 'whitewind.blog', 'leaflet.pub'];
 
     for (const domain of externalDomains) {
       const links = page.locator(`a[href*="${domain}"]`);

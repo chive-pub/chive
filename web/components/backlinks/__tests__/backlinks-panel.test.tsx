@@ -41,7 +41,7 @@ function createWrapper() {
 }
 
 const mockCounts = {
-  sembleCollections: 2,
+  cosmikCollections: 2,
   blueskyPosts: 3,
   blueskyEmbeds: 0,
   whitewindBlogs: 1,
@@ -53,8 +53,8 @@ const mockCounts = {
 const _mockBacklinks = [
   {
     id: 1,
-    sourceUri: 'at://did:plc:abc123/semble.collection/xyz',
-    sourceType: 'semble.collection' as const,
+    sourceUri: 'at://did:plc:abc123/cosmik.collection/xyz',
+    sourceType: 'cosmik.collection' as const,
     targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     context: 'Added to ML Papers collection',
     indexedAt: '2024-01-15T10:30:00Z',
@@ -62,8 +62,8 @@ const _mockBacklinks = [
   },
   {
     id: 2,
-    sourceUri: 'at://did:plc:def456/semble.collection/abc',
-    sourceType: 'semble.collection' as const,
+    sourceUri: 'at://did:plc:def456/cosmik.collection/abc',
+    sourceType: 'cosmik.collection' as const,
     targetUri: 'at://did:plc:user1/pub.chive.eprint/paper1',
     context: 'Added to NLP collection',
     indexedAt: '2024-01-16T14:00:00Z',
@@ -108,7 +108,7 @@ describe('BacklinksPanel', () => {
   it('should render nothing when no backlinks', async () => {
     mockGetCounts.mockResolvedValueOnce({
       data: {
-        sembleCollections: 0,
+        cosmikCollections: 0,
         blueskyPosts: 0,
         blueskyEmbeds: 0,
         whitewindBlogs: 0,
@@ -148,7 +148,7 @@ describe('BacklinksPanel', () => {
     });
 
     // Should show source type sections
-    expect(screen.getByText('Semble Collections')).toBeInTheDocument();
+    expect(screen.getByText('Cosmik Collections')).toBeInTheDocument();
     expect(screen.getByText('Bluesky Posts')).toBeInTheDocument();
     expect(screen.getByText('WhiteWind Blogs')).toBeInTheDocument();
   });
@@ -166,7 +166,7 @@ describe('BacklinksPanel', () => {
     });
 
     await vi.waitFor(() => {
-      expect(screen.getByText('Semble Collections')).toBeInTheDocument();
+      expect(screen.getByText('Cosmik Collections')).toBeInTheDocument();
     });
 
     // First section is expanded by default, let's check for Bluesky which is not

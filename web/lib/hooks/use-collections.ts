@@ -31,7 +31,7 @@
  * @packageDocumentation
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
 import { api, authApi } from '@/lib/api/client';
@@ -48,13 +48,19 @@ import {
   moveSubcollection,
   updateEdgeNote,
   updateEdgeMetadata,
+  updatePersonalNode,
   reorderCollectionItems,
-  createSembleMirror,
+  createCosmikMirror,
+  updateCosmikCollection,
+  deleteCosmikMirror,
+  addCosmikItem,
+  removeCosmikItem,
   type CreateCollectionNodeInput,
   type UpdateCollectionNodeInput,
   type AddItemToCollectionInput,
   type AddSubcollectionInput,
   type MoveSubcollectionInput,
+  type CosmikItemMapping,
 } from '@/lib/atproto/record-creator';
 
 const logger = createLogger({ context: { component: 'use-collections' } });
@@ -77,7 +83,9 @@ export interface CollectionView {
   itemCount: number;
   tags?: string[];
   parentCollectionUri?: string;
-  sembleCollectionUri?: string;
+  cosmikCollectionUri?: string;
+  cosmikCollectionCid?: string;
+  cosmikItems?: Record<string, CosmikItemMapping>;
   createdAt: string;
   updatedAt?: string;
 }
@@ -150,6 +158,28 @@ export interface SearchCollectionsResponse {
   total?: number;
 }
 
+/**
+ * A single event in the collection feed.
+ */
+export interface CollectionFeedEvent {
+  type: string;
+  eventUri: string;
+  eventAt: string;
+  collectionItemUri: string;
+  collectionItemSubkind: string;
+  collectionItems: { label: string; uri: string }[];
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Response from the collection feed endpoint.
+ */
+export interface CollectionFeedResponse {
+  events: CollectionFeedEvent[];
+  cursor?: string;
+  hasMore: boolean;
+}
+
 // =============================================================================
 // QUERY KEY FACTORY
 // =============================================================================
@@ -194,6 +224,9 @@ export const collectionKeys = {
   /** Key for collection search results */
   search: (query: string) => [...collectionKeys.all, 'search', query] as const,
 
+  /** Key for a collection's activity feed */
+  feed: (uri: string) => [...collectionKeys.all, 'feed', uri] as const,
+
   /** Key for public collection listings with filters */
   public: (filters: Record<string, unknown>) => [...collectionKeys.all, 'public', filters] as const,
 };
@@ -225,7 +258,7 @@ export function useCollection(uri: string, options?: { enabled?: boolean }) {
       return response.data as unknown as CollectionDetailResponse;
     },
     enabled: !!uri && (options?.enabled ?? true),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -382,6 +415,39 @@ export function useParentCollection(uri: string, options?: { enabled?: boolean }
   });
 }
 
+/**
+ * Fetches the activity feed for a collection with infinite scroll pagination.
+ *
+ * @param uri - AT-URI of the collection
+ * @param options - Hook options
+ * @returns Infinite query result with paginated feed events
+ *
+ * @example
+ * ```tsx
+ * const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useCollectionFeed(uri);
+ * const events = data?.pages.flatMap(p => p.events) ?? [];
+ * ```
+ */
+export function useCollectionFeed(uri: string, options?: { limit?: number; enabled?: boolean }) {
+  const { limit = 30, enabled = true } = options ?? {};
+
+  return useInfiniteQuery({
+    queryKey: collectionKeys.feed(uri),
+    queryFn: async ({ pageParam }): Promise<CollectionFeedResponse> => {
+      const response = await api.pub.chive.collection.getFeed({
+        uri,
+        limit,
+        cursor: pageParam as string | undefined,
+      });
+      return response.data as unknown as CollectionFeedResponse;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
+    enabled: !!uri && enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
 // =============================================================================
 // MUTATION HOOKS
 // =============================================================================
@@ -391,10 +457,10 @@ export function useParentCollection(uri: string, options?: { enabled?: boolean }
  *
  * @remarks
  * Extends CreateCollectionNodeInput with optional item data used for
- * Semble mirror creation when enableSembleMirror is true.
+ * Cosmik mirror creation when enableCosmikMirror is true.
  */
 export interface CreateCollectionMutationInput extends CreateCollectionNodeInput {
-  /** Items to mirror as Semble cards when enableSembleMirror is true */
+  /** Items to mirror as Cosmik cards when enableCosmikMirror is true */
   items?: Array<{
     /** URL or AT-URI of the item */
     uri: string;
@@ -402,6 +468,18 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
     label: string;
     /** Optional annotation note */
     note?: string;
+    /** Item type */
+    type?: string;
+    /** Additional metadata for rich Semble card content */
+    metadata?: {
+      subkind?: string;
+      description?: string;
+      authors?: string[];
+      handle?: string;
+      kind?: string;
+      avatarUrl?: string;
+      isPersonal?: boolean;
+    };
   }>;
 }
 
@@ -410,9 +488,9 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
  *
  * @remarks
  * Creates a collection node in the user's PDS and requests immediate
- * indexing for UI responsiveness. When enableSembleMirror is true and
- * items are provided, also creates companion xyz.semble.card and
- * xyz.semble.collection records for cross-ecosystem discovery.
+ * indexing for UI responsiveness. When enableCosmikMirror is true and
+ * items are provided, also creates companion network.cosmik.card and
+ * network.cosmik.collection records for cross-ecosystem discovery.
  *
  * @example
  * ```tsx
@@ -452,24 +530,38 @@ export function useCreateCollection() {
         });
       }
 
-      // Create Semble mirror if enabled and items are provided
-      if (input.enableSembleMirror && input.items && input.items.length > 0) {
+      // Create Cosmik mirror if enabled
+      if (input.enableCosmikMirror) {
         try {
-          await createSembleMirror(agent, {
+          const cosmikResult = await createCosmikMirror(agent, {
             collectionUri: result.uri,
             title: input.name,
             description: input.description,
             visibility: input.visibility,
-            items: input.items.map((item) => ({
+            items: (input.items ?? []).map((item) => ({
               url: item.uri,
               title: item.label,
-              note: item.note,
+              subkind: item.metadata?.subkind,
+              itemType: item.type,
+              metadata: item.metadata,
             })),
           });
-        } catch (sembleError) {
-          logger.warn('Semble mirror creation failed; collection was created without mirror', {
+
+          // Request re-indexing so the server picks up cosmikCollectionUri metadata
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+          } catch {
+            // Best-effort
+          }
+
+          logger.info('Cosmik mirror created', {
+            cosmikCollectionUri: cosmikResult.cosmikCollectionUri,
+            itemCount: Object.keys(cosmikResult.cosmikItems).length,
+          });
+        } catch (cosmikError) {
+          logger.warn('Cosmik mirror creation failed; collection was created without mirror', {
             uri: result.uri,
-            error: sembleError instanceof Error ? sembleError.message : String(sembleError),
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
           });
         }
       }
@@ -507,7 +599,10 @@ export function useUpdateCollection() {
 
   return useMutation({
     mutationFn: async (
-      input: UpdateCollectionNodeInput & { ownerDid: string }
+      input: UpdateCollectionNodeInput & {
+        ownerDid: string;
+        cosmikCollectionUri?: string;
+      }
     ): Promise<CollectionView> => {
       const agent = getCurrentAgent();
       if (!agent) {
@@ -524,6 +619,22 @@ export function useUpdateCollection() {
         logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
       }
 
+      // Sync changes to Cosmik mirror if enabled
+      if (input.cosmikCollectionUri) {
+        try {
+          await updateCosmikCollection(agent, input.cosmikCollectionUri, {
+            name: input.name,
+            description: input.description,
+            visibility: input.visibility,
+          });
+        } catch (cosmikError) {
+          logger.warn('Cosmik collection update failed', {
+            cosmikCollectionUri: input.cosmikCollectionUri,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
+      }
+
       return {
         uri: result.uri,
         cid: result.cid,
@@ -533,6 +644,7 @@ export function useUpdateCollection() {
         visibility: input.visibility ?? 'public',
         itemCount: 0,
         tags: input.tags,
+        cosmikCollectionUri: input.cosmikCollectionUri,
         createdAt: new Date().toISOString(),
       };
     },
@@ -564,14 +676,76 @@ export function useDeleteCollection() {
       uri,
       ownerDid: _ownerDid,
       cascadeSubcollections,
+      deleteSubcollections,
+      cosmikCollectionUri,
+      cosmikItems,
+      subcollections,
     }: {
       uri: string;
       ownerDid: string;
       cascadeSubcollections?: boolean;
+      /** When true, recursively delete subcollections instead of re-linking */
+      deleteSubcollections?: boolean;
+      cosmikCollectionUri?: string;
+      cosmikItems?: Record<string, CosmikItemMapping>;
+      /** Subcollection data for recursive deletion and Semble cleanup */
+      subcollections?: Array<{
+        uri: string;
+        cosmikCollectionUri?: string;
+        cosmikItems?: Record<string, CosmikItemMapping>;
+      }>;
     }): Promise<void> => {
       const agent = getCurrentAgent();
       if (!agent) {
         throw new APIError('Not authenticated. Please log in again.', 401, 'deleteCollection');
+      }
+
+      // Delete subcollections first if requested
+      if (deleteSubcollections && subcollections) {
+        for (const sub of subcollections) {
+          // Delete subcollection's Semble mirror (best-effort)
+          if (sub.cosmikCollectionUri) {
+            try {
+              await deleteCosmikMirror(agent, sub.cosmikCollectionUri, sub.cosmikItems);
+            } catch (cosmikError) {
+              logger.warn('Subcollection Cosmik mirror deletion failed', {
+                cosmikCollectionUri: sub.cosmikCollectionUri,
+                error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+              });
+            }
+          }
+
+          // Delete the subcollection node and its edges
+          try {
+            await deleteCollectionNode(agent, sub.uri);
+          } catch (subError) {
+            logger.warn('Subcollection deletion failed', {
+              uri: sub.uri,
+              error: subError instanceof Error ? subError.message : String(subError),
+            });
+          }
+
+          // Request immediate deletion indexing
+          try {
+            await authApi.pub.chive.sync.deleteRecord({ uri: sub.uri });
+          } catch {
+            logger.warn('Subcollection deletion indexing failed; firehose will handle', {
+              uri: sub.uri,
+            });
+          }
+        }
+      }
+
+      // Delete parent collection's Cosmik mirror (best-effort)
+      if (cosmikCollectionUri) {
+        try {
+          await deleteCosmikMirror(agent, cosmikCollectionUri, cosmikItems);
+        } catch (cosmikError) {
+          logger.warn('Cosmik mirror deletion failed', {
+            cosmikCollectionUri,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
       }
 
       await deleteCollectionNode(agent, uri, { cascadeSubcollections });
@@ -591,6 +765,14 @@ export function useDeleteCollection() {
       queryClient.removeQueries({
         queryKey: collectionKeys.detail(variables.uri),
       });
+      // Also remove subcollection detail caches if they were deleted
+      if (variables.deleteSubcollections && variables.subcollections) {
+        for (const sub of variables.subcollections) {
+          queryClient.removeQueries({
+            queryKey: collectionKeys.detail(sub.uri),
+          });
+        }
+      }
       queryClient.invalidateQueries({
         queryKey: collectionKeys.public({}),
       });
@@ -607,7 +789,30 @@ export function useAddToCollection() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: AddItemToCollectionInput): Promise<{ edgeUri: string }> => {
+    mutationFn: async (
+      input: AddItemToCollectionInput & {
+        cosmikCollectionUri?: string;
+        cosmikCollectionCid?: string;
+        /** URL for the Cosmik card (the item's AT-URI or external URL) */
+        itemUrl?: string;
+        /** Display title for the Cosmik card */
+        itemTitle?: string;
+        /** Node subkind for rich Semble card metadata */
+        itemSubkind?: string;
+        /** Item type from the wizard (eprint, author, graphNode) */
+        itemType?: string;
+        /** Additional item metadata for rich Semble card content */
+        itemMetadata?: {
+          subkind?: string;
+          description?: string;
+          authors?: string[];
+          handle?: string;
+          kind?: string;
+          avatarUrl?: string;
+          isPersonal?: boolean;
+        };
+      }
+    ): Promise<{ edgeUri: string }> => {
       const agent = getCurrentAgent();
       if (!agent) {
         throw new APIError('Not authenticated. Please log in again.', 401, 'addToCollection');
@@ -621,6 +826,35 @@ export function useAddToCollection() {
         await new Promise((resolve) => setTimeout(resolve, 100));
       } catch {
         logger.warn('Immediate indexing failed; firehose will handle', { uri: result.uri });
+      }
+
+      // Create Cosmik card + link if mirror is active
+      if (input.cosmikCollectionUri && input.cosmikCollectionCid && input.itemUrl) {
+        try {
+          await addCosmikItem(agent, {
+            chiveCollectionUri: input.collectionUri,
+            cosmikCollectionUri: input.cosmikCollectionUri,
+            cosmikCollectionCid: input.cosmikCollectionCid,
+            url: input.itemUrl,
+            title: input.itemTitle,
+            subkind: input.itemSubkind,
+            itemType: input.itemType,
+            itemMetadata: input.itemMetadata,
+          });
+
+          // Re-index so the server picks up the updated cosmikItems metadata
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: input.collectionUri });
+          } catch {
+            // Best-effort
+          }
+        } catch (cosmikError) {
+          logger.warn('Cosmik item creation failed', {
+            cosmikCollectionUri: input.cosmikCollectionUri,
+            itemUrl: input.itemUrl,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
       }
 
       return { edgeUri: result.uri };
@@ -647,10 +881,19 @@ export function useRemoveFromCollection() {
   return useMutation({
     mutationFn: async ({
       edgeUri,
+      collectionUri,
+      itemUri: _itemUri,
+      cosmikCardUri,
+      cosmikLinkUri,
+      cosmikItemUrl,
     }: {
       edgeUri: string;
       collectionUri: string;
       itemUri: string;
+      cosmikCardUri?: string;
+      cosmikLinkUri?: string;
+      /** URL key used in cosmikItems metadata to remove the mapping */
+      cosmikItemUrl?: string;
     }): Promise<void> => {
       const agent = getCurrentAgent();
       if (!agent) {
@@ -665,8 +908,53 @@ export function useRemoveFromCollection() {
       } catch {
         logger.warn('Immediate deletion indexing failed; firehose will handle', { uri: edgeUri });
       }
+
+      // Remove Cosmik card + link if mirror is active
+      if (cosmikCardUri && cosmikLinkUri && cosmikItemUrl) {
+        try {
+          await removeCosmikItem(agent, {
+            chiveCollectionUri: collectionUri,
+            url: cosmikItemUrl,
+            cardUri: cosmikCardUri,
+            linkUri: cosmikLinkUri,
+          });
+
+          // Re-index so server picks up updated metadata
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: collectionUri });
+          } catch {
+            // Best-effort
+          }
+        } catch (cosmikError) {
+          logger.warn('Cosmik item removal failed', {
+            cosmikCardUri,
+            cosmikLinkUri,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
+      }
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+      const previous = queryClient.getQueryData<CollectionDetailResponse>(
+        collectionKeys.detail(variables.collectionUri)
+      );
+      if (previous) {
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), {
+          ...previous,
+          items: previous.items.filter((item) => item.edgeUri !== variables.edgeUri),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), context.previous);
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.detail(variables.collectionUri),
       });
@@ -710,7 +998,31 @@ export function useReorderItems() {
         });
       }
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+      const previous = queryClient.getQueryData<CollectionDetailResponse>(
+        collectionKeys.detail(variables.collectionUri)
+      );
+      if (previous) {
+        const orderMap = new Map(variables.itemOrder.map((uri, idx) => [uri, idx]));
+        const sorted = [...previous.items].sort(
+          (a, b) => (orderMap.get(a.edgeUri) ?? 0) - (orderMap.get(b.edgeUri) ?? 0)
+        );
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), {
+          ...previous,
+          items: sorted,
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), context.previous);
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.detail(variables.collectionUri),
       });
@@ -769,11 +1081,13 @@ export function useUpdateCollectionItem() {
   return useMutation({
     mutationFn: async ({
       edgeUri,
+      itemUri,
       label,
       note,
     }: {
       edgeUri: string;
       collectionUri: string;
+      itemUri?: string;
       label?: string;
       note?: string;
     }): Promise<void> => {
@@ -782,6 +1096,21 @@ export function useUpdateCollectionItem() {
         throw new APIError('Not authenticated. Please log in again.', 401, 'updateCollectionItem');
       }
 
+      // Update the node record directly if itemUri is provided and owned by user
+      if (itemUri && label !== undefined) {
+        try {
+          const nodeResult = await updatePersonalNode(agent, itemUri, { label });
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: nodeResult.uri });
+          } catch {
+            logger.warn('Node re-indexing failed; firehose will handle', { uri: nodeResult.uri });
+          }
+        } catch {
+          logger.warn('Could not update node directly, falling back to edge metadata', { itemUri });
+        }
+      }
+
+      // Update edge metadata (label override + note)
       const result = await updateEdgeMetadata(agent, edgeUri, { label, note });
 
       // Request immediate re-indexing

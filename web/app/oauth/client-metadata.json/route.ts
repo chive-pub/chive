@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
-      // Cache for 1 hour
-      'Cache-Control': 'public, max-age=3600',
+      // Short cache to allow quick metadata updates
+      'Cache-Control': 'public, max-age=60',
     },
   });
 }

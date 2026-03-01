@@ -19,7 +19,7 @@
             "sourceType": {
               "type": "string",
               "knownValues": [
-                "semble.collection",
+                "cosmik.collection",
                 "leaflet.list",
                 "whitewind.blog",
                 "bluesky.post",
@@ -67,7 +67,7 @@
         "sourceType": {
           "type": "string",
           "knownValues": [
-            "semble.collection",
+            "cosmik.collection",
             "leaflet.list",
             "whitewind.blog",
             "bluesky.post",
