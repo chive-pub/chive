@@ -13,14 +13,14 @@ import type { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
 export function up(pgm: MigrationBuilder): void {
-  pgm.addColumn('collection_edges_index', {
-    label: {
-      type: 'text',
-      comment: 'User-entered label for the item in this collection',
-    },
-  });
+  pgm.sql(`
+    ALTER TABLE collection_edges_index
+      ADD COLUMN IF NOT EXISTS label text;
+    COMMENT ON COLUMN collection_edges_index.label IS
+      'User-entered label for the item in this collection';
+  `);
 }
 
 export function down(pgm: MigrationBuilder): void {
-  pgm.dropColumn('collection_edges_index', 'label');
+  pgm.sql('ALTER TABLE collection_edges_index DROP COLUMN IF EXISTS label');
 }
