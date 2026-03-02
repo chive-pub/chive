@@ -14,6 +14,7 @@ import { AnnotationService } from '../src/services/annotation/annotation-service
 import { CollectionService } from '../src/services/collection/collection-service.js';
 import { createResiliencePolicy } from '../src/services/common/resilience.js';
 import { EprintService } from '../src/services/eprint/eprint-service.js';
+import { PersonalGraphService } from '../src/services/graph/personal-graph-service.js';
 import { PDSRegistry } from '../src/services/pds-discovery/pds-registry.js';
 import { PDSScanner } from '../src/services/pds-discovery/pds-scanner.js';
 import { ReviewService } from '../src/services/review/review-service.js';
@@ -134,6 +135,7 @@ async function main() {
 
   const collectionService = new CollectionService({ pool: pgPool, logger });
   const annotationService = new AnnotationService({ pool: pgPool, logger });
+  const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
   const pdsRegistry = new PDSRegistry(pgPool, logger);
   const scanner = new PDSScanner(
     pdsRegistry,
@@ -141,7 +143,9 @@ async function main() {
     reviewService,
     logger,
     collectionService,
-    annotationService
+    annotationService,
+    personalGraphService,
+    pgPool
   );
 
   try {
