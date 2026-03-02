@@ -29,6 +29,26 @@ export function up(pgm: MigrationBuilder): void {
     WHERE source_type = 'semble.collection'
   `);
 
+  // Update check constraint to allow 'cosmik.collection' instead of 'semble.collection'
+  pgm.sql(`
+    ALTER TABLE backlinks
+    DROP CONSTRAINT IF EXISTS backlinks_source_type_check
+  `);
+  pgm.sql(`
+    ALTER TABLE backlinks
+    ADD CONSTRAINT backlinks_source_type_check
+    CHECK (source_type IN (
+      'cosmik.collection',
+      'leaflet.list',
+      'whitewind.blog',
+      'bluesky.post',
+      'bluesky.embed',
+      'chive.comment',
+      'chive.endorsement',
+      'other'
+    ))
+  `);
+
   // Recreate the refresh function with the new column name and source type
   pgm.sql(`
     CREATE OR REPLACE FUNCTION refresh_backlink_counts(p_target_uri text)
@@ -89,6 +109,26 @@ export function down(pgm: MigrationBuilder): void {
     UPDATE backlinks
     SET source_type = 'semble.collection'
     WHERE source_type = 'cosmik.collection'
+  `);
+
+  // Restore check constraint with 'semble.collection'
+  pgm.sql(`
+    ALTER TABLE backlinks
+    DROP CONSTRAINT IF EXISTS backlinks_source_type_check
+  `);
+  pgm.sql(`
+    ALTER TABLE backlinks
+    ADD CONSTRAINT backlinks_source_type_check
+    CHECK (source_type IN (
+      'semble.collection',
+      'leaflet.list',
+      'whitewind.blog',
+      'bluesky.post',
+      'bluesky.embed',
+      'chive.comment',
+      'chive.endorsement',
+      'other'
+    ))
   `);
 
   pgm.sql(`
