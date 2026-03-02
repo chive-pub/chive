@@ -10,6 +10,7 @@ import { Redis } from 'ioredis';
 import { ATRepository } from '../src/atproto/repository/at-repository.js';
 import { DIDResolver } from '../src/auth/did/did-resolver.js';
 import { PinoLogger } from '../src/observability/logger.js';
+import { CollectionService } from '../src/services/collection/collection-service.js';
 import { createResiliencePolicy } from '../src/services/common/resilience.js';
 import { EprintService } from '../src/services/eprint/eprint-service.js';
 import { PDSRegistry } from '../src/services/pds-discovery/pds-registry.js';
@@ -130,8 +131,15 @@ async function main() {
     logger,
   });
 
+  const collectionService = new CollectionService({ pool: pgPool, logger });
   const pdsRegistry = new PDSRegistry(pgPool, logger);
-  const scanner = new PDSScanner(pdsRegistry, eprintService, reviewService, logger);
+  const scanner = new PDSScanner(
+    pdsRegistry,
+    eprintService,
+    reviewService,
+    logger,
+    collectionService
+  );
 
   try {
     const recordsIndexed = await scanner.scanDID(pdsUrl, did);

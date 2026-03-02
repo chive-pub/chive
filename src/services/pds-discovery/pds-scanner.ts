@@ -23,6 +23,7 @@ import {
 } from '../../observability/index.js';
 import type { AtUri, DID, CID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
+import type { CollectionService } from '../collection/collection-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecord } from '../eprint/pds-record-transformer.js';
 import type { ReviewService } from '../review/review-service.js';
@@ -74,6 +75,7 @@ export class PDSScanner {
   private readonly reviewService: ReviewService;
   private readonly logger: ILogger;
   private readonly config: PDSScannerConfig;
+  private readonly collectionService?: CollectionService;
 
   /**
    * Cache of AtpAgent instances per PDS endpoint.
@@ -86,12 +88,14 @@ export class PDSScanner {
     eprintService: EprintService,
     reviewService: ReviewService,
     logger: ILogger,
+    collectionService?: CollectionService,
     config?: Partial<PDSScannerConfig>
   ) {
     this.registry = registry;
     this.eprintService = eprintService;
     this.reviewService = reviewService;
     this.logger = logger;
+    this.collectionService = collectionService;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -321,6 +325,8 @@ export class PDSScanner {
       'pub.chive.review.endorsement',
       'pub.chive.eprint.userTag',
       'pub.chive.eprint.tag',
+      'pub.chive.graph.node',
+      'pub.chive.graph.edge',
     ];
 
     let totalIndexed = 0;
@@ -589,6 +595,87 @@ export class PDSScanner {
               pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
               endTimer({ status: 'skipped' });
               return false;
+            }
+
+            case 'pub.chive.graph.node': {
+              if (!this.collectionService) {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const nodeValue = record.value as Record<string, unknown>;
+              if (nodeValue.subkind !== 'collection') {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const nodeResult = await this.collectionService.indexCollection(
+                record.value,
+                metadata
+              );
+
+              if (nodeResult.ok) {
+                this.logger.info('Indexed collection from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index collection', {
+                  uri: record.uri,
+                  error: nodeResult.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': nodeResult.error.message,
+                });
+                return false;
+              }
+            }
+
+            case 'pub.chive.graph.edge': {
+              if (!this.collectionService) {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const edgeValue = record.value as Record<string, unknown>;
+              const relationSlug = edgeValue.relationSlug as string | undefined;
+              if (relationSlug !== 'contains' && relationSlug !== 'subcollection-of') {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const edgeResult = await this.collectionService.indexCollectionEdge(
+                record.value,
+                metadata
+              );
+
+              if (edgeResult.ok) {
+                this.logger.info('Indexed collection edge from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index collection edge', {
+                  uri: record.uri,
+                  error: edgeResult.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': edgeResult.error.message,
+                });
+                return false;
+              }
             }
 
             default: {

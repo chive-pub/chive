@@ -526,10 +526,20 @@ function createServices(
     logger,
   });
 
+  // Create personal graph and collection services
+  const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
+  const collectionService = new CollectionService({ pool: pgPool, logger });
+
   // Create PDS Discovery services
   const pdsRegistry = new PDSRegistry(pgPool, logger);
 
-  const pdsScanner = new PDSScanner(pdsRegistry, eprintService, reviewService, logger);
+  const pdsScanner = new PDSScanner(
+    pdsRegistry,
+    eprintService,
+    reviewService,
+    logger,
+    collectionService
+  );
 
   // Create GROBID client and citation extraction service
   const grobidConfig = getGrobidConfig();
@@ -558,10 +568,6 @@ function createServices(
     maxAttempts: 10,
     baseDelayMs: 60_000, // 1 minute base delay
   });
-
-  // Create personal graph and collection services
-  const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
-  const collectionService = new CollectionService({ pool: pgPool, logger });
 
   return {
     eprintService,
