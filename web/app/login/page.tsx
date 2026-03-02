@@ -114,11 +114,11 @@ function LoginContent() {
       <div className="mt-6 text-center text-sm text-muted-foreground">
         <p>
           By signing in, you agree to our{' '}
-          <Link href="/terms" className="underline hover:text-foreground">
+          <Link href="/about/terms" className="underline hover:text-foreground">
             Terms of Service
           </Link>{' '}
           and{' '}
-          <Link href="/privacy" className="underline hover:text-foreground">
+          <Link href="/about/privacy" className="underline hover:text-foreground">
             Privacy Policy
           </Link>
           .
