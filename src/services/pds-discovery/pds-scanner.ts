@@ -13,7 +13,6 @@
  */
 
 import { AtpAgent } from '@atproto/api';
-import type { Pool } from 'pg';
 import { injectable } from 'tsyringe';
 
 import {
@@ -28,12 +27,6 @@ import type { AnnotationService } from '../annotation/annotation-service.js';
 import type { CollectionService } from '../collection/collection-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecord } from '../eprint/pds-record-transformer.js';
-import type { PersonalGraphService } from '../graph/personal-graph-service.js';
-import type {
-  ActorProfileRecord,
-  ChangelogRecord,
-  ProfileConfigRecord,
-} from '../indexing/event-processor.js';
 import type { ReviewService } from '../review/review-service.js';
 
 import type { IPDSRegistry, ScanResult } from './pds-registry.js';
@@ -85,8 +78,6 @@ export class PDSScanner {
   private readonly config: PDSScannerConfig;
   private readonly collectionService?: CollectionService;
   private readonly annotationService?: AnnotationService;
-  private readonly personalGraphService?: PersonalGraphService;
-  private readonly pool?: Pool;
 
   /**
    * Cache of AtpAgent instances per PDS endpoint.
@@ -101,8 +92,6 @@ export class PDSScanner {
     logger: ILogger,
     collectionService?: CollectionService,
     annotationService?: AnnotationService,
-    personalGraphService?: PersonalGraphService,
-    pool?: Pool,
     config?: Partial<PDSScannerConfig>
   ) {
     this.registry = registry;
@@ -111,8 +100,6 @@ export class PDSScanner {
     this.logger = logger;
     this.collectionService = collectionService;
     this.annotationService = annotationService;
-    this.personalGraphService = personalGraphService;
-    this.pool = pool;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -342,18 +329,10 @@ export class PDSScanner {
       'pub.chive.review.endorsement',
       'pub.chive.eprint.userTag',
       'pub.chive.eprint.tag',
-      'pub.chive.eprint.citation',
-      'pub.chive.eprint.relatedWork',
-      'pub.chive.eprint.changelog',
       'pub.chive.graph.node',
       'pub.chive.graph.edge',
-      'pub.chive.graph.nodeProposal',
-      'pub.chive.graph.edgeProposal',
-      'pub.chive.graph.vote',
       'pub.chive.annotation.comment',
       'pub.chive.annotation.entityLink',
-      'pub.chive.actor.profile',
-      'pub.chive.actor.profileConfig',
     ];
 
     let totalIndexed = 0;
@@ -479,9 +458,11 @@ export class PDSScanner {
    * Indexes a single record via the existing pipeline.
    *
    * @remarks
-   * Handles all pub.chive.* collection types, routing each to the
-   * appropriate service for indexing. Mirrors the event processor's
-   * handling of firehose events.
+   * Handles all pub.chive.* collection types:
+   * - `pub.chive.eprint.submission`: Indexed via EprintService
+   * - `pub.chive.review.comment`: Indexed via ReviewService
+   * - `pub.chive.review.endorsement`: Indexed via ReviewService
+   * - `pub.chive.eprint.userTag` and `pub.chive.eprint.tag`: Logged for now
    *
    * @param pdsUrl - PDS endpoint URL
    * @param did - Repo DID
@@ -622,82 +603,85 @@ export class PDSScanner {
               return false;
             }
 
-            case 'pub.chive.eprint.citation': {
-              const citationResult = await this.eprintService.indexCitation(record.value, metadata);
-
-              if (citationResult.ok) {
-                this.logger.info('Indexed citation from PDS scan', { uri: record.uri });
-                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
-                endTimer({ status: 'success' });
-                addSpanAttributes({ 'record.indexed': true });
-                return true;
-              } else {
-                this.logger.debug('Failed to index citation', {
-                  uri: record.uri,
-                  error: citationResult.error.message,
-                });
-                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-                endTimer({ status: 'error' });
-                addSpanAttributes({
-                  'record.indexed': false,
-                  'record.error': citationResult.error.message,
-                });
+            case 'pub.chive.graph.node': {
+              if (!this.collectionService) {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
                 return false;
               }
-            }
 
-            case 'pub.chive.eprint.relatedWork': {
-              const relatedWorkResult = await this.eprintService.indexRelatedWork(
+              const nodeValue = record.value as Record<string, unknown>;
+              if (nodeValue.subkind !== 'collection') {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const nodeResult = await this.collectionService.indexCollection(
                 record.value,
                 metadata
               );
 
-              if (relatedWorkResult.ok) {
-                this.logger.info('Indexed related work from PDS scan', { uri: record.uri });
+              if (nodeResult.ok) {
+                this.logger.info('Indexed collection from PDS scan', { uri: record.uri });
                 pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
                 endTimer({ status: 'success' });
                 addSpanAttributes({ 'record.indexed': true });
                 return true;
               } else {
-                this.logger.debug('Failed to index related work', {
+                this.logger.debug('Failed to index collection', {
                   uri: record.uri,
-                  error: relatedWorkResult.error.message,
+                  error: nodeResult.error.message,
                 });
                 pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
                 endTimer({ status: 'error' });
                 addSpanAttributes({
                   'record.indexed': false,
-                  'record.error': relatedWorkResult.error.message,
+                  'record.error': nodeResult.error.message,
                 });
                 return false;
               }
             }
 
-            case 'pub.chive.eprint.changelog': {
-              return this.indexChangelog(record, metadata, collection, endTimer);
-            }
-
-            case 'pub.chive.graph.node': {
-              return this.indexGraphNode(record, metadata, collection, endTimer);
-            }
-
             case 'pub.chive.graph.edge': {
-              return this.indexGraphEdge(record, metadata, collection, endTimer);
-            }
+              if (!this.collectionService) {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
 
-            case 'pub.chive.graph.nodeProposal':
-            case 'pub.chive.graph.edgeProposal':
-            case 'pub.chive.graph.vote': {
-              // Governance records come from the Governance PDS, not user PDSes.
-              // Skipping during PDS scan; these are indexed via firehose.
-              this.logger.debug('Skipped governance record in PDS scan', {
-                uri: record.uri,
-                did,
-                collection,
-              });
-              pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
-              endTimer({ status: 'skipped' });
-              return false;
+              const edgeValue = record.value as Record<string, unknown>;
+              const relationSlug = edgeValue.relationSlug as string | undefined;
+              if (relationSlug !== 'contains' && relationSlug !== 'subcollection-of') {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const edgeResult = await this.collectionService.indexCollectionEdge(
+                record.value,
+                metadata
+              );
+
+              if (edgeResult.ok) {
+                this.logger.info('Indexed collection edge from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index collection edge', {
+                  uri: record.uri,
+                  error: edgeResult.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': edgeResult.error.message,
+                });
+                return false;
+              }
             }
 
             case 'pub.chive.annotation.comment': {
@@ -766,14 +750,6 @@ export class PDSScanner {
               }
             }
 
-            case 'pub.chive.actor.profile': {
-              return this.indexActorProfile(record, did, collection, pdsUrl, endTimer);
-            }
-
-            case 'pub.chive.actor.profileConfig': {
-              return this.indexProfileConfig(record, did, metadata, collection, pdsUrl, endTimer);
-            }
-
             default: {
               this.logger.debug('Unknown collection in PDS scan', { collection, uri: record.uri });
               pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
@@ -796,371 +772,6 @@ export class PDSScanner {
       },
       { attributes: { 'pds.operation': 'index_record' } }
     );
-  }
-
-  /**
-   * Indexes a changelog record into the changelogs_index table.
-   *
-   * @param record - Record data from PDS
-   * @param metadata - Record metadata
-   * @param collection - Collection NSID
-   * @param endTimer - Timer callback for metrics
-   * @returns Whether the record was successfully indexed
-   */
-  private async indexChangelog(
-    record: ListRecordsRecord,
-    metadata: RecordMetadata,
-    collection: string,
-    endTimer: (labels: { status: string }) => void
-  ): Promise<boolean> {
-    if (!this.pool) {
-      this.logger.debug('Skipped changelog indexing (no pool)', { uri: record.uri });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
-      endTimer({ status: 'skipped' });
-      return false;
-    }
-
-    const changelogRecord = record.value as ChangelogRecord;
-
-    try {
-      await this.pool.query(
-        `INSERT INTO changelogs_index (
-          uri, cid, eprint_uri, version, previous_version, summary,
-          sections, reviewer_response, created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-        ON CONFLICT (uri) DO UPDATE SET
-          cid = EXCLUDED.cid,
-          version = EXCLUDED.version,
-          previous_version = EXCLUDED.previous_version,
-          summary = EXCLUDED.summary,
-          sections = EXCLUDED.sections,
-          reviewer_response = EXCLUDED.reviewer_response,
-          last_synced_at = NOW()`,
-        [
-          metadata.uri,
-          metadata.cid,
-          changelogRecord.eprintUri,
-          JSON.stringify(changelogRecord.version),
-          changelogRecord.previousVersion ? JSON.stringify(changelogRecord.previousVersion) : null,
-          changelogRecord.summary ?? null,
-          JSON.stringify(changelogRecord.sections ?? []),
-          changelogRecord.reviewerResponse ?? null,
-          new Date(changelogRecord.createdAt),
-          metadata.pdsUrl,
-        ]
-      );
-
-      this.logger.info('Indexed changelog from PDS scan', {
-        uri: record.uri,
-        eprintUri: changelogRecord.eprintUri,
-      });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
-      endTimer({ status: 'success' });
-      addSpanAttributes({ 'record.indexed': true });
-      return true;
-    } catch (dbError) {
-      const error = dbError instanceof Error ? dbError : new Error(String(dbError));
-      this.logger.debug('Failed to index changelog', {
-        uri: record.uri,
-        error: error.message,
-      });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-      endTimer({ status: 'error' });
-      addSpanAttributes({
-        'record.indexed': false,
-        'record.error': error.message,
-      });
-      return false;
-    }
-  }
-
-  /**
-   * Indexes a graph node, including both personal graph and collection indexing.
-   *
-   * @param record - Record data from PDS
-   * @param metadata - Record metadata
-   * @param collection - Collection NSID
-   * @param endTimer - Timer callback for metrics
-   * @returns Whether the record was successfully indexed
-   */
-  private async indexGraphNode(
-    record: ListRecordsRecord,
-    metadata: RecordMetadata,
-    collection: string,
-    endTimer: (labels: { status: string }) => void
-  ): Promise<boolean> {
-    const nodeValue = record.value as Record<string, unknown>;
-    let indexed = false;
-
-    // Index as collection if subkind is 'collection'
-    if (this.collectionService && nodeValue.subkind === 'collection') {
-      const collectionResult = await this.collectionService.indexCollection(record.value, metadata);
-      if (collectionResult.ok) {
-        this.logger.info('Indexed collection from PDS scan', { uri: record.uri });
-        indexed = true;
-      } else {
-        this.logger.debug('Failed to index collection', {
-          uri: record.uri,
-          error: collectionResult.error.message,
-        });
-      }
-    }
-
-    // Index ALL personal nodes in the personal graph
-    if (this.personalGraphService) {
-      const pgResult = await this.personalGraphService.indexNode(record.value, metadata);
-      if (pgResult.ok) {
-        this.logger.info('Indexed personal graph node from PDS scan', { uri: record.uri });
-        indexed = true;
-      } else {
-        this.logger.debug('Failed to index personal graph node', {
-          uri: record.uri,
-          error: pgResult.error.message,
-        });
-      }
-    }
-
-    if (!this.collectionService && !this.personalGraphService) {
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
-      endTimer({ status: 'skipped' });
-      return false;
-    }
-
-    if (indexed) {
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
-      endTimer({ status: 'success' });
-      addSpanAttributes({ 'record.indexed': true });
-    } else {
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-      endTimer({ status: 'error' });
-      addSpanAttributes({ 'record.indexed': false });
-    }
-    return indexed;
-  }
-
-  /**
-   * Indexes a graph edge, including both personal graph and collection edge indexing.
-   *
-   * @param record - Record data from PDS
-   * @param metadata - Record metadata
-   * @param collection - Collection NSID
-   * @param endTimer - Timer callback for metrics
-   * @returns Whether the record was successfully indexed
-   */
-  private async indexGraphEdge(
-    record: ListRecordsRecord,
-    metadata: RecordMetadata,
-    collection: string,
-    endTimer: (labels: { status: string }) => void
-  ): Promise<boolean> {
-    const edgeValue = record.value as Record<string, unknown>;
-    const relationSlug = edgeValue.relationSlug as string | undefined;
-    const isCollectionRelation = relationSlug === 'contains' || relationSlug === 'subcollection-of';
-    let indexed = false;
-
-    // Index collection edge if relation is collection-specific
-    if (this.collectionService && isCollectionRelation) {
-      const collectionResult = await this.collectionService.indexCollectionEdge(
-        record.value,
-        metadata
-      );
-      if (collectionResult.ok) {
-        this.logger.info('Indexed collection edge from PDS scan', { uri: record.uri });
-        indexed = true;
-      } else {
-        this.logger.debug('Failed to index collection edge', {
-          uri: record.uri,
-          error: collectionResult.error.message,
-        });
-      }
-    }
-
-    // Index ALL personal edges in the personal graph
-    if (this.personalGraphService) {
-      const pgResult = await this.personalGraphService.indexEdge(record.value, metadata);
-      if (pgResult.ok) {
-        this.logger.info('Indexed personal graph edge from PDS scan', { uri: record.uri });
-        indexed = true;
-      } else {
-        this.logger.debug('Failed to index personal graph edge', {
-          uri: record.uri,
-          error: pgResult.error.message,
-        });
-      }
-    }
-
-    if (!this.collectionService && !this.personalGraphService) {
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
-      endTimer({ status: 'skipped' });
-      return false;
-    }
-
-    if (indexed) {
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
-      endTimer({ status: 'success' });
-      addSpanAttributes({ 'record.indexed': true });
-    } else {
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-      endTimer({ status: 'error' });
-      addSpanAttributes({ 'record.indexed': false });
-    }
-    return indexed;
-  }
-
-  /**
-   * Indexes an actor profile into the authors_index table.
-   *
-   * @param record - Record data from PDS
-   * @param did - Repo DID (profile owner)
-   * @param collection - Collection NSID
-   * @param pdsUrl - PDS endpoint URL
-   * @param endTimer - Timer callback for metrics
-   * @returns Whether the record was successfully indexed
-   */
-  private async indexActorProfile(
-    record: ListRecordsRecord,
-    did: DID,
-    collection: string,
-    pdsUrl: string,
-    endTimer: (labels: { status: string }) => void
-  ): Promise<boolean> {
-    if (!this.pool) {
-      this.logger.debug('Skipped actor profile indexing (no pool)', { uri: record.uri });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
-      endTimer({ status: 'skipped' });
-      return false;
-    }
-
-    const profileRecord = record.value as ActorProfileRecord;
-
-    try {
-      await this.pool.query(
-        `INSERT INTO authors_index (
-          did, handle, display_name, bio, avatar_blob_cid, orcid, affiliations, field_ids,
-          pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-        ON CONFLICT (did) DO UPDATE SET
-          display_name = EXCLUDED.display_name,
-          bio = EXCLUDED.bio,
-          avatar_blob_cid = EXCLUDED.avatar_blob_cid,
-          orcid = EXCLUDED.orcid,
-          affiliations = EXCLUDED.affiliations,
-          field_ids = EXCLUDED.field_ids,
-          pds_url = EXCLUDED.pds_url,
-          last_synced_at = NOW()`,
-        [
-          did,
-          profileRecord.displayName ?? null,
-          profileRecord.bio ?? null,
-          profileRecord.avatarBlobRef?.ref.$link ?? null,
-          profileRecord.orcid ?? null,
-          profileRecord.affiliations ?? [],
-          profileRecord.fieldIds ?? [],
-          pdsUrl,
-        ]
-      );
-
-      this.logger.info('Indexed actor profile from PDS scan', {
-        did,
-        displayName: profileRecord.displayName,
-      });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
-      endTimer({ status: 'success' });
-      addSpanAttributes({ 'record.indexed': true });
-      return true;
-    } catch (dbError) {
-      const error = dbError instanceof Error ? dbError : new Error(String(dbError));
-      this.logger.debug('Failed to index actor profile', {
-        uri: record.uri,
-        error: error.message,
-      });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-      endTimer({ status: 'error' });
-      addSpanAttributes({
-        'record.indexed': false,
-        'record.error': error.message,
-      });
-      return false;
-    }
-  }
-
-  /**
-   * Indexes a profile configuration into the profile_config table.
-   *
-   * @param record - Record data from PDS
-   * @param did - Repo DID (profile owner)
-   * @param metadata - Record metadata
-   * @param collection - Collection NSID
-   * @param pdsUrl - PDS endpoint URL
-   * @param endTimer - Timer callback for metrics
-   * @returns Whether the record was successfully indexed
-   */
-  private async indexProfileConfig(
-    record: ListRecordsRecord,
-    did: DID,
-    metadata: RecordMetadata,
-    collection: string,
-    pdsUrl: string,
-    endTimer: (labels: { status: string }) => void
-  ): Promise<boolean> {
-    if (!this.pool) {
-      this.logger.debug('Skipped profile config indexing (no pool)', { uri: record.uri });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
-      endTimer({ status: 'skipped' });
-      return false;
-    }
-
-    const configRecord = record.value as ProfileConfigRecord;
-
-    try {
-      await this.pool.query(
-        `INSERT INTO profile_config (
-          did, uri, cid, profile_type, sections, featured_collection_uri,
-          created_at, updated_at, pds_url, indexed_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-        ON CONFLICT (did) DO UPDATE SET
-          uri = EXCLUDED.uri,
-          cid = EXCLUDED.cid,
-          profile_type = EXCLUDED.profile_type,
-          sections = EXCLUDED.sections,
-          featured_collection_uri = EXCLUDED.featured_collection_uri,
-          updated_at = EXCLUDED.updated_at,
-          pds_url = EXCLUDED.pds_url`,
-        [
-          did,
-          metadata.uri,
-          metadata.cid,
-          configRecord.profileType ?? 'individual',
-          JSON.stringify(configRecord.sections ?? []),
-          configRecord.featuredCollectionUri ?? null,
-          new Date(configRecord.createdAt),
-          configRecord.updatedAt ? new Date(configRecord.updatedAt) : null,
-          pdsUrl,
-        ]
-      );
-
-      this.logger.info('Indexed profile config from PDS scan', {
-        did,
-        profileType: configRecord.profileType,
-      });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
-      endTimer({ status: 'success' });
-      addSpanAttributes({ 'record.indexed': true });
-      return true;
-    } catch (dbError) {
-      const error = dbError instanceof Error ? dbError : new Error(String(dbError));
-      this.logger.debug('Failed to index profile config', {
-        uri: record.uri,
-        error: error.message,
-      });
-      pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
-      endTimer({ status: 'error' });
-      addSpanAttributes({
-        'record.indexed': false,
-        'record.error': error.message,
-      });
-      return false;
-    }
   }
 
   /**

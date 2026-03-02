@@ -104,8 +104,6 @@ describe('PDSScanner', () => {
       mockLogger,
       undefined,
       undefined,
-      undefined,
-      undefined,
       {
         requestsPerMinute: 60, // Fast for tests
         scanTimeoutMs: 5000,
@@ -225,8 +223,6 @@ describe('PDSScanner', () => {
         mockEprintService as EprintService,
         mockReviewService as ReviewService,
         mockLogger,
-        undefined,
-        undefined,
         undefined,
         undefined,
         { requestsPerMinute: 30 }

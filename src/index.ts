@@ -539,9 +539,7 @@ function createServices(
     reviewService,
     logger,
     collectionService,
-    annotationService,
-    personalGraphService,
-    pgPool
+    annotationService
   );
 
   // Create GROBID client and citation extraction service
