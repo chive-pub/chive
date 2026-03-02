@@ -23,6 +23,7 @@ import {
 } from '../../observability/index.js';
 import type { AtUri, DID, CID } from '../../types/atproto.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
+import type { AnnotationService } from '../annotation/annotation-service.js';
 import type { CollectionService } from '../collection/collection-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecord } from '../eprint/pds-record-transformer.js';
@@ -76,6 +77,7 @@ export class PDSScanner {
   private readonly logger: ILogger;
   private readonly config: PDSScannerConfig;
   private readonly collectionService?: CollectionService;
+  private readonly annotationService?: AnnotationService;
 
   /**
    * Cache of AtpAgent instances per PDS endpoint.
@@ -89,6 +91,7 @@ export class PDSScanner {
     reviewService: ReviewService,
     logger: ILogger,
     collectionService?: CollectionService,
+    annotationService?: AnnotationService,
     config?: Partial<PDSScannerConfig>
   ) {
     this.registry = registry;
@@ -96,6 +99,7 @@ export class PDSScanner {
     this.reviewService = reviewService;
     this.logger = logger;
     this.collectionService = collectionService;
+    this.annotationService = annotationService;
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -327,6 +331,8 @@ export class PDSScanner {
       'pub.chive.eprint.tag',
       'pub.chive.graph.node',
       'pub.chive.graph.edge',
+      'pub.chive.annotation.comment',
+      'pub.chive.annotation.entityLink',
     ];
 
     let totalIndexed = 0;
@@ -673,6 +679,72 @@ export class PDSScanner {
                 addSpanAttributes({
                   'record.indexed': false,
                   'record.error': edgeResult.error.message,
+                });
+                return false;
+              }
+            }
+
+            case 'pub.chive.annotation.comment': {
+              if (!this.annotationService) {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const annotationResult = await this.annotationService.indexAnnotation(
+                record.value,
+                metadata
+              );
+
+              if (annotationResult.ok) {
+                this.logger.info('Indexed annotation comment from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index annotation comment', {
+                  uri: record.uri,
+                  error: annotationResult.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': annotationResult.error.message,
+                });
+                return false;
+              }
+            }
+
+            case 'pub.chive.annotation.entityLink': {
+              if (!this.annotationService) {
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+                endTimer({ status: 'skipped' });
+                return false;
+              }
+
+              const entityLinkResult = await this.annotationService.indexEntityLink(
+                record.value,
+                metadata
+              );
+
+              if (entityLinkResult.ok) {
+                this.logger.info('Indexed entity link from PDS scan', { uri: record.uri });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+                endTimer({ status: 'success' });
+                addSpanAttributes({ 'record.indexed': true });
+                return true;
+              } else {
+                this.logger.debug('Failed to index entity link', {
+                  uri: record.uri,
+                  error: entityLinkResult.error.message,
+                });
+                pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+                endTimer({ status: 'error' });
+                addSpanAttributes({
+                  'record.indexed': false,
+                  'record.error': entityLinkResult.error.message,
                 });
                 return false;
               }

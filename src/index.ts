@@ -538,7 +538,8 @@ function createServices(
     eprintService,
     reviewService,
     logger,
-    collectionService
+    collectionService,
+    annotationService
   );
 
   // Create GROBID client and citation extraction service

@@ -324,6 +324,70 @@ Example:
       }
     }
 
+    // Index entity links (annotation.entityLink)
+    const entityLinkRecords = await listRecordsForCollection(
+      pdsUrl,
+      did,
+      'pub.chive.annotation.entityLink'
+    );
+    console.log(`  🔗 Found ${entityLinkRecords.length} entity link(s)`);
+
+    for (const record of entityLinkRecords) {
+      try {
+        const ownerDid = (record.uri as string).split('/')[2];
+        const value = record.value;
+        const target = value.target as Record<string, unknown> | null;
+        const anchor = target ? JSON.stringify(target) : null;
+        const pageNumber =
+          (target?.refinedBy as Record<string, unknown> | undefined)?.pageNumber ?? null;
+
+        const linkedEntity = value.linkedEntity as Record<string, unknown>;
+        const entityType = (linkedEntity?.type as string | undefined) ?? 'unknown';
+        const entityData = JSON.stringify(linkedEntity?.data ?? linkedEntity);
+        const entityLabel = (linkedEntity?.label as string | undefined) ?? '';
+        const confidence = value.confidence as number | undefined;
+
+        await pool.query(
+          `INSERT INTO entity_links_index (
+            uri, cid, eprint_uri, creator_did, anchor, page_number,
+            entity_type, entity_data, entity_label, confidence,
+            created_at, pds_url, indexed_at, last_synced_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+          ON CONFLICT (uri) DO UPDATE SET
+            cid = EXCLUDED.cid,
+            anchor = EXCLUDED.anchor,
+            page_number = EXCLUDED.page_number,
+            entity_type = EXCLUDED.entity_type,
+            entity_data = EXCLUDED.entity_data,
+            entity_label = EXCLUDED.entity_label,
+            confidence = EXCLUDED.confidence,
+            last_synced_at = NOW()`,
+          [
+            record.uri,
+            record.cid,
+            value.eprintUri as string,
+            ownerDid,
+            anchor,
+            pageNumber,
+            entityType,
+            entityData,
+            entityLabel,
+            confidence ?? null,
+            value.createdAt ? new Date(value.createdAt as string) : new Date(),
+            pdsUrl,
+          ]
+        );
+        console.log(`  ✅ Indexed entity link: ${entityType} "${entityLabel}" ${record.uri}`);
+        totalIndexed++;
+      } catch (error) {
+        console.error(
+          `  ❌ Failed to index entity link ${record.uri}:`,
+          error instanceof Error ? error.message : error
+        );
+        totalFailed++;
+      }
+    }
+
     // Index collection edges (contains, subcollection-of)
     const edgeRecords = await listRecordsForCollection(pdsUrl, did, 'pub.chive.graph.edge');
     const collectionEdges = edgeRecords.filter(
