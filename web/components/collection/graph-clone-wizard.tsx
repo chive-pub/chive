@@ -37,7 +37,10 @@ import {
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
+import { createLogger } from '@/lib/observability/logger';
 import { cn } from '@/lib/utils';
+
+const logger = createLogger({ context: { component: 'graph-clone-wizard' } });
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -992,6 +995,13 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
         relationSlug: e.relationSlug,
       }));
 
+      logger.info('Cloning subgraph to collection', {
+        name: collectionName.trim(),
+        nodeCount: selectedNodes.length,
+        edgeCount: edgesToClone.length,
+        visibility,
+      });
+
       const result = await cloneMutation.mutateAsync({
         name: collectionName.trim(),
         description: collectionDescription.trim() || undefined,
@@ -1001,12 +1011,22 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
         tags: tags.length > 0 ? tags.map((t) => t.label) : undefined,
       });
 
+      logger.info('Graph clone completed', {
+        collectionUri: result.collectionUri,
+        clonedNodes: result.clonedNodes,
+        failedNodeCount: result.failedNodes.length,
+      });
+
       toast.success('Collection created', {
         description: `"${collectionName}" with ${selectedNodes.length} nodes`,
       });
 
       // Show diff view if there are failed nodes; navigate directly otherwise
       if (result.failedNodes.length > 0) {
+        logger.warn('Graph clone had failures', {
+          collectionUri: result.collectionUri,
+          failedNodeCount: result.failedNodes.length,
+        });
         setCloneResult(result);
       } else if (onSuccess) {
         onSuccess(result.collectionUri);
@@ -1015,6 +1035,10 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create collection';
+      logger.error('Graph clone failed', error instanceof Error ? error : undefined, {
+        name: collectionName.trim(),
+        selectedNodeCount: curatedNodes.filter((n) => n.selected).length,
+      });
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);

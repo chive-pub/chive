@@ -7,9 +7,12 @@
  * Renders either an icon-only button or a full text button that opens a
  * dropdown listing the user's collections. Collections already containing
  * the item are visually marked with a checkmark. Clicking a marked
- * collection removes the item (toggle behavior). A "Create new collection"
+ * collection shows an "already added" toast. A "Create new collection"
  * option at the bottom navigates to the collection creation wizard with
  * the item pre-filled.
+ *
+ * Items are wrapped in personal graph nodes before being added to the
+ * collection, matching the behavior of the collection wizard.
  *
  * Only renders when the user is authenticated; returns null otherwise.
  *
@@ -34,9 +37,12 @@ import { useIsAuthenticated, useCurrentUser } from '@/lib/auth';
 import {
   useMyCollections,
   useCollectionsContaining,
-  useAddToCollection,
   type CollectionView,
 } from '@/lib/hooks/use-collections';
+import { createLogger } from '@/lib/observability/logger';
+import { useAddItemToCollection } from './use-add-to-collection';
+
+const logger = createLogger({ context: { component: 'add-to-collection-button' } });
 
 /**
  * Props for the AddToCollectionButton component.
@@ -44,7 +50,7 @@ import {
 export interface AddToCollectionButtonProps {
   /** AT-URI of the item to add */
   itemUri: string;
-  /** Type of the item (e.g., 'eprint', 'node') */
+  /** Type of the item (e.g., 'eprint', 'review') */
   itemType: string;
   /** Human-readable label for the item (used as default edge label) */
   itemLabel: string;
@@ -72,7 +78,7 @@ export interface AddToCollectionButtonProps {
  */
 export function AddToCollectionButton({
   itemUri,
-  itemType: _itemType,
+  itemType,
   itemLabel,
   variant,
   className,
@@ -90,7 +96,12 @@ export function AddToCollectionButton({
     enabled: isAuthenticated && !!itemUri,
   });
 
-  const addToCollection = useAddToCollection();
+  const { addItem, isPending } = useAddItemToCollection();
+
+  const collections = useMemo(
+    () => collectionsData?.collections ?? [],
+    [collectionsData?.collections]
+  );
 
   /** Set of collection URIs that already contain this item. */
   const containingUris = useMemo(() => {
@@ -106,39 +117,33 @@ export function AddToCollectionButton({
   const handleCollectionClick = useCallback(
     async (collection: CollectionView) => {
       if (containingUris.has(collection.uri)) {
-        // Toggle: remove from collection.
-        // We need the edge URI to delete. Since we do not have it from
-        // the containing endpoint, we call remove with a synthetic lookup.
-        // The backend removeItemFromCollection expects an edgeUri. Without
-        // the edge URI, we cannot remove here, so we show a toast instead.
+        logger.info('Item already in collection', {
+          itemUri,
+          collectionUri: collection.uri,
+        });
         toast.info(`"${itemLabel}" is already in "${collection.label}"`);
         return;
       }
 
-      try {
-        await addToCollection.mutateAsync({
-          collectionUri: collection.uri,
-          itemUri,
-          label: itemLabel,
-        });
-        toast.success(`Added to "${collection.label}"`);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to add to collection');
-      }
+      await addItem({ collection, itemUri, itemType, itemLabel, allCollections: collections });
     },
-    [addToCollection, containingUris, itemUri, itemLabel]
+    [addItem, containingUris, itemUri, itemType, itemLabel, collections]
   );
 
   const handleCreateNew = useCallback(() => {
-    router.push(`/collections/new?item=${encodeURIComponent(itemUri)}`);
-  }, [router, itemUri]);
+    logger.info('Navigating to create new collection with item', { itemUri, itemType });
+    const params = new URLSearchParams({
+      item: itemUri,
+      type: itemType,
+      label: itemLabel,
+    });
+    router.push(`/collections/new?${params.toString()}`);
+  }, [router, itemUri, itemType, itemLabel]);
 
   // Only render for authenticated users
   if (!isAuthenticated || !currentUser) {
     return null;
   }
-
-  const collections = collectionsData?.collections ?? [];
 
   return (
     <DropdownMenu>
@@ -176,7 +181,7 @@ export function AddToCollectionButton({
                 key={collection.uri}
                 onClick={() => handleCollectionClick(collection)}
                 className={isContained ? 'text-muted-foreground' : ''}
-                disabled={addToCollection.isPending}
+                disabled={isPending}
               >
                 {isContained ? (
                   <Check className="h-4 w-4 text-green-500" />

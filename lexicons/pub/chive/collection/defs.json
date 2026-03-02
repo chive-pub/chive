@@ -143,6 +143,11 @@
       "description": "An edge between two items within a collection",
       "required": ["sourceUri", "targetUri", "relationSlug"],
       "properties": {
+        "edgeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the personal graph edge record"
+        },
         "sourceUri": {
           "type": "string",
           "description": "AT-URI of the source item"

@@ -14,6 +14,22 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+// Mock next/navigation (needed by AddToCollectionDialog)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+  }),
+}));
+
+// Mock auth hooks (AddToCollectionDialog uses useIsAuthenticated / useCurrentUser)
+vi.mock('@/lib/auth', () => ({
+  useIsAuthenticated: () => false,
+  useCurrentUser: () => null,
+}));
+
 describe('ReviewCard', () => {
   // Plain text review (no rich body)
   const plainTextReview = createMockReview({

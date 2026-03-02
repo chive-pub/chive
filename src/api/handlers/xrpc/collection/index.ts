@@ -11,6 +11,7 @@
 
 import type { XRPCMethod } from '../../../xrpc/types.js';
 
+import { findContainsEdge } from './findContainsEdge.js';
 import { get } from './get.js';
 import { getContaining } from './getContaining.js';
 import { getFeed } from './getFeed.js';
@@ -21,6 +22,7 @@ import { listPublic } from './listPublic.js';
 import { search } from './search.js';
 
 // Re-export handlers
+export { findContainsEdge } from './findContainsEdge.js';
 export { get } from './get.js';
 export { getContaining } from './getContaining.js';
 export { getFeed } from './getFeed.js';
@@ -37,6 +39,7 @@ export type { GetFeedParams, GetFeedOutput } from './getFeed.js';
 export type { ListByOwnerParams, ListByOwnerOutput } from './listByOwner.js';
 export type { ListPublicParams, ListPublicOutput } from './listPublic.js';
 export type { SearchCollectionsParams, SearchCollectionsOutput } from './search.js';
+export type { FindContainsEdgeParams, FindContainsEdgeOutput } from './findContainsEdge.js';
 export type { GetContainingParams, GetContainingOutput } from './getContaining.js';
 export type { GetParentParams, GetParentOutput } from './getParent.js';
 export type { GetSubcollectionsParams, GetSubcollectionsOutput } from './getSubcollections.js';
@@ -48,6 +51,7 @@ export type { GetSubcollectionsParams, GetSubcollectionsOutput } from './getSubc
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const collectionMethods: Record<string, XRPCMethod<any, any, any>> = {
+  'pub.chive.collection.findContainsEdge': findContainsEdge,
   'pub.chive.collection.get': get,
   'pub.chive.collection.getFeed': getFeed,
   'pub.chive.collection.listByOwner': listByOwner,

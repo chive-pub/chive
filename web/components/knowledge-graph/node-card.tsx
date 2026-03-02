@@ -260,14 +260,6 @@ export function NodeCard({
               {node.status}
             </Badge>
           )}
-          {edgeSummary && edgeSummary.count > 0 && (
-            <Badge
-              variant="secondary"
-              className="text-[10px] bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-300"
-            >
-              {edgeSummary.count} {edgeSummary.count === 1 ? 'relation' : 'relations'}
-            </Badge>
-          )}
         </div>
 
         {/* Description */}
@@ -309,6 +301,18 @@ export function NodeCard({
             </div>
           )}
         </div>
+
+        {/* Edge summary at bottom */}
+        {edgeSummary && edgeSummary.count > 0 && (
+          <div className="mt-2 pt-2">
+            <Badge
+              variant="secondary"
+              className="text-[10px] bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-300"
+            >
+              {edgeSummary.count} {edgeSummary.count === 1 ? 'relation' : 'relations'}
+            </Badge>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

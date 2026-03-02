@@ -241,7 +241,7 @@ export function AuthorChipList({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {displayedAuthors.map((author, index) => (
           <AuthorChip
-            key={author.did ?? `author-${index}`}
+            key={author.did || `author-${index}`}
             author={author}
             showAvatar={showAvatars}
             showBadges={showBadges}

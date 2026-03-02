@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { FileText, Link2, User, Globe } from 'lucide-react';
+import { FileText, Link2, User, Globe, MessageSquare, Award } from 'lucide-react';
 
 import type { FieldSelection } from '@/components/forms/field-search';
 import type { WizardStep } from '../../submit/wizard-progress';
@@ -194,4 +194,6 @@ export const ITEM_TYPE_CONFIG: Record<
   'at-uri': { label: 'AT-URI', icon: Link2, color: 'bg-purple-100 text-purple-800' },
   author: { label: 'Author', icon: User, color: 'bg-pink-100 text-pink-800' },
   graphNode: { label: 'Node', icon: Globe, color: 'bg-cyan-100 text-cyan-800' },
+  review: { label: 'Review', icon: MessageSquare, color: 'bg-amber-100 text-amber-800' },
+  endorsement: { label: 'Endorsement', icon: Award, color: 'bg-green-100 text-green-800' },
 };

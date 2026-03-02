@@ -12,6 +12,10 @@
           "uri": {
             "type": "string",
             "description": "AT-URI of the collection"
+          },
+          "excludeSubcollectionItems": {
+            "type": "boolean",
+            "description": "When true, exclude items that also appear in subcollections"
           }
         }
       },

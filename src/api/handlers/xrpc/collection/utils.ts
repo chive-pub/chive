@@ -28,6 +28,7 @@ export function mapCollectionToView(collection: IndexedCollection): CollectionVi
     itemCount: collection.itemCount,
     createdAt: collection.createdAt.toISOString(),
     updatedAt: collection.updatedAt?.toISOString(),
+    ...(collection.parentCollectionUri && { parentCollectionUri: collection.parentCollectionUri }),
     ...(collection.cosmikCollectionUri && { cosmikCollectionUri: collection.cosmikCollectionUri }),
     ...(collection.cosmikCollectionCid && { cosmikCollectionCid: collection.cosmikCollectionCid }),
     ...(collection.cosmikItems && { cosmikItems: collection.cosmikItems }),
