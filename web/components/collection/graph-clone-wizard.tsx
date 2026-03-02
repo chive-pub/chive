@@ -241,9 +241,10 @@ function StepExpand({
     if (!subgraphData) return new Map<number, SubgraphNode[]>();
     const grouped = new Map<number, SubgraphNode[]>();
     for (const node of subgraphData.nodes) {
-      const existing = grouped.get(node.depth) ?? [];
+      const d = node.depth ?? 0;
+      const existing = grouped.get(d) ?? [];
       existing.push(node);
-      grouped.set(node.depth, existing);
+      grouped.set(d, existing);
     }
     return grouped;
   }, [subgraphData]);
@@ -795,6 +796,7 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
     setCuratedNodes(
       subgraphData.nodes.map((node) => ({
         ...node,
+        depth: node.depth ?? 0,
         selected: true,
         note: '',
         noteExpanded: false,

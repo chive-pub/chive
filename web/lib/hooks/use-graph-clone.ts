@@ -64,6 +64,8 @@ export interface SubgraphNode {
   kind: string;
   /** Node subkind (field, institution, etc.) */
   subkind?: string;
+  /** Hop distance from root (0 = root node) */
+  depth?: number;
   /** Optional node metadata */
   metadata?: Record<string, unknown>;
 }

@@ -35,6 +35,7 @@ export interface CollectionItemFormData {
     kind?: string;
     description?: string;
     isPersonal?: boolean;
+    [key: string]: string | string[] | boolean | undefined;
   };
 }
 
