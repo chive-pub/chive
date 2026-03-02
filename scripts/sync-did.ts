@@ -71,26 +71,37 @@ interface ListRecordsRecord {
   value: Record<string, unknown>;
 }
 
-async function listChiveRecords(pdsUrl: string, did: string): Promise<ListRecordsRecord[]> {
+async function listRecordsForCollection(
+  pdsUrl: string,
+  did: string,
+  collection: string
+): Promise<ListRecordsRecord[]> {
   const agent = new AtpAgent({ service: pdsUrl });
   const records: ListRecordsRecord[] = [];
 
   try {
-    const response = await agent.com.atproto.repo.listRecords({
-      repo: did,
-      collection: 'pub.chive.eprint.submission',
-      limit: 100,
-    });
-
-    for (const record of response.data.records) {
-      records.push({
-        uri: record.uri,
-        cid: record.cid,
-        value: record.value as Record<string, unknown>,
+    let cursor: string | undefined;
+    while (true) {
+      const response = await agent.com.atproto.repo.listRecords({
+        repo: did,
+        collection,
+        limit: 100,
+        cursor,
       });
+
+      for (const record of response.data.records) {
+        records.push({
+          uri: record.uri,
+          cid: record.cid,
+          value: record.value as Record<string, unknown>,
+        });
+      }
+
+      if (!response.data.cursor || response.data.records.length === 0) break;
+      cursor = response.data.cursor;
     }
   } catch (error) {
-    console.error(`Failed to list records for ${did}:`, error);
+    console.error(`Failed to list ${collection} for ${did}:`, error);
   }
 
   return records;
@@ -223,22 +234,22 @@ Example:
     }
     console.log(`  📍 PDS: ${pdsUrl}`);
 
-    // List records
-    const records = await listChiveRecords(pdsUrl, did);
-    console.log(`  📄 Found ${records.length} record(s)`);
+    // Index eprints
+    const eprintRecords = await listRecordsForCollection(
+      pdsUrl,
+      did,
+      'pub.chive.eprint.submission'
+    );
+    console.log(`  📄 Found ${eprintRecords.length} eprint(s)`);
 
-    // Index each record
-    for (const record of records) {
+    for (const record of eprintRecords) {
       try {
-        // Transform PDS record to Eprint model
         const eprint = transformPDSRecord(record.value, record.uri as AtUri, record.cid as CID);
-
-        // Convert to StoredEprint (resolves field labels from Neo4j)
         const storedEprint = await toStoredEprint(eprint, pdsUrl, nodeLookup);
         const result = await eprintsRepository.store(storedEprint);
 
         if (result.ok) {
-          console.log(`  ✅ Indexed: ${eprint.title}`);
+          console.log(`  ✅ Indexed eprint: ${eprint.title}`);
           totalIndexed++;
         } else {
           console.log(`  ⚠️  Failed: ${result.error.message}`);
@@ -247,6 +258,184 @@ Example:
       } catch (error) {
         console.error(
           `  ❌ Failed to index ${record.uri}:`,
+          error instanceof Error ? error.message : error
+        );
+        totalFailed++;
+      }
+    }
+
+    // Index collections (graph nodes with subkind=collection)
+    const nodeRecords = await listRecordsForCollection(pdsUrl, did, 'pub.chive.graph.node');
+    const collectionNodes = nodeRecords.filter((r) => r.value.subkind === 'collection');
+    console.log(`  📂 Found ${collectionNodes.length} collection(s)`);
+
+    for (const record of collectionNodes) {
+      try {
+        const ownerDid = (record.uri as string).split('/')[2];
+        const value = record.value;
+        const visibility =
+          value.metadata &&
+          typeof value.metadata === 'object' &&
+          'visibility' in (value.metadata as Record<string, unknown>) &&
+          (value.metadata as Record<string, unknown>).visibility === 'public'
+            ? 'public'
+            : 'private';
+        const tags =
+          value.metadata &&
+          typeof value.metadata === 'object' &&
+          'tags' in (value.metadata as Record<string, unknown>) &&
+          Array.isArray((value.metadata as Record<string, unknown>).tags)
+            ? (value.metadata as Record<string, unknown>).tags
+            : [];
+
+        await pool.query(
+          `INSERT INTO collections_index (
+            uri, cid, owner_did, label, description, visibility, tags,
+            created_at, pds_url, indexed_at, last_synced_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, NOW(), NOW())
+          ON CONFLICT (uri) DO UPDATE SET
+            cid = EXCLUDED.cid,
+            label = EXCLUDED.label,
+            description = EXCLUDED.description,
+            visibility = EXCLUDED.visibility,
+            tags = EXCLUDED.tags,
+            updated_at = NOW(),
+            last_synced_at = NOW()`,
+          [
+            record.uri,
+            record.cid,
+            ownerDid,
+            value.label as string,
+            (value.description as string) ?? null,
+            visibility,
+            JSON.stringify(tags),
+            value.createdAt ? new Date(value.createdAt as string) : new Date(),
+            pdsUrl,
+          ]
+        );
+        console.log(`  ✅ Indexed collection: ${value.label}`);
+        totalIndexed++;
+      } catch (error) {
+        console.error(
+          `  ❌ Failed to index collection ${record.uri}:`,
+          error instanceof Error ? error.message : error
+        );
+        totalFailed++;
+      }
+    }
+
+    // Index entity links (annotation.entityLink)
+    const entityLinkRecords = await listRecordsForCollection(
+      pdsUrl,
+      did,
+      'pub.chive.annotation.entityLink'
+    );
+    console.log(`  🔗 Found ${entityLinkRecords.length} entity link(s)`);
+
+    for (const record of entityLinkRecords) {
+      try {
+        const ownerDid = (record.uri as string).split('/')[2];
+        const value = record.value;
+        const target = value.target as Record<string, unknown> | null;
+        const anchor = target ? JSON.stringify(target) : null;
+        const pageNumber =
+          (target?.refinedBy as Record<string, unknown> | undefined)?.pageNumber ?? null;
+
+        const linkedEntity = value.linkedEntity as Record<string, unknown>;
+        const entityType = (linkedEntity?.type as string | undefined) ?? 'unknown';
+        const entityData = JSON.stringify(linkedEntity?.data ?? linkedEntity);
+        const entityLabel = (linkedEntity?.label as string | undefined) ?? '';
+        const confidence = value.confidence as number | undefined;
+
+        await pool.query(
+          `INSERT INTO entity_links_index (
+            uri, cid, eprint_uri, creator_did, anchor, page_number,
+            entity_type, entity_data, entity_label, confidence,
+            created_at, pds_url, indexed_at, last_synced_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+          ON CONFLICT (uri) DO UPDATE SET
+            cid = EXCLUDED.cid,
+            anchor = EXCLUDED.anchor,
+            page_number = EXCLUDED.page_number,
+            entity_type = EXCLUDED.entity_type,
+            entity_data = EXCLUDED.entity_data,
+            entity_label = EXCLUDED.entity_label,
+            confidence = EXCLUDED.confidence,
+            last_synced_at = NOW()`,
+          [
+            record.uri,
+            record.cid,
+            value.eprintUri as string,
+            ownerDid,
+            anchor,
+            pageNumber,
+            entityType,
+            entityData,
+            entityLabel,
+            confidence ?? null,
+            value.createdAt ? new Date(value.createdAt as string) : new Date(),
+            pdsUrl,
+          ]
+        );
+        console.log(`  ✅ Indexed entity link: ${entityType} "${entityLabel}" ${record.uri}`);
+        totalIndexed++;
+      } catch (error) {
+        console.error(
+          `  ❌ Failed to index entity link ${record.uri}:`,
+          error instanceof Error ? error.message : error
+        );
+        totalFailed++;
+      }
+    }
+
+    // Index collection edges (contains, subcollection-of)
+    const edgeRecords = await listRecordsForCollection(pdsUrl, did, 'pub.chive.graph.edge');
+    const collectionEdges = edgeRecords.filter(
+      (r) => r.value.relationSlug === 'contains' || r.value.relationSlug === 'subcollection-of'
+    );
+    console.log(`  🔗 Found ${collectionEdges.length} collection edge(s)`);
+
+    for (const record of collectionEdges) {
+      try {
+        const ownerDid = (record.uri as string).split('/')[2];
+        const value = record.value;
+        const edgeLabel =
+          value.metadata &&
+          typeof value.metadata === 'object' &&
+          'label' in (value.metadata as Record<string, unknown>)
+            ? (value.metadata as Record<string, unknown>).label
+            : null;
+
+        await pool.query(
+          `INSERT INTO collection_edges_index (
+            uri, cid, owner_did, source_uri, target_uri, relation_slug,
+            weight, label, created_at, pds_url, indexed_at, last_synced_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+          ON CONFLICT (uri) DO UPDATE SET
+            cid = EXCLUDED.cid,
+            relation_slug = EXCLUDED.relation_slug,
+            weight = EXCLUDED.weight,
+            label = EXCLUDED.label,
+            updated_at = NOW(),
+            last_synced_at = NOW()`,
+          [
+            record.uri,
+            record.cid,
+            ownerDid,
+            value.sourceUri as string,
+            value.targetUri as string,
+            value.relationSlug as string,
+            (value.weight as number) ?? null,
+            typeof edgeLabel === 'string' ? edgeLabel : null,
+            value.createdAt ? new Date(value.createdAt as string) : new Date(),
+            pdsUrl,
+          ]
+        );
+        console.log(`  ✅ Indexed edge: ${value.relationSlug} ${record.uri}`);
+        totalIndexed++;
+      } catch (error) {
+        console.error(
+          `  ❌ Failed to index edge ${record.uri}:`,
           error instanceof Error ? error.message : error
         );
         totalFailed++;
