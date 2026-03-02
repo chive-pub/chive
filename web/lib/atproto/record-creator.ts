@@ -2351,6 +2351,1785 @@ export async function createRelatedWorkRecord(
 }
 
 // =============================================================================
+// COLLECTION NODE CRUD
+// =============================================================================
+
+/**
+ * Collection node record as stored in ATProto.
+ *
+ * @remarks
+ * Collections are graph nodes with kind='object' and subkind='collection'.
+ * They live in the user's PDS and are indexed by Chive from the firehose.
+ */
+export interface CollectionNodeRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.graph.node';
+  id: string;
+  kind: 'object';
+  subkind: 'collection';
+  label: string;
+  description?: string;
+  metadata: {
+    visibility: 'public' | 'unlisted' | 'private';
+    itemOrder: string[];
+    enableCosmikMirror?: boolean;
+    [key: string]: unknown;
+  };
+  status: 'established';
+  createdAt: string;
+}
+
+/**
+ * Input for creating a collection node.
+ */
+export interface CreateCollectionNodeInput {
+  /** Display name of the collection */
+  name: string;
+  /** Optional description */
+  description?: string;
+  /** Visibility setting */
+  visibility: 'public' | 'unlisted' | 'private';
+  /** Optional tags for categorization */
+  tags?: string[];
+  /** Whether to mirror to Cosmik */
+  enableCosmikMirror?: boolean;
+}
+
+/**
+ * Create a collection node record in the user's PDS.
+ *
+ * @remarks
+ * Collections are personal graph nodes with kind='object' and subkind='collection'.
+ * The record is stored in the user's PDS and will be indexed by Chive
+ * when it appears on the firehose.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Collection data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record creation fails
+ *
+ * @example
+ * ```typescript
+ * const result = await createCollectionNode(agent, {
+ *   name: 'Reading List: NLP',
+ *   description: 'Papers on natural language processing',
+ *   visibility: 'public',
+ *   tags: ['nlp', 'machine-learning'],
+ * });
+ * ```
+ */
+export async function createCollectionNode(
+  agent: Agent,
+  input: CreateCollectionNodeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: CollectionNodeRecord = {
+    $type: 'pub.chive.graph.node',
+    id,
+    kind: 'object',
+    subkind: 'collection',
+    label: input.name,
+    metadata: {
+      visibility: input.visibility,
+      itemOrder: [],
+    },
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.description) {
+    record.description = input.description;
+  }
+  if (input.tags && input.tags.length > 0) {
+    record.metadata.tags = input.tags;
+  }
+  if (input.enableCosmikMirror !== undefined) {
+    record.metadata.enableCosmikMirror = input.enableCosmikMirror;
+  }
+
+  recordLogger.info('Creating collection node', { name: input.name });
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Input for updating a collection node.
+ */
+export interface UpdateCollectionNodeInput {
+  /** AT-URI of the collection node */
+  uri: string;
+  /** Updated name */
+  name?: string;
+  /** Updated description */
+  description?: string;
+  /** Updated visibility */
+  visibility?: 'public' | 'unlisted' | 'private';
+  /** Updated tags */
+  tags?: string[];
+}
+
+/**
+ * Update a collection node record in the user's PDS.
+ *
+ * @remarks
+ * Uses putRecord to update the graph node. Preserves existing fields
+ * that are not specified in the input.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Updated collection data
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * const result = await updateCollectionNode(agent, {
+ *   uri: 'at://did:plc:abc/pub.chive.graph.node/uuid-123',
+ *   name: 'Updated Reading List',
+ *   visibility: 'unlisted',
+ * });
+ * ```
+ */
+export async function updateCollectionNode(
+  agent: Agent,
+  input: UpdateCollectionNodeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(input.uri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  // Fetch existing record to preserve unchanged fields
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+
+  const record: CollectionNodeRecord = {
+    ...existing,
+    label: input.name ?? existing.label,
+    metadata: {
+      ...existing.metadata,
+      visibility: input.visibility ?? existing.metadata.visibility,
+    },
+  };
+
+  if (input.description !== undefined) {
+    record.description = input.description;
+  }
+  if (input.tags !== undefined) {
+    record.metadata.tags = input.tags;
+  }
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Options for deleting a collection node.
+ */
+export interface DeleteCollectionOptions {
+  /** Whether to re-parent subcollections to the deleted collection's parent */
+  cascadeSubcollections?: boolean;
+}
+
+/**
+ * Delete a collection node and its associated edges from the user's PDS.
+ *
+ * @remarks
+ * Cascade logic:
+ * 1. Queries subcollections and parent of this collection
+ * 2. Lists all edges from this collection (CONTAINS and SUBCOLLECTION_OF)
+ * 3. Deletes SUBCOLLECTION_OF edges from subcollections to this collection
+ * 4. If a parent exists and cascadeSubcollections is true, creates new
+ *    SUBCOLLECTION_OF edges from each subcollection to the parent
+ * 5. Deletes all CONTAINS edges from this collection
+ * 6. Deletes the SUBCOLLECTION_OF edge from this collection to its parent
+ * 7. Deletes the collection node itself
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param uri - AT-URI of the collection node to delete
+ * @param options - Deletion options
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * await deleteCollectionNode(agent, collectionUri, {
+ *   cascadeSubcollections: true,
+ * });
+ * ```
+ */
+export async function deleteCollectionNode(
+  agent: Agent,
+  uri: string,
+  options?: DeleteCollectionOptions
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(uri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot delete records belonging to other users');
+  }
+
+  // List all edges where this collection is the source (CONTAINS and SUBCOLLECTION_OF edges)
+  const edgesFromThis = await listPersonalEdgesForSource(agent, did, uri);
+
+  // List all edges where this collection is the target (SUBCOLLECTION_OF from children)
+  const edgesToThis = await listPersonalEdgesForTarget(agent, did, uri);
+
+  // Identify subcollection edges (edges where children have SUBCOLLECTION_OF pointing to this)
+  const subcollectionEdgesFromChildren = edgesToThis.filter(
+    (e) => e.relationSlug === 'subcollection-of'
+  );
+
+  // Identify the SUBCOLLECTION_OF edge from this collection to its parent
+  const parentEdge = edgesFromThis.find((e) => e.relationSlug === 'subcollection-of');
+
+  // Step 1: Delete SUBCOLLECTION_OF edges from subcollections to this collection
+  for (const edge of subcollectionEdgesFromChildren) {
+    await deleteRecord(agent, edge.uri);
+  }
+
+  // Step 2: If parent exists and cascade is enabled, re-parent subcollections
+  if (parentEdge && options?.cascadeSubcollections) {
+    const parentUri = parentEdge.targetUri;
+    for (const edge of subcollectionEdgesFromChildren) {
+      await addSubcollection(agent, {
+        childCollectionUri: edge.sourceUri,
+        parentCollectionUri: parentUri,
+      });
+    }
+  }
+
+  // Step 3: Delete all CONTAINS edges from this collection
+  const containsEdges = edgesFromThis.filter((e) => e.relationSlug === 'contains');
+  for (const edge of containsEdges) {
+    await deleteRecord(agent, edge.uri);
+  }
+
+  // Step 4: Delete SUBCOLLECTION_OF edge from this collection to parent
+  if (parentEdge) {
+    await deleteRecord(agent, parentEdge.uri);
+  }
+
+  // Step 5: Delete the collection node itself
+  await deleteRecord(agent, uri);
+}
+
+// =============================================================================
+// COLLECTION EDGE OPERATIONS
+// =============================================================================
+
+/**
+ * Input for adding an item to a collection.
+ *
+ * @remarks
+ * All collection items are personal graph nodes. The `itemUri` must be the
+ * AT-URI of a `pub.chive.graph.node` record in the user's PDS.
+ */
+export interface AddItemToCollectionInput {
+  /** AT-URI of the collection */
+  collectionUri: string;
+  /** AT-URI of the personal graph node to add */
+  itemUri: string;
+  /** User-entered display label for this item */
+  label?: string;
+  /** Optional note about why this item is in the collection */
+  note?: string;
+  /** Optional sort order within the collection */
+  order?: number;
+}
+
+/**
+ * Add an item to a collection by creating a CONTAINS edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Item addition data
+ * @returns Created edge record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await addItemToCollection(agent, {
+ *   collectionUri: 'at://did:plc:abc/pub.chive.graph.node/uuid-123',
+ *   itemUri: 'at://did:plc:xyz/pub.chive.eprint.submission/tid-456',
+ *   itemType: 'eprint',
+ *   note: 'Foundational transformer paper',
+ * });
+ * ```
+ */
+export async function addItemToCollection(
+  agent: Agent,
+  input: AddItemToCollectionInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalEdgeRecord = {
+    $type: 'pub.chive.graph.edge',
+    id,
+    sourceUri: input.collectionUri,
+    targetUri: input.itemUri,
+    relationSlug: 'contains',
+    metadata: {} as Record<string, unknown>,
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.label) {
+    record.metadata.label = input.label;
+  }
+  if (input.note) {
+    record.metadata.note = input.note;
+  }
+  if (input.order !== undefined) {
+    record.metadata.order = input.order;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Remove an item from a collection by deleting the CONTAINS edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the CONTAINS edge to delete
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * await removeItemFromCollection(agent, edgeUri);
+ * ```
+ */
+export async function removeItemFromCollection(agent: Agent, edgeUri: string): Promise<void> {
+  await deleteRecord(agent, edgeUri);
+}
+
+/**
+ * Input for adding a subcollection relationship.
+ */
+export interface AddSubcollectionInput {
+  /** AT-URI of the child collection */
+  childCollectionUri: string;
+  /** AT-URI of the parent collection */
+  parentCollectionUri: string;
+}
+
+/**
+ * Add a subcollection relationship by creating a SUBCOLLECTION_OF edge.
+ *
+ * @remarks
+ * Creates a 'subcollection-of' edge from the child to the parent.
+ * The child is the source, the parent is the target.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Subcollection relationship data
+ * @returns Created edge record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await addSubcollection(agent, {
+ *   childCollectionUri: 'at://did:plc:abc/pub.chive.graph.node/child-uuid',
+ *   parentCollectionUri: 'at://did:plc:abc/pub.chive.graph.node/parent-uuid',
+ * });
+ * ```
+ */
+export async function addSubcollection(
+  agent: Agent,
+  input: AddSubcollectionInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalEdgeRecord = {
+    $type: 'pub.chive.graph.edge',
+    id,
+    sourceUri: input.childCollectionUri,
+    targetUri: input.parentCollectionUri,
+    relationSlug: 'subcollection-of',
+    metadata: {},
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Remove a subcollection relationship by deleting the SUBCOLLECTION_OF edge.
+ *
+ * @remarks
+ * Only deletes the edge; the subcollection node itself is not removed.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the SUBCOLLECTION_OF edge to delete
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * await removeSubcollection(agent, edgeUri);
+ * ```
+ */
+export async function removeSubcollection(agent: Agent, edgeUri: string): Promise<void> {
+  await deleteRecord(agent, edgeUri);
+}
+
+/**
+ * Input for moving a subcollection to a new parent.
+ */
+export interface MoveSubcollectionInput {
+  /** AT-URI of the subcollection being moved */
+  subcollectionUri: string;
+  /** AT-URI of the old SUBCOLLECTION_OF edge to delete */
+  oldParentEdgeUri: string;
+  /** AT-URI of the new parent collection */
+  newParentUri: string;
+}
+
+/**
+ * Move a subcollection from one parent to another.
+ *
+ * @remarks
+ * Deletes the old SUBCOLLECTION_OF edge and creates a new one to the new parent.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Move operation data
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * await moveSubcollection(agent, {
+ *   subcollectionUri: childUri,
+ *   oldParentEdgeUri: existingEdgeUri,
+ *   newParentUri: newParentCollectionUri,
+ * });
+ * ```
+ */
+export async function moveSubcollection(
+  agent: Agent,
+  input: MoveSubcollectionInput
+): Promise<void> {
+  // Delete old parent edge
+  await deleteRecord(agent, input.oldParentEdgeUri);
+
+  // Create new parent edge
+  await addSubcollection(agent, {
+    childCollectionUri: input.subcollectionUri,
+    parentCollectionUri: input.newParentUri,
+  });
+}
+
+/**
+ * Update the note on a collection item edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the edge to update
+ * @param note - New note text
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * const result = await updateEdgeNote(agent, edgeUri, 'Updated annotation');
+ * ```
+ */
+export async function updateEdgeNote(
+  agent: Agent,
+  edgeUri: string,
+  note: string
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(edgeUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as PersonalEdgeRecord;
+
+  const record: PersonalEdgeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      note,
+    },
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Update metadata fields (label, note) on a collection item edge.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edgeUri - AT-URI of the edge to update
+ * @param updates - Fields to update
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ */
+export async function updateEdgeMetadata(
+  agent: Agent,
+  edgeUri: string,
+  updates: { label?: string; note?: string }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(edgeUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as PersonalEdgeRecord;
+
+  const record: PersonalEdgeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      ...(updates.label !== undefined && { label: updates.label }),
+      ...(updates.note !== undefined && { note: updates.note }),
+    },
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Reorder items within a collection by updating the node's itemOrder metadata.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param collectionUri - AT-URI of the collection node
+ * @param itemOrder - Ordered array of item AT-URIs
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ *
+ * @example
+ * ```typescript
+ * const result = await reorderCollectionItems(agent, collectionUri, [
+ *   'at://did:plc:abc/pub.chive.eprint.submission/item-1',
+ *   'at://did:plc:abc/pub.chive.eprint.submission/item-2',
+ * ]);
+ * ```
+ */
+export async function reorderCollectionItems(
+  agent: Agent,
+  collectionUri: string,
+  itemOrder: string[]
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(collectionUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+
+  const record: CollectionNodeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      itemOrder,
+    },
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// PERSONAL GRAPH OPERATIONS
+// =============================================================================
+
+/**
+ * Personal graph edge record as stored in ATProto.
+ */
+export interface PersonalEdgeRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.graph.edge';
+  id: string;
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
+  metadata: Record<string, unknown>;
+  status: 'established';
+  createdAt: string;
+}
+
+/**
+ * Personal graph node record as stored in ATProto.
+ */
+export interface PersonalNodeRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.graph.node';
+  id: string;
+  kind: string;
+  subkind: string;
+  label: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  status: 'established';
+  createdAt: string;
+}
+
+/**
+ * Input for creating a personal graph node.
+ */
+export interface CreatePersonalNodeInput {
+  /** Node kind (e.g., 'object', 'type') */
+  kind: string;
+  /** Node subkind (e.g., 'concept', 'reading-list') */
+  subkind: string;
+  /** Display label */
+  label: string;
+  /** Optional description */
+  description?: string;
+  /** Optional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Update a personal graph node's label and/or description in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param nodeUri - AT-URI of the node to update
+ * @param updates - Fields to update
+ * @returns Updated record result
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if record doesn't belong to user
+ */
+export async function updatePersonalNode(
+  agent: Agent,
+  nodeUri: string,
+  updates: { label?: string; description?: string }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(nodeUri);
+  if (!parsed || parsed.did !== did) {
+    throw new Error('Cannot update records belonging to other users');
+  }
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as PersonalNodeRecord;
+
+  const record: PersonalNodeRecord = {
+    ...existing,
+    ...(updates.label !== undefined && { label: updates.label }),
+    ...(updates.description !== undefined && { description: updates.description }),
+  };
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Create a personal graph node in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Node data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await createPersonalNode(agent, {
+ *   kind: 'object',
+ *   subkind: 'concept',
+ *   label: 'Attention Mechanism',
+ *   description: 'Self-attention and variants',
+ * });
+ * ```
+ */
+export async function createPersonalNode(
+  agent: Agent,
+  input: CreatePersonalNodeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalNodeRecord = {
+    $type: 'pub.chive.graph.node',
+    id,
+    kind: input.kind,
+    subkind: input.subkind,
+    label: input.label,
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.description) {
+    record.description = input.description;
+  }
+  if (input.metadata) {
+    record.metadata = input.metadata;
+  }
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Input for creating a personal graph edge.
+ */
+export interface CreatePersonalEdgeInput {
+  /** AT-URI of the source node */
+  sourceUri: string;
+  /** AT-URI of the target node */
+  targetUri: string;
+  /** Relation type slug (e.g., 'related-to', 'depends-on') */
+  relationSlug: string;
+  /** Optional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Create a personal graph edge in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Edge data
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await createPersonalEdge(agent, {
+ *   sourceUri: 'at://did:plc:abc/pub.chive.graph.node/node-1',
+ *   targetUri: 'at://did:plc:abc/pub.chive.graph.node/node-2',
+ *   relationSlug: 'related-to',
+ * });
+ * ```
+ */
+export async function createPersonalEdge(
+  agent: Agent,
+  input: CreatePersonalEdgeInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const id = crypto.randomUUID();
+
+  const record: PersonalEdgeRecord = {
+    $type: 'pub.chive.graph.edge',
+    id,
+    sourceUri: input.sourceUri,
+    targetUri: input.targetUri,
+    relationSlug: input.relationSlug,
+    metadata: input.metadata ?? {},
+    status: 'established',
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.graph.edge',
+    rkey: id,
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// PROFILE CONFIGURATION
+// =============================================================================
+
+/**
+ * Profile config record as stored in ATProto.
+ */
+export interface ProfileConfigRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.actor.profileConfig';
+  profileType?: string;
+  sections: Array<{
+    id: string;
+    visible: boolean;
+    order: number;
+  }>;
+  featuredCollectionUri?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Input for updating profile configuration.
+ */
+export interface UpdateProfileConfigInput {
+  /** Profile type (e.g., 'individual', 'lab', 'organization') */
+  profileType?: string;
+  /** Ordered list of profile sections with visibility */
+  sections: Array<{
+    id: string;
+    visible: boolean;
+    order: number;
+  }>;
+  /** AT-URI of the featured collection on the profile */
+  featuredCollectionUri?: string;
+}
+
+/**
+ * Create or update the user's profile configuration in their PDS.
+ *
+ * @remarks
+ * Uses putRecord with 'self' as rkey (ATProto convention for singleton records).
+ * Controls how the user's profile page is rendered, including section visibility,
+ * ordering, and which collection to feature prominently.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Profile configuration data
+ * @returns Created/updated record result
+ *
+ * @throws Error if agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const result = await updateProfileConfig(agent, {
+ *   profileType: 'individual',
+ *   sections: [
+ *     { id: 'publications', visible: true, order: 0 },
+ *     { id: 'collections', visible: true, order: 1 },
+ *     { id: 'endorsements', visible: false, order: 2 },
+ *   ],
+ *   featuredCollectionUri: 'at://did:plc:abc/pub.chive.graph.node/uuid-123',
+ * });
+ * ```
+ */
+export async function updateProfileConfig(
+  agent: Agent,
+  input: UpdateProfileConfigInput
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: ProfileConfigRecord = {
+    $type: 'pub.chive.actor.profileConfig',
+    sections: input.sections,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (input.profileType) {
+    record.profileType = input.profileType;
+  }
+  if (input.featuredCollectionUri) {
+    record.featuredCollectionUri = input.featuredCollectionUri;
+  }
+
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.actor.profileConfig',
+    rkey: 'self',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// COSMIK INTEGRATION
+// =============================================================================
+
+/**
+ * Maps Chive visibility to Semble's accessType values.
+ */
+function toCosmikAccessType(visibility: string): 'OPEN' | 'CLOSED' {
+  return visibility === 'private' ? 'CLOSED' : 'OPEN';
+}
+
+/**
+ * Semble URL metadata matching `network.cosmik.card#urlMetadata`.
+ *
+ * @remarks
+ * Semble requires `$type` on metadata objects for proper parsing. Confirmed
+ * by inspecting Semble's own card rewrites in the PDS.
+ *
+ * @see https://github.com/cosmik-network/semble
+ */
+export interface CosmikUrlMetadata {
+  $type: 'network.cosmik.card#urlMetadata';
+  title?: string;
+  description?: string;
+  author?: string;
+  siteName?: string;
+  type?: string;
+}
+
+/**
+ * Converts an AT-URI or bare DID to a Chive HTTP URL for Semble cards.
+ *
+ * @remarks
+ * Semble fetches card URLs to build previews. AT-URIs and bare DIDs are not
+ * fetchable, so we convert them to proper Chive web URLs.
+ */
+function toChiveUrl(itemUri: string, itemType?: string, subkind?: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://chive.pub';
+
+  // Author/person items: URI is a bare DID
+  if (itemType === 'author' || subkind === 'person') {
+    const did = itemUri.startsWith('did:') ? itemUri : itemUri.split('/')[2];
+    return `${origin}/authors/${did}`;
+  }
+
+  // Eprints: URI is an AT-URI for an eprint submission
+  if (itemType === 'eprint' || subkind === 'eprint') {
+    return `${origin}/eprints/${encodeURIComponent(itemUri)}`;
+  }
+
+  // Collections
+  if (subkind === 'collection') {
+    return `${origin}/collections/${encodeURIComponent(itemUri)}`;
+  }
+
+  // Default: generic graph node link
+  return `${origin}/graph?node=${encodeURIComponent(itemUri)}`;
+}
+
+/**
+ * Cosmik card record matching Semble's expected schema.
+ *
+ * @remarks
+ * Cards represent individual URLs with nested content blocks.
+ * Semble expects `type: 'URL'` (uppercase) and a `content` object.
+ *
+ * @see https://github.com/cosmik-network/semble
+ */
+export interface CosmikCardRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.card';
+  type: 'URL';
+  url: string;
+  content: {
+    $type: 'network.cosmik.card#urlContent';
+    url: string;
+    metadata?: CosmikUrlMetadata;
+  };
+  createdAt: string;
+}
+
+/**
+ * Item metadata from the collection wizard, used to build rich Semble card content.
+ */
+interface ItemMetadata {
+  subkind?: string;
+  description?: string;
+  authors?: string[];
+  handle?: string;
+  kind?: string;
+  avatarUrl?: string;
+  isPersonal?: boolean;
+}
+
+/**
+ * Builds typed Semble card metadata from a collection item's subkind and metadata.
+ *
+ * @param label - Display label for the item
+ * @param subkind - Node subkind (eprint, person, field, institution, event, concept, reference)
+ * @param metadata - Additional item metadata from the wizard
+ * @returns Typed UrlMetadata object for Semble
+ */
+function buildSembleCardMetadata(
+  label: string,
+  subkind?: string,
+  metadata?: ItemMetadata
+): CosmikUrlMetadata {
+  const result: CosmikUrlMetadata = {
+    $type: 'network.cosmik.card#urlMetadata',
+    title: label,
+    siteName: 'Chive',
+  };
+
+  switch (subkind) {
+    case 'eprint':
+      if (metadata?.authors?.length) {
+        result.author = metadata.authors.join(', ');
+      }
+      result.type = 'article';
+      break;
+    case 'field':
+      result.description = metadata?.description || 'Research field';
+      break;
+    case 'institution':
+      result.description = metadata?.description || 'Research institution';
+      break;
+    case 'event':
+      result.description = metadata?.description || 'Academic event';
+      break;
+    case 'concept':
+      result.description = metadata?.description || 'Concept';
+      break;
+    default:
+      if (metadata?.description) {
+        result.description = metadata.description;
+      }
+      break;
+  }
+
+  return result;
+}
+
+/**
+ * Cosmik collection record matching Semble's expected schema.
+ *
+ * @remarks
+ * Uses `name` (not `title`), `accessType` (not `visibility`), and does
+ * not embed items. Items are linked via separate collectionLink records.
+ */
+export interface CosmikCollectionRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.collection';
+  name: string;
+  description?: string;
+  accessType: 'OPEN' | 'CLOSED';
+  collaborators: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Cosmik collectionLink record matching Semble's expected schema.
+ *
+ * @remarks
+ * Links a card to a collection. Uses ATProto StrongRef format
+ * (`{ uri, cid }`) for both the card and collection references.
+ */
+export interface CosmikCollectionLinkRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.collectionLink';
+  card: { uri: string; cid: string };
+  collection: { uri: string; cid: string };
+  addedBy: string;
+  addedAt: string;
+  createdAt: string;
+}
+
+/**
+ * Mapping of a single Cosmik item's record URIs, stored in Chive node metadata.
+ */
+export interface CosmikItemMapping {
+  cardUri: string;
+  cardCid: string;
+  linkUri: string;
+  linkCid: string;
+}
+
+/**
+ * Create a Cosmik card record for a URL.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Card data
+ * @returns Created record result
+ *
+ * @internal
+ */
+export async function createCosmikCard(
+  agent: Agent,
+  input: {
+    url: string;
+    title?: string;
+    subkind?: string;
+    itemType?: string;
+    itemMetadata?: ItemMetadata;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const metadata = buildSembleCardMetadata(
+    input.title ?? input.url,
+    input.subkind,
+    input.itemMetadata
+  );
+
+  // Convert AT-URIs/DIDs to fetchable Chive HTTP URLs
+  const httpUrl = toChiveUrl(input.url, input.itemType, input.subkind);
+
+  const record: CosmikCardRecord = {
+    $type: 'network.cosmik.card',
+    type: 'URL',
+    url: httpUrl,
+    content: {
+      $type: 'network.cosmik.card#urlContent',
+      url: httpUrl,
+      metadata,
+    },
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.card',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Create a Cosmik collectionLink record linking a card to a collection.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Link data with StrongRefs
+ * @returns Created record result
+ *
+ * @internal
+ */
+export async function createCosmikCollectionLink(
+  agent: Agent,
+  input: {
+    cardUri: string;
+    cardCid: string;
+    collectionUri: string;
+    collectionCid: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const now = new Date().toISOString();
+
+  const record: CosmikCollectionLinkRecord = {
+    $type: 'network.cosmik.collectionLink',
+    card: { uri: input.cardUri, cid: input.cardCid },
+    collection: { uri: input.collectionUri, cid: input.collectionCid },
+    addedBy: did,
+    addedAt: now,
+    createdAt: now,
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.collectionLink',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Create a Cosmik mirror of a Chive collection using Semble's three-record model.
+ *
+ * @remarks
+ * Creates a `network.cosmik.collection` record, then for each item creates
+ * a `network.cosmik.card` and `network.cosmik.collectionLink`. Updates the
+ * Chive collection node's metadata with all Cosmik URIs for future sync.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Mirror data
+ * @returns Created Cosmik collection URI and item mappings
+ */
+export async function createCosmikMirror(
+  agent: Agent,
+  input: {
+    /** AT-URI of the Chive collection node */
+    collectionUri: string;
+    /** Display name for the Cosmik collection */
+    title: string;
+    /** Optional description */
+    description?: string;
+    /** Visibility setting */
+    visibility: 'public' | 'unlisted' | 'private';
+    /** Items to create cards for */
+    items: Array<{
+      /** URL or AT-URI of the item */
+      url: string;
+      /** Display title */
+      title?: string;
+      /** Node subkind for rich card metadata */
+      subkind?: string;
+      /** Item type from the wizard (eprint, author, graphNode) */
+      itemType?: string;
+      /** Additional metadata for rich card content */
+      metadata?: ItemMetadata;
+    }>;
+  }
+): Promise<{
+  cosmikCollectionUri: string;
+  cosmikCollectionCid: string;
+  cosmikItems: Record<string, CosmikItemMapping>;
+}> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  recordLogger.info('Creating Cosmik mirror', {
+    collectionUri: input.collectionUri,
+    itemCount: input.items.length,
+  });
+
+  const now = new Date().toISOString();
+
+  // Step 1: Create Cosmik collection record
+  const collectionRecord: CosmikCollectionRecord = {
+    $type: 'network.cosmik.collection',
+    name: input.title,
+    accessType: toCosmikAccessType(input.visibility),
+    collaborators: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (input.description) {
+    collectionRecord.description = input.description;
+  }
+
+  const collectionResponse = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.collection',
+    record: collectionRecord,
+  });
+
+  const cosmikCollectionUri = collectionResponse.data.uri;
+  const cosmikCollectionCid = collectionResponse.data.cid;
+
+  // Step 2: Create cards and links for each item
+  const cosmikItems: Record<string, CosmikItemMapping> = {};
+
+  for (const item of input.items) {
+    const card = await createCosmikCard(agent, {
+      url: item.url,
+      title: item.title,
+      subkind: item.subkind,
+      itemType: item.itemType,
+      itemMetadata: item.metadata,
+    });
+
+    const link = await createCosmikCollectionLink(agent, {
+      cardUri: card.uri,
+      cardCid: card.cid,
+      collectionUri: cosmikCollectionUri,
+      collectionCid: cosmikCollectionCid,
+    });
+
+    cosmikItems[item.url] = {
+      cardUri: card.uri,
+      cardCid: card.cid,
+      linkUri: link.uri,
+      linkCid: link.cid,
+    };
+  }
+
+  // Step 3: Update the Chive collection node's metadata with Cosmik URIs
+  const parsed = parseAtUri(input.collectionUri);
+  if (parsed && parsed.did === did) {
+    const existingResponse = await agent.com.atproto.repo.getRecord({
+      repo: did,
+      collection: 'pub.chive.graph.node',
+      rkey: parsed.rkey,
+    });
+
+    const existing = existingResponse.data.value as CollectionNodeRecord;
+
+    const updatedRecord: CollectionNodeRecord = {
+      ...existing,
+      metadata: {
+        ...existing.metadata,
+        cosmikCollectionUri,
+        cosmikCollectionCid,
+        cosmikItems,
+      },
+    };
+
+    await agent.com.atproto.repo.putRecord({
+      repo: did,
+      collection: 'pub.chive.graph.node',
+      rkey: parsed.rkey,
+      record: updatedRecord,
+    });
+  }
+
+  recordLogger.info('Cosmik mirror created', {
+    cosmikCollectionUri,
+    cardCount: Object.keys(cosmikItems).length,
+  });
+
+  return { cosmikCollectionUri, cosmikCollectionCid, cosmikItems };
+}
+
+/**
+ * Update a Cosmik collection record (name, description, accessType).
+ *
+ * @remarks
+ * Fetches the existing record, merges changes, and puts it back.
+ * Fire-and-forget: callers should wrap in try/catch.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param cosmikCollectionUri - AT-URI of the Cosmik collection
+ * @param changes - Fields to update
+ */
+export async function updateCosmikCollection(
+  agent: Agent,
+  cosmikCollectionUri: string,
+  changes: {
+    name?: string;
+    description?: string;
+    visibility?: string;
+  }
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(cosmikCollectionUri);
+  if (!parsed) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.collection',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CosmikCollectionRecord;
+
+  const updatedRecord: CosmikCollectionRecord = {
+    ...existing,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (changes.name !== undefined) updatedRecord.name = changes.name;
+  if (changes.description !== undefined) updatedRecord.description = changes.description;
+  if (changes.visibility !== undefined)
+    updatedRecord.accessType = toCosmikAccessType(changes.visibility);
+
+  await agent.com.atproto.repo.putRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.collection',
+    rkey: parsed.rkey,
+    record: updatedRecord,
+  });
+
+  recordLogger.info('Cosmik collection updated', { cosmikCollectionUri });
+}
+
+/**
+ * Delete an entire Cosmik mirror: all links, cards, and the collection.
+ *
+ * @remarks
+ * Best-effort deletion. Logs warnings for individual failures but continues.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param cosmikCollectionUri - AT-URI of the Cosmik collection
+ * @param cosmikItems - Mapping of item URLs to Cosmik record URIs
+ */
+export async function deleteCosmikMirror(
+  agent: Agent,
+  cosmikCollectionUri: string,
+  cosmikItems?: Record<string, CosmikItemMapping>
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  recordLogger.info('Deleting Cosmik mirror', { cosmikCollectionUri });
+
+  // Delete all links and cards first
+  if (cosmikItems) {
+    for (const [url, mapping] of Object.entries(cosmikItems)) {
+      try {
+        await deleteCosmikRecord(agent, mapping.linkUri);
+      } catch (err) {
+        recordLogger.warn('Failed to delete Cosmik link', { url, linkUri: mapping.linkUri, err });
+      }
+      try {
+        await deleteCosmikRecord(agent, mapping.cardUri);
+      } catch (err) {
+        recordLogger.warn('Failed to delete Cosmik card', { url, cardUri: mapping.cardUri, err });
+      }
+    }
+  }
+
+  // Delete the collection record
+  try {
+    await deleteCosmikRecord(agent, cosmikCollectionUri);
+  } catch (err) {
+    recordLogger.warn('Failed to delete Cosmik collection', { cosmikCollectionUri, err });
+  }
+
+  recordLogger.info('Cosmik mirror deleted', { cosmikCollectionUri });
+}
+
+/**
+ * Delete a single ATProto record by AT-URI.
+ *
+ * @internal
+ */
+async function deleteCosmikRecord(agent: Agent, uri: string): Promise<void> {
+  const parsed = parseAtUri(uri);
+  if (!parsed) return;
+
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: parsed.collection,
+    rkey: parsed.rkey,
+  });
+}
+
+/**
+ * Add a single item to an existing Cosmik mirror.
+ *
+ * @remarks
+ * Creates a card and collectionLink, then updates the Chive node's
+ * `cosmikItems` metadata with the new mapping.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Item and collection data
+ * @returns The created card and link URIs
+ */
+export async function addCosmikItem(
+  agent: Agent,
+  input: {
+    chiveCollectionUri: string;
+    cosmikCollectionUri: string;
+    cosmikCollectionCid: string;
+    url: string;
+    title?: string;
+    subkind?: string;
+    itemType?: string;
+    itemMetadata?: ItemMetadata;
+  }
+): Promise<CosmikItemMapping> {
+  const card = await createCosmikCard(agent, {
+    url: input.url,
+    title: input.title,
+    subkind: input.subkind,
+    itemType: input.itemType,
+    itemMetadata: input.itemMetadata,
+  });
+
+  const link = await createCosmikCollectionLink(agent, {
+    cardUri: card.uri,
+    cardCid: card.cid,
+    collectionUri: input.cosmikCollectionUri,
+    collectionCid: input.cosmikCollectionCid,
+  });
+
+  const mapping: CosmikItemMapping = {
+    cardUri: card.uri,
+    cardCid: card.cid,
+    linkUri: link.uri,
+    linkCid: link.cid,
+  };
+
+  // Update node metadata with the new item mapping
+  await updateCosmikItemsMetadata(agent, input.chiveCollectionUri, {
+    [input.url]: mapping,
+  });
+
+  return mapping;
+}
+
+/**
+ * Remove a single item from a Cosmik mirror.
+ *
+ * @remarks
+ * Deletes the collectionLink and card records, then removes the entry
+ * from the Chive node's `cosmikItems` metadata.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - URIs of the records to delete
+ */
+export async function removeCosmikItem(
+  agent: Agent,
+  input: {
+    chiveCollectionUri: string;
+    url: string;
+    cardUri: string;
+    linkUri: string;
+  }
+): Promise<void> {
+  // Delete link first, then card
+  try {
+    await deleteCosmikRecord(agent, input.linkUri);
+  } catch (err) {
+    recordLogger.warn('Failed to delete Cosmik link', { linkUri: input.linkUri, err });
+  }
+  try {
+    await deleteCosmikRecord(agent, input.cardUri);
+  } catch (err) {
+    recordLogger.warn('Failed to delete Cosmik card', { cardUri: input.cardUri, err });
+  }
+
+  // Remove from node metadata
+  await removeCosmikItemMetadata(agent, input.chiveCollectionUri, input.url);
+}
+
+/**
+ * Merge new Cosmik item mappings into the Chive node's metadata.
+ *
+ * @internal
+ */
+async function updateCosmikItemsMetadata(
+  agent: Agent,
+  chiveCollectionUri: string,
+  newItems: Record<string, CosmikItemMapping>
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) return;
+
+  const parsed = parseAtUri(chiveCollectionUri);
+  if (!parsed || parsed.did !== did) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+  const currentItems = (existing.metadata.cosmikItems ?? {}) as Record<string, CosmikItemMapping>;
+
+  const updatedRecord: CollectionNodeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      cosmikItems: { ...currentItems, ...newItems },
+    },
+  };
+
+  await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record: updatedRecord,
+  });
+}
+
+/**
+ * Remove a single item's Cosmik mapping from the Chive node's metadata.
+ *
+ * @internal
+ */
+async function removeCosmikItemMetadata(
+  agent: Agent,
+  chiveCollectionUri: string,
+  url: string
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) return;
+
+  const parsed = parseAtUri(chiveCollectionUri);
+  if (!parsed || parsed.did !== did) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CollectionNodeRecord;
+  const currentItems = {
+    ...((existing.metadata.cosmikItems ?? {}) as Record<string, CosmikItemMapping>),
+  };
+  delete currentItems[url];
+
+  const updatedRecord: CollectionNodeRecord = {
+    ...existing,
+    metadata: {
+      ...existing.metadata,
+      cosmikItems: currentItems,
+    },
+  };
+
+  await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record: updatedRecord,
+  });
+}
+
+// =============================================================================
 // CHANGELOG RECORDS
 // =============================================================================
 
@@ -2445,4 +4224,96 @@ export async function createChangelogRecord(
     uri: response.data.uri,
     cid: response.data.cid,
   };
+}
+
+// =============================================================================
+// INTERNAL HELPERS (for collection cascade operations)
+// =============================================================================
+
+/**
+ * Minimal edge representation for cascade operations.
+ */
+interface MinimalEdge {
+  uri: string;
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
+}
+
+/**
+ * Lists personal graph edges where the given URI is the source.
+ *
+ * @remarks
+ * Uses listRecords to scan the user's edge collection. This is used
+ * internally for cascade deletion of collection nodes.
+ */
+async function listPersonalEdgesForSource(
+  agent: Agent,
+  did: string,
+  sourceUri: string
+): Promise<MinimalEdge[]> {
+  const edges: MinimalEdge[] = [];
+
+  try {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'pub.chive.graph.edge',
+      limit: 100,
+    });
+
+    for (const item of response.data.records) {
+      const record = item.value as PersonalEdgeRecord;
+      if (record.sourceUri === sourceUri) {
+        edges.push({
+          uri: item.uri,
+          sourceUri: record.sourceUri,
+          targetUri: record.targetUri,
+          relationSlug: record.relationSlug,
+        });
+      }
+    }
+  } catch {
+    recordLogger.warn('Failed to list edges for source', { sourceUri });
+  }
+
+  return edges;
+}
+
+/**
+ * Lists personal graph edges where the given URI is the target.
+ *
+ * @remarks
+ * Uses listRecords to scan the user's edge collection. This is used
+ * internally for cascade deletion of collection nodes.
+ */
+async function listPersonalEdgesForTarget(
+  agent: Agent,
+  did: string,
+  targetUri: string
+): Promise<MinimalEdge[]> {
+  const edges: MinimalEdge[] = [];
+
+  try {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'pub.chive.graph.edge',
+      limit: 100,
+    });
+
+    for (const item of response.data.records) {
+      const record = item.value as PersonalEdgeRecord;
+      if (record.targetUri === targetUri) {
+        edges.push({
+          uri: item.uri,
+          sourceUri: record.sourceUri,
+          targetUri: record.targetUri,
+          relationSlug: record.relationSlug,
+        });
+      }
+    }
+  } catch {
+    recordLogger.warn('Failed to list edges for target', { targetUri });
+  }
+
+  return edges;
 }

@@ -1,0 +1,86 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.graph.expandSubgraph",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Expand a subgraph from root URIs using breadth-first search, returning discovered nodes and edges.",
+      "parameters": {
+        "type": "params",
+        "required": ["rootUris"],
+        "properties": {
+          "rootUris": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxLength": 10,
+            "description": "Starting node URIs for BFS expansion."
+          },
+          "depth": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "default": 2,
+            "description": "Maximum BFS depth."
+          },
+          "edgeTypes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Filter by edge relation slugs. If omitted, all types included."
+          },
+          "maxNodes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 100,
+            "description": "Maximum nodes to return."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["nodes", "edges", "truncated"],
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#subgraphNode" }
+            },
+            "edges": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#subgraphEdge" }
+            },
+            "truncated": {
+              "type": "boolean",
+              "description": "Whether result was capped at maxNodes."
+            }
+          }
+        }
+      }
+    },
+    "subgraphNode": {
+      "type": "object",
+      "required": ["uri", "label", "kind"],
+      "properties": {
+        "uri": { "type": "string" },
+        "label": { "type": "string" },
+        "kind": { "type": "string" },
+        "subkind": { "type": "string" },
+        "description": { "type": "string" },
+        "metadata": { "type": "unknown" }
+      }
+    },
+    "subgraphEdge": {
+      "type": "object",
+      "required": ["uri", "sourceUri", "targetUri", "relationSlug"],
+      "properties": {
+        "uri": { "type": "string" },
+        "sourceUri": { "type": "string" },
+        "targetUri": { "type": "string" },
+        "relationSlug": { "type": "string" },
+        "label": { "type": "string" },
+        "weight": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    }
+  }
+}

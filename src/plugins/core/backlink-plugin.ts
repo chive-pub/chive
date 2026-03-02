@@ -3,7 +3,7 @@
  *
  * @remarks
  * This module provides an abstract base class for plugins that index
- * backlinks from other ATProto applications (Semble, Leaflet, WhiteWind,
+ * backlinks from other ATProto applications (Cosmik, Leaflet, WhiteWind,
  * Bluesky) that reference Chive eprints.
  *
  * All backlinks follow ATProto compliance:
@@ -94,13 +94,13 @@ export interface FirehoseRecord {
  *
  * @example
  * ```typescript
- * export class SembleBacklinksPlugin extends BacklinkTrackingPlugin {
- *   readonly id = 'pub.chive.plugin.semble-backlinks';
- *   readonly trackedCollection = 'xyz.semble.collection';
- *   readonly sourceType: BacklinkSourceType = 'semble.collection';
+ * export class CosmikBacklinksPlugin extends BacklinkTrackingPlugin {
+ *   readonly id = 'pub.chive.plugin.cosmik-backlinks';
+ *   readonly trackedCollection = 'network.cosmik.collection';
+ *   readonly sourceType: BacklinkSourceType = 'cosmik.collection';
  *
  *   extractEprintRefs(record: unknown): string[] {
- *     const collection = record as SembleCollection;
+ *     const collection = record as CosmikCollection;
  *     return collection.items
  *       .filter(item => item.uri?.includes('pub.chive.eprint'))
  *       .map(item => item.uri);
@@ -118,7 +118,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * @remarks
    * Records from this collection will be processed for backlinks.
    *
-   * @example "xyz.semble.collection", "app.bsky.feed.post"
+   * @example "network.cosmik.collection", "app.bsky.feed.post"
    */
   abstract readonly trackedCollection: string;
 
@@ -309,7 +309,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * @example
    * ```typescript
    * extractEprintRefs(record: unknown): string[] {
-   *   const collection = record as SembleCollection;
+   *   const collection = record as CosmikCollection;
    *   return collection.items
    *     .filter(item => isEprintUri(item.uri))
    *     .map(item => item.uri);
@@ -331,7 +331,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * @example
    * ```typescript
    * protected extractContext(record: unknown): string | undefined {
-   *   const collection = record as SembleCollection;
+   *   const collection = record as CosmikCollection;
    *   return collection.title || collection.description;
    * }
    * ```
@@ -354,7 +354,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * @example
    * ```typescript
    * protected shouldProcess(record: unknown): boolean {
-   *   const collection = record as SembleCollection;
+   *   const collection = record as CosmikCollection;
    *   // Only process public collections
    *   return collection.visibility === 'public';
    * }

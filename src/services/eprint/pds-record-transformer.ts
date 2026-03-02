@@ -80,7 +80,7 @@ interface PDSAuthorRef {
   orcid?: string;
   handle?: string;
   avatarUrl?: string;
-  affiliations?: { name: string; rorId?: string; department?: string }[];
+  affiliations?: { name: string; rorId?: string; department?: string; institutionUri?: string }[];
   contributions?: {
     typeUri: string;
     typeId?: string;
@@ -404,6 +404,7 @@ function transformAuthor(pdsAuthor: PDSAuthorRef, index: number): EprintAuthor {
       name: aff.name,
       rorId: aff.rorId,
       department: aff.department,
+      institutionUri: aff.institutionUri,
     })
   );
 
@@ -964,6 +965,7 @@ export function transformPDSRecordWithSchema(raw: unknown, uri: AtUri, cid: CID)
           | PresentationType
           | undefined,
         proceedingsDoi: record.conferencePresentation.proceedingsDoi,
+        conferenceUri: record.conferencePresentation.conferenceUri,
       }
     : undefined;
 

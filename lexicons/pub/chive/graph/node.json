@@ -185,6 +185,22 @@
           "type": "string",
           "maxLength": 50,
           "description": "Slug of inverse relation (for relation types)"
+        },
+        "symmetric": {
+          "type": "boolean",
+          "description": "Whether this relation is symmetric (A rel B implies B rel A)"
+        },
+        "transitive": {
+          "type": "boolean",
+          "description": "Whether this relation is transitive (A rel B and B rel C implies A rel C)"
+        },
+        "reflexive": {
+          "type": "boolean",
+          "description": "Whether this relation is reflexive (A rel A is always valid)"
+        },
+        "functional": {
+          "type": "boolean",
+          "description": "Whether this relation is functional (each source has at most one target)"
         }
       }
     }

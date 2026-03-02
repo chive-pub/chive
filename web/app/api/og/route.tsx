@@ -2,14 +2,16 @@
  * Dynamic Open Graph image generation for Bluesky social cards.
  *
  * @remarks
- * Generates 1200x630 PNG images for eprints, authors, reviews, and endorsements.
- * Used both for og:image meta tags and for Bluesky external embed thumbnails.
+ * Generates 1200x630 PNG images for eprints, authors, reviews, endorsements,
+ * and collections. Used both for og:image meta tags and for Bluesky external
+ * embed thumbnails.
  *
  * @example
  * GET /api/og?type=eprint&uri=at://did:plc:abc/pub.chive.eprint.submission/123
  * GET /api/og?type=author&did=did:plc:abc123
  * GET /api/og?type=review&uri=at://did:plc:abc/pub.chive.review.comment/456
  * GET /api/og?type=endorsement&uri=at://did:plc:abc/pub.chive.review.endorsement/789
+ * GET /api/og?type=collection&name=My+Reading+List&owner=alice.bsky.social&itemCount=12
  */
 
 import { ImageResponse } from '@vercel/og';
@@ -82,6 +84,7 @@ export async function GET(request: NextRequest) {
     | 'author'
     | 'review'
     | 'endorsement'
+    | 'collection'
     | null;
 
   // Default to 'default' type for homepage/site-wide OG image
@@ -103,6 +106,8 @@ export async function GET(request: NextRequest) {
         return await generateReviewImage(searchParams, logoUrl);
       case 'endorsement':
         return await generateEndorsementImage(searchParams, logoUrl);
+      case 'collection':
+        return await generateCollectionImage(searchParams, logoUrl);
       default:
         return new Response(`Unknown type: ${imageType}`, { status: 400 });
     }
@@ -717,6 +722,190 @@ async function generateEndorsementImage(
           {truncateText(eprintTitle, 80)}
         </div>
       </div>
+    </div>,
+    {
+      width: WIDTH,
+      height: HEIGHT,
+      fonts,
+      headers: {
+        'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+      },
+    }
+  );
+}
+
+/**
+ * Generate OG image for a collection.
+ */
+async function generateCollectionImage(
+  params: URLSearchParams,
+  logoUrl: string
+): Promise<ImageResponse> {
+  const name = params.get('name') || 'Untitled Collection';
+  const description = params.get('description') || '';
+  const owner = params.get('owner') || 'Unknown';
+  const itemCount = params.get('itemCount') || '0';
+  const visibility = params.get('visibility') || 'public';
+  const tags = params.get('tags')?.split(',').filter(Boolean) || [];
+  const fonts = await loadFonts();
+
+  const visibilityColor =
+    visibility === 'private' ? '#ef4444' : visibility === 'unlisted' ? '#f59e0b' : COLORS.brand;
+
+  return new ImageResponse(
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '48px',
+        background: COLORS.background,
+        fontFamily: 'Geist, Helvetica, Arial, sans-serif',
+      }}
+    >
+      {/* Header with logo and badge */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '32px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="" width={32} height={32} style={{ marginRight: '12px' }} />
+          <span
+            style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: COLORS.brand,
+              letterSpacing: '0.1em',
+            }}
+          >
+            CHIVE
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Visibility badge */}
+          <div
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              background: visibilityColor + '18',
+              color: visibilityColor,
+              fontSize: '14px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+            }}
+          >
+            {visibility}
+          </div>
+          {/* Collection badge */}
+          <div
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: '#8b5cf6' + '20',
+              color: '#8b5cf6',
+              fontSize: '18px',
+              fontWeight: 600,
+            }}
+          >
+            COLLECTION
+          </div>
+        </div>
+      </div>
+
+      {/* Collection content */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Collection name */}
+        <div
+          style={{
+            display: 'flex',
+            fontSize: '44px',
+            fontWeight: 700,
+            color: COLORS.primary,
+            lineHeight: 1.2,
+            marginBottom: '16px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxHeight: '110px',
+          }}
+        >
+          {truncateText(name, 100)}
+        </div>
+
+        {/* Description */}
+        {description && (
+          <div
+            style={{
+              fontSize: '22px',
+              color: COLORS.secondary,
+              lineHeight: 1.4,
+              marginBottom: '20px',
+              maxHeight: '65px',
+              overflow: 'hidden',
+            }}
+          >
+            {truncateText(description, 120)}
+          </div>
+        )}
+
+        {/* Curator line and item count */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '18px', color: COLORS.muted }}>Curated by</span>
+            <span style={{ fontSize: '18px', color: COLORS.primary, fontWeight: 600 }}>
+              {truncateText(owner, 40)}
+            </span>
+          </div>
+          <div
+            style={{
+              width: '1px',
+              height: '20px',
+              background: COLORS.border,
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+            <span style={{ fontSize: '22px', fontWeight: 700, color: COLORS.primary }}>
+              {itemCount}
+            </span>
+            <span style={{ fontSize: '16px', color: COLORS.muted }}>
+              {itemCount === '1' ? 'item' : 'items'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tag pills */}
+      {tags.length > 0 && (
+        <div style={{ display: 'flex', gap: '12px', marginTop: '24px', flexWrap: 'wrap' }}>
+          {tags.slice(0, 3).map((tag, i) => (
+            <div
+              key={i}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '20px',
+                background: '#8b5cf6' + '18',
+                color: '#8b5cf6',
+                fontSize: '16px',
+                fontWeight: 600,
+              }}
+            >
+              {tag}
+            </div>
+          ))}
+        </div>
+      )}
     </div>,
     {
       width: WIDTH,

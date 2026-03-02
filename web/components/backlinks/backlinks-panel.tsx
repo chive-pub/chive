@@ -127,7 +127,7 @@ function BacklinkSection({
  * Displays backlinks to an eprint from external sources.
  *
  * @remarks
- * Shows references to this eprint from Semble collections, Bluesky posts,
+ * Shows references to this eprint from Cosmik collections, Bluesky posts,
  * WhiteWind blogs, and Leaflet lists. Includes counts by source type.
  *
  * @example
@@ -141,7 +141,7 @@ export function BacklinksPanel({ eprintUri, className }: BacklinksPanelProps) {
   // Determine which source types have backlinks
   const sourcesWithBacklinks: BacklinkSourceType[] = [];
   if (counts) {
-    if (counts.sembleCollections > 0) sourcesWithBacklinks.push('semble.collection');
+    if (counts.cosmikCollections > 0) sourcesWithBacklinks.push('cosmik.collection');
     if (counts.blueskyPosts > 0) sourcesWithBacklinks.push('bluesky.post');
     if (counts.blueskyEmbeds > 0) sourcesWithBacklinks.push('bluesky.embed');
     if (counts.whitewindBlogs > 0) sourcesWithBacklinks.push('whitewind.blog');

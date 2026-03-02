@@ -1,0 +1,56 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getFeed",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the activity feed for a collection, aggregating events from tracked items",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "AT-URI of the collection"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 30,
+            "description": "Maximum events to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["events", "hasMore"],
+          "properties": {
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#feedEventView"
+              },
+              "description": "Feed events in reverse chronological order"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more events exist"
+            }
+          }
+        }
+      }
+    }
+  }
+}

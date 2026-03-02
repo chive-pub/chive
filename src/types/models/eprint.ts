@@ -673,6 +673,11 @@ export interface ConferencePresentation {
    * Proceedings DOI.
    */
   readonly proceedingsDoi?: string;
+
+  /**
+   * AT-URI to conference/event node in the knowledge graph (subkind=event).
+   */
+  readonly conferenceUri?: string;
 }
 
 // =============================================================================

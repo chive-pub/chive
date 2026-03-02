@@ -11,7 +11,7 @@ import { APIError } from '@/lib/errors';
  * without breaking compatibility, matching the lexicon's knownValues pattern.
  */
 export type BacklinkSourceType =
-  | 'semble.collection'
+  | 'cosmik.collection'
   | 'leaflet.list'
   | 'whitewind.blog'
   | 'bluesky.post'
@@ -36,7 +36,7 @@ export interface Backlink {
  * Backlink counts by source type.
  */
 export interface BacklinkCounts {
-  sembleCollections: number;
+  cosmikCollections: number;
   leafletLists: number;
   whitewindBlogs: number;
   blueskyPosts: number;
@@ -85,7 +85,7 @@ interface UseBacklinksOptions {
  * @remarks
  * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
  * Backlinks track references to Chive eprints from external sources
- * like Semble collections, Bluesky posts, WhiteWind blogs, and Leaflet lists.
+ * like Cosmik collections, Bluesky posts, WhiteWind blogs, and Leaflet lists.
  *
  * @example
  * ```tsx
@@ -147,7 +147,7 @@ interface UseBacklinkCountsOptions {
  * Fetches aggregated backlink counts for an eprint.
  *
  * @remarks
- * Returns counts by source type (Semble, Bluesky, WhiteWind, Leaflet, etc.)
+ * Returns counts by source type (Cosmik, Bluesky, WhiteWind, Leaflet, etc.)
  * and a total count. Useful for displaying summary badges.
  *
  * @example
@@ -208,8 +208,8 @@ export function groupBacklinksBySource(backlinks: Backlink[]): Map<BacklinkSourc
  */
 export function getSourceTypeLabel(sourceType: BacklinkSourceType): string {
   switch (sourceType) {
-    case 'semble.collection':
-      return 'Semble Collections';
+    case 'cosmik.collection':
+      return 'Cosmik Collections';
     case 'leaflet.list':
       return 'Leaflet Lists';
     case 'whitewind.blog':

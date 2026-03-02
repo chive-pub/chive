@@ -54,7 +54,7 @@ const authLogger = logger.child({ component: 'auth-context' });
  */
 async function registerUserPDS(pdsEndpoint: string, agent: Agent | null): Promise<void> {
   try {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };

@@ -10,7 +10,7 @@ import type { Backlink, BacklinkSourceType } from '@/lib/hooks/use-backlinks';
  */
 function getSourceIcon(sourceType: BacklinkSourceType) {
   switch (sourceType) {
-    case 'semble.collection':
+    case 'cosmik.collection':
       return BookMarked;
     case 'leaflet.list':
       return List;
@@ -38,9 +38,9 @@ function buildSourceUrl(backlink: Backlink): string | null {
   const [, did, , rkey] = match;
 
   switch (sourceType) {
-    case 'semble.collection':
-      // Semble collections at semble.app/collection/{did}/{rkey}
-      return `https://semble.app/collection/${did}/${rkey}`;
+    case 'cosmik.collection':
+      // Cosmik collections at cosmik.network/collection/{did}/{rkey}
+      return `https://cosmik.network/collection/${did}/${rkey}`;
     case 'leaflet.list':
       // Leaflet lists at leaflet.pub/list/{did}/{rkey}
       return `https://leaflet.pub/list/${did}/${rkey}`;
@@ -61,8 +61,8 @@ function buildSourceUrl(backlink: Backlink): string | null {
  */
 function getSourceLabel(sourceType: BacklinkSourceType): string {
   switch (sourceType) {
-    case 'semble.collection':
-      return 'Semble';
+    case 'cosmik.collection':
+      return 'Cosmik';
     case 'leaflet.list':
       return 'Leaflet';
     case 'whitewind.blog':

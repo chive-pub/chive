@@ -15,6 +15,7 @@
  * - `pub.chive.eprint.userTag` - User tags
  * - `pub.chive.eprint.citation` - User-curated citations
  * - `pub.chive.eprint.relatedWork` - User-curated related work links
+ * - `pub.chive.graph.node` - Collection nodes (user collections)
  *
  * @packageDocumentation
  * @public
@@ -105,6 +106,7 @@ export const deleteRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       'pub.chive.eprint.userTag',
       'pub.chive.eprint.citation',
       'pub.chive.eprint.relatedWork',
+      'pub.chive.graph.node',
     ];
 
     if (!supportedCollections.includes(collection)) {
@@ -201,6 +203,26 @@ export const deleteRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
         // Hard-delete from index (tags, citations, related works have no soft-delete)
         const eprintService = services.eprint;
         await eprintService.deleteFromIndex(input.uri as AtUri, collection);
+      } else if (collection === 'pub.chive.graph.node') {
+        // Delete collection node and its edges from the collection index
+        const collectionService = services.collection;
+        if (!collectionService) {
+          const body: OutputSchema = {
+            uri: input.uri,
+            deleted: false,
+            error: 'Collection service not available',
+          };
+          return { encoding: 'application/json', body };
+        }
+        const result = await collectionService.deleteCollection(input.uri as AtUri);
+        if (isErr(result)) {
+          const body: OutputSchema = {
+            uri: input.uri,
+            deleted: false,
+            error: result.error.message,
+          };
+          return { encoding: 'application/json', body };
+        }
       }
 
       logger.info('Successfully marked record as deleted', { uri: input.uri });

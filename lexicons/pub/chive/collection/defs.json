@@ -1,0 +1,299 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.defs",
+  "defs": {
+    "collectionView": {
+      "type": "object",
+      "description": "View of a user collection",
+      "required": ["uri", "cid", "ownerDid", "label", "visibility", "itemCount", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the collection record"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "ownerDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the collection owner"
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the collection"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the collection"
+        },
+        "visibility": {
+          "type": "string",
+          "knownValues": ["public", "private"],
+          "description": "Collection visibility setting"
+        },
+        "itemCount": {
+          "type": "integer",
+          "description": "Number of items in the collection"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last update timestamp"
+        },
+        "ownerHandle": {
+          "type": "string",
+          "description": "Resolved handle of the collection owner"
+        },
+        "cosmikCollectionUri": {
+          "type": "string",
+          "description": "AT-URI of the mirrored Cosmik collection, if Semble dual-write is enabled"
+        },
+        "cosmikCollectionCid": {
+          "type": "string",
+          "description": "CID of the mirrored Cosmik collection record"
+        },
+        "cosmikItems": {
+          "type": "unknown",
+          "description": "Mapping of item URLs to Cosmik card/link record URIs and CIDs"
+        }
+      }
+    },
+    "collectionItemView": {
+      "type": "object",
+      "description": "View of an item in a collection",
+      "required": ["edgeUri", "itemUri", "itemType", "order", "addedAt"],
+      "properties": {
+        "edgeUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the CONTAINS edge record"
+        },
+        "itemUri": {
+          "type": "string",
+          "description": "AT-URI or identifier of the contained item"
+        },
+        "itemType": {
+          "type": "string",
+          "knownValues": ["eprint", "author", "graphNode", "review", "endorsement", "external"],
+          "description": "Inferred type of the item"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional user annotation on the item"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order within the collection"
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the item was added to the collection"
+        },
+        "title": {
+          "type": "string",
+          "description": "Resolved title for eprint items"
+        },
+        "authors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Resolved author names for eprint items"
+        },
+        "label": {
+          "type": "string",
+          "description": "Resolved label for graph node items"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Node kind for graph node items"
+        },
+        "subkind": {
+          "type": "string",
+          "description": "Node subkind for graph node items"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description for graph node items"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Avatar URL for person or institution nodes"
+        },
+        "source": {
+          "type": "string",
+          "knownValues": ["personal", "community"],
+          "description": "Whether the item node is personal or cloned from community"
+        },
+        "metadata": {
+          "type": "unknown",
+          "description": "Additional item metadata from the personal graph node"
+        }
+      }
+    },
+    "interItemEdgeView": {
+      "type": "object",
+      "description": "An edge between two items within a collection",
+      "required": ["sourceUri", "targetUri", "relationSlug"],
+      "properties": {
+        "sourceUri": {
+          "type": "string",
+          "description": "AT-URI of the source item"
+        },
+        "targetUri": {
+          "type": "string",
+          "description": "AT-URI of the target item"
+        },
+        "relationSlug": {
+          "type": "string",
+          "description": "Relation type slug"
+        }
+      }
+    },
+    "collectionItemRef": {
+      "type": "object",
+      "description": "Reference to a collection item that triggered a feed event",
+      "required": ["label", "uri"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Display label of the collection item"
+        },
+        "uri": {
+          "type": "string",
+          "description": "AT-URI of the collection item"
+        }
+      }
+    },
+    "feedEventPayload": {
+      "type": "object",
+      "description": "Event-type-specific payload with details like titles, snippets, and DIDs",
+      "properties": {
+        "eprintUri": {
+          "type": "string",
+          "description": "AT-URI of the relevant eprint"
+        },
+        "eprintTitle": {
+          "type": "string",
+          "description": "Title of the relevant eprint"
+        },
+        "authorNames": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of the eprint authors"
+        },
+        "reviewerDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the reviewer"
+        },
+        "endorserDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the endorser"
+        },
+        "annotatorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the annotator"
+        },
+        "snippet": {
+          "type": "string",
+          "description": "Text snippet from the review or annotation"
+        },
+        "contributions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Endorsement contribution types"
+        },
+        "fieldLabel": {
+          "type": "string",
+          "description": "Label of the related field"
+        },
+        "institutionLabel": {
+          "type": "string",
+          "description": "Label of the related institution"
+        },
+        "eventLabel": {
+          "type": "string",
+          "description": "Label of the related event"
+        },
+        "personLabel": {
+          "type": "string",
+          "description": "Label of the related person"
+        },
+        "entityLabel": {
+          "type": "string",
+          "description": "Label of the entity link"
+        }
+      }
+    },
+    "feedEventView": {
+      "type": "object",
+      "description": "A single event in a collection's activity feed",
+      "required": [
+        "type",
+        "eventUri",
+        "eventAt",
+        "collectionItemUri",
+        "collectionItemSubkind",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "knownValues": [
+            "eprint_by_author",
+            "review_on_eprint",
+            "endorsement_on_eprint",
+            "annotation_on_eprint",
+            "review_by_author",
+            "endorsement_by_author",
+            "eprint_in_field",
+            "eprint_by_institution",
+            "eprint_at_event",
+            "eprint_referencing_person"
+          ],
+          "description": "Event type discriminant"
+        },
+        "eventUri": {
+          "type": "string",
+          "description": "AT-URI of the entity that triggered this event"
+        },
+        "eventAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the event occurred"
+        },
+        "collectionItemUri": {
+          "type": "string",
+          "description": "AT-URI of the collection item that this event relates to"
+        },
+        "collectionItemSubkind": {
+          "type": "string",
+          "description": "Subkind of the collection item (person, eprint, field, institution, event)"
+        },
+        "collectionItems": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#collectionItemRef"
+          },
+          "description": "Collection items that triggered this event with label and URI"
+        },
+        "payload": {
+          "type": "ref",
+          "ref": "#feedEventPayload",
+          "description": "Event-type-specific payload with details like titles, snippets, and DIDs"
+        }
+      }
+    }
+  }
+}

@@ -85,7 +85,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
   createBacklink: vi.fn().mockResolvedValue({
     id: 1,
     sourceUri: 'at://did:plc:test/collection/rkey',
-    sourceType: 'semble.collection',
+    sourceType: 'cosmik.collection',
     targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
     indexedAt: new Date(),
     deleted: false,
@@ -93,7 +93,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
   deleteBacklink: vi.fn().mockResolvedValue(undefined),
   getBacklinks: vi.fn().mockResolvedValue({ backlinks: [], cursor: undefined }),
   getCounts: vi.fn().mockResolvedValue({
-    sembleCollections: 0,
+    cosmikCollections: 0,
     leafletLists: 0,
     whitewindBlogs: 0,
     blueskyShares: 0,
@@ -126,7 +126,7 @@ const createMockContext = (
 class TestBacklinkPlugin extends BacklinkTrackingPlugin {
   readonly id = 'pub.chive.plugin.test-backlink';
   readonly trackedCollection = 'test.collection';
-  readonly sourceType: BacklinkSourceType = 'semble.collection';
+  readonly sourceType: BacklinkSourceType = 'cosmik.collection';
 
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.test-backlink',
@@ -214,7 +214,7 @@ describe('BacklinkTrackingPlugin', () => {
         'Backlink tracking initialized',
         expect.objectContaining({
           collection: 'test.collection',
-          sourceType: 'semble.collection',
+          sourceType: 'cosmik.collection',
         })
       );
     });
@@ -301,7 +301,7 @@ describe('BacklinkTrackingPlugin', () => {
       );
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
         'backlink_errors',
-        { source_type: 'semble.collection' },
+        { source_type: 'cosmik.collection' },
         undefined
       );
     });
@@ -326,7 +326,7 @@ describe('BacklinkTrackingPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledTimes(2);
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:test/test.collection/rkey',
-        sourceType: 'semble.collection',
+        sourceType: 'cosmik.collection',
         targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/paper1',
         context: 'My Reading List',
       });
@@ -392,7 +392,7 @@ describe('BacklinkTrackingPlugin', () => {
 
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.deleted', {
         sourceUri: 'at://did:plc:test/test.collection/rkey',
-        sourceType: 'semble.collection',
+        sourceType: 'cosmik.collection',
       });
     });
 
@@ -401,7 +401,7 @@ describe('BacklinkTrackingPlugin', () => {
 
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
         'backlinks_deleted',
-        { source_type: 'semble.collection' },
+        { source_type: 'cosmik.collection' },
         undefined
       );
     });
@@ -432,7 +432,7 @@ describe('BacklinkTrackingPlugin', () => {
 
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.created', {
         sourceUri: 'at://did:plc:test/test.collection/rkey',
-        sourceType: 'semble.collection',
+        sourceType: 'cosmik.collection',
         targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
       });
     });
@@ -446,7 +446,7 @@ describe('BacklinkTrackingPlugin', () => {
 
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
         'backlinks_created',
-        { source_type: 'semble.collection' },
+        { source_type: 'cosmik.collection' },
         undefined
       );
     });

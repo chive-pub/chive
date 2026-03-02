@@ -4,7 +4,7 @@
   "defs": {
     "main": {
       "type": "query",
-      "description": "List backlinks to an eprint from ATProto ecosystem sources including Semble collections, Leaflet lists, Whitewind blogs, and Bluesky shares",
+      "description": "List backlinks to an eprint from ATProto ecosystem sources including Cosmik collections, Leaflet lists, Whitewind blogs, and Bluesky shares",
       "parameters": {
         "type": "params",
         "required": ["targetUri"],
@@ -17,7 +17,7 @@
           "sourceType": {
             "type": "string",
             "knownValues": [
-              "semble.collection",
+              "cosmik.collection",
               "leaflet.list",
               "whitewind.blog",
               "bluesky.post",
@@ -83,7 +83,7 @@
         "sourceType": {
           "type": "string",
           "knownValues": [
-            "semble.collection",
+            "cosmik.collection",
             "leaflet.list",
             "whitewind.blog",
             "bluesky.post",

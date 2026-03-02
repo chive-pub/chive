@@ -3,7 +3,7 @@
  *
  * @remarks
  * This module implements the backlink service that tracks references to
- * Chive eprints from across the ATProto ecosystem (Semble, Leaflet,
+ * Chive eprints from across the ATProto ecosystem (Cosmik, Leaflet,
  * WhiteWind, Bluesky).
  *
  * ATProto Compliance:
@@ -13,7 +13,7 @@
  * - Source URI tracked for staleness detection
  *
  * Backlink Sources:
- * - Semble collections (xyz.semble.collection)
+ * - Cosmik collections (network.cosmik.collection)
  * - Leaflet reading lists (xyz.leaflet.list)
  * - WhiteWind blog posts (com.whitewind.blog.entry)
  * - Bluesky posts/embeds (app.bsky.feed.post)
@@ -63,7 +63,7 @@ interface BacklinkRow {
  */
 interface BacklinkCountsRow {
   target_uri: string;
-  semble_count: number;
+  cosmik_count: number;
   leaflet_count: number;
   whitewind_count: number;
   bluesky_post_count: number;
@@ -269,7 +269,7 @@ export class BacklinkService implements IBacklinkService {
     if (!row) {
       // Return zeros if no counts exist
       return {
-        sembleCollections: 0,
+        cosmikCollections: 0,
         leafletLists: 0,
         whitewindBlogs: 0,
         blueskyPosts: 0,
@@ -281,7 +281,7 @@ export class BacklinkService implements IBacklinkService {
     }
 
     return {
-      sembleCollections: row.semble_count,
+      cosmikCollections: row.cosmik_count,
       leafletLists: row.leaflet_count,
       whitewindBlogs: row.whitewind_count,
       blueskyPosts: row.bluesky_post_count,

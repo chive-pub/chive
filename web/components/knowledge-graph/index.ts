@@ -23,16 +23,17 @@
 // UNIFIED KNOWLEDGE GRAPH COMPONENTS
 // =============================================================================
 
+// Shared types and configuration
+export type { GraphNode, GraphEdge, NodeKind, NodeStatus, ExternalId, NodeCardData } from './types';
+export { SUBKIND_CONFIGS, SUBKIND_BY_SLUG, graphNodeToCardData, getStatusColor } from './types';
+
 // Knowledge Graph Viewer - comprehensive graph exploration
 export { KnowledgeGraphViewer, KnowledgeGraphViewerSkeleton } from './knowledge-graph-viewer';
-export type {
-  KnowledgeGraphViewerProps,
-  GraphNode,
-  GraphEdge,
-  NodeKind,
-  NodeStatus,
-  ExternalId,
-} from './knowledge-graph-viewer';
+export type { KnowledgeGraphViewerProps } from './knowledge-graph-viewer';
+
+// Node Card - unified card component
+export { NodeCard } from './node-card';
+export type { NodeCardProps } from './node-card';
 
 // Node Search - unified search component
 export { NodeSearch } from './node-search';
@@ -115,3 +116,7 @@ export type { FieldEprintsProps, FieldEprintsSkeletonProps } from './field-eprin
 // Field visualization
 export { FieldVisualization, FieldVisualizationSkeleton } from './field-visualization';
 export type { FieldVisualizationProps } from './field-visualization';
+
+// Node detail modal
+export { NodeDetailModal } from './node-detail-modal';
+export type { NodeDetailModalProps } from './node-detail-modal';

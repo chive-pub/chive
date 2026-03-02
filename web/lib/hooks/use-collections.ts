@@ -1,0 +1,1262 @@
+/**
+ * React hooks for collection data fetching and management.
+ *
+ * @remarks
+ * Provides TanStack Query hooks for creating, updating, deleting, and querying
+ * user-curated collections. Collections are personal graph nodes (kind='object',
+ * subkind='collection') stored in user PDSes and indexed by Chive from the
+ * firehose.
+ *
+ * Collections support nested hierarchies via SUBCOLLECTION_OF edges and
+ * item membership via CONTAINS edges. Both edge types are also graph records
+ * in the user's PDS.
+ *
+ * @example
+ * ```tsx
+ * import { useMyCollections, useCreateCollection, collectionKeys } from '@/lib/hooks/use-collections';
+ *
+ * function MyCollections({ did }: { did: string }) {
+ *   const { data } = useMyCollections(did);
+ *   const createCollection = useCreateCollection();
+ *
+ *   return (
+ *     <CollectionList
+ *       collections={data?.collections ?? []}
+ *       onCreate={(input) => createCollection.mutateAsync(input)}
+ *     />
+ *   );
+ * }
+ * ```
+ *
+ * @packageDocumentation
+ */
+
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { APIError } from '@/lib/errors';
+import { api, authApi } from '@/lib/api/client';
+import { createLogger } from '@/lib/observability/logger';
+import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import {
+  createCollectionNode,
+  updateCollectionNode,
+  deleteCollectionNode,
+  addItemToCollection,
+  removeItemFromCollection,
+  addSubcollection,
+  removeSubcollection,
+  moveSubcollection,
+  updateEdgeNote,
+  updateEdgeMetadata,
+  updatePersonalNode,
+  reorderCollectionItems,
+  createCosmikMirror,
+  updateCosmikCollection,
+  deleteCosmikMirror,
+  addCosmikItem,
+  removeCosmikItem,
+  type CreateCollectionNodeInput,
+  type UpdateCollectionNodeInput,
+  type AddItemToCollectionInput,
+  type AddSubcollectionInput,
+  type MoveSubcollectionInput,
+  type CosmikItemMapping,
+} from '@/lib/atproto/record-creator';
+
+const logger = createLogger({ context: { component: 'use-collections' } });
+
+// =============================================================================
+// LOCAL TYPES (until collection XRPC endpoints are generated)
+// =============================================================================
+
+/**
+ * Collection view as returned by the API.
+ */
+export interface CollectionView {
+  uri: string;
+  cid: string;
+  ownerDid: string;
+  ownerHandle?: string;
+  label: string;
+  description?: string;
+  visibility: 'public' | 'unlisted' | 'private';
+  itemCount: number;
+  tags?: string[];
+  parentCollectionUri?: string;
+  cosmikCollectionUri?: string;
+  cosmikCollectionCid?: string;
+  cosmikItems?: Record<string, CosmikItemMapping>;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Collection item as returned by the API.
+ */
+export interface CollectionItemView {
+  edgeUri: string;
+  itemUri: string;
+  itemType: string;
+  note?: string;
+  order: number;
+  addedAt: string;
+  /** Resolved title (for eprints) */
+  title?: string;
+  /** Resolved authors (for eprints) */
+  authors?: string[];
+  /** Resolved label (for graph nodes) */
+  label?: string;
+  /** Node kind (for graph nodes) */
+  kind?: string;
+  /** Node subkind (for graph nodes) */
+  subkind?: string;
+  /** Description (for graph nodes) */
+  description?: string;
+  /** Avatar URL (for authors) */
+  avatar?: string;
+  /** Whether the node is from the community graph or user-created. */
+  source?: 'community' | 'personal';
+  /** Subkind-specific metadata (e.g., eprintUri, did, handle, clonedFrom). */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * An edge between two items within a collection.
+ */
+export interface InterItemEdge {
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
+}
+
+/**
+ * Response from listing collections.
+ */
+export interface ListCollectionsResponse {
+  collections: CollectionView[];
+  cursor?: string;
+  hasMore: boolean;
+  total?: number;
+}
+
+/**
+ * Response from getting a single collection with items.
+ */
+export interface CollectionDetailResponse {
+  collection: CollectionView;
+  items: CollectionItemView[];
+  subcollections: CollectionView[];
+  interItemEdges: InterItemEdge[];
+}
+
+/**
+ * Response from searching collections.
+ */
+export interface SearchCollectionsResponse {
+  collections: CollectionView[];
+  cursor?: string;
+  total?: number;
+}
+
+/**
+ * A single event in the collection feed.
+ */
+export interface CollectionFeedEvent {
+  type: string;
+  eventUri: string;
+  eventAt: string;
+  collectionItemUri: string;
+  collectionItemSubkind: string;
+  collectionItems: { label: string; uri: string }[];
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Response from the collection feed endpoint.
+ */
+export interface CollectionFeedResponse {
+  events: CollectionFeedEvent[];
+  cursor?: string;
+  hasMore: boolean;
+}
+
+// =============================================================================
+// QUERY KEY FACTORY
+// =============================================================================
+
+/**
+ * Query key factory for collection queries.
+ *
+ * @remarks
+ * Follows TanStack Query best practices for hierarchical cache key management.
+ *
+ * @example
+ * ```typescript
+ * // Invalidate all collection queries
+ * queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+ *
+ * // Invalidate a specific collection
+ * queryClient.invalidateQueries({ queryKey: collectionKeys.detail(collectionUri) });
+ *
+ * // Invalidate all collections for a user
+ * queryClient.invalidateQueries({ queryKey: collectionKeys.myCollections(userDid) });
+ * ```
+ */
+export const collectionKeys = {
+  /** Base key for all collection queries */
+  all: ['collections'] as const,
+
+  /** Key for a single collection detail */
+  detail: (uri: string) => [...collectionKeys.all, 'detail', uri] as const,
+
+  /** Key for a user's own collections */
+  myCollections: (did: string) => [...collectionKeys.all, 'my', did] as const,
+
+  /** Key for collections containing a specific item */
+  containing: (itemUri: string) => [...collectionKeys.all, 'containing', itemUri] as const,
+
+  /** Key for subcollections of a collection */
+  subcollections: (uri: string) => [...collectionKeys.all, 'subcollections', uri] as const,
+
+  /** Key for parent collection of a collection */
+  parent: (uri: string) => [...collectionKeys.all, 'parent', uri] as const,
+
+  /** Key for collection search results */
+  search: (query: string) => [...collectionKeys.all, 'search', query] as const,
+
+  /** Key for a collection's activity feed */
+  feed: (uri: string) => [...collectionKeys.all, 'feed', uri] as const,
+
+  /** Key for public collection listings with filters */
+  public: (filters: Record<string, unknown>) => [...collectionKeys.all, 'public', filters] as const,
+};
+
+// =============================================================================
+// QUERY HOOKS
+// =============================================================================
+
+/**
+ * Fetches a single collection with its items and subcollections.
+ *
+ * @param uri - AT-URI of the collection
+ * @param options - Hook options
+ * @returns Query result with collection detail
+ *
+ * @example
+ * ```tsx
+ * const { data, isLoading } = useCollection(collectionUri);
+ * if (data) {
+ *   console.log(data.collection.label, data.items.length);
+ * }
+ * ```
+ */
+export function useCollection(uri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: collectionKeys.detail(uri),
+    queryFn: async (): Promise<CollectionDetailResponse> => {
+      const response = await api.pub.chive.collection.get({ uri });
+      return response.data as unknown as CollectionDetailResponse;
+    },
+    enabled: !!uri && (options?.enabled ?? true),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Fetches all collections owned by a user.
+ *
+ * @param did - DID of the user
+ * @param options - Hook options
+ * @returns Query result with user's collections
+ *
+ * @example
+ * ```tsx
+ * const { data } = useMyCollections(currentUser.did);
+ * return <CollectionList collections={data?.collections ?? []} />;
+ * ```
+ */
+export function useMyCollections(did: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: collectionKeys.myCollections(did),
+    queryFn: async (): Promise<ListCollectionsResponse> => {
+      const response = await api.pub.chive.collection.listByOwner({ did, limit: 100 });
+      return response.data as unknown as ListCollectionsResponse;
+    },
+    enabled: !!did && (options?.enabled ?? true),
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+/**
+ * Fetches public collections with optional tag filter.
+ *
+ * @param options - Filter and hook options
+ * @returns Query result with public collections
+ *
+ * @example
+ * ```tsx
+ * const { data } = usePublicCollections({ tag: 'machine-learning', limit: 20 });
+ * ```
+ */
+export function usePublicCollections(options?: {
+  tag?: string;
+  limit?: number;
+  enabled?: boolean;
+}) {
+  const filters = { tag: options?.tag, limit: options?.limit };
+
+  return useQuery({
+    queryKey: collectionKeys.public(filters),
+    queryFn: async (): Promise<ListCollectionsResponse> => {
+      const response = await api.pub.chive.collection.listPublic({
+        tag: options?.tag,
+        limit: options?.limit ?? 20,
+      });
+      return response.data as unknown as ListCollectionsResponse;
+    },
+    enabled: options?.enabled ?? true,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Fetches collections that contain a specific item.
+ *
+ * @param itemUri - AT-URI of the item
+ * @param options - Hook options
+ * @returns Query result with collections containing the item
+ *
+ * @example
+ * ```tsx
+ * const { data } = useCollectionsContaining(eprintUri);
+ * ```
+ */
+export function useCollectionsContaining(itemUri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: collectionKeys.containing(itemUri),
+    queryFn: async (): Promise<ListCollectionsResponse> => {
+      const response = await api.pub.chive.collection.getContaining({ itemUri });
+      return response.data as unknown as ListCollectionsResponse;
+    },
+    enabled: !!itemUri && (options?.enabled ?? true),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Searches collections by name or description.
+ *
+ * @param query - Search query text
+ * @param options - Hook options
+ * @returns Query result with matching collections
+ *
+ * @example
+ * ```tsx
+ * const { data } = useSearchCollections('machine learning');
+ * ```
+ */
+export function useSearchCollections(query: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: collectionKeys.search(query),
+    queryFn: async (): Promise<SearchCollectionsResponse> => {
+      const response = await api.pub.chive.collection.search({ query, limit: 20 });
+      return response.data as unknown as SearchCollectionsResponse;
+    },
+    enabled: query.length >= 2 && (options?.enabled ?? true),
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+/**
+ * Fetches subcollections of a collection.
+ *
+ * @param uri - AT-URI of the parent collection
+ * @param options - Hook options
+ * @returns Query result with subcollections
+ */
+export function useSubcollections(uri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: collectionKeys.subcollections(uri),
+    queryFn: async (): Promise<ListCollectionsResponse> => {
+      const response = await api.pub.chive.collection.getSubcollections({ uri });
+      const data = response.data;
+      return {
+        collections: data.subcollections,
+        hasMore: false,
+      } as unknown as ListCollectionsResponse;
+    },
+    enabled: !!uri && (options?.enabled ?? true),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Fetches the parent collection of a collection.
+ *
+ * @param uri - AT-URI of the child collection
+ * @param options - Hook options
+ * @returns Query result with parent collection (or null if top-level)
+ */
+export function useParentCollection(uri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: collectionKeys.parent(uri),
+    queryFn: async (): Promise<CollectionView | null> => {
+      try {
+        const response = await api.pub.chive.collection.getParent({ uri });
+        return (response.data.parent as unknown as CollectionView) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!uri && (options?.enabled ?? true),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Fetches the activity feed for a collection with infinite scroll pagination.
+ *
+ * @param uri - AT-URI of the collection
+ * @param options - Hook options
+ * @returns Infinite query result with paginated feed events
+ *
+ * @example
+ * ```tsx
+ * const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useCollectionFeed(uri);
+ * const events = data?.pages.flatMap(p => p.events) ?? [];
+ * ```
+ */
+export function useCollectionFeed(uri: string, options?: { limit?: number; enabled?: boolean }) {
+  const { limit = 30, enabled = true } = options ?? {};
+
+  return useInfiniteQuery({
+    queryKey: collectionKeys.feed(uri),
+    queryFn: async ({ pageParam }): Promise<CollectionFeedResponse> => {
+      const response = await api.pub.chive.collection.getFeed({
+        uri,
+        limit,
+        cursor: pageParam as string | undefined,
+      });
+      return response.data as unknown as CollectionFeedResponse;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
+    enabled: !!uri && enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+// =============================================================================
+// MUTATION HOOKS
+// =============================================================================
+
+/**
+ * Input for the useCreateCollection mutation.
+ *
+ * @remarks
+ * Extends CreateCollectionNodeInput with optional item data used for
+ * Cosmik mirror creation when enableCosmikMirror is true.
+ */
+export interface CreateCollectionMutationInput extends CreateCollectionNodeInput {
+  /** Items to mirror as Cosmik cards when enableCosmikMirror is true */
+  items?: Array<{
+    /** URL or AT-URI of the item */
+    uri: string;
+    /** Display label */
+    label: string;
+    /** Optional annotation note */
+    note?: string;
+    /** Item type */
+    type?: string;
+    /** Additional metadata for rich Semble card content */
+    metadata?: {
+      subkind?: string;
+      description?: string;
+      authors?: string[];
+      handle?: string;
+      kind?: string;
+      avatarUrl?: string;
+      isPersonal?: boolean;
+    };
+  }>;
+}
+
+/**
+ * Mutation hook for creating a new collection.
+ *
+ * @remarks
+ * Creates a collection node in the user's PDS and requests immediate
+ * indexing for UI responsiveness. When enableCosmikMirror is true and
+ * items are provided, also creates companion network.cosmik.card and
+ * network.cosmik.collection records for cross-ecosystem discovery.
+ *
+ * @example
+ * ```tsx
+ * const createCollection = useCreateCollection();
+ *
+ * const handleCreate = async () => {
+ *   await createCollection.mutateAsync({
+ *     name: 'My Reading List',
+ *     visibility: 'public',
+ *     tags: ['nlp'],
+ *   });
+ * };
+ * ```
+ *
+ * @returns Mutation object for creating collections
+ */
+export function useCreateCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateCollectionMutationInput): Promise<CollectionView> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'createCollection');
+      }
+
+      const result = await createCollectionNode(agent, input);
+
+      // Request immediate indexing
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (indexError) {
+        logger.warn('Immediate indexing failed; firehose will handle', {
+          uri: result.uri,
+          error: indexError instanceof Error ? indexError.message : String(indexError),
+        });
+      }
+
+      // Create Cosmik mirror if enabled
+      if (input.enableCosmikMirror) {
+        try {
+          const cosmikResult = await createCosmikMirror(agent, {
+            collectionUri: result.uri,
+            title: input.name,
+            description: input.description,
+            visibility: input.visibility,
+            items: (input.items ?? []).map((item) => ({
+              url: item.uri,
+              title: item.label,
+              subkind: item.metadata?.subkind,
+              itemType: item.type,
+              metadata: item.metadata,
+            })),
+          });
+
+          // Request re-indexing so the server picks up cosmikCollectionUri metadata
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+          } catch {
+            // Best-effort
+          }
+
+          logger.info('Cosmik mirror created', {
+            cosmikCollectionUri: cosmikResult.cosmikCollectionUri,
+            itemCount: Object.keys(cosmikResult.cosmikItems).length,
+          });
+        } catch (cosmikError) {
+          logger.warn('Cosmik mirror creation failed; collection was created without mirror', {
+            uri: result.uri,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
+      }
+
+      return {
+        uri: result.uri,
+        cid: result.cid,
+        ownerDid: agent.did ?? '',
+        label: input.name,
+        description: input.description,
+        visibility: input.visibility,
+        itemCount: 0,
+        tags: input.tags,
+        createdAt: new Date().toISOString(),
+      };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.myCollections(data.ownerDid),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.public({}),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for updating an existing collection.
+ *
+ * @returns Mutation object for updating collections
+ */
+export function useUpdateCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      input: UpdateCollectionNodeInput & {
+        ownerDid: string;
+        cosmikCollectionUri?: string;
+      }
+    ): Promise<CollectionView> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'updateCollection');
+      }
+
+      const result = await updateCollectionNode(agent, input);
+
+      // Request immediate re-indexing
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
+
+      // Sync changes to Cosmik mirror if enabled
+      if (input.cosmikCollectionUri) {
+        try {
+          await updateCosmikCollection(agent, input.cosmikCollectionUri, {
+            name: input.name,
+            description: input.description,
+            visibility: input.visibility,
+          });
+        } catch (cosmikError) {
+          logger.warn('Cosmik collection update failed', {
+            cosmikCollectionUri: input.cosmikCollectionUri,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
+      }
+
+      return {
+        uri: result.uri,
+        cid: result.cid,
+        ownerDid: input.ownerDid,
+        label: input.name ?? '',
+        description: input.description,
+        visibility: input.visibility ?? 'public',
+        itemCount: 0,
+        tags: input.tags,
+        cosmikCollectionUri: input.cosmikCollectionUri,
+        createdAt: new Date().toISOString(),
+      };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(data.uri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.myCollections(data.ownerDid),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for deleting a collection.
+ *
+ * @remarks
+ * Handles cascade deletion of edges (CONTAINS and SUBCOLLECTION_OF)
+ * and optionally re-parents subcollections to the deleted collection's parent.
+ *
+ * @returns Mutation object for deleting collections
+ */
+export function useDeleteCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      uri,
+      ownerDid: _ownerDid,
+      cascadeSubcollections,
+      deleteSubcollections,
+      cosmikCollectionUri,
+      cosmikItems,
+      subcollections,
+    }: {
+      uri: string;
+      ownerDid: string;
+      cascadeSubcollections?: boolean;
+      /** When true, recursively delete subcollections instead of re-linking */
+      deleteSubcollections?: boolean;
+      cosmikCollectionUri?: string;
+      cosmikItems?: Record<string, CosmikItemMapping>;
+      /** Subcollection data for recursive deletion and Semble cleanup */
+      subcollections?: Array<{
+        uri: string;
+        cosmikCollectionUri?: string;
+        cosmikItems?: Record<string, CosmikItemMapping>;
+      }>;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'deleteCollection');
+      }
+
+      // Delete subcollections first if requested
+      if (deleteSubcollections && subcollections) {
+        for (const sub of subcollections) {
+          // Delete subcollection's Semble mirror (best-effort)
+          if (sub.cosmikCollectionUri) {
+            try {
+              await deleteCosmikMirror(agent, sub.cosmikCollectionUri, sub.cosmikItems);
+            } catch (cosmikError) {
+              logger.warn('Subcollection Cosmik mirror deletion failed', {
+                cosmikCollectionUri: sub.cosmikCollectionUri,
+                error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+              });
+            }
+          }
+
+          // Delete the subcollection node and its edges
+          try {
+            await deleteCollectionNode(agent, sub.uri);
+          } catch (subError) {
+            logger.warn('Subcollection deletion failed', {
+              uri: sub.uri,
+              error: subError instanceof Error ? subError.message : String(subError),
+            });
+          }
+
+          // Request immediate deletion indexing
+          try {
+            await authApi.pub.chive.sync.deleteRecord({ uri: sub.uri });
+          } catch {
+            logger.warn('Subcollection deletion indexing failed; firehose will handle', {
+              uri: sub.uri,
+            });
+          }
+        }
+      }
+
+      // Delete parent collection's Cosmik mirror (best-effort)
+      if (cosmikCollectionUri) {
+        try {
+          await deleteCosmikMirror(agent, cosmikCollectionUri, cosmikItems);
+        } catch (cosmikError) {
+          logger.warn('Cosmik mirror deletion failed', {
+            cosmikCollectionUri,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
+      }
+
+      await deleteCollectionNode(agent, uri, { cascadeSubcollections });
+
+      // Request immediate deletion indexing
+      try {
+        await authApi.pub.chive.sync.deleteRecord({ uri });
+      } catch {
+        logger.warn('Immediate deletion indexing failed; firehose will handle', { uri });
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.myCollections(variables.ownerDid),
+      });
+      // Remove the detail cache instead of refetching (the collection no longer exists)
+      queryClient.removeQueries({
+        queryKey: collectionKeys.detail(variables.uri),
+      });
+      // Also remove subcollection detail caches if they were deleted
+      if (variables.deleteSubcollections && variables.subcollections) {
+        for (const sub of variables.subcollections) {
+          queryClient.removeQueries({
+            queryKey: collectionKeys.detail(sub.uri),
+          });
+        }
+      }
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.public({}),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for adding an item to a collection.
+ *
+ * @returns Mutation object for adding items
+ */
+export function useAddToCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      input: AddItemToCollectionInput & {
+        cosmikCollectionUri?: string;
+        cosmikCollectionCid?: string;
+        /** URL for the Cosmik card (the item's AT-URI or external URL) */
+        itemUrl?: string;
+        /** Display title for the Cosmik card */
+        itemTitle?: string;
+        /** Node subkind for rich Semble card metadata */
+        itemSubkind?: string;
+        /** Item type from the wizard (eprint, author, graphNode) */
+        itemType?: string;
+        /** Additional item metadata for rich Semble card content */
+        itemMetadata?: {
+          subkind?: string;
+          description?: string;
+          authors?: string[];
+          handle?: string;
+          kind?: string;
+          avatarUrl?: string;
+          isPersonal?: boolean;
+        };
+      }
+    ): Promise<{ edgeUri: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'addToCollection');
+      }
+
+      const result = await addItemToCollection(agent, input);
+
+      // Request immediate indexing of the edge
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        logger.warn('Immediate indexing failed; firehose will handle', { uri: result.uri });
+      }
+
+      // Create Cosmik card + link if mirror is active
+      if (input.cosmikCollectionUri && input.cosmikCollectionCid && input.itemUrl) {
+        try {
+          await addCosmikItem(agent, {
+            chiveCollectionUri: input.collectionUri,
+            cosmikCollectionUri: input.cosmikCollectionUri,
+            cosmikCollectionCid: input.cosmikCollectionCid,
+            url: input.itemUrl,
+            title: input.itemTitle,
+            subkind: input.itemSubkind,
+            itemType: input.itemType,
+            itemMetadata: input.itemMetadata,
+          });
+
+          // Re-index so the server picks up the updated cosmikItems metadata
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: input.collectionUri });
+          } catch {
+            // Best-effort
+          }
+        } catch (cosmikError) {
+          logger.warn('Cosmik item creation failed', {
+            cosmikCollectionUri: input.cosmikCollectionUri,
+            itemUrl: input.itemUrl,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
+      }
+
+      return { edgeUri: result.uri };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.containing(variables.itemUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for removing an item from a collection.
+ *
+ * @returns Mutation object for removing items
+ */
+export function useRemoveFromCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      edgeUri,
+      collectionUri,
+      itemUri: _itemUri,
+      cosmikCardUri,
+      cosmikLinkUri,
+      cosmikItemUrl,
+    }: {
+      edgeUri: string;
+      collectionUri: string;
+      itemUri: string;
+      cosmikCardUri?: string;
+      cosmikLinkUri?: string;
+      /** URL key used in cosmikItems metadata to remove the mapping */
+      cosmikItemUrl?: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'removeFromCollection');
+      }
+
+      await removeItemFromCollection(agent, edgeUri);
+
+      // Request immediate deletion indexing
+      try {
+        await authApi.pub.chive.sync.deleteRecord({ uri: edgeUri });
+      } catch {
+        logger.warn('Immediate deletion indexing failed; firehose will handle', { uri: edgeUri });
+      }
+
+      // Remove Cosmik card + link if mirror is active
+      if (cosmikCardUri && cosmikLinkUri && cosmikItemUrl) {
+        try {
+          await removeCosmikItem(agent, {
+            chiveCollectionUri: collectionUri,
+            url: cosmikItemUrl,
+            cardUri: cosmikCardUri,
+            linkUri: cosmikLinkUri,
+          });
+
+          // Re-index so server picks up updated metadata
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: collectionUri });
+          } catch {
+            // Best-effort
+          }
+        } catch (cosmikError) {
+          logger.warn('Cosmik item removal failed', {
+            cosmikCardUri,
+            cosmikLinkUri,
+            error: cosmikError instanceof Error ? cosmikError.message : String(cosmikError),
+          });
+        }
+      }
+    },
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+      const previous = queryClient.getQueryData<CollectionDetailResponse>(
+        collectionKeys.detail(variables.collectionUri)
+      );
+      if (previous) {
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), {
+          ...previous,
+          items: previous.items.filter((item) => item.edgeUri !== variables.edgeUri),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), context.previous);
+      }
+    },
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.containing(variables.itemUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for reordering items within a collection.
+ *
+ * @returns Mutation object for reordering items
+ */
+export function useReorderItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      collectionUri,
+      itemOrder,
+    }: {
+      collectionUri: string;
+      itemOrder: string[];
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'reorderItems');
+      }
+
+      await reorderCollectionItems(agent, collectionUri, itemOrder);
+
+      // Request immediate re-indexing
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: collectionUri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        logger.warn('Immediate re-indexing failed; firehose will handle', {
+          uri: collectionUri,
+        });
+      }
+    },
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+      const previous = queryClient.getQueryData<CollectionDetailResponse>(
+        collectionKeys.detail(variables.collectionUri)
+      );
+      if (previous) {
+        const orderMap = new Map(variables.itemOrder.map((uri, idx) => [uri, idx]));
+        const sorted = [...previous.items].sort(
+          (a, b) => (orderMap.get(a.edgeUri) ?? 0) - (orderMap.get(b.edgeUri) ?? 0)
+        );
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), {
+          ...previous,
+          items: sorted,
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), context.previous);
+      }
+    },
+    onSettled: (_, __, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for updating a note on a collection item.
+ *
+ * @returns Mutation object for updating item notes
+ */
+export function useUpdateItemNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      edgeUri,
+      note,
+    }: {
+      edgeUri: string;
+      collectionUri: string;
+      note: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'updateItemNote');
+      }
+
+      const result = await updateEdgeNote(agent, edgeUri, note);
+
+      // Request immediate re-indexing
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for updating a collection item's label and/or note.
+ *
+ * @returns Mutation object for updating item metadata
+ */
+export function useUpdateCollectionItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      edgeUri,
+      itemUri,
+      label,
+      note,
+    }: {
+      edgeUri: string;
+      collectionUri: string;
+      itemUri?: string;
+      label?: string;
+      note?: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'updateCollectionItem');
+      }
+
+      // Update the node record directly if itemUri is provided and owned by user
+      if (itemUri && label !== undefined) {
+        try {
+          const nodeResult = await updatePersonalNode(agent, itemUri, { label });
+          try {
+            await authApi.pub.chive.sync.indexRecord({ uri: nodeResult.uri });
+          } catch {
+            logger.warn('Node re-indexing failed; firehose will handle', { uri: nodeResult.uri });
+          }
+        } catch {
+          logger.warn('Could not update node directly, falling back to edge metadata', { itemUri });
+        }
+      }
+
+      // Update edge metadata (label override + note)
+      const result = await updateEdgeMetadata(agent, edgeUri, { label, note });
+
+      // Request immediate re-indexing
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for adding a subcollection relationship.
+ *
+ * @returns Mutation object for adding subcollections
+ */
+export function useAddSubcollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: AddSubcollectionInput): Promise<{ edgeUri: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'addSubcollection');
+      }
+
+      const result = await addSubcollection(agent, input);
+
+      // Request immediate indexing
+      try {
+        await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        logger.warn('Immediate indexing failed; firehose will handle', { uri: result.uri });
+      }
+
+      return { edgeUri: result.uri };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.subcollections(variables.parentCollectionUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.parent(variables.childCollectionUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.parentCollectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for removing a subcollection relationship.
+ *
+ * @remarks
+ * Only removes the SUBCOLLECTION_OF edge; the subcollection node is not deleted.
+ *
+ * @returns Mutation object for removing subcollections
+ */
+export function useRemoveSubcollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      edgeUri,
+    }: {
+      edgeUri: string;
+      parentCollectionUri: string;
+      childCollectionUri: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'removeSubcollection');
+      }
+
+      await removeSubcollection(agent, edgeUri);
+
+      // Request immediate deletion indexing
+      try {
+        await authApi.pub.chive.sync.deleteRecord({ uri: edgeUri });
+      } catch {
+        logger.warn('Immediate deletion indexing failed; firehose will handle', { uri: edgeUri });
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.subcollections(variables.parentCollectionUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.parent(variables.childCollectionUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.parentCollectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for moving a subcollection to a new parent.
+ *
+ * @returns Mutation object for moving subcollections
+ */
+export function useMoveSubcollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      input: MoveSubcollectionInput & {
+        oldParentUri: string;
+      }
+    ): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'moveSubcollection');
+      }
+
+      await moveSubcollection(agent, input);
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate old parent's subcollections
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.subcollections(variables.oldParentUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.oldParentUri),
+      });
+      // Invalidate new parent's subcollections
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.subcollections(variables.newParentUri),
+      });
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.newParentUri),
+      });
+      // Invalidate the moved subcollection's parent query
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.parent(variables.subcollectionUri),
+      });
+    },
+  });
+}

@@ -5,8 +5,8 @@
  *
  * @remarks
  * Searches governance-controlled nodes in the knowledge graph with flexible
- * filtering by kind and subkind. Works for any node type without hardcoded
- * category mappings.
+ * filtering by kind and subkind. Optionally merges in the authenticated
+ * user's personal nodes and supports inline creation of new personal nodes.
  *
  * @example
  * ```tsx
@@ -21,13 +21,13 @@
  *   }}
  * />
  *
- * // Code platform selection
+ * // With personal nodes and inline creation
  * <NodeAutocomplete
  *   kind="object"
- *   subkind="platform-code"
- *   label="Code Platform"
- *   value={platformUri}
- *   onSelect={(node) => setValue('platformUri', node.uri)}
+ *   subkind="concept"
+ *   label="Concept"
+ *   includePersonal
+ *   onSelect={(node) => console.log(node)}
  * />
  *
  * // Search all nodes (no filters)
@@ -42,21 +42,30 @@
 
 import * as React from 'react';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Tags, Search, Loader2, X, ExternalLink } from 'lucide-react';
+import { Tags, Search, Loader2, X, ExternalLink, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/lib/hooks/use-eprint-search';
+import { useAuth } from '@/lib/auth';
+import {
+  usePersonalNodes,
+  useCreatePersonalNode,
+  type PersonalNodeView,
+} from '@/lib/hooks/use-personal-graph';
 
 // =============================================================================
 // TYPES
@@ -112,6 +121,8 @@ export interface NodeSuggestion {
   alternateLabels?: string[];
   /** Subkind-specific metadata */
   metadata?: Record<string, unknown>;
+  /** Whether this is a personal (user-owned) node */
+  isPersonal?: boolean;
   /** Any additional properties from the API */
   [key: string]: unknown;
 }
@@ -132,6 +143,10 @@ export interface NodeAutocompleteProps {
   onSelect: (node: NodeSuggestion) => void;
   /** Called when selection is cleared */
   onClear?: () => void;
+  /** Called when "Create new" is clicked. If provided, uses this instead of the inline form. */
+  onCreateNew?: (label: string) => void;
+  /** Include the user's personal nodes in the dropdown. Default: true */
+  includePersonal?: boolean;
   /** Placeholder text */
   placeholder?: string;
   /** Label for the dropdown group heading */
@@ -172,7 +187,7 @@ interface GraphApiNode {
 /**
  * Maps a node response to a NodeSuggestion.
  */
-function mapNodeToSuggestion(node: GraphApiNode): NodeSuggestion {
+function mapNodeToSuggestion(node: GraphApiNode, isPersonal = false): NodeSuggestion {
   return {
     id: node.id,
     uri: node.uri,
@@ -184,6 +199,7 @@ function mapNodeToSuggestion(node: GraphApiNode): NodeSuggestion {
     externalIds: node.externalIds,
     alternateLabels: node.alternateLabels,
     metadata: node.metadata,
+    isPersonal,
     // Spread any additional properties
     ...Object.fromEntries(
       Object.entries(node).filter(
@@ -202,6 +218,23 @@ function mapNodeToSuggestion(node: GraphApiNode): NodeSuggestion {
           ].includes(key)
       )
     ),
+  };
+}
+
+/**
+ * Maps a PersonalNodeView to a NodeSuggestion.
+ */
+function mapPersonalNodeToSuggestion(node: PersonalNodeView): NodeSuggestion {
+  return {
+    id: node.uri,
+    uri: node.uri,
+    label: node.label,
+    description: node.description,
+    kind: node.kind,
+    subkind: node.subkind ?? '',
+    status: node.status,
+    metadata: node.metadata,
+    isPersonal: true,
   };
 }
 
@@ -258,7 +291,7 @@ async function listNodes(params: {
     }
 
     const data = await response.json();
-    return (data.nodes ?? []).map(mapNodeToSuggestion);
+    return (data.nodes ?? []).map((n: GraphApiNode) => mapNodeToSuggestion(n));
   } catch (error) {
     console.debug('Node list failed:', error);
     return [];
@@ -297,7 +330,7 @@ async function searchNodes(params: {
     }
 
     const data = await response.json();
-    return (data.nodes ?? []).map(mapNodeToSuggestion);
+    return (data.nodes ?? []).map((n: GraphApiNode) => mapNodeToSuggestion(n));
   } catch (error) {
     console.debug('Node search failed:', error);
     return [];
@@ -324,6 +357,92 @@ function generateFallbackLabel(value: string): string {
 }
 
 // =============================================================================
+// INLINE CREATE FORM
+// =============================================================================
+
+/**
+ * Props for the inline personal node creation form.
+ */
+interface InlineCreateFormProps {
+  /** Pre-filled label from the search query */
+  initialLabel: string;
+  /** Whether creation is in progress */
+  isCreating: boolean;
+  /** Called to submit the form */
+  onSubmit: (label: string, description: string) => void;
+  /** Called to cancel the form */
+  onCancel: () => void;
+}
+
+/**
+ * Inline form for creating a personal node within the dropdown.
+ */
+function InlineCreateForm({ initialLabel, isCreating, onSubmit, onCancel }: InlineCreateFormProps) {
+  const [newLabel, setNewLabel] = useState(initialLabel);
+  const [newDescription, setNewDescription] = useState('');
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    labelInputRef.current?.focus();
+  }, []);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const trimmed = newLabel.trim();
+      if (!trimmed) return;
+      onSubmit(trimmed, newDescription.trim());
+    },
+    [newLabel, newDescription, onSubmit]
+  );
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-2 p-3 border-t">
+      <div className="text-xs font-medium text-muted-foreground">Create personal node</div>
+      <Input
+        ref={labelInputRef}
+        value={newLabel}
+        onChange={(e) => setNewLabel(e.target.value)}
+        placeholder="Label (required)"
+        disabled={isCreating}
+        className="h-8 text-sm"
+        onKeyDown={(e) => e.stopPropagation()}
+      />
+      <Textarea
+        value={newDescription}
+        onChange={(e) => setNewDescription(e.target.value)}
+        placeholder="Description (optional)"
+        disabled={isCreating}
+        className="min-h-[60px] text-sm resize-none"
+        onKeyDown={(e) => e.stopPropagation()}
+      />
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={isCreating || !newLabel.trim()} className="h-7">
+          {isCreating ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              Creating...
+            </>
+          ) : (
+            'Create'
+          )}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={isCreating}
+          className="h-7"
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// =============================================================================
 // COMPONENT
 // =============================================================================
 
@@ -340,6 +459,8 @@ export function NodeAutocomplete({
   value,
   onSelect,
   onClear,
+  onCreateNew,
+  includePersonal = true,
   placeholder,
   label = 'Node',
   disabled = false,
@@ -352,10 +473,24 @@ export function NodeAutocomplete({
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState<NodeSuggestion | null>(null);
+  const [showInlineCreate, setShowInlineCreate] = useState(false);
 
   const debouncedQuery = useDebounce(query, 300);
 
-  // Search for nodes
+  // Auth state for personal nodes
+  const { user, isAuthenticated } = useAuth();
+  const shouldFetchPersonal = includePersonal && isAuthenticated && !!user;
+
+  // Fetch personal nodes when authenticated and includePersonal is true
+  const { data: personalNodesData } = usePersonalNodes(user?.did ?? '', {
+    subkind,
+    enabled: shouldFetchPersonal,
+  });
+
+  // Create personal node mutation
+  const createPersonalNodeMutation = useCreatePersonalNode();
+
+  // Search for global nodes
   const {
     data: apiResults = [],
     isLoading,
@@ -375,8 +510,27 @@ export function NodeAutocomplete({
     staleTime: 60 * 1000,
   });
 
+  // Map personal nodes to suggestions, filtered by query
+  const personalSuggestions = useMemo(() => {
+    if (!shouldFetchPersonal || !personalNodesData?.nodes) return [];
+
+    const mapped = personalNodesData.nodes.map(mapPersonalNodeToSuggestion);
+
+    // Filter by query if provided
+    if (query.length >= 1) {
+      const lowerQuery = query.toLowerCase();
+      return mapped.filter(
+        (s) =>
+          s.label.toLowerCase().includes(lowerQuery) ||
+          (s.description && s.description.toLowerCase().includes(lowerQuery))
+      );
+    }
+
+    return mapped;
+  }, [shouldFetchPersonal, personalNodesData, query]);
+
   // Filter API results by query for client-side filtering
-  const suggestions = useMemo(() => {
+  const globalSuggestions = useMemo(() => {
     const lowerQuery = query.toLowerCase();
 
     if (apiResults.length === 0) {
@@ -396,6 +550,13 @@ export function NodeAutocomplete({
     return apiResults;
   }, [apiResults, query]);
 
+  // Merge personal + global, deduplicating by URI (personal takes priority)
+  const suggestions = useMemo(() => {
+    const personalUris = new Set(personalSuggestions.map((s) => s.uri));
+    const dedupedGlobal = globalSuggestions.filter((s) => !personalUris.has(s.uri));
+    return [...personalSuggestions, ...dedupedGlobal];
+  }, [personalSuggestions, globalSuggestions]);
+
   // Update selected value when external value changes
   useEffect(() => {
     if (value) {
@@ -404,11 +565,27 @@ export function NodeAutocomplete({
         return;
       }
 
-      // Check API results for a match
+      // Check merged suggestions for a match
+      const match = suggestions.find((r) => r.uri === value || r.id === value);
+      if (match) {
+        setSelectedValue(match);
+        return;
+      }
+
+      // Check API results directly (suggestions may be filtered by query)
       const apiMatch = apiResults.find((r) => r.uri === value || r.id === value);
       if (apiMatch) {
         setSelectedValue(apiMatch);
         return;
+      }
+
+      // Check personal nodes directly
+      if (personalNodesData?.nodes) {
+        const personalMatch = personalNodesData.nodes.find((n) => n.uri === value);
+        if (personalMatch) {
+          setSelectedValue(mapPersonalNodeToSuggestion(personalMatch));
+          return;
+        }
       }
 
       // Fallback: create a display-friendly representation
@@ -423,13 +600,14 @@ export function NodeAutocomplete({
     } else {
       setSelectedValue(null);
     }
-  }, [value, apiResults, kind, subkind, selectedValue]);
+  }, [value, suggestions, apiResults, personalNodesData, kind, subkind, selectedValue]);
 
   const handleSelect = useCallback(
     (suggestion: NodeSuggestion) => {
       setSelectedValue(suggestion);
       setQuery('');
       setIsOpen(false);
+      setShowInlineCreate(false);
       onSelect(suggestion);
     },
     [onSelect]
@@ -444,6 +622,7 @@ export function NodeAutocomplete({
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
       setIsOpen(false);
+      setShowInlineCreate(false);
     }
   }, []);
 
@@ -455,7 +634,55 @@ export function NodeAutocomplete({
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
     setIsOpen(true);
+    setShowInlineCreate(false);
   }, []);
+
+  const handleCreateNewClick = useCallback(() => {
+    if (onCreateNew) {
+      onCreateNew(query.trim());
+      setQuery('');
+      setIsOpen(false);
+      return;
+    }
+    // Show inline form
+    setShowInlineCreate(true);
+  }, [onCreateNew, query]);
+
+  const handleInlineCreateSubmit = useCallback(
+    async (newLabel: string, description: string) => {
+      try {
+        const result = await createPersonalNodeMutation.mutateAsync({
+          kind: kind ?? 'object',
+          subkind: subkind ?? 'concept',
+          label: newLabel,
+          description: description || undefined,
+        });
+
+        // Select the newly created node
+        const newSuggestion: NodeSuggestion = {
+          id: result.uri,
+          uri: result.uri,
+          label: result.label,
+          description: result.description,
+          kind: result.kind,
+          subkind: result.subkind ?? '',
+          status: result.status,
+          isPersonal: true,
+        };
+        handleSelect(newSuggestion);
+      } catch {
+        // Mutation error is handled by TanStack Query; the form stays open
+      }
+    },
+    [createPersonalNodeMutation, kind, subkind, handleSelect]
+  );
+
+  const handleInlineCreateCancel = useCallback(() => {
+    setShowInlineCreate(false);
+  }, []);
+
+  // Whether the "Create new" action should be shown
+  const showCreateAction = isAuthenticated && (!!onCreateNew || includePersonal);
 
   // Generate default placeholder from label
   const defaultPlaceholder = `Search ${label.toLowerCase()}...`;
@@ -469,6 +696,11 @@ export function NodeAutocomplete({
         <Badge variant="secondary" className="gap-1 py-1 pl-2 pr-1">
           <Tags className="h-3 w-3 text-muted-foreground" />
           <span>{selectedValue.label}</span>
+          {selectedValue.isPersonal && (
+            <span className="ml-1 text-[10px] font-medium text-muted-foreground bg-muted px-1 py-0.5 rounded">
+              Personal
+            </span>
+          )}
           {wikidataId && (
             <a
               href={`https://www.wikidata.org/wiki/${wikidataId}`}
@@ -531,15 +763,50 @@ export function NodeAutocomplete({
               </div>
             )}
 
-            {!isLoading && suggestions.length === 0 && (
+            {!isLoading && suggestions.length === 0 && !showInlineCreate && (
               <CommandEmpty className="py-3 text-center text-sm">
                 No {label.toLowerCase()} found
               </CommandEmpty>
             )}
 
-            {suggestions.length > 0 && (
+            {/* Personal nodes group */}
+            {personalSuggestions.length > 0 && (
+              <CommandGroup heading="Personal">
+                {personalSuggestions.slice(0, limit).map((suggestion) => (
+                  <CommandItem
+                    key={suggestion.uri}
+                    value={suggestion.uri}
+                    onSelect={() => handleSelect(suggestion)}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Tags className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span>{suggestion.label}</span>
+                          <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1 py-0.5 rounded shrink-0">
+                            Personal
+                          </span>
+                        </div>
+                        {suggestion.description && (
+                          <span className="text-xs text-muted-foreground ml-6 line-clamp-1">
+                            {suggestion.description}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {/* Separator between personal and global groups */}
+            {personalSuggestions.length > 0 && globalSuggestions.length > 0 && <CommandSeparator />}
+
+            {/* Global nodes group */}
+            {globalSuggestions.length > 0 && (
               <CommandGroup heading={label}>
-                {suggestions.slice(0, limit).map((suggestion) => {
+                {globalSuggestions.slice(0, limit).map((suggestion) => {
                   const wikidataId = getWikidataId(suggestion.externalIds);
 
                   return (
@@ -584,7 +851,36 @@ export function NodeAutocomplete({
                 })}
               </CommandGroup>
             )}
+
+            {/* "Create new" action at the bottom of the dropdown */}
+            {showCreateAction && !showInlineCreate && (
+              <>
+                <CommandSeparator />
+                <div className="p-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-muted-foreground hover:text-foreground"
+                    onClick={handleCreateNewClick}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {query.trim() ? `Create new: "${query.trim()}"` : 'Create new...'}
+                  </Button>
+                </div>
+              </>
+            )}
           </CommandList>
+
+          {/* Inline create form (shown instead of the button when active) */}
+          {showInlineCreate && !onCreateNew && (
+            <InlineCreateForm
+              initialLabel={query.trim()}
+              isCreating={createPersonalNodeMutation.isPending}
+              onSubmit={handleInlineCreateSubmit}
+              onCancel={handleInlineCreateCancel}
+            />
+          )}
         </Command>
       </PopoverContent>
     </Popover>

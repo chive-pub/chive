@@ -77,8 +77,16 @@ export interface NodeMetadata {
   displayOrder?: number;
   /** Slug of inverse relation (for relation types) */
   inverseSlug?: string;
+  /** Whether this relation is symmetric (A rel B implies B rel A) */
+  symmetric?: boolean;
+  /** Whether this relation is transitive (A rel B and B rel C implies A rel C) */
+  transitive?: boolean;
+  /** Whether this relation is reflexive (A rel A is always valid) */
+  reflexive?: boolean;
+  /** Whether this relation is functional (each source has at most one target) */
+  functional?: boolean;
   /** Index signature for extensibility */
-  [key: string]: string | string[] | number | undefined;
+  [key: string]: string | string[] | number | boolean | undefined;
 }
 
 /**

@@ -41,8 +41,7 @@ export interface OAuthClientMetadataConfig {
    * OAuth scopes to request.
    *
    * @remarks
-   * Must include 'atproto' for PDS access. 'transition:generic' allows
-   * writing to any lexicon namespace.
+   * Must include 'atproto' for PDS access.
    *
    * @defaultValue ['atproto', 'transition:generic']
    */
@@ -121,7 +120,7 @@ export interface ATProtoOAuthClientOptions {
  *
  * // Start authorization flow
  * const url = await oauthClient.authorize(handle, {
- *   scope: 'atproto transition:generic',
+ *   scope: 'atproto',
  * });
  *
  * // After callback, restore session and get agent

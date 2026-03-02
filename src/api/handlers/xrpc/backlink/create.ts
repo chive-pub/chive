@@ -43,7 +43,7 @@ export const create: XRPCMethod<void, InputSchema, OutputSchema> = {
 
     // Cast lexicon type to service type (lexicon uses (string & {}) for extensibility)
     type ServiceSourceType =
-      | 'semble.collection'
+      | 'cosmik.collection'
       | 'leaflet.list'
       | 'whitewind.blog'
       | 'bluesky.post'

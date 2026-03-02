@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Save, Pencil, Copy, Check } from 'lucide-react';
+import Link from 'next/link';
+import { Loader2, Save, Pencil, Copy, Check, LayoutGrid, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useCurrentUser, useAgent } from '@/lib/auth';
@@ -251,6 +252,33 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Profile Display Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5" />
+            Profile Display
+          </CardTitle>
+          <CardDescription>
+            Configure the layout and sections visible on your public profile page
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/dashboard/settings/profile-display"
+            className="flex items-center justify-between rounded-lg bg-muted/50 p-4 transition-colors hover:bg-muted"
+          >
+            <div>
+              <p className="text-sm font-medium">Customize profile layout</p>
+              <p className="text-xs text-muted-foreground">
+                Reorder sections, toggle visibility, set profile type, and feature a collection
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </Link>
         </CardContent>
       </Card>
 

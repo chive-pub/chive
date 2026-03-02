@@ -1,0 +1,95 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.getProfileConfig",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get profile configuration for a user",
+      "parameters": {
+        "type": "params",
+        "required": ["did"],
+        "properties": {
+          "did": {
+            "type": "string",
+            "description": "DID of the user"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did", "profileType", "sections"],
+          "properties": {
+            "did": {
+              "type": "string",
+              "description": "DID of the user"
+            },
+            "uri": {
+              "type": "string",
+              "description": "AT-URI of the profile config record"
+            },
+            "profileType": {
+              "type": "string",
+              "description": "Profile type identifier"
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#profileSectionView"
+              },
+              "description": "Profile display sections"
+            },
+            "featuredCollectionUri": {
+              "type": "string",
+              "description": "AT-URI of the featured collection"
+            }
+          }
+        }
+      }
+    },
+    "sectionConfig": {
+      "type": "object",
+      "description": "Section-specific display configuration. Properties vary by section type.",
+      "properties": {
+        "maxItems": {
+          "type": "integer",
+          "description": "Maximum number of items to display"
+        },
+        "collectionUri": {
+          "type": "string",
+          "description": "AT-URI of a collection to feature"
+        },
+        "sortBy": {
+          "type": "string",
+          "description": "Sort order for section items"
+        }
+      }
+    },
+    "profileSectionView": {
+      "type": "object",
+      "description": "Configuration for a profile display section",
+      "required": ["type", "visible", "order"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Section type identifier"
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether the section is visible"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order of the section"
+        },
+        "config": {
+          "type": "ref",
+          "ref": "#sectionConfig",
+          "description": "Section-specific configuration"
+        }
+      }
+    }
+  }
+}

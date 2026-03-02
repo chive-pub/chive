@@ -21,6 +21,9 @@
  * - `pub.chive.review.endorsement` - Endorsements
  * - `pub.chive.eprint.citation` - User-curated citations
  * - `pub.chive.eprint.relatedWork` - User-curated related work links
+ * - `pub.chive.graph.node` - Personal graph nodes (including collections)
+ * - `pub.chive.graph.edge` - Personal graph edges (including collection items)
+ * - `pub.chive.actor.profileConfig` - Profile display configuration
  *
  * @packageDocumentation
  * @public
@@ -177,6 +180,9 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       'pub.chive.eprint.userTag',
       'pub.chive.eprint.citation',
       'pub.chive.eprint.relatedWork',
+      'pub.chive.graph.node',
+      'pub.chive.graph.edge',
+      'pub.chive.actor.profileConfig',
     ];
 
     if (!supportedCollections.includes(collection)) {
@@ -283,6 +289,54 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
         result = await eprintService.indexCitation(record.value, metadata);
       } else if (collection === 'pub.chive.eprint.relatedWork') {
         result = await eprintService.indexRelatedWork(record.value, metadata);
+      } else if (collection === 'pub.chive.graph.node') {
+        // Personal graph node (including collections)
+        const personalGraphService = c.get('services').personalGraph;
+        const collectionService = c.get('services').collection;
+        const nodeRecord = record.value as Record<string, unknown>;
+
+        // Index as collection if subkind is 'collection'
+        if (collectionService && nodeRecord.subkind === 'collection') {
+          const collResult = await collectionService.indexCollection(record.value, metadata);
+          if (isErr(collResult)) {
+            logger.error('Failed to index collection', collResult.error, { uri: input.uri });
+          }
+        }
+
+        // Index as personal graph node
+        if (personalGraphService) {
+          result = await personalGraphService.indexNode(record.value, metadata);
+        } else {
+          // No personal graph service available, treat as success
+          result = { ok: true as const, value: undefined };
+        }
+      } else if (collection === 'pub.chive.graph.edge') {
+        // Personal graph edge (including collection CONTAINS/SUBCOLLECTION_OF)
+        const personalGraphService = c.get('services').personalGraph;
+        const collectionService = c.get('services').collection;
+        const edgeRecord = record.value as Record<string, unknown>;
+        const isCollectionRelation =
+          edgeRecord.relationSlug === 'contains' || edgeRecord.relationSlug === 'subcollection-of';
+
+        // Index as collection edge if it's a collection relation
+        if (collectionService && isCollectionRelation) {
+          const collResult = await collectionService.indexCollectionEdge(record.value, metadata);
+          if (isErr(collResult)) {
+            logger.error('Failed to index collection edge', collResult.error, { uri: input.uri });
+          }
+        }
+
+        // Index as personal graph edge
+        if (personalGraphService) {
+          result = await personalGraphService.indexEdge(record.value, metadata);
+        } else {
+          result = { ok: true as const, value: undefined };
+        }
+      } else if (collection === 'pub.chive.actor.profileConfig') {
+        // Profile configuration -- indexed by event processor via firehose
+        // For immediate indexing, we just acknowledge success since the
+        // profile config table is populated by the event processor
+        result = { ok: true as const, value: undefined };
       } else {
         throw new ValidationError(`Collection ${collection} not supported`, 'uri');
       }

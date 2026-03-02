@@ -1,0 +1,44 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getContaining",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get collections that contain a specific item",
+      "parameters": {
+        "type": "params",
+        "required": ["itemUri"],
+        "properties": {
+          "itemUri": {
+            "type": "string",
+            "description": "AT-URI of the item to find containing collections for"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum results to return"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["collections"],
+          "properties": {
+            "collections": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#collectionView"
+              },
+              "description": "Collections containing the item"
+            }
+          }
+        }
+      }
+    }
+  }
+}

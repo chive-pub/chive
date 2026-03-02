@@ -89,7 +89,7 @@ const createMockBacklinkService = (): IBacklinkService => ({
   deleteBacklink: vi.fn().mockResolvedValue(undefined),
   getBacklinks: vi.fn().mockResolvedValue({ backlinks: [], cursor: undefined }),
   getCounts: vi.fn().mockResolvedValue({
-    sembleCollections: 0,
+    cosmikCollections: 0,
     leafletLists: 0,
     whitewindBlogs: 0,
     blueskyShares: 0,

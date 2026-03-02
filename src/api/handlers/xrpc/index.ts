@@ -26,6 +26,7 @@ export { annotationMethods } from './annotation/index.js';
 export * from './author/index.js';
 export * from './backlink/index.js';
 export * from './claiming/index.js';
+export { collectionMethods } from './collection/index.js';
 export * from './discovery/index.js';
 export * from './endorsement/index.js';
 export * from './governance/index.js';
@@ -46,6 +47,7 @@ import { annotationMethods } from './annotation/index.js';
 import { authorMethods } from './author/index.js';
 import { backlinkMethods } from './backlink/index.js';
 import { claimingMethods, claimingRestEndpoints } from './claiming/index.js';
+import { collectionMethods } from './collection/index.js';
 import { discoveryMethods } from './discovery/index.js';
 import { endorsementMethods } from './endorsement/index.js';
 import { eprintMethods } from './eprint/index.js';
@@ -69,6 +71,7 @@ export const allXRPCMethods = {
   ...authorMethods,
   ...backlinkMethods,
   ...claimingMethods,
+  ...collectionMethods,
   ...discoveryMethods,
   ...endorsementMethods,
   ...eprintMethods,

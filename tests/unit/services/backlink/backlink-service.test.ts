@@ -43,14 +43,14 @@ const createMockDatabasePool = (): MockDatabasePool => ({
  *
  * Uses verified formats based on ATProto specification.
  */
-const SAMPLE_SOURCE_URI = 'at://did:plc:test123/xyz.semble.collection/reading-list-1';
+const SAMPLE_SOURCE_URI = 'at://did:plc:test123/network.cosmik.collection/reading-list-1';
 const SAMPLE_TARGET_URI = 'at://did:plc:aswhite/pub.chive.eprint.submission/megaattitude';
 const SAMPLE_DID = 'did:plc:test123';
 
 const SAMPLE_BACKLINK_ROW = {
   id: 1,
   source_uri: SAMPLE_SOURCE_URI,
-  source_type: 'semble.collection',
+  source_type: 'cosmik.collection',
   source_did: SAMPLE_DID,
   target_uri: SAMPLE_TARGET_URI,
   context: 'Computational Semantics Reading List',
@@ -60,7 +60,7 @@ const SAMPLE_BACKLINK_ROW = {
 };
 
 const SAMPLE_COUNTS_ROW = {
-  semble_count: 5,
+  cosmik_count: 5,
   leaflet_count: 3,
   whitewind_count: 2,
   bluesky_post_count: 6,
@@ -97,7 +97,7 @@ describe('BacklinkService', () => {
 
       const result = await service.createBacklink({
         sourceUri: SAMPLE_SOURCE_URI,
-        sourceType: 'semble.collection' as BacklinkSourceType,
+        sourceType: 'cosmik.collection' as BacklinkSourceType,
         targetUri: SAMPLE_TARGET_URI,
         context: 'Computational Semantics Reading List',
       });
@@ -105,7 +105,7 @@ describe('BacklinkService', () => {
       expect(result).toMatchObject({
         id: 1,
         sourceUri: SAMPLE_SOURCE_URI,
-        sourceType: 'semble.collection',
+        sourceType: 'cosmik.collection',
         targetUri: SAMPLE_TARGET_URI,
         context: 'Computational Semantics Reading List',
         deleted: false,
@@ -115,7 +115,7 @@ describe('BacklinkService', () => {
         expect.stringContaining('INSERT INTO backlinks'),
         expect.arrayContaining([
           SAMPLE_SOURCE_URI,
-          'semble.collection',
+          'cosmik.collection',
           SAMPLE_DID,
           SAMPLE_TARGET_URI,
           'Computational Semantics Reading List',
@@ -127,8 +127,8 @@ describe('BacklinkService', () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_BACKLINK_ROW] });
 
       await service.createBacklink({
-        sourceUri: 'at://did:plc:jgrove456/xyz.semble.collection/list1',
-        sourceType: 'semble.collection' as BacklinkSourceType,
+        sourceUri: 'at://did:plc:jgrove456/network.cosmik.collection/list1',
+        sourceType: 'cosmik.collection' as BacklinkSourceType,
         targetUri: SAMPLE_TARGET_URI,
       });
 
@@ -142,7 +142,7 @@ describe('BacklinkService', () => {
       await expect(
         service.createBacklink({
           sourceUri: 'https://example.com/invalid',
-          sourceType: 'semble.collection' as BacklinkSourceType,
+          sourceType: 'cosmik.collection' as BacklinkSourceType,
           targetUri: SAMPLE_TARGET_URI,
         })
       ).rejects.toThrow('Invalid AT-URI format');
@@ -154,7 +154,7 @@ describe('BacklinkService', () => {
       await expect(
         service.createBacklink({
           sourceUri: SAMPLE_SOURCE_URI,
-          sourceType: 'semble.collection' as BacklinkSourceType,
+          sourceType: 'cosmik.collection' as BacklinkSourceType,
           targetUri: SAMPLE_TARGET_URI,
         })
       ).rejects.toThrow('Failed to create backlink');
@@ -167,7 +167,7 @@ describe('BacklinkService', () => {
 
       await service.createBacklink({
         sourceUri: SAMPLE_SOURCE_URI,
-        sourceType: 'semble.collection' as BacklinkSourceType,
+        sourceType: 'cosmik.collection' as BacklinkSourceType,
         targetUri: SAMPLE_TARGET_URI,
       });
 
@@ -183,7 +183,7 @@ describe('BacklinkService', () => {
 
       await service.createBacklink({
         sourceUri: SAMPLE_SOURCE_URI,
-        sourceType: 'semble.collection' as BacklinkSourceType,
+        sourceType: 'cosmik.collection' as BacklinkSourceType,
         targetUri: SAMPLE_TARGET_URI,
       });
 
@@ -256,12 +256,12 @@ describe('BacklinkService', () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_BACKLINK_ROW] });
 
       await service.getBacklinks(SAMPLE_TARGET_URI, {
-        sourceType: 'semble.collection' as BacklinkSourceType,
+        sourceType: 'cosmik.collection' as BacklinkSourceType,
       });
 
       expect(db.query).toHaveBeenCalledWith(
         expect.stringContaining('source_type = $2'),
-        expect.arrayContaining([SAMPLE_TARGET_URI, 'semble.collection'])
+        expect.arrayContaining([SAMPLE_TARGET_URI, 'cosmik.collection'])
       );
     });
 
@@ -308,7 +308,7 @@ describe('BacklinkService', () => {
       const result = await service.getCounts(SAMPLE_TARGET_URI);
 
       expect(result).toMatchObject({
-        sembleCollections: 5,
+        cosmikCollections: 5,
         leafletLists: 3,
         whitewindBlogs: 2,
         blueskyPosts: 6,
@@ -324,7 +324,7 @@ describe('BacklinkService', () => {
       const result = await service.getCounts(SAMPLE_TARGET_URI);
 
       expect(result).toMatchObject({
-        sembleCollections: 0,
+        cosmikCollections: 0,
         leafletLists: 0,
         whitewindBlogs: 0,
         blueskyPosts: 0,
@@ -408,8 +408,8 @@ describe('BacklinkService', () => {
     it('should insert multiple backlinks in single query', async () => {
       const backlinks = [
         {
-          sourceUri: 'at://did:plc:user1/xyz.semble.collection/list1',
-          sourceType: 'semble.collection' as BacklinkSourceType,
+          sourceUri: 'at://did:plc:user1/network.cosmik.collection/list1',
+          sourceType: 'cosmik.collection' as BacklinkSourceType,
           targetUri: SAMPLE_TARGET_URI,
         },
         {
@@ -447,7 +447,7 @@ describe('BacklinkService', () => {
       await service.batchCreateBacklinks([
         {
           sourceUri: SAMPLE_SOURCE_URI,
-          sourceType: 'semble.collection' as BacklinkSourceType,
+          sourceType: 'cosmik.collection' as BacklinkSourceType,
           targetUri: SAMPLE_TARGET_URI,
         },
       ]);
@@ -464,7 +464,7 @@ describe('BacklinkService', () => {
       await service.batchCreateBacklinks([
         {
           sourceUri: SAMPLE_SOURCE_URI,
-          sourceType: 'semble.collection' as BacklinkSourceType,
+          sourceType: 'cosmik.collection' as BacklinkSourceType,
           targetUri: SAMPLE_TARGET_URI,
         },
       ]);
