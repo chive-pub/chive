@@ -23,6 +23,12 @@ Chive is a decentralized eprint service built on the AT Protocol. Your content l
 | [Discovery and recommendations](./discovery-recommendations.md) | Personalized paper recommendations    |
 | [Tags and classification](./tags-and-classification.md)         | Using tags and the knowledge graph    |
 
+### Organizing content
+
+| Section                         | Description                     |
+| ------------------------------- | ------------------------------- |
+| [Collections](./collections.md) | Create and manage curated lists |
+
 ### Community engagement
 
 | Section                                       | Description                              |
@@ -39,4 +45,4 @@ Chive is a decentralized eprint service built on the AT Protocol. Your content l
 
 ## Next steps
 
-Start with [Submitting eprints](./submitting-eprints.md) to learn how to share your research, or explore [Searching](./searching.md) to discover papers in your field.
+Start with [Submitting eprints](./submitting-eprints.md) to learn how to share your research, explore [Searching](./searching.md) to discover papers in your field, or organize your reading with [Collections](./collections.md).

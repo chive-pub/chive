@@ -25,11 +25,12 @@ All services return `Result<T, Error>` types for explicit error handling.
 
 ### Data ingestion
 
-| Service                          | Purpose                     | Key operations                     |
-| -------------------------------- | --------------------------- | ---------------------------------- |
-| [IndexingService](./indexing.md) | Firehose consumption        | `start()`, `stop()`, `getStatus()` |
-| EprintService                    | Eprint indexing             | `indexEprint()`, `getEprint()`     |
-| ReviewService                    | Review/endorsement indexing | `indexReview()`, `getReviews()`    |
+| Service                               | Purpose                     | Key operations                          |
+| ------------------------------------- | --------------------------- | --------------------------------------- |
+| [IndexingService](./indexing.md)      | Firehose consumption        | `start()`, `stop()`, `getStatus()`      |
+| EprintService                         | Eprint indexing             | `indexEprint()`, `getEprint()`          |
+| ReviewService                         | Review/endorsement indexing | `indexReview()`, `getReviews()`         |
+| [CollectionService](./collections.md) | Collection indexing         | `getCollection()`, `findContainsEdge()` |
 
 ### Search and discovery
 
@@ -178,6 +179,7 @@ describe('EprintService', () => {
 ## Next steps
 
 - [IndexingService](./indexing.md): Firehose consumption pipeline
+- [CollectionService](./collections.md): User-curated collection management
 - [DiscoveryService](./discovery.md): Recommendation engine
 - [ClaimingService](./claiming.md): Authorship verification
 - [PDSDiscoveryService](./pds-discovery.md): PDS registration and scanning

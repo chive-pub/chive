@@ -59,12 +59,23 @@ Only events matching `pub.chive.*` collections are processed:
 const CHIVE_COLLECTIONS = [
   'pub.chive.eprint.submission',
   'pub.chive.eprint.version',
+  'pub.chive.eprint.changelog',
+  'pub.chive.eprint.tag',
+  'pub.chive.eprint.userTag',
+  'pub.chive.eprint.citation',
+  'pub.chive.eprint.relatedWork',
   'pub.chive.review.comment',
   'pub.chive.review.endorsement',
+  'pub.chive.review.entityLink',
+  'pub.chive.annotation.comment',
+  'pub.chive.annotation.entityLink',
+  'pub.chive.graph.node',
+  'pub.chive.graph.edge',
   'pub.chive.graph.nodeProposal',
   'pub.chive.graph.edgeProposal',
   'pub.chive.graph.vote',
-  'pub.chive.eprint.userTag',
+  'pub.chive.actor.profile',
+  'pub.chive.actor.profileConfig',
 ];
 ```
 
@@ -217,8 +228,23 @@ async processEvent(event: RepoEvent): Promise<void> {
           pdsEndpoint: await this.resolvePds(event.repo)
         });
         break;
+      case 'pub.chive.eprint.version':
+        // Upsert version metadata into eprint_versions_index
+        // On delete: remove from eprint_versions_index
+        break;
       case 'pub.chive.review.comment':
         await this.reviewService.indexReview(op.record, metadata);
+        break;
+      case 'pub.chive.review.endorsement':
+        await this.reviewService.indexEndorsement(op.record, metadata);
+        break;
+      case 'pub.chive.graph.node':
+      case 'pub.chive.graph.edge':
+        await this.personalGraphService.indexRecord(op, metadata);
+        break;
+      case 'pub.chive.annotation.entityLink':
+      case 'pub.chive.review.entityLink':
+        await this.annotationService.indexEntityLink(op.record, metadata);
         break;
       // ... other collections
     }

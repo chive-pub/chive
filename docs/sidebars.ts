@@ -27,6 +27,7 @@ const sidebars: SidebarsConfig = {
         'user-guide/profiles',
         'user-guide/claiming-authorship',
         'user-guide/tags-and-classification',
+        'user-guide/collections',
         'user-guide/discovery-recommendations',
         'user-guide/sharing-to-bluesky',
       ],
@@ -50,6 +51,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'developer-guide/services/README',
             'developer-guide/services/indexing',
+            'developer-guide/services/collections',
             'developer-guide/services/discovery',
             'developer-guide/services/claiming',
           ],

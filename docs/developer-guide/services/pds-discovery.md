@@ -108,18 +108,27 @@ Scans PDSes for all `pub.chive.*` records and indexes them via the appropriate s
 
 #### Instantiation
 
-The scanner requires both `EprintService` and `ReviewService` dependencies to handle the different collection types:
+The scanner requires service dependencies for each record type it indexes:
 
 ```typescript
 import { PDSScanner } from '@/services/pds-discovery/pds-scanner.js';
 import { EprintService } from '@/services/eprint/eprint-service.js';
 import { ReviewService } from '@/services/review/review-service.js';
+import { CollectionService } from '@/services/collection/collection-service.js';
+import { AnnotationService } from '@/services/annotation/annotation-service.js';
+import { PersonalGraphService } from '@/services/personal-graph/personal-graph-service.js';
 
-const scanner = new PDSScanner(registry, eprintService, reviewService, logger, {
-  requestsPerMinute: 10,
-  scanTimeoutMs: 60000,
-  maxRecordsPerPDS: 1000,
-});
+const scanner = new PDSScanner(
+  registry,
+  eprintService,
+  reviewService,
+  logger,
+  { requestsPerMinute: 10, scanTimeoutMs: 60000, maxRecordsPerPDS: 1000 },
+  collectionService,
+  annotationService,
+  personalGraphService,
+  pool
+);
 
 // Scan a single PDS
 const result = await scanner.scanPDS('https://pds.example.com');
@@ -131,17 +140,33 @@ const results = await scanner.scanMultiplePDSes(pdsUrls, 2);
 
 #### Supported collections
 
-The scanner indexes records from the following collections:
+The scanner indexes records from all `pub.chive.*` collections:
 
-| Collection                     | Indexed via     | Description                          |
-| ------------------------------ | --------------- | ------------------------------------ |
-| `pub.chive.eprint.submission`  | `EprintService` | Core eprint submissions              |
-| `pub.chive.review.comment`     | `ReviewService` | Review comments with threading       |
-| `pub.chive.review.endorsement` | `ReviewService` | Endorsements with contribution types |
-| `pub.chive.eprint.userTag`     | (logged only)   | User-assigned tags on eprints        |
-| `pub.chive.eprint.tag`         | (logged only)   | Legacy tag records                   |
+| Collection                        | Indexed via            | Description                                    |
+| --------------------------------- | ---------------------- | ---------------------------------------------- |
+| `pub.chive.eprint.submission`     | `EprintService`        | Core eprint submissions                        |
+| `pub.chive.eprint.version`        | Direct SQL insert      | Eprint version metadata                        |
+| `pub.chive.eprint.userTag`        | Direct SQL insert      | User-assigned tags on eprints                  |
+| `pub.chive.eprint.tag`            | Direct SQL insert      | Author-assigned tags                           |
+| `pub.chive.eprint.citation`       | Direct SQL insert      | Extracted and curated citations                |
+| `pub.chive.eprint.relatedWork`    | Direct SQL insert      | Related paper links                            |
+| `pub.chive.eprint.changelog`      | `EprintService`        | Eprint edit changelogs                         |
+| `pub.chive.review.comment`        | `ReviewService`        | Review comments with threading                 |
+| `pub.chive.review.endorsement`    | `ReviewService`        | Endorsements with contribution types           |
+| `pub.chive.review.entityLink`     | `AnnotationService`    | Entity links on reviews                        |
+| `pub.chive.graph.node`            | `PersonalGraphService` | Knowledge graph and personal nodes             |
+| `pub.chive.graph.edge`            | `PersonalGraphService` | Graph edges (contains, subcollection-of, etc.) |
+| `pub.chive.graph.nodeProposal`    | (logged only)          | Governance node proposals                      |
+| `pub.chive.graph.edgeProposal`    | (logged only)          | Governance edge proposals                      |
+| `pub.chive.graph.vote`            | (logged only)          | Governance votes                               |
+| `pub.chive.annotation.comment`    | `AnnotationService`    | Inline text annotations                        |
+| `pub.chive.annotation.entityLink` | `AnnotationService`    | Entity links on annotations                    |
+| `pub.chive.actor.profile`         | Direct SQL insert      | Actor profile records                          |
+| `pub.chive.actor.profileConfig`   | Direct SQL insert      | Profile display configuration                  |
 
-User tags (`userTag` and `tag`) are logged during scans but not fully indexed. Tag indexing via `TagManager` integration is planned for a future release.
+Governance records (`nodeProposal`, `edgeProposal`, `vote`) are logged during scans but not fully indexed. Governance indexing is planned for a future release.
+
+Each collection is scanned with cursor-based pagination, fetching up to 100 records per page and continuing until all records are retrieved or the per-PDS maximum is reached.
 
 #### Record routing
 
@@ -151,25 +176,48 @@ The scanner routes records to the appropriate service based on collection type:
 // Simplified routing logic in indexRecord()
 switch (collection) {
   case 'pub.chive.eprint.submission':
-    // Transform and index via EprintService
     const transformed = transformPDSRecord(record.value, uri, cid);
     await this.eprintService.indexEprint(transformed, metadata);
     break;
 
+  case 'pub.chive.eprint.version':
+    await this.indexVersion(uri, cid, record.value, pdsUrl);
+    break;
+
   case 'pub.chive.review.comment':
-    // Index directly via ReviewService (validates internally)
     await this.reviewService.indexReview(record.value, metadata);
     break;
 
   case 'pub.chive.review.endorsement':
-    // Index directly via ReviewService (validates internally)
     await this.reviewService.indexEndorsement(record.value, metadata);
+    break;
+
+  case 'pub.chive.review.entityLink':
+  case 'pub.chive.annotation.entityLink':
+    await this.annotationService.indexEntityLink(record.value, metadata);
+    break;
+
+  case 'pub.chive.annotation.comment':
+    await this.annotationService.indexAnnotation(record.value, metadata);
+    break;
+
+  case 'pub.chive.graph.node':
+    await this.personalGraphService.indexNode(record.value, metadata);
+    break;
+
+  case 'pub.chive.graph.edge':
+    await this.personalGraphService.indexEdge(record.value, metadata);
     break;
 
   case 'pub.chive.eprint.userTag':
   case 'pub.chive.eprint.tag':
-    // Logged but not indexed yet
-    this.logger.debug('Scanned user tag record', { uri, collection });
+    await this.indexUserTag(uri, cid, record.value, pdsUrl);
+    break;
+
+  case 'pub.chive.graph.nodeProposal':
+  case 'pub.chive.graph.edgeProposal':
+  case 'pub.chive.graph.vote':
+    this.logger.debug('Scanned governance record', { uri, collection });
     break;
 }
 ```
