@@ -2,6 +2,21 @@
 node_modules/
 .pnp
 .pnp.js
+.yarn/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+storybook-static/
+
+# Generated code (regenerated on build/CI)
+src/lexicons/generated/
+web/lib/api/generated/
+web/lib/api/schema.generated.ts
 
 # Testing
 coverage/
@@ -9,36 +24,21 @@ coverage/
 playwright-report/
 tests/e2e/test-results/
 tests/e2e/.auth/
+k6-results/
 
-# Build outputs
-dist/
-build/
-.turbo/
-*.tsbuildinfo
-
-# Generated lexicon types (regenerated on CI)
-src/lexicons/generated/
-web/lib/api/generated/
-
-# OpenAPI generated types (optional tooling, not used in current architecture)
-web/lib/api/schema.generated.ts
-
-# Docusaurus
+# Documentation builds
 docs/.docusaurus/
 docs/build/
 docs/code-reference/
 docs/api-docs/
 
-# Environment
+# Environment files
 .env
 .env.local
 .env.*.local
 web/.env.local
-
-# Development scripts (user-specific config)
-scripts/ngrok.yml
-/tmp/chive-tunnel-url.env
-/tmp/lt-output.txt
+docker/.env
+docker/.env.production
 
 # Logs
 logs/
@@ -48,30 +48,26 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS
-.DS_Store
-Thumbs.db
-
-# IDEs
+# Editors and IDEs
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
 
-# VS Code
-.vscode/
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# Temporary
+# Temporary files
 tmp/
 temp/
 *.tmp
 
-# K6 results
-k6-results/
-
-# Claude Code
+# Development tools
+scripts/ngrok.yml
+/tmp/chive-tunnel-url.env
+/tmp/lt-output.txt
 .claude/
-
-# Other
 notes/
-docs/operations/_ALPHA_BETA_TESTING_ROLLOUT.md
