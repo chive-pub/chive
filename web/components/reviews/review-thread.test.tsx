@@ -11,6 +11,22 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+// Mock next/navigation (needed by AddToCollectionDialog inside ReviewCard)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+  }),
+}));
+
+// Mock auth hooks (ReviewCard and AddToCollectionDialog call useIsAuthenticated / useCurrentUser)
+vi.mock('@/lib/auth', () => ({
+  useIsAuthenticated: () => false,
+  useCurrentUser: () => null,
+}));
+
 describe('ThreadCollapseToggle', () => {
   it('shows expand text when collapsed', () => {
     render(<ThreadCollapseToggle isCollapsed={true} onToggle={() => {}} replyCount={5} />);

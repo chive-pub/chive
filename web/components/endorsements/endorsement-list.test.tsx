@@ -8,6 +8,22 @@ import {
 } from './endorsement-list';
 import { createMockEndorsement } from '@/tests/mock-data';
 
+// Mock next/navigation (needed by AddToCollectionButton)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+  }),
+}));
+
+// Mock auth hooks (AddToCollectionButton calls useIsAuthenticated / useCurrentUser)
+vi.mock('@/lib/auth', () => ({
+  useIsAuthenticated: () => false,
+  useCurrentUser: () => null,
+}));
+
 describe('EndorsementItem', () => {
   const mockEndorsement = createMockEndorsement({
     endorser: {
