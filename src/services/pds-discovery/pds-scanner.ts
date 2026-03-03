@@ -33,6 +33,8 @@ import type {
   ActorProfileRecord,
   ChangelogRecord,
   ProfileConfigRecord,
+  UserTagRecord,
+  VersionRecord,
 } from '../indexing/event-processor.js';
 import type { ReviewService } from '../review/review-service.js';
 
@@ -338,8 +340,10 @@ export class PDSScanner {
   private async scanRepoForChiveRecords(pdsUrl: string, did: DID): Promise<number> {
     const collections = [
       'pub.chive.eprint.submission',
+      'pub.chive.eprint.version',
       'pub.chive.review.comment',
       'pub.chive.review.endorsement',
+      'pub.chive.review.entityLink',
       'pub.chive.eprint.userTag',
       'pub.chive.eprint.tag',
       'pub.chive.eprint.citation',
@@ -558,6 +562,10 @@ export class PDSScanner {
               }
             }
 
+            case 'pub.chive.eprint.version': {
+              return this.indexVersion(record, metadata, collection, endTimer);
+            }
+
             case 'pub.chive.review.comment': {
               // Pass record.value as-is; service validates internally
               const result = await this.reviewService.indexReview(record.value, metadata);
@@ -610,16 +618,7 @@ export class PDSScanner {
 
             case 'pub.chive.eprint.userTag':
             case 'pub.chive.eprint.tag': {
-              // User tags are indexed via firehose and TagManager
-              // For backfill, we log for now; full tag indexing requires TagManager integration
-              this.logger.debug('Scanned user tag record', {
-                uri: record.uri,
-                did,
-                collection,
-              });
-              pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
-              endTimer({ status: 'skipped' });
-              return false;
+              return this.indexUserTag(record, did, metadata, collection, endTimer);
             }
 
             case 'pub.chive.eprint.citation': {
@@ -688,9 +687,10 @@ export class PDSScanner {
             case 'pub.chive.graph.nodeProposal':
             case 'pub.chive.graph.edgeProposal':
             case 'pub.chive.graph.vote': {
-              // Governance records come from the Governance PDS, not user PDSes.
-              // Skipping during PDS scan; these are indexed via firehose.
-              this.logger.debug('Skipped governance record in PDS scan', {
+              // Governance proposals and votes are user actions stored in user PDSes.
+              // They are indexed via firehose; during backfill we skip since the
+              // governance pipeline is firehose-driven.
+              this.logger.debug('Scanned governance record', {
                 uri: record.uri,
                 did,
                 collection,
@@ -733,6 +733,7 @@ export class PDSScanner {
               }
             }
 
+            case 'pub.chive.review.entityLink':
             case 'pub.chive.annotation.entityLink': {
               if (!this.annotationService) {
                 pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
@@ -861,6 +862,150 @@ export class PDSScanner {
     } catch (dbError) {
       const error = dbError instanceof Error ? dbError : new Error(String(dbError));
       this.logger.debug('Failed to index changelog', {
+        uri: record.uri,
+        error: error.message,
+      });
+      pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+      endTimer({ status: 'error' });
+      addSpanAttributes({
+        'record.indexed': false,
+        'record.error': error.message,
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Indexes a user tag into the user_tags_index table.
+   *
+   * @param record - Record data from PDS
+   * @param did - Repo DID (tagger)
+   * @param metadata - Record metadata
+   * @param collection - Collection NSID
+   * @param endTimer - Timer callback for metrics
+   * @returns Whether the record was successfully indexed
+   */
+  private async indexUserTag(
+    record: ListRecordsRecord,
+    did: DID,
+    metadata: RecordMetadata,
+    collection: string,
+    endTimer: (labels: { status: string }) => void
+  ): Promise<boolean> {
+    if (!this.pool) {
+      this.logger.debug('Skipped user tag indexing (no pool)', { uri: record.uri });
+      pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+      endTimer({ status: 'skipped' });
+      return false;
+    }
+
+    const tagRecord = record.value as UserTagRecord;
+
+    try {
+      await this.pool.query(
+        `INSERT INTO user_tags_index (
+          uri, cid, eprint_uri, tagger_did, tag, created_at, pds_url, indexed_at, last_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          tag = EXCLUDED.tag,
+          last_synced_at = NOW()`,
+        [
+          metadata.uri,
+          metadata.cid,
+          tagRecord.eprintUri,
+          did,
+          tagRecord.tag,
+          new Date(tagRecord.createdAt),
+          metadata.pdsUrl,
+        ]
+      );
+
+      this.logger.info('Indexed user tag from PDS scan', {
+        uri: record.uri,
+        eprintUri: tagRecord.eprintUri,
+        tag: tagRecord.tag,
+      });
+      pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+      endTimer({ status: 'success' });
+      addSpanAttributes({ 'record.indexed': true });
+      return true;
+    } catch (dbError) {
+      const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+      this.logger.debug('Failed to index user tag', {
+        uri: record.uri,
+        error: error.message,
+      });
+      pdsMetrics.recordsIndexed.inc({ collection, status: 'error' });
+      endTimer({ status: 'error' });
+      addSpanAttributes({
+        'record.indexed': false,
+        'record.error': error.message,
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Indexes an eprint version into the eprint_versions_index table.
+   *
+   * @param record - Record data from PDS
+   * @param metadata - Record metadata
+   * @param collection - Collection NSID
+   * @param endTimer - Timer callback for metrics
+   * @returns Whether the record was successfully indexed
+   */
+  private async indexVersion(
+    record: ListRecordsRecord,
+    metadata: RecordMetadata,
+    collection: string,
+    endTimer: (labels: { status: string }) => void
+  ): Promise<boolean> {
+    if (!this.pool) {
+      this.logger.debug('Skipped version indexing (no pool)', { uri: record.uri });
+      pdsMetrics.recordsIndexed.inc({ collection, status: 'skipped' });
+      endTimer({ status: 'skipped' });
+      return false;
+    }
+
+    const versionRecord = record.value as VersionRecord;
+
+    try {
+      await this.pool.query(
+        `INSERT INTO eprint_versions_index (
+          uri, cid, eprint_uri, version_number, previous_version_uri,
+          changes, created_at, pds_url, indexed_at, last_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          version_number = EXCLUDED.version_number,
+          previous_version_uri = EXCLUDED.previous_version_uri,
+          changes = EXCLUDED.changes,
+          last_synced_at = NOW()`,
+        [
+          metadata.uri,
+          metadata.cid,
+          versionRecord.eprintUri,
+          versionRecord.versionNumber,
+          versionRecord.previousVersionUri ?? null,
+          versionRecord.changes,
+          new Date(versionRecord.createdAt),
+          metadata.pdsUrl,
+        ]
+      );
+
+      this.logger.info('Indexed eprint version from PDS scan', {
+        uri: record.uri,
+        eprintUri: versionRecord.eprintUri,
+        versionNumber: versionRecord.versionNumber,
+      });
+      pdsMetrics.recordsIndexed.inc({ collection, status: 'success' });
+      endTimer({ status: 'success' });
+      addSpanAttributes({ 'record.indexed': true });
+      return true;
+    } catch (dbError) {
+      const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+      this.logger.debug('Failed to index eprint version', {
         uri: record.uri,
         error: error.message,
       });
