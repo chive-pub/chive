@@ -110,6 +110,7 @@ export interface IndexedCollection {
   readonly itemCount: number;
   readonly createdAt: Date;
   readonly updatedAt?: Date;
+  readonly parentCollectionUri?: string;
   readonly cosmikCollectionUri?: string;
   readonly cosmikCollectionCid?: string;
   readonly cosmikItems?: Record<
@@ -633,6 +634,7 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        parent_collection_uri: string | null;
         cosmik_collection_uri: string | null;
         cosmik_collection_cid: string | null;
         cosmik_items: Record<string, unknown> | null;
@@ -640,19 +642,22 @@ export class CollectionService {
         `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                 c.created_at, c.updated_at,
                 COUNT(e.uri)::text AS item_count,
+                parent_edge.target_uri AS parent_collection_uri,
                 pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
                 pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid,
                 pgn.metadata->'cosmikItems' AS cosmik_items
          FROM collections_index c
          LEFT JOIN collection_edges_index e
            ON e.source_uri = c.uri AND e.relation_slug = 'contains'
+         LEFT JOIN collection_edges_index parent_edge
+           ON parent_edge.source_uri = c.uri AND parent_edge.relation_slug = 'subcollection-of'
          LEFT JOIN personal_graph_nodes_index pgn
            ON pgn.uri = c.uri
          WHERE c.uri = $1
            AND (c.visibility = 'public' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
                   c.visibility, c.created_at, c.updated_at,
-                  pgn.metadata`,
+                  parent_edge.target_uri, pgn.metadata`,
         [uri, authDid ?? '']
       );
 
@@ -661,18 +666,7 @@ export class CollectionService {
         return null;
       }
 
-      const collection = this.rowToIndexedCollection(row);
-      if (row.cosmik_collection_uri) {
-        return {
-          ...collection,
-          cosmikCollectionUri: row.cosmik_collection_uri,
-          cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
-          cosmikItems: row.cosmik_items as
-            | Record<string, { cardUri: string; cardCid: string; linkUri: string; linkCid: string }>
-            | undefined,
-        };
-      }
-      return collection;
+      return this.rowToIndexedCollection(row);
     } catch (error) {
       this.logger.error('Failed to get collection', error instanceof Error ? error : undefined, {
         uri,
@@ -689,8 +683,32 @@ export class CollectionService {
    *
    * @public
    */
-  async getCollectionItems(collectionUri: AtUri): Promise<Result<CollectionItem[], DatabaseError>> {
+  async getCollectionItems(
+    collectionUri: AtUri,
+    options?: { excludeSubcollectionItems?: boolean }
+  ): Promise<Result<CollectionItem[], DatabaseError>> {
     try {
+      let sql = `SELECT e.uri, e.target_uri, e.weight, e.label AS edge_label, e.created_at,
+                pgn.label AS node_label, pgn.kind AS node_kind,
+                pgn.subkind AS node_subkind, pgn.description AS node_description,
+                pgn.metadata AS node_metadata
+         FROM collection_edges_index e
+         INNER JOIN personal_graph_nodes_index pgn ON pgn.uri = e.target_uri
+         WHERE e.source_uri = $1 AND e.relation_slug = 'contains'`;
+
+      if (options?.excludeSubcollectionItems) {
+        sql += `
+           AND e.target_uri NOT IN (
+             SELECT sub_items.target_uri
+             FROM collection_edges_index sub_rel
+             JOIN collection_edges_index sub_items
+               ON sub_items.source_uri = sub_rel.source_uri AND sub_items.relation_slug = 'contains'
+             WHERE sub_rel.target_uri = $1 AND sub_rel.relation_slug = 'subcollection-of'
+           )`;
+      }
+
+      sql += ` ORDER BY COALESCE(e.weight, 999999), e.created_at ASC`;
+
       const result = await this.pool.query<{
         uri: string;
         target_uri: string;
@@ -702,17 +720,7 @@ export class CollectionService {
         node_subkind: string | null;
         node_description: string | null;
         node_metadata: Record<string, unknown> | null;
-      }>(
-        `SELECT e.uri, e.target_uri, e.weight, e.label AS edge_label, e.created_at,
-                pgn.label AS node_label, pgn.kind AS node_kind,
-                pgn.subkind AS node_subkind, pgn.description AS node_description,
-                pgn.metadata AS node_metadata
-         FROM collection_edges_index e
-         INNER JOIN personal_graph_nodes_index pgn ON pgn.uri = e.target_uri
-         WHERE e.source_uri = $1 AND e.relation_slug = 'contains'
-         ORDER BY COALESCE(e.weight, 999999), e.created_at ASC`,
-        [collectionUri]
-      );
+      }>(sql, [collectionUri]);
 
       return Ok(
         result.rows.map((row, index) => {
@@ -822,10 +830,17 @@ export class CollectionService {
 
       let query = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                           c.created_at, c.updated_at,
-                          COUNT(e.uri)::text AS item_count
+                          COUNT(e.uri)::text AS item_count,
+                          parent_edge.target_uri AS parent_collection_uri,
+                          pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
+                          pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid
                    FROM collections_index c
                    LEFT JOIN collection_edges_index e
                      ON e.source_uri = c.uri AND e.relation_slug = 'contains'
+                   LEFT JOIN collection_edges_index parent_edge
+                     ON parent_edge.source_uri = c.uri AND parent_edge.relation_slug = 'subcollection-of'
+                   LEFT JOIN personal_graph_nodes_index pgn
+                     ON pgn.uri = c.uri
                    WHERE c.owner_did = $1`;
       const params: unknown[] = [did];
 
@@ -838,7 +853,8 @@ export class CollectionService {
       }
 
       query += ` GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
-                          c.visibility, c.created_at, c.updated_at
+                          c.visibility, c.created_at, c.updated_at,
+                          parent_edge.target_uri, pgn.metadata
                  ORDER BY c.created_at DESC, c.uri DESC
                  LIMIT $${params.length + 1}`;
       params.push(limit + 1);
@@ -853,6 +869,9 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        parent_collection_uri: string | null;
+        cosmik_collection_uri: string | null;
+        cosmik_collection_cid: string | null;
       }>(query, params);
 
       const hasMore = result.rows.length > limit;
@@ -907,10 +926,17 @@ export class CollectionService {
 
       let query = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                           c.created_at, c.updated_at,
-                          COUNT(e.uri)::text AS item_count
+                          COUNT(e.uri)::text AS item_count,
+                          parent_edge.target_uri AS parent_collection_uri,
+                          pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
+                          pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid
                    FROM collections_index c
                    LEFT JOIN collection_edges_index e
                      ON e.source_uri = c.uri AND e.relation_slug = 'contains'
+                   LEFT JOIN collection_edges_index parent_edge
+                     ON parent_edge.source_uri = c.uri AND parent_edge.relation_slug = 'subcollection-of'
+                   LEFT JOIN personal_graph_nodes_index pgn
+                     ON pgn.uri = c.uri
                    WHERE c.visibility = 'public'`;
       const params: unknown[] = [];
 
@@ -928,7 +954,8 @@ export class CollectionService {
       }
 
       query += ` GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
-                          c.visibility, c.created_at, c.updated_at
+                          c.visibility, c.created_at, c.updated_at,
+                          parent_edge.target_uri, pgn.metadata
                  ORDER BY c.created_at DESC, c.uri DESC
                  LIMIT $${params.length + 1}`;
       params.push(limit + 1);
@@ -943,6 +970,9 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        parent_collection_uri: string | null;
+        cosmik_collection_uri: string | null;
+        cosmik_collection_cid: string | null;
       }>(query, params);
 
       const hasMore = result.rows.length > limit;
@@ -1007,10 +1037,17 @@ export class CollectionService {
       // Build main query
       let sql = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                         c.created_at, c.updated_at,
-                        COUNT(e.uri)::text AS item_count
+                        COUNT(e.uri)::text AS item_count,
+                        parent_edge.target_uri AS parent_collection_uri,
+                        pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
+                        pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid
                  FROM collections_index c
                  LEFT JOIN collection_edges_index e
                    ON e.source_uri = c.uri AND e.relation_slug = 'contains'
+                 LEFT JOIN collection_edges_index parent_edge
+                   ON parent_edge.source_uri = c.uri AND parent_edge.relation_slug = 'subcollection-of'
+                 LEFT JOIN personal_graph_nodes_index pgn
+                   ON pgn.uri = c.uri
                  WHERE (c.label ILIKE $1 OR c.description ILIKE $1)`;
       const params: unknown[] = [searchPattern];
 
@@ -1032,7 +1069,8 @@ export class CollectionService {
       }
 
       sql += ` GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
-                        c.visibility, c.created_at, c.updated_at
+                        c.visibility, c.created_at, c.updated_at,
+                        parent_edge.target_uri, pgn.metadata
                ORDER BY c.created_at DESC, c.uri DESC
                LIMIT $${params.length + 1}`;
       params.push(limit + 1);
@@ -1047,6 +1085,9 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        parent_collection_uri: string | null;
+        cosmik_collection_uri: string | null;
+        cosmik_collection_cid: string | null;
       }>(sql, params);
 
       const hasMore = result.rows.length > limit;
@@ -1095,18 +1136,29 @@ export class CollectionService {
         created_at: Date;
         updated_at: Date | null;
         item_count: string;
+        parent_collection_uri: string | null;
+        cosmik_collection_uri: string | null;
+        cosmik_collection_cid: string | null;
       }>(
         `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
                 c.created_at, c.updated_at,
-                COUNT(e2.uri)::text AS item_count
+                COUNT(e2.uri)::text AS item_count,
+                parent_edge.target_uri AS parent_collection_uri,
+                pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
+                pgn.metadata->>'cosmikCollectionCid' AS cosmik_collection_cid
          FROM collections_index c
          INNER JOIN collection_edges_index e
            ON e.source_uri = c.uri AND e.target_uri = $1 AND e.relation_slug = 'contains'
          LEFT JOIN collection_edges_index e2
            ON e2.source_uri = c.uri AND e2.relation_slug = 'contains'
+         LEFT JOIN collection_edges_index parent_edge
+           ON parent_edge.source_uri = c.uri AND parent_edge.relation_slug = 'subcollection-of'
+         LEFT JOIN personal_graph_nodes_index pgn
+           ON pgn.uri = c.uri
          WHERE (c.visibility = 'public' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
-                  c.visibility, c.created_at, c.updated_at
+                  c.visibility, c.created_at, c.updated_at,
+                  parent_edge.target_uri, pgn.metadata
          ORDER BY c.created_at DESC`,
         [itemUri, authDid ?? '']
       );
@@ -1173,23 +1225,7 @@ export class CollectionService {
         [collectionUri, authDid ?? '']
       );
 
-      return result.rows.map((row) => {
-        const collection = this.rowToIndexedCollection(row);
-        if (row.cosmik_collection_uri) {
-          return {
-            ...collection,
-            cosmikCollectionUri: row.cosmik_collection_uri,
-            cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
-            cosmikItems: row.cosmik_items as
-              | Record<
-                  string,
-                  { cardUri: string; cardCid: string; linkUri: string; linkCid: string }
-                >
-              | undefined,
-          };
-        }
-        return collection;
-      });
+      return result.rows.map((row) => this.rowToIndexedCollection(row));
     } catch (error) {
       this.logger.error(
         'Failed to get subcollections',
@@ -1254,18 +1290,7 @@ export class CollectionService {
         return null;
       }
 
-      const collection = this.rowToIndexedCollection(row);
-      if (row.cosmik_collection_uri) {
-        return {
-          ...collection,
-          cosmikCollectionUri: row.cosmik_collection_uri,
-          cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
-          cosmikItems: row.cosmik_items as
-            | Record<string, { cardUri: string; cardCid: string; linkUri: string; linkCid: string }>
-            | undefined,
-        };
-      }
-      return collection;
+      return this.rowToIndexedCollection(row);
     } catch (error) {
       this.logger.error(
         'Failed to get parent collection',
@@ -1711,6 +1736,67 @@ export class CollectionService {
   }
 
   /**
+   * Finds the CONTAINS edge between a collection and a specific item.
+   *
+   * @param collectionUri - AT URI of the collection
+   * @param itemUri - AT URI of the item (personal graph node)
+   * @returns Edge URI and metadata, or null if not found
+   *
+   * @public
+   */
+  async findContainsEdge(
+    collectionUri: AtUri,
+    itemUri: string
+  ): Promise<{
+    edgeUri: string;
+    parentCollectionUri?: string;
+    cosmikItems?: Record<
+      string,
+      { cardUri: string; cardCid: string; linkUri: string; linkCid: string }
+    >;
+  } | null> {
+    try {
+      const result = await this.pool.query<{
+        edge_uri: string;
+        parent_collection_uri: string | null;
+        cosmik_items: Record<string, unknown> | null;
+      }>(
+        `SELECT e.uri AS edge_uri,
+                parent_edge.target_uri AS parent_collection_uri,
+                pgn.metadata->'cosmikItems' AS cosmik_items
+         FROM collection_edges_index e
+         LEFT JOIN personal_graph_nodes_index pgn
+           ON pgn.uri = e.source_uri
+         LEFT JOIN collection_edges_index parent_edge
+           ON parent_edge.source_uri = e.source_uri AND parent_edge.relation_slug = 'subcollection-of'
+         WHERE e.source_uri = $1
+           AND e.target_uri = $2
+           AND e.relation_slug = 'contains'
+         LIMIT 1`,
+        [collectionUri, itemUri]
+      );
+
+      const row = result.rows[0];
+      if (!row) return null;
+
+      return {
+        edgeUri: row.edge_uri,
+        parentCollectionUri: row.parent_collection_uri ?? undefined,
+        cosmikItems: row.cosmik_items as
+          | Record<string, { cardUri: string; cardCid: string; linkUri: string; linkCid: string }>
+          | undefined,
+      };
+    } catch (error) {
+      this.logger.error(
+        'Failed to find contains edge',
+        error instanceof Error ? error : undefined,
+        { collectionUri, itemUri }
+      );
+      return null;
+    }
+  }
+
+  /**
    * Converts a database row to an IndexedCollection.
    *
    * @param row - Database row with collection fields
@@ -1728,6 +1814,10 @@ export class CollectionService {
     created_at: Date;
     updated_at: Date | null;
     item_count: string;
+    parent_collection_uri?: string | null;
+    cosmik_collection_uri?: string | null;
+    cosmik_collection_cid?: string | null;
+    cosmik_items?: Record<string, unknown> | null;
   }): IndexedCollection {
     return {
       uri: row.uri as AtUri,
@@ -1739,6 +1829,10 @@ export class CollectionService {
       itemCount: parseInt(row.item_count, 10),
       createdAt: new Date(row.created_at),
       updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
+      parentCollectionUri: row.parent_collection_uri ?? undefined,
+      cosmikCollectionUri: row.cosmik_collection_uri ?? undefined,
+      cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
+      cosmikItems: row.cosmik_items as IndexedCollection['cosmikItems'],
     };
   }
 }

@@ -36,6 +36,7 @@ import {
   Pencil,
   Trash2,
   Share2,
+  FolderPlus,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -50,6 +51,8 @@ import {
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
+import { AddToCollectionDialog } from '@/components/collection/add-to-collection-dialog';
+import { useIsAuthenticated } from '@/lib/auth';
 import type { Review, AnnotationMotivation } from '@/lib/api/schema';
 
 // =============================================================================
@@ -201,6 +204,8 @@ export function ReviewCard({
   className,
 }: ReviewCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showCollectionDialog, setShowCollectionDialog] = useState(false);
+  const isAuthenticated = useIsAuthenticated();
   const isCompact = variant === 'compact';
   const isDeleted = review.deleted === true;
 
@@ -302,6 +307,12 @@ export function ReviewCard({
                 Share
               </DropdownMenuItem>
             )}
+            {isAuthenticated && (
+              <DropdownMenuItem onClick={() => setShowCollectionDialog(true)}>
+                <FolderPlus className="mr-2 h-4 w-4" />
+                Add to collection
+              </DropdownMenuItem>
+            )}
             {isOwner && onEdit && (
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -356,6 +367,15 @@ export function ReviewCard({
           </Button>
         </div>
       )}
+
+      {/* Add to collection dialog (rendered outside dropdown to avoid nesting) */}
+      <AddToCollectionDialog
+        open={showCollectionDialog}
+        onOpenChange={setShowCollectionDialog}
+        itemUri={review.uri}
+        itemType="review"
+        itemLabel={`Review by ${review.author.displayName || review.author.handle || 'Anonymous'}`}
+      />
     </article>
   );
 }

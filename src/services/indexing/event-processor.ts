@@ -161,6 +161,17 @@ export interface ActorProfileRecord {
 }
 
 /**
+ * Eprint version record from lexicon.
+ */
+export interface VersionRecord {
+  readonly eprintUri: string;
+  readonly versionNumber: number;
+  readonly previousVersionUri?: string;
+  readonly changes: string;
+  readonly createdAt: string;
+}
+
+/**
  * Changelog record from lexicon.
  */
 export interface ChangelogRecord {
@@ -694,6 +705,66 @@ async function processRecord(
           logger.error('Failed to index changelog', error, { uri, action });
           return failure(
             'Failed to index changelog',
+            false,
+            new DatabaseError('INSERT', error.message, error)
+          );
+        }
+      }
+      return success();
+    }
+
+    case 'pub.chive.eprint.version': {
+      logger.debug('Processing eprint version', { action, uri });
+
+      if (action === 'delete') {
+        try {
+          await pool.query('DELETE FROM eprint_versions_index WHERE uri = $1', [uri]);
+          logger.info('Deleted eprint version from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete eprint version', error, { uri });
+          return failure(
+            'Failed to delete eprint version',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
+      } else if (record) {
+        try {
+          const versionRecord = record as VersionRecord;
+
+          await pool.query(
+            `INSERT INTO eprint_versions_index (
+              uri, cid, eprint_uri, version_number, previous_version_uri,
+              changes, created_at, pds_url, indexed_at, last_synced_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            ON CONFLICT (uri) DO UPDATE SET
+              cid = EXCLUDED.cid,
+              version_number = EXCLUDED.version_number,
+              previous_version_uri = EXCLUDED.previous_version_uri,
+              changes = EXCLUDED.changes,
+              last_synced_at = NOW()`,
+            [
+              uri,
+              cid ?? '',
+              versionRecord.eprintUri,
+              versionRecord.versionNumber,
+              versionRecord.previousVersionUri ?? null,
+              versionRecord.changes,
+              new Date(versionRecord.createdAt),
+              pdsUrl,
+            ]
+          );
+          logger.info('Indexed eprint version', {
+            uri,
+            eprintUri: versionRecord.eprintUri,
+            versionNumber: versionRecord.versionNumber,
+          });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index eprint version', error, { uri, action });
+          return failure(
+            'Failed to index eprint version',
             false,
             new DatabaseError('INSERT', error.message, error)
           );

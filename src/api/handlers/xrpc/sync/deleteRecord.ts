@@ -16,6 +16,7 @@
  * - `pub.chive.eprint.citation` - User-curated citations
  * - `pub.chive.eprint.relatedWork` - User-curated related work links
  * - `pub.chive.graph.node` - Collection nodes (user collections)
+ * - `pub.chive.graph.edge` - Personal graph edges (collection item links)
  *
  * @packageDocumentation
  * @public
@@ -107,6 +108,7 @@ export const deleteRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       'pub.chive.eprint.citation',
       'pub.chive.eprint.relatedWork',
       'pub.chive.graph.node',
+      'pub.chive.graph.edge',
     ];
 
     if (!supportedCollections.includes(collection)) {
@@ -203,6 +205,28 @@ export const deleteRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
         // Hard-delete from index (tags, citations, related works have no soft-delete)
         const eprintService = services.eprint;
         await eprintService.deleteFromIndex(input.uri as AtUri, collection);
+      } else if (collection === 'pub.chive.graph.edge') {
+        // Delete graph edge from both personal and collection indexes
+        const personalGraphService = services.personalGraph;
+        if (personalGraphService) {
+          const pgResult = await personalGraphService.deleteEdge(input.uri as AtUri);
+          if (isErr(pgResult)) {
+            logger.warn('Failed to delete from personal graph edges', {
+              uri: input.uri,
+              error: pgResult.error.message,
+            });
+          }
+        }
+        const collectionService = services.collection;
+        if (collectionService) {
+          const ceResult = await collectionService.deleteCollectionEdge(input.uri as AtUri);
+          if (isErr(ceResult)) {
+            logger.warn('Failed to delete from collection edges', {
+              uri: input.uri,
+              error: ceResult.error.message,
+            });
+          }
+        }
       } else if (collection === 'pub.chive.graph.node') {
         // Delete collection node and its edges from the collection index
         const collectionService = services.collection;

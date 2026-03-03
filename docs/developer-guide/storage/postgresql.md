@@ -8,15 +8,20 @@ PostgreSQL serves as Chive's primary index storage for eprints, reviews, and met
 
 All user data tables use `_index` suffix to emphasize they are indexes, not authoritative storage:
 
-| Table                 | Purpose                                     |
-| --------------------- | ------------------------------------------- |
-| `eprints_index`       | Eprint metadata (title, abstract, keywords) |
-| `authors_index`       | Author profiles (name, bio, affiliations)   |
-| `reviews_index`       | Review comments (threaded discussions)      |
-| `endorsements_index`  | Endorsements (methods, results, overall)    |
-| `user_tags_index`     | User-contributed tags (folksonomy)          |
-| `citations_index`     | Extracted and user-curated citations        |
-| `related_works_index` | User-curated related paper links            |
+| Table                        | Purpose                                           |
+| ---------------------------- | ------------------------------------------------- |
+| `eprints_index`              | Eprint metadata (title, abstract, keywords)       |
+| `eprint_versions_index`      | Eprint version metadata (version number, changes) |
+| `authors_index`              | Author profiles (name, bio, affiliations)         |
+| `reviews_index`              | Review comments (threaded discussions)            |
+| `endorsements_index`         | Endorsements (methods, results, overall)          |
+| `user_tags_index`            | User-contributed tags (folksonomy)                |
+| `citations_index`            | Extracted and user-curated citations              |
+| `related_works_index`        | User-curated related paper links                  |
+| `personal_graph_nodes_index` | Personal graph nodes (collections, items)         |
+| `collection_edges_index`     | Collection membership and hierarchy edges         |
+| `annotations_index`          | Inline text annotations                           |
+| `entity_links_index`         | Entity links on reviews and annotations           |
 
 ### PDS source tracking
 
@@ -65,6 +70,28 @@ CREATE TABLE eprints_index (
   created_at TIMESTAMPTZ NOT NULL
 );
 ```
+
+### Eprint versions
+
+```sql
+CREATE TABLE eprint_versions_index (
+  uri TEXT PRIMARY KEY,
+  cid TEXT NOT NULL,
+  eprint_uri TEXT NOT NULL,
+  version_number INTEGER NOT NULL,
+  previous_version_uri TEXT,
+  changes TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  pds_url TEXT,
+  indexed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_eprint_versions_eprint ON eprint_versions_index(eprint_uri);
+CREATE UNIQUE INDEX idx_eprint_versions_unique ON eprint_versions_index(eprint_uri, version_number);
+```
+
+The unique index on `(eprint_uri, version_number)` prevents duplicate version entries for the same eprint.
 
 ### Foreign keys
 

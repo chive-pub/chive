@@ -41,8 +41,11 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ShareMenu } from '@/components/share/share-menu';
+import { createLogger } from '@/lib/observability/logger';
 import { formatDate } from '@/lib/utils/format-date';
 import type { CollectionView } from '@/lib/hooks/use-collections';
+
+const logger = createLogger({ context: { component: 'collection-header' } });
 
 /**
  * Visibility configuration mapping.
@@ -234,7 +237,14 @@ export function CollectionHeader({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => onDelete(deleteSubcollections)}
+                    onClick={() => {
+                      logger.info('Deleting collection', {
+                        collectionUri: collection.uri,
+                        deleteSubcollections,
+                        subcollectionCount: subcollectionNames?.length ?? 0,
+                      });
+                      onDelete(deleteSubcollections);
+                    }}
                     disabled={isDeleting}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
@@ -258,9 +268,12 @@ export function CollectionHeader({
         {collection.cosmikCollectionUri &&
           (() => {
             const m = /^at:\/\/([^/]+)\/[^/]+\/(.+)$/.exec(collection.cosmikCollectionUri);
-            const cosmikUrl = m
-              ? `https://semble.so/collection/${m[1]}/${m[2]}`
-              : `https://semble.so/collection/${encodeURIComponent(collection.cosmikCollectionUri)}`;
+            const handle = collection.ownerHandle;
+            const rkey = m?.[2];
+            const cosmikUrl =
+              handle && rkey
+                ? `https://semble.so/profile/${handle}/collections/${rkey}`
+                : `https://semble.so/profile/${collection.ownerDid}/collections/${rkey ?? encodeURIComponent(collection.cosmikCollectionUri)}`;
             return (
               <Button variant="ghost" size="sm" asChild>
                 <a href={cosmikUrl} target="_blank" rel="noopener noreferrer">

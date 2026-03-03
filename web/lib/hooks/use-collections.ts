@@ -124,6 +124,7 @@ export interface CollectionItemView {
  * An edge between two items within a collection.
  */
 export interface InterItemEdge {
+  edgeUri?: string;
   sourceUri: string;
   targetUri: string;
   relationSlug: string;
@@ -250,11 +251,17 @@ export const collectionKeys = {
  * }
  * ```
  */
-export function useCollection(uri: string, options?: { enabled?: boolean }) {
+export function useCollection(
+  uri: string,
+  options?: { enabled?: boolean; excludeSubcollectionItems?: boolean }
+) {
   return useQuery({
-    queryKey: collectionKeys.detail(uri),
+    queryKey: [...collectionKeys.detail(uri), options?.excludeSubcollectionItems ?? false],
     queryFn: async (): Promise<CollectionDetailResponse> => {
-      const response = await api.pub.chive.collection.get({ uri });
+      const response = await api.pub.chive.collection.get({
+        uri,
+        excludeSubcollectionItems: options?.excludeSubcollectionItems,
+      });
       return response.data as unknown as CollectionDetailResponse;
     },
     enabled: !!uri && (options?.enabled ?? true),
@@ -531,6 +538,8 @@ export function useCreateCollection() {
       }
 
       // Create Cosmik mirror if enabled
+      let cosmikCollectionUri: string | undefined;
+      let cosmikCollectionCid: string | undefined;
       if (input.enableCosmikMirror) {
         try {
           const cosmikResult = await createCosmikMirror(agent, {
@@ -546,6 +555,9 @@ export function useCreateCollection() {
               metadata: item.metadata,
             })),
           });
+
+          cosmikCollectionUri = cosmikResult.cosmikCollectionUri;
+          cosmikCollectionCid = cosmikResult.cosmikCollectionCid;
 
           // Request re-indexing so the server picks up cosmikCollectionUri metadata
           try {
@@ -576,6 +588,8 @@ export function useCreateCollection() {
         itemCount: 0,
         tags: input.tags,
         createdAt: new Date().toISOString(),
+        cosmikCollectionUri,
+        cosmikCollectionCid,
       };
     },
     onSuccess: (data) => {
@@ -871,6 +885,49 @@ export function useAddToCollection() {
 }
 
 /**
+ * Response from the findContainsEdge endpoint.
+ */
+export interface FindContainsEdgeResponse {
+  found: boolean;
+  edgeUri?: string;
+  parentCollectionUri?: string;
+  cosmikCardUri?: string;
+  cosmikLinkUri?: string;
+  cosmikItemUrl?: string;
+}
+
+/**
+ * Finds the CONTAINS edge between a collection and an item.
+ *
+ * @param collectionUri - AT-URI of the collection
+ * @param itemUri - AT-URI of the item
+ * @returns Edge information including Cosmik mapping
+ */
+export async function findContainsEdge(
+  collectionUri: string,
+  itemUri: string
+): Promise<FindContainsEdgeResponse> {
+  const response = await api.pub.chive.collection.findContainsEdge({
+    collectionUri,
+    itemUri,
+  });
+  return response.data as unknown as FindContainsEdgeResponse;
+}
+
+/**
+ * Fetches subcollection URIs for a collection (non-hook imperative call).
+ */
+export async function getSubcollectionUris(collectionUri: string): Promise<string[]> {
+  try {
+    const response = await api.pub.chive.collection.getSubcollections({ uri: collectionUri });
+    const data = response.data as unknown as { subcollections: Array<{ uri: string }> };
+    return data.subcollections.map((s) => s.uri);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Mutation hook for removing an item from a collection.
  *
  * @returns Mutation object for removing items
@@ -935,32 +992,66 @@ export function useRemoveFromCollection() {
       }
     },
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: collectionKeys.detail(variables.collectionUri),
+      const detailPrefix = collectionKeys.detail(variables.collectionUri);
+      const containingKey = collectionKeys.containing(variables.itemUri);
+      await queryClient.cancelQueries({ queryKey: detailPrefix });
+      await queryClient.cancelQueries({ queryKey: containingKey });
+
+      // Collect all matching detail queries (e.g. with different
+      // excludeSubcollectionItems suffixes) for optimistic update.
+      const previousEntries = queryClient.getQueriesData<CollectionDetailResponse>({
+        queryKey: detailPrefix,
       });
-      const previous = queryClient.getQueryData<CollectionDetailResponse>(
-        collectionKeys.detail(variables.collectionUri)
-      );
-      if (previous) {
-        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), {
-          ...previous,
-          items: previous.items.filter((item) => item.edgeUri !== variables.edgeUri),
+      for (const [key, data] of previousEntries) {
+        if (data) {
+          queryClient.setQueryData(key, {
+            ...data,
+            items: data.items.filter((item) => item.edgeUri !== variables.edgeUri),
+          });
+        }
+      }
+
+      // Optimistically remove this collection from the "containing" cache
+      const previousContaining = queryClient.getQueryData<ListCollectionsResponse>(containingKey);
+      if (previousContaining) {
+        queryClient.setQueryData(containingKey, {
+          ...previousContaining,
+          collections: previousContaining.collections.filter(
+            (c) => c.uri !== variables.collectionUri
+          ),
         });
       }
-      return { previous };
+
+      return { previousEntries, previousContaining };
     },
     onError: (_err, variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), context.previous);
+      if (context?.previousEntries) {
+        for (const [key, data] of context.previousEntries) {
+          if (data) {
+            queryClient.setQueryData(key, data);
+          }
+        }
+      }
+      if (context?.previousContaining) {
+        queryClient.setQueryData(
+          collectionKeys.containing(variables.itemUri),
+          context.previousContaining
+        );
       }
     },
-    onSettled: (_, __, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: collectionKeys.detail(variables.collectionUri),
-      });
+    onSettled: (_data, error, variables) => {
+      // Always invalidate "containing" queries so other UIs update
       queryClient.invalidateQueries({
         queryKey: collectionKeys.containing(variables.itemUri),
       });
+      // Only refetch the detail query on error. On success the optimistic
+      // update is correct and an immediate refetch would race with firehose
+      // indexing, potentially restoring the deleted item.
+      if (error) {
+        queryClient.invalidateQueries({
+          queryKey: collectionKeys.detail(variables.collectionUri),
+        });
+      }
     },
   });
 }
@@ -999,27 +1090,30 @@ export function useReorderItems() {
       }
     },
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: collectionKeys.detail(variables.collectionUri),
+      const detailPrefix = collectionKeys.detail(variables.collectionUri);
+      await queryClient.cancelQueries({ queryKey: detailPrefix });
+
+      const previousEntries = queryClient.getQueriesData<CollectionDetailResponse>({
+        queryKey: detailPrefix,
       });
-      const previous = queryClient.getQueryData<CollectionDetailResponse>(
-        collectionKeys.detail(variables.collectionUri)
-      );
-      if (previous) {
-        const orderMap = new Map(variables.itemOrder.map((uri, idx) => [uri, idx]));
-        const sorted = [...previous.items].sort(
-          (a, b) => (orderMap.get(a.edgeUri) ?? 0) - (orderMap.get(b.edgeUri) ?? 0)
-        );
-        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), {
-          ...previous,
-          items: sorted,
-        });
+      const orderMap = new Map(variables.itemOrder.map((uri, idx) => [uri, idx]));
+      for (const [key, data] of previousEntries) {
+        if (data) {
+          const sorted = [...data.items].sort(
+            (a, b) => (orderMap.get(a.edgeUri) ?? 0) - (orderMap.get(b.edgeUri) ?? 0)
+          );
+          queryClient.setQueryData(key, { ...data, items: sorted });
+        }
       }
-      return { previous };
+      return { previousEntries };
     },
     onError: (_err, variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(collectionKeys.detail(variables.collectionUri), context.previous);
+      if (context?.previousEntries) {
+        for (const [key, data] of context.previousEntries) {
+          if (data) {
+            queryClient.setQueryData(key, data);
+          }
+        }
       }
     },
     onSettled: (_, __, variables) => {

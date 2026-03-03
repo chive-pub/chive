@@ -438,7 +438,7 @@ export function StepEdges({ form }: StepEdgesProps) {
           {edges.map((edge, index) => {
             // Skip reverse edges of bidirectional pairs (the forward edge handles display)
             if (edge.isBidirectional) {
-              const hasForward = edges.some(
+              const forwardIndex = edges.findIndex(
                 (e, i) =>
                   i !== index &&
                   e.isBidirectional &&
@@ -446,7 +446,7 @@ export function StepEdges({ form }: StepEdgesProps) {
                   e.targetUri === edge.sourceUri &&
                   e.inverseRelationSlug === edge.relationSlug
               );
-              if (hasForward) return null;
+              if (forwardIndex !== -1 && forwardIndex < index) return null;
             }
 
             return (

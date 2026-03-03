@@ -38,6 +38,8 @@ import {
   Loader2,
   Pencil,
   Check,
+  Plus,
+  Trash2,
   X as XIcon,
 } from 'lucide-react';
 
@@ -57,8 +59,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { NodeExternalIds } from '@/components/knowledge-graph/node-external-ids';
 import type { NodeExternalId, NodeIdSource } from '@/components/knowledge-graph/node-external-ids';
+import { NodeAutocomplete, type NodeSuggestion } from '@/components/forms/node-autocomplete';
 import { useNodeEdges, type ResolvedEdge } from '@/lib/hooks/use-node-edges';
 
 import type { NodeCardData, ExternalId } from './types';
@@ -68,6 +78,15 @@ import type { CollectionItemView, InterItemEdge } from '@/lib/hooks/use-collecti
 // =============================================================================
 // TYPES
 // =============================================================================
+
+/**
+ * Input for adding an inter-item edge.
+ */
+export interface AddEdgeInput {
+  sourceUri: string;
+  targetUri: string;
+  relationSlug: string;
+}
 
 /**
  * Props for the NodeDetailModal component.
@@ -89,6 +108,10 @@ export interface NodeDetailModalProps {
   onSave?: (updates: { label?: string; note?: string }) => Promise<void>;
   /** Whether a save is in progress. */
   isSaving?: boolean;
+  /** Callback to add an inter-item edge. */
+  onAddEdge?: (input: AddEdgeInput) => Promise<void>;
+  /** Callback to remove an inter-item edge by its AT-URI. */
+  onRemoveEdge?: (edgeUri: string) => Promise<void>;
 }
 
 // =============================================================================
@@ -166,6 +189,8 @@ export function NodeDetailModal({
   editable = false,
   onSave,
   isSaving = false,
+  onAddEdge,
+  onRemoveEdge,
 }: NodeDetailModalProps) {
   const router = useRouter();
   const [navStack, setNavStack] = useState<NodeCardData[]>([]);
@@ -467,6 +492,10 @@ export function NodeDetailModal({
               currentNodeUri={currentNode.uri}
               itemLabelMap={itemLabelMap}
               onNavigate={handleNavigateToNode}
+              isEditing={isEditing && editable}
+              collectionItems={collectionItems}
+              onAddEdge={onAddEdge}
+              onRemoveEdge={onRemoveEdge}
             />
 
             {/* External IDs */}
@@ -537,6 +566,14 @@ interface RelationshipsSectionProps {
   currentNodeUri: string;
   itemLabelMap: Map<string, string>;
   onNavigate: (uri: string, label: string) => void;
+  isEditing?: boolean;
+  collectionItems?: CollectionItemView[];
+  onAddEdge?: (input: {
+    sourceUri: string;
+    targetUri: string;
+    relationSlug: string;
+  }) => Promise<void>;
+  onRemoveEdge?: (edgeUri: string) => Promise<void>;
 }
 
 /**
@@ -550,44 +587,213 @@ function RelationshipsSection({
   currentNodeUri,
   itemLabelMap,
   onNavigate,
+  isEditing = false,
+  collectionItems,
+  onAddEdge,
+  onRemoveEdge,
 }: RelationshipsSectionProps) {
-  // Merge collection edges into the same grouped structure
-  const collectionGrouped = useMemo(() => {
-    const groups: Record<string, Array<{ uri: string; label: string }>> = {};
+  const [addingEdge, setAddingEdge] = useState(false);
+  const [targetUri, setTargetUri] = useState('');
+  const [selectedRelation, setSelectedRelation] = useState<NodeSuggestion | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
+
+  // Build a lookup from edge (sourceUri+targetUri+relationSlug) to edgeUri for deletion
+  const edgeUriLookup = useMemo(() => {
+    const map = new Map<string, string>();
     for (const edge of collectionEdges) {
-      if (!groups[edge.relationSlug]) {
-        groups[edge.relationSlug] = [];
+      if (edge.edgeUri) {
+        map.set(`${edge.sourceUri}|${edge.targetUri}|${edge.relationSlug}`, edge.edgeUri);
       }
-      const otherUri = edge.sourceUri === currentNodeUri ? edge.targetUri : edge.sourceUri;
+    }
+    return map;
+  }, [collectionEdges]);
+
+  // Merge collection edges into grouped structure. Incoming and outgoing edges
+  // get separate groups so the direction is clear (e.g., "authored" outgoing
+  // means "this node authored X", while incoming means "X authored this node").
+  // Bidirectional pairs are deduped to just the outgoing direction.
+  const collectionGrouped = useMemo(() => {
+    // Build a set of peers reachable via outgoing (forward) edges so we can
+    // skip incoming reverse edges that point to the same peer.
+    const forwardPeers = new Set<string>();
+    for (const edge of collectionEdges) {
+      if (edge.sourceUri === currentNodeUri) {
+        forwardPeers.add(edge.targetUri);
+      }
+    }
+
+    const groups: Record<
+      string,
+      {
+        direction: 'outgoing' | 'incoming';
+        items: Array<{ uri: string; label: string; edgeUri?: string }>;
+      }
+    > = {};
+    for (const edge of collectionEdges) {
+      const isOutgoing = edge.sourceUri === currentNodeUri;
+      const otherUri = isOutgoing ? edge.targetUri : edge.sourceUri;
+
+      // Skip the reverse direction of a bidirectional pair
+      if (!isOutgoing && forwardPeers.has(edge.sourceUri)) {
+        continue;
+      }
+
+      const direction = isOutgoing ? 'outgoing' : 'incoming';
+      const groupKey = `${edge.relationSlug}:${direction}`;
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = { direction, items: [] };
+      }
       const label = itemLabelMap.get(otherUri) ?? otherUri.split('/').pop() ?? otherUri;
-      groups[edge.relationSlug]!.push({ uri: otherUri, label });
+      groups[groupKey].items.push({ uri: otherUri, label, edgeUri: edge.edgeUri });
     }
     return groups;
   }, [collectionEdges, currentNodeUri, itemLabelMap]);
 
   const graphEdgeCount = edgesData?.edges.length ?? 0;
-  const totalCount = graphEdgeCount + collectionEdges.length;
+  const collectionEdgeCount = Object.values(collectionGrouped).reduce(
+    (sum, group) => sum + group.items.length,
+    0
+  );
+  const totalCount = graphEdgeCount + collectionEdgeCount;
   const hasAnyEdges = totalCount > 0;
-  const allRelationSlugs = useMemo(() => {
-    const slugs = new Set<string>();
+
+  // Collect all unique group keys for rendering: graph edge slugs + collection group keys
+  const allGroupKeys = useMemo(() => {
+    const keys = new Set<string>();
     if (edgesData?.grouped) {
-      for (const slug of Object.keys(edgesData.grouped)) slugs.add(slug);
+      for (const slug of Object.keys(edgesData.grouped)) keys.add(`graph:${slug}`);
     }
-    for (const slug of Object.keys(collectionGrouped)) slugs.add(slug);
-    return [...slugs].sort();
+    for (const key of Object.keys(collectionGrouped)) keys.add(`coll:${key}`);
+    return [...keys].sort();
   }, [edgesData?.grouped, collectionGrouped]);
+
+  // Available targets: collection items except the current node
+  const availableTargets = useMemo(() => {
+    if (!collectionItems) return [];
+    return collectionItems.filter((item) => item.itemUri !== currentNodeUri);
+  }, [collectionItems, currentNodeUri]);
+
+  const handleAddEdge = useCallback(async () => {
+    if (!targetUri || !selectedRelation || !onAddEdge) return;
+    const relationSlug =
+      (selectedRelation.metadata?.slug as string | undefined) ??
+      selectedRelation.label.toLowerCase().replace(/\s+/g, '-');
+    setIsMutating(true);
+    try {
+      await onAddEdge({ sourceUri: currentNodeUri, targetUri, relationSlug });
+      setTargetUri('');
+      setSelectedRelation(null);
+      setAddingEdge(false);
+    } finally {
+      setIsMutating(false);
+    }
+  }, [targetUri, selectedRelation, onAddEdge, currentNodeUri]);
+
+  const handleRemoveEdge = useCallback(
+    async (edgeUri: string) => {
+      if (!onRemoveEdge) return;
+      setIsMutating(true);
+      try {
+        await onRemoveEdge(edgeUri);
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [onRemoveEdge]
+  );
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold flex items-center gap-1.5">
-        <Link2 className="h-4 w-4" />
-        Relationships
-        {!edgesLoading && (
-          <Badge variant="secondary" className="text-[10px] ml-1">
-            {totalCount}
-          </Badge>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-1.5">
+          <Link2 className="h-4 w-4" />
+          Relationships
+          {!edgesLoading && (
+            <Badge variant="secondary" className="text-[10px] ml-1">
+              {totalCount}
+            </Badge>
+          )}
+        </h3>
+        {isEditing && onAddEdge && availableTargets.length > 0 && !addingEdge && (
+          <Button variant="ghost" size="sm" onClick={() => setAddingEdge(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add
+          </Button>
         )}
-      </h3>
+      </div>
+
+      {/* Add edge form */}
+      {isEditing && addingEdge && (
+        <div className="rounded-md border p-3 space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Target Item</label>
+            <Select value={targetUri} onValueChange={setTargetUri}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Select target item..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTargets.map((item) => (
+                  <SelectItem key={item.itemUri} value={item.itemUri}>
+                    {item.label ?? item.title ?? item.itemUri.split('/').pop()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Relation Type</label>
+            {selectedRelation ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="gap-1 py-1 pl-2 pr-1">
+                  <span>{selectedRelation.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRelation(null)}
+                    className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </button>
+                </Badge>
+              </div>
+            ) : (
+              <NodeAutocomplete
+                kind="type"
+                subkind="relation"
+                includePersonal
+                label="Relation"
+                placeholder="Search relations..."
+                onSelect={(node) => setSelectedRelation(node)}
+              />
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleAddEdge}
+              disabled={!targetUri || !selectedRelation || isMutating}
+            >
+              {isMutating ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5 mr-1" />
+              )}
+              Add
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setAddingEdge(false);
+                setTargetUri('');
+                setSelectedRelation(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       {edgesLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
@@ -600,22 +806,35 @@ function RelationshipsSection({
         <p className="text-sm text-muted-foreground py-1">Failed to load relationships</p>
       )}
 
-      {!edgesLoading && !hasAnyEdges && (
+      {!edgesLoading && !hasAnyEdges && !addingEdge && (
         <p className="text-sm text-muted-foreground py-1">No relationships found</p>
       )}
 
       {hasAnyEdges && (
         <div className="space-y-3">
-          {allRelationSlugs.map((slug) => {
-            const Icon = getRelationIcon(slug);
-            const graphEdges = edgesData?.grouped[slug] ?? [];
-            const collectionItems = collectionGrouped[slug] ?? [];
+          {allGroupKeys.map((groupKey) => {
+            // Graph edge groups: "graph:slug", collection groups: "coll:slug:direction"
+            const isGraph = groupKey.startsWith('graph:');
+            const graphSlug = isGraph ? groupKey.slice(6) : null;
+            const collKey = !isGraph ? groupKey.slice(5) : null;
+            const collGroup = collKey ? collectionGrouped[collKey] : undefined;
+
+            // Extract base relation slug and direction for display
+            const baseSlug = graphSlug ?? collKey?.split(':')[0] ?? '';
+            const direction = collGroup?.direction ?? 'outgoing';
+            const Icon = direction === 'incoming' ? ArrowDownRight : getRelationIcon(baseSlug);
+
+            const graphEdges = graphSlug ? (edgesData?.grouped[graphSlug] ?? []) : [];
+            const collItems = collGroup?.items ?? [];
 
             return (
-              <div key={slug} className="space-y-1">
+              <div key={groupKey} className="space-y-1">
                 <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
                   <Icon className="h-3.5 w-3.5" />
-                  {formatRelationSlug(slug)}
+                  {formatRelationSlug(baseSlug)}
+                  {direction === 'incoming' && (
+                    <span className="normal-case text-[10px] font-normal">(incoming)</span>
+                  )}
                 </h4>
                 <ul className="space-y-0.5">
                   {graphEdges.map((edge) => (
@@ -629,15 +848,27 @@ function RelationshipsSection({
                       </button>
                     </li>
                   ))}
-                  {collectionItems.map((item) => (
-                    <li key={item.uri}>
+                  {collItems.map((item) => (
+                    <li key={item.uri} className="flex items-center group">
                       <button
                         onClick={() => onNavigate(item.uri, item.label)}
-                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors w-full text-left"
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors flex-1 text-left min-w-0"
                       >
                         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="truncate">{item.label}</span>
                       </button>
+                      {isEditing && item.edgeUri && onRemoveEdge && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleRemoveEdge(item.edgeUri!)}
+                          disabled={isMutating}
+                          title="Remove relation"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </li>
                   ))}
                 </ul>

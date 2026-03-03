@@ -306,6 +306,12 @@ export function CollectionWizard({
             label: item.label,
             note: item.note,
             order: i,
+            // Cosmik dual-write: create Semble cards when mirror is active
+            cosmikCollectionUri: collection.cosmikCollectionUri,
+            cosmikCollectionCid: collection.cosmikCollectionCid,
+            itemUrl: item.uri,
+            itemTitle: item.label,
+            itemType: item.type,
           });
         } catch (itemError) {
           wizardLogger.warn('Failed to add item to collection', {
@@ -354,6 +360,11 @@ export function CollectionWizard({
                 itemUri: personalNodeUri,
                 label: matchingItem?.label,
                 order: i,
+                cosmikCollectionUri: childCollection.cosmikCollectionUri,
+                cosmikCollectionCid: childCollection.cosmikCollectionCid,
+                itemUrl: originalItemUri,
+                itemTitle: matchingItem?.label,
+                itemType: matchingItem?.type,
               });
             } catch {
               wizardLogger.warn('Failed to add item to subcollection', {

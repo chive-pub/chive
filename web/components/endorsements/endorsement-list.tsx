@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
 import type { Endorsement, ContributionType } from '@/lib/api/schema';
@@ -221,6 +222,14 @@ export function EndorsementItem({
               <Share2 className="h-3 w-3" />
             </Button>
           )}
+
+          <AddToCollectionButton
+            itemUri={endorsement.uri}
+            itemType="endorsement"
+            itemLabel={`Endorsement by ${endorsement.endorser.displayName || endorsement.endorser.handle || 'Anonymous'}`}
+            variant="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          />
 
           {isOwner && onEdit && (
             <Button

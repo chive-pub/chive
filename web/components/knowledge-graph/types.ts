@@ -11,7 +11,22 @@
  * @packageDocumentation
  */
 
-import { Layers, Building2, User, Tag, FileType, Scale, Award, Clock, Network } from 'lucide-react';
+import {
+  Layers,
+  Building2,
+  User,
+  Tag,
+  FileText,
+  FileType,
+  Scale,
+  Award,
+  Clock,
+  Network,
+  Lightbulb,
+  MessageSquare,
+  ThumbsUp,
+  Link as LinkIcon,
+} from 'lucide-react';
 
 import type { CollectionItemView } from '@/lib/hooks/use-collections';
 
@@ -186,6 +201,14 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
   },
   // Object nodes
   {
+    slug: 'eprint',
+    kind: 'object',
+    label: 'Eprints',
+    singularLabel: 'Eprint',
+    icon: FileText,
+    description: 'Research papers and preprints',
+  },
+  {
     slug: 'institution',
     kind: 'object',
     label: 'Institutions',
@@ -208,6 +231,38 @@ export const SUBKIND_CONFIGS: SubkindConfig[] = [
     singularLabel: 'Event',
     icon: Clock,
     description: 'Conferences and workshops',
+  },
+  {
+    slug: 'concept',
+    kind: 'object',
+    label: 'Concepts',
+    singularLabel: 'Concept',
+    icon: Lightbulb,
+    description: 'Abstract concepts and topics',
+  },
+  {
+    slug: 'review',
+    kind: 'object',
+    label: 'Reviews',
+    singularLabel: 'Review',
+    icon: MessageSquare,
+    description: 'Peer reviews and comments',
+  },
+  {
+    slug: 'endorsement',
+    kind: 'object',
+    label: 'Endorsements',
+    singularLabel: 'Endorsement',
+    icon: ThumbsUp,
+    description: 'Formal endorsements',
+  },
+  {
+    slug: 'reference',
+    kind: 'object',
+    label: 'References',
+    singularLabel: 'Reference',
+    icon: LinkIcon,
+    description: 'External references',
   },
 ];
 
@@ -286,17 +341,15 @@ export function collectionItemToCardData(item: CollectionItemView): NodeCardData
   const metadata = item.metadata ?? {};
 
   // Link to detail pages when the underlying entity has a real page.
-  // Person items always link to /authors/{did} since the author page exists
-  // regardless of whether the collection item is personal or community-sourced.
+  // Items with known backing entities always link through, regardless of
+  // whether the collection item is personal or community-sourced.
   let detailPageUrl: string | null = null;
   if (item.subkind === 'person' && metadata.did) {
     detailPageUrl = `/authors/${metadata.did as string}`;
-  } else if (item.source !== 'personal') {
-    if (item.subkind === 'eprint' && metadata.eprintUri) {
-      detailPageUrl = `/eprints/${encodeURIComponent(metadata.eprintUri as string)}`;
-    } else if (item.subkind === 'field') {
-      detailPageUrl = `/fields/${id}`;
-    }
+  } else if (item.subkind === 'eprint' && metadata.eprintUri) {
+    detailPageUrl = `/eprints/${encodeURIComponent(metadata.eprintUri as string)}`;
+  } else if (item.subkind === 'field') {
+    detailPageUrl = `/fields/${id}`;
   }
 
   return {

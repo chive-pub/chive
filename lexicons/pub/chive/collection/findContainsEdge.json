@@ -1,0 +1,57 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.findContainsEdge",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Find the CONTAINS edge between a collection and an item",
+      "parameters": {
+        "type": "params",
+        "required": ["collectionUri", "itemUri"],
+        "properties": {
+          "collectionUri": {
+            "type": "string",
+            "description": "AT-URI of the collection"
+          },
+          "itemUri": {
+            "type": "string",
+            "description": "AT-URI of the item to find"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["found"],
+          "properties": {
+            "found": {
+              "type": "boolean",
+              "description": "Whether the edge was found"
+            },
+            "edgeUri": {
+              "type": "string",
+              "description": "AT-URI of the CONTAINS edge"
+            },
+            "parentCollectionUri": {
+              "type": "string",
+              "description": "AT-URI of the parent collection (for walking up)"
+            },
+            "cosmikCardUri": {
+              "type": "string",
+              "description": "AT-URI of the Cosmik card for this item"
+            },
+            "cosmikLinkUri": {
+              "type": "string",
+              "description": "AT-URI of the Cosmik collection link for this item"
+            },
+            "cosmikItemUrl": {
+              "type": "string",
+              "description": "URL key in cosmikItems metadata"
+            }
+          }
+        }
+      }
+    }
+  }
+}

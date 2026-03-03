@@ -22,6 +22,7 @@ import { useAuthor } from '@/lib/hooks/use-author';
 import { useProfileConfig, type ProfileSection } from '@/lib/hooks/use-profile-config';
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
+import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { cn } from '@/lib/utils';
 
@@ -230,20 +231,28 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
         <div className="flex-1">
           <AuthorHeader profile={data.profile} />
         </div>
-        {shareContent && (
-          <ShareMenu
-            content={shareContent}
-            onShareToBluesky={() => {
-              if (isAuthenticated) {
-                setShowShareDialog(true);
-              } else {
-                window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
-              }
-            }}
-            variant="outline"
-            size="sm"
+        <div className="flex items-center gap-2">
+          {shareContent && (
+            <ShareMenu
+              content={shareContent}
+              onShareToBluesky={() => {
+                if (isAuthenticated) {
+                  setShowShareDialog(true);
+                } else {
+                  window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
+                }
+              }}
+              variant="outline"
+              size="sm"
+            />
+          )}
+          <AddToCollectionButton
+            itemUri={did}
+            itemType="author"
+            itemLabel={data.profile.displayName ?? data.profile.handle ?? did}
+            variant="icon"
           />
-        )}
+        </div>
       </div>
 
       {/* Stats */}

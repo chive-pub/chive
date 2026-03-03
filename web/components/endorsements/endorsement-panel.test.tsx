@@ -28,6 +28,22 @@ vi.mock('@/lib/api/client', () => ({
   },
 }));
 
+// Mock next/navigation (needed by AddToCollectionButton inside EndorsementList)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+  }),
+}));
+
+// Mock auth hooks (AddToCollectionButton calls useIsAuthenticated / useCurrentUser)
+vi.mock('@/lib/auth', () => ({
+  useIsAuthenticated: () => false,
+  useCurrentUser: () => null,
+}));
+
 describe('EndorsementPanel', () => {
   const eprintUri = 'at://did:plc:test/pub.chive.eprint.submission/abc123';
 
