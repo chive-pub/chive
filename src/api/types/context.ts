@@ -12,10 +12,13 @@
 import type { Redis } from 'ioredis';
 
 import type { ActivityService } from '../../services/activity/activity-service.js';
+import type { AdminService } from '../../services/admin/admin-service.js';
+import type { BackfillManager } from '../../services/admin/backfill-manager.js';
 import type { AlphaApplicationService } from '../../services/alpha/alpha-application-service.js';
 import type { AnnotationService } from '../../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
+import type { CitationExtractionService } from '../../services/citation/citation-extraction-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
 import type { CollectionService } from '../../services/collection/collection-service.js';
 import type { DiscoveryService } from '../../services/discovery/discovery-service.js';
@@ -81,6 +84,9 @@ export interface ChiveServices {
   readonly indexRetryWorker?: IndexRetryWorker;
   readonly personalGraph?: PersonalGraphService;
   readonly collection?: CollectionService;
+  readonly admin?: AdminService;
+  readonly backfillManager?: BackfillManager;
+  readonly citationExtraction?: CitationExtractionService;
 }
 
 /**
