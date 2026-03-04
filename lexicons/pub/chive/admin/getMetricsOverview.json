@@ -1,0 +1,65 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getMetricsOverview",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get metrics overview with trending eprints for a given period",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 90,
+            "default": 7,
+            "description": "Number of days to aggregate"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "trending": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#trendingEprint" },
+              "description": "Trending eprints in the period"
+            },
+            "period": {
+              "type": "ref",
+              "ref": "#periodInfo",
+              "description": "Period information"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "trendingEprint": {
+      "type": "object",
+      "description": "A trending eprint with engagement metrics",
+      "required": ["uri", "title", "views", "downloads"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri", "description": "Eprint AT URI" },
+        "title": { "type": "string", "description": "Eprint title" },
+        "authorDid": { "type": "string", "format": "did", "description": "Author DID" },
+        "authorHandle": { "type": "string", "description": "Author handle" },
+        "views": { "type": "integer", "description": "Total views in period" },
+        "downloads": { "type": "integer", "description": "Total downloads in period" },
+        "velocity": { "type": "integer", "description": "Engagement velocity in milliunits" }
+      }
+    },
+    "periodInfo": {
+      "type": "object",
+      "description": "Time period information",
+      "required": ["days", "startDate", "endDate"],
+      "properties": {
+        "days": { "type": "integer", "description": "Number of days in the period" },
+        "startDate": { "type": "string", "format": "datetime", "description": "Period start date" },
+        "endDate": { "type": "string", "format": "datetime", "description": "Period end date" }
+      }
+    }
+  }
+}

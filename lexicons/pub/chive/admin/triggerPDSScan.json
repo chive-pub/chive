@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.triggerPDSScan",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger a scan of known PDSes for new records",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "pdsUrl": {
+              "type": "string",
+              "description": "Specific PDS URL to scan (all if omitted)"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["operationId"],
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "description": "ID of the started backfill operation"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

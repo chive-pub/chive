@@ -1,0 +1,79 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.listReviews",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List indexed reviews with pagination",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["total"],
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#reviewSummary"
+              },
+              "description": "Review records"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total reviews"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "reviewSummary": {
+      "type": "object",
+      "description": "Summary of an indexed review",
+      "required": ["uri", "eprintUri", "authorDid", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Review AT URI"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Reviewed eprint AT URI"
+        },
+        "authorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "Reviewer DID"
+        },
+        "authorHandle": {
+          "type": "string",
+          "description": "Reviewer handle"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the review was created"
+        }
+      }
+    }
+  }
+}

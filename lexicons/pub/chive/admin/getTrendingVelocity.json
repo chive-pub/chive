@@ -1,0 +1,91 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getTrendingVelocity",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get trending eprints ranked by engagement velocity",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum number of results"
+          },
+          "window": {
+            "type": "string",
+            "knownValues": ["24h", "7d", "30d"],
+            "default": "24h",
+            "description": "Time window for velocity calculation"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#velocityEntry"
+              },
+              "description": "Trending eprints with velocity data"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "velocityEntry": {
+      "type": "object",
+      "description": "Eprint trending velocity entry",
+      "required": ["uri", "title", "velocity"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Eprint AT URI"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "authorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID"
+        },
+        "velocity": {
+          "type": "integer",
+          "description": "Engagement velocity in milliunits (divide by 1000 for ratio of current to baseline)"
+        },
+        "acceleration": {
+          "type": "integer",
+          "description": "Velocity change between windows in milliunits (divide by 1000)"
+        },
+        "dailyAvgCurrent": {
+          "type": "integer",
+          "description": "Current window daily average views in milliunits (divide by 1000)"
+        },
+        "dailyAvgBaseline": {
+          "type": "integer",
+          "description": "Baseline window daily average views in milliunits (divide by 1000)"
+        },
+        "views": {
+          "type": "integer",
+          "description": "Total views in window"
+        },
+        "downloads": {
+          "type": "integer",
+          "description": "Total downloads in window"
+        }
+      }
+    }
+  }
+}

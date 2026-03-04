@@ -1,0 +1,42 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.triggerDIDSync",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger a full repository sync for a specific DID",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did"],
+          "properties": {
+            "did": {
+              "type": "string",
+              "format": "did",
+              "description": "DID to sync"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["operationId"],
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "description": "ID of the started backfill operation"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "AdminRequired" },
+        { "name": "InvalidRequest" }
+      ]
+    }
+  }
+}

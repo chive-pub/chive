@@ -1,0 +1,74 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.listDLQEntries",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List entries from the firehose dead-letter queue",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of entries"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of entries to skip"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["entries", "total"],
+          "properties": {
+            "entries": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#dlqEntry" },
+              "description": "DLQ entries"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total entries in the DLQ"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "dlqEntry": {
+      "type": "object",
+      "description": "Dead-letter queue entry",
+      "required": ["id", "errorType", "createdAt", "retryCount"],
+      "properties": {
+        "id": { "type": "string", "description": "Entry ID" },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT URI of the failed event"
+        },
+        "did": { "type": "string", "format": "did", "description": "DID of the event source" },
+        "errorType": { "type": "string", "description": "Error classification" },
+        "errorMessage": { "type": "string", "description": "Error detail message" },
+        "retryCount": { "type": "integer", "description": "Number of retry attempts" },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the entry was created"
+        },
+        "lastRetryAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last retry attempt timestamp"
+        }
+      }
+    }
+  }
+}

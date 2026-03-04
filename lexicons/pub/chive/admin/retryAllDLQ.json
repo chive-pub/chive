@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.retryAllDLQ",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Batch retry all DLQ entries, optionally filtered by error type",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "errorType": {
+              "type": "string",
+              "description": "Filter entries by error type before retrying"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["retriedCount"],
+          "properties": {
+            "retriedCount": {
+              "type": "integer",
+              "description": "Number of entries requeued"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

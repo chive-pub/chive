@@ -1,0 +1,74 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.listViolations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List policy violations",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of violations"
+          },
+          "did": {
+            "type": "string",
+            "format": "did",
+            "description": "Filter by user DID"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["violations", "total"],
+          "properties": {
+            "violations": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#violation" },
+              "description": "Violation records"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total violations"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "violation": {
+      "type": "object",
+      "description": "Policy violation record",
+      "required": ["id", "did", "type", "severity", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "description": "Violation ID" },
+        "did": { "type": "string", "format": "did", "description": "User DID" },
+        "handle": { "type": "string", "description": "User handle" },
+        "type": { "type": "string", "description": "Violation type" },
+        "severity": {
+          "type": "string",
+          "knownValues": ["low", "medium", "high", "critical"],
+          "description": "Severity level"
+        },
+        "description": { "type": "string", "description": "Violation description" },
+        "context": { "type": "string", "description": "Additional context" },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the violation was recorded"
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the violation was resolved"
+        }
+      }
+    }
+  }
+}
