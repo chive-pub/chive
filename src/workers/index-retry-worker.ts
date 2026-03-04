@@ -26,6 +26,7 @@ import { Queue, Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 
 import { IdentityResolutionError, RecordFetchError } from '../atproto/errors/repository-errors.js';
+import { workerMetrics } from '../observability/prometheus-registry.js';
 import type { EprintService, RecordMetadata } from '../services/eprint/eprint-service.js';
 import { transformPDSRecord } from '../services/eprint/pds-record-transformer.js';
 import type { AtUri, CID, DID } from '../types/atproto.js';
@@ -239,6 +240,8 @@ export class IndexRetryWorker {
 
     // Set up event handlers
     this.worker.on('completed', (job) => {
+      workerMetrics.tasksTotal.inc({ worker: 'index_retry', status: 'success' });
+
       this.logger.info('Index retry job completed', {
         jobId: job.id,
         uri: job.data.uri,
@@ -247,6 +250,8 @@ export class IndexRetryWorker {
     });
 
     this.worker.on('failed', (job, err) => {
+      workerMetrics.tasksTotal.inc({ worker: 'index_retry', status: 'error' });
+
       if (job) {
         this.logger.error('Index retry job failed', err instanceof Error ? err : undefined, {
           jobId: job.id,
@@ -263,52 +268,63 @@ export class IndexRetryWorker {
    */
   private async processJob(job: Job<IndexRetryJobData>): Promise<void> {
     const { uri, did, collection, rkey, pdsUrl: cachedPdsUrl } = job.data;
+    const endTimer = workerMetrics.taskDuration.startTimer({ worker: 'index_retry' });
+    workerMetrics.activeCount.inc({ worker: 'index_retry' });
 
-    this.logger.info('Processing index retry job', {
-      jobId: job.id,
-      uri,
-      attempt: job.attemptsMade + 1,
-    });
+    try {
+      this.logger.info('Processing index retry job', {
+        jobId: job.id,
+        uri,
+        attempt: job.attemptsMade + 1,
+      });
 
-    // Only support eprint submissions
-    if (collection !== 'pub.chive.eprint.submission') {
-      this.logger.debug('Skipping non-eprint collection', { uri, collection });
-      return;
+      // Only support eprint submissions
+      if (collection !== 'pub.chive.eprint.submission') {
+        this.logger.debug('Skipping non-eprint collection', { uri, collection });
+        return;
+      }
+
+      // Resolve PDS endpoint
+      const pdsUrl = cachedPdsUrl ?? (await resolvePdsEndpoint(did as DID));
+      if (!pdsUrl) {
+        throw new IdentityResolutionError(
+          `Failed to resolve PDS endpoint for ${did}`,
+          did,
+          'no_pds'
+        );
+      }
+
+      // Fetch record from PDS
+      const record = await fetchRecordFromPds(pdsUrl, did as DID, collection, rkey);
+      if (!record) {
+        throw new RecordFetchError(`Record not found on PDS: ${uri}`, uri, 'not_found');
+      }
+
+      // Build metadata
+      const metadata: RecordMetadata = {
+        uri: uri as AtUri,
+        cid: record.cid as CID,
+        pdsUrl,
+        indexedAt: new Date(),
+      };
+
+      // Transform and index
+      const eprintRecord = transformPDSRecord(record.value, uri as AtUri, record.cid as CID);
+      const result = await this.eprintService.indexEprint(eprintRecord, metadata);
+
+      if (!result.ok) {
+        throw new DatabaseError('INDEX', `Indexing failed: ${result.error.message}`, result.error);
+      }
+
+      this.logger.info('Successfully indexed record via retry', {
+        uri,
+        cid: record.cid,
+        attempt: job.attemptsMade + 1,
+      });
+    } finally {
+      endTimer();
+      workerMetrics.activeCount.dec({ worker: 'index_retry' });
     }
-
-    // Resolve PDS endpoint
-    const pdsUrl = cachedPdsUrl ?? (await resolvePdsEndpoint(did as DID));
-    if (!pdsUrl) {
-      throw new IdentityResolutionError(`Failed to resolve PDS endpoint for ${did}`, did, 'no_pds');
-    }
-
-    // Fetch record from PDS
-    const record = await fetchRecordFromPds(pdsUrl, did as DID, collection, rkey);
-    if (!record) {
-      throw new RecordFetchError(`Record not found on PDS: ${uri}`, uri, 'not_found');
-    }
-
-    // Build metadata
-    const metadata: RecordMetadata = {
-      uri: uri as AtUri,
-      cid: record.cid as CID,
-      pdsUrl,
-      indexedAt: new Date(),
-    };
-
-    // Transform and index
-    const eprintRecord = transformPDSRecord(record.value, uri as AtUri, record.cid as CID);
-    const result = await this.eprintService.indexEprint(eprintRecord, metadata);
-
-    if (!result.ok) {
-      throw new DatabaseError('INDEX', `Indexing failed: ${result.error.message}`, result.error);
-    }
-
-    this.logger.info('Successfully indexed record via retry', {
-      uri,
-      cid: record.cid,
-      attempt: job.attemptsMade + 1,
-    });
   }
 
   /**
@@ -356,6 +372,9 @@ export class IndexRetryWorker {
       this.queue.getFailedCount(),
       this.queue.getDelayedCount(),
     ]);
+
+    // Update Prometheus gauges with current queue state
+    workerMetrics.queueDepth.set({ worker: 'index_retry' }, waiting);
 
     return { waiting, active, completed, failed, delayed };
   }

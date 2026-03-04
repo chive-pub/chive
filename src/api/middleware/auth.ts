@@ -19,6 +19,7 @@
 import type { MiddlewareHandler } from 'hono';
 
 import type { IServiceAuthVerifier } from '../../auth/service-auth/index.js';
+import { authMetrics } from '../../observability/prometheus-registry.js';
 import type { DID } from '../../types/atproto.js';
 import { AuthenticationError, AuthorizationError } from '../../types/errors.js';
 import type { IAuthorizationService } from '../../types/interfaces/authorization.interface.js';
@@ -109,11 +110,13 @@ export function authenticateServiceAuth(
 
     // No token; continue as anonymous
     if (!token) {
+      authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'anonymous' });
       await next();
       return;
     }
 
     const logger = c.get('logger');
+    const endTimer = authMetrics.duration.startTimer({ method: 'service_auth' });
 
     try {
       // Verify the service auth JWT
@@ -125,6 +128,8 @@ export function authenticateServiceAuth(
       if (!result) {
         // Invalid token; log and continue as anonymous
         logger.debug('Invalid or expired service auth token');
+        authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'failure' });
+        endTimer();
         await next();
         return;
       }
@@ -155,12 +160,17 @@ export function authenticateServiceAuth(
       });
       c.set('logger', userLogger);
 
+      authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'success' });
+      endTimer();
+
       await next();
     } catch (error) {
       // Verification error; log and continue as anonymous
       logger.warn('Service auth verification failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+      authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'failure' });
+      endTimer();
       await next();
     }
   };

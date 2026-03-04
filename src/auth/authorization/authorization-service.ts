@@ -15,6 +15,7 @@ import { newEnforcer, newModelFromString, StringAdapter } from 'casbin';
 import type { Enforcer } from 'casbin';
 import type { Redis } from 'ioredis';
 
+import { authMetrics } from '../../observability/prometheus-registry.js';
 import type { DID } from '../../types/atproto.js';
 import type {
   IAuthorizationService,
@@ -401,9 +402,12 @@ export class AuthorizationService implements IAuthorizationService {
     if (this.config.enableCache) {
       const cached = this.roleCache.get(did);
       if (cached && cached.expiresAt > Date.now()) {
+        authMetrics.roleLookups.inc({ result: 'cache_hit' });
         return cached.roles;
       }
     }
+
+    authMetrics.roleLookups.inc({ result: 'cache_miss' });
 
     const roleKey = `${this.config.rolePrefix}${did}`;
     const roles = (await this.redis.smembers(roleKey)) as Role[];

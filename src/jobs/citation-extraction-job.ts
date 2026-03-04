@@ -20,6 +20,7 @@
  * @public
  */
 
+import { jobMetrics } from '../observability/prometheus-registry.js';
 import { withSpan, addSpanAttributes } from '../observability/tracer.js';
 import type {
   CitationExtractionService,
@@ -134,6 +135,8 @@ export class CitationExtractionJob {
    * Returns a partial success if some extraction sources fail.
    */
   async run(eprintUri: AtUri): Promise<CitationExtractionJobResult> {
+    const endTimer = jobMetrics.duration.startTimer({ job: 'citation_extraction' });
+
     return withSpan(
       'citationExtractionJob.run',
       async () => {
@@ -151,6 +154,8 @@ export class CitationExtractionJob {
             this.logger.warn('Eprint not found in index, skipping citation extraction', {
               eprintUri,
             });
+            jobMetrics.executionsTotal.inc({ job: 'citation_extraction', status: 'error' });
+            endTimer({ status: 'error' });
             return {
               success: false,
               error: 'Eprint not found in index',
@@ -177,6 +182,14 @@ export class CitationExtractionJob {
             durationMs: extraction.durationMs,
           });
 
+          jobMetrics.executionsTotal.inc({ job: 'citation_extraction', status: 'success' });
+          jobMetrics.lastRunTimestamp.set({ job: 'citation_extraction' }, Date.now() / 1000);
+          jobMetrics.itemsProcessed.inc(
+            { job: 'citation_extraction', status: 'success' },
+            extraction.totalExtracted
+          );
+          endTimer({ status: 'success' });
+
           return {
             success: true,
             extraction,
@@ -189,6 +202,9 @@ export class CitationExtractionJob {
             error instanceof Error ? error : undefined,
             { eprintUri }
           );
+
+          jobMetrics.executionsTotal.inc({ job: 'citation_extraction', status: 'error' });
+          endTimer({ status: 'error' });
 
           return {
             success: false,
