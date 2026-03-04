@@ -62,6 +62,9 @@ export interface ChiveUser {
   /** User's PDS endpoint */
   pdsEndpoint: string;
 
+  /** Whether user has admin access */
+  isAdmin?: boolean;
+
   /** Whether user has alpha tester access */
   isAlphaTester?: boolean;
 

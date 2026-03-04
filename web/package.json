@@ -110,6 +110,7 @@
     "react-markdown": "^10.1.0",
     "react-pdf": "^10.2.0",
     "react-pdf-highlighter-extended": "^8.1.0",
+    "recharts": "^3.7.0",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",

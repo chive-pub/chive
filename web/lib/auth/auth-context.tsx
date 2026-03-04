@@ -300,6 +300,78 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   /**
+   * Fetch admin roles after authentication and merge into user state.
+   *
+   * @remarks
+   * This effect fires once when the user becomes authenticated and their
+   * isAdmin field has not yet been resolved. It calls getMyRoles to determine
+   * whether the user has admin privileges, then merges the result into the
+   * auth state. Failures are logged but do not break the auth flow; the user
+   * simply will not have admin access until the next successful check.
+   */
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.user || state.user.isAdmin !== undefined) return;
+
+    const fetchRoles = async () => {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+        const { getServiceAuthToken: getToken } = await import('./service-auth');
+        const { getCurrentAgent: getAgent } = await import('./oauth-client');
+        const agent = getAgent();
+        const headers: Record<string, string> = {};
+
+        if (agent) {
+          try {
+            const token = await getToken(agent, 'pub.chive.actor.getMyRoles');
+            headers['Authorization'] = `Bearer ${token}`;
+          } catch {
+            // Continue without auth token
+          }
+        }
+
+        const response = await fetch(`${apiBase}/xrpc/pub.chive.actor.getMyRoles`, { headers });
+
+        if (response.ok) {
+          const data = await response.json();
+          setState((prev) =>
+            prev.user
+              ? {
+                  ...prev,
+                  user: { ...prev.user, isAdmin: data.isAdmin ?? false },
+                }
+              : prev
+          );
+        } else {
+          // Endpoint unavailable (e.g., not deployed yet); default to non-admin
+          setState((prev) =>
+            prev.user
+              ? {
+                  ...prev,
+                  user: { ...prev.user, isAdmin: false },
+                }
+              : prev
+          );
+        }
+      } catch (error) {
+        authLogger.warn('Failed to fetch admin roles', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Default to non-admin on failure
+        setState((prev) =>
+          prev.user
+            ? {
+                ...prev,
+                user: { ...prev.user, isAdmin: false },
+              }
+            : prev
+        );
+      }
+    };
+
+    fetchRoles();
+  }, [state.isAuthenticated, state.user]);
+
+  /**
    * Login action.
    */
   const login = useCallback(async (options: LoginOptions) => {
