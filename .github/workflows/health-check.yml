@@ -50,6 +50,31 @@ jobs:
           echo "Response: $response"
           echo "status=healthy" >> $GITHUB_OUTPUT
 
+      - name: Check Admin API
+        id: admin_health
+        continue-on-error: true
+        run: |
+          domain="${{ vars.DOMAIN }}"
+          echo "Checking admin API at https://$domain/xrpc/pub.chive.admin.getOverview..."
+
+          # Admin endpoints require auth, so a 401 means the route is mounted and working.
+          # A 404 or connection error would mean admin routes are not registered.
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://$domain/xrpc/pub.chive.admin.getOverview" 2>&1) || {
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "error=Admin API unreachable" >> $GITHUB_OUTPUT
+            exit 1
+          }
+
+          if [ "$status" = "401" ] || [ "$status" = "200" ]; then
+            echo "✓ Admin API responding (HTTP $status)"
+            echo "status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "Admin API returned unexpected status: $status"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "error=Admin API returned HTTP $status" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
       - name: Check Web Frontend
         id: web_health
         continue-on-error: true
@@ -334,6 +359,18 @@ jobs:
             node_count=$(docker exec chive-neo4j cypher-shell -u neo4j -p "${{ secrets.NEO4J_PASSWORD }}" "MATCH (n) RETURN count(n)" --format plain 2>/dev/null | tail -1 || echo "unknown")
             echo "Total Neo4j nodes: $node_count"
 
+            # Endorsement count
+            endorsement_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM endorsements_index WHERE deleted_at IS NULL" 2>/dev/null | tr -d ' ' || echo "unknown")
+            echo "Total endorsements indexed: $endorsement_count"
+
+            # Collection count
+            collection_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM collections_index" 2>/dev/null | tr -d ' ' || echo "unknown")
+            echo "Total collections indexed: $collection_count"
+
+            # DLQ unprocessed entries
+            dlq_count=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM firehose_dlq WHERE processed_at IS NULL" 2>/dev/null | tr -d ' ' || echo "0")
+            echo "DLQ unprocessed entries: $dlq_count"
+
             # Recent activity (last hour)
             recent=$(docker exec chive-postgres psql -U chive -t -c "SELECT COUNT(*) FROM eprints_index WHERE indexed_at > NOW() - INTERVAL '1 hour'" 2>/dev/null | tr -d ' ' || echo "0")
             echo "Eprints indexed in last hour: $recent"
@@ -353,6 +390,13 @@ jobs:
           else
             echo "| API Health | :x: Failed |" >> $GITHUB_STEP_SUMMARY
             failures="${failures}API,"
+          fi
+
+          if [ "${{ steps.admin_health.outcome }}" = "success" ]; then
+            echo "| Admin API | :white_check_mark: Healthy |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Admin API | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}AdminAPI,"
           fi
 
           if [ "${{ steps.web_health.outcome }}" = "success" ]; then

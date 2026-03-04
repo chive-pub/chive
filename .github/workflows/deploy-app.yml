@@ -34,6 +34,7 @@ jobs:
           # Check required variables
           if [ -z "${{ vars.DOMAIN }}" ]; then missing="$missing DOMAIN(var)"; fi
           if [ -z "${{ vars.ACME_EMAIL }}" ]; then missing="$missing ACME_EMAIL(var)"; fi
+          if [ -z "${{ vars.ADMIN_DIDS }}" ]; then missing="$missing ADMIN_DIDS(var)"; fi
 
           if [ -n "$missing" ]; then
             echo "::error::Missing required configuration:$missing"
@@ -65,6 +66,7 @@ jobs:
           ZULIP_BOT_API_KEY: ${{ secrets.ZULIP_BOT_API_KEY }}
           ZULIP_INVITE_URL: ${{ secrets.ZULIP_INVITE_URL }}
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          ADMIN_DIDS: ${{ vars.ADMIN_DIDS }}
         run: |
           mkdir -p docker-env
 
@@ -116,6 +118,7 @@ jobs:
           ZULIP_BOT_EMAIL=${ZULIP_BOT_EMAIL}
           ZULIP_BOT_API_KEY=${ZULIP_BOT_API_KEY}
           ZULIP_INVITE_URL=${ZULIP_INVITE_URL}
+          ADMIN_DIDS=${ADMIN_DIDS}
           EOF
 
           # Remove leading whitespace
@@ -444,6 +447,14 @@ jobs:
             echo "✓ Grafana health check passed"
           else
             echo "⚠ Grafana health check failed (non-critical)"
+          fi
+
+          echo ""
+          echo "Checking admin dashboard at https://$domain/admin..."
+          if curl -sf --max-time 30 "https://$domain/admin" > /dev/null; then
+            echo "✓ Admin dashboard accessible"
+          else
+            echo "⚠ Admin dashboard not accessible (non-critical)"
           fi
 
           echo ""
