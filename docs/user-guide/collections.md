@@ -6,7 +6,7 @@ Collections let you organize eprints, reviews, endorsements, and knowledge graph
 
 A collection is a user-owned container for grouping related items. Each item you add to a collection is wrapped as a personal graph node in your PDS, keeping your organizational choices independent of the original content.
 
-Collections support nesting (subcollections), inter-item relationships (edges), and optional Cosmik/Semble mirroring for external integration.
+Collections support nesting (subcollections), inter-item relationships (edges), and optional Cosmik mirroring for cross-platform integration.
 
 ## Creating a collection
 
@@ -15,7 +15,7 @@ Collections support nesting (subcollections), inter-item relationships (edges), 
 3. **Items**: add eprints, authors, graph nodes, or other items by searching
 4. **Edges**: define relationships between items (optional)
 5. **Structure**: set up subcollection hierarchy (optional)
-6. **Semble**: enable Cosmik/Semble mirroring (optional)
+6. **Cosmik**: enable Cosmik mirroring (optional)
 7. **Review**: confirm your choices and create the collection
 
 ## Adding items to a collection

@@ -23,7 +23,7 @@ The auth middleware reads a user's roles from Redis on every authenticated reque
 | Role           | Description                                                     |
 | -------------- | --------------------------------------------------------------- |
 | `admin`        | Full access to the admin dashboard and all admin XRPC endpoints |
-| `moderator`    | Content moderation capabilities                                 |
+| `moderator`    | Knowledge graph governance and proposal review                  |
 | `graph-editor` | Knowledge graph editing (node and edge proposals)               |
 | `author`       | Eprint submission permissions                                   |
 | `reader`       | Standard read access                                            |

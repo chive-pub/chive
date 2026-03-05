@@ -1,6 +1,6 @@
 # Admin dashboard
 
-The admin dashboard provides a web-based interface for managing Chive's indexing infrastructure, user roles, content moderation, and system health. It is available to authenticated users with the `admin` role.
+The admin dashboard provides a web-based interface for managing Chive's indexing infrastructure, user roles, content management, and system health. It is available to authenticated users with the `admin` role.
 
 ## Accessing the dashboard
 

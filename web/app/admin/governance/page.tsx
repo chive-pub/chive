@@ -92,7 +92,7 @@ export default function AdminGovernancePage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <NavCard
           title="Audit Log"
-          description="Administrative action history, including role changes, content moderation, and system operations."
+          description="Administrative action history, including role changes, content management, and system operations."
           href="/admin/governance/audit"
           icon={ScrollText}
           count={auditLoading ? null : (auditData?.total ?? auditData?.entries?.length ?? null)}

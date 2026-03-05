@@ -153,13 +153,7 @@ To get better paper suggestions, listed from highest to lowest impact:
 
 ### The wrong person claimed my paper
 
-Report the claim:
-
-1. Go to the paper's page
-2. Click **Report** → **Incorrect authorship claim**
-3. Provide evidence of your authorship
-
-Disputed claims are reviewed by trusted editors.
+If someone has incorrectly claimed your paper, contact the Chive team at [admin@chive.pub](mailto:admin@chive.pub) with evidence of your authorship. Admins can reject incorrect claims through the admin dashboard.
 
 ## Privacy considerations
 

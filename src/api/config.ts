@@ -293,7 +293,7 @@ export const SERVER_INFO = {
   contact: {
     name: 'Chive',
     url: 'https://chive.pub',
-    email: 'contact@chive.pub',
+    email: 'admin@chive.pub',
   },
   license: {
     name: 'MIT',
