@@ -112,7 +112,7 @@ function createMockLogger(): ILogger {
  */
 function getChildLogger(parentLogger: ILogger): ILogger {
   const results = (parentLogger.child as ReturnType<typeof vi.fn>).mock.results;
-  const first = results[0];
+  const first = results[0]!;
   expect(first).toBeDefined();
   return first.value as ILogger;
 }
