@@ -17,7 +17,7 @@ const PAPER_TYPE_DEFINITIONS = [
     slug: 'original-research',
     label: 'Original Research',
     description: 'Primary research presenting new findings or original data.',
-    wikidataId: 'Q13442814',
+    wikidataId: 'Q1813536',
     displayOrder: 1,
   },
   {
@@ -82,7 +82,7 @@ const PAPER_TYPE_DEFINITIONS = [
     slug: 'letter',
     label: 'Letter/Brief Communication',
     description: 'Short communication presenting preliminary or time-sensitive findings.',
-    wikidataId: 'Q591041',
+    wikidataId: 'Q651270',
     displayOrder: 11,
   },
   {
