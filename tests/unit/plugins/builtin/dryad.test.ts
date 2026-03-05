@@ -200,7 +200,7 @@ describe('DryadPlugin', () => {
       expect(plugin.manifest).toMatchObject({
         id: 'pub.chive.plugin.dryad',
         name: 'Dryad Integration',
-        version: '0.1.0',
+        version: '0.2.0',
         description: 'Provides research data linking via Dryad',
         author: 'Aaron Steven White',
         license: 'MIT',

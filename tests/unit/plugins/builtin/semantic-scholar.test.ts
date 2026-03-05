@@ -106,7 +106,7 @@ describe('SemanticScholarPlugin', () => {
     it('should have correct manifest', () => {
       const { plugin } = createTestPlugin();
       expect(plugin.manifest.name).toBe('Semantic Scholar Integration');
-      expect(plugin.manifest.version).toBe('0.1.0');
+      expect(plugin.manifest.version).toBe('0.2.0');
       expect(plugin.manifest.permissions?.network?.allowedDomains).toContain(
         'api.semanticscholar.org'
       );
