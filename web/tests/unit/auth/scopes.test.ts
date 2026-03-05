@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   ATPROTO_BASE_SCOPE,
+  EXTERNAL_REPO_SCOPES,
   getScopesForIntent,
   hasScope,
   LEGACY_SCOPE,
@@ -50,11 +51,44 @@ describe('frontend scopes', () => {
       }
     });
 
-    it('returns exactly two space-separated tokens per intent', () => {
-      const intents: AuthIntent[] = ['browse', 'submit', 'review', 'full'];
+    it('returns two tokens for browse intent', () => {
+      const parts = getScopesForIntent('browse').split(' ');
+      expect(parts).toHaveLength(2);
+    });
+
+    it('returns eight tokens for submit, review, and full intents', () => {
+      const intents: AuthIntent[] = ['submit', 'review', 'full'];
       for (const intent of intents) {
         const parts = getScopesForIntent(intent).split(' ');
-        expect(parts).toHaveLength(2);
+        expect(parts).toHaveLength(8);
+      }
+    });
+
+    it('includes external scopes for submit intent', () => {
+      const result = getScopesForIntent('submit');
+      for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
+        expect(result).toContain(scope);
+      }
+    });
+
+    it('includes external scopes for review intent', () => {
+      const result = getScopesForIntent('review');
+      for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
+        expect(result).toContain(scope);
+      }
+    });
+
+    it('includes external scopes for full intent', () => {
+      const result = getScopesForIntent('full');
+      for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
+        expect(result).toContain(scope);
+      }
+    });
+
+    it('does not include external scopes for browse intent', () => {
+      const result = getScopesForIntent('browse');
+      for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
+        expect(result).not.toContain(scope);
       }
     });
 

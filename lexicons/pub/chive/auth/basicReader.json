@@ -24,7 +24,12 @@
         {
           "type": "permission",
           "resource": "rpc",
-          "lxm": "pub.chive.eprint.listByField"
+          "lxm": "pub.chive.eprint.listCitations"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.listRelatedWorks"
         },
         {
           "type": "permission",
@@ -45,6 +50,31 @@
           "type": "permission",
           "resource": "rpc",
           "lxm": "pub.chive.review.listForEprint"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.review.getThread"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.endorsement.getSummary"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.endorsement.listForEprint"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.author.getProfile"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.author.searchAuthors"
         }
       ]
     }

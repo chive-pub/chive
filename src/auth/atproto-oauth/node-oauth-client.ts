@@ -152,6 +152,12 @@ export function createATProtoOAuthClient(options: ATProtoOAuthClientOptions): No
     'atproto',
     'transition:generic',
     'include:pub.chive.auth.fullAccess',
+    'repo:app.bsky.feed.post',
+    'repo:app.bsky.actor.profile',
+    'repo:site.standard.document',
+    'repo:network.cosmik.card',
+    'repo:network.cosmik.collectionLink',
+    'repo:network.cosmik.collection',
   ];
 
   return new NodeOAuthClient({

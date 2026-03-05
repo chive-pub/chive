@@ -14,6 +14,7 @@ import {
   buildScopeString,
   CHIVE_SERVICE_DID,
   CLIENT_METADATA_SCOPE,
+  EXTERNAL_REPO_SCOPES,
   LEGACY_SCOPE,
   PERMISSION_SETS,
   REPO_SCOPES,
@@ -25,10 +26,22 @@ describe('chive-scopes', () => {
       expect(REPO_SCOPES.EPRINT_SUBMISSION).toBe('repo:pub.chive.eprint.submission');
       expect(REPO_SCOPES.EPRINT_VERSION).toBe('repo:pub.chive.eprint.version');
       expect(REPO_SCOPES.EPRINT_USER_TAG).toBe('repo:pub.chive.eprint.userTag');
+      expect(REPO_SCOPES.EPRINT_CITATION).toBe('repo:pub.chive.eprint.citation');
+      expect(REPO_SCOPES.EPRINT_RELATED_WORK).toBe('repo:pub.chive.eprint.relatedWork');
+      expect(REPO_SCOPES.EPRINT_CHANGELOG).toBe('repo:pub.chive.eprint.changelog');
+      expect(REPO_SCOPES.ACTOR_PROFILE).toBe('repo:pub.chive.actor.profile');
+      expect(REPO_SCOPES.ACTOR_PROFILE_CONFIG).toBe('repo:pub.chive.actor.profileConfig');
       expect(REPO_SCOPES.REVIEW_COMMENT).toBe('repo:pub.chive.review.comment');
       expect(REPO_SCOPES.REVIEW_ENDORSEMENT).toBe('repo:pub.chive.review.endorsement');
-      expect(REPO_SCOPES.GRAPH_FIELD_PROPOSAL).toBe('repo:pub.chive.graph.fieldProposal');
+      expect(REPO_SCOPES.ANNOTATION_COMMENT).toBe('repo:pub.chive.annotation.comment');
+      expect(REPO_SCOPES.ANNOTATION_ENTITY_LINK).toBe('repo:pub.chive.annotation.entityLink');
+      expect(REPO_SCOPES.GRAPH_NODE_PROPOSAL).toBe('repo:pub.chive.graph.nodeProposal');
+      expect(REPO_SCOPES.GRAPH_EDGE_PROPOSAL).toBe('repo:pub.chive.graph.edgeProposal');
       expect(REPO_SCOPES.GRAPH_VOTE).toBe('repo:pub.chive.graph.vote');
+      expect(REPO_SCOPES.GRAPH_NODE).toBe('repo:pub.chive.graph.node');
+      expect(REPO_SCOPES.GRAPH_EDGE).toBe('repo:pub.chive.graph.edge');
+      expect(REPO_SCOPES.DISCOVERY_SETTINGS).toBe('repo:pub.chive.discovery.settings');
+      expect(REPO_SCOPES.GRAPH_FIELD_PROPOSAL).toBe('repo:pub.chive.graph.fieldProposal');
     });
 
     it('prefixes all scopes with repo:', () => {
@@ -43,15 +56,47 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('covers exactly seven collections', () => {
-      expect(Object.keys(REPO_SCOPES)).toHaveLength(7);
+    it('covers exactly nineteen collections', () => {
+      expect(Object.keys(REPO_SCOPES)).toHaveLength(19);
+    });
+  });
+
+  describe('EXTERNAL_REPO_SCOPES', () => {
+    it('defines scopes for external namespace collections', () => {
+      expect(EXTERNAL_REPO_SCOPES.BLUESKY_POST).toBe('repo:app.bsky.feed.post');
+      expect(EXTERNAL_REPO_SCOPES.STANDARD_DOCUMENT).toBe('repo:site.standard.document');
+      expect(EXTERNAL_REPO_SCOPES.COSMIK_CARD).toBe('repo:network.cosmik.card');
+      expect(EXTERNAL_REPO_SCOPES.COSMIK_COLLECTION_LINK).toBe(
+        'repo:network.cosmik.collectionLink'
+      );
+      expect(EXTERNAL_REPO_SCOPES.COSMIK_COLLECTION).toBe('repo:network.cosmik.collection');
+      expect(EXTERNAL_REPO_SCOPES.BLUESKY_PROFILE).toBe('repo:app.bsky.actor.profile');
+    });
+
+    it('prefixes all scopes with repo:', () => {
+      for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
+        expect(scope).toMatch(/^repo:/);
+      }
+    });
+
+    it('does not use the pub.chive.* namespace', () => {
+      for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
+        expect(scope).not.toMatch(/^repo:pub\.chive\./);
+      }
+    });
+
+    it('covers exactly six external collections', () => {
+      expect(Object.keys(EXTERNAL_REPO_SCOPES)).toHaveLength(6);
     });
   });
 
   describe('BLOB_SCOPES', () => {
-    it('defines PDF and image blob scopes', () => {
-      expect(BLOB_SCOPES.PDF).toBe('blob:application/pdf');
+    it('defines all blob scopes', () => {
+      expect(BLOB_SCOPES.APPLICATION).toBe('blob:application/*');
       expect(BLOB_SCOPES.IMAGE).toBe('blob:image/*');
+      expect(BLOB_SCOPES.VIDEO).toBe('blob:video/*');
+      expect(BLOB_SCOPES.AUDIO).toBe('blob:audio/*');
+      expect(BLOB_SCOPES.TEXT).toBe('blob:text/*');
     });
 
     it('prefixes all scopes with blob:', () => {
@@ -60,8 +105,8 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('covers exactly two blob types', () => {
-      expect(Object.keys(BLOB_SCOPES)).toHaveLength(2);
+    it('covers exactly five blob types', () => {
+      expect(Object.keys(BLOB_SCOPES)).toHaveLength(5);
     });
   });
 
@@ -157,8 +202,18 @@ describe('chive-scopes', () => {
       expect(CLIENT_METADATA_SCOPE).toContain('include:pub.chive.auth.fullAccess');
     });
 
-    it('is the product of buildScopeString with legacy and fullAccess', () => {
-      const expected = buildScopeString([LEGACY_SCOPE, PERMISSION_SETS.FULL_ACCESS]);
+    it('includes all external repo scopes', () => {
+      for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
+        expect(CLIENT_METADATA_SCOPE).toContain(scope);
+      }
+    });
+
+    it('is the product of buildScopeString with legacy, fullAccess, and external scopes', () => {
+      const expected = buildScopeString([
+        LEGACY_SCOPE,
+        PERMISSION_SETS.FULL_ACCESS,
+        ...Object.values(EXTERNAL_REPO_SCOPES),
+      ]);
       expect(CLIENT_METADATA_SCOPE).toBe(expected);
     });
   });

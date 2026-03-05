@@ -1,6 +1,6 @@
 # ATProto Granular OAuth Scopes
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Last Updated:** March 2026
 
 ---
@@ -30,7 +30,7 @@ Permission sets bundle multiple granular scopes into a single `include:` referen
 
 **Scope string:** `include:pub.chive.auth.basicReader`
 
-Grants read-only access. Users can browse eprints, view reviews, and read the knowledge graph. No write access to any collection.
+Grants read-only RPC access. Users can browse eprints, view reviews and endorsements, search the knowledge graph, and view author profiles. No write access to any collection.
 
 ### authorAccess
 
@@ -41,6 +41,11 @@ Includes basicReader permissions plus the ability to create and manage eprints:
 - `repo:pub.chive.eprint.submission` (create/update eprints)
 - `repo:pub.chive.eprint.version` (manage versions)
 - `repo:pub.chive.eprint.userTag` (add tags)
+- `repo:pub.chive.eprint.citation` (curate citations)
+- `repo:pub.chive.eprint.relatedWork` (link related works)
+- `repo:pub.chive.eprint.changelog` (track changes)
+- `repo:pub.chive.actor.profile` (manage profile)
+- `repo:pub.chive.actor.profileConfig` (configure profile display)
 - `blob:application/pdf` (upload PDF files)
 - `blob:image/*` (upload figures)
 
@@ -48,10 +53,12 @@ Includes basicReader permissions plus the ability to create and manage eprints:
 
 **Scope string:** `include:pub.chive.auth.reviewerAccess`
 
-Includes authorAccess permissions plus the ability to review and endorse:
+Includes authorAccess permissions plus the ability to review, endorse, and annotate:
 
 - `repo:pub.chive.review.comment` (write inline reviews)
 - `repo:pub.chive.review.endorsement` (endorse eprints)
+- `repo:pub.chive.annotation.comment` (annotate documents)
+- `repo:pub.chive.annotation.entityLink` (link entities in annotations)
 
 ### fullAccess
 
@@ -59,8 +66,27 @@ Includes authorAccess permissions plus the ability to review and endorse:
 
 Includes reviewerAccess permissions plus governance participation:
 
-- `repo:pub.chive.graph.fieldProposal` (propose knowledge graph fields)
+- `repo:pub.chive.graph.nodeProposal` (propose knowledge graph nodes)
+- `repo:pub.chive.graph.edgeProposal` (propose knowledge graph edges)
 - `repo:pub.chive.graph.vote` (vote on proposals)
+- `repo:pub.chive.graph.node` (create personal graph nodes)
+- `repo:pub.chive.graph.edge` (create personal graph edges)
+
+---
+
+## External Namespace Scopes
+
+Chive cross-posts to external ATProto namespaces for interoperability. These scopes are outside `pub.chive.*` and must be requested as individual `repo:` scopes alongside the Chive permission sets.
+
+| Scope                                | Purpose                                |
+| ------------------------------------ | -------------------------------------- |
+| `repo:app.bsky.feed.post`            | Cross-post eprints to Bluesky          |
+| `repo:site.standard.document`        | Link eprints in Standard.site protocol |
+| `repo:network.cosmik.card`           | Create Cosmik cards for eprints        |
+| `repo:network.cosmik.collectionLink` | Link eprints to Cosmik collections     |
+| `repo:network.cosmik.collection`     | Create Cosmik collections              |
+
+These are automatically included for `submit`, `review`, and `full` intents (not for `browse`).
 
 ---
 
@@ -73,21 +99,21 @@ import { getScopesForIntent, type AuthIntent } from '@/lib/auth/scopes';
 
 // User clicks "Submit Eprint" while not logged in
 const scope = getScopesForIntent('submit');
-// => "atproto include:pub.chive.auth.authorAccess"
+// => "atproto include:pub.chive.auth.authorAccess repo:app.bsky.feed.post repo:site.standard.document ..."
 
 // User clicks "Write Review"
 const scope = getScopesForIntent('review');
-// => "atproto include:pub.chive.auth.reviewerAccess"
+// => "atproto include:pub.chive.auth.reviewerAccess repo:app.bsky.feed.post ..."
 ```
 
 ### Intent Mapping
 
-| Intent   | Permission Set | Use Case                                                  |
-| -------- | -------------- | --------------------------------------------------------- |
-| `browse` | basicReader    | User logs in to save preferences or track reading history |
-| `submit` | authorAccess   | User wants to submit or edit an eprint                    |
-| `review` | reviewerAccess | User wants to write reviews or endorsements               |
-| `full`   | fullAccess     | User wants full participation including governance        |
+| Intent   | Permission Set | External Scopes | Use Case                                |
+| -------- | -------------- | --------------- | --------------------------------------- |
+| `browse` | basicReader    | None            | Save preferences, track reading history |
+| `submit` | authorAccess   | All             | Submit or edit an eprint                |
+| `review` | reviewerAccess | All             | Write reviews or endorsements           |
+| `full`   | fullAccess     | All             | Full participation including governance |
 
 ### Adding Intent to LoginOptions
 
@@ -118,7 +144,7 @@ The `CLIENT_METADATA_SCOPE` constant declares the maximum set of scopes the app 
 
 ```typescript
 import { CLIENT_METADATA_SCOPE } from '@/auth/scopes/chive-scopes.js';
-// => "atproto transition:generic include:pub.chive.auth.fullAccess"
+// => "atproto transition:generic include:pub.chive.auth.fullAccess repo:app.bsky.feed.post ..."
 ```
 
 ### Scope Checking with Legacy Support
@@ -169,10 +195,6 @@ Frontend                    User's PDS                 Chive Backend
    |                           |                           |-- process request
 ```
 
-### Scope-to-lxm Relationship
-
-The `lxm` claim narrows a token to one method. The PDS enforces that the method falls within the granted scopes. For example, a user with `include:pub.chive.auth.authorAccess` can request tokens for `pub.chive.sync.indexRecord` (which writes eprints) but not for `pub.chive.graph.fieldProposal.create` (which requires fullAccess).
-
 ---
 
 ## Frontend Scope Utilities
@@ -217,7 +239,7 @@ The component calls `login({ intent: requiredIntent })` to initiate a new OAuth 
 For components that need reactive scope checking:
 
 ```typescript
-import { useHasScope } from '@/lib/hooks/use-has-scope';
+import { useHasScope } from '@/lib/auth/auth-context';
 import { PERMISSION_SETS } from '@/lib/auth/scopes';
 
 function ReviewPanel() {
@@ -239,6 +261,7 @@ The backend mirrors the frontend scope constants for validation:
 ```typescript
 import {
   REPO_SCOPES,
+  EXTERNAL_REPO_SCOPES,
   BLOB_SCOPES,
   PERMISSION_SETS,
   LEGACY_SCOPE,
@@ -247,10 +270,15 @@ import {
   CHIVE_SERVICE_DID,
 } from '@/auth/scopes/chive-scopes.js';
 
-// All repo scopes in the pub.chive.* namespace
+// Chive repo scopes (17 collections)
 REPO_SCOPES.EPRINT_SUBMISSION; // "repo:pub.chive.eprint.submission"
 REPO_SCOPES.REVIEW_COMMENT; // "repo:pub.chive.review.comment"
 REPO_SCOPES.GRAPH_VOTE; // "repo:pub.chive.graph.vote"
+
+// External repo scopes (5 cross-posting targets)
+EXTERNAL_REPO_SCOPES.BLUESKY_POST; // "repo:app.bsky.feed.post"
+EXTERNAL_REPO_SCOPES.STANDARD_DOCUMENT; // "repo:site.standard.document"
+EXTERNAL_REPO_SCOPES.COSMIK_CARD; // "repo:network.cosmik.card"
 
 // Build a custom scope string (always includes "atproto")
 buildScopeString([LEGACY_SCOPE, PERMISSION_SETS.AUTHOR_ACCESS]);
@@ -277,10 +305,13 @@ cd web && pnpm vitest run tests/unit/auth/scopes.test.ts
 ### What the Tests Cover
 
 - All scope strings use correct prefixes (`repo:`, `blob:`, `include:`)
-- All scopes are within the `pub.chive.*` namespace
+- All Chive scopes are within the `pub.chive.*` namespace
+- External scopes are NOT in the `pub.chive.*` namespace
 - `buildScopeString` always includes `atproto` and deduplicates entries
-- `CLIENT_METADATA_SCOPE` contains the expected scope set
+- `CLIENT_METADATA_SCOPE` contains Chive permission sets and external scopes
 - `getScopesForIntent` maps each intent to the correct permission set
+- Write intents (submit, review, full) include external cross-posting scopes
+- Browse intent does not include external scopes
 - `hasScope` respects the permission hierarchy (fullAccess satisfies basicReader)
 - `hasScope` treats `transition:generic` as a universal grant
 - `hasScope` does not grant higher scopes from lower ones

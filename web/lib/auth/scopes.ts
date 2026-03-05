@@ -17,6 +17,22 @@ export const PERMISSION_SETS = {
   FULL_ACCESS: 'include:pub.chive.auth.fullAccess',
 } as const;
 
+/**
+ * External namespace repo scopes for cross-posting.
+ *
+ * @remarks
+ * These are outside the pub.chive.* namespace. They must be requested
+ * as individual scopes alongside the Chive permission sets.
+ */
+export const EXTERNAL_REPO_SCOPES = {
+  BLUESKY_POST: 'repo:app.bsky.feed.post',
+  BLUESKY_PROFILE: 'repo:app.bsky.actor.profile',
+  STANDARD_DOCUMENT: 'repo:site.standard.document',
+  COSMIK_CARD: 'repo:network.cosmik.card',
+  COSMIK_COLLECTION_LINK: 'repo:network.cosmik.collectionLink',
+  COSMIK_COLLECTION: 'repo:network.cosmik.collection',
+} as const;
+
 /** Legacy scope for backward compatibility. */
 export const LEGACY_SCOPE = 'transition:generic';
 
@@ -36,8 +52,15 @@ const PERMISSION_HIERARCHY = [
   PERMISSION_SETS.FULL_ACCESS,
 ] as const;
 
+/** All external repo scopes as a space-separated string. */
+const EXTERNAL_SCOPES_STRING = Object.values(EXTERNAL_REPO_SCOPES).join(' ');
+
 /**
  * Get the OAuth scope string for a given authorization intent.
+ *
+ * @remarks
+ * For intents that involve writing records (submit, review, full), external
+ * namespace scopes for cross-posting (Bluesky, Standard, Cosmik) are included.
  *
  * @param intent - The user's intent (browse, submit, review, full)
  * @returns Space-separated scope string including atproto base scope
@@ -47,11 +70,11 @@ export function getScopesForIntent(intent: AuthIntent): string {
     case 'browse':
       return `${ATPROTO_BASE_SCOPE} ${PERMISSION_SETS.BASIC_READER}`;
     case 'submit':
-      return `${ATPROTO_BASE_SCOPE} ${PERMISSION_SETS.AUTHOR_ACCESS}`;
+      return `${ATPROTO_BASE_SCOPE} ${PERMISSION_SETS.AUTHOR_ACCESS} ${EXTERNAL_SCOPES_STRING}`;
     case 'review':
-      return `${ATPROTO_BASE_SCOPE} ${PERMISSION_SETS.REVIEWER_ACCESS}`;
+      return `${ATPROTO_BASE_SCOPE} ${PERMISSION_SETS.REVIEWER_ACCESS} ${EXTERNAL_SCOPES_STRING}`;
     case 'full':
-      return `${ATPROTO_BASE_SCOPE} ${PERMISSION_SETS.FULL_ACCESS}`;
+      return `${ATPROTO_BASE_SCOPE} ${PERMISSION_SETS.FULL_ACCESS} ${EXTERNAL_SCOPES_STRING}`;
   }
 }
 
