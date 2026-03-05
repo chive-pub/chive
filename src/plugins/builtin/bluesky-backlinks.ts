@@ -180,7 +180,7 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.bluesky-backlinks',
     name: 'Bluesky Backlinks',
-    version: '0.1.0',
+    version: '0.2.0',
     description: 'Tracks references to Chive eprints from Bluesky posts',
     author: 'Aaron Steven White',
     license: 'MIT',

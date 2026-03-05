@@ -237,7 +237,7 @@ function createInstrumentations(
  * // Or with explicit configuration
  * initTelemetry({
  *   serviceName: 'chive-appview',
- *   serviceVersion: '0.1.0',
+ *   serviceVersion: '0.2.0',
  *   environment: 'production',
  *   otlpEndpoint: 'http://otel-collector:4318',
  * });
