@@ -416,11 +416,11 @@ jobs:
           echo ""
           echo "API health check passed"
 
-      - name: Smoke test - XRPC health
+      - name: Smoke test - ready endpoint
         run: |
-          curl -sf http://localhost:3000/xrpc/_health
+          curl -sf http://localhost:3000/ready
           echo ""
-          echo "XRPC health check passed"
+          echo "Ready endpoint check passed"
 
       - name: Smoke test - migration scripts ran
         run: |
@@ -468,7 +468,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Verified the production Docker image runs correctly with all services:" >> $GITHUB_STEP_SUMMARY
           echo "- API health endpoint responds" >> $GITHUB_STEP_SUMMARY
-          echo "- XRPC health endpoint responds" >> $GITHUB_STEP_SUMMARY
+          echo "- Ready endpoint responds" >> $GITHUB_STEP_SUMMARY
           echo "- Database migrations complete successfully" >> $GITHUB_STEP_SUMMARY
           echo "- Elasticsearch index created" >> $GITHUB_STEP_SUMMARY
           echo "- Neo4j constraints applied" >> $GITHUB_STEP_SUMMARY
