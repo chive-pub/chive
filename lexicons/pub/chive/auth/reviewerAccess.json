@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.auth.reviewerAccess",
+  "defs": {
+    "main": {
+      "type": "permission-set",
+      "description": "Reviewer access for creating reviews and endorsements on Chive.",
+      "includes": ["pub.chive.auth.authorAccess"],
+      "permissions": [
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.review.comment"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.review.endorsement"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.review.createComment"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.review.createEndorsement"
+        }
+      ]
+    }
+  }
+}

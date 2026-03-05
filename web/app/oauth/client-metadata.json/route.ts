@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     response_types: ['code'],
 
     // Scopes this client requests
-    scope: 'atproto transition:generic',
+    scope: 'atproto transition:generic include:pub.chive.auth.fullAccess',
 
     // DPoP (Demonstrating Proof of Possession) - required by ATProto
     dpop_bound_access_tokens: true,

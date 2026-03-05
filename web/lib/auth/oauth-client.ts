@@ -16,6 +16,7 @@ import {
 } from '@atproto/oauth-client-browser';
 import { Agent } from '@atproto/api';
 import type { DID, Handle, ChiveUser, LoginOptions } from './types';
+import { getScopesForIntent } from './scopes';
 import { AuthenticationError, NetworkError } from '@/lib/errors';
 import { logger } from '@/lib/observability';
 
@@ -261,7 +262,7 @@ async function getPDSEndpoint(did: DID): Promise<string> {
  * @returns Authorization URL to redirect to
  */
 export async function startLogin(options: LoginOptions): Promise<string> {
-  const { handle } = options;
+  const { handle, intent = 'full' } = options;
 
   if (!handle) {
     throw new Error('Handle is required');
@@ -270,15 +271,15 @@ export async function startLogin(options: LoginOptions): Promise<string> {
   const client = await getOAuthClient();
 
   try {
-    // The signIn method initiates the OAuth flow
-    // It will redirect to the authorization server
-    const url = await client.authorize(handle, {
-      scope: 'atproto transition:generic',
-    });
+    // Request both granular scopes and legacy fallback
+    const granularScope = getScopesForIntent(intent);
+    const scope = `${granularScope} transition:generic`;
+
+    const url = await client.authorize(handle, { scope });
 
     return url.toString();
   } catch (error) {
-    oauthLogger.error('OAuth authorize error', error, { handle });
+    oauthLogger.error('OAuth authorize error', error, { handle, intent });
     throw error;
   }
 }

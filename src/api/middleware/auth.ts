@@ -119,10 +119,9 @@ export function authenticateServiceAuth(
     const endTimer = authMetrics.duration.startTimer({ method: 'service_auth' });
 
     try {
-      // Verify the service auth JWT
-      // Note: We don't enforce lxm (lexicon method) matching because not all
-      // PDS implementations include lxm in service auth tokens. The token is
-      // still validated against the user's DID document signing key.
+      // Verify the service auth JWT.
+      // The lxm (lexicon method) claim, when present, is extracted into user
+      // scopes for downstream authorization checks.
       const result = await verifier.verify(token);
 
       if (!result) {
@@ -147,7 +146,7 @@ export function authenticateServiceAuth(
         isAdmin,
         isPremium,
         isAlphaTester,
-        scopes: [], // Service auth doesn't use scopes
+        scopes: result.lxm ? [result.lxm] : [],
         sessionId: undefined, // Service auth is stateless
         tokenId: undefined, // Service auth JWTs may have jti
       };

@@ -43,7 +43,7 @@ export interface OAuthClientMetadataConfig {
    * @remarks
    * Must include 'atproto' for PDS access.
    *
-   * @defaultValue ['atproto', 'transition:generic']
+   * @defaultValue ['atproto', 'transition:generic', 'include:pub.chive.auth.fullAccess']
    */
   readonly scopes?: readonly string[];
 }
@@ -148,7 +148,11 @@ export function createATProtoOAuthClient(options: ATProtoOAuthClientOptions): No
     config: config.stateStore,
   });
 
-  const scopes = config.clientMetadata.scopes ?? ['atproto', 'transition:generic'];
+  const scopes = config.clientMetadata.scopes ?? [
+    'atproto',
+    'transition:generic',
+    'include:pub.chive.auth.fullAccess',
+  ];
 
   return new NodeOAuthClient({
     clientMetadata: {

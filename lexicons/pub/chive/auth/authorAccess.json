@@ -1,0 +1,53 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.auth.authorAccess",
+  "defs": {
+    "main": {
+      "type": "permission-set",
+      "description": "Author access for submitting and managing eprints on Chive.",
+      "includes": ["pub.chive.auth.basicReader"],
+      "permissions": [
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.submission"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.version"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.userTag"
+        },
+        {
+          "type": "permission",
+          "resource": "blob",
+          "accept": ["application/pdf", "image/*"]
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.startClaim"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.completeClaim"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.actor.getMyRoles"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.sync.registerPDS"
+        }
+      ]
+    }
+  }
+}

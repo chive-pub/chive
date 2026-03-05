@@ -38,6 +38,7 @@ import {
   setE2EMockAgent,
 } from './oauth-client';
 import { clearServiceAuthTokens, getServiceAuthToken } from './service-auth';
+import { hasScope } from './scopes';
 import { ensureChiveProfile } from '../atproto/record-creator';
 import { logger } from '@/lib/observability';
 
@@ -188,7 +189,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             accessToken: 'mock-e2e-token',
             refreshToken: '',
             expiresAt: Date.now() + 3600000,
-            scope: ['atproto'],
+            scope: ['atproto', 'transition:generic'],
           },
           error: null,
         });
@@ -223,7 +224,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               accessToken: '',
               refreshToken: '',
               expiresAt: 0,
-              scope: ['atproto'],
+              scope: ['atproto', 'transition:generic'],
             },
             error: null,
           });
@@ -266,7 +267,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               accessToken: '',
               refreshToken: '',
               expiresAt: 0,
-              scope: ['atproto'],
+              scope: ['atproto', 'transition:generic'],
             },
             error: null,
           });
@@ -535,6 +536,18 @@ export function useCurrentUser(): ChiveUser | null {
  */
 export function useAgent(): Agent | null {
   return getCurrentAgent();
+}
+
+/**
+ * Hook to check if the current session has a required scope.
+ *
+ * @param requiredScope - The scope string to check for
+ * @returns True if the current session has the required scope
+ */
+export function useHasScope(requiredScope: string): boolean {
+  const auth = useAuth();
+  if (!auth.session) return false;
+  return hasScope(auth.session.scope, requiredScope);
 }
 
 /**

@@ -1,0 +1,43 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.auth.fullAccess",
+  "defs": {
+    "main": {
+      "type": "permission-set",
+      "description": "Full access to all Chive operations including knowledge graph governance.",
+      "includes": ["pub.chive.auth.reviewerAccess"],
+      "permissions": [
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.fieldProposal"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.vote"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.facet"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.graph.proposeField"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.graph.voteOnProposal"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.proposeEdge"
+        }
+      ]
+    }
+  }
+}
