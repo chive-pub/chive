@@ -10,6 +10,7 @@ import {
   XCircle,
   Ban,
   Eye,
+  UserPlus,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,7 @@ import {
   useAdminAlphaApplications,
   useAdminAlphaStats,
   useUpdateAlphaApplication,
+  useAssignRole,
 } from '@/lib/hooks/use-admin';
 
 type AlphaStatus = 'all' | 'pending' | 'approved' | 'rejected' | 'revoked';
@@ -84,12 +86,17 @@ export default function AdminAlphaPage() {
   const [activeTab, setActiveTab] = useState<AlphaStatus>('all');
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [reason, setReason] = useState('');
+  const [grantDialogOpen, setGrantDialogOpen] = useState(false);
+  const [grantInput, setGrantInput] = useState('');
+  const [grantError, setGrantError] = useState('');
+  const [grantResolving, setGrantResolving] = useState(false);
 
   const statusFilter = activeTab === 'all' ? undefined : activeTab;
   const { data: applications, isLoading: applicationsLoading } =
     useAdminAlphaApplications(statusFilter);
   const { data: stats, isLoading: statsLoading } = useAdminAlphaStats();
   const updateApplication = useUpdateAlphaApplication();
+  const assignRole = useAssignRole();
 
   const handleConfirm = async () => {
     if (!confirmAction) return;
@@ -106,6 +113,44 @@ export default function AdminAlphaPage() {
     }
   };
 
+  const handleGrantAccess = async () => {
+    const value = grantInput.trim();
+    if (!value) return;
+
+    setGrantError('');
+    let did = value;
+
+    if (!value.startsWith('did:')) {
+      setGrantResolving(true);
+      try {
+        const res = await fetch(
+          `https://bsky.social/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(value)}`
+        );
+        if (!res.ok) {
+          setGrantError(`Could not resolve handle "${value}"`);
+          setGrantResolving(false);
+          return;
+        }
+        const data = await res.json();
+        did = data.did;
+      } catch {
+        setGrantError(`Could not resolve handle "${value}"`);
+        setGrantResolving(false);
+        return;
+      }
+      setGrantResolving(false);
+    }
+
+    try {
+      await assignRole.mutateAsync({ did, role: 'alpha-tester' });
+      setGrantDialogOpen(false);
+      setGrantInput('');
+      setGrantError('');
+    } catch {
+      setGrantError('Failed to assign alpha-tester role');
+    }
+  };
+
   const applicationList = applications?.items ?? [];
 
   return (
@@ -118,12 +163,16 @@ export default function AdminAlphaPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Alpha Applications</h1>
           <p className="text-muted-foreground">
             Manage alpha access requests from prospective users
           </p>
         </div>
+        <Button onClick={() => setGrantDialogOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Grant Access
+        </Button>
       </div>
 
       {/* Stats Bar */}
@@ -334,6 +383,60 @@ export default function AdminAlphaPage() {
               {updateApplication.isPending
                 ? 'Processing...'
                 : `${confirmAction?.type === 'approve' ? 'Approve' : confirmAction?.type === 'reject' ? 'Reject' : 'Revoke'}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grant Access Dialog */}
+      <Dialog
+        open={grantDialogOpen}
+        onOpenChange={(open) => {
+          setGrantDialogOpen(open);
+          if (!open) {
+            setGrantInput('');
+            setGrantError('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Grant Alpha Access</DialogTitle>
+            <DialogDescription>
+              Grant alpha-tester access to a user by entering their DID or ATProto handle.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="grant-input" className="text-sm font-medium">
+              DID or Handle
+            </label>
+            <Input
+              id="grant-input"
+              placeholder="did:plc:... or user.bsky.social"
+              value={grantInput}
+              onChange={(e) => {
+                setGrantInput(e.target.value);
+                setGrantError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleGrantAccess();
+              }}
+            />
+            {grantError && <p className="text-sm text-destructive">{grantError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGrantDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGrantAccess}
+              disabled={!grantInput.trim() || grantResolving || assignRole.isPending}
+            >
+              {grantResolving
+                ? 'Resolving handle...'
+                : assignRole.isPending
+                  ? 'Granting...'
+                  : 'Grant Access'}
             </Button>
           </DialogFooter>
         </DialogContent>
