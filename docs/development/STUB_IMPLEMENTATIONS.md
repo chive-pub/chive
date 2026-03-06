@@ -1,23 +1,21 @@
-# Stub Implementations Requiring Completion
+# Stub implementations requiring completion
 
-This document catalogs all placeholder and stub implementations discovered in the Chive codebase that require full implementation for production readiness.
+This document catalogs all placeholder and stub implementations in the Chive codebase that require full implementation for production readiness.
 
-## Priority Levels
+## Priority levels
 
 - **P0 (Critical)**: Blocks core functionality; must be implemented before any production use
 - **P1 (High)**: Required for full feature set; can demo without but not ship
 - **P2 (Medium)**: Enhances functionality; can ship initial version without
 - **P3 (Low)**: Nice-to-have improvements; can defer indefinitely
 
----
+## P0: ATProto infrastructure
 
-## P0: ATProto Infrastructure
-
-### 1. IRepository Implementation
+### 1. IRepository implementation
 
 **Location**: `src/index.ts:237-245`
 
-**Current State**: Placeholder that returns `null` for all operations.
+**Current state**: Placeholder that returns `null` for all operations.
 
 ```typescript
 function createPlaceholderRepository(): IRepository {
@@ -31,9 +29,9 @@ function createPlaceholderRepository(): IRepository {
 }
 ```
 
-**Required Implementation**:
+**Required implementation**:
 
-1. **Record Fetching** (`getRecord`)
+1. **Record fetching** (`getRecord`)
    - Resolve author DID to PDS URL via identity resolver
    - Call `com.atproto.repo.getRecord` XRPC method on user's PDS
    - Parse response and return typed `RepositoryRecord<T>`
@@ -41,14 +39,14 @@ function createPlaceholderRepository(): IRepository {
    - Implement retry logic with exponential backoff
    - Cache successful responses with configurable TTL
 
-2. **Record Listing** (`listRecords`)
+2. **Record listing** (`listRecords`)
    - Resolve author DID to PDS URL
    - Call `com.atproto.repo.listRecords` with pagination
    - Return async generator for memory-efficient streaming
    - Handle cursor-based pagination
    - Support filtering by collection NSID
 
-3. **Blob Fetching** (`getBlob`)
+3. **Blob fetching** (`getBlob`)
    - Resolve author DID to PDS URL
    - Construct blob URL: `{pdsUrl}/xrpc/com.atproto.sync.getBlob?did={did}&cid={cid}`
    - Stream response as `ReadableStream<Uint8Array>`
@@ -63,13 +61,11 @@ function createPlaceholderRepository(): IRepository {
 
 **Reference**: See `src/types/interfaces/repository.interface.ts` for full interface specification.
 
----
-
-### 2. IIdentityResolver Implementation
+### 2. IIdentityResolver implementation
 
 **Location**: `src/index.ts:259-264`
 
-**Current State**: Placeholder that returns `null` for all operations.
+**Current state**: Placeholder that returns `null` for all operations.
 
 ```typescript
 function createPlaceholderIdentityResolver(): IIdentityResolver {
@@ -81,21 +77,21 @@ function createPlaceholderIdentityResolver(): IIdentityResolver {
 }
 ```
 
-**Required Implementation**:
+**Required implementation**:
 
-1. **Handle Resolution** (`resolveHandle`)
+1. **Handle resolution** (`resolveHandle`)
    - DNS TXT record lookup for `_atproto.{handle}`
    - HTTP well-known lookup at `https://{handle}/.well-known/atproto-did`
    - Validate returned DID format
    - Cache results with 5-minute TTL (handles can change)
 
-2. **DID Resolution** (`resolveDID`)
+2. **DID resolution** (`resolveDID`)
    - For `did:plc:*`: Query PLC directory at `https://plc.directory/{did}`
    - For `did:web:*`: Fetch `https://{domain}/.well-known/did.json`
    - Parse and validate DID document structure
    - Cache with 1-hour TTL (DID documents change infrequently)
 
-3. **PDS Endpoint Extraction** (`getPDSEndpoint`)
+3. **PDS endpoint extraction** (`getPDSEndpoint`)
    - Resolve DID to DID document
    - Find service entry with `type: "AtprotoPersonalDataServer"`
    - Extract `serviceEndpoint` URL
@@ -112,15 +108,13 @@ function createPlaceholderIdentityResolver(): IIdentityResolver {
 - ATProto Identity spec: https://atproto.com/specs/did
 - PLC directory: https://web.plc.directory/
 
----
+## P0: Blob proxy service wiring
 
-## P0: Blob Proxy Service Wiring
-
-### 3. Service Instantiation in Entry Point
+### 3. Service instantiation in entry point
 
 **Location**: `src/index.ts:204-213`
 
-**Current State**: All blob proxy dependencies passed as `null as never`.
+**Current state**: All blob proxy dependencies passed as `null as never`.
 
 ```typescript
 const blobProxyService = new BlobProxyService({
@@ -135,7 +129,7 @@ const blobProxyService = new BlobProxyService({
 });
 ```
 
-**Required Implementation**:
+**Required implementation**:
 
 The component implementations exist but need instantiation:
 
@@ -182,7 +176,7 @@ The component implementations exist but need instantiation:
    });
    ```
 
-5. **Resilience Policy** (using `cockatiel` library)
+5. **Resilience policy** (using `cockatiel` library)
 
    ```typescript
    import { Policy, ConsecutiveBreaker } from 'cockatiel';
@@ -193,9 +187,9 @@ The component implementations exist but need instantiation:
    );
    ```
 
-**Environment Variables Required**:
+**Environment variables required**:
 
-```
+```bash
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 R2_BUCKET=chive-blobs
 R2_ACCESS_KEY_ID=<key>
@@ -203,13 +197,11 @@ R2_SECRET_ACCESS_KEY=<secret>
 CDN_BASE_URL=https://cdn.chive.pub
 ```
 
----
-
-## P1: XRPC Write Handlers (PDS Integration)
+## P1: XRPC write handlers (PDS integration)
 
 These handlers return HTTP 501 because write operations require user authentication and PDS integration.
 
-### 4. Endorsement Handlers
+### 4. Endorsement handlers
 
 **Locations**:
 
@@ -217,67 +209,61 @@ These handlers return HTTP 501 because write operations require user authenticat
 - `src/api/handlers/xrpc/endorsement/update.ts:43-46`
 - `src/api/handlers/xrpc/endorsement/delete.ts:47-50`
 
-**Current State**: Return 501 with message explaining endorsements are created in user PDSes.
+**Current state**: Return 501 with message explaining endorsements are created in user PDSes.
 
-**Required Implementation**:
+**Required implementation**:
 
-1. **Authentication Flow**
+1. **Authentication flow**
    - Implement ATProto OAuth (DPoP-bound tokens)
    - Verify user session via `com.atproto.server.getSession`
    - Extract user DID from verified session
 
-2. **PDS Write Operations**
+2. **PDS write operations**
    - Resolve user DID to their PDS endpoint
    - Create record via `com.atproto.repo.createRecord`
    - Update via `com.atproto.repo.putRecord`
    - Delete via `com.atproto.repo.deleteRecord`
    - Use lexicon: `pub.chive.review.endorsement`
 
-3. **Index Synchronization**
+3. **Index synchronization**
    - After successful PDS write, trigger local index update
    - Or rely on firehose to pick up changes (preferred for consistency)
 
 **Reference**: See `design/01-lexicons/endorsement.md` for schema.
 
----
-
-### 5. Review Handlers
+### 5. Review handlers
 
 **Locations**:
 
 - `src/api/handlers/xrpc/review/create.ts:42-45`
 - `src/api/handlers/xrpc/review/delete.ts:47-50`
 
-**Current State**: Return 501 with message explaining reviews are created in user PDSes.
+**Current state**: Return 501 with message explaining reviews are created in user PDSes.
 
-**Required Implementation**: Same pattern as endorsement handlers.
+**Required implementation**: Same pattern as endorsement handlers.
 
 **Lexicon**: `pub.chive.review.comment`
 
----
-
-### 6. Tag Handlers
+### 6. Tag handlers
 
 **Locations**:
 
 - `src/api/handlers/xrpc/tag/create.ts:40-43`
 - `src/api/handlers/xrpc/tag/delete.ts:47-50`
 
-**Current State**: Return 501 with message explaining tags are created in user PDSes.
+**Current state**: Return 501 with message explaining tags are created in user PDSes.
 
-**Required Implementation**: Same pattern as endorsement handlers.
+**Required implementation**: Same pattern as endorsement handlers.
 
 **Lexicon**: `pub.chive.eprint.userTag`
 
----
+## P2: Plugin paper search
 
-## P2: Plugin Paper Search
-
-### 7. LingBuzz Paper Search
+### 7. LingBuzz paper search
 
 **Location**: `src/plugins/builtin/lingbuzz.ts:557-562`
 
-**Current State**: Returns empty array with debug log.
+**Current state**: Returns empty array with debug log.
 
 ```typescript
 searchPapers(query: string): Promise<readonly LingBuzzPaper[]> {
@@ -286,41 +272,37 @@ searchPapers(query: string): Promise<readonly LingBuzzPaper[]> {
 }
 ```
 
-**Required Implementation**:
+**Required implementation**:
 
-1. **Index Building**
+1. **Index building**
    - Crawl LingBuzz paper listings
    - Extract metadata (title, authors, abstract, URL)
    - Store in Elasticsearch index
 
-2. **Search Implementation**
+2. **Search implementation**
    - Query Elasticsearch with user's search terms
    - Return ranked results with relevance scores
    - Support filtering by year, author, topic
 
-3. **Sync Strategy**
+3. **Sync strategy**
    - Incremental updates via RSS/Atom feed
    - Full re-index monthly
 
----
-
-### 8. Semantics Archive Paper Search
+### 8. Semantics Archive paper search
 
 **Location**: `src/plugins/builtin/semantics-archive.ts:341`
 
-**Current State**: Same as LingBuzz (returns empty array).
+**Current state**: Same as LingBuzz (returns empty array).
 
-**Required Implementation**: Same pattern as LingBuzz with Semantics Archive-specific parsing.
+**Required implementation**: Same pattern as LingBuzz with Semantics Archive-specific parsing.
 
----
+## P2: Review storage types
 
-## P2: Review Storage Types
-
-### 9. StoredReview Interface
+### 9. StoredReview interface
 
 **Location**: `src/storage/postgresql/reviews-repository.ts:44-52`
 
-**Current State**: Placeholder interface with basic fields.
+**Current state**: Placeholder interface with basic fields.
 
 ```typescript
 /**
@@ -340,7 +322,7 @@ export interface StoredReview {
 }
 ```
 
-**Required Implementation**:
+**Required implementation**:
 
 Expand to match `pub.chive.review.comment` lexicon:
 
@@ -383,15 +365,13 @@ export interface StoredReview {
 }
 ```
 
----
+## P3: ML-based quality detection
 
-## P3: ML-Based Quality Detection
-
-### 10. Tag Spam Detection
+### 10. Tag spam detection
 
 **Location**: `src/storage/neo4j/tag-manager.ts:448`
 
-**Current State**: Comment noting ML model placeholder.
+**Current state**: Comment noting ML model placeholder.
 
 ```typescript
 /**
@@ -402,15 +382,15 @@ export interface StoredReview {
  */
 ```
 
-**Required Implementation**:
+**Required implementation**:
 
-1. **Feature Engineering**
+1. **Feature engineering**
    - Tag creation velocity (tags/hour by user)
    - User reputation score
    - Tag content analysis (gibberish detection)
    - Network analysis (coordinated behavior)
 
-2. **Model Training**
+2. **Model training**
    - Collect labeled spam/not-spam examples
    - Train classifier (XGBoost or similar)
    - Deploy as microservice or embedded model
@@ -422,9 +402,7 @@ export interface StoredReview {
 
 **Alternative**: Start with rule-based heuristics before investing in ML.
 
----
-
-## Implementation Order Recommendation
+## Implementation order recommendation
 
 1. **Phase 1: Core ATProto** (P0)
    - IIdentityResolver
@@ -436,38 +414,32 @@ export interface StoredReview {
    - Session management
    - Write handler enablement
 
-3. **Phase 3: Enhanced Features** (P2)
+3. **Phase 3: Enhanced features** (P2)
    - Plugin paper search
    - Full review storage types
 
 4. **Phase 4: Quality** (P3)
    - Spam detection ML model
 
----
-
-## Testing Requirements
+## Testing requirements
 
 Each stub implementation must include:
 
-1. **Unit Tests**
+1. **Unit tests**
    - Mock external dependencies (PDS, PLC directory)
    - Test error handling paths
    - Test retry/circuit breaker behavior
 
-2. **Integration Tests**
+2. **Integration tests**
    - Test against local PDS (via test stack)
    - Test real DID resolution (against plc.directory staging)
 
-3. **Compliance Tests**
+3. **Compliance tests**
    - Verify ATProto protocol adherence
    - Ensure no data sovereignty violations
 
----
+## Next steps
 
-## Related Documents
-
-- `design/00-atproto-compliance.md` - ATProto principles
-- `design/02-appview/indexing-pipeline.md` - Firehose integration
-- `design/03-knowledge-graph/architecture.md` - Neo4j schema
-- `design/07-security/authentication.md` - OAuth implementation
-- `src/types/interfaces/` - Interface definitions
+- [Remaining stub implementations](./REMAINING_STUB_IMPLEMENTATIONS): updated stub catalog
+- [Lexicons reference](../reference/lexicons): lexicon schemas
+- [XRPC endpoints](../api-reference/xrpc-endpoints): API endpoint details

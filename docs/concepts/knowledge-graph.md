@@ -34,7 +34,7 @@ A **field node** represents an academic discipline, subdiscipline, or topic. Eac
 
 Hierarchical and associative relationships are represented as **edges** rather than embedded arrays:
 
-| Edge Relation | Description                             |
+| Edge relation | Description                             |
 | ------------- | --------------------------------------- |
 | `broader`     | Parent categories this field belongs to |
 | `narrower`    | Child specializations within this field |
@@ -75,7 +75,7 @@ Beyond hierarchical fields, Chive uses PMEST (Personality, Matter, Energy, Space
 
 A single eprint can be classified across multiple facets:
 
-```
+```text
 Eprint: "Climate-Driven Carbon Nanotube Degradation in Arctic Soils"
 
 Facets:
@@ -90,7 +90,7 @@ Facets:
 
 Users can combine facets to narrow searches:
 
-```
+```text
 GET /xrpc/pub.chive.graph.browseFaceted?
   personality=materials-science&
   matter=carbon-nanotubes&
@@ -155,47 +155,9 @@ This prevents fragmentation ("quantum computing" vs "Quantum Computation" vs "QC
 
 ## Community governance
 
-The knowledge graph uses Wikipedia-style moderation. Users can:
+The knowledge graph uses Wikipedia-style moderation. Users can propose new fields or changes, discuss proposals in threaded comments, and vote on whether to accept them. Proposals require weighted community approval before changes take effect.
 
-1. **Propose** new fields or changes
-2. **Discuss** proposals in threaded comments
-3. **Vote** on whether to accept proposals
-
-### Proposal types
-
-| Type                 | What it does                               | Approval threshold |
-| -------------------- | ------------------------------------------ | ------------------ |
-| **Create field**     | Add a new field to the taxonomy            | 67% with 5+ votes  |
-| **Update field**     | Modify name, description, or relationships | 60% with 3+ votes  |
-| **Merge fields**     | Combine redundant fields                   | 67% with 5+ votes  |
-| **Deprecate field**  | Mark a field as obsolete                   | 75% with 7+ votes  |
-| **Authority change** | Update authority records                   | 75% with 7+ votes  |
-
-### Voter tiers
-
-Not all votes carry equal weight. Expertise in the relevant field increases vote weight:
-
-| Tier             | Vote weight | Criteria                             |
-| ---------------- | ----------- | ------------------------------------ |
-| Community member | 1.0x        | Any authenticated user               |
-| Trusted editor   | 2.0x        | Consistent quality contributions     |
-| Graph editor     | 3.0x        | Can modify knowledge graph nodes     |
-| Domain expert    | 3.0x        | Publications in the field            |
-| Administrator    | 5.0x        | Platform administrators (veto power) |
-
-### Proposal workflow
-
-```mermaid
-flowchart LR
-    Draft --> Discussion["Discussion\n(7 days)"]
-    Discussion --> Voting["Voting\n(5 days)"]
-    Voting --> Outcome
-
-    Discussion -.->|Revisions allowed| Discussion
-    Voting -->|Threshold met?| Decision{" "}
-    Decision -->|Yes| Approved
-    Decision -->|No| Rejected
-```
+For details on how proposals are evaluated, including voter roles and approval thresholds, see [Voting system](/governance/voting-system).
 
 ## User tags vs. authority terms
 
@@ -215,11 +177,11 @@ Users can tag eprints freely. Popular tags may be promoted to authority terms th
 
 ## Graph algorithms
 
-The knowledge graph enables advanced discovery features:
+The knowledge graph enables discovery features:
 
 ### Citation analysis
 
-```
+```text
 Find papers that:
   - Cite foundational works in the field
   - Bridge multiple subfields
@@ -228,7 +190,7 @@ Find papers that:
 
 ### Semantic similarity
 
-```
+```text
 Given an eprint about "quantum error correction":
   - Find semantically similar eprints
   - Suggest related fields to explore
@@ -237,7 +199,7 @@ Given an eprint about "quantum error correction":
 
 ### Field evolution
 
-```
+```text
 Track how fields change over time:
   - New subfields emerging
   - Fields merging or splitting
@@ -268,7 +230,7 @@ A search for "network" prompts:
 
 Filter results by any PMEST dimension while staying within a field:
 
-```
+```text
 Field: Machine Learning
   Filter by Matter: Medical imaging
   Filter by Time: Last 5 years
@@ -307,6 +269,6 @@ SELECT ?item ?itemLabel WHERE {
 
 ## Next steps
 
-- [Data sovereignty](./data-sovereignty.md): How your data stays yours
+- [Data sovereignty](data-sovereignty): How your data stays yours
 - [Peer review](/user-guide/peer-review): Review and endorse eprints
 - [Governance](/governance/overview): How decisions are made

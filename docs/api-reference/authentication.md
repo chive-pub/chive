@@ -213,7 +213,7 @@ The API returns 403 Forbidden when authorization fails:
 }
 ```
 
-## WebAuthn (Passkeys)
+## WebAuthn (passkeys)
 
 Chive supports WebAuthn for passwordless authentication and MFA:
 
@@ -378,6 +378,6 @@ The `authApi` client handles authentication automatically:
 
 ## Next steps
 
-- [API overview](./overview.md): General API information
-- [XRPC endpoints](./xrpc-endpoints.md): Endpoint reference
-- [REST endpoints](./rest-endpoints.md): HTTP API reference
+- [API overview](./overview): General API information
+- [XRPC endpoints](./xrpc-endpoints): Endpoint reference
+- [REST endpoints](./rest-endpoints): HTTP API reference

@@ -250,8 +250,8 @@ OTEL_ENABLED=true
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
 ```
 
-## Related documentation
+## Next steps
 
-- [Configuration](./configuration.md): Configuration file reference
-- [Deployment](../operations/deployment.md): Production setup
-- [Secrets management](../operations/deployment.md#secrets-management): Secure credential handling
+- [Configuration](./configuration): configuration file reference
+- [Deployment](../operations/deployment): production setup
+- [Secrets management](../operations/deployment#secrets-management): secure credential handling

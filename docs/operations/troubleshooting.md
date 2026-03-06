@@ -247,7 +247,7 @@ curl -X POST "localhost:9200/_aliases" -H 'Content-Type: application/json' -d'
 #### Memory issues
 
 ```cypher
--- Check memory usage
+// Check memory usage
 CALL dbms.queryJmx("org.neo4j:name=Page cache")
 YIELD name, attributes
 RETURN attributes.Faults.value AS faults,
@@ -259,7 +259,7 @@ RETURN attributes.Faults.value AS faults,
 #### Slow queries
 
 ```cypher
--- Profile query
+// Profile query
 PROFILE MATCH (f:Field)-[:PARENT_OF*]->(child)
 WHERE f.id = 'cs'
 RETURN child;
@@ -402,8 +402,8 @@ When reporting issues, include:
 - GitHub Issues: https://github.com/chive-pub/chive/issues
 - Discussions: https://github.com/chive-pub/chive/discussions
 
-## Related documentation
+## Next steps
 
-- [Deployment](./deployment.md): Setup reference
-- [Monitoring](./monitoring.md): Observability tools
-- [Scaling](./scaling.md): Performance tuning
+- [Deployment](./deployment): Setup reference
+- [Monitoring](./monitoring): Observability tools and alerting
+- [Scaling](./scaling): Performance tuning and capacity planning

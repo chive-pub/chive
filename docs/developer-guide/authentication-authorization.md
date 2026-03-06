@@ -1,30 +1,24 @@
-# Authentication and Authorization Developer Guide
-
-**Version:** 1.0.0
-**Phase:** 10 - Authentication and Authorization
-**Last Updated:** December 2025
-
----
+# Authentication and authorization
 
 ## Overview
 
-Chive implements a comprehensive authentication and authorization system built on ATProto's DID-based identity model. The system provides:
+Chive's authentication and authorization system is built on ATProto's DID-based identity model. The system provides:
 
-1. **DID-based Authentication**: Identity verification via AT Protocol DIDs
-2. **JWT Session Management**: Stateless access tokens with Redis-backed sessions
-3. **RBAC Authorization**: Role-based access control via Casbin
+1. **DID-based authentication**: Identity verification via AT Protocol DIDs
+2. **JWT session management**: Stateless access tokens with Redis-backed sessions
+3. **RBAC authorization**: Role-based access control via Casbin
 4. **OAuth 2.0 + PKCE**: Secure third-party application authorization
-5. **Multi-factor Authentication**: TOTP and backup codes
+5. **Multi-factor authentication**: TOTP and backup codes
 6. **WebAuthn/Passkeys**: Passwordless authentication
-7. **Zero Trust Architecture**: NIST SP 800-207 compliant security model
+7. **Zero-trust architecture**: NIST SP 800-207 compliant security model
 
 ---
 
 ## Architecture
 
-### Directory Structure
+### Directory structure
 
-```
+```text
 src/auth/
 ├── index.ts                       # Barrel exports
 ├── errors.ts                      # Auth-specific error types
@@ -62,9 +56,9 @@ src/auth/
 
 ---
 
-## Quick Start
+## Quick start
 
-### Authenticating Users
+### Authenticating users
 
 ```typescript
 import { AuthenticationService } from '@/auth/authentication-service.js';
@@ -103,7 +97,7 @@ console.log(result.accessToken);
 console.log(result.refreshToken);
 ```
 
-### Protecting Routes
+### Protecting routes
 
 ```typescript
 import { authenticate, requirePermission } from '@/api/middleware/auth.js';
@@ -122,13 +116,11 @@ app.post('/api/v1/eprints', requirePermission('eprint', 'create'), async (c) => 
 
 ---
 
-## DID Resolution
-
-### Overview
+## DID resolution
 
 Chive resolves ATProto DIDs to retrieve identity documents containing public keys for signature verification.
 
-### Supported DID Methods
+### Supported DID methods
 
 | Method    | Format                | Resolution              |
 | --------- | --------------------- | ----------------------- |
@@ -163,16 +155,16 @@ const pdsEndpoint = await resolver.getPDSEndpoint('did:plc:abc123');
 
 DID documents are cached in Redis with configurable TTL to reduce resolution latency and external API calls.
 
-```
+```text
 Key format: chive:did:document:{did}
 Default TTL: 300 seconds (5 minutes)
 ```
 
 ---
 
-## JWT Service
+## JWT service
 
-### Token Structure
+### Token structure
 
 Chive issues ES256-signed JWTs with the following claims:
 
@@ -187,7 +179,7 @@ Chive issues ES256-signed JWTs with the following claims:
 | `sessionId` | Associated session ID              |
 | `scope`     | Space-separated scopes             |
 
-### Issuing Tokens
+### Issuing tokens
 
 ```typescript
 import { JWTService } from '@/auth/jwt/jwt-service.js';
@@ -212,7 +204,7 @@ const { token, jti, expiresAt } = await jwtService.issueToken({
 });
 ```
 
-### Verifying Tokens
+### Verifying tokens
 
 ```typescript
 try {
@@ -229,7 +221,7 @@ try {
 }
 ```
 
-### Token Revocation
+### Token revocation
 
 ```typescript
 // Revoke a specific token
@@ -239,7 +231,7 @@ await jwtService.revokeToken(jti, expiresAt);
 await jwtService.verifyToken(token); // Throws TokenRevokedError
 ```
 
-### Key Rotation
+### Key rotation
 
 Keys are automatically rotated based on configuration:
 
@@ -254,13 +246,13 @@ const keyManager = new KeyManager({
 });
 ```
 
-During the overlap period, both old and new keys are valid for verification, ensuring seamless rotation.
+During the overlap period, both old and new keys are valid for verification, so tokens signed with the previous key continue to work until the overlap expires.
 
 ---
 
-## Session Management
+## Session management
 
-### Session Lifecycle
+### Session lifecycle
 
 ```mermaid
 flowchart LR
@@ -271,7 +263,7 @@ flowchart LR
     A --> R[Revoke]
 ```
 
-### Creating Sessions
+### Creating sessions
 
 ```typescript
 import { SessionManager } from '@/auth/session/session-manager.js';
@@ -293,7 +285,7 @@ const session = await sessionManager.createSession('did:plc:abc123', {
 });
 ```
 
-### Session Operations
+### Session operations
 
 ```typescript
 // Get session
@@ -314,9 +306,9 @@ await sessionManager.revokeAllSessions('did:plc:abc123');
 const sessions = await sessionManager.listSessions('did:plc:abc123');
 ```
 
-### Redis Storage
+### Redis storage
 
-```
+```text
 Session key:     chive:session:{sessionId}
 User index:      chive:user:sessions:{did}
 Token blacklist: chive:token:revoked:{jti}
@@ -326,7 +318,7 @@ Token blacklist: chive:token:revoked:{jti}
 
 ## Authorization (RBAC)
 
-### Role Hierarchy
+### Role hierarchy
 
 ```mermaid
 flowchart TB
@@ -336,7 +328,7 @@ flowchart TB
     author --> reader
 ```
 
-### Permission Model
+### Permission model
 
 Permissions follow the format `{resource}:{action}`:
 
@@ -384,7 +376,7 @@ const ownerResult = await authzService.authorize({
 // ownerResult.reason === 'resource_owner'
 ```
 
-### Casbin Policy Model
+### Casbin policy model
 
 ```ini
 [request_definition]
@@ -409,7 +401,7 @@ m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
 
 Chive uses the ATProto OAuth specification for authentication, which includes PKCE and DPoP automatically.
 
-### Client Setup
+### Client setup
 
 ```typescript
 import { ATProtoOAuthClient } from '@/auth/atproto-oauth/node-oauth-client.js';
@@ -427,7 +419,7 @@ const oauthClient = new ATProtoOAuthClient({
 await oauthClient.initialize();
 ```
 
-### Authentication Flow
+### Authentication flow
 
 The `@atproto/oauth-client-node` library handles the OAuth flow including:
 
@@ -451,7 +443,7 @@ const session = await oauthClient.callback(callbackParams);
 const agent = session.agent;
 ```
 
-### Session Storage
+### Session storage
 
 Sessions are persisted in Redis:
 
@@ -462,7 +454,11 @@ Sessions are persisted in Redis:
 
 ## WebAuthn (Passkeys)
 
-### Registration Flow
+:::info Planned
+WebAuthn/Passkey support is not yet implemented. The API surface below reflects the planned design.
+:::
+
+### Registration flow
 
 ```typescript
 import { WebAuthnService } from '@/auth/webauthn/webauthn-service.js';
@@ -489,7 +485,7 @@ const credential = await webauthnService.verifyRegistration('did:plc:abc123', {
 });
 ```
 
-### Authentication Flow
+### Authentication flow
 
 ```typescript
 // 1. Generate authentication challenge
@@ -506,9 +502,13 @@ const result = await webauthnService.verifyAuthentication('did:plc:abc123', {
 
 ---
 
-## Multi-Factor Authentication
+## Multi-factor authentication
 
-### TOTP Enrollment
+:::info Planned
+MFA support (TOTP and backup codes) is not yet implemented. The API surface below reflects the planned design.
+:::
+
+### TOTP enrollment
 
 ```typescript
 import { MFAService } from '@/auth/mfa/mfa-service.js';
@@ -538,7 +538,7 @@ if (!result.success) {
 }
 ```
 
-### Backup Codes
+### Backup codes
 
 ```typescript
 // Generate backup codes
@@ -554,9 +554,13 @@ const result = await mfaService.verifyMFA('did:plc:abc123', {
 
 ---
 
-## Zero Trust Architecture
+## Zero-trust architecture
 
-### Trust Evaluation
+:::info Planned
+The zero-trust evaluation service is not yet implemented. The API surface below reflects the planned design.
+:::
+
+### Trust evaluation
 
 ```typescript
 import { ZeroTrustService } from '@/auth/zero-trust/zero-trust-service.js';
@@ -593,7 +597,7 @@ if (decision.allow) {
 }
 ```
 
-### Trust Score Components
+### Trust score components
 
 | Component         | Weight | Description                      |
 | ----------------- | ------ | -------------------------------- |
@@ -604,9 +608,9 @@ if (decision.allow) {
 
 ---
 
-## Error Handling
+## Error handling
 
-### Error Types
+### Error types
 
 ```typescript
 import {
@@ -619,7 +623,7 @@ import {
 } from '@/auth/errors.js';
 ```
 
-### Error Codes
+### Error codes
 
 | Code                  | Description                       |
 | --------------------- | --------------------------------- |
@@ -633,9 +637,9 @@ import {
 
 ---
 
-## Database Schema
+## Database schema
 
-### PostgreSQL Tables
+### PostgreSQL tables
 
 ```sql
 -- User roles (RBAC)
@@ -698,7 +702,7 @@ CREATE TABLE audit_log (
 
 ## Testing
 
-### Unit Tests
+### Unit tests
 
 ```bash
 # Run auth unit tests
@@ -708,14 +712,14 @@ npm run test:unit -- tests/unit/auth/
 npm run test:unit -- tests/unit/auth/jwt-service.test.ts
 ```
 
-### Integration Tests
+### Integration tests
 
 ```bash
 # Run auth integration tests
 npm run test:integration -- tests/integration/auth/
 ```
 
-### Test Fixtures
+### Test fixtures
 
 ```typescript
 import { createMockLogger, createMockRedis } from '@tests/fixtures/mocks.js';
@@ -728,30 +732,30 @@ const service = new JWTService({ keyManager, redis, logger });
 
 ---
 
-## Security Considerations
+## Security considerations
 
-### Token Security
+### Token security
 
 - Access tokens expire after 1 hour
 - Refresh tokens are single-use
 - Token revocation is immediate via Redis blacklist
 - ES256 algorithm with 256-bit keys
 
-### Session Security
+### Session security
 
 - Sessions expire after 30 days of inactivity
 - Maximum 10 sessions per user
 - IP and user agent tracked for anomaly detection
 - Session revocation cascades to all tokens
 
-### MFA Security
+### MFA security
 
 - TOTP secrets encrypted at rest (AES-256-GCM)
 - Backup codes hashed with SHA-256
 - Rate limiting on verification attempts
 - Lockout after repeated failures
 
-### WebAuthn Security
+### WebAuthn security
 
 - Credential counter tracking for replay detection
 - Attestation verification (none, direct)
@@ -759,7 +763,8 @@ const service = new JWTService({ keyManager, redis, logger });
 
 ---
 
-## Related Documentation
+## Next steps
 
-- [API Layer Guide](./api-layer.md): Middleware integration
-- [ATProto DID Specification](https://atproto.com/specs/did): DID handling
+- [API layer](./api-layer): middleware integration and route protection
+- [Core business services](./core-business-services): service layer using auth context
+- [ATProto DID specification](https://atproto.com/specs/did): DID handling reference

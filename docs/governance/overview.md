@@ -82,7 +82,7 @@ Platform administrators with oversight responsibilities:
 
 All governance data lives in a dedicated Personal Data Server:
 
-```
+```text
 did:plc:chive-governance
 ```
 
@@ -112,7 +112,7 @@ flowchart LR
 3. **Voting**: Weighted votes tallied against thresholds
 4. **Outcome**: Approved proposals are enacted; rejected ones archived
 
-See [Proposals](./proposals.md) for details.
+See [Proposals](proposals) for details.
 
 ## Voting system
 
@@ -126,7 +126,7 @@ Not all votes are equal. Vote weight depends on:
 | Domain expert    | 3.0x              |
 | Administrator    | 5.0x              |
 
-See [Voting system](./voting-system.md) for thresholds and quorum requirements.
+See [Voting system](voting-system) for thresholds and quorum requirements.
 
 ## Transparency
 
@@ -138,12 +138,12 @@ All governance actions are public:
 
 ## Governance documentation
 
-| Document                                    | Description                        |
-| ------------------------------------------- | ---------------------------------- |
-| [Voting system](./voting-system.md)         | Thresholds, weights, and quorum    |
-| [Proposals](./proposals.md)                 | Types, lifecycle, and requirements |
-| [Authority control](./authority-control.md) | Managing authority records         |
-| [Governance PDS](./governance-pds.md)       | Technical architecture             |
+| Document                               | Description                        |
+| -------------------------------------- | ---------------------------------- |
+| [Voting system](voting-system)         | Thresholds, weights, and quorum    |
+| [Proposals](proposals)                 | Types, lifecycle, and requirements |
+| [Authority control](authority-control) | Managing authority records         |
+| [Governance PDS](governance-pds)       | Technical architecture             |
 
 ## Getting involved
 
@@ -163,6 +163,6 @@ All governance actions are public:
 
 ## Next steps
 
-- [Voting system](./voting-system.md): Understand how decisions are made
-- [Proposals](./proposals.md): Learn how to propose changes
+- [Voting system](voting-system): Understand how decisions are made
+- [Proposals](proposals): Learn how to propose changes
 - [Knowledge graph](/concepts/knowledge-graph): Understand what is governed

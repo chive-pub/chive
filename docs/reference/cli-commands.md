@@ -1,6 +1,6 @@
 # CLI commands reference
 
-npm/pnpm scripts for developing and operating Chive.
+pnpm scripts for developing and operating Chive.
 
 ## Development
 
@@ -182,7 +182,8 @@ pnpm update
 pnpm outdated
 ```
 
-## Related documentation
+## Next steps
 
-- [Environment Variables](./environment-variables.md): Env var reference
-- [Deployment](../operations/deployment.md): Production setup
+- [Environment variables](./environment-variables): env var reference
+- [Configuration](./configuration): configuration file reference
+- [Deployment](../operations/deployment): production setup

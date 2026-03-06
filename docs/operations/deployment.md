@@ -361,8 +361,8 @@ kubectl rollout undo deployment/chive-api -n chive
 kubectl rollout status deployment/chive-api -n chive
 ```
 
-## Related documentation
+## Next steps
 
-- [Monitoring](./monitoring.md): Observability setup
-- [Scaling](./scaling.md): Horizontal and vertical scaling
-- [Troubleshooting](./troubleshooting.md): Common issues
+- [Monitoring](./monitoring): Observability setup with Prometheus and Grafana
+- [Scaling](./scaling): Horizontal and vertical scaling strategies
+- [Troubleshooting](./troubleshooting): Common issues and recovery procedures

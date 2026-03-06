@@ -1,8 +1,8 @@
-# Submitting Eprints
+# Submitting eprints
 
 This guide covers the eprint submission process in detail.
 
-## Before You Submit
+## Before you submit
 
 Ensure you have:
 
@@ -11,17 +11,17 @@ Ensure you have:
 - An AT Protocol account (e.g., Bluesky)
 - Co-author consent for multi-author submissions
 
-## Submission Workflow
+## Submission workflow
 
 ### Step 1: Authentication
 
 Click "Sign In" and authenticate with your PDS. Chive uses OAuth 2.0 for authentication; your credentials are never stored on Chive servers.
 
-### Step 2: Start Submission
+### Step 2: Start submission
 
 Click "Submit Eprint" to open the submission form. The form has four sections.
 
-### Step 3: Basic Information
+### Step 3: Basic information
 
 | Field    | Required | Description                                  |
 | -------- | -------- | -------------------------------------------- |
@@ -40,21 +40,21 @@ Add all authors with their affiliations:
 4. Drag to reorder authors
 5. Mark corresponding author
 
-### Step 5: Upload Files
+### Step 5: Upload files
 
-**PDF Upload**
+**PDF upload**
 
 Drag and drop your PDF or click to select. The file uploads directly to your PDS. Chive stores only a reference (BlobRef) to the file.
 
-**Supplementary Materials** (optional)
+**Supplementary materials** (optional)
 
 Add datasets, code, or additional figures. Each file has a 100 MB limit. Supported formats: PDF, ZIP, TAR.GZ.
 
-### Step 6: Publication Details
+### Step 6: Publication details
 
 This step collects optional metadata about the eprint's publication and linked resources.
 
-**Code & Data Repositories**
+**Code and data repositories**
 
 Link code and data repositories associated with your eprint. Each entry includes:
 
@@ -99,23 +99,23 @@ Select fields from the knowledge graph:
 3. Selected fields appear as tags
 4. Click X to remove a field
 
-### Step 8: Review and Submit
+### Step 8: Review and submit
 
 Review all information on the summary page. Click "Submit" to create the eprint record in your PDS.
 
-## After Submission
+## After submission
 
 Your eprint is indexed within minutes. You receive a permanent URL to share with colleagues.
 
-### Editing and Versioning
+### Editing and versioning
 
-You can edit your eprint metadata and upload new versions at any time. Each version uses semantic versioning (MAJOR.MINOR.PATCH) and supports structured changelogs. See [Editing Eprints](./editing-eprints.md) for details.
+You can edit your eprint metadata and upload new versions at any time. Each version uses semantic versioning (MAJOR.MINOR.PATCH) and supports structured changelogs. See [Editing eprints](./editing-eprints) for details.
 
 ### Deleting
 
-You can delete your eprint from Chive. The deletion propagates from your PDS to all indexers. See [Editing Eprints](./editing-eprints.md) for details.
+You can delete your eprint from Chive. The deletion propagates from your PDS to all indexers. See [Editing eprints](./editing-eprints) for details.
 
-## Multi-Author Submissions
+## Multi-author submissions
 
 For eprints with multiple authors:
 
@@ -127,7 +127,7 @@ For eprints with multiple authors:
 
 **Upload fails**
 
-Check file size (maximum 100 MB) and format (PDF only for main manuscript).
+Check file size (maximum 50 MB) and format (PDF only for main manuscript).
 
 **Cannot find field**
 

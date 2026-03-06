@@ -1,10 +1,10 @@
-# Alpha Launch Checklist
+# Alpha launch checklist
 
 Post-deployment manual checklist for launching the Chive alpha.
 
-## Pre-Launch Verification
+## Pre-launch verification
 
-### GitHub Secrets (Required)
+### GitHub secrets (required)
 
 Verify all required secrets are configured in GitHub repository settings:
 
@@ -20,13 +20,13 @@ Verify all required secrets are configured in GitHub repository settings:
 - [ ] `GOVERNANCE_PDS_ADMIN_PASSWORD` - Governance PDS admin
 - [ ] `GOVERNANCE_PDS_ROTATION_KEY` - Governance PDS key rotation
 
-### GitHub Variables (Required)
+### GitHub variables (required)
 
 - [ ] `DOMAIN` - Primary domain (chive.pub)
 - [ ] `ACME_EMAIL` - Let's Encrypt email
 - [ ] `ATPROTO_SERVICE_DID` - ATProto service DID
 
-### Infrastructure Verification
+### Infrastructure verification
 
 - [ ] Application server accessible via SSH
 - [ ] DNS records configured for chive.pub, docs.chive.pub, governance.chive.pub
@@ -36,9 +36,9 @@ Verify all required secrets are configured in GitHub repository settings:
 - [ ] Redis container healthy
 - [ ] Elasticsearch container healthy
 
-## Post-Deployment Steps
+## Post-deployment steps
 
-### 1. Verify Services
+### 1. Verify services
 
 ```bash
 # SSH to server (replace <SERVER_IP> with actual IP from APP_HOST secret)
@@ -58,14 +58,14 @@ curl -sf https://chive.pub/
 curl -sf https://docs.chive.pub/
 ```
 
-### 2. Run Database Migrations
+### 2. Run database migrations
 
 ```bash
 # Migrations run automatically on deploy, verify they completed
 docker compose -f docker-compose.prod.yml logs chive-api | grep -i migration
 ```
 
-### 3. Change @chive.pub Handle (Task 20)
+### 3. Change @chive.pub handle
 
 The @chive.pub Bluesky account is currently using `chive.pds.chive.pub` as its handle. Change it to `@chive.pub`:
 
@@ -77,29 +77,29 @@ The @chive.pub Bluesky account is currently using `chive.pds.chive.pub` as its h
 6. Add DNS TXT record: `_atproto.chive.pub` → `did=did:plc:7natp5xae72bddaqlkef2t4e`
 7. Verify handle resolves: `curl -s https://plc.directory/did:plc:7natp5xae72bddaqlkef2t4e | jq`
 
-### 4. Post Bluesky Announcement Threads (Task 21)
+### 4. Post Bluesky announcement threads
 
 Post the announcement threads from `/bluesky-threads/`:
 
-#### Thread 1: Features Overview
+#### Thread 1: features overview
 
 - File: `bluesky-threads/thread1-features.txt`
 - Post from @chive.pub account
 - Include key features and invite link
 
-#### Thread 2: Technical Architecture
+#### Thread 2: technical architecture
 
 - File: `bluesky-threads/thread2-technical.txt`
 - Post as reply to Thread 1 or standalone
 - Cover ATProto integration, decentralization
 
-#### Thread 3: Alpha Tester Call
+#### Thread 3: alpha tester call
 
 - File: `bluesky-threads/thread3-alpha-testers.txt`
 - Quote Thread 1 when posting
 - Clear CTA for researchers to apply
 
-### 5. Test Alpha Signup Flow
+### 5. Test alpha signup flow
 
 1. Open https://chive.pub in incognito browser
 2. Verify marketing page displays for unauthenticated users
@@ -117,15 +117,15 @@ Post the announcement threads from `/bluesky-threads/`:
 
 8. Verify approved user sees full application
 
-### 6. Configure Monitoring Alerts
+### 6. Configure monitoring alerts
 
 - [ ] Set up uptime monitoring (UptimeRobot/Pingdom)
 - [ ] Configure error alerting (Sentry)
 - [ ] Set up log aggregation (Grafana Loki)
 
-## Admin Operations
+## Admin operations
 
-### Approving Alpha Testers
+### Approving alpha testers
 
 ```bash
 # List pending applications
@@ -144,7 +144,7 @@ Post the announcement threads from `/bluesky-threads/`:
 ./scripts/alpha-admin.sh stats
 ```
 
-### Bulk Operations
+### Bulk operations
 
 ```bash
 # Export all applications to CSV
@@ -154,7 +154,7 @@ Post the announcement threads from `/bluesky-threads/`:
 ./scripts/alpha-admin.sh batch-approve approved-dids.txt admin
 ```
 
-## Rollback Procedure
+## Rollback procedure
 
 If issues are discovered:
 
@@ -174,7 +174,7 @@ docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-## Contact
+## Contact info
 
 - **Technical Issues**: File issue at https://github.com/chive-pub/chive/issues
 - **Security Issues**: security@chive.pub

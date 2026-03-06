@@ -248,8 +248,8 @@ Create a Grafana dashboard with the following panels:
 | Auth duration P99          | `histogram_quantile(0.99, rate(chive_auth_duration_seconds_bucket[5m]))`                      | Time series                    |
 | Role lookup cache hit rate | `rate(chive_role_lookups_total{result="cache_hit"}[5m]) / rate(chive_role_lookups_total[5m])` | Gauge                          |
 
-## Related documentation
+## Next steps
 
-- [Monitoring](./monitoring.md): Prometheus configuration, alerting, Grafana setup
-- [Admin Dashboard](./admin-dashboard.md): accessing metrics through the admin UI
-- [Admin API Reference](../api-reference/admin-endpoints.md): `getPrometheusMetrics`, `getEndpointMetrics`, `getNodeMetrics` endpoints
+- [Monitoring](./monitoring): Prometheus configuration, alerting, and Grafana setup
+- [Admin dashboard](./admin-dashboard): Accessing metrics through the admin UI
+- [Admin API reference](../api-reference/admin-endpoints): `getPrometheusMetrics`, `getEndpointMetrics`, and `getNodeMetrics` endpoints

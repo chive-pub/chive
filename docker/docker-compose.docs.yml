@@ -37,7 +37,7 @@ services:
     networks:
       - chive-network
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost/getting-started/introduction/"]
+      test: ["CMD", "curl", "-sf", "http://localhost/introduction/"]
       interval: 30s
       timeout: 10s
       retries: 3

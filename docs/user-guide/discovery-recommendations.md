@@ -140,9 +140,17 @@ Your interactions improve recommendations over time:
 | Endorsing or reviewing        | Strongest positive signal             |
 | Dismissing (click **X**)      | Paper is hidden and will not reappear |
 
+:::info
+The dismiss functionality is planned and may not yet be available.
+:::
+
 To dismiss a recommendation, click the **X** button on any suggested paper. Dismissed papers are removed from all recommendation surfaces and will not reappear.
 
 ## Discovery settings
+
+:::info
+This feature is planned and may not yet be available.
+:::
 
 | Setting                       | Options                        | Default |
 | ----------------------------- | ------------------------------ | ------- |
@@ -159,7 +167,8 @@ Your discovery activity is private by default:
 - Followed fields are private unless you choose to display them
 - Dismissed papers are stored server-side but not disclosed to other users
 
-## Related topics
+## Next steps
 
-- [Searching](./searching.md): Full search guide
-- [Profiles](./profiles.md): Managing your followed fields
+- [Searching](./searching): Full search guide with filters and syntax
+- [Profiles](./profiles): Managing your research fields and followed topics
+- [Tags and classification](./tags-and-classification): How fields and tags organize eprints

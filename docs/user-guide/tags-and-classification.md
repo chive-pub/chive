@@ -104,7 +104,7 @@ PMEST enables faceted search: "Show me empirical AI papers from European institu
 
 If the taxonomy lacks a field for your research area:
 
-1. Go to **Governance** → **Proposals**
+1. Go to **Governance** > **Proposals**
 2. Click **Propose New Node**
 3. Select `field` as the node subkind
 4. Fill out the form:
@@ -152,7 +152,7 @@ Time windows: `day`, `week`, `month`
 
 ### Field browsing
 
-1. Go to **Browse** → **Fields**
+1. Go to **Browse** > **Fields**
 2. Navigate the hierarchy
 3. Click a field to see all papers
 
@@ -171,8 +171,8 @@ Use the sidebar filters:
 - **Research Type**: Theoretical, empirical, review, etc.
 - **Date Range**: Filter by publication date
 
-## Related topics
+## Next steps
 
-- [Searching](./searching.md): Full search guide
-- [Governance](../governance/overview.md): How proposals work
-- [Knowledge Graph](../concepts/knowledge-graph.md): Technical details
+- [Searching](./searching): Full search guide
+- [Governance](../governance/overview): How field proposals and voting work
+- [Knowledge graph](../concepts/knowledge-graph): Technical details of the classification system

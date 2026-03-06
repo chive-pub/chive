@@ -1,8 +1,8 @@
-# Frontend Eprint Lifecycle Components
+# Frontend eprint lifecycle components
 
 This guide covers the React components and hooks for eprint editing, versioning, and deletion.
 
-## Architecture Overview
+## Architecture overview
 
 The eprint lifecycle features follow a two-step authorization pattern:
 
@@ -11,7 +11,7 @@ The eprint lifecycle features follow a two-step authorization pattern:
 
 This design keeps authorization logic on the backend while maintaining ATProto's principle that users control their own data.
 
-## Section-Based Editing
+## Section-based editing
 
 The eprint edit page (`/eprints/edit/[...uri]`) uses a section-based UI that organizes editable fields into logical groups:
 
@@ -28,7 +28,7 @@ The eprint edit page (`/eprints/edit/[...uri]`) uses a section-based UI that org
 
 Each section can be expanded or collapsed, with unsaved changes indicated by a badge.
 
-## React Query Hooks
+## React Query hooks
 
 All lifecycle operations use TanStack Query mutations located in `web/lib/hooks/use-eprint-mutations.ts`.
 
@@ -155,7 +155,7 @@ formatVersion({ major: 2, minor: 0, patch: 0, prerelease: 'draft' });
 // Returns: "2.0.0-draft"
 ```
 
-## UI Components
+## UI components
 
 ### EprintEditDialog
 
@@ -392,7 +392,7 @@ Inline edit button for quick title editing without opening the full edit dialog.
 
 The pencil icon appears next to the title when the user has edit permissions. Clicking it opens an inline text input for immediate title changes.
 
-## Data Types
+## Data types
 
 ### EprintEditData
 
@@ -451,7 +451,7 @@ interface SemanticVersion {
 }
 ```
 
-## Query Key Management
+## Query key management
 
 The hooks use a query key factory for cache management.
 
@@ -468,7 +468,7 @@ queryClient.invalidateQueries({ queryKey: changelogKeys.list(eprintUri) });
 queryClient.invalidateQueries({ queryKey: eprintKeys.detail(uri) });
 ```
 
-## Error Handling
+## Error handling
 
 All mutations throw `APIError` on failure. The error includes:
 
@@ -496,7 +496,7 @@ try {
 
 ## Testing
 
-Components include comprehensive test coverage. Run tests with:
+Run tests with:
 
 ```bash
 pnpm test:unit web/components/eprints
@@ -512,9 +512,8 @@ Key test files:
 - `web/components/eprints/paper-auth-gate.test.tsx`
 - `web/lib/hooks/use-eprint-mutations.test.ts`
 
-## Related Documentation
+## Next steps
 
-- [Editing Eprints (User Guide)](../user-guide/editing-eprints.md): End-user documentation
-- [Lexicons Reference](../reference/lexicons.md): Record schemas
-- [XRPC Endpoints](../api-reference/xrpc-endpoints.md): Backend API reference
-- [Frontend Development](./frontend.md): General frontend architecture
+- [Editing eprints](../user-guide/editing-eprints.md): End-user documentation for eprint editing
+- [Lexicons reference](../reference/lexicons.md): Record schemas for eprint types
+- [XRPC endpoints](../api-reference/xrpc-endpoints.md): Backend API reference for lifecycle operations

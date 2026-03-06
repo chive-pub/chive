@@ -1,6 +1,6 @@
 # Admin dashboard architecture
 
-This document covers the technical architecture of the admin dashboard, including the backend service layer, state management, XRPC handler pattern, and frontend design.
+This document covers the technical architecture of the admin dashboard: the backend service layer, state management, XRPC handler pattern, and frontend design.
 
 ## Architecture overview
 
@@ -248,7 +248,7 @@ It is nested inside `AuthGuard` (which handles the authentication check) in the 
 The frontend determines admin status through the auth context:
 
 1. On login, the app calls `pub.chive.actor.getMyRoles`
-2. The response includes `isAdmin`, `isAlphaTester`, `isPremium` boolean flags
+2. The response includes `isAdmin`, `isAlphaTester` boolean flags
 3. These are stored in the auth context and available via `useAuth()`
 4. The `AdminGuard` component reads `user.isAdmin` from this context
 
@@ -325,8 +325,8 @@ export function useMyNewData(someParam?: string) {
 
 Create `web/app/admin/my-new-page/page.tsx` and add it to the navigation in `web/app/admin/layout.tsx`.
 
-## Related documentation
+## Next steps
 
-- [Admin Dashboard](../operations/admin-dashboard.md): user-facing dashboard guide
-- [Admin API Reference](../api-reference/admin-endpoints.md): all admin XRPC endpoints
-- [Roles & Access Control](../operations/roles-and-access.md): role system details
+- [Admin dashboard](../operations/admin-dashboard): user-facing dashboard guide
+- [Admin API reference](../api-reference/admin-endpoints): all admin XRPC endpoints
+- [Roles and access control](../operations/roles-and-access): role system details

@@ -333,8 +333,8 @@ The lexicon type validation pattern provides:
 
 This pattern ensures type safety at both compile time and runtime while providing clear error messages when records do not match their lexicon schemas.
 
-## Related documentation
+## Next steps
 
-- [Core business services](./core-business-services.md): Service architecture overview
-- [Indexing service](./services/indexing.md): Firehose consumption pipeline
-- [Error handling](./services/README.md#error-handling-patterns): Result type patterns
+- [Core business services](./core-business-services): service architecture overview
+- [Indexing service](./services/indexing): firehose consumption pipeline
+- [Error handling](./services/README#error-handling-patterns): Result type patterns

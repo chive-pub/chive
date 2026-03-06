@@ -1,10 +1,10 @@
 # IndexingService
 
-The IndexingService orchestrates firehose consumption and event processing. It consumes the ATProto relay firehose, filters for `pub.chive.*` records, and dispatches events to appropriate handlers.
+The IndexingService orchestrates firehose consumption and event processing. It consumes the AT Protocol relay firehose, filters for `pub.chive.*` records, and dispatches events to appropriate handlers.
 
 ## Architecture
 
-```
+```text
 FirehoseConsumer → EventFilter → CommitHandler → EventQueue → Processor → DLQ
 ```
 
@@ -380,11 +380,11 @@ The service exposes Prometheus metrics:
 | `chive_indexing_queue_size`    | Gauge   | Current queue depth       |
 | `chive_indexing_cursor`        | Gauge   | Current cursor position   |
 
-## Running the Indexer
+## Running the indexer
 
 The indexer runs as a separate process from the API server. In production, it's deployed as the `chive-indexer` container.
 
-### Entry Point
+### Entry point
 
 The indexer entry point is `src/indexer.ts`, which:
 
@@ -414,7 +414,7 @@ chive-indexer:
     - INDEXER_CONCURRENCY=10
 ```
 
-### Why a Separate Process?
+### Why a separate process?
 
 The indexer runs separately from the API for several reasons:
 
@@ -440,7 +440,7 @@ Environment variables:
 
 | Variable                     | Default              | Description           |
 | ---------------------------- | -------------------- | --------------------- |
-| `RELAY_URL`                  | `wss://bsky.network` | ATProto relay URL     |
+| `RELAY_URL`                  | `wss://bsky.network` | AT Protocol relay URL |
 | `INDEXING_BATCH_SIZE`        | `100`                | Events per batch      |
 | `INDEXING_FLUSH_INTERVAL`    | `5000`               | Cursor flush interval |
 | `INDEXING_MAX_RETRIES`       | `3`                  | Max retry attempts    |

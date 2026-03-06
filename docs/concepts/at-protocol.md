@@ -14,7 +14,7 @@ Every user in the AT Protocol ecosystem has a unique identifier called a DID (De
 
 Chive uses two DID methods:
 
-```
+```text
 did:plc:abc123xyz789...   # PLC (Public Ledger of Credentials)
 did:web:example.com       # Web-based, tied to a domain
 ```
@@ -82,7 +82,7 @@ Each record has:
 
 Records are addressed using AT URIs:
 
-```
+```text
 at://did:plc:abc123.../pub.chive.eprint.submission/3k5...
      └─────────┬────┘  └───────────┬──────────────┘   └┬┘
            DID              Collection             Record Key
@@ -175,7 +175,7 @@ An AppView is a read-only service that indexes data from the firehose and presen
 2. Index relevant records
 3. Serve queries and views
 
-If Chive's database is deleted, no user data is lost - everything remains in user PDSes.
+If Chive's database is deleted, no user data is lost; everything remains in user PDSes.
 
 ```mermaid
 block-beta
@@ -251,6 +251,6 @@ Every record you create is signed with your private key. This means:
 
 ## Next steps
 
-- [Data sovereignty](./data-sovereignty.md): How Chive protects your ownership
-- [Knowledge graph](./knowledge-graph.md): Community-curated classification
+- [Data sovereignty](data-sovereignty): How Chive protects your ownership
+- [Knowledge graph](knowledge-graph): Community-curated classification
 - [Quick start](/getting-started/quick-start): Submit your first eprint

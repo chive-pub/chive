@@ -6,7 +6,7 @@ Authority control ensures consistency in the knowledge graph by maintaining cano
 
 Authority control links variant names and spellings to a single canonical concept:
 
-```
+```text
 User searches: "machine learning"
              → Matches authority record: "Machine Learning"
              → Includes aliases: "ML", "statistical learning"
@@ -92,7 +92,7 @@ Chive synchronizes with external knowledge bases:
 
 ### Reconciliation process
 
-```
+```text
 Local term → Wikidata API → Candidate matches
                                    │
                                    ▼
@@ -170,7 +170,7 @@ When duplicate records are discovered:
 
 ### Monthly sync protocol
 
-```
+```text
 Day 1-3:   Fetch updates from external sources
 Day 4-7:   Run automated reconciliation
 Day 8-14:  Graph editors review flagged items
@@ -263,6 +263,6 @@ GET /xrpc/pub.chive.graph.getNodeReconciliations?id=quantum-computing
 
 ## Next steps
 
-- [Governance PDS](./governance-pds.md): Where authority records are stored
-- [Proposals](./proposals.md): How to propose authority changes
+- [Governance PDS](governance-pds): Where authority records are stored
+- [Proposals](proposals): How to propose authority changes
 - [Knowledge graph](/concepts/knowledge-graph): How authorities fit into the taxonomy

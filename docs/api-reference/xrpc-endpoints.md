@@ -2021,6 +2021,6 @@ All endpoints may return these error codes:
 
 ## Next steps
 
-- [REST endpoints](./rest-endpoints.md): HTTP API reference
-- [Authentication](./authentication.md): Auth flows and tokens
-- [API overview](./overview.md): General API information
+- [REST endpoints](./rest-endpoints): HTTP API reference
+- [Authentication](./authentication): Auth flows and tokens
+- [API overview](./overview): General API information
