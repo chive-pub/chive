@@ -6,7 +6,7 @@ This guide covers the eprint submission process in detail.
 
 Ensure you have:
 
-- A PDF of your eprint (maximum 100 MB)
+- A PDF of your eprint (maximum 50 MB)
 - Required metadata: title, abstract, keywords
 - An AT Protocol account (e.g., Bluesky)
 - Co-author consent for multi-author submissions
@@ -48,7 +48,7 @@ Drag and drop your PDF or click to select. The file uploads directly to your PDS
 
 **Supplementary Materials** (optional)
 
-Add datasets, code, or additional figures. Each file has a 50 MB limit. Supported formats: PDF, ZIP, TAR.GZ.
+Add datasets, code, or additional figures. Each file has a 100 MB limit. Supported formats: PDF, ZIP, TAR.GZ.
 
 ### Step 6: Publication Details
 

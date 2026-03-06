@@ -305,7 +305,7 @@ Detects embedded eprint links and external URLs pointing to Chive.
 
 **ID:** `pub.chive.plugin.semble-backlinks`
 
-Tracks references from Semble notes and discussions.
+Tracks references from Semble collections and research trails.
 
 ### Leaflet Backlinks
 
