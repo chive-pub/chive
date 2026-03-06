@@ -990,10 +990,10 @@ Get trending tags.
 
 #### Parameters
 
-| Name     | Type    | Required | Description                         |
-| -------- | ------- | -------- | ----------------------------------- |
-| `period` | string  | No       | Time period: `day`, `week`, `month` |
-| `limit`  | integer | No       | Number of tags                      |
+| Name         | Type    | Required | Description                         |
+| ------------ | ------- | -------- | ----------------------------------- |
+| `timeWindow` | string  | No       | Time window: `day`, `week`, `month` |
+| `limit`      | integer | No       | Number of tags                      |
 
 ### pub.chive.tag.getSuggestions
 
