@@ -289,6 +289,9 @@ describe('XRPC Admin Handlers', () => {
   let mockBackfillManager: MockBackfillManager;
   let mockRedis: MockRedis;
   let mockContext: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> };
+  const mockAlphaService = {
+    grantAccess: vi.fn().mockResolvedValue({ status: 'approved' }),
+  };
 
   const adminUser = { did: ADMIN_DID, handle: 'admin.test', isAdmin: true };
   const nonAdminUser = { did: NON_ADMIN_DID, handle: 'user.test', isAdmin: false };
@@ -418,6 +421,8 @@ describe('XRPC Admin Handlers', () => {
             return mockLogger;
           case 'redis':
             return mockRedis;
+          case 'alphaService':
+            return mockAlphaService;
           default:
             return undefined;
         }
