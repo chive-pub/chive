@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Deployment
 
 - GHCR image registry for CI-built Docker images, eliminating on-server builds during staging deploys
+- Related papers discovery scoring: lowered combined score threshold from 0.2 to 0.05, reduced ES MLT discount from 0.6 to 0.85, and added author overlap to default signals
 
 ## [0.2.0] - 2026-03-06
 
