@@ -462,7 +462,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         embed: {
           uri: `${window.location.origin}/eprints/${encodeURIComponent(uri)}`,
           title: eprint.title,
-          description: eprint.abstract.slice(0, 200),
+          description: (eprint.abstract ?? '').slice(0, 200),
           thumbBlob: ogImageBlob,
         },
       });
@@ -483,8 +483,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         text,
         embed: {
           uri: `${window.location.origin}/eprints/${encodeURIComponent(uri)}#review-${encodeURIComponent(reviewToShare.uri)}`,
-          title: `Review by ${reviewToShare.author.displayName || reviewToShare.author.handle}`,
-          description: reviewToShare.content.slice(0, 200),
+          title: `Review by ${reviewToShare.author?.displayName || reviewToShare.author?.handle || 'Unknown'}`,
+          description: (reviewToShare.content ?? '').slice(0, 200),
           thumbBlob: ogImageBlob,
         },
       });
@@ -505,8 +505,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         text,
         embed: {
           uri: `${window.location.origin}/eprints/${encodeURIComponent(uri)}#endorsement-${encodeURIComponent(endorsementToShare.uri)}`,
-          title: `Endorsement by ${endorsementToShare.endorser.displayName || endorsementToShare.endorser.handle}`,
-          description: endorsementToShare.contributions.join(', '),
+          title: `Endorsement by ${endorsementToShare.endorser?.displayName || endorsementToShare.endorser?.handle || 'Unknown'}`,
+          description: (endorsementToShare.contributions ?? []).join(', '),
           thumbBlob: ogImageBlob,
         },
       });
@@ -523,7 +523,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         type: 'eprint',
         url: `${typeof window !== 'undefined' ? window.location.origin : ''}/eprints/${encodeURIComponent(uri)}`,
         title: eprint.title,
-        description: eprint.abstract.slice(0, 200),
+        description: (eprint.abstract ?? '').slice(0, 200),
         ogImageUrl: '/api/og?type=default',
       }
     : null;
@@ -534,8 +534,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
       ? {
           type: 'review',
           url: `${typeof window !== 'undefined' ? window.location.origin : ''}/eprints/${encodeURIComponent(uri)}#review-${encodeURIComponent(reviewToShare.uri)}`,
-          title: `Review by ${reviewToShare.author.displayName || reviewToShare.author.handle}`,
-          description: reviewToShare.content.slice(0, 200),
+          title: `Review by ${reviewToShare.author?.displayName || reviewToShare.author?.handle || 'Unknown'}`,
+          description: (reviewToShare.content ?? '').slice(0, 200),
           ogImageUrl: '/api/og?type=default',
         }
       : null;
@@ -546,8 +546,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
       ? {
           type: 'endorsement',
           url: `${typeof window !== 'undefined' ? window.location.origin : ''}/eprints/${encodeURIComponent(uri)}#endorsement-${encodeURIComponent(endorsementToShare.uri)}`,
-          title: `Endorsement by ${endorsementToShare.endorser.displayName || endorsementToShare.endorser.handle}`,
-          description: endorsementToShare.contributions.join(', '),
+          title: `Endorsement by ${endorsementToShare.endorser?.displayName || endorsementToShare.endorser?.handle || 'Unknown'}`,
+          description: (endorsementToShare.contributions ?? []).join(', '),
           ogImageUrl: '/api/og?type=default',
         }
       : null;
