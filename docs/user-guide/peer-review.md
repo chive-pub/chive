@@ -99,13 +99,3 @@ When viewing inline annotations on PDF text, the system shows a document locatio
 - Quick navigation to the annotation location
 
 Click the location card to scroll to that position in the document.
-
-## Comment Moderation
-
-Comments that violate community guidelines may be flagged:
-
-1. Click the flag icon on any comment
-2. Select a reason
-3. Submit the report
-
-Trusted editors review flagged content and may remove violations.

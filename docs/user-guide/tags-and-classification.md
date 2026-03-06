@@ -78,23 +78,11 @@ If you've read a paper and want to help classify it:
 - Personal notes: `to-read`, `interesting`, `read-later`
 - Promotional: `groundbreaking`, `must-read`
 
-## Tag moderation
-
-### Spam detection
-
-Chive automatically filters:
-
-- Promotional or marketing tags
-- Offensive content
-- Tags unrelated to the paper's content
-- Bulk tagging by bots
-
-### Community curation
+## Tag curation
 
 - Tags with many contributors rise in visibility
 - Rarely-used tags are de-emphasized
 - Trusted editors can remove inappropriate tags
-- Disputed tags can be flagged for review
 
 ## PMEST classification
 
@@ -153,10 +141,10 @@ Tags are scored based on:
 ### API access
 
 ```http
-GET /xrpc/pub.chive.tag.getTrending?timeWindow=7d&limit=20
+GET /xrpc/pub.chive.tag.getTrending?timeWindow=week&limit=20
 ```
 
-Time windows: `24h`, `7d`, `30d`
+Time windows: `day`, `week`, `month`
 
 ## Searching by classification
 

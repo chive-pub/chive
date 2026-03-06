@@ -81,8 +81,6 @@ If a paper isn't suggested:
 3. Select the paper from results
 4. Click **Start Claim**
 
-If a particular external source is temporarily unavailable, a warning banner indicates which sources encountered errors. Results from the remaining working sources are still displayed.
-
 ## The verification process
 
 Chive verifies claims using multiple evidence sources linked to your profile.
@@ -153,13 +151,7 @@ To get better paper suggestions, listed from highest to lowest impact:
 
 ### The wrong person claimed my paper
 
-Report the claim:
-
-1. Go to the paper's page
-2. Click **Report** → **Incorrect authorship claim**
-3. Provide evidence of your authorship
-
-Disputed claims are reviewed by trusted editors.
+If someone else has incorrectly claimed your paper, contact the Chive team at admin@chive.pub with evidence of your authorship (e.g., ORCID profile link, institutional email, or co-author confirmation).
 
 ## Privacy considerations
 

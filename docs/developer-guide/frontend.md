@@ -812,7 +812,7 @@ await createEndorsementRecord(agent, {
 | `/governance/proposals`      | Proposal listings                           |
 | `/governance/proposals/[id]` | Proposal detail with voting                 |
 | `/governance/proposals/new`  | Create new proposal                         |
-| `/governance/moderation`     | Moderation queue                            |
+| `/governance/moderation`     | Proposal review dashboard                   |
 | `/governance/admin`          | Governance administration                   |
 
 ### Authentication routes
