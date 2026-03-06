@@ -77,7 +77,7 @@ export interface SubcollectionFormData {
 export interface CollectionFormValues {
   name: string;
   description?: string;
-  visibility: 'public' | 'unlisted' | 'private';
+  visibility: 'listed' | 'unlisted';
   tags: string[];
   fields: FieldSelection[];
   items: CollectionItemFormData[];
@@ -115,7 +115,7 @@ export interface CollectionWizardProps {
 export const collectionFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(300),
   description: z.string().max(3000).optional(),
-  visibility: z.enum(['public', 'unlisted', 'private']),
+  visibility: z.enum(['listed', 'unlisted']),
   tags: z.array(z.string()).max(20).optional(),
   fields: z
     .array(z.object({ uri: z.string(), label: z.string(), description: z.string().optional() }))
@@ -161,7 +161,7 @@ export const stepSchemas = {
   basics: z.object({
     name: z.string().min(1, 'Name is required').max(300),
     description: z.string().max(3000).optional(),
-    visibility: z.enum(['public', 'unlisted', 'private']),
+    visibility: z.enum(['listed', 'unlisted']),
   }),
   items: z.object({}),
   edges: z.object({}),

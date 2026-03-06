@@ -1,0 +1,91 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.triggerBackfill",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger a backfill operation by type",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "knownValues": [
+                "pdsScan",
+                "freshnessScan",
+                "citationExtraction",
+                "fullReindex",
+                "governanceSync",
+                "didSync"
+              ],
+              "description": "Backfill operation type to trigger"
+            },
+            "pdsUrl": {
+              "type": "string",
+              "description": "PDS URL for pdsScan type"
+            },
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "Eprint URI for citationExtraction type"
+            },
+            "did": {
+              "type": "string",
+              "format": "did",
+              "description": "DID for didSync type"
+            },
+            "batchSize": {
+              "type": "integer",
+              "description": "Batch size for fullReindex type"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["operation"],
+          "properties": {
+            "operation": {
+              "type": "ref",
+              "ref": "#backfillOperation",
+              "description": "The started backfill operation"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "AdminRequired" },
+        { "name": "InvalidBackfillType" }
+      ]
+    },
+    "backfillOperation": {
+      "type": "object",
+      "description": "A backfill operation record",
+      "required": ["id", "type", "status", "startedAt", "recordsProcessed"],
+      "properties": {
+        "id": { "type": "string", "description": "Operation ID" },
+        "type": { "type": "string", "description": "Backfill operation type" },
+        "status": {
+          "type": "string",
+          "knownValues": ["running", "completed", "failed", "cancelled"],
+          "description": "Operation status"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Operation start time"
+        },
+        "recordsProcessed": {
+          "type": "integer",
+          "description": "Number of records processed so far"
+        }
+      }
+    }
+  }
+}

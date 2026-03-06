@@ -1,0 +1,69 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getSystemHealth",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get health status of all database connections",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["status", "databases", "uptime", "timestamp"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "knownValues": ["healthy", "degraded", "unhealthy"],
+              "description": "Overall system health status"
+            },
+            "databases": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#databaseHealth"
+              },
+              "description": "Health status for each database connection"
+            },
+            "uptime": {
+              "type": "integer",
+              "description": "Server uptime in seconds"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Timestamp of the health check"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "databaseHealth": {
+      "type": "object",
+      "description": "Health status of a single database connection",
+      "required": ["name", "healthy"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "healthy": {
+          "type": "boolean",
+          "description": "Whether the database is reachable"
+        },
+        "latencyMs": {
+          "type": "integer",
+          "description": "Connection latency in milliseconds"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if unhealthy"
+        }
+      }
+    }
+  }
+}

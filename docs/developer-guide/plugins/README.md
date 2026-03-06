@@ -61,7 +61,7 @@ Track references from ATProto apps:
 | Plugin              | Source app               |
 | ------------------- | ------------------------ |
 | Bluesky Backlinks   | app.bsky.feed.post       |
-| Semble Backlinks    | Semble notes             |
+| Cosmik Backlinks    | network.cosmik.card      |
 | Leaflet Backlinks   | Leaflet annotations      |
 | WhiteWind Backlinks | WhiteWind research notes |
 

@@ -14,6 +14,7 @@ import {
   LogOut,
   Upload,
   Bell,
+  Shield,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -84,6 +85,14 @@ export function UserMenu() {
               View My Profile
             </Link>
           </DropdownMenuItem>
+          {user?.isAdmin && (
+            <DropdownMenuItem asChild>
+              <Link href="/admin">
+                <Shield className="mr-2 h-4 w-4" />
+                Admin Dashboard
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href="/dashboard">
               <LayoutDashboard className="mr-2 h-4 w-4" />

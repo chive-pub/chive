@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-05
+
+### Added
+
+#### Admin Dashboard
+
+- Admin dashboard with 15 pages: overview, health, alpha access, users, content, firehose, backfill, PDS, graph, metrics, search analytics, activity, endpoints, runtime, and governance
+- AdminService for aggregating system health, content statistics, and user management operations
+- BackfillManager for triggering and monitoring PDS record backfills from the admin UI
+- XRPC handlers for all admin dashboard endpoints across health, content, users, firehose, PDS, graph, metrics, search, activity, and governance
+- Frontend admin auth guard component that restricts dashboard access to users with admin roles
+- Role-based access hooks (`useMyRoles`, `useIsAdmin`) and admin dashboard query hooks
+- Admin role seeding from `ADMIN_DIDS` environment variable on server startup
+- `pub.chive.actor.getMyRoles` XRPC endpoint for querying the authenticated user's roles
+- Direct alpha access grant dialog on the admin alpha management page
+- Lexicon schemas for admin and actor role endpoints
+
+#### Granular ATProto OAuth Scopes
+
+- Permission set lexicon schemas (`basicReader`, `authorAccess`, `reviewerAccess`, `fullAccess`) following the ATProto `permission-set` Lexicon type
+- Hierarchical permission model: basicReader (read-only RPC) < authorAccess (eprint/profile writes + claiming + blobs) < reviewerAccess (reviews + annotations) < fullAccess (graph governance + proposals)
+- Scope constants for all 19 `pub.chive.*` repo collections, 6 external namespace collections (Bluesky, Standard, Cosmik), and 5 blob MIME type wildcards
+- `buildScopeString` utility for constructing space-separated OAuth scope strings with automatic `atproto` prefix and deduplication
+- Intent-based login flow with `AuthIntent` type (`browse`, `submit`, `review`, `full`) that requests only the scopes needed for each activity
+- Frontend `getScopesForIntent` and `hasScope` utilities with `transition:generic` backward compatibility
+- `CLIENT_METADATA_SCOPE` constant combining full access permission set with all external namespace scopes
+- OAuth client metadata updated to declare granular scopes alongside `transition:generic` for backward compatibility with PDSes that don't support granular scopes
+
+#### Observability
+
+- Prometheus metric groups for jobs, workers, auth, search, blob proxy, dead letter queue, admin, and backfill operations
+- OpenTelemetry span instrumentation for auth verification, background jobs, worker processing, and blob proxy requests
+
+#### Documentation
+
+- Admin dashboard documentation covering API endpoints, backfill operations, observability metrics, architecture, and role management
+- OAuth scopes documentation covering permission set definitions, intent-based login, and backward compatibility
+
+#### Testing
+
+- Unit tests for AdminService, BackfillManager, admin XRPC handlers, admin seed script, and observability Prometheus instrumentation
+- Frontend unit tests for admin hooks, admin auth guard, and role hooks
+- Backend and frontend unit tests for OAuth scope constants, permission sets, `buildScopeString`, `getScopesForIntent`, and `hasScope`
+
+### Changed
+
+- Collection visibility renamed from `public`/`private` to `listed`/`unlisted` across lexicon, backend, frontend, and tests to reflect ATProto semantics (visibility controls AppView listing, not data access)
+- PostgreSQL migration to rename existing visibility column values with backward-compatible normalization for old values
+- GitHub Actions CI workflows updated with `ADMIN_DIDS` environment variable, admin health check endpoints, and expanded Prometheus metrics collection targets
+
 ## [0.1.0] - 2026-03-03
 
 Initial release of Chive, a decentralized eprint service built on AT Protocol.
@@ -237,5 +287,6 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/chive-pub/chive/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/chive-pub/chive/releases/tag/v0.1.0

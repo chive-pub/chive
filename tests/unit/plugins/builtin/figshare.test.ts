@@ -298,7 +298,7 @@ describe('FigsharePlugin', () => {
     });
 
     it('should have version 1.0.0', () => {
-      expect(plugin.manifest.version).toBe('0.1.0');
+      expect(plugin.manifest.version).toBe('0.2.0');
     });
   });
 

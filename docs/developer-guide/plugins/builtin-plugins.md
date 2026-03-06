@@ -301,11 +301,11 @@ Tracks references from Bluesky posts (`app.bsky.feed.post`).
 
 Detects embedded eprint links and external URLs pointing to Chive.
 
-### Semble Backlinks
+### Cosmik Backlinks
 
-**ID:** `pub.chive.plugin.semble-backlinks`
+**ID:** `pub.chive.plugin.cosmik-backlinks`
 
-Tracks references from Semble notes and discussions.
+Tracks references to Chive eprints from Cosmik cards and collections (`network.cosmik.card`).
 
 ### Leaflet Backlinks
 

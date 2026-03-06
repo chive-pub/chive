@@ -11,7 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   Globe,
-  Lock,
   Link as LinkIcon,
   Hash,
 } from 'lucide-react';
@@ -33,7 +32,7 @@ interface FlatCollection {
   uri: string;
   label: string;
   description?: string;
-  visibility: 'public' | 'unlisted' | 'private';
+  visibility: 'listed' | 'unlisted';
   itemCount: number;
   tags?: string[];
   createdAt: string;
@@ -119,9 +118,8 @@ function buildHierarchy(collections: CollectionView[]): FlatCollection[] {
 // =============================================================================
 
 const VISIBILITY_CONFIG = {
-  public: { icon: Globe, label: 'Public' },
+  listed: { icon: Globe, label: 'Listed' },
   unlisted: { icon: LinkIcon, label: 'Unlisted' },
-  private: { icon: Lock, label: 'Private' },
 } as const;
 
 // =============================================================================

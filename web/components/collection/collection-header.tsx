@@ -13,7 +13,6 @@ import Link from 'next/link';
 import {
   Globe,
   Link as LinkIcon,
-  Lock,
   Pencil,
   Trash2,
   Copy,
@@ -51,9 +50,8 @@ const logger = createLogger({ context: { component: 'collection-header' } });
  * Visibility configuration mapping.
  */
 const VISIBILITY_CONFIG = {
-  public: { icon: Globe, label: 'Public', variant: 'secondary' as const },
+  listed: { icon: Globe, label: 'Listed', variant: 'secondary' as const },
   unlisted: { icon: LinkIcon, label: 'Unlisted', variant: 'outline' as const },
-  private: { icon: Lock, label: 'Private', variant: 'outline' as const },
 } as const;
 
 /**

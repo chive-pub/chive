@@ -25,6 +25,8 @@
 
 import type { Pool } from 'pg';
 
+import { jobMetrics } from '../observability/prometheus-registry.js';
+import { withSpan } from '../observability/tracer.js';
 import type { AtUri } from '../types/atproto.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
 import {
@@ -263,57 +265,68 @@ export class FreshnessScanJob {
 
     this.isRunning = true;
     const startTime = Date.now();
+    const endTimer = jobMetrics.duration.startTimer({ job: 'freshness_scan' });
 
     try {
-      this.logger.debug('Starting freshness scan');
+      const result = await withSpan('job.freshness_scan', async () => {
+        this.logger.debug('Starting freshness scan');
 
-      const now = Date.now();
-      const urgentCutoff = new Date(now - this.thresholds.urgentMs);
-      const recentCutoff = new Date(now - this.thresholds.recentMs);
-      const normalCutoff = new Date(now - this.thresholds.normalMs);
+        const now = Date.now();
+        const urgentCutoff = new Date(now - this.thresholds.urgentMs);
+        const recentCutoff = new Date(now - this.thresholds.recentMs);
+        const normalCutoff = new Date(now - this.thresholds.normalMs);
 
-      // Scan each tier
-      const [urgentRecords, recentRecords, normalRecords, backgroundRecords] = await Promise.all([
-        // Urgent: records that haven't been synced in 6+ hours and may have issues
-        this.scanTier('urgent', urgentCutoff, null, FreshnessPriority.URGENT),
-        // Recent: records synced 6-24 hours ago
-        this.scanTier('recent', recentCutoff, urgentCutoff, FreshnessPriority.RECENT),
-        // Normal: records synced 1-7 days ago
-        this.scanTier('normal', normalCutoff, recentCutoff, FreshnessPriority.NORMAL),
-        // Background: records synced 7+ days ago
-        this.scanTier('background', null, normalCutoff, FreshnessPriority.BACKGROUND),
-      ]);
+        // Scan each tier
+        const [urgentRecords, recentRecords, normalRecords, backgroundRecords] = await Promise.all([
+          // Urgent: records that haven't been synced in 6+ hours and may have issues
+          this.scanTier('urgent', urgentCutoff, null, FreshnessPriority.URGENT),
+          // Recent: records synced 6-24 hours ago
+          this.scanTier('recent', recentCutoff, urgentCutoff, FreshnessPriority.RECENT),
+          // Normal: records synced 1-7 days ago
+          this.scanTier('normal', normalCutoff, recentCutoff, FreshnessPriority.NORMAL),
+          // Background: records synced 7+ days ago
+          this.scanTier('background', null, normalCutoff, FreshnessPriority.BACKGROUND),
+        ]);
 
-      // Queue jobs for each tier
-      const [urgentQueued, recentQueued, normalQueued, backgroundQueued] = await Promise.all([
-        this.queueJobs(urgentRecords, FreshnessPriority.URGENT, 'scan'),
-        this.queueJobs(recentRecords, FreshnessPriority.RECENT, 'scan'),
-        this.queueJobs(normalRecords, FreshnessPriority.NORMAL, 'scan'),
-        this.queueJobs(backgroundRecords, FreshnessPriority.BACKGROUND, 'scan'),
-      ]);
+        // Queue jobs for each tier
+        const [urgentQueued, recentQueued, normalQueued, backgroundQueued] = await Promise.all([
+          this.queueJobs(urgentRecords, FreshnessPriority.URGENT, 'scan'),
+          this.queueJobs(recentRecords, FreshnessPriority.RECENT, 'scan'),
+          this.queueJobs(normalRecords, FreshnessPriority.NORMAL, 'scan'),
+          this.queueJobs(backgroundRecords, FreshnessPriority.BACKGROUND, 'scan'),
+        ]);
 
-      const totalQueued = urgentQueued + recentQueued + normalQueued + backgroundQueued;
-      const durationMs = Date.now() - startTime;
+        const totalQueued = urgentQueued + recentQueued + normalQueued + backgroundQueued;
+        const durationMs = Date.now() - startTime;
 
-      const result: ScanRunResult = {
-        success: true,
-        urgentQueued,
-        recentQueued,
-        normalQueued,
-        backgroundQueued,
-        totalQueued,
-        durationMs,
-      };
+        return {
+          success: true as const,
+          urgentQueued,
+          recentQueued,
+          normalQueued,
+          backgroundQueued,
+          totalQueued,
+          durationMs,
+        };
+      });
 
       this.lastRunResult = result;
 
+      jobMetrics.executionsTotal.inc({ job: 'freshness_scan', status: 'success' });
+      jobMetrics.lastRunTimestamp.set({ job: 'freshness_scan' }, Date.now() / 1000);
+      jobMetrics.itemsProcessed.inc(
+        { job: 'freshness_scan', status: 'success' },
+        result.totalQueued
+      );
+      endTimer({ status: 'success' });
+
       this.logger.info('Freshness scan completed', {
-        urgentQueued,
-        recentQueued,
-        normalQueued,
-        backgroundQueued,
-        totalQueued,
-        durationMs,
+        urgentQueued: result.urgentQueued,
+        recentQueued: result.recentQueued,
+        normalQueued: result.normalQueued,
+        backgroundQueued: result.backgroundQueued,
+        totalQueued: result.totalQueued,
+        durationMs: result.durationMs,
       });
 
       return result;
@@ -322,6 +335,9 @@ export class FreshnessScanJob {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       this.logger.error('Freshness scan failed', error instanceof Error ? error : undefined);
+
+      jobMetrics.executionsTotal.inc({ job: 'freshness_scan', status: 'error' });
+      endTimer({ status: 'error' });
 
       const result: ScanRunResult = {
         success: false,

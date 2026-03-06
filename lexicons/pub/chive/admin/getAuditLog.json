@@ -1,0 +1,94 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getAuditLog",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get admin audit log entries",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of entries"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "actorDid": {
+            "type": "string",
+            "format": "did",
+            "description": "Filter by actor DID"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["entries", "total"],
+          "properties": {
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#auditEntry"
+              },
+              "description": "Audit log entries"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total entries matching the query"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "auditEntry": {
+      "type": "object",
+      "description": "Audit log entry",
+      "required": ["id", "action", "actorDid", "timestamp"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Entry ID"
+        },
+        "action": {
+          "type": "string",
+          "description": "Action performed"
+        },
+        "actorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the actor"
+        },
+        "actorHandle": {
+          "type": "string",
+          "description": "Handle of the actor"
+        },
+        "targetUri": {
+          "type": "string",
+          "description": "Target resource URI"
+        },
+        "collection": {
+          "type": "string",
+          "description": "NSID collection"
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional details"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the action occurred"
+        }
+      }
+    }
+  }
+}

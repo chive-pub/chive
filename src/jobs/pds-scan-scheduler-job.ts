@@ -19,6 +19,8 @@
  * @public
  */
 
+import { jobMetrics } from '../observability/prometheus-registry.js';
+import { withSpan } from '../observability/tracer.js';
 import type { IPDSRegistry } from '../services/pds-discovery/pds-registry.js';
 import { PDSScanner } from '../services/pds-discovery/pds-scanner.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
@@ -206,70 +208,76 @@ export class PDSScanSchedulerJob {
 
     this.isRunning = true;
     const startTime = Date.now();
+    const endTimer = jobMetrics.duration.startTimer({ job: 'pds_scan' });
 
     try {
-      this.logger.debug('Starting PDS scan cycle');
+      const result = await withSpan('job.pds_scan', async () => {
+        this.logger.debug('Starting PDS scan cycle');
 
-      // Get PDSes that are ready for scanning
-      const pendingScan = await this.registry.getPDSesForScan(this.batchSize);
+        // Get PDSes that are ready for scanning
+        const pendingScan = await this.registry.getPDSesForScan(this.batchSize);
 
-      if (pendingScan.length === 0) {
-        this.logger.debug('No PDSes ready for scanning');
-        const result: PDSScanRunResult = {
-          success: true,
-          pdsesScanned: 0,
-          recordsFound: 0,
-          pdsesWithRecords: 0,
-          failures: 0,
-          durationMs: Date.now() - startTime,
-        };
-        this.lastRunResult = result;
-        return result;
-      }
+        if (pendingScan.length === 0) {
+          this.logger.debug('No PDSes ready for scanning');
+          return {
+            success: true as const,
+            pdsesScanned: 0,
+            recordsFound: 0,
+            pdsesWithRecords: 0,
+            failures: 0,
+            durationMs: Date.now() - startTime,
+          };
+        }
 
-      // Sort by priority - PDSes with Chive records first
-      const sortedPDSes = [...pendingScan].sort((a, b) => {
-        // Has records > pending > no records
-        if (a.hasChiveRecords && !b.hasChiveRecords) return -1;
-        if (!a.hasChiveRecords && b.hasChiveRecords) return 1;
-        return a.scanPriority - b.scanPriority;
-      });
+        // Sort by priority - PDSes with Chive records first
+        const sortedPDSes = [...pendingScan].sort((a, b) => {
+          // Has records > pending > no records
+          if (a.hasChiveRecords && !b.hasChiveRecords) return -1;
+          if (!a.hasChiveRecords && b.hasChiveRecords) return 1;
+          return a.scanPriority - b.scanPriority;
+        });
 
-      // Scan PDSes
-      const results = await this.scanner.scanMultiplePDSes(
-        sortedPDSes.map((p) => p.pdsUrl),
-        this.concurrency
-      );
+        // Scan PDSes
+        const scanResults = await this.scanner.scanMultiplePDSes(
+          sortedPDSes.map((p) => p.pdsUrl),
+          this.concurrency
+        );
 
-      // Count results
-      let recordsFound = 0;
-      let pdsesWithRecords = 0;
-      let failures = 0;
+        // Count results
+        let recordsFound = 0;
+        let pdsesWithRecords = 0;
+        let failures = 0;
 
-      for (const [pdsUrl, result] of results) {
-        if (result instanceof Error) {
-          failures++;
-          this.logger.debug('PDS scan failed', { pdsUrl, error: result.message });
-        } else {
-          recordsFound += result.chiveRecordCount;
-          if (result.hasChiveRecords) {
-            pdsesWithRecords++;
+        for (const [pdsUrl, scanResult] of scanResults) {
+          if (scanResult instanceof Error) {
+            failures++;
+            this.logger.debug('PDS scan failed', { pdsUrl, error: scanResult.message });
+          } else {
+            recordsFound += scanResult.chiveRecordCount;
+            if (scanResult.hasChiveRecords) {
+              pdsesWithRecords++;
+            }
           }
         }
-      }
 
-      const durationMs = Date.now() - startTime;
+        const durationMs = Date.now() - startTime;
 
-      const result: PDSScanRunResult = {
-        success: true,
-        pdsesScanned: results.size,
-        recordsFound,
-        pdsesWithRecords,
-        failures,
-        durationMs,
-      };
+        return {
+          success: true as const,
+          pdsesScanned: scanResults.size,
+          recordsFound,
+          pdsesWithRecords,
+          failures,
+          durationMs,
+        };
+      });
 
       this.lastRunResult = result;
+
+      jobMetrics.executionsTotal.inc({ job: 'pds_scan', status: 'success' });
+      jobMetrics.lastRunTimestamp.set({ job: 'pds_scan' }, Date.now() / 1000);
+      jobMetrics.itemsProcessed.inc({ job: 'pds_scan', status: 'success' }, result.pdsesScanned);
+      endTimer({ status: 'success' });
 
       this.logger.info('PDS scan cycle completed', {
         pdsesScanned: result.pdsesScanned,
@@ -285,6 +293,9 @@ export class PDSScanSchedulerJob {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       this.logger.error('PDS scan cycle failed', error instanceof Error ? error : undefined);
+
+      jobMetrics.executionsTotal.inc({ job: 'pds_scan', status: 'error' });
+      endTimer({ status: 'error' });
 
       const result: PDSScanRunResult = {
         success: false,

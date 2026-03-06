@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.triggerCitationExtraction",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger citation extraction for indexed eprints",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "Specific eprint URI (all if omitted)"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["operationId"],
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "description": "ID of the started backfill operation"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

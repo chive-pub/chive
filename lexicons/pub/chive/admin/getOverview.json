@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getOverview",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get aggregate counts from all index tables",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprints", "authors", "reviews", "endorsements", "collections", "tags"],
+          "properties": {
+            "eprints": {
+              "type": "integer",
+              "description": "Total indexed eprints"
+            },
+            "authors": {
+              "type": "integer",
+              "description": "Total indexed authors"
+            },
+            "reviews": {
+              "type": "integer",
+              "description": "Total indexed reviews"
+            },
+            "endorsements": {
+              "type": "integer",
+              "description": "Total indexed endorsements"
+            },
+            "collections": {
+              "type": "integer",
+              "description": "Total indexed collections"
+            },
+            "tags": {
+              "type": "integer",
+              "description": "Total indexed tags"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

@@ -3,11 +3,11 @@
   "info": {
     "title": "Chive API",
     "description": "AT Protocol AppView for scholarly eprints",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "contact": {
       "name": "Chive",
       "url": "https://chive.pub",
-      "email": "contact@chive.pub"
+      "email": "admin@chive.pub"
     },
     "license": {
       "name": "MIT",

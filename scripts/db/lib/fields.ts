@@ -188,7 +188,6 @@ const DIVISIONS: readonly FieldDefinition[] = [
     slug: 'clinical-medicine',
     label: 'Clinical Medicine',
     description: 'Branch of medicine dealing with the observation and treatment of patients.',
-    wikidataId: 'Q7114438',
     anzsrcCode: '32',
     type: 'division',
     parentSlug: 'medical-health-sciences',
@@ -198,7 +197,7 @@ const DIVISIONS: readonly FieldDefinition[] = [
     label: 'Neuroscience',
     description:
       'Scientific study of the nervous system, encompassing the structure, function, development, and pathology of neural systems.',
-    wikidataId: 'Q7141',
+    wikidataId: 'Q207011',
     anzsrcCode: '32',
     type: 'division',
     parentSlug: 'medical-health-sciences',
@@ -329,7 +328,7 @@ const DIVISIONS: readonly FieldDefinition[] = [
     label: 'Literary Studies',
     description:
       'Academic discipline devoted to the study of literature, including poetry, prose, and drama.',
-    wikidataId: 'Q8242',
+    wikidataId: 'Q208217',
     anzsrcCode: '4705',
     type: 'division',
     parentSlug: 'humanities-arts',
@@ -339,7 +338,7 @@ const DIVISIONS: readonly FieldDefinition[] = [
     label: 'Religious Studies',
     description:
       'Academic field devoted to research into religious beliefs, behaviors, and institutions.',
-    wikidataId: 'Q9174',
+    wikidataId: 'Q34187',
     anzsrcCode: '50',
     type: 'division',
     parentSlug: 'humanities-arts',
@@ -377,7 +376,7 @@ const LINGUISTICS_CORE: readonly FieldDefinition[] = [
     label: 'Phonetics',
     description:
       'Study of the physical sounds of human speech, including their production, acoustic properties, and perception.',
-    wikidataId: 'Q40998',
+    wikidataId: 'Q35395',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['phonology'],
@@ -387,7 +386,7 @@ const LINGUISTICS_CORE: readonly FieldDefinition[] = [
     label: 'Phonology',
     description:
       'Study of the systematic organization of sounds in languages, including phonemes, allophones, and phonological rules.',
-    wikidataId: 'Q40803',
+    wikidataId: 'Q40998',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['phonetics', 'morphology'],
@@ -397,7 +396,7 @@ const LINGUISTICS_CORE: readonly FieldDefinition[] = [
     label: 'Morphology',
     description:
       'Study of the internal structure of words, including morphemes, word formation processes, and inflection.',
-    wikidataId: 'Q131261',
+    wikidataId: 'Q38311',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['phonology', 'syntax'],
@@ -427,7 +426,7 @@ const LINGUISTICS_CORE: readonly FieldDefinition[] = [
     label: 'Pragmatics',
     description:
       'Study of how context contributes to meaning, including speech acts, implicature, deixis, and discourse structure.',
-    wikidataId: 'Q192985',
+    wikidataId: 'Q181839',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['semantics', 'discourse-analysis', 'sociolinguistics'],
@@ -440,7 +439,7 @@ const LINGUISTICS_INTERDISCIPLINARY: readonly FieldDefinition[] = [
     label: 'Psycholinguistics',
     description:
       'Study of the psychological and neurobiological factors enabling language acquisition, comprehension, and production.',
-    wikidataId: 'Q185043',
+    wikidataId: 'Q179488',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['cognitive-science', 'neurolinguistics', 'language-acquisition'],
@@ -450,7 +449,7 @@ const LINGUISTICS_INTERDISCIPLINARY: readonly FieldDefinition[] = [
     label: 'Neurolinguistics',
     description:
       'Study of the neural mechanisms in the brain that control language comprehension, production, and acquisition.',
-    wikidataId: 'Q583405',
+    wikidataId: 'Q215948',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['neuroscience', 'psycholinguistics', 'cognitive-science'],
@@ -460,7 +459,7 @@ const LINGUISTICS_INTERDISCIPLINARY: readonly FieldDefinition[] = [
     label: 'Sociolinguistics',
     description:
       'Study of the relationship between language and society, including language variation, change, and social identity.',
-    wikidataId: 'Q40634',
+    wikidataId: 'Q160845',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['sociology', 'anthropological-linguistics', 'pragmatics'],
@@ -481,7 +480,7 @@ const LINGUISTICS_INTERDISCIPLINARY: readonly FieldDefinition[] = [
     label: 'Anthropological Linguistics',
     description:
       'Study of the relationship between language and culture, and how language shapes social life.',
-    wikidataId: 'Q1194352',
+    wikidataId: 'Q29407',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['anthropology', 'sociolinguistics'],
@@ -491,7 +490,7 @@ const LINGUISTICS_INTERDISCIPLINARY: readonly FieldDefinition[] = [
     label: 'Applied Linguistics',
     description:
       'Field concerned with practical applications of language studies, including language teaching, translation, and language policy.',
-    wikidataId: 'Q2668830',
+    wikidataId: 'Q321249',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['education', 'second-language-acquisition'],
@@ -501,7 +500,7 @@ const LINGUISTICS_INTERDISCIPLINARY: readonly FieldDefinition[] = [
     label: 'Philosophy of Language',
     description:
       'Philosophical study of the nature of language, including meaning, reference, truth, and the relationship between language and reality.',
-    wikidataId: 'Q179805',
+    wikidataId: 'Q484761',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['philosophy', 'semantics', 'pragmatics'],
@@ -514,7 +513,7 @@ const LINGUISTICS_HISTORICAL: readonly FieldDefinition[] = [
     label: 'Historical Linguistics',
     description:
       'Study of language change over time, including sound changes, grammaticalization, and language relatedness.',
-    wikidataId: 'Q47157',
+    wikidataId: 'Q190375',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['comparative-linguistics', 'etymology'],
@@ -524,7 +523,7 @@ const LINGUISTICS_HISTORICAL: readonly FieldDefinition[] = [
     label: 'Comparative Linguistics',
     description:
       'Branch of historical linguistics concerned with comparing languages to establish their historical relatedness.',
-    wikidataId: 'Q191314',
+    wikidataId: 'Q878226',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['historical-linguistics', 'typology'],
@@ -534,7 +533,7 @@ const LINGUISTICS_HISTORICAL: readonly FieldDefinition[] = [
     label: 'Etymology',
     description:
       'Study of the history of words, their origins, and how their form and meaning have changed over time.',
-    wikidataId: 'Q41583',
+    wikidataId: 'Q35245',
     type: 'field',
     parentSlug: 'historical-linguistics',
   },
@@ -543,7 +542,7 @@ const LINGUISTICS_HISTORICAL: readonly FieldDefinition[] = [
     label: 'Language Reconstruction',
     description:
       'Methods for inferring the features of ancestral languages from their descendant languages.',
-    wikidataId: 'Q1195896',
+    wikidataId: 'Q2210319',
     type: 'field',
     parentSlug: 'historical-linguistics',
   },
@@ -555,7 +554,7 @@ const SEMANTICS_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Lexical Semantics',
     description:
       'Study of word meanings, including sense relations (synonymy, antonymy, hyponymy), polysemy, and lexical decomposition.',
-    wikidataId: 'Q1820446',
+    wikidataId: 'Q1759657',
     type: 'field',
     parentSlug: 'semantics',
     relatedSlugs: ['morphology'],
@@ -565,7 +564,7 @@ const SEMANTICS_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Formal Semantics',
     description:
       'Study of meaning using formal tools from logic and mathematics, including model-theoretic and proof-theoretic approaches.',
-    wikidataId: 'Q1353507',
+    wikidataId: 'Q5469969',
     type: 'field',
     parentSlug: 'semantics',
     relatedSlugs: ['philosophy-of-language', 'syntax'],
@@ -575,7 +574,7 @@ const SEMANTICS_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Cognitive Semantics',
     description:
       'Study of meaning from a cognitive perspective, including conceptual metaphor, image schemas, and embodied cognition.',
-    wikidataId: 'Q5141302',
+    wikidataId: 'Q871801',
     type: 'field',
     parentSlug: 'semantics',
     relatedSlugs: ['cognitive-science', 'psycholinguistics'],
@@ -585,7 +584,6 @@ const SEMANTICS_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Compositional Semantics',
     description:
       'Study of how meanings of complex expressions are derived from meanings of their parts and rules of combination.',
-    wikidataId: 'Q1124634',
     type: 'field',
     parentSlug: 'semantics',
     relatedSlugs: ['formal-semantics', 'syntax'],
@@ -607,7 +605,7 @@ const SYNTAX_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Generative Syntax',
     description:
       "Approach to syntax emphasizing innate grammatical knowledge and formal rule systems, following Chomsky's framework.",
-    wikidataId: 'Q733103',
+    wikidataId: 'Q36108',
     type: 'field',
     parentSlug: 'syntax',
     relatedSlugs: ['minimalist-program'],
@@ -617,7 +615,7 @@ const SYNTAX_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Minimalist Program',
     description:
       'Current stage of generative grammar, emphasizing economy principles and minimal computational mechanisms.',
-    wikidataId: 'Q1928048',
+    wikidataId: 'Q177724',
     type: 'field',
     parentSlug: 'syntax',
     relatedSlugs: ['generative-syntax'],
@@ -627,7 +625,7 @@ const SYNTAX_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Construction Grammar',
     description:
       'Family of theories viewing grammar as an inventory of constructions (form-meaning pairings) at various levels.',
-    wikidataId: 'Q1140308',
+    wikidataId: 'Q1188797',
     type: 'field',
     parentSlug: 'syntax',
     relatedSlugs: ['cognitive-semantics'],
@@ -637,7 +635,7 @@ const SYNTAX_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Dependency Grammar',
     description:
       'Syntactic framework based on dependency relations between words, where structure is determined by head-dependent asymmetries.',
-    wikidataId: 'Q1199653',
+    wikidataId: 'Q674834',
     type: 'field',
     parentSlug: 'syntax',
     relatedSlugs: ['computational-linguistics'],
@@ -647,7 +645,7 @@ const SYNTAX_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Categorial Grammar',
     description:
       'Family of formalisms in which syntactic structure is derived from lexical categories and function application.',
-    wikidataId: 'Q868898',
+    wikidataId: 'Q1841499',
     type: 'field',
     parentSlug: 'syntax',
     relatedSlugs: ['formal-semantics', 'computational-linguistics'],
@@ -657,7 +655,7 @@ const SYNTAX_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Head-Driven Phrase Structure Grammar',
     description:
       'Constraint-based, lexicalist approach to grammatical theory using typed feature structures.',
-    wikidataId: 'Q620419',
+    wikidataId: 'Q379294',
     type: 'field',
     parentSlug: 'syntax',
     relatedSlugs: ['computational-linguistics'],
@@ -667,7 +665,7 @@ const SYNTAX_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Lexical Functional Grammar',
     description:
       'Syntactic theory emphasizing parallel structures and functional organization of grammatical information.',
-    wikidataId: 'Q1142628',
+    wikidataId: 'Q634155',
     type: 'field',
     parentSlug: 'syntax',
     relatedSlugs: ['computational-linguistics'],
@@ -680,7 +678,7 @@ const PHONOLOGY_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Autosegmental Phonology',
     description:
       'Phonological framework using separate tiers for different features (tone, vowel harmony), allowing independent spreading.',
-    wikidataId: 'Q4824936',
+    wikidataId: 'Q1074966',
     type: 'field',
     parentSlug: 'phonology',
   },
@@ -689,7 +687,7 @@ const PHONOLOGY_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Optimality Theory',
     description:
       'Constraint-based phonological framework where output forms are selected by ranking of violable constraints.',
-    wikidataId: 'Q1140284',
+    wikidataId: 'Q1207598',
     type: 'field',
     parentSlug: 'phonology',
     relatedSlugs: ['morphology'],
@@ -698,7 +696,7 @@ const PHONOLOGY_SUBFIELDS: readonly FieldDefinition[] = [
     slug: 'metrical-phonology',
     label: 'Metrical Phonology',
     description: 'Study of rhythmic and stress patterns using hierarchical tree structures.',
-    wikidataId: 'Q2583934',
+    wikidataId: 'Q17157180',
     type: 'field',
     parentSlug: 'phonology',
   },
@@ -707,7 +705,7 @@ const PHONOLOGY_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Prosody',
     description:
       'Study of suprasegmental features including intonation, stress, rhythm, and their linguistic functions.',
-    wikidataId: 'Q1074290',
+    wikidataId: 'Q10880526',
     type: 'field',
     parentSlug: 'phonology',
     relatedSlugs: ['phonetics', 'pragmatics'],
@@ -717,7 +715,7 @@ const PHONOLOGY_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Laboratory Phonology',
     description:
       'Interdisciplinary approach combining phonological theory with experimental and quantitative methods.',
-    wikidataId: 'Q6464102',
+    wikidataId: 'Q6467310',
     type: 'field',
     parentSlug: 'phonology',
     relatedSlugs: ['phonetics', 'psycholinguistics'],
@@ -730,7 +728,7 @@ const PHONETICS_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Articulatory Phonetics',
     description:
       'Study of how speech sounds are produced by the articulatory organs (tongue, lips, vocal cords).',
-    wikidataId: 'Q379895',
+    wikidataId: 'Q1200775',
     type: 'field',
     parentSlug: 'phonetics',
   },
@@ -739,7 +737,7 @@ const PHONETICS_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Acoustic Phonetics',
     description:
       'Study of the physical properties of speech sounds as they travel through the air.',
-    wikidataId: 'Q421992',
+    wikidataId: 'Q424083',
     type: 'field',
     parentSlug: 'phonetics',
   },
@@ -748,7 +746,7 @@ const PHONETICS_SUBFIELDS: readonly FieldDefinition[] = [
     label: 'Auditory Phonetics',
     description:
       'Study of how speech sounds are perceived and processed by the human auditory system.',
-    wikidataId: 'Q478665',
+    wikidataId: 'Q1063087',
     type: 'field',
     parentSlug: 'phonetics',
     relatedSlugs: ['psycholinguistics'],
@@ -761,7 +759,7 @@ const LANGUAGE_ACQUISITION: readonly FieldDefinition[] = [
     label: 'Language Acquisition',
     description:
       'Study of how humans acquire language, including first language acquisition in children.',
-    wikidataId: 'Q208041',
+    wikidataId: 'Q118500400',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['psycholinguistics', 'cognitive-science'],
@@ -771,7 +769,7 @@ const LANGUAGE_ACQUISITION: readonly FieldDefinition[] = [
     label: 'First Language Acquisition',
     description:
       'Study of how children acquire their native language(s), including phonological, lexical, and syntactic development.',
-    wikidataId: 'Q1411686',
+    wikidataId: 'Q815859',
     type: 'field',
     parentSlug: 'language-acquisition',
     relatedSlugs: ['psycholinguistics'],
@@ -780,7 +778,7 @@ const LANGUAGE_ACQUISITION: readonly FieldDefinition[] = [
     slug: 'second-language-acquisition',
     label: 'Second Language Acquisition',
     description: 'Study of how people learn languages other than their native language.',
-    wikidataId: 'Q187742',
+    wikidataId: 'Q1455178',
     type: 'field',
     parentSlug: 'language-acquisition',
     relatedSlugs: ['applied-linguistics', 'education'],
@@ -790,7 +788,7 @@ const LANGUAGE_ACQUISITION: readonly FieldDefinition[] = [
     label: 'Bilingualism',
     description:
       'Study of the acquisition, representation, and processing of two or more languages.',
-    wikidataId: 'Q105092',
+    wikidataId: 'Q10779529',
     type: 'field',
     parentSlug: 'language-acquisition',
     relatedSlugs: ['psycholinguistics', 'sociolinguistics'],
@@ -803,7 +801,7 @@ const DISCOURSE_LINGUISTICS: readonly FieldDefinition[] = [
     label: 'Discourse Analysis',
     description:
       'Study of language in use above the sentence level, including coherence, cohesion, and discourse structure.',
-    wikidataId: 'Q595094',
+    wikidataId: 'Q1129466',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['pragmatics', 'sociolinguistics'],
@@ -813,7 +811,7 @@ const DISCOURSE_LINGUISTICS: readonly FieldDefinition[] = [
     label: 'Conversation Analysis',
     description:
       'Study of social interaction through naturally occurring talk, including turn-taking, repair, and sequence organization.',
-    wikidataId: 'Q1197866',
+    wikidataId: 'Q1624720',
     type: 'field',
     parentSlug: 'discourse-analysis',
     relatedSlugs: ['sociolinguistics', 'pragmatics'],
@@ -823,7 +821,7 @@ const DISCOURSE_LINGUISTICS: readonly FieldDefinition[] = [
     label: 'Corpus Linguistics',
     description:
       'Study of language using large collections of texts (corpora) and computational methods.',
-    wikidataId: 'Q1137027',
+    wikidataId: 'Q865083',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['computational-linguistics'],
@@ -836,7 +834,7 @@ const TYPOLOGY_LINGUISTICS: readonly FieldDefinition[] = [
     label: 'Linguistic Typology',
     description:
       'Classification of languages according to their structural features and investigation of cross-linguistic patterns.',
-    wikidataId: 'Q174159',
+    wikidataId: 'Q192625',
     type: 'group',
     parentSlug: 'linguistics',
     relatedSlugs: ['comparative-linguistics'],
@@ -846,7 +844,7 @@ const TYPOLOGY_LINGUISTICS: readonly FieldDefinition[] = [
     label: 'Language Universals',
     description:
       'Study of properties shared by all human languages, whether absolute or statistical.',
-    wikidataId: 'Q632008',
+    wikidataId: 'Q980142',
     type: 'field',
     parentSlug: 'typology',
     relatedSlugs: ['generative-syntax'],
@@ -856,7 +854,6 @@ const TYPOLOGY_LINGUISTICS: readonly FieldDefinition[] = [
     label: 'Areal Linguistics',
     description:
       'Study of linguistic features shared by languages in geographic proximity through contact.',
-    wikidataId: 'Q660003',
     type: 'field',
     parentSlug: 'typology',
     relatedSlugs: ['sociolinguistics', 'historical-linguistics'],
@@ -882,7 +879,7 @@ const NLP_FIELDS: readonly FieldDefinition[] = [
     slug: 'machine-translation',
     label: 'Machine Translation',
     description: 'Use of software to translate text or speech from one language to another.',
-    wikidataId: 'Q206883',
+    wikidataId: 'Q79798',
     type: 'field',
     parentSlug: 'natural-language-processing',
     relatedSlugs: ['computational-linguistics'],
@@ -892,7 +889,7 @@ const NLP_FIELDS: readonly FieldDefinition[] = [
     label: 'Speech Recognition',
     description:
       'Interdisciplinary subfield enabling computers to recognize and translate spoken language into text.',
-    wikidataId: 'Q206948',
+    wikidataId: 'Q189436',
     type: 'field',
     parentSlug: 'natural-language-processing',
     relatedSlugs: ['phonetics', 'acoustic-phonetics'],
@@ -902,7 +899,7 @@ const NLP_FIELDS: readonly FieldDefinition[] = [
     label: 'Speech Synthesis',
     description:
       'Artificial production of human speech, converting text to natural-sounding speech.',
-    wikidataId: 'Q185799',
+    wikidataId: 'Q16346',
     type: 'field',
     parentSlug: 'natural-language-processing',
     relatedSlugs: ['phonetics'],
@@ -911,7 +908,7 @@ const NLP_FIELDS: readonly FieldDefinition[] = [
     slug: 'information-extraction',
     label: 'Information Extraction',
     description: 'Task of automatically extracting structured information from unstructured text.',
-    wikidataId: 'Q854442',
+    wikidataId: 'Q1662562',
     type: 'field',
     parentSlug: 'natural-language-processing',
   },
@@ -920,7 +917,7 @@ const NLP_FIELDS: readonly FieldDefinition[] = [
     label: 'Sentiment Analysis',
     description:
       'Use of NLP to identify and extract subjective information such as opinions and attitudes from text.',
-    wikidataId: 'Q2386426',
+    wikidataId: 'Q2271421',
     type: 'field',
     parentSlug: 'natural-language-processing',
   },
@@ -929,7 +926,7 @@ const NLP_FIELDS: readonly FieldDefinition[] = [
     label: 'Question Answering',
     description:
       'Field of information retrieval and NLP focused on automatically answering questions posed in natural language.',
-    wikidataId: 'Q1476063',
+    wikidataId: 'Q1074173',
     type: 'field',
     parentSlug: 'natural-language-processing',
   },
@@ -938,7 +935,7 @@ const NLP_FIELDS: readonly FieldDefinition[] = [
     label: 'Text Summarization',
     description:
       'Process of producing concise summaries while preserving key information from source documents.',
-    wikidataId: 'Q1318310',
+    wikidataId: 'Q1394144',
     type: 'field',
     parentSlug: 'natural-language-processing',
   },
@@ -987,7 +984,7 @@ const AGRICULTURAL_FIELDS: readonly FieldDefinition[] = [
     label: 'Crop Science',
     description:
       'Study of the breeding, cultivation, and management of crops for food, fiber, and fuel production.',
-    wikidataId: 'Q1354552',
+    wikidataId: 'Q64822370',
     anzsrcCode: '3004',
     type: 'division',
     parentSlug: 'agricultural-veterinary',
@@ -997,7 +994,7 @@ const AGRICULTURAL_FIELDS: readonly FieldDefinition[] = [
     label: 'Animal Science',
     description:
       'Study of the biology and management of domestic animals, including nutrition, reproduction, and genetics.',
-    wikidataId: 'Q207370',
+    wikidataId: 'Q168091',
     anzsrcCode: '3003',
     type: 'division',
     parentSlug: 'agricultural-veterinary',
@@ -1017,7 +1014,7 @@ const AGRICULTURAL_FIELDS: readonly FieldDefinition[] = [
     label: 'Food Science',
     description:
       'Study of the physical, biological, and chemical makeup of food and the concepts underlying food processing.',
-    wikidataId: 'Q1207505',
+    wikidataId: 'Q1637030',
     anzsrcCode: '3006',
     type: 'division',
     parentSlug: 'agricultural-veterinary',
@@ -1031,7 +1028,7 @@ const MEDICAL_FIELDS: readonly FieldDefinition[] = [
     label: 'Pharmacy',
     description:
       'Science and technique of preparing, dispensing, and reviewing drugs and providing clinical services.',
-    wikidataId: 'Q128709',
+    wikidataId: 'Q614304',
     anzsrcCode: '3211',
     type: 'division',
     parentSlug: 'medical-health-sciences',
@@ -1063,7 +1060,7 @@ const MEDICAL_FIELDS: readonly FieldDefinition[] = [
     label: 'Nursing',
     description:
       'Profession focused on the care of individuals, families, and communities to attain, maintain, or recover optimal health.',
-    wikidataId: 'Q186361',
+    wikidataId: 'Q121176',
     anzsrcCode: '4201',
     type: 'division',
     parentSlug: 'medical-health-sciences',
@@ -1114,7 +1111,7 @@ const CS_FIELDS: readonly FieldDefinition[] = [
     label: 'Human-Computer Interaction',
     description:
       'Study of the design and use of computer technology focused on interfaces between people and computers.',
-    wikidataId: 'Q628523',
+    wikidataId: 'Q207434',
     anzsrcCode: '4608',
     type: 'division',
     parentSlug: 'computer-science',
@@ -1125,7 +1122,7 @@ const CS_FIELDS: readonly FieldDefinition[] = [
     label: 'Computer Vision',
     description:
       'Field of AI that trains computers to interpret and understand visual information.',
-    wikidataId: 'Q162555',
+    wikidataId: 'Q844240',
     type: 'group',
     parentSlug: 'artificial-intelligence',
     relatedSlugs: ['deep-learning'],
@@ -1263,7 +1260,7 @@ const SOCIAL_SCIENCE_FIELDS: readonly FieldDefinition[] = [
     slug: 'criminology',
     label: 'Criminology',
     description: 'Study of crime, criminal behavior, and the criminal justice system.',
-    wikidataId: 'Q83267',
+    wikidataId: 'Q161733',
     anzsrcCode: '4402',
     type: 'division',
     parentSlug: 'social-sciences',
@@ -1283,7 +1280,7 @@ const SOCIAL_SCIENCE_FIELDS: readonly FieldDefinition[] = [
     slug: 'communication-studies',
     label: 'Communication Studies',
     description: 'Academic discipline dealing with processes of human communication.',
-    wikidataId: 'Q134995',
+    wikidataId: 'Q11680831',
     anzsrcCode: '4701',
     type: 'division',
     parentSlug: 'social-sciences',

@@ -745,12 +745,11 @@ async function generateCollectionImage(
   const description = params.get('description') || '';
   const owner = params.get('owner') || 'Unknown';
   const itemCount = params.get('itemCount') || '0';
-  const visibility = params.get('visibility') || 'public';
+  const visibility = params.get('visibility') || 'listed';
   const tags = params.get('tags')?.split(',').filter(Boolean) || [];
   const fonts = await loadFonts();
 
-  const visibilityColor =
-    visibility === 'private' ? '#ef4444' : visibility === 'unlisted' ? '#f59e0b' : COLORS.brand;
+  const visibilityColor = visibility === 'unlisted' ? '#f59e0b' : COLORS.brand;
 
   return new ImageResponse(
     <div

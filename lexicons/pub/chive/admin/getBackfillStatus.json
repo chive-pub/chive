@@ -1,0 +1,89 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getBackfillStatus",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get status of backfill operations",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Filter by specific operation ID"
+          },
+          "status": {
+            "type": "string",
+            "knownValues": ["running", "completed", "failed", "cancelled"],
+            "description": "Filter by operation status"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "operations": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#backfillOperation" },
+              "description": "Backfill operations"
+            },
+            "operation": {
+              "type": "ref",
+              "ref": "#backfillOperation",
+              "description": "Single operation (when filtered by ID)"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "backfillOperation": {
+      "type": "object",
+      "description": "A backfill operation record",
+      "required": ["id", "type", "status", "startedAt", "recordsProcessed"],
+      "properties": {
+        "id": { "type": "string", "description": "Operation ID" },
+        "type": {
+          "type": "string",
+          "knownValues": [
+            "pds-scan",
+            "freshness-scan",
+            "citation-extraction",
+            "full-reindex",
+            "governance-sync",
+            "did-sync"
+          ],
+          "description": "Backfill operation type"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["running", "completed", "failed", "cancelled"],
+          "description": "Operation status"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Operation start time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Operation completion time"
+        },
+        "recordsProcessed": {
+          "type": "integer",
+          "description": "Number of records processed so far"
+        },
+        "totalRecords": { "type": "integer", "description": "Total records to process (if known)" },
+        "error": { "type": "string", "description": "Error message if failed" },
+        "startedBy": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the admin who started the operation"
+        }
+      }
+    }
+  }
+}

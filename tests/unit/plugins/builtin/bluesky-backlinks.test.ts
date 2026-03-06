@@ -167,7 +167,7 @@ describe('BlueskyBacklinksPlugin', () => {
     it('should have correct manifest properties', () => {
       expect(plugin.manifest.id).toBe('pub.chive.plugin.bluesky-backlinks');
       expect(plugin.manifest.name).toBe('Bluesky Backlinks');
-      expect(plugin.manifest.version).toBe('0.1.0');
+      expect(plugin.manifest.version).toBe('0.2.0');
       expect(plugin.manifest.author).toBe('Aaron Steven White');
       expect(plugin.manifest.license).toBe('MIT');
     });

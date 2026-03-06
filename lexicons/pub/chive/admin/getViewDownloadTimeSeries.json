@@ -1,0 +1,68 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getViewDownloadTimeSeries",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get view and download time series data",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Specific eprint URI (aggregate if omitted)"
+          },
+          "granularity": {
+            "type": "string",
+            "knownValues": ["hour", "day", "week"],
+            "description": "Time bucket granularity"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["buckets", "timestamp"],
+          "properties": {
+            "buckets": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#timeSeriesBucket"
+              },
+              "description": "Time series data buckets"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Query timestamp"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "timeSeriesBucket": {
+      "type": "object",
+      "description": "A time series data point for views and downloads",
+      "required": ["timestamp", "views", "downloads"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Bucket timestamp"
+        },
+        "views": {
+          "type": "integer",
+          "description": "View count in this bucket"
+        },
+        "downloads": {
+          "type": "integer",
+          "description": "Download count in this bucket"
+        }
+      }
+    }
+  }
+}

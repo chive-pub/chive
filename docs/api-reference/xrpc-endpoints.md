@@ -1516,21 +1516,21 @@ Reject a co-author request.
 
 ### pub.chive.claiming.approveClaim
 
-Approve a claim (moderator only).
+Approve a claim (admin only).
 
-| Property | Value                |
-| -------- | -------------------- |
-| Method   | Procedure (POST)     |
-| Auth     | Required (moderator) |
+| Property | Value            |
+| -------- | ---------------- |
+| Method   | Procedure (POST) |
+| Auth     | Required (admin) |
 
 ### pub.chive.claiming.rejectClaim
 
-Reject a claim (moderator only).
+Reject a claim (admin only).
 
-| Property | Value                |
-| -------- | -------------------- |
-| Method   | Procedure (POST)     |
-| Auth     | Required (moderator) |
+| Property | Value            |
+| -------- | ---------------- |
+| Method   | Procedure (POST) |
+| Auth     | Required (admin) |
 
 ### pub.chive.claiming.getUserClaims
 
@@ -1657,12 +1657,12 @@ Start a claim from an external identifier.
 
 ### pub.chive.claiming.getPendingClaims
 
-Get pending claims (moderator only).
+Get pending claims (admin only).
 
-| Property | Value                |
-| -------- | -------------------- |
-| Method   | Query (GET)          |
-| Auth     | Required (moderator) |
+| Property | Value            |
+| -------- | ---------------- |
+| Method   | Query (GET)      |
+| Auth     | Required (admin) |
 
 ---
 

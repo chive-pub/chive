@@ -1,0 +1,208 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.auth.authorAccess",
+  "defs": {
+    "main": {
+      "type": "permission-set",
+      "description": "Author access for submitting and managing eprints on Chive.",
+      "includes": ["pub.chive.auth.basicReader"],
+      "permissions": [
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.submission"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.version"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.userTag"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.citation"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.relatedWork"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.eprint.changelog"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.actor.profile"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.actor.profileConfig"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.discovery.settings"
+        },
+        {
+          "type": "permission",
+          "resource": "blob",
+          "accept": ["application/*", "image/*", "video/*", "audio/*", "text/*"]
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.startClaim"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.completeClaim"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.findClaimable"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.getClaim"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.getUserClaims"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.getSuggestions"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.getSubmissionData"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.getPendingClaims"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.approveClaim"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.rejectClaim"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.requestCoauthorship"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.approveCoauthor"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.rejectCoauthor"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.getCoauthorRequests"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.getMyCoauthorRequests"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.claiming.dismissSuggestion"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.actor.getMyRoles"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.actor.getMyProfile"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.actor.getDiscoverySettings"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.sync.registerPDS"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.sync.indexRecord"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.sync.deleteRecord"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.updateSubmission"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.deleteSubmission"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.activity.getFeed"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.activity.log"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.activity.markFailed"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.discovery.getRecommendations"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.discovery.recordInteraction"
+        }
+      ]
+    }
+  }
+}

@@ -25,10 +25,13 @@ import type { Redis } from 'ioredis';
 
 import { ServiceAuthVerifier, type IServiceAuthVerifier } from '../auth/service-auth/index.js';
 import type { ActivityService } from '../services/activity/activity-service.js';
+import type { AdminService } from '../services/admin/admin-service.js';
+import type { BackfillManager } from '../services/admin/backfill-manager.js';
 import type { AlphaApplicationService } from '../services/alpha/alpha-application-service.js';
 import type { AnnotationService } from '../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../services/blob-proxy/proxy-service.js';
+import type { CitationExtractionService } from '../services/citation/citation-extraction-service.js';
 import type { ClaimingService } from '../services/claiming/claiming-service.js';
 import type { CollectionService } from '../services/collection/collection-service.js';
 import type { DiscoveryService } from '../services/discovery/discovery-service.js';
@@ -58,7 +61,7 @@ import type { ILogger } from '../types/interfaces/logger.interface.js';
 import type { IndexRetryWorker } from '../workers/index-retry-worker.js';
 
 import { CORS_CONFIG, HEALTH_PATHS } from './config.js';
-import { authenticateServiceAuth } from './middleware/auth.js';
+import { authenticateServiceAuth, requireAuth, requireAdmin } from './middleware/auth.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { conditionalRateLimiter, autocompleteRateLimiter } from './middleware/rate-limit.js';
 import { requestContext } from './middleware/request-context.js';
@@ -259,6 +262,21 @@ export interface ServerConfig {
    * Collection service for indexing and querying collections (optional).
    */
   readonly collectionService?: CollectionService;
+
+  /**
+   * Admin service for dashboard operations (optional).
+   */
+  readonly adminService?: AdminService;
+
+  /**
+   * Backfill manager for tracking backfill operations (optional).
+   */
+  readonly backfillManager?: BackfillManager;
+
+  /**
+   * Citation extraction service for extracting references from eprints (optional).
+   */
+  readonly citationExtractionService?: CitationExtractionService;
 }
 
 /**
@@ -356,6 +374,9 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       indexRetryWorker: config.indexRetryWorker,
       personalGraph: config.personalGraphService,
       collection: config.collectionService,
+      admin: config.adminService,
+      backfillManager: config.backfillManager,
+      citationExtraction: config.citationExtractionService,
     } as ChiveServices);
     c.set('redis', config.redis);
     c.set('logger', config.logger);
@@ -368,6 +389,9 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
 
   // 5. ATProto service auth (optional; sets user if valid token present)
   app.use('*', authenticateServiceAuth(serviceAuthVerifier, config.authzService));
+
+  // 5b. Admin route protection (require auth + admin role)
+  app.use('/xrpc/pub.chive.admin.*', requireAuth(), requireAdmin());
 
   // 6. Rate limiting
   // Autocomplete endpoints get higher rate limits (5x for anonymous)

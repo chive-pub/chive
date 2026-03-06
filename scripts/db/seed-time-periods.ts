@@ -135,7 +135,7 @@ const TIME_PERIODS = [
     label: 'Ancient',
     description: 'Research focused on the ancient period (pre-500 CE).',
     externalIds: [
-      { system: 'wikidata', identifier: 'Q486761', uri: 'https://www.wikidata.org/wiki/Q486761' },
+      { system: 'wikidata', identifier: 'Q41493', uri: 'https://www.wikidata.org/wiki/Q41493' },
     ],
   },
 ] as const;

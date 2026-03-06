@@ -1,0 +1,123 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.auth.fullAccess",
+  "defs": {
+    "main": {
+      "type": "permission-set",
+      "description": "Full access to all Chive operations including knowledge graph governance.",
+      "includes": ["pub.chive.auth.reviewerAccess"],
+      "permissions": [
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.fieldProposal"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.nodeProposal"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.edgeProposal"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.vote"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.node"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.graph.edge"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.listProposals"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.getProposal"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.listVotes"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.getUserVote"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.getPendingCount"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.getEditorStatus"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.listTrustedEditors"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.requestElevation"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.approveElevation"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.rejectElevation"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.listElevationRequests"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.grantDelegation"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.revokeDelegation"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.governance.listDelegations"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.graph.listPersonalNodes"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.graph.listPersonalEdgeTypes"
+        }
+      ]
+    }
+  }
+}

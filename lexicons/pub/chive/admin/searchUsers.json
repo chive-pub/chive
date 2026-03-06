@@ -1,0 +1,89 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.searchUsers",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Search users by handle or DID",
+      "parameters": {
+        "type": "params",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search term (handle or DID prefix)"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "description": "Maximum number of results"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["users"],
+          "properties": {
+            "users": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#userDetail"
+              },
+              "description": "Matching users"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "userDetail": {
+      "type": "object",
+      "description": "User detail with stats and roles",
+      "required": ["did", "eprintCount", "reviewCount", "endorsementCount", "roles"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "User DID"
+        },
+        "handle": {
+          "type": "string",
+          "description": "User handle"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "eprintCount": {
+          "type": "integer",
+          "description": "Number of eprints submitted"
+        },
+        "reviewCount": {
+          "type": "integer",
+          "description": "Number of reviews written"
+        },
+        "endorsementCount": {
+          "type": "integer",
+          "description": "Number of endorsements given"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Assigned role identifiers"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Account indexed timestamp"
+        }
+      }
+    }
+  }
+}

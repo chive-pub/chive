@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getFirehoseStatus",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get firehose cursor position and DLQ status",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["dlqCount", "timestamp"],
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "description": "Current firehose cursor position"
+            },
+            "dlqCount": {
+              "type": "integer",
+              "description": "Number of entries in the dead-letter queue"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Timestamp of the status check"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

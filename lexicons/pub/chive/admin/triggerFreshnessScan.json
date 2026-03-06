@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.triggerFreshnessScan",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger a freshness scan to detect stale indexed records",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "tier": {
+              "type": "string",
+              "description": "Staleness tier to scan"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["operationId"],
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "description": "ID of the started backfill operation"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

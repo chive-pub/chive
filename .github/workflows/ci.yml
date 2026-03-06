@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, staging, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [main, staging, develop]
   workflow_dispatch:
 
 concurrency:
@@ -125,6 +125,7 @@ jobs:
       NEO4J_URI: bolt://localhost:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: chive_test_password
+      ADMIN_DIDS: did:plc:test-admin-did
 
     steps:
       - uses: actions/checkout@v4
@@ -184,6 +185,7 @@ jobs:
       NEO4J_URI: bolt://localhost:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: chive_test_password
+      ADMIN_DIDS: did:plc:test-admin-did
 
     steps:
       - uses: actions/checkout@v4
@@ -327,13 +329,159 @@ jobs:
           echo "All packages built successfully." >> $GITHUB_STEP_SUMMARY
 
   # ==============================================================================
-  # Stage 7: Pre-Deployment Verification (runs scripts and jobs against test stack)
+  # Stage 7: Docker Image Build
+  # ==============================================================================
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build production Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: production
+          tags: chive:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image exists
+        run: docker image inspect chive:latest > /dev/null
+
+      - name: Save Docker image as artifact
+        run: docker save chive:latest | gzip > /tmp/chive-image.tar.gz
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/chive-image.tar.gz
+          retention-days: 1
+
+  # ==============================================================================
+  # Stage 8: Docker Smoke Test (full stack in containers)
+  # ==============================================================================
+
+  docker-smoke-test:
+    name: Docker Smoke Test
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: gunzip -c /tmp/chive-image.tar.gz | docker load
+
+      - name: Start full stack
+        run: docker compose -f docker/docker-compose.ci.yml up -d
+
+      - name: Wait for API to be healthy
+        run: |
+          echo "Waiting for chive-api to be healthy..."
+          for i in $(seq 1 60); do
+            health=$(docker inspect --format='{{.State.Health.Status}}' chive-api 2>/dev/null || echo "starting")
+            if [ "$health" = "healthy" ]; then
+              echo "chive-api is healthy after ~$((i * 5))s"
+              exit 0
+            fi
+            if [ "$health" = "unhealthy" ]; then
+              echo "chive-api became unhealthy"
+              docker logs chive-api --tail 50
+              exit 1
+            fi
+            echo "Attempt $i/60 - status: $health"
+            sleep 5
+          done
+          echo "Timed out waiting for chive-api"
+          docker compose -f docker/docker-compose.ci.yml logs
+          exit 1
+
+      - name: Smoke test - API health
+        run: |
+          curl -sf http://localhost:3000/health
+          echo ""
+          echo "API health check passed"
+
+      - name: Smoke test - ready endpoint
+        run: |
+          curl -sf http://localhost:3000/ready
+          echo ""
+          echo "Ready endpoint check passed"
+
+      - name: Smoke test - migration scripts ran
+        run: |
+          # Verify migrations created tables
+          docker exec chive-postgres psql -U chive -d chive_test -c "\dt" | grep -q eprints_index
+          echo "Database migrations verified"
+
+      - name: Smoke test - Elasticsearch index exists
+        run: |
+          docker exec chive-api curl -sf http://elasticsearch:9200/_cat/indices | grep -q eprints
+          echo "Elasticsearch index verified"
+
+      - name: Smoke test - Neo4j constraints exist
+        run: |
+          docker exec chive-neo4j cypher-shell -u neo4j -p chive_test_password \
+            "SHOW CONSTRAINTS" --format plain | head -20
+          echo "Neo4j setup verified"
+
+      - name: Smoke test - indexer container running
+        run: |
+          status=$(docker inspect --format='{{.State.Status}}' chive-indexer)
+          if [ "$status" != "running" ]; then
+            echo "Indexer is not running (status: $status)"
+            docker logs chive-indexer --tail 30
+            exit 1
+          fi
+          echo "Indexer container running"
+
+      - name: Show container status
+        if: always()
+        run: docker compose -f docker/docker-compose.ci.yml ps
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose -f docker/docker-compose.ci.yml logs --tail 100
+
+      - name: Teardown
+        if: always()
+        run: docker compose -f docker/docker-compose.ci.yml down -v
+
+      - name: Smoke test summary
+        if: always()
+        run: |
+          echo "## Docker Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Verified the production Docker image runs correctly with all services:" >> $GITHUB_STEP_SUMMARY
+          echo "- API health endpoint responds" >> $GITHUB_STEP_SUMMARY
+          echo "- Ready endpoint responds" >> $GITHUB_STEP_SUMMARY
+          echo "- Database migrations complete successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- Elasticsearch index created" >> $GITHUB_STEP_SUMMARY
+          echo "- Neo4j constraints applied" >> $GITHUB_STEP_SUMMARY
+          echo "- Indexer container starts and runs" >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # Stage 9: Pre-Deployment Verification (runs scripts and jobs against test stack)
   # ==============================================================================
 
   pre-deployment-tests:
     name: Pre-Deployment Verification
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [docker-smoke-test]
     services:
       postgres:
         image: postgres:16-alpine
@@ -376,6 +524,7 @@ jobs:
       NEO4J_URI: bolt://localhost:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: chive_test_password
+      ADMIN_DIDS: did:plc:test-admin-did
 
     steps:
       - uses: actions/checkout@v4

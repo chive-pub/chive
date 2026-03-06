@@ -175,14 +175,15 @@ After authentication, Chive checks authorization using role-based access control
 
 ### Roles
 
-| Role               | Description             |
-| ------------------ | ----------------------- |
-| `anonymous`        | Unauthenticated users   |
-| `user`             | Authenticated users     |
-| `researcher`       | Verified researchers    |
-| `trusted_editor`   | Community moderators    |
-| `authority_editor` | Library science experts |
-| `admin`            | System administrators   |
+| Role           | Description                                       |
+| -------------- | ------------------------------------------------- |
+| `anonymous`    | Unauthenticated users                             |
+| `reader`       | Standard read access                              |
+| `author`       | Eprint submission permissions                     |
+| `moderator`    | Knowledge graph governance and proposal review    |
+| `graph-editor` | Knowledge graph editing (node and edge proposals) |
+| `alpha-tester` | Access to alpha features during testing           |
+| `admin`        | Full access to admin dashboard and all endpoints  |
 
 ### Permission matrix
 

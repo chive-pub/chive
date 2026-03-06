@@ -238,7 +238,7 @@ export class WikidataPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.wikidata',
     name: 'Wikidata Integration',
-    version: '0.1.0',
+    version: '0.2.0',
     description: 'Provides entity lookup and knowledge graph integration via Wikidata',
     author: 'Aaron Steven White',
     license: 'MIT',

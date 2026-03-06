@@ -54,7 +54,7 @@ const createSampleCollection = (overrides?: Partial<IndexedCollection>): Indexed
   ownerDid: SAMPLE_DID,
   label: 'NLP Reading List',
   description: 'Curated papers on computational linguistics and NLP',
-  visibility: 'public',
+  visibility: 'listed',
   itemCount: 5,
   createdAt: new Date('2025-06-15T10:00:00Z'),
   updatedAt: undefined,
@@ -123,9 +123,9 @@ describe('XRPC collection.getFeed handler', () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it('throws AuthorizationError for non-owner accessing private collection feed', async () => {
-    const privateCollection = createSampleCollection({ visibility: 'private' });
-    mockCollectionService.getCollection.mockResolvedValue(privateCollection);
+  it('throws AuthorizationError for non-owner accessing unlisted collection feed', async () => {
+    const unlistedCollection = createSampleCollection({ visibility: 'unlisted' });
+    mockCollectionService.getCollection.mockResolvedValue(unlistedCollection);
 
     const strangerContext = {
       get: vi.fn((key: string) => {
@@ -153,9 +153,9 @@ describe('XRPC collection.getFeed handler', () => {
     ).rejects.toThrow(AuthorizationError);
   });
 
-  it('throws AuthorizationError for unauthenticated user accessing private collection feed', async () => {
-    const privateCollection = createSampleCollection({ visibility: 'private' });
-    mockCollectionService.getCollection.mockResolvedValue(privateCollection);
+  it('throws AuthorizationError for unauthenticated user accessing unlisted collection feed', async () => {
+    const unlistedCollection = createSampleCollection({ visibility: 'unlisted' });
+    mockCollectionService.getCollection.mockResolvedValue(unlistedCollection);
 
     const unauthContext = {
       get: vi.fn((key: string) => {
@@ -183,9 +183,9 @@ describe('XRPC collection.getFeed handler', () => {
     ).rejects.toThrow(AuthorizationError);
   });
 
-  it('allows owner to access private collection feed', async () => {
-    const privateCollection = createSampleCollection({ visibility: 'private' });
-    mockCollectionService.getCollection.mockResolvedValue(privateCollection);
+  it('allows owner to access unlisted collection feed', async () => {
+    const unlistedCollection = createSampleCollection({ visibility: 'unlisted' });
+    mockCollectionService.getCollection.mockResolvedValue(unlistedCollection);
     mockCollectionService.getCollectionFeed.mockResolvedValue({
       ok: true,
       value: { events: [], cursor: undefined, hasMore: false },

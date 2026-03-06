@@ -106,7 +106,7 @@ import { initTelemetry } from '@/observability/index.js';
 // Initialize telemetry before anything else
 initTelemetry({
   serviceName: 'my-service',
-  serviceVersion: '0.1.0',
+  serviceVersion: '0.2.0',
   environment: process.env.NODE_ENV || 'development',
 });
 
@@ -602,7 +602,7 @@ Logs are JSON objects with these fields:
   "msg": "Request completed",
   "service": "chive-appview",
   "environment": "production",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "trace_id": "abc123def456",
   "span_id": "789ghi",
   "requestId": "req_xyz",

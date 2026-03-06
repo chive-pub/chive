@@ -126,8 +126,8 @@ export const PMEST_FACETS: readonly FacetDefinition[] = [
     externalMappings: [
       {
         system: 'wikidata',
-        identifier: 'Q1379672',
-        uri: 'https://www.wikidata.org/wiki/Q1379672',
+        identifier: 'Q185698',
+        uri: 'https://www.wikidata.org/wiki/Q185698',
         matchType: 'close-match',
       },
     ],

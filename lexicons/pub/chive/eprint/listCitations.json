@@ -113,8 +113,8 @@
           "description": "Source of the citation data"
         },
         "confidence": {
-          "type": "number",
-          "description": "Confidence score for auto-extracted citations (0-1)"
+          "type": "integer",
+          "description": "Confidence score for auto-extracted citations (0-100)"
         },
         "isInfluential": {
           "type": "boolean",
