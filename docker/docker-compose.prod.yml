@@ -64,6 +64,7 @@ services:
         NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
         NEXT_PUBLIC_FARO_URL: https://faro.${DOMAIN}/collect
         NEXT_PUBLIC_APP_VERSION: ${CHIVE_VERSION:-latest}
+        NEXT_PUBLIC_CHIVE_SERVICE_DID: did:web:${DOMAIN}
         NEXT_PUBLIC_FARO_TRACE_SAMPLE_RATE: "0.1"
         NEXT_PUBLIC_FARO_SESSION_SAMPLE_RATE: "0.5"
     image: chive-web:${CHIVE_VERSION:-latest}
