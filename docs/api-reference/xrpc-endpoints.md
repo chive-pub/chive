@@ -1659,10 +1659,10 @@ Start a claim from an external identifier.
 
 Get pending claims (admin only).
 
-| Property | Value                |
-| -------- | -------------------- |
-| Method   | Query (GET)          |
-| Auth     | Required (moderator) |
+| Property | Value            |
+| -------- | ---------------- |
+| Method   | Query (GET)      |
+| Auth     | Required (admin) |
 
 ---
 
