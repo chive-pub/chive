@@ -10,7 +10,7 @@
 # Prerequisites:
 #   1. Copy .env.production.example to .env.production and configure
 #   2. Create required directories: mkdir -p data/{postgres,redis,elasticsearch,neo4j}
-#   3. Build the application: docker build -t chive:latest -f docker/Dockerfile .
+#   3. Pull or build images: chive:latest (backend) and chive-web:latest (frontend)
 #
 # Estimated resources: 10GB RAM minimum, 16GB recommended
 # =============================================================================
@@ -57,16 +57,6 @@ services:
   # Chive Web Frontend (Next.js)
   # ---------------------------------------------------------------------------
   chive-web:
-    build:
-      context: ..
-      dockerfile: web/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: https://${DOMAIN}/api
-        NEXT_PUBLIC_FARO_URL: https://faro.${DOMAIN}/collect
-        NEXT_PUBLIC_APP_VERSION: ${CHIVE_VERSION:-latest}
-        NEXT_PUBLIC_CHIVE_SERVICE_DID: did:web:${DOMAIN}
-        NEXT_PUBLIC_FARO_TRACE_SAMPLE_RATE: "0.1"
-        NEXT_PUBLIC_FARO_SESSION_SAMPLE_RATE: "0.5"
     image: chive-web:${CHIVE_VERSION:-latest}
     container_name: chive-web
     restart: unless-stopped
