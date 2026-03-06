@@ -139,21 +139,20 @@ async function main(): Promise<void> {
 
         await session.run(
           `
-          CREATE (n:${labels} {
-            id: $id,
-            slug: $slug,
-            uri: $uri,
-            kind: $kind,
-            subkind: $subkind,
-            label: $label,
-            alternateLabels: $alternateLabels,
-            description: $description,
-            externalIds: $externalIds,
-            metadata: $metadata,
-            status: $status,
-            createdAt: datetime($createdAt),
-            updatedAt: datetime()
-          })
+          MERGE (n:Node {id: $id})
+          SET n:${labels},
+              n.slug = $slug,
+              n.uri = $uri,
+              n.kind = $kind,
+              n.subkind = $subkind,
+              n.label = $label,
+              n.alternateLabels = $alternateLabels,
+              n.description = $description,
+              n.externalIds = $externalIds,
+              n.metadata = $metadata,
+              n.status = $status,
+              n.createdAt = datetime($createdAt),
+              n.updatedAt = datetime()
           `,
           {
             id: node.id,
@@ -207,19 +206,17 @@ async function main(): Promise<void> {
           `
           MATCH (source:Node {uri: $sourceUri})
           MATCH (target:Node {uri: $targetUri})
-          CREATE (source)-[e:EDGE {
-            id: $id,
-            uri: $uri,
-            sourceUri: $sourceUri,
-            targetUri: $targetUri,
-            relationUri: $relationUri,
-            relationSlug: $relationSlug,
-            weight: $weight,
-            metadata: $metadata,
-            status: $status,
-            createdAt: datetime($createdAt),
-            updatedAt: datetime()
-          }]->(target)
+          MERGE (source)-[e:EDGE {id: $id}]->(target)
+          SET e.uri = $uri,
+              e.sourceUri = $sourceUri,
+              e.targetUri = $targetUri,
+              e.relationUri = $relationUri,
+              e.relationSlug = $relationSlug,
+              e.weight = $weight,
+              e.metadata = $metadata,
+              e.status = $status,
+              e.createdAt = datetime($createdAt),
+              e.updatedAt = datetime()
           `,
           {
             id: edge.id,
