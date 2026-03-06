@@ -1,6 +1,6 @@
 # Collections
 
-Collections let you organize eprints, reviews, endorsements, and knowledge graph nodes into curated groups. Collections are stored in your PDS and are fully portable. You control their visibility: public, unlisted, or private.
+Collections let you organize eprints, reviews, endorsements, and knowledge graph nodes into curated groups. Collections are stored in your PDS and are fully portable. You control their visibility: listed or unlisted. Since collections are AT Protocol records in your PDS, they are always accessible to anyone who resolves the URI directly. The visibility setting controls whether Chive surfaces them in listings and search.
 
 ## What is a collection?
 
@@ -11,7 +11,7 @@ Collections support nesting (subcollections), inter-item relationships (edges), 
 ## Creating a collection
 
 1. Click **Create Collection** from the dashboard or navigate to `/collections/new`
-2. **Basics**: enter a label, description, visibility (public, unlisted, or private), and optional tags
+2. **Basics**: enter a label, description, visibility (listed or unlisted), and optional tags
 3. **Items**: add eprints, authors, graph nodes, or other items by searching
 4. **Edges**: define relationships between items (optional)
 5. **Structure**: set up subcollection hierarchy (optional)
@@ -81,7 +81,7 @@ Access from **Dashboard > Collections**. The dashboard shows a hierarchical list
 
 - Collection label and description
 - Item count
-- Visibility badge (public, unlisted, or private)
+- Visibility badge (listed or unlisted)
 - Tags
 - Creation date
 
@@ -97,11 +97,12 @@ Subcollections of a deleted collection are re-linked to the deleted collection's
 
 ## Visibility levels
 
-| Level    | Who can see it              |
-| -------- | --------------------------- |
-| Public   | Anyone browsing Chive       |
-| Unlisted | Anyone with the direct link |
-| Private  | Only you                    |
+| Level    | Behavior                                                        |
+| -------- | --------------------------------------------------------------- |
+| Listed   | Surfaced in public listings, search results, and tag filtering  |
+| Unlisted | Accessible by direct link only, not shown in listings or search |
+
+Since all collections are AT Protocol records in your PDS, they are always technically accessible to anyone who resolves the AT-URI directly. The visibility setting controls what Chive's AppView surfaces, not what exists.
 
 ## Related topics
 

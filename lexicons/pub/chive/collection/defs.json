@@ -31,8 +31,8 @@
         },
         "visibility": {
           "type": "string",
-          "knownValues": ["public", "private"],
-          "description": "Collection visibility setting"
+          "knownValues": ["listed", "unlisted"],
+          "description": "Controls whether Chive's AppView surfaces this collection in listings and search"
         },
         "itemCount": {
           "type": "integer",

@@ -3,8 +3,8 @@
  *
  * @remarks
  * Lists collections owned by a specific user. When the authenticated user
- * is the owner, all collections are returned (including private). For other
- * viewers, only public and unlisted collections are shown.
+ * is the owner, all collections are returned (including unlisted). For other
+ * viewers, only listed collections are shown.
  *
  * @packageDocumentation
  * @public
@@ -74,8 +74,8 @@ export const listByOwner: XRPCMethod<QueryParams, void, OutputSchema> = {
       cursor: params.cursor,
     });
 
-    // Filter out private collections unless the viewer is the owner
-    const filtered = isOwner ? result.items : result.items.filter((c) => c.visibility === 'public');
+    // Filter out unlisted collections unless the viewer is the owner
+    const filtered = isOwner ? result.items : result.items.filter((c) => c.visibility === 'listed');
 
     const response: OutputSchema = {
       collections: filtered.map(mapCollectionToView),

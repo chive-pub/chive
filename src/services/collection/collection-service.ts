@@ -106,7 +106,7 @@ export interface IndexedCollection {
   readonly ownerDid: DID;
   readonly label: string;
   readonly description?: string;
-  readonly visibility: 'public' | 'private';
+  readonly visibility: 'listed' | 'unlisted';
   readonly itemCount: number;
   readonly createdAt: Date;
   readonly updatedAt?: Date;
@@ -244,13 +244,13 @@ export class CollectionService {
 
     try {
       const ownerDid = extractDidFromUri(metadata.uri);
-      // Determine visibility from metadata; default to private
-      const visibility =
+      // Determine visibility from metadata; default to unlisted
+      const visibilityRaw =
         record.metadata && 'visibility' in record.metadata
-          ? (record.metadata.visibility as string) === 'public'
-            ? 'public'
-            : 'private'
-          : 'private';
+          ? (record.metadata.visibility as string)
+          : 'unlisted';
+      const visibility =
+        visibilityRaw === 'listed' || visibilityRaw === 'public' ? 'listed' : 'unlisted';
 
       // Extract tags from record metadata
       const tags =
@@ -654,7 +654,7 @@ export class CollectionService {
          LEFT JOIN personal_graph_nodes_index pgn
            ON pgn.uri = c.uri
          WHERE c.uri = $1
-           AND (c.visibility = 'public' OR c.owner_did = $2)
+           AND (c.visibility = 'listed' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
                   c.visibility, c.created_at, c.updated_at,
                   parent_edge.target_uri, pgn.metadata`,
@@ -913,7 +913,7 @@ export class CollectionService {
     const limit = Math.min(options.limit ?? 50, 100);
 
     try {
-      let countSql = `SELECT COUNT(*)::text AS count FROM collections_index WHERE visibility = 'public'`;
+      let countSql = `SELECT COUNT(*)::text AS count FROM collections_index WHERE visibility = 'listed'`;
       const countParams: unknown[] = [];
 
       if (options.tag) {
@@ -937,7 +937,7 @@ export class CollectionService {
                      ON parent_edge.source_uri = c.uri AND parent_edge.relation_slug = 'subcollection-of'
                    LEFT JOIN personal_graph_nodes_index pgn
                      ON pgn.uri = c.uri
-                   WHERE c.visibility = 'public'`;
+                   WHERE c.visibility = 'listed'`;
       const params: unknown[] = [];
 
       if (options.tag) {
@@ -1010,7 +1010,7 @@ export class CollectionService {
    */
   async searchCollections(
     query: string,
-    options: PaginationOptions & { visibility?: 'public' | 'private'; ownerDid?: DID } = {}
+    options: PaginationOptions & { visibility?: 'listed' | 'unlisted'; ownerDid?: DID } = {}
   ): Promise<PaginatedResult<IndexedCollection>> {
     const limit = Math.min(options.limit ?? 50, 100);
     const searchPattern = `%${query}%`;
@@ -1155,7 +1155,7 @@ export class CollectionService {
            ON parent_edge.source_uri = c.uri AND parent_edge.relation_slug = 'subcollection-of'
          LEFT JOIN personal_graph_nodes_index pgn
            ON pgn.uri = c.uri
-         WHERE (c.visibility = 'public' OR c.owner_did = $2)
+         WHERE (c.visibility = 'listed' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
                   c.visibility, c.created_at, c.updated_at,
                   parent_edge.target_uri, pgn.metadata
@@ -1217,7 +1217,7 @@ export class CollectionService {
            ON e2.source_uri = c.uri AND e2.relation_slug = 'contains'
          LEFT JOIN personal_graph_nodes_index pgn
            ON pgn.uri = c.uri
-         WHERE (c.visibility = 'public' OR c.owner_did = $2)
+         WHERE (c.visibility = 'listed' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
                   c.visibility, c.created_at, c.updated_at,
                   pgn.metadata
@@ -1277,7 +1277,7 @@ export class CollectionService {
            ON e2.source_uri = c.uri AND e2.relation_slug = 'contains'
          LEFT JOIN personal_graph_nodes_index pgn
            ON pgn.uri = c.uri
-         WHERE (c.visibility = 'public' OR c.owner_did = $2)
+         WHERE (c.visibility = 'listed' OR c.owner_did = $2)
          GROUP BY c.uri, c.cid, c.owner_did, c.label, c.description,
                   c.visibility, c.created_at, c.updated_at,
                   pgn.metadata
@@ -1825,7 +1825,8 @@ export class CollectionService {
       ownerDid: row.owner_did as DID,
       label: row.label,
       description: row.description ?? undefined,
-      visibility: row.visibility === 'public' ? 'public' : 'private',
+      visibility:
+        row.visibility === 'listed' || row.visibility === 'public' ? 'listed' : 'unlisted',
       itemCount: parseInt(row.item_count, 10),
       createdAt: new Date(row.created_at),
       updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,

@@ -19,7 +19,7 @@
  *   const handleClone = () => {
  *     cloneMutation.mutateAsync({
  *       name: 'My Subfield Map',
- *       visibility: 'public',
+ *       visibility: 'listed',
  *       nodes: subgraph.nodes,
  *       edges: subgraph.edges,
  *     });
@@ -109,7 +109,7 @@ export interface CloneSubgraphInput {
   /** Optional description */
   description?: string;
   /** Visibility setting */
-  visibility: 'public' | 'unlisted' | 'private';
+  visibility: 'listed' | 'unlisted';
   /** Nodes to include, with optional per-node notes */
   nodes: Array<{ uri: string; label: string; note?: string }>;
   /** Edges to recreate as personal edges */
@@ -233,7 +233,7 @@ export function useGraphSubgraph(
  *
  * await cloneMutation.mutateAsync({
  *   name: 'NLP Field Map',
- *   visibility: 'public',
+ *   visibility: 'listed',
  *   nodes: [{ uri: 'at://...', label: 'NLP' }],
  *   edges: [{ sourceUri: 'at://...', targetUri: 'at://...', relationSlug: 'narrower' }],
  * });

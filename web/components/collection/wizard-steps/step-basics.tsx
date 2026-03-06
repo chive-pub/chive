@@ -144,7 +144,7 @@ export function StepBasics({ form }: StepBasicsProps) {
         <Select
           value={watch('visibility')}
           onValueChange={(value) =>
-            setValue('visibility', value as 'public' | 'unlisted' | 'private', {
+            setValue('visibility', value as 'listed' | 'unlisted', {
               shouldDirty: true,
             })
           }
@@ -153,9 +153,8 @@ export function StepBasics({ form }: StepBasicsProps) {
             <SelectValue placeholder="Select visibility" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="public">Public (visible to everyone)</SelectItem>
-            <SelectItem value="unlisted">Unlisted (accessible via link)</SelectItem>
-            <SelectItem value="private">Private (only you)</SelectItem>
+            <SelectItem value="listed">Listed (visible in search and listings)</SelectItem>
+            <SelectItem value="unlisted">Unlisted (accessible via direct link only)</SelectItem>
           </SelectContent>
         </Select>
       </div>

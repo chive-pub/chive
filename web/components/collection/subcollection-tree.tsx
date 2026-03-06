@@ -35,7 +35,6 @@ import {
   GripVertical,
   Link as LinkIcon,
   Loader2,
-  Lock,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -81,9 +80,8 @@ interface SubcollectionTreeNodeProps {
 
 /** Maps visibility levels to their icon and label. */
 const VISIBILITY_ICONS = {
-  public: { icon: Globe, label: 'Public' },
+  listed: { icon: Globe, label: 'Listed' },
   unlisted: { icon: LinkIcon, label: 'Unlisted' },
-  private: { icon: Lock, label: 'Private' },
 } as const;
 
 // =============================================================================

@@ -2,7 +2,7 @@
  * XRPC handler for pub.chive.collection.search.
  *
  * @remarks
- * Searches public collections by text query across label and description fields.
+ * Searches listed collections by text query across label and description fields.
  *
  * @packageDocumentation
  * @public
@@ -66,7 +66,7 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
     const result = await collectionService.searchCollections(params.query, {
       limit,
       cursor: params.cursor,
-      visibility: 'public',
+      visibility: 'listed',
     });
 
     const response: OutputSchema = {

@@ -102,7 +102,7 @@ export function CollectionWizard({
     defaultValues: {
       name: initialValues?.name ?? '',
       description: initialValues?.description ?? '',
-      visibility: initialValues?.visibility ?? 'public',
+      visibility: initialValues?.visibility ?? 'listed',
       tags: initialValues?.tags ?? [],
       fields: initialValues?.fields ?? [],
       items: initialValues?.items ?? [],

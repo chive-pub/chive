@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Collection visibility renamed from `public`/`private` to `listed`/`unlisted` across lexicon, backend, frontend, and tests to reflect ATProto semantics (visibility controls AppView listing, not data access)
+- PostgreSQL migration to rename existing visibility column values with backward-compatible normalization for old values
 - GitHub Actions CI workflows updated with `ADMIN_DIDS` environment variable, admin health check endpoints, and expanded Prometheus metrics collection targets
 
 ## [0.1.0] - 2026-03-03

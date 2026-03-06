@@ -224,7 +224,7 @@ function FeaturedCollectionPicker({
   onChange,
   isLoading,
 }: FeaturedCollectionPickerProps) {
-  const publicCollections = collections.filter((c) => c.visibility === 'public');
+  const publicCollections = collections.filter((c) => c.visibility === 'listed');
 
   if (isLoading) {
     return (

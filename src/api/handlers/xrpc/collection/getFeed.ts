@@ -4,7 +4,7 @@
  * @remarks
  * Returns a chronological activity feed for a collection, aggregating events
  * from tracked items (eprints, people, fields, institutions, events).
- * Visibility-gated: private collection feeds are only accessible to the owner.
+ * Visibility-gated: unlisted collection feeds are only accessible to the owner.
  *
  * @packageDocumentation
  * @public
@@ -51,9 +51,9 @@ export const getFeed: XRPCMethod<QueryParams, void, OutputSchema> = {
       throw new NotFoundError('Collection', params.uri);
     }
 
-    // Visibility gate: private collections are owner-only
-    if (collection.visibility === 'private' && user?.did !== collection.ownerDid) {
-      throw new AuthorizationError('Cannot access feed for private collection');
+    // Visibility gate: unlisted collections are owner-only
+    if (collection.visibility === 'unlisted' && user?.did !== collection.ownerDid) {
+      throw new AuthorizationError('Cannot access feed for unlisted collection');
     }
 
     logger.debug('Getting collection feed', {
