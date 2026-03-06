@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
     response_types: ['code'],
 
     // Scopes this client requests
-    scope:
-      'atproto transition:generic include:pub.chive.auth.fullAccess repo:app.bsky.feed.post repo:app.bsky.actor.profile repo:site.standard.document repo:network.cosmik.card repo:network.cosmik.collectionLink repo:network.cosmik.collection',
+    // TODO: Re-enable granular permission sets when PDS support lands
+    scope: 'atproto transition:generic',
 
     // DPoP (Demonstrating Proof of Possession) - required by ATProto
     dpop_bound_access_tokens: true,
