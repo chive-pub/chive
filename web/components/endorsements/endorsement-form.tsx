@@ -54,7 +54,8 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+// Native checkbox to avoid React 19 + Radix infinite loop issue (same as Dialog above)
+// import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useMemo } from 'react';
 import type { ContributionType } from '@/lib/api/schema';
@@ -351,11 +352,13 @@ export function EndorsementForm({
                             )}
                             onClick={() => toggleContribution(option.type)}
                           >
-                            <Checkbox
+                            <input
+                              type="checkbox"
                               checked={isSelected}
-                              onCheckedChange={() => toggleContribution(option.type)}
+                              onChange={() => toggleContribution(option.type)}
                               onClick={(e) => e.stopPropagation()}
                               id={option.type}
+                              className="peer h-4 w-4 shrink-0 rounded-sm border border-primary accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                             <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="flex-1 min-w-0">
