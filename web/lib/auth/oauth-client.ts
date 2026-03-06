@@ -271,9 +271,10 @@ export async function startLogin(options: LoginOptions): Promise<string> {
   const client = await getOAuthClient();
 
   try {
-    // Request both granular scopes and legacy fallback
-    const granularScope = getScopesForIntent(intent);
-    const scope = `${granularScope} transition:generic`;
+    // TODO: Re-enable granular scopes when PDS support for permission sets lands
+    // const granularScope = getScopesForIntent(intent);
+    // const scope = `${granularScope} transition:generic`;
+    const scope = 'atproto transition:generic';
 
     const url = await client.authorize(handle, { scope });
 
