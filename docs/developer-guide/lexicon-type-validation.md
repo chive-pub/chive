@@ -337,4 +337,4 @@ This pattern ensures type safety at both compile time and runtime while providin
 
 - [Core business services](./core-business-services): service architecture overview
 - [Indexing service](./services/indexing): firehose consumption pipeline
-- [Error handling](./services/README#error-handling-patterns): Result type patterns
+- [Error handling](./services#error-handling-patterns): Result type patterns

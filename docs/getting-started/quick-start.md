@@ -42,7 +42,7 @@ Review your submission and click "Submit Eprint". The eprint record is created i
 
 After you submit, Chive indexes your eprint from your PDS. This usually takes a few minutes. Once indexed, you can find your eprint by searching for its title or browsing your profile page.
 
-To update metadata or upload a revised PDF, see the [editing guide](../user-guide/editing).
+To update metadata or upload a revised PDF, see the [editing guide](../user-guide/editing-eprints).
 
 ## Step 4: Share
 
