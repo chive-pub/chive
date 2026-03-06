@@ -1,0 +1,252 @@
+name: Deploy Staging
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [staging]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets and variables
+        run: |
+          echo "Checking required staging configuration..."
+          missing=""
+
+          if [ -z "${{ secrets.STAGING_HOST }}" ]; then missing="$missing STAGING_HOST"; fi
+          if [ -z "${{ secrets.STAGING_SSH_USER }}" ]; then missing="$missing STAGING_SSH_USER"; fi
+          if [ -z "${{ secrets.STAGING_SSH_PRIVATE_KEY }}" ]; then missing="$missing STAGING_SSH_PRIVATE_KEY"; fi
+          if [ -z "${{ secrets.STAGING_POSTGRES_PASSWORD }}" ]; then missing="$missing STAGING_POSTGRES_PASSWORD"; fi
+          if [ -z "${{ secrets.STAGING_NEO4J_PASSWORD }}" ]; then missing="$missing STAGING_NEO4J_PASSWORD"; fi
+          if [ -z "${{ secrets.STAGING_JWT_SECRET }}" ]; then missing="$missing STAGING_JWT_SECRET"; fi
+          if [ -z "${{ secrets.STAGING_GRAFANA_ADMIN_PASSWORD }}" ]; then missing="$missing STAGING_GRAFANA_ADMIN_PASSWORD"; fi
+
+          if [ -z "${{ vars.STAGING_DOMAIN }}" ]; then missing="$missing STAGING_DOMAIN(var)"; fi
+          if [ -z "${{ vars.STAGING_ACME_EMAIL }}" ]; then missing="$missing STAGING_ACME_EMAIL(var)"; fi
+          if [ -z "${{ vars.STAGING_ADMIN_DIDS }}" ]; then missing="$missing STAGING_ADMIN_DIDS(var)"; fi
+
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required staging configuration:$missing"
+            echo "Please configure these in GitHub environment 'staging' settings"
+            exit 1
+          fi
+
+          echo "All required staging configuration present"
+
+      - name: Create environment files
+        env:
+          DOMAIN: ${{ vars.STAGING_DOMAIN }}
+          ACME_EMAIL: ${{ vars.STAGING_ACME_EMAIL }}
+          POSTGRES_PASSWORD: ${{ secrets.STAGING_POSTGRES_PASSWORD }}
+          NEO4J_PASSWORD: ${{ secrets.STAGING_NEO4J_PASSWORD }}
+          JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+          SESSION_SECRET: ${{ secrets.STAGING_SESSION_SECRET }}
+          GOVERNANCE_PDS_JWT_SECRET: ${{ secrets.STAGING_GOVERNANCE_PDS_JWT_SECRET }}
+          GOVERNANCE_PDS_ADMIN_PASSWORD: ${{ secrets.STAGING_GOVERNANCE_PDS_ADMIN_PASSWORD }}
+          GOVERNANCE_PDS_ROTATION_KEY: ${{ secrets.STAGING_GOVERNANCE_PDS_ROTATION_KEY }}
+          ATPROTO_SERVICE_DID: ${{ vars.STAGING_ATPROTO_SERVICE_DID }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.STAGING_GRAFANA_ADMIN_PASSWORD }}
+          ADMIN_DIDS: ${{ vars.STAGING_ADMIN_DIDS }}
+        run: |
+          mkdir -p docker-env
+
+          cat > docker-env/.env <<EOF
+          DOMAIN=${DOMAIN}
+          ACME_EMAIL=${ACME_EMAIL}
+          CHIVE_VERSION=latest
+          POSTGRES_DB=chive
+          POSTGRES_USER=chive
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          NEO4J_USER=neo4j
+          NEO4J_PASSWORD=${NEO4J_PASSWORD}
+          GOVERNANCE_PDS_JWT_SECRET=${GOVERNANCE_PDS_JWT_SECRET}
+          GOVERNANCE_PDS_ADMIN_PASSWORD=${GOVERNANCE_PDS_ADMIN_PASSWORD}
+          GOVERNANCE_PDS_ROTATION_KEY=${GOVERNANCE_PDS_ROTATION_KEY}
+          GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+          EOF
+
+          cat > docker-env/.env.production <<EOF
+          DOMAIN=${DOMAIN}
+          ACME_EMAIL=${ACME_EMAIL}
+          CHIVE_VERSION=latest
+          POSTGRES_HOST=postgres
+          POSTGRES_DB=chive
+          POSTGRES_USER=chive
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          NEO4J_USER=neo4j
+          NEO4J_PASSWORD=${NEO4J_PASSWORD}
+          REDIS_URL=redis://redis:6379
+          JWT_SECRET=${JWT_SECRET}
+          SESSION_SECRET=${SESSION_SECRET}
+          GOVERNANCE_PDS_JWT_SECRET=${GOVERNANCE_PDS_JWT_SECRET}
+          GOVERNANCE_PDS_ADMIN_PASSWORD=${GOVERNANCE_PDS_ADMIN_PASSWORD}
+          GOVERNANCE_PDS_ROTATION_KEY=${GOVERNANCE_PDS_ROTATION_KEY}
+          DATABASE_URL=postgresql://chive:${POSTGRES_PASSWORD}@postgres:5432/chive
+          ELASTICSEARCH_URL=http://elasticsearch:9200
+          NEO4J_URI=bolt://neo4j:7687
+          NEO4J_ENCRYPTED=ENCRYPTION_OFF
+          ATPROTO_SERVICE_DID=${ATPROTO_SERVICE_DID}
+          ATPROTO_RELAY_URL=wss://bsky.network
+          ADMIN_DIDS=${ADMIN_DIDS}
+          EOF
+
+          sed -i 's/^          //' docker-env/.env docker-env/.env.production
+
+      - name: Copy env files to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: "docker-env/.env,docker-env/.env.production"
+          target: "/tmp/chive-deploy"
+          strip_components: 1
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+
+            DEPLOY_DIR="/opt/chive"
+            REPO_URL="https://github.com/${{ github.repository }}.git"
+
+            echo "=== Starting staging deployment ==="
+            echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+            sudo mkdir -p /opt
+            sudo chown $USER:$USER /opt 2>/dev/null || true
+
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              git clone "$REPO_URL" "$DEPLOY_DIR"
+            elif [ ! -d "$DEPLOY_DIR/.git" ]; then
+              rm -rf "$DEPLOY_DIR"
+              git clone "$REPO_URL" "$DEPLOY_DIR"
+            else
+              cd "$DEPLOY_DIR"
+              git fetch origin main
+              git reset --hard origin/main
+            fi
+
+            cd "$DEPLOY_DIR"
+            echo "Current commit: $(git rev-parse --short HEAD) - $(git log -1 --format=%s)"
+
+            mkdir -p docker
+            mv /tmp/chive-deploy/.env docker/.env
+            mv /tmp/chive-deploy/.env.production docker/.env.production
+            rm -rf /tmp/chive-deploy
+
+            echo "=== Building and deploying containers ==="
+            cd docker
+
+            echo "Pulling latest base images..."
+            docker compose -f docker-compose.prod.yml pull postgres redis elasticsearch neo4j grobid traefik || true
+
+            echo "Building main chive image..."
+            docker build --no-cache --target production -t chive:latest -f ../docker/Dockerfile .. || {
+              echo "::error::Failed to build main chive image"
+              exit 1
+            }
+
+            echo "Building chive-web container..."
+            docker compose -f docker-compose.prod.yml build --no-cache chive-web || {
+              echo "::error::Failed to build chive-web image"
+              exit 1
+            }
+
+            echo "Cleaning up stale containers..."
+            docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
+            docker container prune -f 2>/dev/null || true
+
+            echo "Starting services..."
+            docker compose -f docker-compose.prod.yml up -d --force-recreate
+
+            echo "Waiting for services to initialize..."
+            sleep 30
+
+            echo "=== Container status ==="
+            docker compose -f docker-compose.prod.yml ps
+
+            echo "Cleaning up old images and build cache..."
+            docker builder prune -af 2>/dev/null || true
+            docker system prune -af
+
+            echo "=== Staging deployment complete ==="
+
+      - name: Setup Elasticsearch Index
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd /opt/chive
+
+            docker exec \
+              -e ELASTICSEARCH_URL=http://elasticsearch:9200 \
+              chive-api \
+              node --enable-source-maps dist/scripts/db/recreate-elasticsearch-index.js || {
+                docker exec \
+                  -e ELASTICSEARCH_URL=http://elasticsearch:9200 \
+                  chive-api \
+                  node --enable-source-maps dist/scripts/db/setup-elasticsearch.js || {
+                    echo "::error::Elasticsearch setup failed"
+                    exit 1
+                  }
+              }
+
+      - name: Verify staging deployment
+        run: |
+          echo "Waiting for services to fully start..."
+          sleep 60
+
+          domain="${{ vars.STAGING_DOMAIN }}"
+          success=true
+
+          echo "Checking API health at https://$domain/api/health..."
+          if curl -sf --max-time 30 "https://$domain/api/health"; then
+            echo "API health check passed"
+          else
+            echo "API health check failed"
+            success=false
+          fi
+
+          echo ""
+          echo "Checking web frontend at https://$domain/..."
+          if curl -sf --max-time 30 "https://$domain/" > /dev/null; then
+            echo "Web health check passed"
+          else
+            echo "Web health check failed"
+            success=false
+          fi
+
+          if [ "$success" = "false" ]; then
+            echo "::error::Staging health checks failed"
+            exit 1
+          fi
+
+          echo "All staging health checks passed"
+
+      - name: Staging deployment summary
+        if: always()
+        run: |
+          echo "## Staging Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Domain:** ${{ vars.STAGING_DOMAIN }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
