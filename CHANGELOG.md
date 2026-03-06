@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-03-05
+## [0.2.0] - 2026-03-06
 
 ### Added
 
@@ -35,15 +35,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CLIENT_METADATA_SCOPE` constant combining full access permission set with all external namespace scopes
 - OAuth client metadata updated to declare granular scopes alongside `transition:generic` for backward compatibility with PDSes that don't support granular scopes
 
+#### Deployment
+
+- Docker smoke tests and staging deployment workflow with environment branch strategy
+- `NEXT_PUBLIC_CHIVE_SERVICE_DID` build arg for per-environment service DID configuration
+
 #### Observability
 
 - Prometheus metric groups for jobs, workers, auth, search, blob proxy, dead letter queue, admin, and backfill operations
 - OpenTelemetry span instrumentation for auth verification, background jobs, worker processing, and blob proxy requests
+- Faro error boundary around eprint detail page for rendering crash diagnostics with trace ID references
+
+#### Indexing
+
+- Field label resolution job and indexer retry for unresolved UUID field labels
+- `makeJobId` utility for sanitizing AT URIs into valid BullMQ job identifiers
 
 #### Documentation
 
 - Admin dashboard documentation covering API endpoints, backfill operations, observability metrics, architecture, and role management
 - OAuth scopes documentation covering permission set definitions, intent-based login, and backward compatibility
+- Documentation suite overhaul with formatting improvements, accuracy corrections, and staging deploy workflow
 
 #### Testing
 
@@ -56,6 +68,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Collection visibility renamed from `public`/`private` to `listed`/`unlisted` across lexicon, backend, frontend, and tests to reflect ATProto semantics (visibility controls AppView listing, not data access)
 - PostgreSQL migration to rename existing visibility column values with backward-compatible normalization for old values
 - GitHub Actions CI workflows updated with `ADMIN_DIDS` environment variable, admin health check endpoints, and expanded Prometheus metrics collection targets
+- Documentation accuracy: removed non-existent content moderation features, corrected role names, fixed contact emails, replaced Semble references with Cosmik
+- OAuth scope requests fall back to `transition:generic` until PDSes support granular permission sets
+- Grafana Alloy Faro log pipeline switched from JSON stage to regex stages for Faro's key=value log format
+
+### Fixed
+
+- React 19 + Radix UI infinite loop crash (error #185) when selecting endorsement types by replacing Radix Checkbox with native HTML input
+- BullMQ job ID validation errors caused by colons in AT URIs by sanitizing job IDs in enrichment, freshness, and index-retry workers
+- AlphaGate redirecting approved users to login on transient auth refetch failures
+- Null reference crashes on eprint detail page from missing `abstract`, endorser display names, or contribution arrays
+- ~90 incorrect Wikidata Q-IDs across governance seed data
+- Invalid lexicon schemas for citation record and listCitations query
+- Permission set scopes to cover all frontend writes including external namespaces and blob types
+- Docker smoke test to use `/ready` endpoint instead of nonexistent `/xrpc/_health`
+- Backend `SERVICE_DID` environment variable name to match deploy configuration
+- Reindex script to use MERGE instead of CREATE to handle Neo4j uniqueness constraints
+- Staging deploy to pull from `origin/staging` instead of `origin/main`
+- Admin role reference from `moderator` to `admin` in getPendingClaims endpoint
+- Alpha applications table sync when granting access via admin role assignment
+- Permission-set lexicons excluded from codegen to prevent build errors
+- Neo4j Cypher syntax error in recommendation queries that prevented related papers from loading (moved `UNION ALL` inside `CALL {}` blocks for Neo4j 5.x compatibility)
 
 ## [0.1.0] - 2026-03-03
 
