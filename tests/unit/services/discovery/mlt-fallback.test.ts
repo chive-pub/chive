@@ -353,7 +353,7 @@ describe('DiscoveryService MLT fallback', () => {
       );
     });
 
-    it('weights MLT scores at 0.6x relative to SPECTER2', async () => {
+    it('weights MLT scores at 0.85x relative to SPECTER2', async () => {
       db.query.mockResolvedValue({ rows: [EPRINT_ROW_NO_S2] });
 
       // ES saturation normalization produces scores in the 0-1 range
@@ -374,16 +374,16 @@ describe('DiscoveryService MLT fallback', () => {
       expect(results).toHaveLength(1);
 
       const result = results[0];
-      // MLT per-signal score = raw_score * 0.6 (scores already 0-1 via ES saturation)
-      // 0.85 * 0.6 = 0.51
-      const semanticScore = 0.85 * 0.6;
+      // MLT per-signal score = raw_score * 0.85 (scores already 0-1 via ES saturation)
+      // 0.85 * 0.85 = 0.7225
+      const semanticScore = 0.85 * 0.85;
       // Combined score applies discovery weight (specter2 = 0.30)
       const expectedCombinedScore = semanticScore * 0.3;
       expect(result?.score).toBeCloseTo(expectedCombinedScore, 5);
       expect(result?.signalScores?.semantic).toBeCloseTo(semanticScore, 5);
     });
 
-    it('applies 0.6 discount to high MLT scores', async () => {
+    it('applies 0.85 discount to high MLT scores', async () => {
       db.query.mockResolvedValue({ rows: [EPRINT_ROW_NO_S2] });
 
       // Saturation-normalized score near maximum
@@ -402,9 +402,9 @@ describe('DiscoveryService MLT fallback', () => {
       });
 
       expect(results).toHaveLength(1);
-      // MLT per-signal score: 0.98 * 0.6 = 0.588
-      // Combined score with discovery weight: 0.588 * 0.30 = 0.1764
-      expect(results[0]?.score).toBeCloseTo(0.98 * 0.6 * 0.3, 5);
+      // MLT per-signal score: 0.98 * 0.85 = 0.833
+      // Combined score with discovery weight: 0.833 * 0.30 = 0.2499
+      expect(results[0]?.score).toBeCloseTo(0.98 * 0.85 * 0.3, 5);
     });
 
     it('handles MLT returning no results gracefully', async () => {

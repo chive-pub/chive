@@ -502,8 +502,8 @@ export class DiscoveryService implements IDiscoveryService {
     options?: RelatedEprintOptions
   ): Promise<readonly RelatedEprint[]> {
     const limit = options?.limit ?? 10;
-    const minScore = options?.minScore ?? 0.2;
-    const signals = options?.signals ?? ['citations', 'concepts', 'semantic'];
+    const minScore = options?.minScore ?? 0.05;
+    const signals = options?.signals ?? ['citations', 'concepts', 'semantic', 'authors'];
 
     // Accumulator: track per-signal scores for weighted combination
     const signalAccumulator = new Map<
@@ -848,8 +848,8 @@ export class DiscoveryService implements IDiscoveryService {
 
         for (const mltResult of mltResults) {
           // Scores are already 0-1 via ES saturation normalization.
-          // Discount by 0.6 relative to SPECTER2 embeddings.
-          const score = mltResult.score * 0.6;
+          // Slight discount relative to SPECTER2 embeddings.
+          const score = mltResult.score * 0.85;
 
           if (score < minScore) continue;
 

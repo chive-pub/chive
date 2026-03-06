@@ -7,6 +7,14 @@ on:
     types: [completed]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -101,6 +109,33 @@ jobs:
 
           sed -i 's/^          //' docker-env/.env docker-env/.env.production
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push web frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/web:staging
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/web:sha-${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ vars.STAGING_DOMAIN }}/api
+            NEXT_PUBLIC_FARO_URL=https://faro.${{ vars.STAGING_DOMAIN }}/collect
+            NEXT_PUBLIC_APP_VERSION=staging-${{ github.sha }}
+            NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${{ vars.STAGING_DOMAIN }}
+          cache-from: type=gha,scope=web-staging
+          cache-to: type=gha,mode=max,scope=web-staging
+
       - name: Copy env files to staging server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -113,19 +148,30 @@ jobs:
 
       - name: Deploy to staging server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          REGISTRY: ghcr.io
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          envs: REGISTRY,REPO,SHA,GH_TOKEN
           command_timeout: 30m
           script: |
             set -e
 
             DEPLOY_DIR="/opt/chive"
-            REPO_URL="https://github.com/${{ github.repository }}.git"
+            REPO_URL="https://github.com/${REPO}.git"
+            API_IMAGE="${REGISTRY}/${REPO}:staging"
+            WEB_IMAGE="${REGISTRY}/${REPO}/web:staging"
 
             echo "=== Starting staging deployment ==="
             echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+            echo "Logging in to container registry..."
+            echo "${GH_TOKEN}" | docker login "${REGISTRY}" -u github --password-stdin
 
             sudo mkdir -p /opt
             sudo chown $USER:$USER /opt 2>/dev/null || true
@@ -149,23 +195,17 @@ jobs:
             mv /tmp/chive-deploy/.env.production docker/.env.production
             rm -rf /tmp/chive-deploy
 
-            echo "=== Building and deploying containers ==="
+            echo "=== Pulling pre-built images ==="
             cd docker
 
-            echo "Pulling latest base images..."
+            docker pull "$API_IMAGE"
+            docker tag "$API_IMAGE" chive:latest
+
+            docker pull "$WEB_IMAGE"
+            docker tag "$WEB_IMAGE" chive-web:latest
+
+            echo "Pulling infrastructure images..."
             docker compose -f docker-compose.prod.yml pull postgres redis elasticsearch neo4j grobid traefik || true
-
-            echo "Building main chive image..."
-            docker build --no-cache --target production -t chive:latest -f ../docker/Dockerfile .. || {
-              echo "::error::Failed to build main chive image"
-              exit 1
-            }
-
-            echo "Building chive-web container..."
-            docker compose -f docker-compose.prod.yml build --no-cache chive-web || {
-              echo "::error::Failed to build chive-web image"
-              exit 1
-            }
 
             echo "Cleaning up stale containers..."
             docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
@@ -173,6 +213,9 @@ jobs:
 
             echo "Starting services..."
             docker compose -f docker-compose.prod.yml up -d --force-recreate
+
+            echo "Starting docs site..."
+            docker compose -f docker-compose.staging-docs.yml up -d --force-recreate
 
             echo "Waiting for services to initialize..."
             sleep 30
