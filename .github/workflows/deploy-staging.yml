@@ -137,8 +137,8 @@ jobs:
               git clone "$REPO_URL" "$DEPLOY_DIR"
             else
               cd "$DEPLOY_DIR"
-              git fetch origin main
-              git reset --hard origin/main
+              git fetch origin staging
+              git reset --hard origin/staging
             fi
 
             cd "$DEPLOY_DIR"
