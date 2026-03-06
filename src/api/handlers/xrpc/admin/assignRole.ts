@@ -10,6 +10,7 @@
  */
 
 import { adminMetrics } from '../../../../observability/prometheus-registry.js';
+import type { DID } from '../../../../types/atproto.js';
 import { AuthorizationError, ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
@@ -69,6 +70,13 @@ export const assignRole: XRPCMethod<void, AssignRoleInput, AssignRoleOutput> = {
         assignedBy: user.did,
       })
     );
+
+    // When granting alpha-tester, also upsert an approved application record
+    // so the frontend status check (which reads Postgres) stays in sync.
+    if (input.role === 'alpha-tester') {
+      const alphaService = c.get('alphaService');
+      await alphaService.grantAccess(input.did as DID, user.did);
+    }
 
     adminMetrics.actionsTotal.inc({ action: 'assign_role', target: 'user' });
 
