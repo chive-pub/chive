@@ -66,6 +66,7 @@ import type {
 import type { Eprint, EprintVersion } from '../../types/models/eprint.ts';
 import type { Result } from '../../types/result.js';
 import { extractRkeyOrPassthrough, normalizeFieldUri } from '../../utils/at-uri.js';
+import { needsLabelResolution } from '../../utils/field-label.js';
 import { extractPlainText } from '../../utils/rich-text.js';
 
 import { VersionManager } from './version-manager.js';
@@ -258,10 +259,22 @@ export class EprintService {
     try {
       const abstractPlainText = extractPlainText(record.abstract);
 
-      // Resolve field labels from knowledge graph if available
+      // Resolve field labels from knowledge graph if available.
+      // If the first attempt leaves unresolved labels (Neo4j may not have the
+      // nodes yet), retry once after a short delay before falling back.
       let resolvedFields = record.fields;
       if (this.graph && record.fields && record.fields.length > 0) {
         resolvedFields = await this.resolveFieldLabels(record.fields);
+
+        const hasUnresolved = resolvedFields.some((f) => needsLabelResolution(f.label));
+        if (hasUnresolved) {
+          this.logger.debug('Some field labels unresolved, retrying after delay', {
+            uri: metadata.uri,
+            unresolvedCount: resolvedFields.filter((f) => needsLabelResolution(f.label)).length,
+          });
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          resolvedFields = await this.resolveFieldLabels(resolvedFields);
+        }
       }
 
       // Stage 1: PostgreSQL
