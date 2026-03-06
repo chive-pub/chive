@@ -76,6 +76,9 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
     enabled: isAuthenticated && !bypassGate,
   });
 
+  // Track whether user was previously approved to survive transient refetch failures
+  const wasApproved = alphaStatus?.status === 'approved';
+
   // Check if error is an authentication error (401)
   const isAuthError = error instanceof APIError && error.statusCode === 401;
 
@@ -87,6 +90,12 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
     // If unauthenticated and not allowed, redirect to landing page
     if (!isAuthenticated && !allowUnauthenticated) {
       router.replace('/');
+      return;
+    }
+
+    // If user was previously approved, don't redirect on transient errors.
+    // The stale approved data is still valid -- wait for the next successful refetch.
+    if (isAuthenticated && isError && wasApproved) {
       return;
     }
 
@@ -122,6 +131,7 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
     isLoading,
     isError,
     isAuthError,
+    wasApproved,
     alphaStatus,
     allowUnauthenticated,
     router,
@@ -147,8 +157,12 @@ export function AlphaGate({ children, allowUnauthenticated = false }: AlphaGateP
     return <AlphaGateLoading />;
   }
 
-  // Show loading while redirecting on error
+  // On error: if previously approved, keep showing children (transient failure).
+  // Otherwise show loading while the useEffect redirect fires.
   if (isError) {
+    if (wasApproved) {
+      return <>{children}</>;
+    }
     return <AlphaGateLoading />;
   }
 

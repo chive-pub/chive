@@ -35,6 +35,7 @@ import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
 import type { AtUri } from '../types/atproto.js';
 import { RateLimitError } from '../types/errors.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
+import { makeJobId } from '../utils/at-uri.js';
 
 /**
  * Queue name.
@@ -470,7 +471,7 @@ export class FreshnessWorker {
   async enqueue(job: FreshnessJobData): Promise<string> {
     const bullJob = await this.queue.add('freshness', job, {
       priority: job.priority,
-      jobId: `freshness:${job.uri}`, // Dedupe by URI
+      jobId: makeJobId('freshness', job.uri), // Dedupe by URI
     });
 
     this.logger.debug('Enqueued freshness job', {
@@ -496,7 +497,7 @@ export class FreshnessWorker {
       data: job,
       opts: {
         priority: job.priority,
-        jobId: `freshness:${job.uri}`,
+        jobId: makeJobId('freshness', job.uri),
       },
     }));
 

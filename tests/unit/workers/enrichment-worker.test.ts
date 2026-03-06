@@ -182,7 +182,7 @@ describe('EnrichmentWorker', () => {
       expect(queue.add).toHaveBeenCalledWith(
         'enrich',
         expect.anything(),
-        expect.objectContaining({ jobId: `enrich:${TEST_URI}` })
+        expect.objectContaining({ jobId: `enrich_${TEST_URI.replaceAll(':', '_')}` })
       );
     });
   });
@@ -262,7 +262,7 @@ describe('EnrichmentWorker.enqueueJob (static)', () => {
     expect(mockQueue.add).toHaveBeenCalledWith(
       'enrich',
       expect.objectContaining({ uri: TEST_URI }),
-      expect.objectContaining({ jobId: `enrich:${TEST_URI}` })
+      expect.objectContaining({ jobId: `enrich_${TEST_URI.replaceAll(':', '_')}` })
     );
   });
 });

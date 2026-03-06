@@ -32,6 +32,7 @@ import { transformPDSRecord } from '../services/eprint/pds-record-transformer.js
 import type { AtUri, CID, DID } from '../types/atproto.js';
 import { DatabaseError } from '../types/errors.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
+import { makeJobId } from '../utils/at-uri.js';
 
 /**
  * Queue name.
@@ -335,7 +336,7 @@ export class IndexRetryWorker {
    */
   async enqueueRetry(data: IndexRetryJobData): Promise<string> {
     const job = await this.queue.add('index-retry', data, {
-      jobId: `retry:${data.uri}`,
+      jobId: makeJobId('retry', data.uri),
     });
 
     this.logger.info('Enqueued index retry job', {

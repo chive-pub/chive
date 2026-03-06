@@ -139,3 +139,21 @@ export function isUuid(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(str);
 }
+
+/**
+ * Sanitizes an AT-URI for use as a BullMQ job ID.
+ *
+ * @remarks
+ * BullMQ disallows colons in custom job IDs. AT-URIs contain colons
+ * in the scheme (`at://`) and DID (`did:plc:`). This replaces colons
+ * with underscores to produce a valid, unique, deterministic job ID.
+ *
+ * @param prefix - Job type prefix (e.g. 'freshness', 'enrich')
+ * @param uri - The AT-URI to sanitize
+ * @returns A colon-free job ID string
+ *
+ * @public
+ */
+export function makeJobId(prefix: string, uri: string): string {
+  return `${prefix}_${uri.replaceAll(':', '_')}`;
+}

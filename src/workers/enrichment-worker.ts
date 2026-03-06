@@ -52,6 +52,7 @@ import type {
   EnrichmentResult,
 } from '../types/interfaces/discovery.interface.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
+import { makeJobId } from '../utils/at-uri.js';
 
 /**
  * Queue names.
@@ -365,7 +366,7 @@ export class EnrichmentWorker {
 
     const bullJob = await this.queue.add('enrich', job, {
       priority,
-      jobId: `enrich:${job.uri}`, // Dedupe by URI
+      jobId: makeJobId('enrich', job.uri), // Dedupe by URI
     });
 
     this.logger.debug('Enqueued enrichment job', {
@@ -392,7 +393,7 @@ export class EnrichmentWorker {
 
     const bullJob = await queue.add('enrich', job, {
       priority,
-      jobId: `enrich:${job.uri}`,
+      jobId: makeJobId('enrich', job.uri),
     });
 
     return bullJob.id ?? '';
