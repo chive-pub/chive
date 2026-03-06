@@ -209,7 +209,7 @@ function loadConfig(): EnvConfig {
     sessionEncryptionKey: process.env.SESSION_ENCRYPTION_KEY,
 
     // ATProto Service Auth
-    serviceDid: process.env.SERVICE_DID ?? 'did:web:chive.pub',
+    serviceDid: process.env.ATPROTO_SERVICE_DID ?? 'did:web:chive.pub',
 
     // Relevance logging
     relevanceLoggingEnabled: process.env.RELEVANCE_LOGGING_ENABLED !== 'false',
